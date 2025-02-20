@@ -1,0 +1,13 @@
+/* styles.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #0a0a1a, #1a1a3a);
+    color: #fff;
+    overflow-x: hidden;
+}

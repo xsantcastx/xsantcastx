@@ -1,0 +1,9 @@
+<section class="contact">
+    <h2>Get in Touch</h2>
+    <form (ngSubmit)="onSubmit()">
+        <input type="text" placeholder="Name" [(ngModel)]="name" name="name" required>
+        <input type="email" placeholder="Email" [(ngModel)]="email" name="email" required>
+        <textarea placeholder="Message" [(ngModel)]="message" name="message" required></textarea>
+        <button type="submit" class="cta-button">Send Message</button>
+    </form>
+</section>

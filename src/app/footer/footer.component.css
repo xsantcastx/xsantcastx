@@ -1,0 +1,18 @@
+/* Same as original footer CSS */
+footer {
+    padding: 2rem 5%;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 2px solid #00ffcc;
+}
+
+.social-links a {
+    color: #00ffcc;
+    text-decoration: none;
+    margin: 0 1rem;
+    transition: color 0.3s ease;
+}
+
+.social-links a:hover {
+    color: #00cc99;
+}
