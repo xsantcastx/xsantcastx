@@ -11,6 +11,8 @@ import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { NgxParticlesModule } from '@tsparticles/angular'; // If using tsparticles
 import { HttpClientModule } from '@angular/common/http';
+import { EgComponent } from './eg/eg.component';
+import { GridSectionsComponent } from './grid-sections/grid-sections.component';
 
 @NgModule({
   declarations: [
@@ -20,7 +22,9 @@ import { HttpClientModule } from '@angular/common/http';
     SkillsComponent,
     ProjectsComponent,
     ContactComponent,
-    FooterComponent
+    FooterComponent,
+    EgComponent,
+    GridSectionsComponent
   ],
   imports: [
     BrowserModule,
