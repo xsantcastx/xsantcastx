@@ -1,0 +1,90 @@
+/* === GRID SECTION (FUTURISTIC SQUARES) === */
+.grid-section {
+  background: linear-gradient(135deg, #0a0a1a, #101033);
+  padding: 3rem 1rem;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Square grid items */
+.grid-item {
+  background: rgba(10, 10, 26, 0.9);
+  border: 1px solid #00ffcc;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+  color: #fff;
+  padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;  /* Ensures square shape */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+}
+
+.grid-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(0, 255, 204, 0.7);
+}
+
+/* Title inside each square */
+.grid-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 5px #00ffcc;
+}
+
+/* Hidden detailed content (for active state) */
+.grid-content {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding-top: 1rem;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+/* Active state: expanded overlay */
+.grid-item.active {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  height: auto;
+  aspect-ratio: auto;
+  z-index: 100;
+  padding: 2rem;
+  border-radius: 10px;
+  overflow-y: auto;
+}
+
+.grid-item.active .grid-content {
+  display: block;
+  opacity: 1;
+}
+
+.grid-item.active .grid-title {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-title {
+    font-size: 1.2rem;
+  }
+  .grid-content {
+    font-size: 0.9rem;
+  }
+}

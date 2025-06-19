@@ -1,11 +1,9 @@
-/* Same as the original CSS for navbar, scoped to this component */
 .navbar {
     display: flex;
-    justify-content: space-between;
+    justify-content: center; /* Center content horizontally */
     align-items: center;
-    padding: 1rem 5%;
     background: rgba(0, 0, 0, 0.8);
-    position: fixed;
+    position: relative;
     width: 100%;
     top: 0;
     z-index: 1000;
@@ -18,42 +16,107 @@
     color: #00ffcc;
     text-transform: uppercase;
     letter-spacing: 2px;
-}
-
-.nav-links {
     display: flex;
-    list-style: none;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto; /* Optional: ensures centering if not using flex */
 }
 
-.nav-links li {
-    margin-left: 2rem;
+.nav-glitch {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 2px solid #00ffcc;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  color: #00ffcc;
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+  user-select: none;
+  pointer-events: none;
+  cursor: default;
+  animation: typing 2.3s steps(14) forwards, blink 0.7s step-end 5;
 }
 
-.nav-links a {
-    color: #fff;
-    text-decoration: none;
-    font-size: 1.2rem;
-    transition: color 0.3s ease;
+
+
+.nav-glitch.glitch-start {
+  animation: glitch 1s infinite linear alternate-reverse;
 }
 
-.nav-links a:hover {
-    color: #00ffcc;
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; } /* Let the text fully reveal */
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .navbar {
-        flex-direction: column;
-        padding: 1rem;
-    }
 
-    .nav-links {
-        margin-top: 1rem;
-        flex-direction: column;
-        align-items: center;
-    }
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+@keyframes glitch {
+  0% { text-shadow: 2px 2px #ff00c8, -2px -2px #00fff9; transform: skew(0.5deg); }
+  50% { text-shadow: -2px -2px #00fff9, 2px 2px #ff00c8; transform: skew(-0.5deg); }
+  100% { text-shadow: none; transform: skew(0); }
+}
 
-    .nav-links li {
-        margin: 0.5rem 0;
-    }
+/* Optional: If you want hover to intensify glitch manually (but keep it untouchable), do this instead: */
+.nav-glitch.hover-reactive {
+  pointer-events: auto;  /* Allows hover but not click */
+  cursor: default;
+}
+
+.nav-glitch.hover-reactive:hover {
+  animation: glitch 0.5s infinite linear alternate-reverse;
+  text-shadow: 0 0 8px #ff00c8, 0 0 12px #00fff9;
+}
+.navbar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  animation: scan 5s linear infinite;
+}
+
+@keyframes scan {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+.nav-menu a {
+  text-decoration: none;
+  color: #b2fef7;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  padding: 0.8rem 1.2rem;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.nav-menu a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: #00ffcc;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+}
+
+.nav-menu a:hover {
+  color: #00ffcc;
+}
+
+.nav-menu a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
