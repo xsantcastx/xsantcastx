@@ -1,74 +1,105 @@
-/* Same as original hero CSS, scoped */
+/* === HERO SECTION === */
+
 .hero {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    /*background: url('path/to/futuristic-background.jpg') no-repeat center center/cover;*/
-    position: relative;
+  background: linear-gradient(to bottom, #0f0f1f, #101033);
+  font-family: 'Orbitron', sans-serif;
+  min-height: 100vh;
+  padding: 6rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+  scroll-snap-align: start;
 }
 
 .hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
 }
 
 .hero-content {
-    position: relative;
-    z-index: 1;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Animations on entry */
+.hero h1,
+.hero p,
+.cta-button {
+  opacity: 0;
+  transform: translateY(40px);
+  animation: fadeUp 0.8s ease-out forwards;
 }
 
 .hero h1 {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    color: #00ffcc;
-    text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+  font-size: 4rem;
+  margin-bottom: 1.2rem;
+  color: #00ffcc;
+  text-shadow: 0 0 15px #00ffd5;
+  animation-delay: 0.2s;
 }
 
 .hero p {
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-    color: #fff;
+  font-size: 1.4rem;
+  color: #e0f7fa;
+  animation-delay: 0.4s;
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 2rem;
 }
 
 .cta-button {
-    padding: 1rem 2rem;
-    font-size: 1.2rem;
-    background: #00ffcc;
-    border: none;
-    border-radius: 5px;
-    color: #0a0a1a;
-    cursor: pointer;
-    transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+  margin-top: 1rem;
+  padding: 1rem 2.5rem;
+  font-size: 1.2rem;
+  background: #00ffcc;
+  border: none;
+  border-radius: 6px;
+  color: #0a0a1a;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px #00ffcc88;
+  animation-delay: 0.6s;
 }
 
 .cta-button:hover {
-    background: #00cc99;
-    transform: scale(1.1);
-    box-shadow: 0 0 25px #00ffcc, 0 0 50px #00ffcc;
+  background: #00cc99;
+  transform: scale(1.05);
+  box-shadow: 0 0 25px #00ffccaa;
 }
 
-/* Responsive design */
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-    .hero h1 {
-        font-size: 2.5rem;
-    }
+  .hero h1 {
+    font-size: 2.5rem;
+  }
 
-    .hero p {
-        font-size: 1.2rem;
-    }
+  .hero p {
+    font-size: 1.2rem;
+    padding: 0 1rem;
+  }
+
+  .cta-button {
+    font-size: 1rem;
+    padding: 0.8rem 2rem;
+  }
 }
-.particles {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    z-index: 0;
-}
+
