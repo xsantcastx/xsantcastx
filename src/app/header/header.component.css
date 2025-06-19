@@ -37,8 +37,6 @@
   animation: typing 2.3s steps(14) forwards, blink 0.7s step-end 5;
 }
 
-
-
 .nav-glitch.glitch-start {
   animation: glitch 1s infinite linear alternate-reverse;
 }
