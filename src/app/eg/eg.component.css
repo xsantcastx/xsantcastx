@@ -1,0 +1,16 @@
+.konami-overlay {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 255, 204, 0.08);
+  color: #00ffcc;
+  padding: 2rem 3rem;
+  border-radius: 12px;
+  font-size: 2rem;
+  font-family: 'Orbitron', sans-serif;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px #00ffcc55;
+  z-index: 99999;
+  pointer-events: none;
+}

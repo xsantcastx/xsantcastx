@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, ElementRef} from '@angular/core';
 
 @Component({
   selector: 'app-hero',
@@ -6,8 +6,22 @@ import { Component } from '@angular/core';
   styleUrls: ['./hero.component.css']
 })
 export class HeroComponent {
-  onHireMe() {
-    alert('Contact me to hire!');
-    // You can add navigation or form logic here
+  constructor(private elRef: ElementRef) {}
+
+  ngAfterViewInit() {
+    const sections = this.elRef.nativeElement.querySelectorAll("section");
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        } else {
+          entry.target.classList.remove("visible");
+        }
+      });
+    }, { threshold: 0.5 });
+
+    sections.forEach((section: Element) => observer.observe(section));
   }
 }
+

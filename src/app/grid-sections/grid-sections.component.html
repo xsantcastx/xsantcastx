@@ -1,0 +1,11 @@
+<!-- grid-sections.component.html -->
+<section class="grid-section">
+  <div class="grid-container">
+    <div class="grid-item" *ngFor="let item of gridItems; let i = index" (click)="toggleItem(i)" [class.active]="item.active">
+      <!-- Show title only if not active -->
+      <div class="grid-title" *ngIf="!item.active">{{ item.title }}</div>
+      <!-- When active, show the detailed content -->
+      <div class="grid-content" *ngIf="item.active" [innerHTML]="item.content"></div>
+    </div>
+  </div>
+</section>
