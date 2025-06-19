@@ -32,7 +32,6 @@ export class HeaderComponent implements AfterViewInit {
   }
 
 
-
   randomGlitch(el: HTMLElement) {
     setInterval(() => {
       this.renderer.removeClass(el, 'glitch-start');
