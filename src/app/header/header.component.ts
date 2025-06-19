@@ -87,9 +87,6 @@ loopAmbientFlicker() {
     const nextDelay = 12000 + Math.floor(Math.random() * 13000); // 12–25 sec
     setTimeout(loop, nextDelay);
   };
-
   loop();
 }
-
-  
 }
