@@ -50,7 +50,7 @@ loginWithGoogle() {
   const provider = new GoogleAuthProvider();
   signInWithPopup(this.auth, provider)
     .then(result => {
-      console.log('User signed in:', result.user);
+      //console.log('User signed in:', result.user);
     })
     .catch(err => console.error('Login failed:', err));
 }
