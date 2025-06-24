@@ -37,6 +37,16 @@
   animation: typing 2.3s steps(14) forwards, blink 0.7s step-end 5;
 }
 
+/* Fix glitch effect visibility on mobile */
+@media (max-width: 600px) {
+  .nav-glitch {
+    width: auto !important;
+    overflow: visible !important;
+    border-right: none;
+    animation: glitch 1s infinite linear alternate-reverse;
+  }
+}
+
 .nav-glitch.glitch-start {
   animation: glitch 1s infinite linear alternate-reverse;
 }
