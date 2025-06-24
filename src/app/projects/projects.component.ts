@@ -3,8 +3,8 @@ import { PortfolioService } from '../portfolio.service';
 import { Projects } from '../models/portfolio.models';
 
 @Component({
-  selector: 'app-projects',
-  template: `
+    selector: 'app-projects',
+    template: `
     <section class="projects">
       <h2>Featured Projects</h2>
       <div class="projects-grid">
@@ -15,7 +15,8 @@ import { Projects } from '../models/portfolio.models';
       </div>
     </section>
   `,
-  styleUrls: ['./projects.component.css']
+    styleUrls: ['./projects.component.css'],
+    standalone: false
 })
 export class ProjectsComponent implements OnInit {
   projects: Projects[] = [];

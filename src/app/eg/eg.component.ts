@@ -1,9 +1,10 @@
 import { Component, HostListener } from '@angular/core';
 
 @Component({
-  selector: 'app-eg',
-  templateUrl: './eg.component.html',
-  styleUrls: ['./eg.component.css']
+    selector: 'app-eg',
+    templateUrl: './eg.component.html',
+    styleUrls: ['./eg.component.css'],
+    standalone: false
 })
 export class EgComponent {
   
