@@ -22,13 +22,13 @@ jobs:
 
       - name: Install Angular CLI
         run: npm install -g @angular/cli
-        
-      - name: List dist folder
-        run: ls -la dist/xsantcastx
 
       - name: Build Angular project
         run: npm run build
-
+        
+      - name: List dist folder
+        run: ls -la dist/xsantcastx
+        
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
