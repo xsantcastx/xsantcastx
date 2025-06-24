@@ -3,8 +3,8 @@ import { PortfolioService } from '../portfolio.service';
 import { Skills } from '../models/portfolio.models';
 
 @Component({
-  selector: 'app-skills',
-  template: `
+    selector: 'app-skills',
+    template: `
     <section class="skills">
       <h2>My Skills</h2>
       <div *ngIf="isLoading" class="loading">Loading...</div>
@@ -16,7 +16,8 @@ import { Skills } from '../models/portfolio.models';
       </div>
     </section>
   `,
-  styleUrls: ['./skills.component.css']
+    styleUrls: ['./skills.component.css'],
+    standalone: false
 })
 export class SkillsComponent implements OnInit {
   skills: Skills[] = [];
