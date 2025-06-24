@@ -1,0 +1,29 @@
+.guestbook-container {
+  font-family: 'Courier New', monospace;
+  background: black;
+  color: #00ff99;
+  border: 2px solid #0ff;
+  padding: 1em;
+  margin-top: 2em;
+  box-shadow: 0 0 8px #0ff;
+}
+input, textarea {
+  display: block;
+  width: 100%;
+  margin: 0.5em 0;
+  background: #111;
+  color: #0f0;
+  border: 1px solid #0ff;
+  padding: 0.5em;
+}
+button {
+  background: #222;
+  color: #0ff;
+  border: 1px solid #0ff;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #0ff;
+  color: #000;
+}

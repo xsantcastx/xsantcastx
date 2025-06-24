@@ -13,6 +13,7 @@ import { NgxParticlesModule } from '@tsparticles/angular'; // If using tsparticl
 import { HttpClientModule } from '@angular/common/http';
 import { EgComponent } from './eg/eg.component';
 import { GridSectionsComponent } from './grid-sections/grid-sections.component';
+import { GuestbookComponent } from './guestbook/guestbook.component';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,8 @@ import { GridSectionsComponent } from './grid-sections/grid-sections.component';
     ContactComponent,
     FooterComponent,
     EgComponent,
-    GridSectionsComponent
+    GridSectionsComponent,
+    GuestbookComponent
   ],
   imports: [
     BrowserModule,

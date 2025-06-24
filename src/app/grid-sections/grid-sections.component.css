@@ -11,7 +11,32 @@
   max-width: 1200px;
   margin: 0 auto;
 }
+@media (max-width: 1024px) {
+  .grid-container {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    max-width: 95vw;
+  }
+}
 
+@media (max-width: 600px) {
+  .grid-section {
+    padding: 1.5rem 0.5rem;
+  }
+  .grid-container {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    max-width: 100vw;
+  }
+  .grid-item {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+  }
+  .grid-item.active {
+    width: 98vw;
+    padding: 1rem;
+  }
+}
 /* Square grid items */
 .grid-item {
   background: rgba(10, 10, 26, 0.9);
