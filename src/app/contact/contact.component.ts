@@ -13,7 +13,7 @@ export class ContactComponent {
   message: string = '';
 
   onSubmit() {
-    console.log('Form submitted:', { name: this.name, email: this.email, message: this.message });
+    //console.log('Form submitted:', { name: this.name, email: this.email, message: this.message });
     alert('Message sent! Thank you for reaching out.');
     this.name = '';
     this.email = '';
