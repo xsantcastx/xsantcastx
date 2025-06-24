@@ -16,6 +16,21 @@
   scroll-snap-align: start;
 }
 
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero {
+    padding: 4rem 1rem;
+    min-height: 80vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 2rem 0.5rem;
+    min-height: 70vh;
+  }
+}
+
 .hero::before {
   content: '';
   position: absolute;

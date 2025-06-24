@@ -1,0 +1,13 @@
+<div class="guestbook-container">
+  <h2>📓 Leave Your Glitchy Mark</h2>
+  <form (ngSubmit)="submitMessage()" #form="ngForm">
+    <input type="text" placeholder="Nickname" [(ngModel)]="nickname" name="nickname" required />
+    <textarea placeholder="Message" [(ngModel)]="message" name="message" required></textarea>
+    <button type="submit" [disabled]="!form.valid">Submit</button>
+  </form>
+  <ul>
+    <li *ngFor="let entry of guestbookEntries">
+      <strong>{{ entry.nickname }}</strong>: {{ entry.message }}
+    </li>
+  </ul>
+</div>
