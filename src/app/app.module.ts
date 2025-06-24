@@ -10,31 +10,25 @@ import { ContactComponent } from './contact/contact.component';
 import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { NgxParticlesModule } from '@tsparticles/angular'; // If using tsparticles
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { EgComponent } from './eg/eg.component';
 import { GridSectionsComponent } from './grid-sections/grid-sections.component';
 import { GuestbookComponent } from './guestbook/guestbook.component';
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    HeaderComponent,
-    HeroComponent,
-    SkillsComponent,
-    ProjectsComponent,
-    ContactComponent,
-    FooterComponent,
-    EgComponent,
-    GridSectionsComponent,
-    GuestbookComponent
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    FormsModule,
-    NgxParticlesModule,
-    HttpClientModule
-  ],
-  bootstrap: [AppComponent]
-})
+@NgModule({ declarations: [
+        AppComponent,
+        HeaderComponent,
+        HeroComponent,
+        SkillsComponent,
+        ProjectsComponent,
+        ContactComponent,
+        FooterComponent,
+        EgComponent,
+        GridSectionsComponent,
+        GuestbookComponent
+    ],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        AppRoutingModule,
+        FormsModule,
+        NgxParticlesModule], providers: [provideHttpClient(withInterceptorsFromDi())] })
 export class AppModule { }
