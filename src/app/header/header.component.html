@@ -3,7 +3,22 @@
     <span class="nav-glitch">xsantcastx</span>
   </div>
   <div class="glitch-overlay" id="glitchOverlay">
-     <span class="glitch-text">ACCESS GRANTED</span>
-</div>
+    <span class="glitch-text">ACCESS GRANTED</span>
+  </div>
 
+<div class="login-menu" [class.open]="loginOpen">
+  <div *ngIf="user$ | async as user; else showLogin">
+    <span class="user-greet">👾 {{ user.isAnonymous ? 'Anonymous' : user.displayName?.split(' ')[0] }}</span>
+    <button class="login-btn" (click)="logout()">Logout</button>
+  </div>
+  <ng-template #showLogin>
+    <button class="login-btn" (click)="toggleLoginMenu($event)">
+      ⚡ Login
+    </button>
+    <ul class="login-dropdown" *ngIf="loginOpen">
+      <li (click)="loginWithGoogle()">🔐 Google</li>
+      <li (click)="loginAnonymously()">👤 Guest Access</li>
+    </ul>
+  </ng-template>
+</div>
 </nav>
