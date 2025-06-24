@@ -8,9 +8,10 @@ interface GridItem {
 }
 
 @Component({
-  selector: 'app-grid-sections',
-  templateUrl: './grid-sections.component.html',
-  styleUrls: ['./grid-sections.component.css']
+    selector: 'app-grid-sections',
+    templateUrl: './grid-sections.component.html',
+    styleUrls: ['./grid-sections.component.css'],
+    standalone: false
 })
 export class GridSectionsComponent {
   gridItems: GridItem[] = [

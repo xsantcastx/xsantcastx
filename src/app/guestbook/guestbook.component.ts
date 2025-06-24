@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'app-guestbook',
-  templateUrl: './guestbook.component.html',
-  styleUrls: ['./guestbook.component.css'],
+    selector: 'app-guestbook',
+    templateUrl: './guestbook.component.html',
+    styleUrls: ['./guestbook.component.css'],
+    standalone: false
 })
 export class GuestbookComponent {
   nickname = '';
