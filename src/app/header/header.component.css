@@ -1,26 +1,26 @@
 .navbar {
-    display: flex;
-    justify-content: center; /* Center content horizontally */
-    align-items: center;
-    background: rgba(0, 0, 0, 0.8);
-    width: 100%;
-    top: 0;
-    z-index: 1000;
-    backdrop-filter: blur(10px);
-     position: sticky;
-    box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8);
+  width: 100%;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  position: sticky;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
 }
 
 .logo {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #00ffcc;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 auto; /* Optional: ensures centering if not using flex */
+  font-size: 2rem;
+  font-weight: bold;
+  color: #00ffcc;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
 }
 
 .nav-glitch {
@@ -33,7 +33,6 @@
   color: #00ffcc;
   text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
   user-select: none;
-  pointer-events: none;
   cursor: default;
   animation: typing 2.3s steps(14) forwards, blink 0.7s step-end 5, gradientShift 6s linear infinite;
   background: linear-gradient(90deg, #00ffcc, #ff00c8, #00fff9);
@@ -42,7 +41,7 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-/* Fix glitch effect visibility on mobile */
+
 @media (max-width: 600px) {
   .nav-glitch {
     width: auto !important;
@@ -52,105 +51,66 @@
   }
 }
 
-.nav-glitch.glitch-start {
+.nav-glitch.glitch-start,
+.nav-glitch.hover-reactive:hover {
   animation: glitch 1s infinite linear alternate-reverse;
 }
 
-@keyframes typing {
-  from { width: 0; }
-  to { width: 100%; } /* Let the text fully reveal */
-}
-
-
-@keyframes blink {
-  50% { border-color: transparent; }
-}
+@keyframes typing { from { width: 0; } to { width: 100%; } }
+@keyframes blink { 50% { border-color: transparent; } }
 @keyframes glitch {
   0% { text-shadow: 2px 2px #ff00c8, -2px -2px #00fff9; transform: skew(0.5deg); }
   50% { text-shadow: -2px -2px #00fff9, 2px 2px #ff00c8; transform: skew(-0.5deg); }
   100% { text-shadow: none; transform: skew(0); }
 }
 
-/* Optional: If you want hover to intensify glitch manually (but keep it untouchable), do this instead: */
-.nav-glitch.hover-reactive {
-  pointer-events: auto;  /* Allows hover but not click */
-  cursor: default;
-}
-
-.nav-glitch.hover-reactive:hover {
-  animation: glitch 0.5s infinite linear alternate-reverse;
-  text-shadow: 0 0 8px #ff00c8, 0 0 12px #00fff9;
-}
 .navbar::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.03),
-    rgba(255, 255, 255, 0.03) 1px,
-    transparent 1px,
-    transparent 2px
-  );
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0.03) 1px, transparent 1px, transparent 2px);
   pointer-events: none;
   animation: scan 5s linear infinite;
 }
+@keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
 
-@keyframes scan {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100%; }
-}
-.nav-menu a {
-  text-decoration: none;
-  color: #b2fef7;
+.nav-menu a,
+.login-btn {
   font-family: 'Orbitron', sans-serif;
   font-size: 1rem;
-  padding: 0.8rem 1.2rem;
+  color: #00ffcc;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid #00ffcc;
+  padding: 0.5em 1.2em;
   position: relative;
-  transition: color 0.3s ease;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px #00ffcc;
+  border-radius: 4px;
+  box-shadow: 0 0 4px #00ffcc;
 }
-
 .nav-menu a::after {
   content: '';
   position: absolute;
   left: 0; bottom: 0;
-  width: 100%;
-  height: 2px;
+  width: 100%; height: 2px;
   background: #00ffcc;
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.3s ease;
 }
-
-.nav-menu a:hover {
-  color: #00ffcc;
-}
-
-.nav-menu a:hover::after {
-  transform: scaleX(1);
-  transform-origin: left;
-}
-
-.login-btn {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 1rem;              /* match your nav font size */
-  color: #00ffcc;               /* neon aqua */
-  background: transparent;      /* keep it clean */
-  border: 1px solid #00ffcc;   /* neon border */
-  padding: 0.5em 1em;
-  cursor: pointer;
-  transition: color 0.3s ease, background 0.3s ease;
-  text-shadow: 0 0 6px #00ffcc;
-  border-radius: 4px;           /* optional rounded corners */
-}
-
+.nav-menu a:hover,
 .login-btn:hover {
   background: #00ffcc;
   color: #000;
-  box-shadow: 0 0 10px #00ffcc;
+  box-shadow: 0 0 12px #00ffcc, 0 0 24px #00ffcc;
+  transform: translateY(-2px);
+}
+.nav-menu a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .login-btn.anon {
@@ -173,17 +133,15 @@
   position: absolute;
   top: 110%;
   right: 0;
-  background: #000;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  z-index: 999;
-  font-family: 'Orbitron', sans-serif;
-  animation: fadeIn 0.3s ease-in-out;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(0, 255, 255, 0.4);
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
   backdrop-filter: blur(6px);
+  animation: fadeIn 0.3s ease-in-out;
 }
 .login-dropdown li {
   padding: 0.7em 1.2em;
@@ -191,40 +149,23 @@
   cursor: pointer;
   border-bottom: 1px solid rgba(0, 255, 255, 0.2);
 }
-.login-dropdown li:last-child {
-  border-bottom: none;
-}
+.login-dropdown li:last-child { border-bottom: none; }
 .login-dropdown li:hover {
   background: linear-gradient(to right, #00fff9, #ff00c8);
   color: #000;
   font-weight: bold;
 }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 .user-greet {
   margin-right: 1em;
   color: #0f0;
   font-weight: bold;
   font-family: monospace;
   text-shadow: 0 0 6px #00ffcc;
-    animation: greetIn 0.6s ease-out;
+  animation: greetIn 0.6s ease-out;
 }
-
 @keyframes greetIn {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
-}
-
-.login-btn, .nav-menu a {
-  box-shadow: 0 0 4px #00ffcc;
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
-}
-
-.login-btn:hover, .nav-menu a:hover {
-  box-shadow: 0 0 12px #00ffcc, 0 0 24px #00ffcc;
-  transform: translateY(-2px);
 }
