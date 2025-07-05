@@ -35,4 +35,4 @@
 
 - 📫 Email: hello@xsantcastx.com  
 - 🌍 Website: [Xsantcastx.com](http://Xsantcastx.com)  
-- 💼 LinkedIn: [https://github.com/xsantcastx](https://github.com/xsantcastx)  
+- 💼 LinkedIn: [linkedin.com/in/xsantcastx]((https://www.linkedin.com/in/xsantcastx/))  
