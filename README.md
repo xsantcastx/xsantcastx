@@ -34,5 +34,5 @@
 ## 🌐 Let's Connect
 
 - 📫 Email: hello@xsantcastx.com  
-- 🌍 Website: [Xsantcastx.com](http://Xsantcastx.com)  
-- 💼 LinkedIn: [linkedin.com/in/xsantcastx]((https://www.linkedin.com/in/xsantcastx/))  
+- 🌍 Website: [xsantcastx.com](http://xsantcastx.com)  
+- 💼 LinkedIn: [linkedin.com/in/xsantcastx](https://www.linkedin.com/in/xsantcastx/) 
