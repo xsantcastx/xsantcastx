@@ -35,4 +35,4 @@
 
 - 📫 Email: xsancastrillonx@hotmail.com  
 - 🌍 Website: [Xsantcastx.com](http://Xsantcastx.com)  
-- 💼 LinkedIn: [linkedin.com/in/sancastrillon](https://linkedin.com/in/sancastrillon)  
+- 💼 LinkedIn: [linkedin.com/in/xsantcastx]((https://www.linkedin.com/in/xsantcastx/))  
