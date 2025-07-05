@@ -1,37 +1,38 @@
-<<<<<<< HEAD
-# xsantcastx Portfolio
-A futuristic, cyberpunk-inspired personal portfolio built with Angular, showcasing my skills, projects, and contact information.
+# 👋 Hi, I'm Santiago Castrillon
 
-## Features
-- Data-driven skills and projects (loaded from JSON files)
-- Cyberpunk aesthetics with neon effects and 3D animations
-- Responsive design for desktop and mobile
+🚀 I'm a data engineer passionate about solving complex problems, building scalable systems, and bringing good energy to every team and project I join.  
+🌱 I'm always learning — currently improving my full-stack skills with Angular and Django.  
+💬 Ask me about data pipelines, ETLs, cloud infra, or how to turn boring reports into awesome automated dashboards.  
+🧠 I love working with Python, SQL, Hadoop, Spark, AWS, and whatever makes data come alive.
 
-## Getting Started
-1. Clone the repo: `git clone https://github.com/your-username/xsantcastx-portfolio.git`
-2. Install dependencies: `npm install`
-3. Run the app: `ng serve`
+## 🛠 Tech Stack
 
-## Technologies
-- Angular
-- TypeScript
-- Three.js (for 3D animations)
-- tsParticles (for particle effects)
-=======
-## Hi there 👋
+- 💻 Languages: Python · SQL · Java · VBA · JavaScript
+- 📊 Data & Analytics: Hadoop · Spark · Impala · Power BI · SAS · Airflow
+- ☁️ Cloud: AWS (EC2, Lambda, S3, RDS) · Data Lakes · Azure DevOps
+- ⚙️ DevOps: Docker · Kubernetes · CI/CD · Git · GitHub Actions
+- 🌐 Web: Angular · Django · HTML/CSS · PHP
+- 📄 Data Workflows: ETL · Web Scraping · REST APIs · XML/JSON
 
-<!--
-**xsantcastx/xsantcastx** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+## 📂 Featured Projects
 
-Here are some ideas to get you started:
+- **🕵️ Anti-Fraud Analytics Platform**  
+  Built at Bancolombia — processed 1.8B+ records from 40+ systems using Hadoop, Python, and Impala.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
->>>>>>> a5400b39e4438899c9b6772f9a70ef08a6632bab
+- **📄 XML to Excel FATCA/CRS Converter**  
+  Migrated legacy compliance reports with a Python-based tool. Reduced cost/time by 230%.
+
+- **📈 Data Dashboards & BI Automations**  
+  Created reusable Power BI pipelines to support decision-making across teams.
+
+## 🧠 Learning & Certifications
+
+- 📘 Advanced Web Programming · Master Distancia (2025)  
+- 🎓 Scrum Manager® Agile Certification (2025)  
+- 🎓 BSc in Systems Engineering (Envigado University, 2020)
+
+## 🌐 Let's Connect
+
+- 📫 Email: xsancastrillonx@hotmail.com  
+- 🌍 Website: [Xsantcastx.com](http://Xsantcastx.com)  
+- 💼 LinkedIn: [linkedin.com/in/sancastrillon](https://linkedin.com/in/sancastrillon)  
