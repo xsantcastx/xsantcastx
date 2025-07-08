@@ -1,5 +1,4 @@
-// grid-sections.component.ts
-import { Component } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 
 interface GridItem {
   title: string;
@@ -8,59 +7,16 @@ interface GridItem {
 }
 
 @Component({
-    selector: 'app-grid-sections',
-    templateUrl: './grid-sections.component.html',
-    styleUrls: ['./grid-sections.component.css'],
-    standalone: false
+  selector: 'app-grid-sections',
+  templateUrl: './grid-sections.component.html',
+  styleUrls: ['./grid-sections.component.css'],
+  standalone: false
 })
 export class GridSectionsComponent {
   gridItems: GridItem[] = [
     {
       title: 'Professional Summary',
-      content: `
-<section class="resume-section">
-  <div class="container">
-    <h2>Professional Summary</h2>
-    <p><strong>Santiago Castrillon</strong> – Senior Data Engineer &amp; Web Developer</p>
-    <ul>
-      <li>
-        Result-oriented data engineer with extensive experience in building scalable, distributed data solutions, delivering
-        a wide range of big data and analytics services, and driving technological innovations with cloud platforms.
-      </li>
-      <li>
-        Proficient in modern cloud technologies and DevOps practices including AWS, Azure DevOps, EC2, S3, RDS, and EKS, along with
-        expertise in version control systems like GitHub, GitFlow, and trunk-based development.
-      </li>
-      <li>
-        Adept at full-stack web development and skilled in data modeling, ETL, and process automation using Python, SQL, VBA, and Java.
-      </li>
-    </ul>
-    <div class="experience">
-      <h3>Key Experience</h3>
-      <p><strong>SENIOR DATA ENGINEER - ANALYST, BANCOLOMBIA (2019 – 2022)</strong></p>
-      <p>
-        Led the construction of a settlement and analytics platform from scratch—processing over 1.8 billion records from more than
-        40 database systems to detect fraud and money laundering.
-      </p>
-      <p>
-        Developed interactive XML-to-Excel converters and robust ETL solutions that significantly reduced project time and costs.
-      </p>
-    </div>
-    <div class="education">
-      <h3>Education &amp; Certifications</h3>
-      <p>
-        <strong>Advanced Course in Web Page Programming</strong> – Finalizing coursework (2025)
-      </p>
-      <p>
-        <strong>Scrum Master Certification</strong> – Expected Certification (2025)
-      </p>
-      <p>
-        <strong>Bachelor's in Systems Engineering</strong> – Instituto Universitario de Envigado (Graduated: 2020)
-      </p>
-    </div>
-  </div>
-</section>
-      `,
+      content: '', // Now handled by <app-resume-card>
       active: false,
     },
     {
@@ -88,9 +44,25 @@ export class GridSectionsComponent {
   ];
 
   toggleItem(index: number): void {
-    // Toggle the selected grid item; collapse others if open
     this.gridItems.forEach((item, i) => {
       item.active = i === index ? !item.active : false;
     });
+    document.body.style.overflow = this.gridItems.some(item => item.active) ? 'hidden' : 'auto';
+  }
+
+  closeItem(index: number): void {
+    this.gridItems[index].active = false;
+    document.body.style.overflow = 'auto';
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    const isInsideActiveItem = target.closest('.grid-item.active');
+    const isGridTrigger = target.classList.contains('grid-title');
+    if (!isInsideActiveItem && !isGridTrigger) {
+      this.gridItems.forEach(item => item.active = false);
+      document.body.style.overflow = 'auto';
+    }
   }
 }
