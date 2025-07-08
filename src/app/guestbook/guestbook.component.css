@@ -1,61 +1,167 @@
+/* === Guestbook Container === */
 .guestbook-container {
-    position: relative;
-  font-family: 'Courier New', monospace;
-  background: black;
+  max-width: 900px;
+  margin: 2em auto;
+  padding: 2em;
+  background: #000;
   color: #00ff99;
+  font-family: 'Courier New', monospace;
   border: 2px solid #0ff;
-  padding: 1em;
-  margin-top: 2em;
-  box-shadow: 0 0 8px #0ff;
+  box-shadow: 0 0 12px #0ff;
+  border-radius: 10px;
+  position: relative;
   z-index: 1;
 }
-input, textarea {
-  display: block;
+
+/* === Form Inputs === */
+.guestbook-container input[type="text"],
+.guestbook-container textarea {
   width: 100%;
-  margin: 0.5em 0;
+  margin: 0.8em 0;
+  padding: 0.75em 1em;
   background: #111;
-  color: #0f0;
-  border: 1px solid #0ff;
-  padding: 0.5em;
-}
-button {
-  background: #222;
   color: #0ff;
-  border: 1px solid #0ff;
-  cursor: pointer;
-  transition: 0.3s;
-}
-button:hover {
-  background: #0ff;
-  color: #000;
-}
-.error {
-  color: red;
-  margin: 10px 0;
-  font-weight: bold;
-}
-/* Crazy Neon Glowing Button */
-.login-btn {
-  font-family: 'Orbitron', monospace, sans-serif;
-  font-size: 1.1rem;
-  color: #00ffcc;
-  background: #111;
-  border: 2px solid #00ffcc;
-  padding: 0.7em 1.5em;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  position: relative;
-  overflow: hidden;
-  box-shadow:
-    0 0 5px #00ffcc,
-    0 0 10px #00ffcc,
-    0 0 20px #00ffcc,
-    0 0 40px #00fff9;
-  transition: color 0.3s ease, background 0.3s ease;
+  border: 2px solid #0ff;
+  border-radius: 6px;
+  box-shadow: 0 0 10px #0ff5;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Flicker effect using animation */
+.guestbook-container input[type="text"]:focus,
+.guestbook-container textarea:focus {
+  outline: none;
+  border-color: #00ffcc;
+  box-shadow: 0 0 12px #00ffcc;
+  background: #222;
+}
+
+/* === Submit Button === */
+.guestbook-container button[type="submit"] {
+  font-family: 'Courier New', monospace;
+  background: #222;
+  color: #0ff;
+  border: 2px solid #0ff;
+  padding: 0.75em 2em;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 12px #0ff7;
+  transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  margin-top: 1em;
+}
+
+.guestbook-container button[type="submit"]:hover:not(:disabled) {
+  background: linear-gradient(90deg, #00fff9, #ff00c8);
+  color: #000;
+  box-shadow: 0 0 20px #ff00c8, 0 0 20px #00fff9;
+}
+
+.guestbook-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* === Comments Section === */
+.guestbook-comments {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 1rem;
+  margin-top: 2rem;
+  border-top: 2px solid #0ff;
+  box-shadow: inset 0 0 10px #00ffcc50;
+  border-radius: 8px;
+}
+
+/* === Individual Comment === */
+.guestbook-comments li {
+  background: rgba(0, 255, 204, 0.1);
+  border: 1px solid #00ffcc;
+  padding: 1em;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 0 8px #00ffcc50;
+  text-align: left;
+}
+
+.guestbook-comments li strong {
+  color: #00ffaa;
+  font-weight: bold;
+}
+
+.guestbook-comments li em {
+  color: #66ffcc;
+  font-style: italic;
+  font-size: 0.85rem;
+  margin-left: 0.5em;
+}
+
+/* === Load More Button === */
+.load-more-btn {
+  margin: 1.5em auto 0;
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  padding: 0.75em 2em;
+  background: #111;
+  color: #00ffcc;
+  border: 2px solid #00ffcc;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #00ffcc;
+  transition: all 0.3s ease;
+}
+
+.load-more-btn:hover {
+  background: #00ffcc;
+  color: #000;
+  box-shadow: 0 0 20px #00ffcc, 0 0 40px #00fff9;
+}
+
+/* === Loader === */
+.glitch-loader {
+  font-family: 'Orbitron', monospace;
+  color: #0ff;
+  text-align: center;
+  padding: 2em;
+  font-size: 1.2rem;
+  animation: flicker 1.5s infinite;
+  text-shadow:
+    0 0 5px #0ff,
+    0 0 10px #0ff,
+    0 0 20px #0ff,
+    0 0 40px #0ff;
+}
+
+/* === Glitchy Fade-In Animation === */
+:host {
+  display: block;
+  animation: glitchFadeIn 0.8s ease-in-out;
+}
+
+@keyframes glitchFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) skewX(5deg);
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-5px) skewX(-3deg);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) skewX(0);
+    filter: blur(0);
+  }
+}
+
+/* === Flicker Animation (reused) === */
 @keyframes flicker {
   0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
     opacity: 1;
@@ -70,126 +176,3 @@ button:hover {
     text-shadow: none;
   }
 }
-
-.login-btn:hover {
-  background: #00ffcc;
-  color: #000;
-  box-shadow:
-    0 0 10px #00ffcc,
-    0 0 20px #00fff9,
-    0 0 40px #00fff9,
-    0 0 80px #00fff9;
-  animation: flicker 1.5s infinite;
-}
-
-/* Neon glowing border animation */
-.login-btn::before {
-  content: '';
-  position: absolute;
-  top: -2px; left: -2px; right: -2px; bottom: -2px;
-  border: 2px solid #00ffcc;
-  pointer-events: none;
-  opacity: 0.7;
-  filter: blur(3px);
-  animation: flicker 1.5s infinite;
-}
-
-/* Responsive: shrink padding and font on small screens */
-@media (max-width: 480px) {
-  .login-btn {
-    font-size: 0.9rem;
-    padding: 0.5em 1em;
-  }
-}
-/* Container for all comments */
-.guestbook-comments {
-  margin-top: 2rem;  /* space from the form */
-  padding-top: 1rem;
-  border-top: 2px solid #0ff;
-  max-width: 600px;  /* optional, keep it neat */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Each comment */
-.guestbook-comments li {
-  background: rgba(0, 255, 204, 0.1);
-  border: 1px solid #00ffcc;
-  padding: 1em;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  color: #00ffcc;
-  font-family: 'Courier New', monospace;
-  text-align: left; /* align text left */
-  box-shadow: 0 0 8px #00ffcc50;
-}
-
-/* Strong nickname and timestamp styles */
-.guestbook-comments li strong {
-  color: #00ffaa;
-  font-weight: bold;
-}
-
-.guestbook-comments li em {
-  color: #66ffcc;
-  font-style: italic;
-  font-size: 0.85rem;
-  margin-left: 0.5em;
-}
-
-/* Style the input and textarea */
-.guestbook-container input[type="text"],
-.guestbook-container textarea {
-  font-family: 'Courier New', monospace;
-  background: #111;
-  color: #0ff;
-  border: 2px solid #0ff;
-  padding: 0.75em 1em;
-  margin: 0.8em 0;
-  border-radius: 6px;
-  box-shadow: 0 0 10px #0ff5;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  width: 100%;
-  resize: vertical;
-}
-
-/* Focus effect */
-.guestbook-container input[type="text"]:focus,
-.guestbook-container textarea:focus {
-  outline: none;
-  border-color: #00ffcc;
-  box-shadow: 0 0 12px #00ffcc;
-  background: #222;
-}
-
-/* Style the submit button */
-.guestbook-container button {
-  font-family: 'Courier New', monospace;
-  background: #222;
-  color: #0ff;
-  border: 2px solid #0ff;
-  padding: 0.75em 2em;
-  cursor: pointer;
-  border-radius: 6px;
-  font-weight: bold;
-  transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
-  display: inline-block;
-  margin-top: 1em;
-  box-shadow: 0 0 12px #0ff7;
-  user-select: none;
-}
-
-/* Button hover */
-.guestbook-container button:hover:not(:disabled) {
-  background: linear-gradient(90deg, #00fff9, #ff00c8);
-  color: #000;
-  box-shadow: 0 0 20px #ff00c8, 0 0 20px #00fff9;
-}
-
-/* Disabled button */
-.guestbook-container button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-

@@ -1,35 +1,50 @@
-<div class="guestbook-container">
+<div *ngIf="loading" class="glitch-loader">
+  <span>Loading Guestbook...</span>
+</div>
+
+<div *ngIf="!loading" class="guestbook-container">
   <h2>📓 Leave Your Glitchy Mark</h2>
 
-  <form (ngSubmit)="submitMessage()" #form="ngForm" class="guestbook-container">
-  <input
-    type="text"
-    placeholder="Nickname"
-    [(ngModel)]="nickname"
-    name="nickname"
-    required
-    [readonly]="nickname !== ''"
-  />
-  <textarea
-    placeholder="Message"
-    [(ngModel)]="message"
-    name="message"
-    required
-  ></textarea>
-  <button type="submit" [disabled]="!form.valid">Submit</button>
-</form>
+  <form (ngSubmit)="submitMessage()" #form="ngForm" class="guestbook-form">
+    <input
+      type="text"
+      placeholder="Nickname"
+      [(ngModel)]="nickname"
+      name="nickname"
+      required
+      [readonly]="nickname !== ''"
+    />
+    <textarea
+      placeholder="Message"
+      [(ngModel)]="message"
+      name="message"
+      required
+    ></textarea>
+    <button type="submit" [disabled]="!form.valid">Submit</button>
+  </form>
 
-
-  <div *ngIf="loading">Loading guestbook entries...</div>
   <div *ngIf="error" class="error">{{ error }}</div>
 
   <div class="guestbook-comments">
   <ul>
-    <li *ngFor="let entry of guestbookEntries$ | async">
-      <strong>{{ entry.nickname }}</strong> 
-      <em>({{ formatTimestamp(entry.timestamp) }})</em>: 
+    <li *ngFor="let entry of entries">
+      <strong>{{ entry.nickname }}</strong>
+      <em>({{ formatTimestamp(entry.timestamp) }})</em>:
       {{ entry.message }}
     </li>
   </ul>
+
+  <div *ngIf="loadingMore" class="glitch-loader">
+    <span>Loading more entries...</span>
+  </div>
+
+  <button 
+    *ngIf="!loadingMore && lastKey" 
+    (click)="loadMoreEntries()" 
+    class="load-more-btn">
+    ⬇️ Load More
+  </button>
 </div>
+
+
 </div>
