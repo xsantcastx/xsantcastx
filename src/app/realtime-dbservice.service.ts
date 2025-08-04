@@ -1,5 +1,5 @@
 import { Injectable, inject, runInInjectionContext, ApplicationRef } from '@angular/core';
-import { Database, ref, set, push, onValue } from '@angular/fire/database';
+import { Database, ref, set, push, onValue, query, orderByKey, limitToFirst, startAfter, get } from '@angular/fire/database';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
 
@@ -61,4 +61,21 @@ export class RealtimeDBserviceService {
       // Note: You might add cleanup code here if you want to unsubscribe from onValue listener on Observable unsubscribe.
     });
   }
+  getEntries(limit: number, startAfterKey?: string): Promise<{ entries: any[], lastKey: string | null }> {
+  const dbRef = ref(this.db, 'guestbook');
+  let queryRef = query(dbRef, orderByKey(), limitToFirst(limit + 1));
+
+  if (startAfterKey) {
+    queryRef = query(dbRef, orderByKey(), startAfter(startAfterKey), limitToFirst(limit + 1));
+  }
+
+  return get(queryRef).then(snapshot => {
+    const data = snapshot.val() || {};
+    const keys = Object.keys(data);
+    const entries = keys.slice(0, limit).map(key => ({ ...data[key], key }));
+    const lastKey = keys.length > limit ? keys[limit] : null;
+    return { entries, lastKey };
+  });
+}
+
 }

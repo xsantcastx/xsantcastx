@@ -1,11 +1,28 @@
-<!-- grid-sections.component.html -->
 <section class="grid-section">
   <div class="grid-container">
-    <div class="grid-item" *ngFor="let item of gridItems; let i = index" (click)="toggleItem(i)" [class.active]="item.active">
-      <!-- Show title only if not active -->
+    <div 
+      class="grid-item" 
+      *ngFor="let item of gridItems; let i = index" 
+      [class.active]="item.active"
+      (click)="!item.active && toggleItem(i)"
+    >
       <div class="grid-title" *ngIf="!item.active">{{ item.title }}</div>
-      <!-- When active, show the detailed content -->
-      <div class="grid-content" *ngIf="item.active" [innerHTML]="item.content"></div>
+
+      <div class="grid-content" *ngIf="item.active" (click)="$event.stopPropagation()">
+        <button class="close-btn" (click)="closeItem(i)">✖</button>
+
+        <!-- Dynamically load the resume component only for the correct item -->
+        <ng-container [ngSwitch]="item.title">
+          <app-resume-card *ngSwitchCase="'Professional Summary'"></app-resume-card>
+          <app-aboutme-card *ngSwitchCase="'About Me'"></app-aboutme-card>
+          <div *ngSwitchDefault [innerHTML]="item.content"></div>
+        </ng-container>
+
+
+        <ng-template #defaultContent>
+          <div [innerHTML]="item.content"></div>
+        </ng-template>
+      </div>
     </div>
   </div>
 </section>
