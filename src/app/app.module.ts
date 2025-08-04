@@ -21,9 +21,6 @@ import { provideAuth, getAuth } from '@angular/fire/auth';  // <-- add this
 import { environment } from '../environments/environment';
 import { ResumeCardComponent } from './resume-card/resume-card.component';
 import { AboutmeCardComponent } from "./aboutme-card/aboutme-card.component";
-import { LoginComponent } from './login/login.component';
-import { RegisterComponent } from './register/register.component';
-import { ProfileComponent } from './profile/profile.component';
 import { CryptoCardComponent } from './crypto-card/crypto-card.component';
 import { WalletSummaryComponent } from './wallet-summary/wallet-summary.component';
 import { TransactionListComponent } from './transaction-list/transaction-list.component';
@@ -41,9 +38,6 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
     EgComponent,
     GridSectionsComponent,
     GuestbookComponent,
-    LoginComponent,
-    RegisterComponent,
-    ProfileComponent,
     CryptoCardComponent,
     WalletSummaryComponent,
     TransactionListComponent,

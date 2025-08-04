@@ -1,14 +1,50 @@
 <section class="hero">
   <div class="hero-content">
-    <div class="scroll-container">
-      
-            <!-- Intro comes after -->
-      <section class="intro">
-        <h1 class="type-glitch">I'm xsantcastx</h1>
-      </section>
-      <app-grid-sections></app-grid-sections>
-      
+    <div *ngIf="user$ | async as user; else authForms">
+      <!-- Authenticated View: Dashboard -->
+      <div class="dashboard">
+        <h1>Welcome, {{ user.email }}</h1>
+        <button (click)="logout()">Logout</button>
+        <app-wallet-summary></app-wallet-summary>
+        <app-transaction-list></app-transaction-list>
+        <app-crypto-card></app-crypto-card>
+        <app-donation-feed></app-donation-feed>
+        <app-news-feed></app-news-feed>
+      </div>
     </div>
+
+    <ng-template #authForms>
+      <!-- Unauthenticated View: Login/Register Forms -->
+      <div class="auth-container">
+        <div class="form-container">
+          <h2>Login</h2>
+          <form (ngSubmit)="login()">
+            <div class="form-field">
+              <label for="email">Email:</label>
+              <input type="email" id="email" [(ngModel)]="email" name="email" required>
+            </div>
+            <div class="form-field">
+              <label for="password">Password:</label>
+              <input type="password" id="password" [(ngModel)]="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+          </form>
+        </div>
+        <div class="form-container">
+          <h2>Register</h2>
+          <form (ngSubmit)="register()">
+            <div class="form-field">
+              <label for="email-reg">Email:</label>
+              <input type="email" id="email-reg" [(ngModel)]="email" name="email-reg" required>
+            </div>
+            <div class="form-field">
+              <label for="password-reg">Password:</label>
+              <input type="password" id="password-reg" [(ngModel)]="password" name="password-reg" required>
+            </div>
+            <button type="submit">Register</button>
+          </form>
+        </div>
+      </div>
+    </ng-template>
   </div>
-  <app-guestbook></app-guestbook>
 </section>
