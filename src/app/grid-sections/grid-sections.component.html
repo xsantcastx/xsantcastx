@@ -12,9 +12,12 @@
         <button class="close-btn" (click)="closeItem(i)">✖</button>
 
         <!-- Dynamically load the resume component only for the correct item -->
-        <ng-container *ngIf="item.title === 'Professional Summary'; else defaultContent">
-          <app-resume-card></app-resume-card>
+        <ng-container [ngSwitch]="item.title">
+          <app-resume-card *ngSwitchCase="'Professional Summary'"></app-resume-card>
+          <app-aboutme-card *ngSwitchCase="'About Me'"></app-aboutme-card>
+          <div *ngSwitchDefault [innerHTML]="item.content"></div>
         </ng-container>
+
 
         <ng-template #defaultContent>
           <div [innerHTML]="item.content"></div>
