@@ -21,10 +21,7 @@ export class GridSectionsComponent {
     },
     {
       title: 'About Me',
-      content: `
-        <p>I’m xsantcastx—a glitch in the matrix, builder of digital curiosities with coastal roots and futuristic visions.</p>
-        <p>I experiment, break things, and reinvent norms in code, art, and innovation.</p>
-      `,
+      content: ``,
       active: false,
     },
     {
