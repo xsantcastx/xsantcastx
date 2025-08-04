@@ -1,1 +1,14 @@
-<p>wallet-summary works!</p>
+<div class="wallet-summary-container">
+  <h3>Wallet Summary</h3>
+  <div *ngIf="wallets.length > 0; else noWallets">
+    <ul>
+      <li *ngFor="let wallet of wallets">
+        <span>{{ wallet.token }}:</span>
+        <span>{{ wallet.balance | number:'1.2-8' }}</span>
+      </li>
+    </ul>
+  </div>
+  <ng-template #noWallets>
+    <p>No wallet data available.</p>
+  </ng-template>
+</div>
