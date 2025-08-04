@@ -19,6 +19,9 @@ import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { provideAuth, getAuth } from '@angular/fire/auth';  // <-- add this
 import { environment } from '../environments/environment';
+import { ResumeCardComponent } from './resume-card/resume-card.component';
+import { AboutmeCardComponent } from "./aboutme-card/aboutme-card.component";
+
 
 @NgModule({
   declarations: [
@@ -38,8 +41,10 @@ import { environment } from '../environments/environment';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    NgxParticlesModule
-  ],
+    NgxParticlesModule,
+    ResumeCardComponent,
+    AboutmeCardComponent
+],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideFirestore(() => getFirestore()),

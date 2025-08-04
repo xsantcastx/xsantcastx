@@ -1,0 +1,73 @@
+.resume-section {
+  padding: 2rem;
+  background: #111;
+  color: #0ff;
+  font-family: 'Courier New', monospace;
+  min-width: 100%;
+}
+
+.resume-header {
+  text-align: center;
+  border-bottom: 2px solid #00ffcc;
+  margin-bottom: 2rem;
+}
+
+.resume-header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2rem;
+  color: #00ffaa;
+  text-shadow: 0 0 5px #00ffcc;
+}
+
+.resume-header a {
+  color: #00ffff;
+  text-decoration: underline;
+}
+
+.resume-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  
+}
+
+.resume-main {
+  flex: 2;
+  min-width: 300px;
+}
+
+.resume-sidebar {
+  flex: 1;
+  min-width: 250px;
+  background: #0a0a1a;
+  border: 2px solid #00ffcc;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #00ffcc88;
+}
+
+.resume-sidebar h2 {
+  font-family: 'Orbitron', sans-serif;
+  color: #00ffaa;
+  text-shadow: 0 0 5px #00ffcc;
+}
+
+.resume-sidebar ul {
+  list-style: square;
+  padding-left: 1.2rem;
+}
+
+.resume-sidebar li {
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .resume-body {
+    flex-direction: column;
+  }
+
+  .resume-sidebar {
+    order: -1;
+    width: 100%;
+  }
+}
