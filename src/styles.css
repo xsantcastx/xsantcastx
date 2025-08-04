@@ -1,30 +1,101 @@
-/* styles.css */
+/* ========== Base Styles ========== */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
 }
 
 body {
-    background: linear-gradient(135deg, #0f0f1f, #101033);
-    color: #fff;
-    overflow-x: hidden;
+  background: linear-gradient(135deg, #0f0f1f, #101033);
+  color: #fff;
+  overflow-x: hidden;
+  transition: all 0.3s ease;
 }
 
+/* ========== Glitch Mode ========== */
 body.glitch-out {
-  animation: full-glitch 0.6s steps(2) infinite;
   background-color: #111;
 }
 
+body.glitch-out .keyword.glitch {
+  color: #ff00ff;
+  text-shadow: 0 0 3px #ff00ff, 0 0 6px #ff00ff;
+  transform: translateX(1px);
+  transition: all 0.3s ease;
+}
+
+
+body.glitch-out .keyword {
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+}
+
+body.glitch-out h2.glitch {
+  color: #ff00ff;
+  font-weight: bold;
+  animation: glitch-text 2s infinite;
+  position: relative;
+}
+
+body.glitch-out .resume-section,
+body.glitch-out .about-section {
+  border-left: 4px solid #ff00ff;
+}
+
+/* ========== Clean Mode (default) ========== */
+body:not(.glitch-out) .keyword {
+  color: #00ccff;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+body:not(.glitch-out) h2.glitch {
+  color: #00ccff;
+  text-shadow: none;
+  animation: none;
+}
+
+body:not(.glitch-out) .resume-section,
+body:not(.glitch-out) .about-section {
+  border-left: none;
+}
+
+/* ========== Glitch Effects ========== */
 @keyframes full-glitch {
-  0% { filter: contrast(1.2) brightness(1.3); transform: translate(1px, 0); }
-  25% { filter: hue-rotate(90deg) saturate(1.5); transform: translate(-1px, 1px); }
-  50% { filter: invert(1); transform: translate(1px, -1px); }
-  75% { filter: hue-rotate(-90deg) saturate(2); transform: translate(-2px, -2px); }
+  0%   { filter: contrast(1.2) brightness(1.3); transform: translate(1px, 0); }
+  25%  { filter: hue-rotate(90deg) saturate(1.5); transform: translate(-1px, 1px); }
+  50%  { filter: invert(1); transform: translate(1px, -1px); }
+  75%  { filter: hue-rotate(-90deg) saturate(2); transform: translate(-2px, -2px); }
   100% { filter: none; transform: translate(0); }
 }
 
+@keyframes glitch-text {
+  0%, 100% { text-shadow: 2px 0 red, -2px 0 cyan; transform: translate(0); }
+  20%, 60% { text-shadow: -2px 0 red, 2px 0 cyan; transform: translate(-1px, 1px); }
+  40%, 80% { text-shadow: 2px 0 red, -2px 0 cyan; transform: translate(1px, -1px); }
+}
+
+@keyframes pulse {
+  0%, 100% { text-shadow: 0 0 5px #ff00ff; }
+  50%      { text-shadow: 0 0 15px #ff00ff; }
+}
+
+/* ========== Keyword Highlight ========== */
+.keyword {
+  color: #ff00ff;
+  font-weight: bold;
+  text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+  transition: all 0.3s ease-in-out;
+  animation: pulse 2s infinite;
+}
+
+.keyword:hover {
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+}
+
+/* ========== Glitch Overlay ========== */
 .glitch-overlay {
   position: fixed;
   top: 0;
@@ -57,10 +128,8 @@ body.glitch-out {
 }
 
 @keyframes flashout {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
+  0%, 100% { opacity: 0; }
+  10%, 70% { opacity: 1; }
 }
 
 @keyframes pulseText {
@@ -68,24 +137,26 @@ body.glitch-out {
   50% { transform: scale(1.2); opacity: 0.8; }
 }
 
+/* ========== Flicker Ambient Animation ========== */
 body.flicker {
   animation: ambientFlicker 1s steps(2) infinite alternate;
 }
 
 @keyframes ambientFlicker {
-  0% { filter: none; }
+  0%, 100% { filter: none; }
   25% { filter: brightness(1.05) contrast(1.05); }
   50% { filter: hue-rotate(20deg); }
   75% { filter: brightness(0.95); }
-  100% { filter: none; }
 }
+
+/* ========== Background Effects ========== */
 .matrix-background {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: -2; /* Was -10 — bringing it up */
+  z-index: -2;
   animation: rain 12s linear infinite;
   opacity: 0.05;
   background: repeating-linear-gradient(
@@ -98,16 +169,11 @@ body.flicker {
   pointer-events: none;
 }
 
-
 @keyframes rain {
-  from {
-    background-position: 0 -200%;
-  }
-  to {
-    background-position: 0 200%;
-  }
-  
+  from { background-position: 0 -200%; }
+  to   { background-position: 0 200%; }
 }
+
 .particle-layer {
   position: fixed;
   top: 0;
@@ -137,6 +203,7 @@ body.flicker {
   100% { transform: translate(100px, 200px); }
 }
 
+/* ========== Konami Code Overlay ========== */
 .konami-overlay {
   position: fixed;
   top: 40%;
@@ -154,7 +221,7 @@ body.flicker {
   pointer-events: none;
 }
 
-/* === FUTURISTIC RESUME SECTION === */
+/* ========== Resume Section ========== */
 .resume-section {
   padding: 4rem 2rem;
   background: linear-gradient(135deg, #0a0a1a, #101033);
@@ -165,7 +232,7 @@ body.flicker {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
-  background: rgba(10, 10, 26, 0.95); /* Dark, slightly transparent background */
+  background: rgba(10, 10, 26, 0.95);
   border: 1px solid #00ffcc;
   border-radius: 10px;
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
@@ -226,14 +293,101 @@ body.flicker {
   line-height: 1.5;
 }
 
-/* Responsive adjustments */
+/* ========== Theme Toggle Switch ========== */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem;
+  color: #ff00ff;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 34px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: 0.4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.4s;
+}
+
+input:checked + .slider {
+  background-color: #ff00ff;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* ========== Responsive ========== */
 @media (max-width: 768px) {
   .resume-section h2 {
     font-size: 2rem;
   }
+
   .resume-section p,
   .resume-section ul li {
     font-size: 0.9rem;
   }
 }
+.keyword.glitch {
+  color: #ff00ff;
+  text-shadow: 0 0 2px #ff00ff, 0 0 4px #ff00ff;
+  transform: translateX(1px);
+  transition: all 0.3s ease;
+}
+.keyword {
+  color: #00ccff;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+}
 
+body.glitch-out .keyword {
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+}
+
+.keyword:hover {
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+}
+body.flicker {
+  animation: ambientFlicker 1s steps(2) infinite alternate;
+}
+
+@keyframes ambientFlicker {
+  0% { filter: none; }
+  25% { filter: brightness(1.05) contrast(1.05); }
+  50% { filter: hue-rotate(20deg); }
+  75% { filter: brightness(0.95); }
+  100% { filter: none; }
+}

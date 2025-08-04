@@ -42,6 +42,10 @@
   -webkit-text-fill-color: transparent;
 }
 
+.nav-glitch.header-glitch {
+  animation: subtleGlitch 1.5s infinite ease-in-out alternate;
+}
+
 @media (max-width: 600px) {
   .nav-glitch {
     width: auto !important;
@@ -56,12 +60,26 @@
   animation: glitch 1s infinite linear alternate-reverse;
 }
 
+@keyframes subtleGlitch {
+  0% { text-shadow: 1px 1px #ff00c8, -1px -1px #00fff9; transform: skew(0.3deg); }
+  50% { text-shadow: -1px -1px #00fff9, 1px 1px #ff00c8; transform: skew(-0.3deg); }
+  100% { text-shadow: none; transform: skew(0); }
+}
+
+@media (max-width: 600px) {
+  .nav-glitch {
+    width: auto !important;
+    overflow: visible !important;
+    border-right: none;
+    animation: subtleGlitch 1.5s infinite ease-in-out alternate;
+  }
+}
+
 @keyframes typing { from { width: 0; } to { width: 100%; } }
 @keyframes blink { 50% { border-color: transparent; } }
-@keyframes glitch {
-  0% { text-shadow: 2px 2px #ff00c8, -2px -2px #00fff9; transform: skew(0.5deg); }
-  50% { text-shadow: -2px -2px #00fff9, 2px 2px #ff00c8; transform: skew(-0.5deg); }
-  100% { text-shadow: none; transform: skew(0); }
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 .navbar::after {

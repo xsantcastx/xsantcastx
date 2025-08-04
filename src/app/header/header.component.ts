@@ -81,24 +81,26 @@ loginWithGoogle() {
   }
 
   ngAfterViewInit(): void {
-    const navbarTitle = this.elRef.nativeElement.querySelector('.nav-glitch');
-    this.loopAmbientFlicker();
-    if (navbarTitle) {
-      setTimeout(() => {
-        this.renderer.addClass(navbarTitle, 'glitch-start');
-        this.randomGlitch(navbarTitle);
-      }, 6000);
-    }
+  const navbarTitle = this.elRef.nativeElement.querySelector('.nav-glitch');
+  this.loopAmbientFlicker();
+  if (navbarTitle) {
+    setTimeout(() => {
+      this.renderer.addClass(navbarTitle, 'header-glitch');
+      this.randomGlitch(navbarTitle);
+    }, 6000);
   }
+}
+
 
   randomGlitch(el: HTMLElement) {
-    setInterval(() => {
-      this.renderer.removeClass(el, 'glitch-start');
-      setTimeout(() => {
-        this.renderer.addClass(el, 'glitch-start');
-      }, 100);
-    }, this.getRandomDelay());
-  }
+  setInterval(() => {
+    this.renderer.removeClass(el, 'header-glitch');
+    setTimeout(() => {
+      this.renderer.addClass(el, 'header-glitch');
+    }, 100);
+  }, this.getRandomDelay());
+}
+
 
   getRandomDelay(): number {
     return 4000 + Math.floor(Math.random() * 6000);
