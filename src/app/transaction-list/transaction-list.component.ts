@@ -3,11 +3,13 @@ import { Subscription } from 'rxjs';
 import { AuthServiceService } from '../auth-service.service';
 import { FirebaseService } from '../firebase.service';
 import { Transaction } from '../models/crypto.models';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-transaction-list',
   templateUrl: './transaction-list.component.html',
-  styleUrls: ['./transaction-list.component.css']
+  styleUrls: ['./transaction-list.component.css'],
+  imports: [CommonModule]
 })
 export class TransactionListComponent implements OnInit, OnDestroy {
   private authService = inject(AuthServiceService);

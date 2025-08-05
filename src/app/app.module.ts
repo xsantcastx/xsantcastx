@@ -30,7 +30,6 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
   declarations: [
     AppComponent,
     HeaderComponent,
-    HeroComponent,
     SkillsComponent,
     ProjectsComponent,
     ContactComponent,
@@ -38,9 +37,7 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
     EgComponent,
     GridSectionsComponent,
     GuestbookComponent,
-    CryptoCardComponent,
-    WalletSummaryComponent,
-    TransactionListComponent,
+    HeroComponent,
   ],
   bootstrap: [AppComponent],
   imports: [
@@ -49,13 +46,16 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
     FormsModule,
     NgxParticlesModule,
     ResumeCardComponent,
-    AboutmeCardComponent
-],
+    AboutmeCardComponent,
+    CryptoCardComponent,
+    WalletSummaryComponent,
+    TransactionListComponent,
+  ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideFirestore(() => getFirestore()),
     provideDatabase(() => getDatabase()),
-    provideAuth(() => getAuth()),  // <-- add here instead of AngularFireAuthModule
+    provideAuth(() => getAuth()),
     provideHttpClient(withInterceptorsFromDi())
   ]
 })
