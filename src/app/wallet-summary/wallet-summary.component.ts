@@ -7,7 +7,8 @@ import { Wallet } from '../models/crypto.models';
 @Component({
   selector: 'app-wallet-summary',
   templateUrl: './wallet-summary.component.html',
-  styleUrls: ['./wallet-summary.component.css']
+  styleUrls: ['./wallet-summary.component.css'],
+  standalone: false
 })
 export class WalletSummaryComponent implements OnInit, OnDestroy {
   private authService = inject(AuthServiceService);

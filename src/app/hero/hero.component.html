@@ -1,5 +1,15 @@
 <section class="hero">
   <div class="hero-content">
+    <div class="scroll-container">
+      
+            <!-- Intro comes after -->
+      <section class="intro">
+        <h1 class="type-glitch">I'm xsantcastx</h1>
+      </section>
+      <app-grid-sections></app-grid-sections>
+      <app-donation-feed></app-donation-feed>
+  </div>
+  <app-guestbook></app-guestbook>
     <div *ngIf="user$ | async as user; else authForms">
       <!-- Authenticated View: Dashboard -->
       <div class="dashboard">
@@ -8,8 +18,8 @@
         <app-wallet-summary></app-wallet-summary>
         <app-transaction-list></app-transaction-list>
         <app-crypto-card></app-crypto-card>
-        <app-donation-feed></app-donation-feed>
         <app-news-feed></app-news-feed>
+        
       </div>
     </div>
 
