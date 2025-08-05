@@ -1,0 +1,12 @@
+<div class="donation-form-container">
+  <h3>Support with KASPA</h3>
+  <div class="wallet-info">
+    <p>kaspa:qzytrwv3m2a3y5z8y2gfw8x0q9q8x0q9q8x0q9q8x0</p>
+    <img [src]="qrCodeUrl" alt="KASPA QR Code">
+  </div>
+  <form (ngSubmit)="submitDonation()">
+    <textarea [(ngModel)]="message" name="message" placeholder="Leave a nice message..."></textarea>
+    <button type="submit">Submit Message</button>
+  </form>
+  <p *ngIf="confirmationMessage" class="confirmation">{{ confirmationMessage }}</p>
+</div>

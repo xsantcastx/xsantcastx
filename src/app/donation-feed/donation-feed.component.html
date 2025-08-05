@@ -1,1 +1,12 @@
-<p>donation-feed works!</p>
+<div class="donation-feed-container">
+  <h3>Latest Donations</h3>
+  <div class="feed" *ngIf="donations.length > 0; else noDonations">
+    <div class="feed-item" *ngFor="let donation of donations">
+      <p class="message">"{{ donation.message }}"</p>
+      <p class="timestamp">{{ donation.createdAt.toDate() | date:'short' }}</p>
+    </div>
+  </div>
+  <ng-template #noDonations>
+    <p>No donations yet. Be the first!</p>
+  </ng-template>
+</div>
