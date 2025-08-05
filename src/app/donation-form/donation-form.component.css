@@ -1,0 +1,49 @@
+.donation-form-container {
+  background: rgba(1, 1, 22, 0.8);
+  padding: 2rem;
+  border-radius: 10px;
+  border: 1px solid #00ffcc;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+  color: #e0f7fa;
+  text-align: center;
+}
+
+.wallet-info img {
+  margin-top: 1rem;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.8rem;
+  margin-top: 1rem;
+  background: #101033;
+  border: 1px solid #00ffcc;
+  border-radius: 5px;
+  color: #e0f7fa;
+  font-family: 'Orbitron', sans-serif;
+  min-height: 100px;
+}
+
+button {
+  width: 100%;
+  padding: 1rem;
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  background: #00ffcc;
+  border: none;
+  border-radius: 6px;
+  color: #0a0a1a;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px #00ffcc88;
+}
+
+button:hover {
+  background: #00cc99;
+  transform: scale(1.02);
+}
+
+.confirmation {
+  margin-top: 1rem;
+  color: #00ffcc;
+}

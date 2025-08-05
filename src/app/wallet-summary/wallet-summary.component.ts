@@ -3,12 +3,11 @@ import { Subscription } from 'rxjs';
 import { AuthServiceService } from '../auth-service.service';
 import { FirebaseService } from '../firebase.service';
 import { Wallet } from '../models/crypto.models';
-import { CommonModule } from '@angular/common';
+
 @Component({
   selector: 'app-wallet-summary',
   templateUrl: './wallet-summary.component.html',
-  styleUrls: ['./wallet-summary.component.css'],
-  imports: [CommonModule]
+  styleUrls: ['./wallet-summary.component.css']
 })
 export class WalletSummaryComponent implements OnInit, OnDestroy {
   private authService = inject(AuthServiceService);

@@ -1,11 +1,25 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { FirebaseService } from '../firebase.service';
 
 @Component({
   selector: 'app-donation-feed',
-  imports: [],
   templateUrl: './donation-feed.component.html',
-  styleUrl: './donation-feed.component.css'
+  styleUrls: ['./donation-feed.component.css']
 })
-export class DonationFeedComponent {
+export class DonationFeedComponent implements OnInit, OnDestroy {
+  private firebaseService = inject(FirebaseService);
 
+  donations: { message: string, createdAt: any }[] = [];
+  private donationsSubscription: Subscription | undefined;
+
+  ngOnInit() {
+    this.donationsSubscription = this.firebaseService.getDonations().subscribe(donations => {
+      this.donations = donations;
+    });
+  }
+
+  ngOnDestroy() {
+    this.donationsSubscription?.unsubscribe();
+  }
 }

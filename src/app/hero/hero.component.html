@@ -1,6 +1,5 @@
 <section class="hero">
   <div class="hero-content">
-    <app-grid-sections></app-grid-sections>
     <div *ngIf="user$ | async as user; else authForms">
       <!-- Authenticated View: Dashboard -->
       <div class="dashboard">
@@ -9,6 +8,8 @@
         <app-wallet-summary></app-wallet-summary>
         <app-transaction-list></app-transaction-list>
         <app-crypto-card></app-crypto-card>
+        <app-donation-feed></app-donation-feed>
+        <app-news-feed></app-news-feed>
       </div>
     </div>
 

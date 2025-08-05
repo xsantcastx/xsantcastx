@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, setDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, onSnapshot, addDoc, query, orderBy, limit } from '@angular/fire/firestore';
 import { User } from 'firebase/auth';
 import { Observable } from 'rxjs';
 import { Transaction, Wallet } from './models/crypto.models';
@@ -46,6 +46,23 @@ export class FirebaseService {
       const unsubscribe = onSnapshot(transactionsCollection, (snapshot) => {
         const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         observer.next(transactions);
+      });
+      return () => unsubscribe();
+    });
+  }
+
+  addDonation(donation: { message: string, createdAt: Date }) {
+    const donationsCollection = collection(this.firestore, 'donations');
+    return addDoc(donationsCollection, donation);
+  }
+
+  getDonations(): Observable<{ message: string, createdAt: any }[]> {
+    const donationsCollection = collection(this.firestore, 'donations');
+    const q = query(donationsCollection, orderBy('createdAt', 'desc'), limit(20));
+    return new Observable(observer => {
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const donations = snapshot.docs.map(doc => doc.data() as { message: string, createdAt: any });
+        observer.next(donations);
       });
       return () => unsubscribe();
     });

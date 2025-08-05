@@ -24,12 +24,16 @@ import { AboutmeCardComponent } from "./aboutme-card/aboutme-card.component";
 import { CryptoCardComponent } from './crypto-card/crypto-card.component';
 import { WalletSummaryComponent } from './wallet-summary/wallet-summary.component';
 import { TransactionListComponent } from './transaction-list/transaction-list.component';
+import { DonationFormComponent } from './donation-form/donation-form.component';
+import { DonationFeedComponent } from './donation-feed/donation-feed.component';
+import { DonateComponent } from './donate/donate.component';
 
 
 @NgModule({
   declarations: [
     AppComponent,
     HeaderComponent,
+    HeroComponent,
     SkillsComponent,
     ProjectsComponent,
     ContactComponent,
@@ -37,7 +41,12 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
     EgComponent,
     GridSectionsComponent,
     GuestbookComponent,
-    HeroComponent,
+    CryptoCardComponent,
+    WalletSummaryComponent,
+    TransactionListComponent,
+    DonationFormComponent,
+    DonationFeedComponent,
+    DonateComponent,
   ],
   bootstrap: [AppComponent],
   imports: [
@@ -46,16 +55,13 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
     FormsModule,
     NgxParticlesModule,
     ResumeCardComponent,
-    AboutmeCardComponent,
-    CryptoCardComponent,
-    WalletSummaryComponent,
-    TransactionListComponent,
-  ],
+    AboutmeCardComponent
+],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideFirestore(() => getFirestore()),
     provideDatabase(() => getDatabase()),
-    provideAuth(() => getAuth()),
+    provideAuth(() => getAuth()),  // <-- add here instead of AngularFireAuthModule
     provideHttpClient(withInterceptorsFromDi())
   ]
 })
