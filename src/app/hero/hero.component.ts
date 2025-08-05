@@ -10,6 +10,7 @@ import { User } from 'firebase/auth';
     selector: 'app-hero',
     templateUrl: './hero.component.html',
     styleUrls: ['./hero.component.css'],
+    standalone: false
 })
 export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private elRef: ElementRef = inject(ElementRef);
