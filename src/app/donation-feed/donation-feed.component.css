@@ -1,0 +1,33 @@
+.donation-feed-container {
+  background: rgba(1, 1, 22, 0.8);
+  padding: 2rem;
+  border-radius: 10px;
+  border: 1px solid #00ffcc;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+  color: #e0f7fa;
+  margin-top: 2rem;
+}
+
+.feed {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.feed-item {
+  border-bottom: 1px solid #00ffcc;
+  padding: 1rem 0;
+}
+
+.feed-item:last-child {
+  border-bottom: none;
+}
+
+.message {
+  font-style: italic;
+}
+
+.timestamp {
+  font-size: 0.8rem;
+  color: #00ffcc;
+  text-align: right;
+}
