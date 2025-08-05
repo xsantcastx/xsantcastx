@@ -5,12 +5,14 @@ import { AuthServiceService } from '../auth-service.service';
 import { FirebaseService } from '../firebase.service';
 import { Wallet, Transaction } from '../models/crypto.models';
 import { User } from 'firebase/auth';
-
 @Component({
-    selector: 'app-hero',
-    templateUrl: './hero.component.html',
-    styleUrls: ['./hero.component.css'],
+  selector: 'app-hero',
+  standalone: false,
+  templateUrl: './hero.component.html',
+  styleUrls: ['./hero.component.css'],
+
 })
+
 export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private elRef: ElementRef = inject(ElementRef);
   private authService = inject(AuthServiceService);
@@ -28,6 +30,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private userSubscription: Subscription | undefined;
   private walletSubscription: Subscription | undefined;
   private transactionSubscription: Subscription | undefined;
+user: any;
 
   ngOnInit() {
     this.userSubscription = this.authService.user$.subscribe(user => {
