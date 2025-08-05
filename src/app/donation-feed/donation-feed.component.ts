@@ -5,7 +5,8 @@ import { FirebaseService } from '../firebase.service';
 @Component({
   selector: 'app-donation-feed',
   templateUrl: './donation-feed.component.html',
-  styleUrls: ['./donation-feed.component.css']
+  styleUrls: ['./donation-feed.component.css'],
+  standalone: false
 })
 export class DonationFeedComponent implements OnInit, OnDestroy {
   private firebaseService = inject(FirebaseService);

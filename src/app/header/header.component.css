@@ -109,6 +109,23 @@
   border-radius: 4px;
   box-shadow: 0 0 4px #00ffcc;
 }
+.donatebtn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  color: #00ffcc;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid #00ffcc;
+  padding: 0.5em 1.2em;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px #00ffcc;
+  border-radius: 4px;
+  box-shadow: 0 0 4px #00ffcc;
+  left: 1%;
+}
+
 .nav-menu a::after {
   content: '';
   position: absolute;

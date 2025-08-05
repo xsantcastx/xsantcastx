@@ -27,6 +27,7 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
 import { DonationFormComponent } from './donation-form/donation-form.component';
 import { DonationFeedComponent } from './donation-feed/donation-feed.component';
 import { DonateComponent } from './donate/donate.component';
+import { NewsFeedComponent } from './news-feed/news-feed.component';
 
 
 @NgModule({
@@ -47,6 +48,7 @@ import { DonateComponent } from './donate/donate.component';
     DonationFormComponent,
     DonationFeedComponent,
     DonateComponent,
+    NewsFeedComponent
   ],
   bootstrap: [AppComponent],
   imports: [

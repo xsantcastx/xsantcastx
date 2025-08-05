@@ -4,12 +4,13 @@ import { FirebaseService } from '../firebase.service';
 @Component({
   selector: 'app-donation-form',
   templateUrl: './donation-form.component.html',
-  styleUrls: ['./donation-form.component.css']
+  styleUrls: ['./donation-form.component.css'],
+  standalone: false
 })
 export class DonationFormComponent {
   private firebaseService = inject(FirebaseService);
 
-  kaspaWallet = 'kaspa:qzytrwv3m2a3y5z8y2gfw8x0q9q8x0q9q8x0q9q8x0';
+  kaspaWallet = 'kaspa:qpg5xnu998y4ycaug0m85gs3wuy7hmpj66a0ygqkcn8797e4paqlxre4jz7xa';
   qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${this.kaspaWallet}`;
   message = '';
   confirmationMessage = '';
