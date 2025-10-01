@@ -1,8 +1,27 @@
 <div class="particle-layer"></div>
 <app-header></app-header>
 
-<router-outlet></router-outlet>
-<div style="display: none;">
-  <app-eg></app-eg>
-</div>
+<!-- One-Page Portfolio Layout -->
+<main class="portfolio-container">
+  <section id="hero" class="section">
+    <app-hero></app-hero>
+  </section>
+  
+  <section id="services" class="section">
+    <app-services></app-services>
+  </section>
+  
+  <section id="projects" class="section">
+    <app-projects></app-projects>
+  </section>
+  
+  <section id="about" class="section">
+    <app-about></app-about>
+  </section>
+  
+  <section id="contact" class="section">
+    <app-contact></app-contact>
+  </section>
+</main>
+
 <app-footer></app-footer>

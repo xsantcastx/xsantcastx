@@ -1,6 +1,6 @@
 .navbar {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   background: rgba(0, 0, 0, 0.8);
   width: 100%;
@@ -9,6 +9,44 @@
   backdrop-filter: blur(10px);
   position: sticky;
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+  padding: 0 2rem;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+/* Language Toggle Styles */
+.language-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 25px;
+  padding: 0.3rem;
+  border: 1px solid rgba(0, 255, 204, 0.3);
+}
+
+.lang-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  color: #e0f7fa;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.lang-btn:hover {
+  color: #00ffcc;
+}
+
+.lang-btn.active {
+  background: linear-gradient(45deg, #00ffcc, #ff00ff);
+  color: #000;
+  font-weight: bold;
 }
 
 .logo {
@@ -20,7 +58,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 0 auto;
+}
+
+.nav-glitch {
+  cursor: pointer;
 }
 
 .nav-glitch {

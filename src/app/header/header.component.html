@@ -1,26 +1,23 @@
 <nav class="navbar">
-<button [routerLink]="['/donate']" class="donatebtn">Donate</button>
   <div class="logo">
-    <span class="nav-glitch" [routerLink]="['/']">xsantcastx</span>
+    <span class="nav-glitch" (click)="scrollToSection('hero')">xsantcastx</span>
   </div>
+  
+  <!-- Navigation Menu -->
+  <div class="nav-menu">
+    <a href="#services" (click)="scrollToSection('services')">{{ translate('nav.services') }}</a>
+    <a href="#projects" (click)="scrollToSection('projects')">{{ translate('nav.projects') }}</a>
+    <a href="#about" (click)="scrollToSection('about')">{{ translate('nav.about') }}</a>
+    <a href="#contact" (click)="scrollToSection('contact')">{{ translate('nav.contact') }}</a>
+  </div>
+  
+  <!-- Language Toggle -->
+  <div class="language-toggle">
+    <button class="lang-btn" [class.active]="currentLang === 'en'" (click)="setLanguage('en')">EN</button>
+    <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
+  </div>
+  
   <div class="glitch-overlay" id="glitchOverlay">
     <span class="glitch-text">ACCESS GRANTED</span>
   </div>
- 
-<div class="login-menu" [class.open]="loginOpen">
-  <div *ngIf="user$ | async as user; else showLogin">
-    
-    <span class="user-greet">👾 {{ user.isAnonymous ? 'Anonymous' : user.displayName?.split(' ')[0] }}</span>
-    <button class="login-btn" (click)="logout()">Logout</button>
-  </div>
-  <ng-template #showLogin>
-    <button class="login-btn" (click)="toggleLoginMenu($event)">
-      ⚡ Login
-    </button>
-    <ul class="login-dropdown" *ngIf="loginOpen">
-      <li (click)="loginWithGoogle()">🔐 Google</li>
-      <li (click)="loginAnonymously()">👤 Guest Access</li>
-    </ul>
-  </ng-template>
-</div>
 </nav>

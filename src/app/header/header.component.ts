@@ -9,9 +9,8 @@ import {
   runInInjectionContext,
   OnInit
 } from '@angular/core';
-import { Auth, signInWithRedirect, signOut, GoogleAuthProvider, user, signInAnonymously } from '@angular/fire/auth';
+import { TranslationService } from '../translation.service';
 import { Observable } from 'rxjs';
-import { getRedirectResult, UserCredential, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 
 @Component({
   selector: 'app-header',
@@ -19,65 +18,40 @@ import { getRedirectResult, UserCredential, onAuthStateChanged, signInWithPopup 
   styleUrls: ['./header.component.css'],
   standalone: false
 })
-export class HeaderComponent implements AfterViewInit, OnInit {  // 👈 implements OnInit
+export class HeaderComponent implements AfterViewInit, OnInit {
   private glitchAudio: HTMLAudioElement;
-  private auth = inject(Auth);
   private appRef = inject(ApplicationRef);
-
-  user$: Observable<any>;
-
-  ngOnInit(): void {
-    // Initialization logic can go here if needed
-  }
+  
+  currentLang: string = 'en';
 
   constructor(
     private elRef: ElementRef,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private translationService: TranslationService
   ) {
     this.glitchAudio = new Audio('assets/g1.mp3');
     this.glitchAudio.volume = 0.3;
-
-    // Always initialize user$ here
-    this.user$ = user(this.auth);
   }
 
-  isAuthReady = false; // Track when Firebase is ready
-userData: any = null;
-
-
-
-loginWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  signInWithPopup(this.auth, provider)
-    .then(result => {
-      //console.log('User signed in:', result.user);
-    })
-    .catch(err => console.error('Login failed:', err));
-}
-
-
-  logout() {
-    runInInjectionContext(this.appRef.injector, () => {
-      signOut(this.auth).catch(err => console.error('Logout failed:', err));
+  ngOnInit(): void {
+    this.translationService.currentLanguage$.subscribe(lang => {
+      this.currentLang = lang;
     });
   }
 
-  loginAnonymously() {
-    runInInjectionContext(this.appRef.injector, () => {
-      signInAnonymously(this.auth).catch(err => console.error('Anonymous login failed:', err));
-    });
+  setLanguage(language: string): void {
+    this.translationService.setLanguage(language);
   }
 
-  loginOpen = false;
-
-  toggleLoginMenu(event: MouseEvent) {
-    event.stopPropagation();
-    this.loginOpen = !this.loginOpen;
+  translate(key: string): string {
+    return this.translationService.translate(key);
   }
 
-  @HostListener('document:click')
-  closeMenu() {
-    this.loginOpen = false;
+  scrollToSection(sectionId: string) {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   ngAfterViewInit(): void {

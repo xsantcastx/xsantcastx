@@ -1,0 +1,30 @@
+<section class="services-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">{{ translate('services.title') }}</h2>
+      <p class="section-subtitle">{{ translate('services.subtitle') }}</p>
+    </div>
+    
+    <div class="services-grid">
+      <div class="service-card" *ngFor="let service of services">
+        <div class="service-icon">
+          <i [class]="service.icon"></i>
+        </div>
+        <h3 class="service-title">{{ translate(service.title) }}</h3>
+        <p class="service-description">{{ translate(service.description) }}</p>
+        <ul class="service-tech">
+          <li *ngFor="let tech of service.technologies" class="tech-tag">
+            {{ tech }}
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="cta-section">
+      <h3>{{ translate('services.cta.title') }}</h3>
+      <button class="cta-button" (click)="scrollToSection('contact')">
+        {{ translate('services.cta.button') }}
+      </button>
+    </div>
+  </div>
+</section>

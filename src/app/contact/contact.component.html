@@ -1,9 +1,140 @@
-<section class="contact">
-    <h2>Get in Touch</h2>
-    <form (ngSubmit)="onSubmit()">
-        <input type="text" placeholder="Name" [(ngModel)]="name" name="name" required>
-        <input type="email" placeholder="Email" [(ngModel)]="email" name="email" required>
-        <textarea placeholder="Message" [(ngModel)]="message" name="message" required></textarea>
-        <button type="submit" class="cta-button">Send Message</button>
-    </form>
+<section class="contact-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">{{ translate('contact.title') }}</h2>
+            <p class="section-subtitle">{{ translate('contact.subtitle') }}</p>
+        </div>
+        
+        <div class="contact-content">
+            <div class="contact-info">
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>{{ translate('contact.info.header') }}</h3>
+                        <p>{{ translate('contact.info.desc') }}</p>
+                    </div>
+                    
+                    <div class="contact-methods">
+                        <div class="contact-method">
+                            <div class="method-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="method-info">
+                                <h4>{{ translate('contact.method.email') }}</h4>
+                                <a href="mailto:xsantcastx&#64;gmail.com">xsantcastx&#64;gmail.com</a>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="method-icon">
+                                <i class="fab fa-github"></i>
+                            </div>
+                            <div class="method-info">
+                                <h4>{{ translate('contact.method.github') }}</h4>
+                                <a href="https://github.com/xsantcastx" target="_blank">github.com/xsantcastx</a>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="method-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="method-info">
+                                <h4>{{ translate('contact.method.response') }}</h4>
+                                <span>{{ translate('contact.method.response.time') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="project-types">
+                        <h4>{{ translate('contact.projects.title') }}</h4>
+                        <ul>
+                            <li>{{ translate('contact.projects.ecommerce') }}</li>
+                            <li>{{ translate('contact.projects.business') }}</li>
+                            <li>{{ translate('contact.projects.cms') }}</li>
+                            <li>{{ translate('contact.projects.mobile') }}</li>
+                            <li>{{ translate('contact.projects.api') }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="contact-form">
+                <form (ngSubmit)="onSubmit()" #contactForm="ngForm">
+                    <div class="form-group">
+                        <label for="name">{{ translate('contact.form.name') }} *</label>
+                        <input 
+                            type="text" 
+                            id="name"
+                            [placeholder]="translate('contact.form.name.placeholder')" 
+                            [(ngModel)]="name" 
+                            name="name" 
+                            required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">{{ translate('contact.form.email') }} *</label>
+                        <input 
+                            type="email" 
+                            id="email"
+                            [placeholder]="translate('contact.form.email.placeholder')" 
+                            [(ngModel)]="email" 
+                            name="email" 
+                            required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="project">{{ translate('contact.form.project') }}</label>
+                        <select 
+                            id="project"
+                            [(ngModel)]="projectType" 
+                            name="projectType">
+                            <option value="">{{ translate('contact.form.project.select') }}</option>
+                            <option value="web-app">{{ translate('contact.form.project.webapp') }}</option>
+                            <option value="ecommerce">{{ translate('contact.form.project.ecommerce') }}</option>
+                            <option value="mobile-app">{{ translate('contact.form.project.mobile') }}</option>
+                            <option value="api">{{ translate('contact.form.project.api') }}</option>
+                            <option value="other">{{ translate('contact.form.project.other') }}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="budget">{{ translate('contact.form.budget') }}</label>
+                        <select 
+                            id="budget"
+                            [(ngModel)]="budget" 
+                            name="budget">
+                            <option value="">{{ translate('contact.form.budget.select') }}</option>
+                            <option value="under-5k">{{ translate('contact.form.budget.under5k') }}</option>
+                            <option value="5k-10k">{{ translate('contact.form.budget.5k10k') }}</option>
+                            <option value="10k-25k">{{ translate('contact.form.budget.10k25k') }}</option>
+                            <option value="25k-plus">{{ translate('contact.form.budget.25kplus') }}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">{{ translate('contact.form.message') }} *</label>
+                        <textarea 
+                            id="message"
+                            [placeholder]="translate('contact.form.message.placeholder')" 
+                            [(ngModel)]="message" 
+                            name="message" 
+                            rows="6"
+                            required></textarea>
+                    </div>
+                    
+                    <div class="form-status" *ngIf="submitMessage">
+                        <p [ngClass]="{'success': submitMessage.includes('Thank you') || submitMessage.includes('Gracias'), 'error': submitMessage.includes('Sorry') || submitMessage.includes('Lo sentimos')}">
+                            {{ submitMessage }}
+                        </p>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn" [disabled]="!contactForm.form.valid || isSubmitting">
+                        <i class="fas fa-paper-plane" *ngIf="!isSubmitting"></i>
+                        <i class="fas fa-spinner fa-spin" *ngIf="isSubmitting"></i>
+                        {{ isSubmitting ? (translate('contact.form.sending') || 'Sending...') : translate('contact.form.submit') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </section>

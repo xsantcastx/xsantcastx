@@ -1,10 +1,213 @@
 <footer>
-    <p>© 2025 xsantcastx.com | All Rights Reserved</p>
-    <div class="social-links">
-        <a href="https://x.com/xsantcastx">X</a>
-        <a href="https://www.instagram.com/xsantcastx/#">Instagram</a>
-        <a href="https://github.com/xsantcastx">GitHub</a>
-        <a href="https://www.twitch.tv/xsantcastx">Twitch</a>
-        <a href="https://kick.com/xsantcastx">Kick</a>
+    <!-- Donate Section -->
+    <div class="donate-section">
+        <div class="donate-content">
+            <h3>{{ translate('footer.donate') }}</h3>
+            <p>{{ translate('footer.donate.desc') }}</p>
+            <div class="donate-options">
+                <button class="donate-btn crypto" (click)="openCryptoDonate()">
+                    <i class="fab fa-bitcoin"></i>
+                    Crypto
+                </button>
+                <button class="donate-btn paypal" (click)="openPayPalDonate()">
+                    <i class="fab fa-paypal"></i>
+                    PayPal
+                </button>
+                <button class="donate-btn stripe" (click)="openStripeDonate()">
+                    <i class="fas fa-credit-card"></i>
+                    Card
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="footer-info">
+        <p>© 2025 xsantcastx Development Enterprise | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>
+        <div class="social-links">
+            <a href="https://x.com/xsantcastx" target="_blank" aria-label="Twitter/X">
+                <i class="fab fa-x-twitter"></i>
+            </a>
+            <a href="https://www.instagram.com/xsantcastx/" target="_blank" aria-label="Instagram">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="https://github.com/xsantcastx" target="_blank" aria-label="GitHub">
+                <i class="fab fa-github"></i>
+            </a>
+            <a href="https://www.twitch.tv/xsantcastx" target="_blank" aria-label="Twitch">
+                <i class="fab fa-twitch"></i>
+            </a>
+            <a href="https://kick.com/xsantcastx" target="_blank" aria-label="Kick">
+                <i class="fas fa-gamepad"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Crypto Donation Modal -->
+    <div class="donation-modal" id="cryptoModal" [class.show]="showCryptoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Crypto Donations</h4>
+                <button class="close-btn" (click)="closeModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="crypto-option" *ngFor="let crypto of cryptoAddresses">
+                    <div class="crypto-info">
+                        <strong>{{ crypto.name }} ({{ crypto.symbol }})</strong>
+                        <div class="address-container">
+                            <input type="text" [value]="crypto.address" readonly class="crypto-address">
+                            <button class="copy-btn" (click)="copyToClipboard(crypto.address)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PayPal Donation Modal -->
+    <div class="donation-modal" id="paypalModal" [class.show]="showPayPalModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>{{ translate('footer.paypal.title') }}</h4>
+                <button class="close-btn" (click)="closeModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>{{ translate('footer.paypal.desc') }}</p>
+                
+                <!-- Amount Selection -->
+                <div class="amount-selection">
+                    <h5>{{ translate('footer.amount') }}:</h5>
+                    <div class="amount-buttons">
+                        <button 
+                            *ngFor="let amount of donationAmounts"
+                            class="amount-btn"
+                            [class.selected]="selectedAmount === amount.value && !showCustomInput"
+                            (click)="selectAmount(amount.value)">
+                            {{ amount.label }}
+                        </button>
+                        <button 
+                            class="amount-btn custom-btn"
+                            [class.selected]="showCustomInput"
+                            (click)="toggleCustomAmount()">
+                            {{ translate('footer.custom.amount') }}
+                        </button>
+                    </div>
+                    
+                    <!-- Custom Amount Input -->
+                    <div class="custom-amount-section" *ngIf="showCustomInput">
+                        <div class="custom-input-container">
+                            <span class="currency-symbol">$</span>
+                            <input 
+                                type="number" 
+                                class="custom-amount-input"
+                                [class.error]="customAmountError"
+                                [(ngModel)]="customAmount"
+                                (ngModelChange)="onCustomAmountChange()"
+                                [placeholder]="translate('footer.custom.placeholder')"
+                                min="1"
+                                step="1">
+                        </div>
+                        <div class="custom-amount-error" *ngIf="customAmountError">
+                            {{ customAmountError }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PayPal Button Container -->
+                <div class="payment-section">
+                    <div *ngIf="!isPayPalReady" class="loading-message">
+                        {{ translate('footer.processing') }}
+                    </div>
+                    <div id="paypal-button-container" *ngIf="isPayPalReady"></div>
+                    <button 
+                        *ngIf="isPayPalReady && !paypalProcessing"
+                        class="payment-btn paypal-btn"
+                        (click)="processPayPalPayment()">
+                        <i class="fab fa-paypal"></i>
+                        {{ translate('footer.donation') }} {{ selectedAmount | currency:'USD':'symbol':'1.0-0' }}
+                    </button>
+                    <div *ngIf="paypalProcessing" class="processing">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        {{ translate('footer.processing') }}
+                    </div>
+                </div>
+                
+                <p class="payment-note">{{ translate('footer.paypal.note') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stripe Donation Modal -->
+    <div class="donation-modal" id="stripeModal" [class.show]="showStripeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>{{ translate('footer.stripe.title') }}</h4>
+                <button class="close-btn" (click)="closeModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>{{ translate('footer.stripe.desc') }}</p>
+                
+                <!-- Amount Selection -->
+                <div class="amount-selection">
+                    <h5>{{ translate('footer.amount') }}:</h5>
+                    <div class="amount-buttons">
+                        <button 
+                            *ngFor="let amount of donationAmounts"
+                            class="amount-btn"
+                            [class.selected]="selectedAmount === amount.value && !showCustomInput"
+                            (click)="selectAmount(amount.value)">
+                            {{ amount.label }}
+                        </button>
+                        <button 
+                            class="amount-btn custom-btn"
+                            [class.selected]="showCustomInput"
+                            (click)="toggleCustomAmount()">
+                            {{ translate('footer.custom.amount') }}
+                        </button>
+                    </div>
+                    
+                    <!-- Custom Amount Input -->
+                    <div class="custom-amount-section" *ngIf="showCustomInput">
+                        <div class="custom-input-container">
+                            <span class="currency-symbol">$</span>
+                            <input 
+                                type="number" 
+                                class="custom-amount-input"
+                                [class.error]="customAmountError"
+                                [(ngModel)]="customAmount"
+                                (ngModelChange)="onCustomAmountChange()"
+                                [placeholder]="translate('footer.custom.placeholder')"
+                                min="1"
+                                step="1">
+                        </div>
+                        <div class="custom-amount-error" *ngIf="customAmountError">
+                            {{ customAmountError }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stripe Payment Section -->
+                <div class="payment-section">
+                    <div *ngIf="!isStripeReady" class="loading-message">
+                        {{ translate('footer.processing') }}
+                    </div>
+                    <button 
+                        *ngIf="isStripeReady && !stripeProcessing"
+                        class="payment-btn stripe-btn"
+                        (click)="processStripePayment()">
+                        <i class="fas fa-credit-card"></i>
+                        {{ translate('footer.donation') }} {{ selectedAmount | currency:'USD':'symbol':'1.0-0' }}
+                    </button>
+                    <div *ngIf="stripeProcessing" class="processing">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        {{ translate('footer.processing') }}
+                    </div>
+                </div>
+                
+                <p class="payment-note">{{ translate('footer.stripe.note') }}</p>
+            </div>
+        </div>
     </div>
 </footer>
