@@ -1,60 +1,38 @@
-<section class="hero">
+<section class="hero-portfolio">
   <div class="hero-content">
-    <div class="scroll-container">
-      
-            <!-- Intro comes after -->
-      <section class="intro">
-        <h1 class="type-glitch">I'm xsantcastx</h1>
-      </section>
-      <app-grid-sections></app-grid-sections>
-      <app-donation-feed></app-donation-feed>
-  </div>
-  <app-guestbook></app-guestbook>
-    <div *ngIf="user$ | async as user; else authForms">
-      <!-- Authenticated View: Dashboard -->
-      <div class="dashboard">
-        <h1>Welcome, {{ user.email }}</h1>
-        <button (click)="logout()">Logout</button>
-        <app-wallet-summary></app-wallet-summary>
-        <app-transaction-list></app-transaction-list>
-        <app-crypto-card></app-crypto-card>
-        <app-news-feed></app-news-feed>
-        
+    <div class="intro-text">
+      <h1 class="type-glitch">{{ translate('hero.title') }}</h1>
+      <h2 class="subtitle">{{ translate('hero.subtitle') }}</h2>
+      <p class="hero-description">
+        {{ translate('hero.description') }}
+      </p>
+      <div class="hero-cta">
+        <button class="cta-primary" (click)="scrollToSection('projects')">
+          {{ translate('hero.cta.work') }}
+        </button>
+        <button class="cta-secondary" (click)="scrollToSection('contact')">
+          {{ translate('hero.cta.talk') }}
+        </button>
       </div>
     </div>
-
-    <ng-template #authForms>
-      <!-- Unauthenticated View: Login/Register Forms -->
-      <div class="auth-container">
-        <div class="form-container">
-          <h2>Login</h2>
-          <form (ngSubmit)="login()">
-            <div class="form-field">
-              <label for="email">Email:</label>
-              <input type="email" id="email" [(ngModel)]="email" name="email" required>
-            </div>
-            <div class="form-field">
-              <label for="password">Password:</label>
-              <input type="password" id="password" [(ngModel)]="password" name="password" required>
-            </div>
-            <button type="submit">Login</button>
-          </form>
+    <div class="hero-visual">
+      <div class="code-snippet">
+        <div class="code-line">
+          <span class="code-keyword">const</span> <span class="code-var">developer</span> = {{ '{' }}
         </div>
-        <div class="form-container">
-          <h2>Register</h2>
-          <form (ngSubmit)="register()">
-            <div class="form-field">
-              <label for="email-reg">Email:</label>
-              <input type="email" id="email-reg" [(ngModel)]="email" name="email-reg" required>
-            </div>
-            <div class="form-field">
-              <label for="password-reg">Password:</label>
-              <input type="password" id="password-reg" [(ngModel)]="password" name="password-reg" required>
-            </div>
-            <button type="submit">Register</button>
-          </form>
+        <div class="code-line indent">
+          <span class="code-property">name:</span> <span class="code-string">'xsantcastx'</span>,
+        </div>
+        <div class="code-line indent">
+          <span class="code-property">skills:</span> [<span class="code-string">'React'</span>, <span class="code-string">'Angular'</span>, <span class="code-string">'Node.js'</span>],
+        </div>
+        <div class="code-line indent">
+          <span class="code-property">passion:</span> <span class="code-string">'Building amazing apps'</span>
+        </div>
+        <div class="code-line">
+          {{ '}' }};
         </div>
       </div>
-    </ng-template>
+    </div>
   </div>
 </section>

@@ -1,27 +1,27 @@
 <section id="about" class="about-section">
-  <h2 class="glitch" data-text="🧠 About Me">🧠 About Me</h2>
+  <h2 class="glitch" [attr.data-text]="translate('about.title')">{{ translate('about.title') }}</h2>
 
-  <p>I’m <span class="keyword">Santiago</span>—aka <span class="keyword">xsantcastx</span>—a <span class="keyword">Data Engineer</span> with a passion for solving complex problems and <span class="keyword">leaving my glitchy mark</span> on the world.</p>
+  <p [innerHTML]="translate('about.intro')"></p>
 
-  <p>But I’m not just about <span class="keyword">pipelines</span> and <span class="keyword">queries</span>—I’m a <span class="keyword">gamer</span>, <span class="keyword">crypto enthusiast</span>, and <span class="keyword">lifelong learner</span>. Whether I’m diving into <span class="keyword">RuneScape</span> lore, exploring <span class="keyword">blockchain tech</span>, or tweaking a <span class="keyword">Kubernetes</span> cluster, I bring <span class="keyword">curiosity</span> and <span class="keyword">grit</span> to everything I do.</p>
+  <p [innerHTML]="translate('about.description')"></p>
 
-  <h3>💡 What Drives Me</h3>
+  <h3>{{ translate('about.drives.title') }}</h3>
   <ul>
-    <li><span class="keyword">Data</span> is more than numbers—it’s <span class="keyword">insight</span>, <span class="keyword">impact</span>, and <span class="keyword">innovation</span>.</li>
-    <li>I love <span class="keyword">sharing knowledge</span> and helping others grow, whether through <span class="keyword">mentorship</span> or <span class="keyword">collaborative projects</span>.</li>
-    <li>Fluent in <span class="keyword">English</span> and <span class="keyword">Spanish</span>, I value <span class="keyword">global connection</span> and <span class="keyword">diverse perspectives</span>.</li>
+    <li [innerHTML]="translate('about.drives.innovation')"></li>
+    <li [innerHTML]="translate('about.drives.quality')"></li>
+    <li [innerHTML]="translate('about.drives.global')"></li>
   </ul>
 
-  <h3>🎮 Beyond the Code</h3>
+  <h3>{{ translate('about.beyond.title') }}</h3>
   <ul>
-    <li><strong class="keyword">Gaming</strong> fuels my <span class="keyword">strategic thinking</span> and <span class="keyword">persistence</span>. <span class="keyword">RuneScape</span> taught me that <span class="keyword">grinding pays off</span>.</li>
-    <li><strong class="keyword">Crypto & Web3</strong> spark my curiosity about <span class="keyword">decentralization</span> and <span class="keyword">digital identity</span>.</li>
-    <li><strong class="keyword">Glitchy aesthetics</strong> remind me that <span class="keyword">imperfection</span> is part of <span class="keyword">creativity</span>—and that every <span class="keyword">bug</span> has a story.</li>
+    <li><strong class="keyword">Full-Stack</strong> {{ translate('about.beyond.fullstack') }}</li>
+    <li><strong class="keyword">Cloud & DevOps</strong> {{ translate('about.beyond.cloud') }}</li>
+    <li><strong class="keyword">Modern Architecture</strong> {{ translate('about.beyond.modern') }}</li>
   </ul>
 
-  <h3>📚 Always Leveling Up</h3>
+  <h3>{{ translate('about.levelup.title') }}</h3>
   <ul>
-    <li>Currently diving deeper into <span class="keyword">advanced web programming</span> and <span class="keyword">agile project management</span>.</li>
-    <li>Experimenting with <span class="keyword">side projects</span>, exploring new <span class="keyword">tech stacks</span>, and staying ahead of the curve.</li>
+    <li [innerHTML]="translate('about.levelup.research')"></li>
+    <li [innerHTML]="translate('about.levelup.innovation')"></li>
   </ul>
 </section>

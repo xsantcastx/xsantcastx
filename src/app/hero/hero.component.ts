@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subscription, Observable } from 'rxjs';
 import { AuthServiceService } from '../auth-service.service';
 import { FirebaseService } from '../firebase.service';
+import { TranslationService } from '../translation.service';
 import { Wallet, Transaction } from '../models/crypto.models';
 import { User } from 'firebase/auth';
 
@@ -29,6 +30,14 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private userSubscription: Subscription | undefined;
   private walletSubscription: Subscription | undefined;
   private transactionSubscription: Subscription | undefined;
+
+  constructor(
+    private translationService: TranslationService
+  ) {}
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   ngOnInit() {
     this.userSubscription = this.authService.user$.subscribe(user => {
@@ -102,5 +111,12 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
     this.userSubscription?.unsubscribe();
     this.walletSubscription?.unsubscribe();
     this.transactionSubscription?.unsubscribe();
+  }
+
+  scrollToSection(sectionId: string) {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 }
