@@ -1,14 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { PortfolioService } from '../portfolio.service';
 import { Skills } from '../models/portfolio.models';
+import { TranslationService } from '../translation.service';
 
 @Component({
     selector: 'app-skills',
     template: `
     <section class="skills">
-      <h2>My Skills</h2>
-      <div *ngIf="isLoading" class="loading">Loading...</div>
-      <div *ngIf="error" class="error">{{ error }}</div>
+      <h2>{{ translate('skills.title') }}</h2>
+      <div *ngIf="isLoading" class="loading">{{ translate('skills.loading') }}</div>
+      <div *ngIf="error" class="error">{{ translate('skills.error') }}</div>
       <div class="skills-grid" *ngIf="!isLoading && !error">
         <div class="skill-card" *ngFor="let skill of skills">
           {{ skill.name }}
@@ -20,6 +21,8 @@ import { Skills } from '../models/portfolio.models';
     standalone: false
 })
 export class SkillsComponent implements OnInit {
+  private translationService = inject(TranslationService);
+  
   skills: Skills[] = [];
   isLoading = true;
   error: string | null = null;
@@ -38,5 +41,9 @@ export class SkillsComponent implements OnInit {
         console.error(err);
       }
     });
+  }
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
   }
 }

@@ -1,0 +1,95 @@
+<section class="about-section">
+  <div class="container">
+    <div class="about-content">
+      <div class="about-text">
+        <div class="section-header">
+          <h2 class="section-title">{{ translate('about.title') }}</h2>
+          <p class="section-subtitle">{{ translate('about.subtitle') }}</p>
+        </div>
+        
+        <div class="about-description">
+          <p [innerHTML]="translate('about.enterprise.intro')"></p>
+          
+          <p [innerHTML]="translate('about.enterprise.specialization')"></p>
+          
+          <p [innerHTML]="translate('about.enterprise.approach')"></p>
+        </div>
+        
+        <div class="skills-section">
+          <h3>Core Technologies</h3>
+          <div class="skills-grid">
+            <div class="skill-category">
+              <h4>Frontend</h4>
+              <div class="skill-tags">
+                <span class="skill-tag">React</span>
+                <span class="skill-tag">Angular</span>
+                <span class="skill-tag">Vue.js</span>
+                <span class="skill-tag">TypeScript</span>
+                <span class="skill-tag">SCSS</span>
+              </div>
+            </div>
+            <div class="skill-category">
+              <h4>Backend</h4>
+              <div class="skill-tags">
+                <span class="skill-tag">Node.js</span>
+                <span class="skill-tag">Express</span>
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">PHP</span>
+                <span class="skill-tag">MongoDB</span>
+              </div>
+            </div>
+            <div class="skill-category">
+              <h4>Mobile & Cloud</h4>
+              <div class="skill-tags">
+                <span class="skill-tag">React Native</span>
+                <span class="skill-tag">Flutter</span>
+                <span class="skill-tag">Firebase</span>
+                <span class="skill-tag">AWS</span>
+                <span class="skill-tag">Docker</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="about-visual">
+        <div class="developer-card">
+          <div class="card-header">
+            <div class="terminal-buttons">
+              <span class="btn red"></span>
+              <span class="btn yellow"></span>
+              <span class="btn green"></span>
+            </div>
+            <span class="terminal-title">~/developer-profile</span>
+          </div>
+          <div class="card-content">
+            <div class="code-block">
+              <div class="code-line">
+                <span class="prompt">$</span> <span class="command">whoami</span>
+              </div>
+              <div class="output">xsantcastx - Full-Stack Development Enterprise</div>", "oldString": "              <div class="output">Santiago - Full-Stack Developer</div>
+              
+              <div class="code-line">
+                <span class="prompt">$</span> <span class="command">cat experience.txt</span>
+              </div>
+              <div class="output">
+                ✓ 5+ years web development<br>
+                ✓ 20+ successful projects<br>
+                ✓ E-commerce specialist<br>
+                ✓ Performance optimization expert
+              </div>
+              
+              <div class="code-line">
+                <span class="prompt">$</span> <span class="command">git status</span>
+              </div>
+              <div class="output">
+                On branch: <span class="keyword">innovation</span><br>
+                Status: <span class="success">Ready for new challenges</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

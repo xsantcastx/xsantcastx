@@ -28,6 +28,9 @@ import { DonationFormComponent } from './donation-form/donation-form.component';
 import { DonationFeedComponent } from './donation-feed/donation-feed.component';
 import { DonateComponent } from './donate/donate.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
+import { ServicesComponent } from './services/services.component';
+import { AboutComponent } from './about/about.component';
+import { CommonModule } from '@angular/common';
 
 
 @NgModule({
@@ -48,7 +51,9 @@ import { NewsFeedComponent } from './news-feed/news-feed.component';
     DonationFormComponent,
     DonationFeedComponent,
     DonateComponent,
-    NewsFeedComponent
+    NewsFeedComponent,
+    ServicesComponent,
+    AboutComponent
   ],
   bootstrap: [AppComponent],
   imports: [
@@ -56,6 +61,7 @@ import { NewsFeedComponent } from './news-feed/news-feed.component';
     AppRoutingModule,
     FormsModule,
     NgxParticlesModule,
+    CommonModule,
     ResumeCardComponent,
     AboutmeCardComponent
 ],
