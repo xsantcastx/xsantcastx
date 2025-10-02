@@ -1,6 +1,6 @@
 /**
  * Firebase Cloud Functions for Payment Processing
- * xsantcastx Development Enterprise - Donation System
+ * xsantcastx Development Studio - Donation System
  */
 
 import { setGlobalOptions } from "firebase-functions";
@@ -50,3 +50,4 @@ export const healthCheck = () => {
   logger.info("Payment functions are healthy!");
   return { status: "ok", timestamp: new Date().toISOString() };
 };
+

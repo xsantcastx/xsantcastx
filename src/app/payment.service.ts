@@ -111,7 +111,7 @@ export class PaymentService {
               amount: {
                 value: amount.toString()
               },
-              description: `Support xsantcastx Development Enterprise - $${amount} donation`
+              description: `Support xsantcastx Development Studio - $${amount} donation`
             }]
           });
         },
