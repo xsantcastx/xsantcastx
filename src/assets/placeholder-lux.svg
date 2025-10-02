@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720">
+  <defs>
+    <linearGradient id="luxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a1a" />
+      <stop offset="100%" stop-color="#082026" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="720" fill="url(#luxGradient)" />
+  <g fill="none" stroke="#00ffcc" stroke-width="18" opacity="0.4">
+    <polyline points="140,520 360,240 520,520 760,200 980,520" />
+    <circle cx="240" cy="180" r="80" />
+    <circle cx="960" cy="560" r="110" />
+  </g>
+  <text x="600" y="360" fill="#00ffcc" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="100" letter-spacing="18" text-anchor="middle">LUX VENDING</text>
+  <text x="600" y="440" fill="#a7ffef" font-family="'Inter', 'Segoe UI', sans-serif" font-size="34" text-anchor="middle">Commerce Enablement Experience</text>
+</svg>
