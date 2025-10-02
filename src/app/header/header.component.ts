@@ -1,16 +1,13 @@
-import {
+﻿import {
   Component,
   ElementRef,
   AfterViewInit,
   Renderer2,
-  HostListener,
   inject,
-  ApplicationRef,
-  runInInjectionContext,
-  OnInit
+  OnInit,
+  OnDestroy
 } from '@angular/core';
 import { TranslationService } from '../translation.service';
-import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-header',
@@ -18,25 +15,149 @@ import { Observable } from 'rxjs';
   styleUrls: ['./header.component.css'],
   standalone: false
 })
-export class HeaderComponent implements AfterViewInit, OnInit {
-  private glitchAudio: HTMLAudioElement;
-  private appRef = inject(ApplicationRef);
-  
-  currentLang: string = 'en';
+export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
+  private navbarEl: HTMLElement | null = null;
+  private scrollHandler?: () => void;
+  private bodyOverflowBackup: string | null = null;
+
+  currentLang = 'en';
+  mobileMenuOpen = false;
+  currentSection = 'hero';
+
+  readonly inspirationWords: string[] = [
+    'innovate',
+    'iterate',
+    'ship boldly',
+    'solve elegantly',
+    'design in code',
+    'scale ideas',
+    'debug with heart',
+    'launch faster',
+    'create delight',
+    'dream in js'
+  ];
+  activeWord = this.inspirationWords[0];
+  wordSwapToggle = false;
+  private lastWordChangeProgress = 0;
+  private readonly wordChangeThreshold = 6;
 
   constructor(
     private elRef: ElementRef,
     private renderer: Renderer2,
     private translationService: TranslationService
-  ) {
-    this.glitchAudio = new Audio('assets/g1.mp3');
-    this.glitchAudio.volume = 0.3;
-  }
+  ) {}
 
   ngOnInit(): void {
     this.translationService.currentLanguage$.subscribe(lang => {
       this.currentLang = lang;
     });
+    this.setupScrollListener();
+  }
+
+  ngAfterViewInit(): void {
+    this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
+    this.handleScroll();
+  }
+
+  ngOnDestroy(): void {
+    if (typeof window !== 'undefined' && this.scrollHandler) {
+      window.removeEventListener('scroll', this.scrollHandler);
+    }
+    this.setBodyScrollLock(false);
+  }
+
+  setupScrollListener(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.scrollHandler = () => this.handleScroll();
+    window.addEventListener('scroll', this.scrollHandler, { passive: true });
+  }
+
+  handleScroll(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.updateNavbarState(window.scrollY);
+    const progress = this.updateScrollProgress();
+    this.updateInspirationWord(progress);
+
+    const sections = ['hero', 'services', 'projects', 'about', 'contact'];
+    const offset = (this.navbarEl?.offsetHeight ?? 70) + 30;
+    const scrollPosition = window.scrollY + offset;
+
+    for (let i = sections.length - 1; i >= 0; i--) {
+      const element = document.getElementById(sections[i]);
+      if (element && scrollPosition >= element.offsetTop) {
+        if (this.currentSection !== sections[i]) {
+          this.currentSection = sections[i];
+          this.updateBodyBackground(sections[i]);
+        }
+        return;
+      }
+    }
+
+    if (this.currentSection !== 'hero') {
+      this.currentSection = 'hero';
+      this.updateBodyBackground('hero');
+    }
+  }
+
+  private updateNavbarState(scrollY: number): void {
+    if (!this.navbarEl) {
+      return;
+    }
+
+    if (scrollY > 24) {
+      this.renderer.addClass(this.navbarEl, 'is-compact');
+    } else {
+      this.renderer.removeClass(this.navbarEl, 'is-compact');
+    }
+  }
+
+  private updateScrollProgress(): number {
+    if (!this.navbarEl || typeof window === 'undefined') {
+      return 0;
+    }
+
+    const doc = document.documentElement;
+    const scrollable = doc.scrollHeight - window.innerHeight;
+    const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+
+    this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
+    return progress;
+  }
+
+  updateBodyBackground(section: string): void {
+    const body = document.body;
+    body.classList.remove('bg-hero', 'bg-services', 'bg-projects', 'bg-about', 'bg-contact');
+    body.classList.add(`bg-${section}`);
+  }
+
+  private updateInspirationWord(progress: number): void {
+    if (progress < 0) {
+      return;
+    }
+
+    if (Math.abs(progress - this.lastWordChangeProgress) < this.wordChangeThreshold) {
+      return;
+    }
+
+    this.activeWord = this.pickNextWord();
+    this.wordSwapToggle = !this.wordSwapToggle;
+    this.lastWordChangeProgress = progress;
+  }
+
+  private pickNextWord(): string {
+    const options = this.inspirationWords.filter(word => word !== this.activeWord);
+    if (!options.length) {
+      return this.activeWord;
+    }
+
+    const index = Math.floor(Math.random() * options.length);
+    return options[index];
   }
 
   setLanguage(language: string): void {
@@ -47,80 +168,56 @@ export class HeaderComponent implements AfterViewInit, OnInit {
     return this.translationService.translate(key);
   }
 
-  scrollToSection(sectionId: string) {
+  scrollToSection(sectionId: string): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const headerHeight = this.navbarEl?.offsetHeight ?? 70;
+      const offsetPosition = element.getBoundingClientRect().top + window.scrollY - headerHeight + 1;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   }
 
-  ngAfterViewInit(): void {
-  const navbarTitle = this.elRef.nativeElement.querySelector('.nav-glitch');
-  this.loopAmbientFlicker();
-  if (navbarTitle) {
-    setTimeout(() => {
-      this.renderer.addClass(navbarTitle, 'header-glitch');
-      this.randomGlitch(navbarTitle);
-    }, 6000);
-  }
-}
-
-
-  randomGlitch(el: HTMLElement) {
-  setInterval(() => {
-    this.renderer.removeClass(el, 'header-glitch');
-    setTimeout(() => {
-      this.renderer.addClass(el, 'header-glitch');
-    }, 100);
-  }, this.getRandomDelay());
-}
-
-
-  getRandomDelay(): number {
-    return 4000 + Math.floor(Math.random() * 6000);
+  toggleMobileMenu() {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+    this.setBodyScrollLock(this.mobileMenuOpen);
   }
 
-  @HostListener('document:keydown', ['$event'])
-  handleKeydown(event: KeyboardEvent) {
-    if (event.key.toLowerCase() === 'x') {
-      this.triggerGlitch();
-    }
-  }
-
-  triggerGlitch() {
-    const body = document.body;
-    this.renderer.addClass(body, 'glitch-out');
-
-    const overlay = document.getElementById('glitchOverlay');
-    if (overlay) {
-      this.renderer.addClass(overlay, 'active');
-      setTimeout(() => {
-        this.renderer.removeClass(overlay, 'active');
-      }, 4800);
+  closeMobileMenu() {
+    if (!this.mobileMenuOpen) {
+      return;
     }
 
-    this.glitchAudio.currentTime = 0;
-    this.glitchAudio.play();
-
-    setTimeout(() => {
-      this.renderer.removeClass(body, 'glitch-out');
-    }, 4800);
+    this.mobileMenuOpen = false;
+    this.setBodyScrollLock(false);
   }
 
-  loopAmbientFlicker() {
-    const body = document.body;
-    const triggerFlicker = () => {
-      body.classList.add('flicker');
-      setTimeout(() => {
-        body.classList.remove('flicker');
-      }, 1000);
-    };
+  private setBodyScrollLock(lock: boolean): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
 
-    const loop = () => {
-      triggerFlicker();
-      const nextDelay = 12000 + Math.floor(Math.random() * 13000);
-      setTimeout(loop, nextDelay);
-    };
-    loop();
+    const bodyStyle = document.body.style;
+
+    if (lock) {
+      if (this.bodyOverflowBackup === null) {
+        this.bodyOverflowBackup = bodyStyle.overflow || '';
+      }
+      bodyStyle.overflow = 'hidden';
+    } else {
+      if (this.bodyOverflowBackup !== null) {
+        bodyStyle.overflow = this.bodyOverflowBackup;
+        this.bodyOverflowBackup = null;
+      } else {
+        bodyStyle.removeProperty('overflow');
+      }
+    }
   }
 }

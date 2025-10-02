@@ -1,120 +1,123 @@
-.about-section {
-  padding: 6rem 2rem;
-  background: linear-gradient(135deg, #0a0a1a, #101033);
-  color: #fff;
-  font-family: 'Orbitron', sans-serif;
+:host {
+  display: block;
+  width: 100%;
 }
 
-.container {
-  max-width: 1200px;
+.about-section {
+  width: min(100%, var(--page-max-width));
   margin: 0 auto;
+  display: grid;
+  gap: clamp(2.5rem, 6vw, 4rem);
 }
 
 .about-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 4rem);
+  align-items: start;
 }
 
 .section-header {
-  margin-bottom: 2rem;
+  text-align: left;
 }
 
 .section-title {
-  font-size: 3rem;
-  color: #00ffcc;
-  margin-bottom: 1rem;
-  text-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
 }
 
 .section-subtitle {
-  font-size: 1.3rem;
-  color: #ff00ff;
-  margin-bottom: 2rem;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+  margin-bottom: 1.2rem;
 }
 
 .about-description {
-  margin-bottom: 3rem;
+  display: grid;
+  gap: 1.4rem;
+  color: rgba(232, 239, 255, 0.78);
+  line-height: 1.7;
 }
 
-.about-description p {
-  color: #e0f7fa;
-  line-height: 1.7;
-  margin-bottom: 1.5rem;
-  font-size: 1.1rem;
+.skills-section {
+  display: grid;
+  gap: 1.8rem;
 }
 
 .skills-section h3 {
-  color: #00ffcc;
-  font-size: 1.8rem;
-  margin-bottom: 2rem;
-  text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+  font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .skills-grid {
   display: grid;
-  gap: 2rem;
+  gap: 1.6rem;
+}
+
+.skill-category {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  box-shadow: var(--shadow-soft);
 }
 
 .skill-category h4 {
-  color: #ff00ff;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.8rem;
 }
 
 .skill-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
+  gap: 0.6rem;
 }
 
 .skill-tag {
-  background: rgba(0, 255, 204, 0.1);
-  color: #00ffcc;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  border: 1px solid rgba(0, 255, 204, 0.3);
-  transition: all 0.3s ease;
+  background: rgba(0, 255, 204, 0.12);
+  color: var(--primary-color);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(0, 255, 204, 0.22);
 }
 
-.skill-tag:hover {
-  background: rgba(255, 0, 255, 0.1);
-  color: #ff00ff;
-  border-color: rgba(255, 0, 255, 0.3);
-  transform: translateY(-2px);
-}
-
-/* Developer Card Styles */
 .about-visual {
   display: flex;
   justify-content: center;
-  align-items: center;
 }
 
 .developer-card {
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid #00ffcc;
-  border-radius: 12px;
+  width: min(100%, 420px);
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
-  box-shadow: 0 0 30px rgba(0, 255, 204, 0.3);
-  width: 100%;
-  max-width: 450px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .card-header {
-  background: rgba(0, 0, 0, 0.9);
-  padding: 1rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid #00ffcc;
+  gap: 0.85rem;
+  padding: 1rem 1.4rem;
+  background: rgba(7, 12, 26, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .terminal-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .btn {
@@ -128,108 +131,61 @@
 .btn.green { background: #27ca3f; }
 
 .terminal-title {
-  color: #e0f7fa;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  color: rgba(232, 240, 255, 0.78);
 }
 
 .card-content {
-  padding: 2rem;
-}
-
-.code-block {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  padding: clamp(1.5rem, 4vw, 2rem);
+  display: grid;
+  gap: 1.1rem;
+  font-family: 'Courier New', Courier, monospace;
+  color: rgba(232, 239, 255, 0.78);
 }
 
 .code-line {
-  margin: 1rem 0;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  align-items: baseline;
 }
 
-.prompt {
-  color: #00ffcc;
-  font-weight: bold;
-}
-
-.command {
-  color: #ff00ff;
-}
-
+.prompt { color: var(--primary-color); }
+.command { color: var(--highlight-color); }
 .output {
-  color: #e0f7fa;
-  margin: 0.5rem 0 1.5rem 2rem;
-  line-height: 1.5;
+  margin-left: 1.8rem;
+  color: rgba(226, 234, 255, 0.75);
 }
 
 .success {
   color: #27ca3f;
-  font-weight: bold;
+  font-weight: 600;
 }
 
-/* Responsive Design */
 @media (max-width: 1024px) {
   .about-content {
     grid-template-columns: 1fr;
-    gap: 3rem;
+  }
+
+  .section-header {
     text-align: center;
   }
-  
-  .skills-grid {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
+
+  .section-subtitle {
+    justify-self: center;
   }
-  
-  .skill-category {
+
+  .about-description {
+    text-align: center;
+  }
+
+  .skills-section h3 {
     text-align: center;
   }
 }
 
 @media (max-width: 768px) {
-  .about-section {
-    padding: 4rem 1rem;
-  }
-  
-  .section-title {
-    font-size: 2.2rem;
-  }
-  
-  .section-subtitle {
-    font-size: 1.1rem;
-  }
-  
-  .about-description p {
-    font-size: 1rem;
-  }
-  
-  .developer-card {
-    max-width: 100%;
-  }
-  
-  .card-content {
-    padding: 1.5rem;
-  }
-  
-  .skills-section h3 {
-    font-size: 1.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .section-title {
-    font-size: 1.8rem;
-  }
-  
-  .code-block {
-    font-size: 0.8rem;
-  }
-  
-  .output {
-    margin-left: 1rem;
+  .skills-grid {
+    gap: 1.1rem;
   }
 }

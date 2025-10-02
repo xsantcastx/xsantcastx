@@ -33,7 +33,9 @@ const getStripeInstance = (): Stripe => {
  */
 export const createPaymentIntent = onCall(
   { 
-    maxInstances: 10
+    maxInstances: 10,
+    enforceAppCheck: true,
+    consumeAppCheckToken: true
   },
   async (request) => {
     try {
@@ -91,7 +93,9 @@ export const createPaymentIntent = onCall(
  */
 export const confirmStripePayment = onCall(
   { 
-    maxInstances: 10
+    maxInstances: 10,
+    enforceAppCheck: true,
+    consumeAppCheckToken: true
   },
   async (request) => {
     try {
@@ -196,7 +200,7 @@ export const confirmStripePayment = onCall(
  */
 export const handleStripeWebhook = onCall(
   { 
-    maxInstances: 5
+    maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true
   },
   async (request) => {
     try {
@@ -270,7 +274,7 @@ export const handleStripeWebhook = onCall(
  * Get Stripe donation statistics (optional function for admin dashboard)
  */
 export const getStripeDonationStats = onCall(
-  { maxInstances: 5 },
+  { maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     try {
       // Only allow authenticated admin users (you can add admin check here)

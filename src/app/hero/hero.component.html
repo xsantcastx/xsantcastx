@@ -1,38 +1,95 @@
-<section class="hero-portfolio">
+<section id="hero" class="hero-portfolio">
+  <div class="hero-background">
+    <div class="animated-grid"></div>
+    <div class="floating-particles"></div>
+  </div>
+  
   <div class="hero-content">
     <div class="intro-text">
-      <h1 class="type-glitch">{{ translate('hero.title') }}</h1>
-      <h2 class="subtitle">{{ translate('hero.subtitle') }}</h2>
-      <p class="hero-description">
+      <div class="brand-intro">
+        <span class="brand-prefix">></span>
+        <span class="brand-underscore">_</span>
+      </div>
+      <h1 class="hero-title">
+        <span class="title-line title-line-1">{{ translate('hero.title.line1') || 'xsantcastx' }}</span>
+        <span class="title-line title-line-2">{{ translate('hero.title.line2') || 'Development Enterprise' }}</span>
+      </h1>
+      <div class="title-divider"></div>
+      <h2 class="subtitle glitch-text" [attr.data-text]="translate('hero.subtitle')">
+        {{ translate('hero.subtitle') }}
+      </h2>
+      <p class="hero-description typewriter">
         {{ translate('hero.description') }}
       </p>
+      
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">100+</span>
+          <span class="stat-label">{{ translate('hero.stats.projects') || 'Projects' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">5+</span>
+          <span class="stat-label">{{ translate('hero.stats.years') || 'Years' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">{{ translate('hero.stats.support') || 'Support' }}</span>
+        </div>
+      </div>
+      
       <div class="hero-cta">
-        <button class="cta-primary" (click)="scrollToSection('projects')">
-          {{ translate('hero.cta.work') }}
-        </button>
-        <button class="cta-secondary" (click)="scrollToSection('contact')">
-          {{ translate('hero.cta.talk') }}
-        </button>
+        <button class="cta-button" (click)="scrollToSection('projects')">{{ translate('hero.cta.work') }}</button>
+        <button class="cta-button is-ghost" (click)="scrollToSection('contact')">{{ translate('hero.cta.talk') }}</button>
       </div>
     </div>
+    
     <div class="hero-visual">
-      <div class="code-snippet">
-        <div class="code-line">
-          <span class="code-keyword">const</span> <span class="code-var">developer</span> = {{ '{' }}
+      <div class="terminal-window">
+        <div class="terminal-header">
+          <div class="terminal-buttons">
+            <span class="btn-close"></span>
+            <span class="btn-minimize"></span>
+            <span class="btn-maximize"></span>
+          </div>
+          <div class="terminal-title">xsantcastx&#64;enterprise:~$</div>
         </div>
-        <div class="code-line indent">
-          <span class="code-property">name:</span> <span class="code-string">'xsantcastx'</span>,
-        </div>
-        <div class="code-line indent">
-          <span class="code-property">skills:</span> [<span class="code-string">'React'</span>, <span class="code-string">'Angular'</span>, <span class="code-string">'Node.js'</span>],
-        </div>
-        <div class="code-line indent">
-          <span class="code-property">passion:</span> <span class="code-string">'Building amazing apps'</span>
-        </div>
-        <div class="code-line">
-          {{ '}' }};
+        <div class="terminal-content">
+          <div class="code-snippet">
+            <div class="code-line">
+              <span class="prompt">$</span> <span class="code-keyword">const</span> <span class="code-var">enterprise</span> = <span class="code-bracket">{{'{'}}</span>
+            </div>
+            <div class="code-line indent">
+              <span class="code-property">name:</span> <span class="code-string">'xsantcastx'</span>,
+            </div>
+            <div class="code-line indent">
+              <span class="code-property">type:</span> <span class="code-string">'Full-Stack Development'</span>,
+            </div>
+            <div class="code-line indent">
+              <span class="code-property">stack:</span> <span class="code-bracket">[</span><span class="code-string">'React'</span>, <span class="code-string">'Angular'</span>, <span class="code-string">'Node.js'</span><span class="code-bracket">]</span>,
+            </div>
+            <div class="code-line indent">
+              <span class="code-property">mission:</span> <span class="code-string">'Digital Innovation'</span>
+            </div>
+            <div class="code-line">
+              <span class="code-bracket">{{'}'}};</span>
+            </div>
+            <div class="code-line">
+              <span class="prompt">$</span> <span class="code-command">enterprise.deploy()</span>
+            </div>
+            <div class="code-line output">
+              <span class="code-success">✓ Ready to transform your ideas</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
+  
+  <div class="scroll-indicator">
+    <div class="scroll-arrow"></div>
+    <span class="scroll-text">{{ translate('hero.scroll') || 'Scroll Down' }}</span>
+  </div>
 </section>
+
+
+

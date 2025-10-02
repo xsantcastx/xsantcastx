@@ -11,6 +11,21 @@ export const environment = {
     measurementId: "G-YRC4F65V60"
   },
   
+  appCheck: {
+    // reCAPTCHA v3 site key registered in Firebase App Check (safe to expose)
+    siteKey: '6Ldv99srAAAAAAe00fO2OwqSZLNmwJIl0y4Jt4tV',
+    // Optional: supply a debug token string or 'auto' while developing locally
+    debugToken: 'undefined',
+    // Any HTTPS endpoints that must receive the X-Firebase-AppCheck header
+    protectedOrigins: [
+      'https://contact-sendemail-77wvanqjhq-uk.a.run.app'
+    ]
+  },
+
+  api: {
+    contactFormUrl: 'https://contact-sendemail-77wvanqjhq-uk.a.run.app'
+  },
+
   // Payment Configuration
   payments: {
     // Crypto addresses (safe to be public)

@@ -1,12 +1,44 @@
-<div class="donation-form-container">
-  <h3>Support with KASPA</h3>
-  <div class="wallet-info">
-    <p>kaspa:qpg5xnu998y4ycaug0m85gs3wuy7hmpj66a0ygqkcn8797e4paqlxre4jz7xa</p>
-    <img [src]="qrCodeUrl" alt="KASPA QR Code">
+<section class="support-card glass-card">
+  <header class="support-header">
+    <h3 class="support-title">{{ translate('donation.form.title') }}</h3>
+    <p class="support-subtitle">{{ translate('donation.form.subtitle') }}</p>
+  </header>
+
+  <div class="wallet-block">
+    <label class="wallet-label" for="kaspaWallet">{{ translate('donation.form.walletLabel') }}</label>
+    <div class="wallet-row">
+      <code id="kaspaWallet" class="wallet-address" aria-live="polite">{{ kaspaWallet }}</code>
+      <button type="button" class="copy-btn" (click)="copyWallet()">
+        <i class="fas fa-copy" aria-hidden="true"></i>
+        <span>{{ translate('donation.form.copy') }}</span>
+      </button>
+    </div>
+    <p class="copy-feedback" *ngIf="copyFeedback" [class.is-error]="copyIsError">{{ copyFeedback }}</p>
   </div>
-  <form (ngSubmit)="submitDonation()">
-    <textarea [(ngModel)]="message" name="message" placeholder="Leave a nice message..."></textarea>
-    <button type="submit">Submit Message</button>
+
+  <div class="wallet-visual">
+    <img [src]="qrCodeUrl" [alt]="translate('donation.form.qrAlt')" loading="lazy">
+  </div>
+
+  <form class="message-form" (ngSubmit)="submitDonation()">
+    <label class="sr-only" for="supportMessage">{{ translate('donation.form.messageLabel') }}</label>
+    <textarea
+      id="supportMessage"
+      [(ngModel)]="message"
+      name="supportMessage"
+      [placeholder]="translate('donation.form.messagePlaceholder')"
+      rows="4"
+    ></textarea>
+    <button type="submit" class="cta-button">
+      {{ translate('donation.form.submit') }}
+    </button>
   </form>
-  <p *ngIf="confirmationMessage" class="confirmation">{{ confirmationMessage }}</p>
-</div>
+
+  <p
+    *ngIf="confirmationMessage"
+    class="confirmation"
+    [class.is-error]="confirmationIsError"
+  >
+    {{ confirmationMessage }}
+  </p>
+</section>
