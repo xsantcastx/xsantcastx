@@ -18,6 +18,8 @@ import { TranslationService } from '../translation.service';
 export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
+  private resizeHandler?: () => void;
+  private lastHeaderOffset = 96;
   private bodyOverflowBackup: string | null = null;
 
   currentLang = 'en';
@@ -56,13 +58,28 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => this.updateHeaderOffset());
+    } else {
+      this.updateHeaderOffset();
+    }
+
+    this.setupResizeListener();
     this.handleScroll();
   }
 
   ngOnDestroy(): void {
     if (typeof window !== 'undefined' && this.scrollHandler) {
       window.removeEventListener('scroll', this.scrollHandler);
+      this.scrollHandler = undefined;
     }
+
+    if (typeof window !== 'undefined' && this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = undefined;
+    }
+
     this.setBodyScrollLock(false);
   }
 
@@ -73,6 +90,15 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     this.scrollHandler = () => this.handleScroll();
     window.addEventListener('scroll', this.scrollHandler, { passive: true });
+  }
+
+  private setupResizeListener(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.resizeHandler = () => this.updateHeaderOffset();
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   handleScroll(): void {
@@ -110,10 +136,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
+    const wasCompact = this.navbarEl.classList.contains('is-compact');
+
     if (scrollY > 24) {
       this.renderer.addClass(this.navbarEl, 'is-compact');
     } else {
       this.renderer.removeClass(this.navbarEl, 'is-compact');
+    }
+
+    const isCompact = this.navbarEl.classList.contains('is-compact');
+    if (wasCompact !== isCompact) {
+      this.updateHeaderOffset();
     }
   }
 
@@ -128,6 +161,23 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
     return progress;
+  }
+
+  private updateHeaderOffset(): void {
+    if (!this.navbarEl || typeof document === 'undefined') {
+      return;
+    }
+
+    const measuredHeight = this.navbarEl.offsetHeight;
+    const buffer = measuredHeight <= 72 ? 12 : 20;
+    const nextOffset = Math.round(measuredHeight + buffer);
+
+    if (this.lastHeaderOffset === nextOffset) {
+      return;
+    }
+
+    this.lastHeaderOffset = nextOffset;
+    document.documentElement.style.setProperty('--header-offset', `${nextOffset}px`);
   }
 
   updateBodyBackground(section: string): void {
