@@ -66,7 +66,7 @@ export const sendContactEmail = onRequest({
     }
 
     try {
-      await appCheck.verifyToken(appCheckToken, { consume: true });
+            await appCheck.verifyToken(appCheckToken);
     } catch (verificationError) {
       logger.warn('Invalid App Check token on contact form submission', verificationError);
       res.status(401).json({ error: 'Invalid App Check token' });
@@ -142,4 +142,5 @@ export const sendContactEmail = onRequest({
     });
   }
 });
+
 
