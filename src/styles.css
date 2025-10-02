@@ -95,6 +95,8 @@ p {
   padding: var(--section-gap) var(--page-gutter);
   display: flex;
   justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .section::after {
@@ -390,6 +392,61 @@ body.flicker {
   }
 }
 
+@media (max-width: 640px) {
+  :root {
+    --page-gutter: clamp(1rem, 7vw, 1.4rem);
+    --section-gap: clamp(2.2rem, 9vw, 3rem);
+    --page-max-width: 100%;
+  }
+
+  body {
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .section {
+    padding: var(--section-gap) var(--page-gutter);
+  }
+
+  .section::after {
+    inset: auto 16% 6%;
+    opacity: 0.35;
+  }
+
+  .section-header {
+    gap: 0.6rem;
+    margin-bottom: clamp(1.6rem, 6vw, 2.4rem);
+  }
+
+  .section-title {
+    font-size: clamp(1.9rem, 9vw, 2.4rem);
+    letter-spacing: 0.08em;
+  }
+
+  .section-subtitle {
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+  }
+
+  .glass-card {
+    border-radius: var(--radius-md);
+  }
+}
+
+@media (max-width: 420px) {
+  body {
+    font-size: 0.88rem;
+  }
+
+  .section-title {
+    letter-spacing: 0.06em;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -460,3 +517,4 @@ app-header .logo:focus-visible .nav-buzzword {
     filter: none;
   }
 }
+
