@@ -1,6 +1,8 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import * as nodemailer from 'nodemailer';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAppCheck } from 'firebase-admin/app-check';
 
 interface ContactFormData {
   name: string;
@@ -21,6 +23,14 @@ const createTransporter = () => {
   });
 };
 
+// Ensure Firebase Admin is initialized for App Check verification
+if (getApps().length === 0) {
+  initializeApp();
+}
+
+const appCheck = getAppCheck();
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+
 export const sendContactEmail = onRequest({
   cors: true,
   region: 'us-east4'
@@ -29,6 +39,22 @@ export const sendContactEmail = onRequest({
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
+  }
+
+  if (!isEmulator) {
+    const appCheckToken = req.header('X-Firebase-AppCheck');
+    if (!appCheckToken) {
+      res.status(401).json({ error: 'Missing App Check token' });
+      return;
+    }
+
+    try {
+      await appCheck.verifyToken(appCheckToken, { consume: true });
+    } catch (verificationError) {
+      logger.warn('Invalid App Check token on contact form submission', verificationError);
+      res.status(401).json({ error: 'Invalid App Check token' });
+      return;
+    }
   }
 
   try {

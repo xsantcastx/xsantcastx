@@ -9,7 +9,7 @@ import * as logger from "firebase-functions/logger";
  * Simple health check function
  */
 export const healthCheck = onCall(
-  { maxInstances: 10 },
+  { maxInstances: 10, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     logger.info("Health check called");
     return { status: "ok", timestamp: new Date().toISOString() };
@@ -20,7 +20,7 @@ export const healthCheck = onCall(
  * Simple PayPal test function
  */
 export const paypalTest = onCall(
-  { maxInstances: 10 },
+  { maxInstances: 10, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     logger.info("PayPal test function called");
     return { 
@@ -35,7 +35,7 @@ export const paypalTest = onCall(
  * Simple Stripe test function
  */
 export const stripeTest = onCall(
-  { maxInstances: 10 },
+  { maxInstances: 10, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     logger.info("Stripe test function called");
     return { 

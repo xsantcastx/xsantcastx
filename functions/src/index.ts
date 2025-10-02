@@ -24,7 +24,7 @@ import {
 } from "./contact";
 
 // Set global options for cost control
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
 
 // Export PayPal functions
 export const paypal = {

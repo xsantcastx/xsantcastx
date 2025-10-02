@@ -1,73 +1,76 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { TranslationService } from '../translation.service';
 
-interface Project {
-  title: string;
-  description: string;
+interface ProjectConfig {
+  titleKey: string;
+  descriptionKey: string;
   image: string;
+  previewImage?: string;
   liveUrl: string;
   githubUrl?: string;
-  features: string[];
+  featureKeys: string[];
   technologies: string[];
 }
 
 @Component({
-    selector: 'app-projects',
-    templateUrl: './projects.component.html',
-    styleUrls: ['./projects.component.css'],
-    standalone: false
+  selector: 'app-projects',
+  templateUrl: './projects.component.html',
+  styleUrls: ['./projects.component.css'],
+  standalone: false
 })
 export class ProjectsComponent implements OnInit {
   private translationService = inject(TranslationService);
-  
-  projects: Project[] = [
+
+  projects: ProjectConfig[] = [
     {
-      title: 'The Stone Ceramics',
-      description: 'Premium ceramic tiles e-commerce platform with advanced product filtering, 3D visualization, and multilingual support.',
-      image: 'https://via.placeholder.com/400x250/0a0a1a/00ffcc?text=The+Stone',
+      titleKey: 'projects.items.stone.title',
+      descriptionKey: 'projects.items.stone.description',
+      image: 'https://via.placeholder.com/1200x720/0a0a1a/00ffcc?text=The+Stone+Ceramics',
+      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/00ffcc?text=The+Stone',
       liveUrl: 'https://tstone456--tstone-e1de6.us-east4.hosted.app/',
-      features: [
-        'Product catalog with advanced filtering',
-        'Multilingual support (Spanish/English)',
-        'Technical specifications viewer',
-        'Contact and consultation system',
-        'Responsive design for all devices'
+      featureKeys: [
+        'projects.items.stone.features.catalog',
+        'projects.items.stone.features.multilingual',
+        'projects.items.stone.features.specs',
+        'projects.items.stone.features.consultation',
+        'projects.items.stone.features.responsive'
       ],
       technologies: ['Angular', 'TypeScript', 'Firebase', 'SCSS', 'PWA']
     },
     {
-      title: 'Xengrave Laser Studio',
-      description: 'Custom laser engraving service platform with real-time ordering, proof generation, and project management.',
-      image: 'https://via.placeholder.com/400x250/0a0a1a/ff00ff?text=Xengrave',
+      titleKey: 'projects.items.xengrave.title',
+      descriptionKey: 'projects.items.xengrave.description',
+      image: 'https://via.placeholder.com/1200x720/0a0a1a/ff00ff?text=Xengrave+Studio',
+      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/ff00ff?text=Xengrave',
       liveUrl: 'https://xengrave-88c76.web.app/',
-      features: [
-        'Custom order configuration',
-        '24h proof generation system',
-        'Gallery of past work',
-        'Pricing calculator',
-        'Order tracking system'
+      featureKeys: [
+        'projects.items.xengrave.features.configuration',
+        'projects.items.xengrave.features.proof',
+        'projects.items.xengrave.features.gallery',
+        'projects.items.xengrave.features.pricing',
+        'projects.items.xengrave.features.tracking'
       ],
       technologies: ['React', 'Firebase', 'Stripe API', 'Material-UI', 'Node.js']
     },
     {
-      title: 'The Lux Vending',
-      description: 'Business partnership platform for vending machine placement with earnings calculator and location management.',
-      image: 'https://via.placeholder.com/400x250/0a0a1a/00ffcc?text=Lux+Vending',
+      titleKey: 'projects.items.lux.title',
+      descriptionKey: 'projects.items.lux.description',
+      image: 'https://via.placeholder.com/1200x720/0a0a1a/00ffcc?text=Lux+Vending',
+      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/00ffcc?text=Lux+Vending',
       liveUrl: 'http://theluxvending.com',
-      features: [
-        'Interactive earnings calculator',
-        'Business eligibility checker',
-        'Service area mapping',
-        'Partnership application system',
-        'ROI analytics dashboard'
+      featureKeys: [
+        'projects.items.lux.features.calculator',
+        'projects.items.lux.features.eligibility',
+        'projects.items.lux.features.mapping',
+        'projects.items.lux.features.application',
+        'projects.items.lux.features.analytics'
       ],
       technologies: ['HTML5', 'CSS3', 'JavaScript', 'PHP', 'MySQL']
     }
   ];
 
   ngOnInit(): void {
-    // Projects are already defined above
+    // Data defined statically for now
   }
 
   scrollToSection(sectionId: string) {
