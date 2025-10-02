@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 interface Translations {
@@ -24,7 +24,7 @@ export class TranslationService {
 
     // Hero Section
     'hero.title.line1': { en: 'xsantcastx', es: 'xsantcastx' },
-    'hero.title.line2': { en: 'Development Enterprise', es: 'Empresa de Desarrollo' },
+    'hero.title.line2': { en: 'Development Studio', es: 'Estudio de Desarrollo' },
     'hero.subtitle': { en: 'Innovative Full-Stack Solutions', es: 'Soluciones Full-Stack Innovadoras' },
     'hero.description': {
       en: 'We create cutting-edge web experiences that move ideas from concept to launch with measurable impact.',
@@ -87,37 +87,37 @@ export class TranslationService {
 
     // About Section
     'about.title': { en: 'About xsantcastx', es: 'Acerca de xsantcastx' },
-    'about.subtitle': { en: 'Full-Stack Development Enterprise & Digital Solutions Architect', es: 'Empresa de Desarrollo Full-Stack y Arquitecto de Soluciones Digitales' },
+    'about.subtitle': { en: 'Full-Stack Development Studio & Digital Solutions Architect', es: 'Estudio de Desarrollo Full-Stack y Arquitecto de Soluciones Digitales' },
     'about.intro': {
-      en: 'We are xsantcastx, a full-stack development enterprise delivering high-impact digital products.',
-      es: 'Somos xsantcastx, una empresa de desarrollo full-stack que entrega productos digitales de alto impacto.'
+      en: 'xsantcastx is a full-stack product studio that ships launch-ready experiences for teams that demand momentum.',
+      es: 'xsantcastx es un estudio full-stack que entrega experiencias listas para lanzar para equipos que buscan impulso.'
     },
     'about.description': {
-      en: 'We combine strategy, design, and engineering to turn complex challenges into elegant solutions.',
-      es: 'Combinamos estrategia, diseno e ingenieria para convertir desafios complejos en soluciones elegantes.'
+      en: 'We blend strategy, design, and engineering to transform raw ideas into measurable results that align business goals with memorable human moments.',
+      es: 'Combinamos estrategia, diseno e ingenieria para transformar ideas en resultados medibles que alinean objetivos de negocio con experiencias memorables.'
     },
     'about.drives.title': { en: 'What Drives Us', es: 'Lo Que Nos Motiva' },
-    'about.drives.innovation': { en: 'Innovation is at our core - we transform complex challenges into scalable solutions.', es: 'La innovacion esta en nuestro nucleo: transformamos desafios complejos en soluciones escalables.' },
-    'about.drives.quality': { en: 'We deliver high-quality, maintainable code that exceeds expectations.', es: 'Entregamos codigo de alta calidad y mantenible que supera expectativas.' },
-    'about.drives.global': { en: 'Bilingual collaboration with global reach.', es: 'Colaboracion bilingue con alcance global.' },
+    'about.drives.innovation': { en: 'Innovation lives in every sprint - we turn ambiguous problem statements into polished experiences that feel inevitable.', es: 'La innovacion vive en cada sprint - convertimos problemas ambiguos en experiencias pulidas que parecen inevitables.' },
+    'about.drives.quality': { en: 'Quality means readable, tested code, design systems, and deployment pipelines that teams can trust.', es: 'Calidad significa codigo legible y probado, sistemas de diseno y pipelines de despliegue confiables.' },
+    'about.drives.global': { en: 'We collaborate in English and Spanish across time zones, keeping every stakeholder aligned and velocity high.', es: 'Colaboramos en ingles y espanol a traves de zonas horarias, manteniendo a cada stakeholder alineado y con alta velocidad.' },
     'about.beyond.title': { en: 'Our Technology Edge', es: 'Nuestra Ventaja Tecnologica' },
-    'about.beyond.fullstack': { en: 'Full-stack mastery across modern JS and cloud ecosystems.', es: 'Dominio full-stack en ecosistemas modernos de JS y nube.' },
-    'about.beyond.cloud': { en: 'Cloud & DevOps expertise for production-ready systems.', es: 'Experiencia en nube y DevOps para sistemas listos para produccion.' },
-    'about.beyond.modern': { en: 'Modern architectures, microservices, and progressive web apps.', es: 'Arquitecturas modernas, microservicios y aplicaciones web progresivas.' },
+    'about.beyond.fullstack': { en: 'Full-stack mastery across React, Angular, Next.js, Node, and Python to assemble the right stack for the mission.', es: 'Dominio full-stack en React, Angular, Next.js, Node y Python para armar la tecnologia correcta para cada mision.' },
+    'about.beyond.cloud': { en: 'Cloud and DevOps excellence with Firebase, AWS, Docker, and CI/CD pipelines tuned for resilient releases.', es: 'Excelencia en nube y DevOps con Firebase, AWS, Docker y pipelines CI/CD ajustados para lanzamientos resilientes.' },
+    'about.beyond.modern': { en: 'Composable architectures, microservices, and progressive web apps that scale as your audience grows.', es: 'Arquitecturas componibles, microservicios y aplicaciones web progresivas que escalan con tu audiencia.' },
     'about.levelup.title': { en: 'Continuous Evolution', es: 'Evolucion Continua' },
-    'about.levelup.research': { en: 'We track emerging tools, AI integration, and next-gen frameworks.', es: 'Seguimos herramientas emergentes, integracion de IA y frameworks de nueva generacion.' },
-    'about.levelup.innovation': { en: 'R&D work in blockchain, Web3, and advanced data processing.', es: 'I+D en blockchain, Web3 y procesamiento de datos avanzado.' },
+    'about.levelup.research': { en: 'We stay ahead of the curve with emerging tools, AI integration, and next-gen frameworks before they trend.', es: 'Nos mantenemos por delante con herramientas emergentes, integracion de IA y frameworks de nueva generacion antes de que sean tendencia.' },
+    'about.levelup.innovation': { en: 'We experiment with blockchain, Web3, advanced analytics, and automation to unlock new value streams.', es: 'Experimentamos con blockchain, Web3, analitica avanzada y automatizacion para desbloquear nuevos flujos de valor.' },
     'about.enterprise.intro': {
-      en: 'We build modern platforms for web, mobile, and cloud across industries.',
-      es: 'Construimos plataformas modernas para web, movil y nube en multiples industrias.'
+      en: '<strong>Your elastic product squad.</strong> We plug into founders, agencies, and enterprise teams to ship ambitious web, mobile, and cloud platforms without the overhead.',
+      es: '<strong>Tu escuadron de producto elastico.</strong> Nos conectamos con fundadores, agencias y equipos empresariales para lanzar plataformas web, moviles y cloud sin sobrecarga.'
     },
     'about.enterprise.specialization': {
-      en: 'From concept to launch, we deliver scalable, maintainable applications.',
-      es: 'Del concepto al lanzamiento, entregamos aplicaciones escalables y mantenibles.'
+      en: '<strong>Specialties:</strong> commerce ecosystems, B2B dashboards, creator tools, community platforms, and AI-assisted workflows built on modern JavaScript, Node, and serverless infrastructure.',
+      es: '<strong>Especialidades:</strong> ecosistemas de comercio, tableros B2B, herramientas para creadores, plataformas de comunidad y flujos asistidos por IA sobre JavaScript moderno, Node y arquitectura serverless.'
     },
     'about.enterprise.approach': {
-      en: 'We listen, iterate, and stay involved through launch and beyond.',
-      es: 'Escuchamos, iteramos y acompanamos durante y despues del lanzamiento.'
+      en: '<strong>Approach:</strong> discovery sprints, rapid prototyping, test-driven delivery, and ongoing optimization to keep shipping fast after launch.',
+      es: '<strong>Metodo:</strong> discovery sprints, prototipado rapido, entrega guiada por pruebas y optimizacion continua para mantener el ritmo despues del lanzamiento.'
     },
 
     // Skills Section
@@ -129,7 +129,7 @@ export class TranslationService {
     'contact.title': { en: "Let's Build Together", es: 'Construyamos Juntos' },
     'contact.subtitle': { en: "Ready to transform your ideas into reality? Let's discuss your project.", es: 'Listo para transformar tus ideas en realidad? Hablemos de tu proyecto.' },
     'contact.info.header': { en: 'Work With xsantcastx', es: 'Trabaja con xsantcastx' },
-    'contact.info.desc': { en: 'Tell us about your goals and we will help you craft the right solution.', es: 'Cuéntanos tus objetivos y te ayudaremos a crear la solucion correcta.' },
+    'contact.info.desc': { en: 'Tell us about your goals and we will help you craft the right solution.', es: 'Cuentanos tus objetivos y te ayudaremos a crear la solucion correcta.' },
     'contact.method.email': { en: 'Direct Email', es: 'Email Directo' },
     'contact.method.github': { en: 'GitHub', es: 'GitHub' },
     'contact.method.response': { en: 'Typical Response Time', es: 'Tiempo de Respuesta' },
@@ -158,7 +158,7 @@ export class TranslationService {
     'contact.form.budget.10k25k': { en: '$10,000 - $25,000', es: '$10,000 - $25,000' },
     'contact.form.budget.25kplus': { en: '$25,000+', es: '$25,000+' },
     'contact.form.message': { en: 'Project Details', es: 'Detalles del Proyecto' },
-    'contact.form.message.placeholder': { en: 'Tell us about your project, goals, and any specific requirements...', es: 'Cuéntanos sobre tu proyecto, objetivos y requerimientos.' },
+    'contact.form.message.placeholder': { en: 'Tell us about your project, goals, and any specific requirements...', es: 'Cuentanos sobre tu proyecto, objetivos y requerimientos.' },
     'contact.form.submit': { en: 'Send Project Brief', es: 'Enviar Propuesta' },
     'contact.form.sending': { en: 'Sending...', es: 'Enviando...' },
     'contact.form.success': { en: 'Thank you! Your project brief has been sent. We will reply within 24 hours.', es: 'Gracias! Tu propuesta fue enviada. Responderemos en menos de 24 horas.' },
@@ -224,3 +224,5 @@ export class TranslationService {
     return translation?.en || key;
   }
 }
+
+

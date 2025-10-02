@@ -60,7 +60,7 @@ export const createPaymentIntent = onCall(
           donation_type: 'website_donation',
           created_at: new Date().toISOString()
         },
-        description: `Donation to xsantcastx Development Enterprise - $${amount}`
+        description: `Donation to xsantcastx Development Studio - $${amount}`
       });
 
       logger.info('Stripe payment intent created:', { 
