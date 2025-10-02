@@ -19,7 +19,7 @@
   --radius-lg: 24px;
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --header-offset: clamp(6rem, 8vh, 7.5rem);
+  --header-offset: 96px;
 }
 
 /* ===== Resets ===== */
@@ -30,6 +30,7 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -376,7 +377,7 @@ body.flicker {
 
 @media (max-width: 768px) {
   :root {
-    --header-offset: clamp(5.5rem, 10vh, 6.5rem);
+    --header-offset: 80px;
   }
 
   body {
@@ -517,4 +518,3 @@ app-header .logo:focus-visible .nav-buzzword {
     filter: none;
   }
 }
-
