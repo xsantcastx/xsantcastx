@@ -189,3 +189,18 @@
     gap: 1.1rem;
   }
 }
+
+
+@media (max-width: 640px) {
+  .about-section {
+    gap: 2rem;
+  }
+
+  .about-content {
+    gap: 2rem;
+  }
+
+  .about-description {
+    text-align: left;
+  }
+}
