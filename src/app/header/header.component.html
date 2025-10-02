@@ -1,7 +1,12 @@
-﻿<nav class="navbar">
+<nav class="navbar">
   <div class="logo" role="button" tabindex="0" (click)="scrollToSection('hero')" (keydown.enter)="scrollToSection('hero')" (keydown.space)="scrollToSection('hero'); $event.preventDefault()" aria-label="Jump to top">
-    <span class="nav-glitch">xsantcastx</span>
-    <span class="nav-buzzword" aria-hidden="true" [attr.data-swap]="wordSwapToggle">{{ activeWord }}</span>
+    <span class="logo-mark" aria-hidden="true">
+      <img src="assets/logo-xsantcastx.svg" alt="" decoding="async" draggable="false" width="64" height="64" />
+    </span>
+    <div class="logo-lockup">
+      <span class="nav-glitch">xsantcastx</span>
+      <span class="nav-buzzword" aria-hidden="true" [attr.data-swap]="wordSwapToggle">{{ activeWord }}</span>
+    </div>
   </div>
 
   <!-- Mobile Controls -->

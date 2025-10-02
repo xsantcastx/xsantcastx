@@ -1,7 +1,7 @@
-# 🚀 xsantcastx Development Enterprise
+# 🚀 xsantcastx Development Studio
 
-🚀 We're a development enterprise passionate about solving complex problems, building scalable systems, and bringing innovation to every project we undertake.  
-🌱 We're always evolving — continuously improving our full-stack capabilities with Angular, React, Node.js, and modern cloud technologies.xsantcastx Development Enterprise
+🚀 We're a development studio passionate about solving complex problems, building scalable systems, and bringing innovation to every project we undertake.  
+🌱 We're always evolving — continuously improving our full-stack capabilities with Angular, React, Node.js, and modern cloud technologies. xsantcastx Development Studio
 
 🚀 I'm a data engineer passionate about solving complex problems, building scalable systems, and bringing good energy to every team and project I join.  
 🌱 I'm always learning — currently improving my full-stack skills with Angular and Django.  
@@ -39,3 +39,5 @@
 - 📫 Email: xsancastrillonx@hotmail.com  
 - 🌍 Website: [xsantcastx.com](http://xsantcastx.com)  
 - 💼 LinkedIn: [linkedin.com/in/xsantcastx](https://www.linkedin.com/in/xsantcastx/) 
+
+
