@@ -25,8 +25,8 @@ export class ProjectsComponent implements OnInit {
     {
       titleKey: 'projects.items.stone.title',
       descriptionKey: 'projects.items.stone.description',
-      image: 'https://via.placeholder.com/1200x720/0a0a1a/00ffcc?text=The+Stone+Ceramics',
-      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/00ffcc?text=The+Stone',
+      image: 'assets/placeholder-stone.svg',
+      previewImage: 'assets/placeholder-stone.svg',
       liveUrl: 'https://tstone456--tstone-e1de6.us-east4.hosted.app/',
       featureKeys: [
         'projects.items.stone.features.catalog',
@@ -40,8 +40,8 @@ export class ProjectsComponent implements OnInit {
     {
       titleKey: 'projects.items.xengrave.title',
       descriptionKey: 'projects.items.xengrave.description',
-      image: 'https://via.placeholder.com/1200x720/0a0a1a/ff00ff?text=Xengrave+Studio',
-      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/ff00ff?text=Xengrave',
+      image: 'assets/placeholder-xengrave.svg',
+      previewImage: 'assets/placeholder-xengrave.svg',
       liveUrl: 'https://xengrave-88c76.web.app/',
       featureKeys: [
         'projects.items.xengrave.features.configuration',
@@ -55,8 +55,8 @@ export class ProjectsComponent implements OnInit {
     {
       titleKey: 'projects.items.lux.title',
       descriptionKey: 'projects.items.lux.description',
-      image: 'https://via.placeholder.com/1200x720/0a0a1a/00ffcc?text=Lux+Vending',
-      previewImage: 'https://via.placeholder.com/800x500/0a0a1a/00ffcc?text=Lux+Vending',
+      image: 'assets/placeholder-lux.svg',
+      previewImage: 'assets/placeholder-lux.svg',
       liveUrl: 'http://theluxvending.com',
       featureKeys: [
         'projects.items.lux.features.calculator',
@@ -84,3 +84,4 @@ export class ProjectsComponent implements OnInit {
     return this.translationService.translate(key);
   }
 }
+
