@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720">
+  <defs>
+    <linearGradient id="xengraveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a1a" />
+      <stop offset="100%" stop-color="#1b0930" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="720" fill="url(#xengraveGradient)" />
+  <g fill="none" stroke="#ff00ff" stroke-width="20" opacity="0.35">
+    <rect x="160" y="120" width="320" height="240" rx="32" />
+    <rect x="720" y="320" width="320" height="240" rx="32" />
+    <path d="M160 640 L1040 80" />
+  </g>
+  <text x="600" y="360" fill="#ff66ff" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="92" letter-spacing="20" text-anchor="middle">XENGRAVE</text>
+  <text x="600" y="440" fill="#f0c5ff" font-family="'Inter', 'Segoe UI', sans-serif" font-size="36" text-anchor="middle">Laser Studio Platform</text>
+</svg>

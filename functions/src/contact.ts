@@ -30,12 +30,29 @@ if (getApps().length === 0) {
 
 const appCheck = getAppCheck();
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+const allowedOrigins = ['https://xsantcastx.com', 'https://www.xsantcastx.com', 'http://localhost:4200'];
 
 export const sendContactEmail = onRequest({
   cors: true,
   region: 'us-east4'
 }, async (req, res) => {
-  // Only allow POST requests
+  const origin = req.headers.origin || '';
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
+  } else {
+    res.status(403).json({ error: 'Origin not allowed' });
+    return;
+  }
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Firebase-AppCheck');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -125,3 +142,4 @@ export const sendContactEmail = onRequest({
     });
   }
 });
+
