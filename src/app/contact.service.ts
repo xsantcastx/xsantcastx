@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
 
 export interface ContactFormData {
   name: string;
@@ -19,7 +20,7 @@ export interface ContactResponse {
   providedIn: 'root'
 })
 export class ContactService {
-  private readonly functionUrl = 'https://contact-sendemail-77wvanqjhq-uk.a.run.app';
+  private readonly functionUrl = environment.api.contactFormUrl;
 
   constructor(private http: HttpClient) {}
 

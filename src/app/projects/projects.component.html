@@ -1,47 +1,73 @@
 <section class="projects-section">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">{{ translate('projects.title') | titlecase }}</h2>
-            <p class="section-subtitle">{{ translate('projects.subtitle') }}</p>
-        </div>
-        
-        <div class="projects-grid">
-            <div class="project-card" *ngFor="let project of projects">
-                <div class="project-image">
-                    <img [src]="project.image" [alt]="project.title">
-                    <div class="project-overlay">
-                        <div class="project-links">
-                            <a [href]="project.liveUrl" target="_blank" class="project-link live">
-                                <i class="fas fa-external-link-alt"></i> {{ translate('projects.live') }}
-                            </a>
-                            <a [href]="project.githubUrl" target="_blank" class="project-link github" *ngIf="project.githubUrl">
-                                <i class="fab fa-github"></i> {{ translate('projects.code') }}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-content">
-                    <h3 class="project-title">{{ project.title }}</h3>
-                    <p class="project-description">{{ project.description }}</p>
-                    <div class="project-features">
-                        <h4>{{ translate('projects.features') }}</h4>
-                        <ul>
-                            <li *ngFor="let feature of project.features">{{ feature }}</li>
-                        </ul>
-                    </div>
-                    <div class="project-tech">
-                        <span class="tech-tag" *ngFor="let tech of project.technologies">{{ tech }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="cta-section">
-            <h3>{{ translate('projects.cta.title') }}</h3>
-            <p>{{ translate('projects.cta.desc') }}</p>
-            <button class="cta-button" (click)="scrollToSection('contact')">
-                {{ translate('projects.cta.button') }}
-            </button>
-        </div>
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">{{ translate('projects.title') | titlecase }}</h2>
+      <p class="section-subtitle">{{ translate('projects.subtitle') }}</p>
     </div>
+
+    <div class="projects-grid">
+      <article class="project-card" *ngFor="let project of projects">
+        <div class="project-image">
+          <div class="project-preview-window">
+            <div class="preview-chrome">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="preview-viewport">
+              <img
+                [src]="project.previewImage || project.image"
+                [alt]="translate(project.titleKey)"
+                loading="lazy"
+              >
+            </div>
+          </div>
+          <div class="project-overlay">
+            <div class="project-links">
+              <a [href]="project.liveUrl" target="_blank" rel="noopener" class="project-link live">
+                <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                <span>{{ translate('projects.live') }}</span>
+              </a>
+              <a
+                *ngIf="project.githubUrl"
+                [href]="project.githubUrl"
+                target="_blank"
+                rel="noopener"
+                class="project-link github"
+              >
+                <i class="fab fa-github" aria-hidden="true"></i>
+                <span>{{ translate('projects.code') }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="project-content">
+          <h3 class="project-title">{{ translate(project.titleKey) }}</h3>
+          <p class="project-description">{{ translate(project.descriptionKey) }}</p>
+
+          <div class="project-features">
+            <h4>{{ translate('projects.features') }}</h4>
+            <ul>
+              <li *ngFor="let featureKey of project.featureKeys">
+                {{ translate(featureKey) }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="project-tech">
+            <span class="tech-tag" *ngFor="let tech of project.technologies">{{ tech }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="cta-section">
+      <h3>{{ translate('projects.cta.title') }}</h3>
+      <p>{{ translate('projects.cta.desc') }}</p>
+      <button class="cta-button" type="button" (click)="scrollToSection('contact')">
+        {{ translate('projects.cta.button') }}
+      </button>
+    </div>
+  </div>
 </section>

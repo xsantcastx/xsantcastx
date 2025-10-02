@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 interface Translations {
@@ -21,140 +21,182 @@ export class TranslationService {
     'nav.projects': { en: 'Projects', es: 'Proyectos' },
     'nav.about': { en: 'About', es: 'Acerca de' },
     'nav.contact': { en: 'Contact', es: 'Contacto' },
-    
+
     // Hero Section
-    'hero.title': { en: "We're xsantcastx", es: 'Somos xsantcastx' },
-    'hero.subtitle': { en: 'Development Enterprise', es: 'Empresa de Desarrollo' },
-    'hero.description': { 
-      en: 'I create modern web applications and mobile apps that drive business growth. From sleek frontends to robust backends, I turn your ideas into digital reality.',
-      es: 'Creo aplicaciones web modernas y apps móviles que impulsan el crecimiento empresarial. Desde interfaces elegantes hasta backends robustos, convierto tus ideas en realidad digital.'
+    'hero.title.line1': { en: 'xsantcastx', es: 'xsantcastx' },
+    'hero.title.line2': { en: 'Development Enterprise', es: 'Empresa de Desarrollo' },
+    'hero.subtitle': { en: 'Innovative Full-Stack Solutions', es: 'Soluciones Full-Stack Innovadoras' },
+    'hero.description': {
+      en: 'We create cutting-edge web experiences that move ideas from concept to launch with measurable impact.',
+      es: 'Creamos experiencias web de vanguardia que llevan las ideas del concepto al lanzamiento con impacto medible.'
     },
-    'hero.cta.work': { en: 'View My Work', es: 'Ver Mi Trabajo' },
-    'hero.cta.talk': { en: "Let's Talk", es: 'Hablemos' },
-    
+    'hero.stats.projects': { en: 'Projects', es: 'Proyectos' },
+    'hero.stats.years': { en: 'Years', es: 'Anios' },
+    'hero.stats.support': { en: 'Support', es: 'Soporte' },
+    'hero.scroll': { en: 'Explore Our Work', es: 'Explora Nuestro Trabajo' },
+    'hero.cta.work': { en: 'View Portfolio', es: 'Ver Portafolio' },
+    'hero.cta.talk': { en: "Let's Collaborate", es: 'Colaboremos' },
+
     // Services Section
-    'services.title': { en: 'What I Build', es: 'Lo Que Construyo' },
+    'services.title': { en: 'What We Build', es: 'Lo Que Construimos' },
     'services.subtitle': { en: 'Full-stack solutions that drive your business forward', es: 'Soluciones full-stack que impulsan tu negocio' },
     'services.frontend.title': { en: 'Frontend Development', es: 'Desarrollo Frontend' },
-    'services.frontend.desc': { en: 'Modern, responsive web applications with cutting-edge frameworks and smooth user experiences.', es: 'Aplicaciones web modernas y responsivas con frameworks de vanguardia y experiencias de usuario fluidas.' },
+    'services.frontend.desc': { en: 'Modern, responsive web applications with premium frameworks and refined UX.', es: 'Aplicaciones web modernas y responsivas con frameworks premium y UX refinada.' },
     'services.backend.title': { en: 'Backend Development', es: 'Desarrollo Backend' },
-    'services.backend.desc': { en: 'Robust server-side solutions, APIs, and database architecture that scale with your business.', es: 'Soluciones robustas del lado del servidor, APIs y arquitectura de base de datos que escalan con tu negocio.' },
+    'services.backend.desc': { en: 'Robust APIs, services, and data architecture engineered to scale with your growth.', es: 'APIs, servicios y arquitectura de datos robustos disenados para escalar con tu crecimiento.' },
     'services.fullstack.title': { en: 'Full-Stack Applications', es: 'Aplicaciones Full-Stack' },
-    'services.fullstack.desc': { en: 'Complete web solutions from concept to deployment, handling both frontend and backend.', es: 'Soluciones web completas desde el concepto hasta el despliegue, manejando tanto frontend como backend.' },
-    'services.mobile.title': { en: 'Mobile Applications', es: 'Aplicaciones Móviles' },
-    'services.mobile.desc': { en: 'Native and cross-platform mobile apps that deliver seamless experiences on any device.', es: 'Apps móviles nativas y multiplataforma que brindan experiencias perfectas en cualquier dispositivo.' },
-    'services.cta.title': { en: 'Ready to build something amazing?', es: '¿Listo para construir algo increíble?' },
+    'services.fullstack.desc': { en: 'End-to-end platforms, from concept and design to deployment and support.', es: 'Plataformas completas, desde el concepto y diseno hasta el despliegue y soporte.' },
+    'services.mobile.title': { en: 'Mobile Applications', es: 'Aplicaciones Moviles' },
+    'services.mobile.desc': { en: 'Native and cross-platform apps that feel great on every device.', es: 'Aplicaciones nativas y multiplataforma que funcionan perfecto en cada dispositivo.' },
+    'services.cta.title': { en: 'Ready to build something amazing?', es: 'Listo para construir algo increible?' },
     'services.cta.button': { en: 'Start Your Project', es: 'Inicia Tu Proyecto' },
-    
+
     // Projects Section
     'projects.title': { en: 'Featured Projects', es: 'Proyectos Destacados' },
-    'projects.subtitle': { en: 'Real-world applications showcasing modern web development', es: 'Aplicaciones del mundo real que muestran desarrollo web moderno' },
+    'projects.subtitle': { en: 'Real solutions built for real teams and audiences.', es: 'Soluciones reales construidas para equipos y audiencias reales.' },
     'projects.live': { en: 'Live Demo', es: 'Demo en Vivo' },
-    'projects.code': { en: 'Code', es: 'Código' },
-    'projects.features': { en: 'Key Features:', es: 'Características Clave:' },
-    'projects.cta.title': { en: 'Interested in working together?', es: '¿Interesado en trabajar juntos?' },
-    'projects.cta.desc': { en: "Let's discuss your next project and bring your ideas to life", es: 'Hablemos de tu próximo proyecto y hagamos realidad tus ideas' },
-    'projects.cta.button': { en: 'Get In Touch', es: 'Contáctame' },
-    
+    'projects.code': { en: 'Code', es: 'Codigo' },
+    'projects.features': { en: 'Key Features:', es: 'Caracteristicas Clave:' },
+    'projects.cta.title': { en: 'Interested in working together?', es: 'Interesado en trabajar juntos?' },
+    'projects.cta.desc': { en: "Let's discuss your next project and bring your ideas to life", es: 'Hablemos de tu proximo proyecto y hagamos realidad tus ideas' },
+    'projects.cta.button': { en: 'Get In Touch', es: 'Contactame' },
+
+    'projects.items.stone.title': { en: 'The Stone Ceramics', es: 'The Stone Ceramics' },
+    'projects.items.stone.description': { en: 'Premium ceramic storefront with advanced filters, 3D views, and bilingual content.', es: 'Tienda premium de ceramicas con filtros avanzados, vistas 3D y contenido bilingue.' },
+    'projects.items.stone.features.catalog': { en: 'Advanced product catalog filtering', es: 'Filtrado avanzado del catalogo de productos' },
+    'projects.items.stone.features.multilingual': { en: 'Spanish / English experience', es: 'Experiencia en espanol e ingles' },
+    'projects.items.stone.features.specs': { en: 'Technical specification viewer', es: 'Visor de especificaciones tecnicas' },
+    'projects.items.stone.features.consultation': { en: 'Consultation and inquiry flow', es: 'Flujo de consultas y asesoria' },
+    'projects.items.stone.features.responsive': { en: 'Responsive layout on any device', es: 'Diseno responsive en cualquier dispositivo' },
+
+    'projects.items.xengrave.title': { en: 'Xengrave Laser Studio', es: 'Xengrave Laser Studio' },
+    'projects.items.xengrave.description': { en: 'Custom engraving portal with instant quoting, proof approval, and tracking.', es: 'Portal de grabado personalizado con cotizacion instantanea, aprobacion de pruebas y seguimiento.' },
+    'projects.items.xengrave.features.configuration': { en: 'Dynamic order configuration', es: 'Configuracion dinamica de pedidos' },
+    'projects.items.xengrave.features.proof': { en: '24-hour proof generation', es: 'Generacion de pruebas en 24 horas' },
+    'projects.items.xengrave.features.gallery': { en: 'Showcase gallery of past work', es: 'Galeria de trabajos destacados' },
+    'projects.items.xengrave.features.pricing': { en: 'Interactive pricing calculator', es: 'Calculadora interactiva de precios' },
+    'projects.items.xengrave.features.tracking': { en: 'Integrated project tracking', es: 'Seguimiento de proyectos integrado' },
+
+    'projects.items.lux.title': { en: 'The Lux Vending', es: 'The Lux Vending' },
+    'projects.items.lux.description': { en: 'Partnership platform connecting venues to smart vending opportunities and ROI modeling.', es: 'Plataforma de alianzas que conecta espacios con oportunidades de vending inteligente y modelado de ROI.' },
+    'projects.items.lux.features.calculator': { en: 'Interactive earnings calculator', es: 'Calculadora interactiva de ganancias' },
+    'projects.items.lux.features.eligibility': { en: 'Business eligibility checker', es: 'Verificador de elegibilidad comercial' },
+    'projects.items.lux.features.mapping': { en: 'Service area mapping', es: 'Mapeo de areas de servicio' },
+    'projects.items.lux.features.application': { en: 'Partnership application flow', es: 'Flujo de solicitud de partnership' },
+    'projects.items.lux.features.analytics': { en: 'ROI analytics dashboard', es: 'Panel de analitica de ROI' },
+
     // About Section
-    'about.title': { en: '🧠 About xsantcastx', es: '🧠 Acerca de xsantcastx' },
-    'about.intro': { 
-      en: "We are xsantcastx—a cutting-edge development enterprise specializing in full-stack solutions and innovative web technologies that leave a lasting digital impact.",
-      es: 'Somos xsantcastx—una empresa de desarrollo de vanguardia especializada en soluciones full-stack y tecnologías web innovadoras que dejan un impacto digital duradero.'
-    },
-    'about.description': { 
-      en: "We're not just about code and databases—we're passionate innovators, blockchain enthusiasts, and technology pioneers. Whether we're architecting scalable web applications, implementing modern CI/CD pipelines, or exploring emerging tech stacks, we bring expertise and innovation to every project.",
-      es: 'No solo se trata de código y bases de datos—somos innovadores apasionados, entusiastas de blockchain y pioneros tecnológicos. Ya sea arquitecturando aplicaciones web escalables, implementando pipelines modernos de CI/CD, o explorando nuevos stacks tecnológicos, aportamos experiencia e innovación a cada proyecto.'
-    },
-    'about.drives.title': { en: '💡 What Drives Us', es: '💡 Lo Que Nos Motiva' },
-    'about.drives.innovation': { en: 'Innovation is at our core—we transform complex challenges into elegant, scalable solutions.', es: 'La innovación está en nuestro núcleo—transformamos desafíos complejos en soluciones elegantes y escalables.' },
-    'about.drives.quality': { en: 'We deliver high-quality, maintainable code that exceeds client expectations and industry standards.', es: 'Entregamos código de alta calidad y mantenible que supera las expectativas del cliente y los estándares de la industria.' },
-    'about.drives.global': { en: 'Operating in English and Spanish markets, we provide global reach with local expertise.', es: 'Operando en mercados de inglés y español, proporcionamos alcance global con experiencia local.' },
-    'about.beyond.title': { en: '🚀 Our Technology Edge', es: '🚀 Nuestra Ventaja Tecnológica' },
-    'about.beyond.fullstack': { en: 'Full-Stack Mastery: From Angular and React frontends to Node.js and Python backends, we cover the complete development spectrum.', es: 'Dominio Full-Stack: Desde frontends de Angular y React hasta backends de Node.js y Python, cubrimos todo el espectro de desarrollo.' },
-    'about.beyond.cloud': { en: 'Cloud & DevOps: Expert implementation of AWS, Firebase, Docker, and Kubernetes for scalable, production-ready solutions.', es: 'Cloud y DevOps: Implementación experta de AWS, Firebase, Docker y Kubernetes para soluciones escalables y listas para producción.' },
-    'about.beyond.modern': { en: 'Modern Architecture: We embrace cutting-edge patterns, microservices, and progressive web applications.', es: 'Arquitectura Moderna: Adoptamos patrones de vanguardia, microservicios y aplicaciones web progresivas.' },
-    'about.levelup.title': { en: '📚 Continuous Evolution', es: '📚 Evolución Continua' },
-    'about.levelup.research': { en: 'We continuously research emerging technologies, AI integration, and next-generation development frameworks.', es: 'Investigamos continuamente tecnologías emergentes, integración de IA y frameworks de desarrollo de próxima generación.' },
-    'about.levelup.innovation': { en: 'Our R&D initiatives explore blockchain applications, Web3 solutions, and advanced data processing techniques.', es: 'Nuestras iniciativas de I+D exploran aplicaciones blockchain, soluciones Web3 y técnicas avanzadas de procesamiento de datos.' },
-    
-    // Additional About Section Content
+    'about.title': { en: 'About xsantcastx', es: 'Acerca de xsantcastx' },
     'about.subtitle': { en: 'Full-Stack Development Enterprise & Digital Solutions Architect', es: 'Empresa de Desarrollo Full-Stack y Arquitecto de Soluciones Digitales' },
+    'about.intro': {
+      en: 'We are xsantcastx, a full-stack development enterprise delivering high-impact digital products.',
+      es: 'Somos xsantcastx, una empresa de desarrollo full-stack que entrega productos digitales de alto impacto.'
+    },
+    'about.description': {
+      en: 'We combine strategy, design, and engineering to turn complex challenges into elegant solutions.',
+      es: 'Combinamos estrategia, diseno e ingenieria para convertir desafios complejos en soluciones elegantes.'
+    },
+    'about.drives.title': { en: 'What Drives Us', es: 'Lo Que Nos Motiva' },
+    'about.drives.innovation': { en: 'Innovation is at our core - we transform complex challenges into scalable solutions.', es: 'La innovacion esta en nuestro nucleo: transformamos desafios complejos en soluciones escalables.' },
+    'about.drives.quality': { en: 'We deliver high-quality, maintainable code that exceeds expectations.', es: 'Entregamos codigo de alta calidad y mantenible que supera expectativas.' },
+    'about.drives.global': { en: 'Bilingual collaboration with global reach.', es: 'Colaboracion bilingue con alcance global.' },
+    'about.beyond.title': { en: 'Our Technology Edge', es: 'Nuestra Ventaja Tecnologica' },
+    'about.beyond.fullstack': { en: 'Full-stack mastery across modern JS and cloud ecosystems.', es: 'Dominio full-stack en ecosistemas modernos de JS y nube.' },
+    'about.beyond.cloud': { en: 'Cloud & DevOps expertise for production-ready systems.', es: 'Experiencia en nube y DevOps para sistemas listos para produccion.' },
+    'about.beyond.modern': { en: 'Modern architectures, microservices, and progressive web apps.', es: 'Arquitecturas modernas, microservicios y aplicaciones web progresivas.' },
+    'about.levelup.title': { en: 'Continuous Evolution', es: 'Evolucion Continua' },
+    'about.levelup.research': { en: 'We track emerging tools, AI integration, and next-gen frameworks.', es: 'Seguimos herramientas emergentes, integracion de IA y frameworks de nueva generacion.' },
+    'about.levelup.innovation': { en: 'R&D work in blockchain, Web3, and advanced data processing.', es: 'I+D en blockchain, Web3 y procesamiento de datos avanzado.' },
     'about.enterprise.intro': {
-      en: "We're a passionate full-stack development enterprise with expertise in modern web technologies and a proven track record of delivering high-quality digital solutions. Our journey in web development spans across multiple industries, from e-commerce to business platforms.",
-      es: 'Somos una empresa de desarrollo full-stack apasionada con experiencia en tecnologías web modernas y un historial comprobado de entrega de soluciones digitales de alta calidad. Nuestro camino en el desarrollo web abarca múltiples industrias, desde e-commerce hasta plataformas empresariales.'
+      en: 'We build modern platforms for web, mobile, and cloud across industries.',
+      es: 'Construimos plataformas modernas para web, movil y nube en multiples industrias.'
     },
     'about.enterprise.specialization': {
-      en: 'We specialize in creating scalable applications that not only look great but perform exceptionally. Whether you need a sophisticated e-commerce platform, a business management system, or a custom web application, we bring both technical expertise and creative problem-solving to every project.',
-      es: 'Nos especializamos en crear aplicaciones escalables que no solo se ven geniales sino que funcionan excepcionalmente. Ya sea que necesites una plataforma de e-commerce sofisticada, un sistema de gestión empresarial, o una aplicación web personalizada, aportamos tanto experiencia técnica como resolución creativa de problemas a cada proyecto.'
+      en: 'From concept to launch, we deliver scalable, maintainable applications.',
+      es: 'Del concepto al lanzamiento, entregamos aplicaciones escalables y mantenibles.'
     },
     'about.enterprise.approach': {
-      en: 'Our approach focuses on understanding your business goals and translating them into digital experiences that drive results and delight users.',
-      es: 'Nuestro enfoque se centra en entender tus objetivos empresariales y traducirlos en experiencias digitales que generen resultados y deleiten a los usuarios.'
+      en: 'We listen, iterate, and stay involved through launch and beyond.',
+      es: 'Escuchamos, iteramos y acompanamos durante y despues del lanzamiento.'
     },
-    
+
     // Skills Section
-    'skills.title': { en: 'My Skills', es: 'Mis Habilidades' },
-    'skills.loading': { en: 'Loading...', es: 'Cargando...' },
-    'skills.error': { en: 'Failed to load skills. Please try again.', es: 'Error al cargar habilidades. Por favor intenta de nuevo.' },
-    
+    'skills.title': { en: 'Core Skills', es: 'Habilidades Clave' },
+    'skills.loading': { en: 'Loading skills...', es: 'Cargando habilidades...' },
+    'skills.error': { en: 'Failed to load skills. Please try again.', es: 'No se pudieron cargar las habilidades. Intenta de nuevo.' },
+
     // Contact Section
-    'contact.title': { en: "Let's Build Something Amazing", es: 'Construyamos Algo Increíble' },
-    'contact.subtitle': { en: "Ready to transform your ideas into reality? Let's discuss your project.", es: '¿Listo para transformar tus ideas en realidad? Hablemos de tu proyecto.' },
-    'contact.info.header': { en: 'Ready to start your project?', es: '¿Listo para comenzar tu proyecto?' },
-    'contact.info.desc': { en: "We're here to help bring your vision to life with cutting-edge web solutions.", es: 'Estamos aquí para ayudar a dar vida a tu visión con soluciones web de vanguardia.' },
-    'contact.method.email': { en: 'Email', es: 'Email' },
+    'contact.title': { en: "Let's Build Together", es: 'Construyamos Juntos' },
+    'contact.subtitle': { en: "Ready to transform your ideas into reality? Let's discuss your project.", es: 'Listo para transformar tus ideas en realidad? Hablemos de tu proyecto.' },
+    'contact.info.header': { en: 'Work With xsantcastx', es: 'Trabaja con xsantcastx' },
+    'contact.info.desc': { en: 'Tell us about your goals and we will help you craft the right solution.', es: 'Cuéntanos tus objetivos y te ayudaremos a crear la solucion correcta.' },
+    'contact.method.email': { en: 'Direct Email', es: 'Email Directo' },
     'contact.method.github': { en: 'GitHub', es: 'GitHub' },
-    'contact.method.response': { en: 'Response Time', es: 'Tiempo de Respuesta' },
-    'contact.method.response.time': { en: 'Usually within 24 hours', es: 'Usualmente dentro de 24 horas' },
-    'contact.projects.title': { en: 'Project Types I Excel At:', es: 'Tipos de Proyectos en los que Sobresalgo:' },
+    'contact.method.response': { en: 'Typical Response Time', es: 'Tiempo de Respuesta' },
+    'contact.method.response.time': { en: 'Under 24 hours, Monday to Friday', es: 'Menos de 24 horas, lunes a viernes' },
+    'contact.projects.title': { en: 'Project Types We Deliver', es: 'Tipos de Proyecto que Entregamos' },
     'contact.projects.ecommerce': { en: 'E-commerce Platforms', es: 'Plataformas de E-commerce' },
     'contact.projects.business': { en: 'Business Web Applications', es: 'Aplicaciones Web Empresariales' },
     'contact.projects.cms': { en: 'Custom CMS Solutions', es: 'Soluciones CMS Personalizadas' },
-    'contact.projects.mobile': { en: 'Mobile App Development', es: 'Desarrollo de Apps Móviles' },
-    'contact.projects.api': { en: 'API Development & Integration', es: 'Desarrollo e Integración de APIs' },
+    'contact.projects.mobile': { en: 'Mobile & PWA Experiences', es: 'Experiencias Moviles y PWA' },
+    'contact.projects.api': { en: 'API Development & Integration', es: 'Desarrollo e Integracion de API' },
     'contact.form.name': { en: 'Your Name', es: 'Tu Nombre' },
     'contact.form.name.placeholder': { en: 'Enter your name', es: 'Ingresa tu nombre' },
-    'contact.form.email': { en: 'Email Address', es: 'Dirección de Email' },
+    'contact.form.email': { en: 'Email Address', es: 'Direccion de Email' },
     'contact.form.email.placeholder': { en: 'your@email.com', es: 'tu@email.com' },
     'contact.form.project': { en: 'Project Type', es: 'Tipo de Proyecto' },
     'contact.form.project.select': { en: 'Select project type', es: 'Selecciona tipo de proyecto' },
-    'contact.form.project.webapp': { en: 'Web Application', es: 'Aplicación Web' },
+    'contact.form.project.webapp': { en: 'Web Application', es: 'Aplicacion Web' },
     'contact.form.project.ecommerce': { en: 'E-commerce Site', es: 'Sitio de E-commerce' },
-    'contact.form.project.mobile': { en: 'Mobile App', es: 'App Móvil' },
+    'contact.form.project.mobile': { en: 'Mobile App', es: 'Aplicacion Movil' },
     'contact.form.project.api': { en: 'API Development', es: 'Desarrollo de API' },
     'contact.form.project.other': { en: 'Other', es: 'Otro' },
     'contact.form.budget': { en: 'Budget Range', es: 'Rango de Presupuesto' },
-    'contact.form.budget.select': { en: 'Select budget range', es: 'Selecciona rango de presupuesto' },
+    'contact.form.budget.select': { en: 'Select budget range', es: 'Selecciona un rango' },
     'contact.form.budget.under5k': { en: 'Under $5,000', es: 'Menos de $5,000' },
     'contact.form.budget.5k10k': { en: '$5,000 - $10,000', es: '$5,000 - $10,000' },
     'contact.form.budget.10k25k': { en: '$10,000 - $25,000', es: '$10,000 - $25,000' },
     'contact.form.budget.25kplus': { en: '$25,000+', es: '$25,000+' },
     'contact.form.message': { en: 'Project Details', es: 'Detalles del Proyecto' },
-    'contact.form.message.placeholder': { en: 'Tell me about your project, goals, and any specific requirements...', es: 'Cuéntame sobre tu proyecto, objetivos y cualquier requerimiento específico...' },
+    'contact.form.message.placeholder': { en: 'Tell us about your project, goals, and any specific requirements...', es: 'Cuéntanos sobre tu proyecto, objetivos y requerimientos.' },
     'contact.form.submit': { en: 'Send Project Brief', es: 'Enviar Propuesta' },
     'contact.form.sending': { en: 'Sending...', es: 'Enviando...' },
-    'contact.form.success': { en: 'Thank you! Your project brief has been sent successfully. We\'ll get back to you within 24 hours.', es: '¡Gracias! Tu propuesta de proyecto ha sido enviada exitosamente. Te contactaremos dentro de 24 horas.' },
-    'contact.form.error': { en: 'Sorry, there was an error sending your message. Please try again or contact us directly.', es: 'Lo sentimos, hubo un error enviando tu mensaje. Por favor intenta de nuevo o contáctanos directamente.' },
-    
+    'contact.form.success': { en: 'Thank you! Your project brief has been sent. We will reply within 24 hours.', es: 'Gracias! Tu propuesta fue enviada. Responderemos en menos de 24 horas.' },
+    'contact.form.error': { en: 'Sorry, there was an error sending your message. Please try again or contact us directly.', es: 'Lo sentimos, hubo un error al enviar tu mensaje. Intenta de nuevo o contactanos directamente.' },
+
+    // Donation Form
+    'donation.form.title': { en: 'Support with KASPA', es: 'Apoya con KASPA' },
+    'donation.form.subtitle': { en: 'Scan, send a note, and keep the builds flowing.', es: 'Escanea, deja un mensaje y ayuda a que los proyectos sigan.' },
+    'donation.form.walletLabel': { en: 'Kaspa wallet address', es: 'Direccion de billetera Kaspa' },
+    'donation.form.copy': { en: 'Copy', es: 'Copiar' },
+    'donation.form.copySuccess': { en: 'Wallet copied to clipboard.', es: 'Direccion copiada al portapapeles.' },
+    'donation.form.copyError': { en: 'Unable to copy. Please copy it manually.', es: 'No se pudo copiar. Copia la direccion manualmente.' },
+    'donation.form.qrAlt': { en: 'Kaspa wallet QR code', es: 'Codigo QR de la billetera Kaspa' },
+    'donation.form.messageLabel': { en: 'Leave a message', es: 'Deja un mensaje' },
+    'donation.form.messagePlaceholder': { en: 'Share a shout-out, request, or idea you would like me to build next...', es: 'Comparte un saludo, una peticion o una idea que te gustaria que construyera.' },
+    'donation.form.messageRequired': { en: 'Please add a short message before sending.', es: 'Agrega un mensaje corto antes de enviarlo.' },
+    'donation.form.submit': { en: 'Send message', es: 'Enviar mensaje' },
+    'donation.form.success': { en: 'Thank you for the support!', es: 'Gracias por el apoyo!' },
+    'donation.form.error': { en: 'Could not send the message. Try again in a moment.', es: 'No se pudo enviar el mensaje. Intentalo de nuevo en un momento.' },
+
     // Footer
     'footer.donate': { en: 'Support My Work', es: 'Apoya Mi Trabajo' },
-    'footer.donate.desc': { en: 'Help me continue creating amazing projects', es: 'Ayúdame a seguir creando proyectos increíbles' },
-    'footer.paypal.title': { en: 'PayPal Donation', es: 'Donación PayPal' },
-    'footer.paypal.desc': { en: 'Support my development work with a secure PayPal donation', es: 'Apoya mi trabajo de desarrollo con una donación segura por PayPal' },
-    'footer.paypal.note': { en: 'Your support helps me create better projects!', es: '¡Tu apoyo me ayuda a crear mejores proyectos!' },
-    'footer.stripe.title': { en: 'Card Donation', es: 'Donación con Tarjeta' },
+    'footer.donate.desc': { en: 'Help me continue creating amazing projects', es: 'Ayudame a seguir creando proyectos increibles' },
+    'footer.paypal.title': { en: 'PayPal Donation', es: 'Donacion PayPal' },
+    'footer.paypal.desc': { en: 'Support my development work with a secure PayPal donation', es: 'Apoya mi trabajo de desarrollo con una donacion segura por PayPal' },
+    'footer.paypal.note': { en: 'Your support helps me create better projects!', es: 'Tu apoyo me ayuda a crear mejores proyectos!' },
+    'footer.stripe.title': { en: 'Card Donation', es: 'Donacion con Tarjeta' },
     'footer.stripe.desc': { en: 'Support my work with a secure card payment', es: 'Apoya mi trabajo con un pago seguro con tarjeta' },
     'footer.stripe.note': { en: 'Powered by Stripe for secure transactions', es: 'Impulsado por Stripe para transacciones seguras' },
-    'footer.donation': { en: 'Donation', es: 'Donación' },
+    'footer.donation': { en: 'Donation', es: 'Donacion' },
     'footer.amount': { en: 'Amount', es: 'Cantidad' },
     'footer.custom.amount': { en: 'Custom Amount', es: 'Cantidad Personalizada' },
-    'footer.custom.placeholder': { en: 'Enter amount (min $1)', es: 'Ingresa cantidad (mín $1)' },
-    'footer.custom.invalid': { en: 'Please enter a valid amount (minimum $1)', es: 'Por favor ingresa una cantidad válida (mínimo $1)' },
+    'footer.custom.placeholder': { en: 'Enter amount (min $1)', es: 'Ingresa una cantidad (minimo $1)' },
+    'footer.custom.invalid': { en: 'Please enter a valid amount (minimum $1)', es: 'Ingresa una cantidad valida (minimo $1)' },
     'footer.or': { en: 'or', es: 'o' },
     'footer.processing': { en: 'Processing...', es: 'Procesando...' },
-    'footer.success': { en: 'Thank you for your support!', es: '¡Gracias por tu apoyo!' },
-    'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago falló. Por favor intenta de nuevo.' }
+    'footer.success': { en: 'Thank you for your support!', es: 'Gracias por tu apoyo!' },
+    'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago fallo. Intenta de nuevo.' }
   };
 
   constructor() {
@@ -174,12 +216,11 @@ export class TranslationService {
   translate(key: string): string {
     const currentLang = this.getCurrentLanguage();
     const translation = this.translations[key];
-    
+
     if (translation && translation[currentLang as 'en' | 'es']) {
       return translation[currentLang as 'en' | 'es'];
     }
-    
-    // Fallback to English if translation not found
+
     return translation?.en || key;
   }
 }

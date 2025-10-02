@@ -1,23 +1,38 @@
-<nav class="navbar">
-  <div class="logo">
-    <span class="nav-glitch" (click)="scrollToSection('hero')">xsantcastx</span>
+﻿<nav class="navbar">
+  <div class="logo" role="button" tabindex="0" (click)="scrollToSection('hero')" (keydown.enter)="scrollToSection('hero')" (keydown.space)="scrollToSection('hero'); $event.preventDefault()" aria-label="Jump to top">
+    <span class="nav-glitch">xsantcastx</span>
+    <span class="nav-buzzword" aria-hidden="true" [attr.data-swap]="wordSwapToggle">{{ activeWord }}</span>
   </div>
-  
+
+  <!-- Mobile Controls -->
+  <div class="mobile-controls">
+    <!-- Language Toggle (always visible) -->
+    <div class="language-toggle">
+      <button class="lang-btn" [class.active]="currentLang === 'en'" (click)="setLanguage('en')">EN</button>
+      <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
+    </div>
+
+    <!-- Hamburger Menu -->
+    <button class="hamburger" [class.active]="mobileMenuOpen" (click)="toggleMobileMenu()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+
   <!-- Navigation Menu -->
-  <div class="nav-menu">
-    <a href="#services" (click)="scrollToSection('services')">{{ translate('nav.services') }}</a>
-    <a href="#projects" (click)="scrollToSection('projects')">{{ translate('nav.projects') }}</a>
-    <a href="#about" (click)="scrollToSection('about')">{{ translate('nav.about') }}</a>
-    <a href="#contact" (click)="scrollToSection('contact')">{{ translate('nav.contact') }}</a>
+  <div class="nav-menu" [class.mobile-open]="mobileMenuOpen">
+    <a href="#services" [class.active]="currentSection === 'services'" (click)="scrollToSection('services'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.services') }}</a>
+    <a href="#projects" [class.active]="currentSection === 'projects'" (click)="scrollToSection('projects'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.projects') }}</a>
+    <a href="#about" [class.active]="currentSection === 'about'" (click)="scrollToSection('about'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.about') }}</a>
+    <a href="#contact" [class.active]="currentSection === 'contact'" (click)="scrollToSection('contact'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.contact') }}</a>
   </div>
-  
-  <!-- Language Toggle -->
-  <div class="language-toggle">
+
+  <!-- Desktop Language Toggle -->
+  <div class="language-toggle desktop-only">
     <button class="lang-btn" [class.active]="currentLang === 'en'" (click)="setLanguage('en')">EN</button>
     <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
   </div>
-  
-  <div class="glitch-overlay" id="glitchOverlay">
-    <span class="glitch-text">ACCESS GRANTED</span>
-  </div>
+
+  <div class="nav-progress"></div>
 </nav>

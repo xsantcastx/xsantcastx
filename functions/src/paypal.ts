@@ -96,7 +96,9 @@ async function verifyPayPalPayment(orderId: string): Promise<PayPalOrderDetails>
  */
 export const processPayPalPayment = onCall(
   { 
-    maxInstances: 10
+    maxInstances: 10,
+    enforceAppCheck: true,
+    consumeAppCheckToken: true
   },
   async (request) => {
     try {
@@ -179,7 +181,7 @@ export const processPayPalPayment = onCall(
  * Get donation statistics (optional function for admin dashboard)
  */
 export const getPayPalDonationStats = onCall(
-  { maxInstances: 5 },
+  { maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     try {
       // Only allow authenticated admin users (you can add admin check here)
