@@ -71,7 +71,11 @@ import { AppCheckInterceptor } from './app-check.interceptor';
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAppCheck(() => {
       const siteKey = environment.appCheck?.siteKey ?? '';
-      const debugToken = environment.appCheck?.debugToken;
+      const rawDebugToken = environment.appCheck?.debugToken;
+      const debugToken =
+        rawDebugToken && rawDebugToken !== 'undefined' && rawDebugToken !== 'null'
+          ? rawDebugToken
+          : undefined;
       const globalScope = globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: unknown; __xsantcastxAppCheck?: ReturnType<typeof initializeAppCheck> };
 
       if (!siteKey || siteKey.startsWith('REPLACE_WITH')) {
@@ -79,7 +83,7 @@ import { AppCheckInterceptor } from './app-check.interceptor';
       }
 
       if (debugToken) {
-        globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
+        globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'auto' ? true : debugToken;
       }
 
       if (!globalScope.__xsantcastxAppCheck) {

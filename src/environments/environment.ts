@@ -15,7 +15,7 @@ export const environment = {
     // reCAPTCHA v3 site key registered in Firebase App Check (safe to expose)
     siteKey: '6Ldv99srAAAAAAe00fO2OwqSZLNmwJIl0y4Jt4tV',
     // Optional: supply a debug token string or 'auto' while developing locally
-    debugToken: 'undefined',
+    debugToken: 'auto',
     // Any HTTPS endpoints that must receive the X-Firebase-AppCheck header
     protectedOrigins: [
       'https://contact-sendemail-77wvanqjhq-uk.a.run.app'
@@ -47,3 +47,4 @@ export const environment = {
     }
   }
 };
+
