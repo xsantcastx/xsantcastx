@@ -22,7 +22,16 @@ export const environment = {
 
   // Email Configuration
   email: {
-    // Brevo configuration will be handled in the service
+    // Brevo configuration - REPLACE WITH YOUR ACTUAL API KEY
+    brevo: {
+      apiKey: 'xkeysib-YOUR_BREVO_API_KEY_HERE', // Get from https://app.brevo.com → SMTP & API → API Keys
+      endpoint: 'https://api.brevo.com/v3/smtp/email',
+      allowedRecipient: 'xsantcastx@xsantcastx.com',
+      defaultSender: {
+        email: 'noreply@xsantcastx.com',
+        name: 'xsantcastx Portfolio'
+      }
+    },
     contactEmail: 'xsantcastx@xsantcastx.com'
   },
 
@@ -37,14 +46,13 @@ export const environment = {
     
     // PayPal (only client ID is safe for frontend)
     paypal: {
-      clientId: 'AYzxQ0BSmDFgWj0ICW3EJmCqjqPbKXcg_7rO2GoUj8ENL83N_0sJLmTuijTGLm1lh47MUOQ3qyQGL1Xk', // Replace with your NEW client ID
-      mode: 'live' // Change to 'live' for production
+      clientId: 'YOUR_PAYPAL_CLIENT_ID_HERE', // Replace with your NEW client ID
+      mode: 'sandbox' // Change to 'live' for production
     },
     
     // Stripe (only publishable key is safe for frontend)
     stripe: {
-      publishableKey: 'pk_live_51S5t0W2O6zyPvnQXsPR57BVDWWoBIbEb3pVzfqVOHjwtxc3w5Z1RxSPSpvADNfiJOXGZndQoDdwm2aQ01DDU2QRC00RbOsq8R4' // Replace with new publishable key after revoking old one
+      publishableKey: 'pk_test_YOUR_STRIPE_PUBLISHABLE_KEY_HERE' // Replace with your publishable key
     }
   }
 };
-
