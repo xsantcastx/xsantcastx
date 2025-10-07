@@ -17,6 +17,9 @@ out-tsc/
 .env
 src/environments/environment.prod.ts
 
+# Brevo email configuration (contains API key)
+src/app/brevo.config.ts
+
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # Compiled output

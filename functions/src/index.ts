@@ -19,10 +19,6 @@ import {
   getStripeDonationStats
 } from "./stripe";
 
-import {
-  sendContactEmail
-} from "./contact";
-
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
 
@@ -38,11 +34,6 @@ export const stripe = {
   confirmPayment: confirmStripePayment,
   handleWebhook: handleStripeWebhook,
   getStats: getStripeDonationStats
-};
-
-// Export Contact functions
-export const contact = {
-  sendEmail: sendContactEmail
 };
 
 // Health check function
