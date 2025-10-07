@@ -40,7 +40,7 @@ export const sendContactEmail = onRequest(
       }
 
       // Brevo API configuration - use your existing API key
-      const apiKey = 'REMOVED_SECRET';
+      const apiKey = '';
       if (!apiKey) {
         logger.error("Brevo API key not configured");
         response.status(500).json({ error: "Email service configuration error" });
