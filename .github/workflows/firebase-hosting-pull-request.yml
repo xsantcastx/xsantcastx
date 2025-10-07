@@ -27,6 +27,9 @@ jobs:
           echo "Creating environment.ts from template..."
           cp src/environments/environment.template.ts src/environments/environment.ts
           cp src/environments/environment.template.ts src/environments/environment.prod.ts
+          
+          # For PR builds, use placeholder (email will be disabled)
+          sed -i "s|apiKey: '',|apiKey: 'xkeysib-YOUR_BREVO_API_KEY_HERE',|g" src/environments/environment.prod.ts
           echo "Environment files created successfully!"
           
       - run: npm run build

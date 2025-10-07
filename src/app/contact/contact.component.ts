@@ -26,6 +26,12 @@ export class ContactComponent {
   onSubmit() {
     if (this.isSubmitting) return;
     
+    // Check if email service is configured
+    if (!this.contactService.canSubmitForm()) {
+      this.submitMessage = 'Email service is temporarily unavailable. Please contact us directly at ' + this.contactService.getContactEmail();
+      return;
+    }
+    
     this.isSubmitting = true;
     this.submitMessage = '';
 
