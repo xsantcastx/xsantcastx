@@ -54,7 +54,7 @@ export class ContactComponent {
       },
       error: (error) => {
         console.error('Contact form error:', error);
-        this.submitMessage = this.translate('contact.form.error');
+        this.submitMessage = error.message || this.translate('contact.form.error');
         this.isSubmitting = false;
       }
     });

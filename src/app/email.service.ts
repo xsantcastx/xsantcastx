@@ -37,9 +37,15 @@ export class EmailService {
       return throwError(() => new Error(`Email can only be sent to ${this.brevoConfig.allowedRecipient}`));
     }
 
+    // Use a CORS proxy for production or handle CORS differently
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const targetUrl = this.brevoConfig.endpoint;
+    const url = environment.production ? proxyUrl + targetUrl : targetUrl;
+
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      'api-key': this.brevoConfig.apiKey
+      'api-key': this.brevoConfig.apiKey,
+      'X-Requested-With': 'XMLHttpRequest'
     });
 
     const brevoPayload = {
@@ -59,7 +65,7 @@ export class EmailService {
       })
     };
 
-    return this.http.post<any>(this.brevoConfig.endpoint, brevoPayload, { headers })
+    return this.http.post<any>(url, brevoPayload, { headers })
       .pipe(
         map(response => ({
           success: true,
@@ -75,6 +81,8 @@ export class EmailService {
             errorMessage = 'Invalid Brevo API key';
           } else if (error.status === 400) {
             errorMessage = 'Invalid email data provided';
+          } else if (error.status === 0) {
+            errorMessage = 'Network error - please check your connection';
           }
           
           return throwError(() => new Error(errorMessage));
