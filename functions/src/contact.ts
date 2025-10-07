@@ -1,9 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
-// Import admin SDK if needed for authentication
-// import { getAuth } from "firebase-admin/auth";
-
 interface ContactFormData {
   name: string;
   email: string;
@@ -42,10 +39,10 @@ export const sendContactEmail = onRequest(
         return;
       }
 
-      // Brevo API configuration
-      const brevoApiKey = process.env.BREVO_API_KEY;
-      if (!brevoApiKey) {
-        logger.error("BREVO_API_KEY environment variable not set");
+      // Brevo API configuration - use your existing API key
+      const apiKey = 'REMOVED_SECRET';
+      if (!apiKey) {
+        logger.error("Brevo API key not configured");
         response.status(500).json({ error: "Email service configuration error" });
         return;
       }
@@ -132,7 +129,7 @@ Reply to this email to respond directly to ${data.name}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': brevoApiKey
+          'api-key': apiKey
         },
         body: JSON.stringify(brevoPayload)
       });
