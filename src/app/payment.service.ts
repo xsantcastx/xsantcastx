@@ -48,8 +48,12 @@ export class PaymentService {
   }
 
   private loadPayPalSDK(): void {
-    // Check if PayPal is configured
-    if (!environment.payments.paypal.clientId || environment.payments.paypal.clientId === '') {
+    // Check if PayPal is configured with a real client ID
+    const clientId = environment.payments.paypal.clientId;
+    if (!clientId || 
+        clientId === '' || 
+        clientId.includes('YOUR_PAYPAL_CLIENT_ID') || 
+        clientId.includes('PLACEHOLDER')) {
       console.log('PayPal not configured - skipping SDK load');
       this.paypalLoaded.next(false);
       return;
@@ -74,8 +78,12 @@ export class PaymentService {
   }
 
   private loadStripeSDK(): void {
-    // Check if Stripe is configured
-    if (!environment.payments.stripe.publishableKey || environment.payments.stripe.publishableKey === '') {
+    // Check if Stripe is configured with a real publishable key
+    const publishableKey = environment.payments.stripe.publishableKey;
+    if (!publishableKey || 
+        publishableKey === '' || 
+        publishableKey.includes('YOUR_STRIPE_PUBLISHABLE') || 
+        publishableKey.includes('PLACEHOLDER')) {
       console.log('Stripe not configured - skipping SDK load');
       this.stripeLoaded.next(false);
       return;
