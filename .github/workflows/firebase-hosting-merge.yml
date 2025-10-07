@@ -29,6 +29,16 @@ jobs:
       - name: Install Angular CLI
         run: npm install -g @angular/cli
 
+      - name: Create environment file from template
+        run: |
+          echo "Creating environment.ts from template..."
+          cp src/environments/environment.template.ts src/environments/environment.ts
+          cp src/environments/environment.template.ts src/environments/environment.prod.ts
+          
+          # Replace with actual values for production (using safe public values only)
+          sed -i 's/production: false/production: true/g' src/environments/environment.prod.ts
+          echo "Environment files created successfully!"
+
       - name: Build Angular project
         run: npm run build
 
