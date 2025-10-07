@@ -19,8 +19,14 @@ import {
   getStripeDonationStats
 } from "./stripe";
 
+// Import contact functions
+import { sendContactEmail } from "./contact";
+
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
+
+// Export contact functions
+export { sendContactEmail };
 
 // Export PayPal functions
 export const paypal = {
