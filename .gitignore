@@ -15,10 +15,33 @@ out-tsc/
 
 # Environment files (if sensitive)
 .env
+.env.local
+.env.development
+.env.production
 src/environments/environment.prod.ts
 
-# Brevo email configuration (contains API key)
+# API Keys and Configuration Files
 src/app/brevo.config.ts
+src/app/firebase.config.ts
+src/app/analytics.config.ts
+src/app/api.config.ts
+**/config/api-keys.ts
+**/config/secrets.ts
+
+# Firebase Configuration Files
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# Google Analytics and Third-party API configs
+ga-config.ts
+google-analytics.config.ts
+stripe.config.ts
+paypal.config.ts
+social-auth.config.ts
 
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
