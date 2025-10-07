@@ -34,32 +34,59 @@ export class ContactService {
       return throwError(() => new Error('Invalid email format'));
     }
 
-    // Check if Brevo is configured
-    if (!this.emailService.isConfigured()) {
-      return throwError(() => new Error('Email service is not properly configured. Please contact administrator.'));
+    // Try Brevo first, fallback to mailto if it fails
+    if (this.emailService.isConfigured()) {
+      // Generate email content using the EmailService
+      const { htmlContent, textContent, subject } = this.emailService.generateContactEmailTemplate(data);
+
+      // Send email to the allowed recipient
+      return this.emailService.sendEmail({
+        to: this.emailService.getAllowedEmail(),
+        subject,
+        htmlContent,
+        textContent,
+        replyTo: data.email,
+        senderName: data.name
+      }).pipe(
+        map(response => ({
+          success: response.success,
+          message: 'Thank you! Your project brief has been sent. We will reply within 24 hours.'
+        })),
+        catchError(error => {
+          console.error('Brevo failed, falling back to mailto:', error);
+          // Fallback to mailto
+          this.openMailtoFallback(data);
+          return throwError(() => new Error('Email service encountered an issue. We\'ve opened your email client as a backup. Please send the message from there.'));
+        })
+      );
+    } else {
+      // If not configured, use mailto directly
+      this.openMailtoFallback(data);
+      return throwError(() => new Error('We\'ve opened your email client. Please send your message from there, or contact us directly at xsantcastx@xsantcastx.com'));
     }
+  }
 
-    // Generate email content using the EmailService
-    const { htmlContent, textContent, subject } = this.emailService.generateContactEmailTemplate(data);
+  private openMailtoFallback(data: ContactFormData): void {
+    const subject = `Project Inquiry from ${data.name}`;
+    const body = `Hi Santiago,
 
-    // Send email to the allowed recipient
-    return this.emailService.sendEmail({
-      to: this.emailService.getAllowedEmail(),
-      subject,
-      htmlContent,
-      textContent,
-      replyTo: data.email,
-      senderName: data.name
-    }).pipe(
-      map(response => ({
-        success: response.success,
-        message: 'Thank you! Your project brief has been sent. We will reply within 24 hours.'
-      })),
-      catchError(error => {
-        console.error('Contact form submission error:', error);
-        return throwError(() => new Error('Sorry, there was an error sending your message. Please try again or contact us directly.'));
-      })
-    );
+I'm interested in working with you on a project.
+
+Name: ${data.name}
+Email: ${data.email}
+${data.projectType ? `Project Type: ${data.projectType}` : ''}
+${data.budget ? `Budget Range: ${data.budget}` : ''}
+
+Message:
+${data.message}
+
+Looking forward to hearing from you!
+
+Best regards,
+${data.name}`;
+
+    const mailtoUrl = `mailto:xsantcastx@xsantcastx.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoUrl, '_blank');
   }
 
   /**
