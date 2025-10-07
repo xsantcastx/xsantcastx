@@ -48,6 +48,13 @@ export class PaymentService {
   }
 
   private loadPayPalSDK(): void {
+    // Check if PayPal is configured
+    if (!environment.payments.paypal.clientId || environment.payments.paypal.clientId === '') {
+      console.log('PayPal not configured - skipping SDK load');
+      this.paypalLoaded.next(false);
+      return;
+    }
+
     // Check if already loaded
     if (typeof paypal !== 'undefined') {
       this.paypalLoaded.next(true);
@@ -67,6 +74,13 @@ export class PaymentService {
   }
 
   private loadStripeSDK(): void {
+    // Check if Stripe is configured
+    if (!environment.payments.stripe.publishableKey || environment.payments.stripe.publishableKey === '') {
+      console.log('Stripe not configured - skipping SDK load');
+      this.stripeLoaded.next(false);
+      return;
+    }
+
     // Check if already loaded
     if (typeof Stripe !== 'undefined') {
       this.stripe = Stripe(environment.payments.stripe.publishableKey);

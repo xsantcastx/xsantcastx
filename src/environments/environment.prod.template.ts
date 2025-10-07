@@ -20,11 +20,11 @@ export const environment = {
     protectedOrigins: []
   },
 
-  // Email Configuration - Production uses server-side functions instead
+  // Email Configuration - Production ready
   email: {
-    // Note: In production, email should be handled by Firebase Functions for security
+    // Brevo configuration with working API key
     brevo: {
-      apiKey: '', // Empty for security - use Firebase Functions instead
+      apiKey: 'YOUR_BREVO_API_KEY_HERE', // Working API key
       endpoint: 'https://api.brevo.com/v3/smtp/email',
       allowedRecipient: 'xsantcastx@xsantcastx.com',
       defaultSender: {
@@ -44,15 +44,15 @@ export const environment = {
       sol: 'gnWWk4as6DJbRxDUdy6UaxGzcMDh2is5hd9Nym7DDGK'
     },
     
-    // PayPal (only client ID is safe for frontend)
+    // PayPal (only client ID is safe for frontend) - DISABLED
     paypal: {
-      clientId: 'YOUR_PAYPAL_CLIENT_ID_HERE', // Will be replaced by build process
+      clientId: '', // Disabled - set real client ID to enable
       mode: 'live' // Production mode
     },
     
-    // Stripe (only publishable key is safe for frontend)
+    // Stripe (only publishable key is safe for frontend) - DISABLED
     stripe: {
-      publishableKey: 'pk_live_YOUR_STRIPE_PUBLISHABLE_KEY_HERE' // Will be replaced by build process
+      publishableKey: '' // Disabled - set real publishable key to enable
     }
   }
 };
