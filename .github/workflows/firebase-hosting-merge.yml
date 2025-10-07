@@ -35,8 +35,19 @@ jobs:
           cp src/environments/environment.template.ts src/environments/environment.ts
           cp src/environments/environment.template.ts src/environments/environment.prod.ts
           
-          # Replace with actual values for production (using safe public values only)
+          # Replace with actual values for production
           sed -i 's/production: false/production: true/g' src/environments/environment.prod.ts
+          
+          # Inject Brevo API key from GitHub Secrets if available
+          if [ ! -z "${{ secrets.BREVO_API_KEY }}" ]; then
+            echo "Injecting Brevo API key..."
+            sed -i "s|apiKey: '',|apiKey: '${{ secrets.BREVO_API_KEY }}',|g" src/environments/environment.prod.ts
+          else
+            echo "Warning: BREVO_API_KEY secret not set - email functionality will be disabled"
+            # Use a valid placeholder that will cause isConfigured() to return false
+            sed -i "s|apiKey: '',|apiKey: 'xkeysib-YOUR_BREVO_API_KEY_HERE',|g" src/environments/environment.prod.ts
+          fi
+          
           echo "Environment files created successfully!"
 
       - name: Build Angular project
