@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms'; // Import for ngModel
 import { TranslationService } from '../translation.service';
 import { ContactService, ContactFormData } from '../contact.service';
+import { AnalyticsService } from '../analytics.service';
 
 @Component({
     selector: 'app-contact',
@@ -12,6 +13,7 @@ import { ContactService, ContactFormData } from '../contact.service';
 export class ContactComponent {
   private translationService = inject(TranslationService);
   private contactService = inject(ContactService);
+  private analyticsService = inject(AnalyticsService);
   
   name: string = '';
   email: string = '';
@@ -40,6 +42,9 @@ export class ContactComponent {
         this.submitMessage = this.translate('contact.form.success');
         this.clearForm();
         this.isSubmitting = false;
+        
+        // Track successful contact form submission
+        this.analyticsService.trackContactSubmit('form', this.projectType);
       },
       error: (error) => {
         console.error('Contact form error:', error);
@@ -59,5 +64,9 @@ export class ContactComponent {
 
   translate(key: string): string {
     return this.translationService.translate(key);
+  }
+
+  trackSocialClick(platform: 'github' | 'linkedin' | 'twitter' | 'email'): void {
+    this.analyticsService.trackSocialClick(platform);
   }
 }
