@@ -1,0 +1,31 @@
+<div class="cookie-banner" *ngIf="showBanner" [attr.aria-label]="translate('cookies.banner.aria')">
+  <div class="cookie-content">
+    <div class="cookie-text">
+      <h3>🍪 {{ translate('cookies.banner.title') }}</h3>
+      <p>{{ translate('cookies.banner.description') }}</p>
+      <p class="cookie-details">
+        <small>{{ translate('cookies.banner.details') }}</small>
+      </p>
+    </div>
+    
+    <div class="cookie-actions">
+      <button 
+        type="button" 
+        class="btn-accept" 
+        (click)="acceptCookies()"
+        [attr.aria-label]="translate('cookies.accept.aria')">
+        <i class="fas fa-check"></i>
+        {{ translate('cookies.accept') }}
+      </button>
+      
+      <button 
+        type="button" 
+        class="btn-deny" 
+        (click)="denyCookies()"
+        [attr.aria-label]="translate('cookies.deny.aria')">
+        <i class="fas fa-times"></i>
+        {{ translate('cookies.deny') }}
+      </button>
+    </div>
+  </div>
+</div>

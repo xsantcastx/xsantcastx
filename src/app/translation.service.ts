@@ -196,7 +196,17 @@ export class TranslationService {
     'footer.or': { en: 'or', es: 'o' },
     'footer.processing': { en: 'Processing...', es: 'Procesando...' },
     'footer.success': { en: 'Thank you for your support!', es: 'Gracias por tu apoyo!' },
-    'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago fallo. Intenta de nuevo.' }
+    'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago fallo. Intenta de nuevo.' },
+
+    // Cookie Banner / GDPR Consent
+    'cookies.banner.title': { en: 'Cookie Preferences', es: 'Preferencias de Cookies' },
+    'cookies.banner.description': { en: 'We use analytics cookies to improve your experience and understand how our site is used.', es: 'Usamos cookies de analytics para mejorar tu experiencia y entender como se usa nuestro sitio.' },
+    'cookies.banner.details': { en: 'These cookies help us analyze traffic and optimize performance. No personal data is sold or shared.', es: 'Estas cookies nos ayudan a analizar el trafico y optimizar el rendimiento. No vendemos ni compartimos datos personales.' },
+    'cookies.accept': { en: 'Accept Analytics', es: 'Aceptar Analytics' },
+    'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },
+    'cookies.banner.aria': { en: 'Cookie consent banner', es: 'Banner de consentimiento de cookies' },
+    'cookies.accept.aria': { en: 'Accept analytics cookies', es: 'Aceptar cookies de analytics' },
+    'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' }
   };
 
   constructor() {

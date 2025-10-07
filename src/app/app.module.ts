@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { TitleStrategy } from '@angular/router';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';
@@ -18,6 +19,8 @@ import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
+import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
 import { ResumeCardComponent } from './resume-card/resume-card.component';
@@ -31,8 +34,11 @@ import { DonateComponent } from './donate/donate.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
+import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
+import { ScrollTrackingDirective } from './scroll-tracking.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
+import { AppTitleStrategy } from './shared/title-strategy.service';
 
 
 @NgModule({
@@ -55,7 +61,9 @@ import { AppCheckInterceptor } from './app-check.interceptor';
     DonateComponent,
     NewsFeedComponent,
     ServicesComponent,
-    AboutComponent
+    AboutComponent,
+    CookieBannerComponent,
+    ScrollTrackingDirective
   ],
   bootstrap: [AppComponent],
   imports: [
@@ -69,6 +77,8 @@ import { AppCheckInterceptor } from './app-check.interceptor';
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
+    provideAnalytics(() => getAnalytics()),
+    providePerformance(() => getPerformance()),
     provideAppCheck(() => {
       const siteKey = environment.appCheck?.siteKey ?? '';
       const rawDebugToken = environment.appCheck?.debugToken;
@@ -99,7 +109,12 @@ import { AppCheckInterceptor } from './app-check.interceptor';
     provideDatabase(() => getDatabase()),
     provideAuth(() => getAuth()),
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
-    provideHttpClient(withInterceptorsFromDi())
+    provideHttpClient(withInterceptorsFromDi()),
+    // Custom title strategy for better SEO and Analytics screen names
+    { provide: TitleStrategy, useClass: AppTitleStrategy },
+    // Firebase Analytics automatic tracking services
+    ScreenTrackingService,
+    UserTrackingService
   ]
 })
 export class AppModule { }
