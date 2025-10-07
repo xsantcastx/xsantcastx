@@ -17,13 +17,13 @@ export const environment = {
     // Optional: supply a debug token string or 'auto' while developing locally
     debugToken: '',
     // Any HTTPS endpoints that must receive the X-Firebase-AppCheck header
-    protectedOrigins: [
-      'https://contact-sendemail-77wvanqjhq-uk.a.run.app'
-    ]
+    protectedOrigins: []
   },
 
-  api: {
-    contactFormUrl: 'https://contact-sendemail-77wvanqjhq-uk.a.run.app'
+  // Email Configuration
+  email: {
+    // Brevo configuration will be handled in the service
+    contactEmail: 'xsantcastx@xsantcastx.com'
   },
 
   // Payment Configuration
