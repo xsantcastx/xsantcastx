@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { BREVO_CONFIG, EMAIL_RULES } from './brevo.config';
+import { environment } from '../environments/environment';
 
 export interface EmailData {
   to: string;
@@ -23,6 +23,8 @@ export interface EmailResponse {
   providedIn: 'root'
 })
 export class EmailService {
+  private readonly brevoConfig = environment.email.brevo;
+  
   constructor(private http: HttpClient) {}
 
   /**
@@ -31,17 +33,17 @@ export class EmailService {
    */
   sendEmail(emailData: EmailData): Observable<EmailResponse> {
     // Validate recipient email (only allow sending to approved email)
-    if (emailData.to !== BREVO_CONFIG.ALLOWED_RECIPIENT) {
-      return throwError(() => new Error(`Email can only be sent to ${BREVO_CONFIG.ALLOWED_RECIPIENT}`));
+    if (emailData.to !== this.brevoConfig.allowedRecipient) {
+      return throwError(() => new Error(`Email can only be sent to ${this.brevoConfig.allowedRecipient}`));
     }
 
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      'api-key': BREVO_CONFIG.API_KEY
+      'api-key': this.brevoConfig.apiKey
     });
 
     const brevoPayload = {
-      sender: BREVO_CONFIG.DEFAULT_SENDER,
+      sender: this.brevoConfig.defaultSender,
       to: [{
         email: emailData.to,
         name: 'Santiago Castrillon'
@@ -57,7 +59,7 @@ export class EmailService {
       })
     };
 
-    return this.http.post<any>(BREVO_CONFIG.ENDPOINT, brevoPayload, { headers })
+    return this.http.post<any>(this.brevoConfig.endpoint, brevoPayload, { headers })
       .pipe(
         map(response => ({
           success: true,
@@ -84,23 +86,23 @@ export class EmailService {
    * Validate if email is allowed to receive messages
    */
   isEmailAllowed(email: string): boolean {
-    return email.toLowerCase() === BREVO_CONFIG.ALLOWED_RECIPIENT.toLowerCase();
+    return email.toLowerCase() === this.brevoConfig.allowedRecipient.toLowerCase();
   }
 
   /**
    * Get the allowed recipient email
    */
   getAllowedEmail(): string {
-    return BREVO_CONFIG.ALLOWED_RECIPIENT;
+    return this.brevoConfig.allowedRecipient;
   }
 
   /**
    * Check if Brevo service is properly configured
    */
   isConfigured(): boolean {
-    return typeof BREVO_CONFIG.API_KEY === 'string' && 
-           BREVO_CONFIG.API_KEY !== 'xkeysib-YOUR_BREVO_API_KEY_HERE' && 
-           BREVO_CONFIG.API_KEY.startsWith('xkeysib-');
+    return typeof this.brevoConfig.apiKey === 'string' && 
+           this.brevoConfig.apiKey !== 'xkeysib-YOUR_BREVO_API_KEY_HERE' && 
+           this.brevoConfig.apiKey.startsWith('xkeysib-');
   }
 
   /**

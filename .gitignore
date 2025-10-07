@@ -19,6 +19,7 @@ out-tsc/
 .env.development
 .env.production
 src/environments/environment.prod.ts
+src/environments/environment.ts
 
 # API Keys and Configuration Files
 src/app/brevo.config.ts
