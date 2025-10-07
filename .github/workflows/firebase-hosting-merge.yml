@@ -33,10 +33,7 @@ jobs:
         run: |
           echo "Creating environment.ts from template..."
           cp src/environments/environment.template.ts src/environments/environment.ts
-          cp src/environments/environment.template.ts src/environments/environment.prod.ts
-          
-          # Replace with actual values for production
-          sed -i 's/production: false/production: true/g' src/environments/environment.prod.ts
+          cp src/environments/environment.prod.template.ts src/environments/environment.prod.ts
           
           # Inject Brevo API key from GitHub Secrets if available
           if [ ! -z "${{ secrets.BREVO_API_KEY }}" ]; then
