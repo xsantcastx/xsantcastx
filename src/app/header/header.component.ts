@@ -8,6 +8,7 @@
   OnDestroy
 } from '@angular/core';
 import { TranslationService } from '../translation.service';
+import { AnalyticsService } from '../analytics.service';
 
 @Component({
   selector: 'app-header',
@@ -46,7 +47,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   constructor(
     private elRef: ElementRef,
     private renderer: Renderer2,
-    private translationService: TranslationService
+    private translationService: TranslationService,
+    private analyticsService: AnalyticsService
   ) {}
 
   ngOnInit(): void {
@@ -211,7 +213,16 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   setLanguage(language: string): void {
+    const previousLang = this.currentLang;
     this.translationService.setLanguage(language);
+    
+    // Track language change
+    if (previousLang !== language) {
+      this.analyticsService.trackLanguageChange(
+        language as 'en' | 'es',
+        previousLang as 'en' | 'es'
+      );
+    }
   }
 
   translate(key: string): string {
