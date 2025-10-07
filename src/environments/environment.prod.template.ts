@@ -22,9 +22,9 @@ export const environment = {
 
   // Email Configuration - Production ready
   email: {
-    // Brevo configuration with working API key
+    // Brevo configuration - disabled for production (use Firebase Functions instead)
     brevo: {
-      apiKey: 'YOUR_BREVO_API_KEY_HERE', // Working API key
+      apiKey: '', // Disabled - use Firebase Functions for security
       endpoint: 'https://api.brevo.com/v3/smtp/email',
       allowedRecipient: 'xsantcastx@xsantcastx.com',
       defaultSender: {
