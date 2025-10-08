@@ -29,6 +29,184 @@ const getStripeInstance = (): Stripe => {
 };
 
 /**
+ * Verify and log successful Stripe Checkout session
+ */
+export const verifyCheckoutSession = onCall(
+  { 
+    maxInstances: 10,
+    enforceAppCheck: false, // Allow anonymous donations
+    consumeAppCheckToken: false
+  },
+  async (request) => {
+    try {
+      const { sessionId } = request.data;
+      
+      if (!sessionId) {
+        throw new HttpsError('invalid-argument', 'Session ID is required');
+      }
+
+      logger.info('Verifying Stripe checkout session:', { sessionId });
+
+      const stripe = getStripeInstance();
+      
+      // Retrieve the checkout session
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      if (session.payment_status !== 'paid') {
+        throw new HttpsError('failed-precondition', 
+          `Payment not completed. Status: ${session.payment_status}`);
+      }
+
+      // Check if already logged to prevent duplicates
+      const existingDonation = await db.collection('donations')
+        .where('checkoutSessionId', '==', sessionId)
+        .limit(1)
+        .get();
+
+      if (!existingDonation.empty) {
+        logger.info('Donation already logged for session:', { sessionId });
+        const existingDoc = existingDonation.docs[0];
+        return {
+          success: true,
+          donationId: existingDoc.id,
+          alreadyLogged: true,
+          message: 'Donation already recorded'
+        };
+      }
+
+      // Extract payment details
+      const amount = (session.amount_total || 0) / 100; // Convert from cents
+      const currency = (session.currency || 'USD').toUpperCase();
+
+      // Log donation to Firestore
+      const donationRef = await db.collection('donations').add({
+        type: 'stripe_checkout',
+        amount: amount,
+        currency: currency,
+        checkoutSessionId: sessionId,
+        paymentIntentId: session.payment_intent,
+        status: 'completed',
+        stripeCheckoutDetails: {
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+          customerEmail: session.customer_email,
+          created: new Date(session.created * 1000)
+        },
+        donor: {
+          uid: request.auth?.uid || 'anonymous',
+          name: session.customer_details?.name || 'Anonymous',
+          email: session.customer_email || session.customer_details?.email || null
+        },
+        timestamp: new Date(),
+        userAgent: request.rawRequest.get('user-agent') || null,
+        ip: request.rawRequest.ip || null
+      });
+
+      logger.info('Stripe checkout donation logged successfully:', { 
+        donationId: donationRef.id, 
+        amount, 
+        sessionId 
+      });
+
+      return { 
+        success: true,
+        donationId: donationRef.id,
+        transactionId: sessionId,
+        amount: amount,
+        currency: currency,
+        message: 'Payment verified and logged successfully'
+      };
+
+    } catch (error) {
+      logger.error('Stripe checkout verification failed:', error);
+      
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError('invalid-argument', `Stripe error: ${error.message}`);
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `Checkout verification failed: ${errorMessage}`);
+    }
+  }
+);
+
+/**
+ * Create a Stripe Checkout Session (simpler alternative to Payment Intent)
+ */
+export const createCheckoutSession = onCall(
+  { 
+    maxInstances: 10,
+    enforceAppCheck: false, // Allow anonymous donations
+    consumeAppCheckToken: false
+  },
+  async (request) => {
+    try {
+      const { amount, currency = 'usd' } = request.data;
+      
+      if (!amount || amount < 1) {
+        throw new HttpsError('invalid-argument', 'Valid amount is required (minimum $1)');
+      }
+
+      logger.info('Creating Stripe checkout session:', { amount, currency });
+
+      const stripe = getStripeInstance();
+      
+      // Create checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: 'Donation to xsantcastx Development Studio',
+                description: `Support xsantcastx - $${amount} donation`,
+              },
+              unit_amount: Math.round(amount * 100), // Convert to cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${request.rawRequest.headers.origin || 'https://xsantcastx-1694b.web.app'}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${request.rawRequest.headers.origin || 'https://xsantcastx-1694b.web.app'}?payment=cancelled`,
+        metadata: {
+          donor_uid: request.auth?.uid || 'anonymous',
+          donation_type: 'website_donation',
+          created_at: new Date().toISOString()
+        }
+      });
+
+      logger.info('Stripe checkout session created:', { 
+        sessionId: session.id,
+        amount,
+        currency
+      });
+
+      return { 
+        success: true, 
+        sessionId: session.id,
+        url: session.url
+      };
+
+    } catch (error) {
+      logger.error('Failed to create Stripe checkout session:', error);
+      
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError('invalid-argument', `Stripe error: ${error.message}`);
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `Failed to create checkout session: ${errorMessage}`);
+    }
+  }
+);
+
+/**
  * Create a Stripe Payment Intent
  */
 export const createPaymentIntent = onCall(

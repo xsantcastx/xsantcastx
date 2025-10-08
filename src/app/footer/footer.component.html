@@ -191,8 +191,8 @@
 
                 <!-- Stripe Payment Section -->
                 <div class="payment-section">
-                    <div *ngIf="!isStripeReady" class="loading-message">
-                        {{ translate('footer.processing') }}
+                    <div *ngIf="!isStripeReady && !stripeProcessing" class="loading-message error">
+                        ⚠️ Stripe is not configured. Please contact the site administrator.
                     </div>
                     <button 
                         *ngIf="isStripeReady && !stripeProcessing"
