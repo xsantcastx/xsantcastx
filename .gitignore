@@ -13,13 +13,12 @@ out-tsc/
 *.swp
 *.swo
 
-# Environment files (if sensitive)
+# Environment files (backend only - these contain secrets)
 .env
 .env.local
 .env.development
 .env.production
-src/environments/environment.prod.ts
-src/environments/environment.ts
+# Note: src/environments/*.ts are now tracked (contain only safe public config)
 
 # API Keys and Configuration Files
 src/app/brevo.config.ts
