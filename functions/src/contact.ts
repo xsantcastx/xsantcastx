@@ -39,10 +39,10 @@ export const sendContactEmail = onRequest(
         return;
       }
 
-      // Brevo API configuration - use your existing API key
-      const apiKey = '';
+      // Brevo API configuration - read from environment variable
+      const apiKey = process.env.BREVO_API_KEY;
       if (!apiKey) {
-        logger.error("Brevo API key not configured");
+        logger.error("Brevo API key not configured in environment");
         response.status(500).json({ error: "Email service configuration error" });
         return;
       }

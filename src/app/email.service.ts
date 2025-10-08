@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { environment } from '../environments/environment';
 
 export interface EmailData {
   to: string;
@@ -23,94 +22,65 @@ export interface EmailResponse {
   providedIn: 'root'
 })
 export class EmailService {
-  private readonly brevoConfig = environment.email.brevo;
-  
+  // Use same-origin endpoint via Firebase Hosting rewrite (no CORS)
+  private readonly functionUrl = '/api/send-contact';
+
   constructor(private http: HttpClient) {}
 
   /**
-   * Send email using Brevo SMTP service
-   * Only allows sending TO xsantcastx@xsantcastx.com for security
+   * Send email using Firebase Function (secure, recommended)
    */
   sendEmail(emailData: EmailData): Observable<EmailResponse> {
-    // Validate recipient email (only allow sending to approved email)
-    if (emailData.to !== this.brevoConfig.allowedRecipient) {
-      return throwError(() => new Error(`Email can only be sent to ${this.brevoConfig.allowedRecipient}`));
+    // Only allow sending to your approved email
+    if (emailData.to !== 'xsantcastx@xsantcastx.com') {
+      return throwError(() => new Error('Email can only be sent to xsantcastx@xsantcastx.com'));
     }
 
-    // Use a CORS proxy for production or handle CORS differently
-    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-    const targetUrl = this.brevoConfig.endpoint;
-    const url = environment.production ? proxyUrl + targetUrl : targetUrl;
-
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'api-key': this.brevoConfig.apiKey,
-      'X-Requested-With': 'XMLHttpRequest'
-    });
-
-    const brevoPayload = {
-      sender: this.brevoConfig.defaultSender,
-      to: [{
-        email: emailData.to,
-        name: 'Santiago Castrillon'
-      }],
-      subject: emailData.subject,
-      htmlContent: emailData.htmlContent,
-      textContent: emailData.textContent,
-      ...(emailData.replyTo && {
-        replyTo: {
-          email: emailData.replyTo,
-          name: emailData.senderName || 'Contact Form Sender'
-        }
-      })
+    // Build the payload to match your function's expected input
+    const payload: any = {
+      name: emailData.senderName || 'Contact Form Sender',
+      email: emailData.replyTo || 'noreply@xsantcastx.com',
+      message: emailData.textContent,
     };
+    // Optionally add projectType, budget, etc. if present
+    if ((emailData as any).projectType) payload.projectType = (emailData as any).projectType;
+    if ((emailData as any).budget) payload.budget = (emailData as any).budget;
 
-    return this.http.post<any>(url, brevoPayload, { headers })
-      .pipe(
-        map(response => ({
-          success: true,
-          messageId: response.messageId
-        })),
-        catchError(error => {
-          console.error('Brevo SMTP Error:', error);
-          let errorMessage = 'Failed to send email';
-          
-          if (error.error?.message) {
-            errorMessage = error.error.message;
-          } else if (error.status === 401) {
-            errorMessage = 'Invalid Brevo API key';
-          } else if (error.status === 400) {
-            errorMessage = 'Invalid email data provided';
-          } else if (error.status === 0) {
-            errorMessage = 'Network error - please check your connection';
-          }
-          
-          return throwError(() => new Error(errorMessage));
-        })
-      );
+    return this.http.post<any>(this.functionUrl, payload).pipe(
+      map(response => ({
+        success: true,
+        messageId: response.messageId
+      })),
+      catchError(error => {
+        console.error('Contact Function Error:', error);
+        let errorMessage = 'Failed to send email';
+        if (error.error?.error) {
+          errorMessage = error.error.error;
+        }
+        return throwError(() => new Error(errorMessage));
+      })
+    );
   }
 
   /**
    * Validate if email is allowed to receive messages
    */
   isEmailAllowed(email: string): boolean {
-    return email.toLowerCase() === this.brevoConfig.allowedRecipient.toLowerCase();
+    return email.toLowerCase() === 'xsantcastx@xsantcastx.com';
   }
 
   /**
    * Get the allowed recipient email
    */
   getAllowedEmail(): string {
-    return this.brevoConfig.allowedRecipient;
+    return 'xsantcastx@xsantcastx.com';
   }
 
   /**
-   * Check if Brevo service is properly configured
+   * Always true, since function is always configured
    */
   isConfigured(): boolean {
-    return typeof this.brevoConfig.apiKey === 'string' && 
-           this.brevoConfig.apiKey !== 'xkeysib-YOUR_BREVO_API_KEY_HERE' && 
-           this.brevoConfig.apiKey.startsWith('xkeysib-');
+    return true;
   }
 
   /**
