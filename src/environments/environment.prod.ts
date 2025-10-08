@@ -52,7 +52,7 @@ export const environment = {
     
     // Stripe (only publishable key is safe for frontend) - DISABLED
     stripe: {
-      publishableKey: '' // TODO: Get from Stripe Dashboard → Developers → API keys (starts with pk_live_)
+      publishableKey: 'pk_live_51S5t0W2O6zyPvnQXsPR57BVDWWoBIbEb3pVzfqVOHjwtxc3w5Z1RxSPSpvADNfiJOXGZndQoDdwm2aQ01DDU2QRC00RbOsq8R4' // TODO: Get from Stripe Dashboard → Developers → API keys (starts with pk_live_)
     }
   }
 };
