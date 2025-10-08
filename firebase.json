@@ -8,6 +8,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/send-contact",
+        "function": {
+          "functionId": "sendContactEmail",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
