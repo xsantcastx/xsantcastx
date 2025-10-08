@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../environments/environment';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 // PayPal SDK types
 declare var paypal: any;
@@ -23,6 +24,7 @@ export interface DonationAmount {
   providedIn: 'root'
 })
 export class PaymentService {
+  private functions = inject(Functions);
   private stripe: any;
   private paypalLoaded = new BehaviorSubject<boolean>(false);
   private stripeLoaded = new BehaviorSubject<boolean>(false);
@@ -166,34 +168,66 @@ export class PaymentService {
     });
   }
 
-  // Stripe payment processing
+  // Stripe payment processing using Stripe Checkout
   async processStripePayment(amount: number): Promise<PaymentResult> {
-    if (!this.stripeLoaded.value) {
-      return { success: false, error: 'Stripe not loaded' };
+    // Check if Stripe is configured
+    const publishableKey = environment.payments.stripe.publishableKey;
+    if (!publishableKey || publishableKey === '') {
+      return { 
+        success: false, 
+        error: 'Stripe is not configured. Please add your Stripe publishable key to the environment configuration.' 
+      };
+    }
+
+    // Check if Stripe SDK is loaded
+    if (!this.stripeLoaded.value || !this.stripe) {
+      return { 
+        success: false, 
+        error: 'Stripe SDK failed to load. Please check your publishable key and try again.' 
+      };
     }
 
     try {
-      // In a real implementation, you would:
-      // 1. Call your Firebase function to create a payment intent
-      // 2. Use the client secret to confirm the payment
+      console.log('Creating Stripe checkout session for amount:', amount);
       
-      // For now, since you need Firebase Cloud Functions, let's show the structure:
-      console.log('Processing Stripe payment for amount:', amount);
+      // Call Firebase Cloud Function to create a Stripe Checkout session
+      const createCheckoutSession = httpsCallable(this.functions, 'stripe-createCheckoutSession');
+      const response = await createCheckoutSession({ amount, currency: 'usd' });
       
-      // This would be your Firebase function call:
-      // const response = await this.createPaymentIntent(amount);
-      // const result = await this.stripe.confirmCardPayment(response.client_secret);
+      const data = response.data as any;
       
-      // For demonstration, return a placeholder
-      return { 
-        success: false, 
-        error: 'Stripe integration requires Firebase Cloud Functions. Please set up the backend first.' 
+      if (!data.success || !data.sessionId) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      console.log('Checkout session created, redirecting to Stripe...');
+
+      // Redirect to Stripe Checkout page
+      const result = await this.stripe.redirectToCheckout({
+        sessionId: data.sessionId
+      });
+
+      if (result.error) {
+        console.error('Stripe redirect error:', result.error);
+        return {
+          success: false,
+          error: result.error.message || 'Failed to redirect to payment page'
+        };
+      }
+
+      // If we get here, the redirect happened successfully
+      // User will be redirected back to your site after payment
+      return {
+        success: true,
+        transactionId: data.sessionId
       };
       
     } catch (error) {
+      console.error('Stripe payment error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return { 
         success: false, 
-        error: `Stripe payment failed: ${error}` 
+        error: `Stripe payment failed: ${errorMessage}` 
       };
     }
   }

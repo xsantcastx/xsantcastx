@@ -13,6 +13,8 @@ import {
 } from "./paypal";
 
 import {
+  createCheckoutSession,
+  verifyCheckoutSession,
   createPaymentIntent,
   confirmStripePayment,
   handleStripeWebhook,
@@ -36,6 +38,8 @@ export const paypal = {
 
 // Export Stripe functions
 export const stripe = {
+  createCheckoutSession: createCheckoutSession,
+  verifyCheckoutSession: verifyCheckoutSession,
   createPaymentIntent: createPaymentIntent,
   confirmPayment: confirmStripePayment,
   handleWebhook: handleStripeWebhook,

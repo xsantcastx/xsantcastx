@@ -19,6 +19,7 @@ import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideFunctions, getFunctions } from '@angular/fire/functions';
 import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
@@ -113,6 +114,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     }),
     provideDatabase(() => getDatabase()),
     provideAuth(() => getAuth()),
+    provideFunctions(() => getFunctions()),
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names
