@@ -46,7 +46,7 @@ export const environment = {
     
     // PayPal (only client ID is safe for frontend) - DISABLED
     paypal: {
-      clientId: '', // Disabled - set real client ID to enable
+      clientId: 'AYzxQ0BSmDFgWj0ICW3EJmCqjqPbKXcg_7rO2GoUj8ENL83N_0sJLmTuijTGLm1lh47MUOQ3qyQGL1Xk', // Safe to expose - this is a publishable key
       mode: 'sandbox' // Change to 'live' for production
     },
     

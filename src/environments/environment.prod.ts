@@ -46,13 +46,13 @@ export const environment = {
     
     // PayPal (only client ID is safe for frontend)
     paypal: {
-      clientId: process.env['PAYPAL_CLIENT_ID'] || 'AYzxQ0BSmDFgWj0ICW3EJmCqjqPbKXcg_7rO2GoUj8ENL83N_0sJLmTuijTGLm1lh47MUOQ3qyQGL1Xk',
+      clientId: 'AYzxQ0BSmDFgWj0ICW3EJmCqjqPbKXcg_7rO2GoUj8ENL83N_0sJLmTuijTGLm1lh47MUOQ3qyQGL1Xk',
       mode: 'live'
     },
     
-    // Stripe (only publishable key is safe for frontend)
+    // Stripe (only publishable key is safe for frontend) - DISABLED
     stripe: {
-      publishableKey: process.env['STRIPE_PUBLISHABLE_KEY'] || 'pk_live_51S5t0W2O6zyPvnQXsPR57BVDWWoBIbEb3pVzfqVOHjwtxc3w5Z1RxSPSpvADNfiJOXGZndQoDdwm2aQ01DDU2QRC00RbOsq8R4'
+      publishableKey: '' // TODO: Get from Stripe Dashboard → Developers → API keys (starts with pk_live_)
     }
   }
 };
