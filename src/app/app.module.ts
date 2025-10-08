@@ -16,7 +16,7 @@ import { EgComponent } from './eg/eg.component';
 import { GridSectionsComponent } from './grid-sections/grid-sections.component';
 import { GuestbookComponent } from './guestbook/guestbook.component';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
@@ -105,7 +105,12 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
 
       return globalScope.__xsantcastxAppCheck;
     }),
-    provideFirestore(() => getFirestore()),
+    provideFirestore(() => {
+      const app = getApp();
+      return initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true
+      });
+    }),
     provideDatabase(() => getDatabase()),
     provideAuth(() => getAuth()),
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
