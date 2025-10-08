@@ -1,13 +1,13 @@
 <!-- Profile README: xsantcastx -->
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?size=24&center=true&vCenter=true&width=700&lines=Hi%2C+I'm+Santiago+Castrill%C3%B3n+%28xsantcastx%29;Senior+Data+Engineer+%2B+Full-Stack+Developer;Angular+%7C+Firebase+%7C+Python+%7C+SQL+%7C+Node%2FReact" />
+  <img src="https://readme-typing-svg.herokuapp.com?size=24&center=true&vCenter=true&width=700&lines=Hi%2C+I'm+XSANTCASTX+%XSANTCASTX%29;Senior+Data+Engineer+%2B+Full-Stack+Developer;Angular+%7C+Firebase+%7C+Python+%7C+SQL+%7C+Node%2FReact" />
 </p>
 
 <p align="center">
   <a href="https://xsantcastx.com">Website</a> •
   <a href="https://github.com/xsantcastx">GitHub</a> •
   <a href="https://twitter.com/xsantcastx">X/Twitter</a> •
-  <a href="mailto:hello@xsantcastx.com">Email</a>
+  <a href="mailto:xsantcastx@xsantcastx.com">Email</a>
 </p>
 
 ---
@@ -58,7 +58,7 @@ I build **modern web & mobile apps** and **data pipelines** that ship fast and s
 
 ### 📫 Contact
 - 🌐 Website: **xsantcastx.com**
-- 💌 Email: **hello@xsantcastx.com**
+- 💌 Email: **xsantcastx@xsantcastx.com**
 - 🐦 X/Twitter: **@xsantcastx**
 
 ---
