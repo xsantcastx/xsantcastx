@@ -1,4 +1,7 @@
 <nav class="navbar">
+  <!-- Mobile Menu Backdrop -->
+  <div class="mobile-backdrop" [class.show]="mobileMenuOpen" (click)="closeMobileMenu()"></div>
+
   <div class="logo" role="button" tabindex="0" (click)="scrollToSection('hero')" (keydown.enter)="scrollToSection('hero')" (keydown.space)="scrollToSection('hero'); $event.preventDefault()" aria-label="Jump to top">
     <span class="logo-mark" aria-hidden="true">
       <img src="assets/logo-xsantcastx.svg" alt="" decoding="async" draggable="false" width="64" height="64" />
