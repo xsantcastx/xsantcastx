@@ -109,7 +109,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     provideFirestore(() => {
       const app = getApp();
       return initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true
+        experimentalForceLongPolling: true
       });
     }),
     provideDatabase(() => getDatabase()),
