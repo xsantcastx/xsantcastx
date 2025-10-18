@@ -1,594 +1,178 @@
-Short version: your app is trying to open Firestore’s realtime Listen stream, and the server is replying 400 Bad Request. That means the request Firestore received is malformed for your project/context (not a network/CORS thing). In practice it usually comes from a mis-configured Firebase app, a token/config mismatch, or an environment that breaks the streaming transport.
+# Stripe Webhook Failure Notice
 
-Here’s how to fix it fast:
+> Hello,
+>
+> We've had some trouble sending requests in live mode to a webhook endpoint associated with your xsantcastx account. Stripe sends webhook events to your server to notify you of activity in your Stripe account, such as a completed payout or a newly created invoice.
+>
+> The URL of the failing webhook endpoint is: https://stripe-handlewebhook-77wvanqjhq-uc.a.run.app
+>
+> You (or someone on your team) configured your Stripe account to send events to that URL. You can change your account's webhook endpoints from the Dashboard.
+>
+> In most cases, a failing webhook does not impact your payments or payouts. However:
+>
+> - If you use subscriptions, we rely on your webhook endpoint to notify you of new invoices. These invoices may be delayed for up to three days if your endpoint is unable to successfully receive them.
+> - If you use Checkout and rely on the `checkout.session.completed` event as part of your purchase fulfillment process, you should review your completed payments to ensure you have fulfilled all recent purchases.
+>
+> We have attempted to send event notifications to this endpoint 11 times since the first failure on October 9, 2025 at 10:09:40 AM UTC. If this endpoint is important to your application, please try and fix the issue. If you do not need this webhook endpoint, you can remove it from your Stripe webhook settings. We will stop sending event notifications to this webhook endpoint by October 18, 2025 at 10:09:40 AM UTC.
+>
+> Here is the summary of errors we received while attempting to send webhook events:
+>
+> - 11 requests had other errors while sending the webhook event.
+>
+> You need to return any status code between HTTP 200 and 299 for Stripe to consider the webhook event successfully delivered.
+>
+> For more details on these errors and to review your account's recent activity, you can find the full set of events and request logs on the Dashboard.
+>
+> For more in-depth information on how to use webhooks, we recommend reviewing our documentation.
+>
+> -- The Stripe team
 
-Verify your Firebase config (the “firebaseConfig” you pass to initializeApp)
+---
 
-projectId must be exactly xsantcastx-1694b.
+Got it: your Stripe webhook URL on Cloud Run is not returning a 2xx status, so Stripe is retrying and will disable the endpoint on October 18, 2025 if it keeps failing. Use this checklist to restore the endpoint quickly and safely.
 
-apiKey, authDomain, appId, etc. must be from the same project.
+## 1. Confirm the Cloud Run service is public
 
-In Angular, ensure both environment.ts and environment.prod.ts have the same correct config, and that you initialize once.
+In the Google Cloud console, open Cloud Run, select `stripe-handlewebhook`, and ensure Security allows unauthenticated invocations. If it does not, grant the role with:
 
-// app.config.ts (Angular 16+ with provide* APIs)
-import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
+```bash
+gcloud run services add-iam-policy-binding stripe-handlewebhook \
+  --member="allUsers" \
+  --role="roles/run.invoker" \
+  --region=us-central1
+```
 
-export const appConfig = {
-  providers: [
-    provideFirebaseApp(() => initializeApp({
-      apiKey: '…',
-      authDomain: 'xsantcastx-1694b.firebaseapp.com',
-      projectId: 'xsantcastx-1694b',
-      appId: '…',
-      // storageBucket, messagingSenderId (optional but better to include)
-    })),
-    // Use one of these two:
-    // Simple:
-    // provideFirestore(() => getFirestore())
+## 2. Inspect recent Cloud Run logs
 
-    // If you need the transport workaround (see step 4):
-    provideFirestore(() =>
-      initializeFirestore(getApp(), {
-        experimentalForceLongPolling: true,
-        useFetchStreams: false,
-      })
-    ),
-  ],
-};
+Review the error the service is emitting so you know what Stripe is seeing. From your terminal run:
 
+```bash
+gcloud run services describe stripe-handlewebhook \
+  --region us-central1 \
+  --format='value(status.url)'
 
-Don’t mix SDK flavors
+gcloud run logs read stripe-handlewebhook \
+  --region us-central1 \
+  --limit 50
+```
 
-Use modular @angular/fire v7+/Firebase v9+ imports consistently. Avoid mixing compat (firebase/compat/*) with modular (firebase/*) in the same app.
+Confirm the service URL matches the Stripe endpoint and look for the HTTP status codes returned to Stripe. Fix any application errors surfaced in the logs before retrying.
 
-Ensure you’re not initializing a second Firebase app accidentally (check for stray initializeApp calls in libs or feature modules).
+## 3. Return a success response immediately
 
-Check API key restrictions
+Stripe considers the webhook delivered only when your service responds with an HTTP 2xx status. Acknowledge the request quickly and push heavier work onto background jobs if needed.
 
-If your API key is HTTP-referrer-restricted, make sure localhost (and its port) and your production domain are on the allow list. A restricted key used from an unlisted origin can break Firestore handshake and result in transport 400s.
+## 4. Verify the Stripe signature correctly
 
-Try the streaming transport fallback (fixes proxies/VPNs/ad-blockers)
-Some networks/ad-blockers/proxies break the WebChannel stream Firestore uses. For local dev or flaky networks, force long-polling:
+When verifying signatures, read the raw request body and use the webhook endpoint secret from the Stripe Dashboard. Parsing the body before verification or using the wrong secret is the most common source of failures.
 
-initializeFirestore(getApp(), {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-});
+## 5. Reference implementation for Node and Express on Cloud Run
 
+Create a minimal service that uses `express.raw`, returns `200 OK` quickly, and handles the events you care about.
 
-Hard reload to clear a bad session
-
-Old/broken gsessionid can stick around. Do a hard refresh (Ctrl+F5), or clear site data (Local Storage/IndexedDB) for your app’s origin, then reload.
-
-Confirm Firestore is enabled in the right mode & project
-
-In Google Cloud console → Firestore, verify the database exists for xsantcastx-1694b and is in Native mode.
-
-Your previous errors about us-central1 vs nam5 affect Cloud Functions/Extensions triggers, not the web SDK directly, but double-check you aren’t pointing any code at a different project/region accidentally.
-
-Surface the real error (optional but useful)
-Wrap a listener with an error callback so you can see Firestore’s gRPC error if it gets past transport:
-
-import { doc, onSnapshot } from '@angular/fire/firestore';
-
-const ref = doc(getFirestore(), 'someCollection/someDoc');
-const unsubscribe = onSnapshot(ref, {
-  next: (snap) => console.log('data', snap.data()),
-  error: (err) => console.error('Firestore listen error:', err.code, err.message, err),
-});
-
-
-Security rules sanity check
-If your rules flat-deny reads, you’ll normally see PERMISSION_DENIED, but depending on the transport you might only see a stream error. Temporarily test with:
-
-// (for testing only—don’t ship this)
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read: if true;
-      allow write: if false;
-    }
+```json
+{
+  "name": "stripe-webhook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "stripe": "^16.0.0"
   }
 }
+```
 
+```javascript
+import express from "express";
+import Stripe from "stripe";
 
-If that makes the error disappear, your rules are blocking the read.
+const app = express();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-Given your earlier region mismatch message (nam5 vs us-central1), also ensure any Functions/Extensions you call from the client are deployed in a region compatible with your Firestore DB (use functions(region('nam5')) or redeploy to the same multi-region where applicable). That won’t directly cause the Listen 400, but it often shows up alongside it when configs are out of sync.
+// Use express.raw so Stripe signature verification sees the exact payload.
+app.post("/", express.raw({ type: "application/json" }), (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-polyfills-B6TNHZQ6.js:2   GET https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=oMthPGqoRMFIXJq-AWHYClc4saQpxmOcD_uspzhkI5M&VER=8&database=projects%2Fxsantcastx-1694b%2Fdatabases%2F(default)&RID=rpc&SID=OGkkh5scGg_J4MNKIicQFg&AID=0&CI=0&TYPE=xmlhttp&zx=o9f3t6dc09tu&t=1 net::ERR_ABORTED 400 (Bad Request)
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-oP @ main-XKJYK6ID.js:18
-n.Fa @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-GM @ main-XKJYK6ID.js:15
-n.Sa @ main-XKJYK6ID.js:15
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-tw @ main-XKJYK6ID.js:14
-n.Ga @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-setTimeout
-T @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMacroTask @ polyfills-B6TNHZQ6.js:1
-xe @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-I_ @ main-XKJYK6ID.js:26
-H_ @ main-XKJYK6ID.js:26
-z_ @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-setTimeout
-T @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMacroTask @ polyfills-B6TNHZQ6.js:1
-xe @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-start @ main-XKJYK6ID.js:27
-createAndSchedule @ main-XKJYK6ID.js:27
-enqueueAfterDelay @ main-XKJYK6ID.js:30
-y_ @ main-XKJYK6ID.js:26
-B_ @ main-XKJYK6ID.js:26
-start @ main-XKJYK6ID.js:26
-ND @ main-XKJYK6ID.js:27
-(anonymous) @ main-XKJYK6ID.js:27
-(anonymous) @ chunk-OH7XRW6N.js:1
-M @ polyfills-B6TNHZQ6.js:2
-h @ chunk-OH7XRW6N.js:1
-VX @ main-XKJYK6ID.js:27
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ chunk-OH7XRW6N.js:1
-M @ polyfills-B6TNHZQ6.js:2
-h @ chunk-OH7XRW6N.js:1
-close @ main-XKJYK6ID.js:26
-j_ @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:30
-(anonymous) @ main-XKJYK6ID.js:30
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-GM @ main-XKJYK6ID.js:15
-n.Sa @ main-XKJYK6ID.js:15
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-oP @ main-XKJYK6ID.js:18
-n.Fa @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-GM @ main-XKJYK6ID.js:15
-n.Sa @ main-XKJYK6ID.js:15
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-tw @ main-XKJYK6ID.js:14
-n.Ga @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-setTimeout
-T @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMacroTask @ polyfills-B6TNHZQ6.js:1
-xe @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-I_ @ main-XKJYK6ID.js:26
-H_ @ main-XKJYK6ID.js:26
-z_ @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-setTimeout
-T @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMacroTask @ polyfills-B6TNHZQ6.js:1
-xe @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-start @ main-XKJYK6ID.js:27
-createAndSchedule @ main-XKJYK6ID.js:27
-enqueueAfterDelay @ main-XKJYK6ID.js:30
-y_ @ main-XKJYK6ID.js:26
-B_ @ main-XKJYK6ID.js:26
-start @ main-XKJYK6ID.js:26
-ND @ main-XKJYK6ID.js:27
-(anonymous) @ main-XKJYK6ID.js:27
-(anonymous) @ chunk-OH7XRW6N.js:1
-M @ polyfills-B6TNHZQ6.js:2
-h @ chunk-OH7XRW6N.js:1
-VX @ main-XKJYK6ID.js:27
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ chunk-OH7XRW6N.js:1
-M @ polyfills-B6TNHZQ6.js:2
-h @ chunk-OH7XRW6N.js:1
-close @ main-XKJYK6ID.js:26
-j_ @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:30
-(anonymous) @ main-XKJYK6ID.js:30
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-GM @ main-XKJYK6ID.js:15
-n.Sa @ main-XKJYK6ID.js:15
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-oP @ main-XKJYK6ID.js:18
-n.Fa @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-GM @ main-XKJYK6ID.js:15
-n.Sa @ main-XKJYK6ID.js:15
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-Promise.then
-H @ polyfills-B6TNHZQ6.js:1
-z @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMicroTask @ polyfills-B6TNHZQ6.js:1
-r @ polyfills-B6TNHZQ6.js:2
-I @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-Promise.then
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-M @ polyfills-B6TNHZQ6.js:2
-Q.h.then @ polyfills-B6TNHZQ6.js:2
-n.send @ main-XKJYK6ID.js:15
-n.ea @ main-XKJYK6ID.js:17
-RM @ main-XKJYK6ID.js:14
-tw @ main-XKJYK6ID.js:14
-n.Ga @ main-XKJYK6ID.js:18
-Rz @ main-XKJYK6ID.js:10
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-setTimeout
-T @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-onScheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleTask @ polyfills-B6TNHZQ6.js:1
-scheduleMacroTask @ polyfills-B6TNHZQ6.js:1
-xe @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:1
-e.<computed> @ polyfills-B6TNHZQ6.js:1
-I_ @ main-XKJYK6ID.js:26
-H_ @ main-XKJYK6ID.js:26
-z_ @ main-XKJYK6ID.js:26
-(anonymous) @ main-XKJYK6ID.js:26
-invoke @ polyfills-B6TNHZQ6.js:1
-onInvoke @ main-XKJYK6ID.js:7
-invoke @ polyfills-B6TNHZQ6.js:1
-run @ polyfills-B6TNHZQ6.js:1
-(anonymous) @ polyfills-B6TNHZQ6.js:2
-invokeTask @ polyfills-B6TNHZQ6.js:1
-onInvokeTask @ main-XKJYK6ID.js:7
-invokeTask @ polyfills-B6TNHZQ6.js:1
-runTask @ polyfills-B6TNHZQ6.js:1
-$ @ polyfills-B6TNHZQ6.js:1
-invokeTask @ polyfills-B6TNHZQ6.js:1
-E.useG.invoke @ polyfills-B6TNHZQ6.js:1
-T._.args.<computed> @ polyfills-B6TNHZQ6.js:1
-chunk-OH7XRW6N.js:15  [2025-10-08T13:13:24.825Z]  @firebase/firestore: Firestore (11.9.0): WebChannelConnection RPC 'Listen' stream 0x75f0303d transport errored. Name: undefined Message: undefined
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error("Signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  switch (event.type) {
+    case "checkout.session.completed":
+      // TODO: fulfill the purchase.
+      break;
+    case "invoice.paid":
+    case "invoice.payment_failed":
+      // TODO: handle subscription billing results.
+      break;
+    default:
+      console.log(`Unhandled event: ${event.type}`);
+  }
+
+  // Acknowledge the event so Stripe stops retrying.
+  return res.status(200).send("ok");
+});
+
+app.get("/", (_req, res) => res.status(200).send("alive"));
+
+const port = process.env.PORT || 8080;
+app.listen(port, () => console.log(`listening on ${port}`));
+```
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY . .
+ENV NODE_ENV=production
+CMD ["npm", "start"]
+```
+
+## 6. Deploy to Cloud Run
+
+Deploy in the same region as the failing URL and provide your secrets:
+
+```bash
+gcloud run deploy stripe-handlewebhook \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars STRIPE_SECRET_KEY=sk_live_xxx \
+  --set-env-vars STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+## 7. Test the endpoint
+
+- Option A: Send a basic POST request to confirm the service is reachable (signature verification will fail, but the endpoint should respond).
+
+```bash
+curl -i -X POST https://stripe-handlewebhook-77wvanqjhq-uc.a.run.app
+```
+
+- Option B: Use the Stripe CLI for end-to-end testing.
+
+```bash
+stripe login
+stripe listen --forward-to https://stripe-handlewebhook-77wvanqjhq-uc.a.run.app
+stripe trigger checkout.session.completed
+```
+
+## 8. Update the Stripe Dashboard if the path changes
+
+If you adjust the webhook path (for example, to `/webhook`), update the endpoint URL in Stripe Dashboard > Developers > Webhooks to match.
+
+## Common gotchas
+
+- Body parsing before signature verification invalidates the payload Stripe expects.
+- Leaving the service private returns 401 or 403 to Stripe, causing retries.
+- Doing slow or synchronous work before sending `200 OK` makes Stripe time out and retry.
+- Using the wrong webhook secret (`whsec_...`) prevents signature validation from succeeding.
