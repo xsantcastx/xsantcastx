@@ -411,6 +411,48 @@ Commit messages are descriptive and lowercase. Merge commits are common (`Merge 
 
 ---
 
+## CI/CD Pipeline
+
+Defined in `.github/workflows/ci-cd.yml`.
+
+**Triggers:**
+- Push to `main` or `develop`
+- Pull requests targeting `main`
+
+**Jobs:**
+
+| Job | Trigger | What it does |
+|---|---|---|
+| `build` | All pushes + PRs | `npm ci` → `npm run build --configuration production` → uploads `dist/xsantcastx/browser` as artifact (7-day retention) |
+| `deploy-production` | Push to `main` only | Downloads artifact → deploys to Firebase Hosting live channel |
+| `deploy-preview` | PRs only | Downloads artifact → deploys to Firebase Hosting preview channel, posts URL as PR comment |
+
+**Required GitHub Secrets:**
+- `GITHUB_TOKEN` — provided automatically by GitHub Actions
+- `FIREBASE_SERVICE_ACCOUNT_XSANTCASTX_1694B` — Firebase service account JSON (must be added in repo settings)
+
+Note: CI/CD builds on Node 20 (functions run on Node 22 at runtime — only applies to Cloud Functions, not the Angular build).
+
+---
+
+## Editor Conventions (`.editorconfig`)
+
+| Setting | Value |
+|---|---|
+| Charset | UTF-8 |
+| Indent style | Spaces |
+| Indent size | 2 |
+| Final newline | Required |
+| Trailing whitespace | Trimmed (except `.md` files) |
+| TypeScript quote type | Single quotes |
+
+**ESLint for Cloud Functions** (`functions/.eslintrc.js`):
+- Parser: `@typescript-eslint/parser`
+- Extends: `eslint:recommended`, `google`, `plugin:@typescript-eslint/recommended`
+- Enforces double quotes in function source (note: opposite of TypeScript convention in the Angular app — frontend uses single quotes)
+
+---
+
 ## Security Notes
 
 - **Firebase AppCheck** is enforced on all Cloud Functions (`enforceAppCheck: true`). Calls without a valid token are rejected.
