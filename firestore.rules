@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Guestbook ────────────────────────────────────────────────────────────
+    // Anyone can read; anyone can write (no auth required for guestbook)
+    match /guestbook/{messageId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['name', 'message', 'timestamp'])
+                   && request.resource.data.message is string
+                   && request.resource.data.message.size() <= 1000
+                   && request.resource.data.name is string
+                   && request.resource.data.name.size() <= 100;
+      allow update, delete: if false;
+    }
+
+    // ── User catalogs ─────────────────────────────────────────────────────────
+    // Only the authenticated owner can read/write their own catalogs.
+    match /users/{uid}/catalogs/{catalogId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Deny everything else ─────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

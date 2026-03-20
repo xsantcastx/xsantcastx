@@ -32,6 +32,10 @@ import { TransactionListComponent } from './transaction-list/transaction-list.co
 import { DonationFormComponent } from './donation-form/donation-form.component';
 import { DonationFeedComponent } from './donation-feed/donation-feed.component';
 import { DonateComponent } from './donate/donate.component';
+import { LandingComponent } from './landing/landing.component';
+import { ToolsComponent } from './tools/tools.component';
+import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.component';
+import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -60,6 +64,10 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     DonationFormComponent,
     DonationFeedComponent,
     DonateComponent,
+    LandingComponent,
+    ToolsComponent,
+    PdfGeneratorComponent,
+    ColorPaletteComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,

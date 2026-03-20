@@ -7,6 +7,7 @@
   OnInit,
   OnDestroy
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
 
@@ -17,6 +18,7 @@ import { AnalyticsService } from '../analytics.service';
   standalone: false
 })
 export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
+  private router = inject(Router);
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
@@ -234,15 +236,20 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const headerHeight = this.navbarEl?.offsetHeight ?? 70;
-      const offsetPosition = element.getBoundingClientRect().top + window.scrollY - headerHeight + 1;
+    const doScroll = () => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        const headerHeight = this.navbarEl?.offsetHeight ?? 70;
+        const offsetPosition = element.getBoundingClientRect().top + window.scrollY - headerHeight + 1;
+        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+      }
+    };
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+    const isOnHome = this.router.url === '/home' || this.router.url === '/';
+    if (isOnHome) {
+      doScroll();
+    } else {
+      this.router.navigate(['/home']).then(() => setTimeout(doScroll, 80));
     }
   }
 
