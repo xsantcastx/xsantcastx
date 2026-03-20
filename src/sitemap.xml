@@ -26,6 +26,12 @@
   </url>
 
   <url>
+    <loc>https://xsantcastx.com/tools/contrast-checker</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://xsantcastx.com/projects</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
