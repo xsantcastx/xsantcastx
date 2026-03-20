@@ -47,8 +47,8 @@ export class ToolsComponent {
       id: 'contrast-checker',
       title: 'Contrast Checker',
       description: 'Check WCAG AA/AAA contrast ratios between any two colors. Instant pass/fail for text, UI components, and large text thresholds.',
-      route: '',
-      status: 'coming-soon',
+      route: '/tools/contrast-checker',
+      status: 'live',
       tags: ['Accessibility', 'WCAG', 'Colors'],
       icon: `<circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor" stroke="none"/>`
     },

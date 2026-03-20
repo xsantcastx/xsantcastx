@@ -9,6 +9,7 @@ import { LandingComponent } from './landing/landing.component';
 import { ToolsComponent } from './tools/tools.component';
 import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.component';
 import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
+import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -178,6 +179,34 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'Color Palette Extractor', item: `${SITE_URL}/tools/color-palette` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/contrast-checker',
+    component: ContrastCheckerComponent,
+    title: 'Free WCAG Contrast Checker — AA & AAA Compliance | xsantcastx',
+    data: {
+      description: 'Free online WCAG contrast checker. Test foreground/background color pairs against AA and AAA accessibility standards for normal text, large text, and UI components.',
+      keywords: 'wcag contrast checker, color contrast ratio, accessibility checker, aa aaa compliance, contrast ratio tool, web accessibility',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'WCAG Contrast Checker',
+        url: `${SITE_URL}/tools/contrast-checker`,
+        description: 'Free browser-based WCAG contrast checker. Test color pairs against AA and AAA standards for normal text, large text, and UI components.',
+        applicationCategory: 'DesignApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: ['WCAG AA checking', 'WCAG AAA checking', 'Normal text, large text, UI components', 'Live preview', 'Color picker', 'Preset color pairs'],
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'Contrast Checker', item: `${SITE_URL}/tools/contrast-checker` }
           ]
         }
       }
