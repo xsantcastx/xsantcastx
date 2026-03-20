@@ -30,6 +30,7 @@
 
       <!-- Color pickers -->
       <div class="cc-pickers">
+        <!-- Foreground -->
         <div class="cc-picker-group">
           <label class="cc-picker-label">Foreground</label>
           <div class="cc-picker-row">
@@ -37,23 +38,19 @@
               <div class="cc-swatch" [style.background]="fg"></div>
               <input type="color" class="cc-color-input" [value]="fg" (input)="onFgPicker($any($event.target).value)" aria-label="Foreground color picker" />
             </div>
-            <input
-              type="text"
-              class="cc-hex-input"
-              [value]="fgInput"
-              (input)="onFgText($any($event.target).value)"
-              maxlength="7"
-              placeholder="#ffffff"
-              aria-label="Foreground hex value"
-              spellcheck="false"
-            />
+            <input type="text" class="cc-hex-input" [value]="fgInput" (input)="onFgText($any($event.target).value)" maxlength="7" placeholder="#ffffff" aria-label="Foreground hex value" spellcheck="false" />
           </div>
         </div>
 
-        <button class="cc-swap" (click)="swap()" type="button" title="Swap colors" aria-label="Swap foreground and background">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-        </button>
+        <!-- Swap -->
+        <div class="cc-swap-row">
+          <button class="cc-swap" (click)="swap()" type="button" title="Swap colors" aria-label="Swap foreground and background">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+            Swap
+          </button>
+        </div>
 
+        <!-- Background -->
         <div class="cc-picker-group">
           <label class="cc-picker-label">Background</label>
           <div class="cc-picker-row">
@@ -61,16 +58,7 @@
               <div class="cc-swatch" [style.background]="bg"></div>
               <input type="color" class="cc-color-input" [value]="bg" (input)="onBgPicker($any($event.target).value)" aria-label="Background color picker" />
             </div>
-            <input
-              type="text"
-              class="cc-hex-input"
-              [value]="bgInput"
-              (input)="onBgText($any($event.target).value)"
-              maxlength="7"
-              placeholder="#000000"
-              aria-label="Background hex value"
-              spellcheck="false"
-            />
+            <input type="text" class="cc-hex-input" [value]="bgInput" (input)="onBgText($any($event.target).value)" maxlength="7" placeholder="#000000" aria-label="Background hex value" spellcheck="false" />
           </div>
         </div>
       </div>

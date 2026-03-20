@@ -10,6 +10,7 @@ import { ToolsComponent } from './tools/tools.component';
 import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.component';
 import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
+import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -207,6 +208,43 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'Contrast Checker', item: `${SITE_URL}/tools/contrast-checker` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/image-compressor',
+    component: ImageCompressorComponent,
+    title: 'Free Image Compressor — JPEG, PNG, WebP | xsantcastx',
+    data: {
+      description: 'Compress JPEG, PNG and WebP images in your browser for free. No uploads, no sign-up. Batch compress with live quality preview and instant download.',
+      keywords: 'free image compressor, compress jpeg online, compress png online, compress webp, browser image optimizer, reduce image size, batch image compression',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Image Compressor',
+        url: `${SITE_URL}/tools/image-compressor`,
+        description: 'Free browser-based image compressor. Compress JPEG, PNG and WebP images with live quality preview — no uploads, no account required.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'JPEG, PNG and WebP compression',
+          'Live quality slider (1–100)',
+          'Output format selector (JPEG / WebP)',
+          'Batch compression up to 20 images',
+          'Before and after file size comparison',
+          'Download individual or all files',
+          'No uploads — runs entirely in browser',
+          'No account required'
+        ],
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'Image Compressor', item: `${SITE_URL}/tools/image-compressor` }
           ]
         }
       }

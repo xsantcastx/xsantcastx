@@ -37,6 +37,7 @@ import { ToolsComponent } from './tools/tools.component';
 import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.component';
 import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
+import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -70,6 +71,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     PdfGeneratorComponent,
     ColorPaletteComponent,
     ContrastCheckerComponent,
+    ImageCompressorComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,

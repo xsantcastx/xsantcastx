@@ -55,11 +55,11 @@ export class ToolsComponent {
     {
       id: 'image-compressor',
       title: 'Image Compressor',
-      description: 'Compress JPEG, PNG and WebP images in your browser with live quality preview. No files leave your device.',
-      route: '',
-      status: 'coming-soon',
+      description: 'Compress JPEG, PNG and WebP images in your browser with live quality preview. Batch compress, no uploads, no accounts — files never leave your device.',
+      route: '/tools/image-compressor',
+      status: 'live',
       tags: ['Images', 'Performance', 'WebP'],
-      icon: `<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>`
+      icon: `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><polyline points="14 3 14 8 19 8"/>`
     },
     {
       id: 'gradient-generator',
