@@ -23,6 +23,8 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/favicon.svg",
+              "src/robots.txt",
+              "src/sitemap.xml",
               "src/assets"
             ],
             "styles": [
@@ -86,6 +88,8 @@
             "tsConfig": "tsconfig.spec.json",
             "assets": [
               "src/favicon.svg",
+              "src/robots.txt",
+              "src/sitemap.xml",
               "src/assets"
             ],
             "styles": [
@@ -122,6 +126,9 @@
     "@schematics/angular:resolver": {
       "typeSeparator": "."
     }
+  },
+  "cli": {
+    "analytics": "931dd7dc-6555-4485-bac5-e46d1501339e"
   }
 }
 

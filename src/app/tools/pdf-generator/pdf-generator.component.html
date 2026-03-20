@@ -1,0 +1,814 @@
+<div class="pdf-generator-page">
+
+  <!-- Back link -->
+  <button class="back-link" (click)="goBack()" type="button">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+    All Tools
+  </button>
+
+  <div class="tool-header">
+    <div class="tool-header__eyebrow">PDF Generator</div>
+    <h1 class="tool-header__title">Product Catalog Builder</h1>
+    <p class="tool-header__subtitle">Upload images, build product cards with custom fields, choose a template and download a professional PDF catalog.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+  </div>
+
+  <!-- Mobile warning -->
+  <div class="mobile-warning">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span>This tool works best on a desktop browser. Some features may be limited on mobile.</span>
+  </div>
+
+  <!-- Cloud bar -->
+  <div class="cloud-bar">
+    <ng-container *ngIf="!currentUser">
+      <svg class="cloud-bar__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      <span class="cloud-bar__hint">Sign in to save catalogs across sessions</span>
+      <button class="cloud-bar__google-btn" (click)="signInWithGoogle()" type="button">
+        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Continue with Google
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="currentUser">
+      <img
+        *ngIf="currentUser.photoURL"
+        class="cloud-bar__avatar"
+        [src]="currentUser.photoURL"
+        [alt]="currentUser.displayName || ''"
+        width="28" height="28"
+        referrerpolicy="no-referrer"
+      />
+      <span class="cloud-bar__user">{{ currentUser.displayName || currentUser.email }}</span>
+
+      <button
+        class="cloud-bar__btn"
+        [class.is-saved]="cloudSaved"
+        [disabled]="cloudSaving"
+        (click)="saveToCloud()"
+        type="button"
+      >
+        <svg *ngIf="!cloudSaved" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
+        <svg *ngIf="cloudSaved" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ cloudSaving ? 'Saving…' : cloudSaved ? 'Saved' : 'Save to Cloud' }}
+      </button>
+
+      <button class="cloud-bar__btn cloud-bar__btn--ghost" (click)="openCatalogsPanel()" type="button">
+        My Catalogs
+      </button>
+
+      <button class="cloud-bar__signout" (click)="signOut()" type="button" title="Sign out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </ng-container>
+
+    <p *ngIf="cloudError" class="cloud-bar__error">{{ cloudError }}</p>
+  </div>
+
+  <!-- My Catalogs panel -->
+  <div class="catalogs-panel" *ngIf="showCatalogsPanel">
+    <div class="catalogs-panel__head">
+      <h3 class="catalogs-panel__title">My Catalogs</h3>
+      <button class="catalogs-panel__close" (click)="closeCatalogsPanel()" type="button" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div *ngIf="cloudLoading" class="catalogs-panel__empty">Loading…</div>
+
+    <div *ngIf="!cloudLoading && cloudCatalogs.length === 0" class="catalogs-panel__empty">
+      No saved catalogs yet. Click "Save to Cloud" to get started.
+    </div>
+
+    <ul *ngIf="!cloudLoading && cloudCatalogs.length > 0" class="catalogs-panel__list">
+      <li *ngFor="let cat of cloudCatalogs" class="catalogs-panel__item">
+        <div class="catalogs-panel__item-info">
+          <span class="catalogs-panel__item-name">{{ cat.name }}</span>
+          <span class="catalogs-panel__item-date">{{ formatCloudDate(cat.savedAt) }}</span>
+        </div>
+        <div class="catalogs-panel__item-actions">
+          <button class="catalogs-panel__load" (click)="loadCloudCatalog(cat)" type="button">Load</button>
+          <button class="catalogs-panel__delete" (click)="deleteCloudCatalog(cat.id)" type="button" aria-label="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Draft restored banner -->
+  <div *ngIf="draftRestored" class="draft-banner">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span>Draft restored from your last session.{{ imagesStripped ? ' Images could not be saved — please re-upload.' : '' }}</span>
+    <button type="button" class="draft-banner__dismiss" (click)="dismissDraftBanner()" aria-label="Dismiss">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="workspace">
+
+    <!-- LEFT PANEL -->
+    <div class="workspace__left">
+
+      <!-- Upload row -->
+      <div class="upload-row">
+        <label
+          class="upload-btn upload-btn--primary"
+          [class.is-active]="dragOver"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave()"
+          (drop)="onDrop($event)"
+        >
+          <input type="file" webkitdirectory multiple (change)="onFolderInput($event)" class="upload-hidden" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Upload folder
+          <span class="upload-hint">Each subfolder → section</span>
+        </label>
+
+        <label class="upload-btn upload-btn--secondary">
+          <input type="file" accept="image/*" multiple (change)="onFileInput($event)" class="upload-hidden" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Add images
+          <span class="upload-hint">Added to "General"</span>
+        </label>
+      </div>
+
+      <p *ngIf="error" class="tool-error" role="alert">{{ error }}</p>
+
+      <!-- Tabs (always shown) -->
+      <div class="panel-tabs">
+        <button type="button" class="panel-tab" [class.is-active]="activeTab === 'products'" (click)="setTab('products')">Products</button>
+        <button type="button" class="panel-tab" [class.is-active]="activeTab === 'fields'" (click)="setTab('fields')">
+          Fields
+          <span class="panel-tab__badge">{{ enabledFields.length }}</span>
+        </button>
+      </div>
+
+      <!-- PRODUCTS TAB -->
+      <ng-container *ngIf="activeTab === 'products'">
+
+        <!-- Empty state -->
+        <div *ngIf="!hasProducts" class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          <p>Upload a folder or images to get started</p>
+        </div>
+
+        <!-- Sections list -->
+        <div *ngIf="hasProducts" class="sections-list">
+          <div class="sections-summary">
+            <span>{{ sections.length }} section{{ sections.length === 1 ? '' : 's' }} &middot; {{ totalProducts }} product{{ totalProducts === 1 ? '' : 's' }}</span>
+            <div class="sections-summary__actions">
+              <button type="button" class="btn-ghost-sm" [disabled]="!canUndo" (click)="undo()" title="Undo (Ctrl+Z)">&#x21A9; Undo</button>
+              <button type="button" class="btn-ghost-sm" [disabled]="!canRedo" (click)="redo()" title="Redo (Ctrl+Y)">&#x21AA; Redo</button>
+              <ng-container *ngIf="sections.length > 0">
+                <button type="button" class="btn-ghost-sm" (click)="collapseAll()">&#x2195; Collapse</button>
+                <button type="button" class="btn-ghost-sm" (click)="expandAll()">&#x2195; Expand</button>
+              </ng-container>
+              <button type="button" class="btn-ghost-sm" (click)="addSection()">+ Section</button>
+              <button type="button" class="btn-ghost-sm" (click)="clearAll()">Clear all</button>
+            </div>
+          </div>
+
+          <!-- Section cards -->
+          <ng-container *ngFor="let section of sections; let si = index; trackBy: trackBySection">
+
+          <!-- Section insert line -->
+          <div *ngIf="dropOverSectionId === section.id && !!draggingSectionId" class="drop-line-h"></div>
+
+          <div class="section-card"
+               [class.is-dragging]="draggingSectionId === section.id"
+               [class.is-drag-over]="dropOverSectionId === section.id && !!draggingProductId"
+               (dragover)="onSectionDragOver($event, section.id)"
+               (dragleave)="onSectionDragLeave($event, section.id)"
+               (drop)="onSectionDrop($event, section.id)">
+
+            <!-- Section header -->
+            <div class="section-card__head"
+                 draggable="true"
+                 (dragstart)="onSectionDragStart($event, section.id)"
+                 (dragend)="onDragEnd()">
+              <span class="drag-handle" aria-hidden="true">
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="2" cy="7" r="1.5"/><circle cx="8" cy="7" r="1.5"/><circle cx="2" cy="12" r="1.5"/><circle cx="8" cy="12" r="1.5"/></svg>
+              </span>
+              <div *ngIf="getSectionCoverImg(section) as cover" class="section-card__cover-thumb">
+                <img [src]="cover.dataUrl" alt="" />
+              </div>
+              <button
+                type="button"
+                class="section-card__toggle"
+                (click)="toggleSection(section.id)"
+                [attr.aria-expanded]="!section.collapsed"
+              >
+                <svg class="section-chevron" [class.is-open]="!section.collapsed"
+                     width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+                <span class="section-card__name">{{ section.name }}</span>
+                <span class="section-card__count">{{ section.products.length }}</span>
+              </button>
+
+              <div class="section-card__actions">
+                <select class="section-sort-select" #sortSel
+                        (change)="sortSection(section.id, $any($event.target).value); sortSel.value=''">
+                  <option value="">— sort —</option>
+                  <option value="name-asc">Name A→Z</option>
+                  <option value="name-desc">Name Z→A</option>
+                  <option value="price-asc">Price ↑</option>
+                  <option value="price-desc">Price ↓</option>
+                </select>
+                <button type="button" class="section-action" [disabled]="si === 0" (click)="moveSection(section.id, -1)" title="Move up" aria-label="Move section up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <button type="button" class="section-action" [disabled]="si === sections.length - 1" (click)="moveSection(section.id, 1)" title="Move down" aria-label="Move section down">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button type="button" class="section-action section-action--remove" (click)="removeSection(section.id)" title="Remove section" aria-label="Remove section">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Section meta (visible when expanded) -->
+            <div *ngIf="!section.collapsed" class="section-card__meta">
+              <input
+                type="text"
+                class="section-input"
+                [value]="section.name"
+                (input)="updateSectionName(section.id, $any($event.target).value)"
+                placeholder="Section name"
+                aria-label="Section name"
+              />
+              <input
+                type="text"
+                class="section-input section-input--sub"
+                [value]="section.subtitle"
+                (input)="updateSectionSubtitle(section.id, $any($event.target).value)"
+                placeholder="Section subtitle (optional)"
+                aria-label="Section subtitle"
+              />
+            </div>
+
+            <!-- Product grid (thumbnail cards) -->
+            <div *ngIf="!section.collapsed" class="product-grid"
+                 (dragover)="onProductGridDragOver($event, section.id)"
+                 (drop)="onProductGridDrop($event, section.id)">
+
+              <ng-container *ngFor="let product of section.products; let pi = index; trackBy: trackByProduct">
+
+              <!-- Product insert line -->
+              <div *ngIf="dropBeforeProductId === product.id && dropOverSectionId === section.id"
+                   class="drop-line-v"></div>
+
+              <div class="product-card"
+                   [class.is-expanded]="expandedProductId === product.id"
+                   [class.is-dragging]="draggingProductId === product.id"
+                   draggable="true"
+                   (dragstart)="onProductDragStart($event, product.id, section.id)"
+                   (dragover)="onProductDragOver($event, product.id, section.id)"
+                   (drop)="onProductDrop($event, product.id, section.id)"
+                   (dragend)="onDragEnd()">
+
+                <!-- Thumbnail -->
+                <div class="product-card__thumb">
+                  <img *ngIf="product.images.length > 0" [src]="product.images[0].dataUrl" [alt]="product.name || 'Product'" loading="lazy" />
+                  <div *ngIf="product.images.length === 0" class="product-card__no-img">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </div>
+                  <div *ngIf="product.badges.length > 0" class="product-card__badge-dots">
+                    <span *ngFor="let b of product.badges" class="badge-dot badge-dot--{{ b }}"></span>
+                  </div>
+                  <span *ngIf="product.images.length > 1" class="product-card__img-count">+{{ product.images.length - 1 }}</span>
+                  <!-- Section cover button -->
+                  <button type="button" class="product-card__cover-btn"
+                          [class.is-cover]="section.featuredProductId === product.id || (!section.featuredProductId && pi === 0)"
+                          [class.is-explicit]="section.featuredProductId === product.id"
+                          [title]="section.featuredProductId === product.id ? 'Section cover — click to unset' : 'Set as section cover'"
+                          (click)="setFeaturedProduct(section.id, product.id); $event.stopPropagation()"
+                          aria-label="Set as section cover">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>
+                  </button>
+                </div>
+
+                <!-- Name + price row, click to toggle editor -->
+                <div class="product-card__info" (click)="toggleProductExpand(product.id)">
+                  <span class="product-card__name">{{ product.name || '(unnamed)' }}</span>
+                  <span *ngIf="product.price" class="product-card__price">{{ config.currency }}{{ product.price }}</span>
+                  <svg class="product-card__chevron" [class.is-open]="expandedProductId === product.id" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+
+              </div>
+              <!-- /product-card -->
+
+              </ng-container>
+              <!-- /product loop -->
+
+              <!-- Drop at end of section -->
+              <div *ngIf="dropOverSectionId === section.id && dropBeforeProductId === null && !!draggingProductId"
+                   class="drop-line-v"></div>
+
+              <!-- Add product button -->
+              <button type="button" class="product-grid__add-btn" (click)="addProductToSection(section.id)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add product
+              </button>
+
+            </div>
+            <!-- /product-grid -->
+
+            <!-- Inline product editor -->
+            <div *ngIf="!section.collapsed && expandedSection?.id === section.id && expandedProduct" class="product-editor">
+
+              <!-- Image manager -->
+              <div class="product-editor__section">
+                <span class="product-editor__section-label">Images</span>
+                <div class="product-editor__image-strip">
+                  <div *ngFor="let img of expandedProduct!.images; let ii = index; trackBy: trackByImage"
+                       class="product-editor__img-thumb"
+                       [class.is-primary]="img.isPrimary">
+                    <img [src]="img.dataUrl" [alt]="expandedProduct!.name || 'image'" loading="lazy" />
+                    <div class="product-editor__img-actions">
+                      <button type="button" title="Set as main image" [disabled]="img.isPrimary"
+                              (click)="promoteProductImage(expandedSection!.id, expandedProduct!.id, img.id)"
+                              aria-label="Set as primary image">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </button>
+                      <button type="button" title="Remove image"
+                              (click)="removeProductImage(expandedSection!.id, expandedProduct!.id, img.id)"
+                              aria-label="Remove image">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                    <span *ngIf="img.isPrimary" class="product-editor__img-primary-badge">main</span>
+                  </div>
+                  <!-- Add more images -->
+                  <label class="product-editor__add-img">
+                    <input type="file" accept="image/*" multiple class="upload-hidden"
+                           (change)="onProductImageInput($event, expandedSection!.id, expandedProduct!.id)" />
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Core fields -->
+              <div class="product-editor__section">
+                <span class="product-editor__section-label">Details</span>
+                <div class="product-editor__fields">
+
+                  <div class="product-editor__field product-editor__field--full">
+                    <label class="editor-field-label">Name</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.name"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'name', $any($event.target).value)"
+                           placeholder="Product name" />
+                  </div>
+
+                  <div class="product-editor__field product-editor__field--full">
+                    <label class="editor-field-label">Short description</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.description"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'description', $any($event.target).value)"
+                           placeholder="1-2 line tagline" />
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Price</label>
+                    <div class="editor-field-prefix">
+                      <span class="editor-field-currency">{{ config.currency }}</span>
+                      <input type="text" class="editor-field-input editor-field-input--prefixed"
+                             [value]="expandedProduct!.price"
+                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'price', $any($event.target).value)"
+                             placeholder="0.00" />
+                    </div>
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Sale price</label>
+                    <div class="editor-field-prefix">
+                      <span class="editor-field-currency">{{ config.currency }}</span>
+                      <input type="text" class="editor-field-input editor-field-input--prefixed"
+                             [value]="expandedProduct!.salePrice"
+                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'salePrice', $any($event.target).value)"
+                             placeholder="0.00" />
+                    </div>
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">SKU</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.sku"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'sku', $any($event.target).value)"
+                           placeholder="e.g. CHR-001" />
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Category</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.category"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'category', $any($event.target).value)"
+                           placeholder="e.g. Rings" />
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Dimensions</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.dimensions"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'dimensions', $any($event.target).value)"
+                           placeholder="e.g. 12 × 8 cm" />
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Materials</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.materials"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'materials', $any($event.target).value)"
+                           placeholder="e.g. 18k Gold" />
+                  </div>
+
+                  <div class="product-editor__field">
+                    <label class="editor-field-label">Colors</label>
+                    <input type="text" class="editor-field-input"
+                           [value]="expandedProduct!.colors"
+                           (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'colors', $any($event.target).value)"
+                           placeholder="e.g. Rose Gold" />
+                  </div>
+
+                  <div class="product-editor__field product-editor__field--full">
+                    <label class="editor-field-label">Long description</label>
+                    <textarea class="editor-field-input editor-field-input--textarea" rows="3"
+                              [value]="expandedProduct!.longDescription"
+                              (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'longDescription', $any($event.target).value)"
+                              placeholder="Extended product description…"></textarea>
+                  </div>
+
+                  <div class="product-editor__field product-editor__field--full">
+                    <label class="editor-field-label">Notes</label>
+                    <textarea class="editor-field-input editor-field-input--textarea" rows="2"
+                              [value]="expandedProduct!.notes"
+                              (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'notes', $any($event.target).value)"
+                              placeholder="Internal or customer notes…"></textarea>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Badges -->
+              <div class="product-editor__section">
+                <span class="product-editor__section-label">Badges</span>
+                <div class="badge-toggle-group">
+                  <button *ngFor="let b of badgeTypes" type="button"
+                          class="badge-toggle badge-toggle--{{ b }}"
+                          [class.is-active]="expandedProduct!.badges.includes(b)"
+                          (click)="toggleProductBadge(expandedSection!.id, expandedProduct!.id, b)">
+                    {{ badgeLabels[b] }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Editor footer -->
+              <div class="product-editor__footer">
+                <button type="button" class="btn-ghost-sm btn-ghost-sm--danger"
+                        (click)="removeProduct(expandedSection!.id, expandedProduct!.id)">
+                  Remove product
+                </button>
+                <button type="button" class="btn-ghost-sm"
+                        (click)="duplicateProduct(expandedSection!.id, expandedProduct!.id)">
+                  Duplicate
+                </button>
+                <select *ngIf="sections.length > 1" class="move-to-select"
+                        (change)="moveProductToSection(expandedProduct!.id, $any($event.target).value); $any($event.target).value = ''">
+                  <option value="" disabled selected>Move to…</option>
+                  <ng-container *ngFor="let s of sections">
+                    <option *ngIf="s.id !== expandedSection!.id" [value]="s.id">{{ s.name }}</option>
+                  </ng-container>
+                </select>
+                <button type="button" class="btn-ghost-sm"
+                        (click)="expandedProductId = null">
+                  Done
+                </button>
+              </div>
+
+            </div>
+            <!-- /product-editor -->
+
+          </div>
+          <!-- /section-card -->
+
+          </ng-container>
+          <!-- /section loop -->
+
+        </div>
+        <!-- /sections-list -->
+
+      </ng-container>
+      <!-- /PRODUCTS TAB -->
+
+      <!-- FIELDS TAB -->
+      <ng-container *ngIf="activeTab === 'fields'">
+        <div class="fields-panel">
+          <p class="fields-panel__hint">Choose which fields appear on each product card in the PDF. Reorder to control display priority.</p>
+          <div class="fields-list">
+            <div *ngFor="let fc of fieldConfigs; let fi = index; trackBy: trackByField"
+                 class="field-row"
+                 [class.is-enabled]="fc.enabled">
+
+              <label class="field-toggle-switch" [attr.aria-label]="'Toggle ' + fc.label">
+                <input type="checkbox" [checked]="fc.enabled" (change)="toggleField(fc.key)" />
+                <span class="field-toggle-switch__track"></span>
+              </label>
+
+              <span class="field-row__label">{{ fc.label }}</span>
+
+              <div class="field-row__actions">
+                <button type="button" class="field-action" [disabled]="fi === 0"
+                        (click)="moveField(fc.key, -1)" aria-label="Move field up">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <button type="button" class="field-action" [disabled]="fi === fieldConfigs.length - 1"
+                        (click)="moveField(fc.key, 1)" aria-label="Move field down">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </ng-container>
+      <!-- /FIELDS TAB -->
+
+    </div>
+    <!-- /workspace__left -->
+
+    <!-- RIGHT PANEL (config) -->
+    <aside class="workspace__right">
+      <div class="config-panel">
+        <h2 class="config-panel__title">Configuration</h2>
+
+        <!-- Template selector -->
+        <div class="config-group">
+          <span class="config-label">Template</span>
+          <div class="template-toggle">
+            <button type="button" class="template-btn" [class.is-active]="config.template === 'minimal'" (click)="setTemplate('minimal')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Minimal
+            </button>
+            <button type="button" class="template-btn" [class.is-active]="config.template === 'detailed'" (click)="setTemplate('detailed')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="6"/><rect x="3" y="13" width="8" height="8"/><line x1="14" y1="14" x2="21" y2="14"/><line x1="14" y1="18" x2="21" y2="18"/></svg>
+              Detailed
+            </button>
+            <button type="button" class="template-btn" [class.is-active]="config.template === 'editorial'" (click)="setTemplate('editorial')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="11"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="18" width="7" height="3"/></svg>
+              Editorial
+            </button>
+          </div>
+        </div>
+
+        <!-- Columns (hidden for editorial) -->
+        <div *ngIf="config.template !== 'editorial'" class="config-group">
+          <span class="config-label">Columns</span>
+          <div class="config-toggle-group">
+            <button *ngFor="let col of columnOptions" type="button" class="config-toggle"
+                    [class.is-active]="config.columns === col"
+                    (click)="setColumns(col)">{{ col }}</button>
+          </div>
+        </div>
+
+        <!-- Editorial overlays (editorial only) -->
+        <div *ngIf="config.template === 'editorial'" class="config-group config-group--checks">
+          <label class="config-check">
+            <input type="checkbox" [(ngModel)]="config.showNameOverlay" (ngModelChange)="onConfigChange()" />
+            <span>Show name overlay</span>
+          </label>
+          <label class="config-check">
+            <input type="checkbox" [(ngModel)]="config.showPriceOverlay" (ngModelChange)="onConfigChange()" />
+            <span>Show price overlay</span>
+          </label>
+        </div>
+
+        <!-- Brand -->
+        <div class="config-group">
+          <label class="config-label" for="pdf-brand">Brand / Studio name</label>
+          <input id="pdf-brand" type="text" class="config-input" [(ngModel)]="config.brand" (ngModelChange)="onConfigChange()" placeholder="e.g. Pandora" maxlength="40" />
+        </div>
+
+        <!-- Title -->
+        <div class="config-group">
+          <label class="config-label" for="pdf-title">Document title</label>
+          <input id="pdf-title" type="text" class="config-input" [(ngModel)]="config.title" (ngModelChange)="onConfigChange()" placeholder="e.g. Spring Collection 2025" maxlength="80" />
+        </div>
+
+        <!-- Subtitle -->
+        <div class="config-group">
+          <label class="config-label" for="pdf-subtitle">Subtitle</label>
+          <input id="pdf-subtitle" type="text" class="config-input" [(ngModel)]="config.subtitle" (ngModelChange)="onConfigChange()" placeholder="Optional" maxlength="120" />
+        </div>
+
+        <!-- Accent color -->
+        <div class="config-group config-group--color">
+          <label class="config-label" for="pdf-accent">Accent color</label>
+          <div class="accent-color-row">
+            <input id="pdf-accent" type="color" class="accent-color-input" [(ngModel)]="config.accentColor" (ngModelChange)="onConfigChange()" />
+            <span class="accent-color-hex">{{ config.accentColor }}</span>
+            <button type="button" class="btn-ghost-sm" (click)="config.accentColor = '#c9a84c'">Reset</button>
+          </div>
+        </div>
+
+        <!-- Currency -->
+        <div class="config-group">
+          <span class="config-label">Currency</span>
+          <div class="config-toggle-group">
+            <button *ngFor="let c of currencyOptions" type="button" class="config-toggle config-toggle--currency"
+                    [class.is-active]="config.currency === c"
+                    (click)="setCurrency(c)">{{ c }}</button>
+          </div>
+        </div>
+
+        <!-- Page size -->
+        <div class="config-group">
+          <label class="config-label" for="pdf-page-size">Page size</label>
+          <select id="pdf-page-size" class="config-select" [(ngModel)]="config.pageSize" (ngModelChange)="onConfigChange()">
+            <option *ngFor="let s of pageSizes" [value]="s.value">{{ s.label }}</option>
+          </select>
+        </div>
+
+        <!-- Options checkboxes -->
+        <div class="config-group config-group--checks">
+          <label class="config-check">
+            <input type="checkbox" [(ngModel)]="config.showCoverPage" (ngModelChange)="onConfigChange()" />
+            <span>Cover page</span>
+          </label>
+          <label class="config-check">
+            <input type="checkbox" [(ngModel)]="config.showSectionDividers" (ngModelChange)="onConfigChange()" />
+            <span>Section divider pages</span>
+          </label>
+          <label class="config-check">
+            <input type="checkbox" [(ngModel)]="config.showPageNumbers" (ngModelChange)="onConfigChange()" />
+            <span>Page numbers</span>
+          </label>
+        </div>
+
+        <!-- Import / Export row -->
+        <div class="config-group config-group--import-export">
+          <span class="config-label">Catalog file</span>
+          <div class="import-export-row">
+            <label class="btn-ghost-sm import-label">
+              Import
+              <input type="file" accept=".json" class="upload-hidden" (change)="importCatalog($event)" />
+            </label>
+            <button type="button" class="btn-ghost-sm" [disabled]="!hasProducts" (click)="exportCatalog()">Export</button>
+          </div>
+        </div>
+
+        <!-- Page count estimate -->
+        <p *ngIf="hasProducts" class="config-page-estimate">~{{ estimatedPageCount }} page{{ estimatedPageCount === 1 ? '' : 's' }}</p>
+
+        <!-- Preview button -->
+        <button type="button" class="preview-btn" [disabled]="!hasProducts" (click)="openPreview()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Preview PDF
+        </button>
+
+        <!-- Generate button -->
+        <button type="button" class="generate-btn" [disabled]="!hasProducts || generating" (click)="generate()">
+          <svg *ngIf="generating" class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <svg *ngIf="!generating" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {{ generating ? 'Building PDF…' : 'Download PDF' }}
+        </button>
+
+        <p *ngIf="!hasProducts" class="config-empty-hint">Add products to enable export.</p>
+
+      </div>
+
+      <div class="privacy-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Files stay in your browser. Nothing is uploaded or stored.
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- PDF PREVIEW MODAL -->
+<div *ngIf="showPreview" class="prev-overlay" (click)="closePreview()" role="dialog" aria-modal="true" aria-label="PDF Preview">
+  <div class="prev-modal" (click)="$event.stopPropagation()">
+
+    <div class="prev-modal__head">
+      <div class="prev-modal__headinfo">
+        <span class="prev-modal__title">PDF Preview</span>
+        <span class="prev-modal__count">{{ previewPages.length }} page{{ previewPages.length === 1 ? '' : 's' }}</span>
+      </div>
+      <button type="button" class="prev-close" (click)="closePreview()" aria-label="Close preview">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="prev-modal__body">
+      <div *ngFor="let pg of previewPages; let i = index; trackBy: trackByIndex" class="prev-wrap">
+        <span class="prev-label">{{ i + 1 }}</span>
+
+        <!-- COVER -->
+        <div *ngIf="pg.type === 'cover'" class="prev-page prev-page--cover">
+          <div class="prev-rule"></div>
+          <div *ngIf="config.brand" class="prev-brand">{{ config.brand }}</div>
+          <div *ngIf="config.title" class="prev-title">{{ config.title }}</div>
+          <div *ngIf="config.subtitle" class="prev-subtitle">{{ config.subtitle }}</div>
+          <div class="prev-rule"></div>
+          <div *ngIf="!config.brand && !config.title" class="prev-empty-label">Cover</div>
+        </div>
+
+        <!-- DIVIDER -->
+        <div *ngIf="pg.type === 'divider'" class="prev-page prev-page--divider">
+          <div class="prev-rule"></div>
+          <div class="prev-brand">{{ pg.sectionName }}</div>
+          <div class="prev-rule"></div>
+        </div>
+
+        <!-- MINIMAL grid -->
+        <div *ngIf="pg.type === 'minimal'" class="prev-page prev-page--content">
+          <div class="prev-chrome-top"><span class="prev-chrome-section">{{ pg.sectionName }}</span></div>
+          <div class="prev-grid" [style.grid-template-columns]="'repeat(' + pg.cols + ', 1fr)'">
+            <div *ngFor="let product of pg.products" class="prev-cell prev-cell--minimal">
+              <img *ngIf="product.images.length > 0" [src]="product.images[0].dataUrl" [alt]="product.name" loading="lazy" />
+              <div *ngIf="product.images.length === 0" class="prev-cell-empty"></div>
+              <div class="prev-cell-info">
+                <span *ngIf="product.name" class="prev-cell-name">{{ product.name }}</span>
+                <span *ngIf="product.price" class="prev-cell-price">{{ config.currency }}{{ product.price }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="prev-chrome-bottom"></div>
+        </div>
+
+        <!-- DETAILED grid -->
+        <div *ngIf="pg.type === 'detailed'" class="prev-page prev-page--content">
+          <div class="prev-chrome-top"><span class="prev-chrome-section">{{ pg.sectionName }}</span></div>
+          <div class="prev-grid" [style.grid-template-columns]="'repeat(' + pg.cols + ', 1fr)'">
+            <div *ngFor="let product of pg.products" class="prev-cell prev-cell--detailed">
+              <div class="prev-cell-img">
+                <img *ngIf="product.images.length > 0" [src]="product.images[0].dataUrl" [alt]="product.name" loading="lazy" />
+                <div *ngIf="product.images.length === 0" class="prev-cell-empty"></div>
+              </div>
+              <div class="prev-cell-fields">
+                <ng-container *ngFor="let fc of enabledFields">
+                  <span class="prev-field-value">{{ getProductFieldValue(product, fc.key) }}</span>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+          <div class="prev-chrome-bottom"></div>
+        </div>
+
+        <!-- EDITORIAL collage -->
+        <div *ngIf="pg.type === 'editorial'" class="prev-page prev-page--content">
+          <div class="prev-chrome-top"><span class="prev-chrome-section">{{ pg.sectionName }}</span></div>
+          <div class="prev-collage">
+            <div *ngFor="let cell of (pg.collageLayout?.cells ?? []); let ci = index; trackBy: trackByIndex"
+                 class="prev-cell prev-cell--editorial"
+                 [style.grid-column]="(cell.colStart + 1) + ' / span ' + cell.colSpan"
+                 [style.grid-row]="(cell.rowStart + 1) + ' / span ' + cell.rowSpan">
+              <img *ngIf="pg.products![ci].images.length > 0"
+                   [src]="pg.products![ci].images[0].dataUrl"
+                   [alt]="pg.products![ci].name" loading="lazy" />
+              <div *ngIf="pg.products![ci].images.length === 0" class="prev-cell-empty"></div>
+              <div *ngIf="(config.showNameOverlay && pg.products![ci].name) || (config.showPriceOverlay && pg.products![ci].price)"
+                   class="prev-cell-overlay">
+                <span *ngIf="config.showNameOverlay && pg.products![ci].name">{{ pg.products![ci].name }}</span>
+                <span *ngIf="config.showPriceOverlay && pg.products![ci].price" class="prev-cell-overlay__price">{{ config.currency }}{{ pg.products![ci].price }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="prev-chrome-bottom"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="prev-modal__foot">
+      <button type="button" class="btn-ghost-sm prev-modal__cancel" (click)="closePreview()">Close</button>
+      <button
+        type="button"
+        class="generate-btn prev-modal__download"
+        [disabled]="generating"
+        (click)="closePreview(); generate()"
+      >
+        <svg *ngIf="generating" class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <svg *ngIf="!generating" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        {{ generating ? 'Building PDF…' : 'Download PDF' }}
+      </button>
+    </div>
+
+  </div>
+</div>

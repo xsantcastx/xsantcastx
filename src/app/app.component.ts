@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { SeoService } from './seo.service';
 
 @Component({
     selector: 'app-root',
@@ -6,10 +7,13 @@ import { Component } from '@angular/core';
     styleUrls: ['./app.component.css'],
     standalone: false
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'xsantcastx';
 
+  constructor(private seo: SeoService) {}
+
   ngOnInit() {
+    this.seo.init();
   const triggerRandomGlitch = () => {
     const keywords = document.querySelectorAll('.keyword');
     keywords.forEach((el) => {
