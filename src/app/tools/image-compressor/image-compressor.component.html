@@ -1,0 +1,229 @@
+<div class="ic-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    All Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Image Tools</p>
+    <h1 class="tool-header__title">Image Compressor</h1>
+    <p class="tool-header__subtitle">Compress JPEG, PNG and WebP images in your browser. No uploads, no sign-up — files never leave your device.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+  </header>
+
+  <!-- Global error -->
+  <p class="tool-error" *ngIf="error">{{ error }}</p>
+
+  <!-- Drop zone (empty state) -->
+  <label
+    *ngIf="images.length === 0"
+    class="ic-upload"
+    [class.is-active]="isDragOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+  >
+    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="ic-upload__input" (change)="onFileInput($event)" />
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="ic-upload__icon">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+      <polyline points="12 5 12 2 15 5"/>
+    </svg>
+    <span class="ic-upload__title">Drop images here to compress</span>
+    <span class="ic-upload__hint">JPEG · PNG · WebP · GIF &nbsp;·&nbsp; up to {{ MAX_FILES }} files</span>
+  </label>
+
+  <!-- Loaded state -->
+  <ng-container *ngIf="images.length > 0">
+
+    <!-- Controls bar -->
+    <div class="ic-controls">
+      <div class="ic-controls__left">
+
+        <!-- Quality -->
+        <div class="ic-control-group">
+          <label class="ic-control-group__label" for="quality-slider">Quality</label>
+          <div class="ic-quality-row">
+            <input
+              id="quality-slider"
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [value]="quality"
+              (input)="quality = +$any($event.target).value"
+              class="ic-slider"
+            />
+            <span class="ic-quality-value">{{ quality }}%</span>
+          </div>
+        </div>
+
+        <!-- Output format -->
+        <div class="ic-control-group">
+          <span class="ic-control-group__label">Output</span>
+          <div class="ic-format-btns">
+            <button type="button" class="cp-toggle-btn" [class.is-active]="outputFormat === 'same'" (click)="outputFormat = 'same'">Same</button>
+            <button type="button" class="cp-toggle-btn" [class.is-active]="outputFormat === 'jpeg'" (click)="outputFormat = 'jpeg'">JPEG</button>
+            <button
+              type="button"
+              class="cp-toggle-btn"
+              [class.is-active]="outputFormat === 'webp'"
+              [disabled]="!supportsWebP"
+              [title]="supportsWebP ? '' : 'WebP not supported in this browser'"
+              (click)="supportsWebP && (outputFormat = 'webp')"
+            >WebP</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="ic-controls__right">
+        <button
+          type="button"
+          class="ic-btn ic-btn--ghost"
+          (click)="recompressAll()"
+          [disabled]="isCompressingAll"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" [class.spin]="isCompressingAll">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.59"/>
+          </svg>
+          Re-compress All
+        </button>
+
+        <button
+          type="button"
+          class="ic-btn ic-btn--primary"
+          (click)="downloadAll()"
+          [disabled]="doneCount === 0"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download All ({{ doneCount }})
+        </button>
+
+        <!-- Add more -->
+        <label class="ic-btn ic-btn--ghost ic-add-more">
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="ic-upload__input" (change)="onFileInput($event)" />
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add More
+        </label>
+
+        <button type="button" class="ic-btn ic-btn--danger" (click)="clearAll()" title="Clear all">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="ic-summary" *ngIf="doneCount > 0">
+      <span class="ic-summary__item">
+        <span class="ic-summary__val">{{ doneCount }}/{{ images.length }}</span> compressed
+      </span>
+      <span class="ic-summary__sep">·</span>
+      <span class="ic-summary__item">
+        <span class="ic-summary__val ic-summary__val--green">–{{ totalSavings }}%</span> avg savings
+      </span>
+    </div>
+
+    <!-- Image grid -->
+    <div class="ic-grid">
+      <div class="ic-card" *ngFor="let img of images; let i = index">
+
+        <!-- Thumbnails row -->
+        <div class="ic-card__thumbs">
+          <!-- Original -->
+          <div class="ic-thumb ic-thumb--original">
+            <img [src]="img.originalUrl" alt="Original" />
+            <span class="ic-thumb__label">Original</span>
+          </div>
+
+          <!-- Arrow -->
+          <svg class="ic-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+
+          <!-- Compressed / loading / error -->
+          <div class="ic-thumb ic-thumb--compressed">
+            <div class="ic-thumb__spinner" *ngIf="img.status === 'compressing'">
+              <svg class="spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            </div>
+            <div class="ic-thumb__error" *ngIf="img.status === 'error'">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <img *ngIf="img.status === 'done'" [src]="img.previewUrl" alt="Compressed" />
+            <span class="ic-thumb__label">Compressed</span>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="ic-card__meta">
+          <p class="ic-card__filename" [title]="img.file.name">{{ img.file.name }}</p>
+          <div class="ic-card__stats" *ngIf="img.status === 'done'">
+            <span class="ic-stat">{{ formatBytes(img.originalSize) }}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+            <span class="ic-stat">{{ formatBytes(img.compressedSize) }}</span>
+            <span class="ic-savings-badge" [class.ic-savings-badge--neg]="img.savings < 0">
+              {{ img.savings >= 0 ? '–' : '+' }}{{ img.savings < 0 ? -img.savings : img.savings }}%
+            </span>
+          </div>
+          <div class="ic-card__stats" *ngIf="img.status === 'compressing'">
+            <span class="ic-stat ic-stat--muted">Compressing…</span>
+          </div>
+          <div class="ic-card__stats" *ngIf="img.status === 'error'">
+            <span class="ic-stat ic-stat--error">{{ img.errorMsg }}</span>
+          </div>
+        </div>
+
+        <!-- Actions row -->
+        <div class="ic-card__actions">
+          <button
+            type="button"
+            class="ic-btn ic-btn--primary ic-btn--sm"
+            [disabled]="img.status !== 'done'"
+            (click)="downloadSingle(img)"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </button>
+          <button type="button" class="ic-btn ic-btn--ghost ic-btn--sm" (click)="removeImage(i)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Remove
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>
