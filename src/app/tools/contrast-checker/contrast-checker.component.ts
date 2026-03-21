@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface WcagResult {
   level: 'AA' | 'AAA';
@@ -27,16 +28,22 @@ export class ContrastCheckerComponent {
   readonly twitterShareUrl  = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free WCAG Contrast Checker — instantly test AA/AAA compliance for any color pair. Runs in the browser, no sign-up ♿')}&url=${encodeURIComponent(SITE_URL + '/tools/contrast-checker')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/contrast-checker')}`;
 
-  readonly presets: { label: string; fg: string; bg: string }[] = [
-    { label: 'White / Dark',   fg: '#ffffff', bg: '#1a1a2e' },
-    { label: 'Cyan / Dark',    fg: '#00ffcc', bg: '#07090f' },
-    { label: 'Black / White',  fg: '#000000', bg: '#ffffff' },
-    { label: 'Navy / White',   fg: '#1a237e', bg: '#ffffff' },
-    { label: 'Danger',         fg: '#ffffff', bg: '#c0392b' },
-    { label: 'Warning',        fg: '#000000', bg: '#f39c12' },
-  ];
+  get presets(): { label: string; fg: string; bg: string }[] {
+    return [
+      { label: this.translate('tools.contrast.preset.white.dark'),  fg: '#ffffff', bg: '#1a1a2e' },
+      { label: this.translate('tools.contrast.preset.cyan.dark'),   fg: '#00ffcc', bg: '#07090f' },
+      { label: this.translate('tools.contrast.preset.black.white'), fg: '#000000', bg: '#ffffff' },
+      { label: this.translate('tools.contrast.preset.navy.white'),  fg: '#1a237e', bg: '#ffffff' },
+      { label: this.translate('tools.contrast.preset.danger'),      fg: '#ffffff', bg: '#c0392b' },
+      { label: this.translate('tools.contrast.preset.warning'),     fg: '#000000', bg: '#f39c12' },
+    ];
+  }
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private translationService: TranslationService) {}
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   // ─── WCAG luminance ───────────────────────────────────────────────────────
 
@@ -67,12 +74,15 @@ export class ContrastCheckerComponent {
 
   get results(): WcagResult[] {
     const r = this.ratio;
+    const normal = this.translate('tools.contrast.normal');
+    const large  = this.translate('tools.contrast.large');
+    const ui     = this.translate('tools.contrast.ui');
     return [
-      { level: 'AA',  context: 'Normal text',  required: 4.5, passes: r >= 4.5  },
-      { level: 'AAA', context: 'Normal text',  required: 7,   passes: r >= 7    },
-      { level: 'AA',  context: 'Large text',   required: 3,   passes: r >= 3    },
-      { level: 'AAA', context: 'Large text',   required: 4.5, passes: r >= 4.5  },
-      { level: 'AA',  context: 'UI components',required: 3,   passes: r >= 3    },
+      { level: 'AA',  context: normal, required: 4.5, passes: r >= 4.5 },
+      { level: 'AAA', context: normal, required: 7,   passes: r >= 7   },
+      { level: 'AA',  context: large,  required: 3,   passes: r >= 3   },
+      { level: 'AAA', context: large,  required: 4.5, passes: r >= 4.5 },
+      { level: 'AA',  context: ui,     required: 3,   passes: r >= 3   },
     ];
   }
 
