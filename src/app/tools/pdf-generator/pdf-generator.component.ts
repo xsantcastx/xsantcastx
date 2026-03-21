@@ -6,6 +6,7 @@ import { CatalogPdfService } from './catalog-pdf.service';
 import { CatalogCloudService, CloudCatalog } from './catalog-cloud.service';
 import { AuthServiceService } from '../../auth-service.service';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 import {
   BadgeType, CatalogPdfConfig, ColumnCount, DEFAULT_FIELD_CONFIGS,
   FieldConfig, FieldKey, Product, ProductImage, ProductSection, ProductStringFields
@@ -145,6 +146,7 @@ export class PdfGeneratorComponent implements OnDestroy {
     private pdfService: CatalogPdfService,
     private authService: AuthServiceService,
     private catalogCloud: CatalogCloudService,
+    private translationService: TranslationService,
   ) {
     this.loadDraft();
     this.snapshot();
@@ -155,6 +157,10 @@ export class PdfGeneratorComponent implements OnDestroy {
         this.cloudCatalogs = [];
       }
     });
+  }
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
   }
 
   ngOnDestroy(): void {

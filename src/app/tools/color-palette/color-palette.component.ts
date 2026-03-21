@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface PaletteColor {
   hex: string;
@@ -28,7 +29,11 @@ export class ColorPaletteComponent {
   readonly twitterShareUrl  = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Color Palette Extractor — upload any image and instantly get HEX, RGB, HSL colors + CSS variables export. Runs in your browser, no sign-up 🎨')}&url=${encodeURIComponent(SITE_URL + '/tools/color-palette')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/color-palette')}`;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private translationService: TranslationService) {}
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   goBack(): void {
     this.router.navigate(['/tools']);

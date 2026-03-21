@@ -1,6 +1,7 @@
 import { Component, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface CompressedImage {
   file: File;
@@ -36,8 +37,12 @@ export class ImageCompressorComponent implements OnDestroy {
   private readonly ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   readonly MAX_FILES = 20;
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private translationService: TranslationService) {
     this.detectWebPSupport();
+  }
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
   }
 
   ngOnDestroy(): void {
