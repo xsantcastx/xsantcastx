@@ -40,6 +40,7 @@ import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-chec
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
 import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
+import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
