@@ -85,7 +85,7 @@ export class EmailDeliverabilityAuditorComponent implements OnInit {
   dkimSelectorInput = '';
   selectedDkimSelector = 'google';
   loading = false;
-  error = '';
+  error: string = '';
   results: AuditResults | null = null;
   activeDkimTab = 0;
   expandedAccordions: Record<string, boolean> = {};
@@ -479,76 +479,4 @@ export class EmailDeliverabilityAuditorComponent implements OnInit {
   private parseDmarc(answers: any[]): DmarcResult {
     const txtRecords = answers
       .filter((a: any) => a.type === 16)
-      .map((a: any) => (a.data as string).replace(/^"|"$/g, '').replace(/" "/g, ''));
-
-    const dmarcRecord = txtRecords.find((r: string) => r.startsWith('v=DMARC1'));
-
-    if (!dmarcRecord) {
-      return {
-        raw: '',
-        tags: [],
-        policy: 'missing',
-        alignmentSpf: 'r',
-        alignmentDkim: 'r',
-        status: 'missing',
-        issues: ['No DMARC record found at _dmarc.' + (this.domain || 'domain') + '.'],
-        suggestions: ['Create a DMARC TXT record at _dmarc.yourdomain.com. Start with: v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com'],
-        correctedRecord: 'v=DMARC1; p=quarantine; adkim=s; aspf=s; rua=mailto:dmarc@yourdomain.com; pct=100'
-      };
-    }
-
-    const tagDescriptions: Record<string, string> = {
-      v: 'DMARC version',
-      p: 'Policy for domain',
-      sp: 'Policy for subdomains',
-      rua: 'Aggregate report URI',
-      ruf: 'Forensic report URI',
-      adkim: 'DKIM alignment mode',
-      aspf: 'SPF alignment mode',
-      pct: 'Percentage of messages subjected to filtering',
-      fo: 'Failure reporting options',
-      rf: 'Report format',
-      ri: 'Report interval'
-    };
-
-    const tags: DmarcTag[] = [];
-    const parts = dmarcRecord.split(';').map((p: string) => p.trim()).filter(Boolean);
-    for (const part of parts) {
-      const eqIdx = part.indexOf('=');
-      if (eqIdx === -1) continue;
-      const tag = part.substring(0, eqIdx).trim();
-      const value = part.substring(eqIdx + 1).trim();
-      tags.push({ tag, value, description: tagDescriptions[tag] || tag });
-    }
-
-    const pTag = tags.find(t => t.tag === 'p');
-    const adkimTag = tags.find(t => t.tag === 'adkim');
-    const aspfTag = tags.find(t => t.tag === 'aspf');
-    const ruaTag = tags.find(t => t.tag === 'rua');
-    const pctTag = tags.find(t => t.tag === 'pct');
-
-    const policy = (pTag?.value as 'none' | 'quarantine' | 'reject') || 'missing';
-    const alignmentDkim = adkimTag?.value || 'r';
-    const alignmentSpf = aspfTag?.value || 'r';
-
-    const issues: string[] = [];
-    const suggestions: string[] = [];
-    let status: RecordStatus = 'pass';
-
-    if (policy === 'none') {
-      issues.push('DMARC policy is "none" — emails failing DMARC checks are not rejected or quarantined.');
-      suggestions.push('Upgrade DMARC policy from p=none to p=quarantine then eventually p=reject after reviewing reports.');
-      status = 'warn';
-    } else if (policy === 'quarantine') {
-      issues.push('DMARC policy is "quarantine" — failing emails go to spam. Consider upgrading to p=reject.');
-      suggestions.push('After verifying your SPF/DKIM setup, upgrade to p=reject for maximum protection.');
-      if (status === 'pass') status = 'warn';
-    }
-
-    if (!ruaTag) {
-      issues.push('No aggregate report URI (rua=) set — you will not receive DMARC reports.');
-      suggestions.push('Add rua=mailto:dmarc@yourdomain.com to receive aggregate reports and monitor your email authentication.');
-      if (status === 'pass') status = 'warn';
-    }
-
-    if (alignmentDkim ===
+      .map((a: any) => (a.data as string).replace(/^"|"$/g,
