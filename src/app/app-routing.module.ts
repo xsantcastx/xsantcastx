@@ -11,6 +11,7 @@ import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.compo
 import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
+import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -245,6 +246,33 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'Image Compressor', item: `${SITE_URL}/tools/image-compressor` }
+          ]
+        }
+      }
+    }
+  },
+    {
+    path: 'tools/gmail-deliverability-checker',
+    component: GmailDeliverabilityCheckerComponent,
+    title: 'Gmail Deliverability Checker | xsantcastx',
+    data: {
+      description: 'Browser-based tool to diagnose Gmail delivery issues and auto-generate SPF, DKIM, DMARC configuration fixes instantly.',
+      keywords: 'Gmail deliverability, SPF generator, DKIM, DMARC, email authentication, DNS records',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Gmail Deliverability Checker',
+        url: `${SITE_URL}/tools/gmail-deliverability-checker`,
+        description: 'Browser-based tool to diagnose Gmail delivery issues and auto-generate SPF, DKIM, DMARC configuration fixes instantly.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'Gmail Deliverability Checker', item: `${SITE_URL}/tools/gmail-deliverability-checker` }
           ]
         }
       }

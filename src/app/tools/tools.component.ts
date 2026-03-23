@@ -68,6 +68,17 @@ export class ToolsComponent {
         icon: `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><polyline points="14 3 14 8 19 8"/>`
       },
       {
+        id: 'gmail-deliverability-checker',
+        title: 'Gmail Deliverability Checker',
+        description: 'Diagnose email delivery issues and auto-generate SPF, DKIM, DMARC fixes',
+        route: '/tools/gmail-deliverability-checker',
+        status: 'live',
+        tags: ['email-marketing', 'devops', 'dns-tools', 'gmail', 'security', 'indie-hackers'],
+        icon: `<path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M3 6l9 7 9-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="17.5" cy="17.5" r`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),
