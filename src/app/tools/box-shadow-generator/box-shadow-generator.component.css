@@ -446,4 +446,126 @@
 .bs-layer-item {
   display: flex;
   align-items: center;
-  gap: 0
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-color);
+  transition: background 0.15s, border-color 0.15s;
+}
+.bs-layer-item:hover {
+  background: var(--surface-hover);
+}
+.bs-layer-item.is-active {
+  border-color: var(--primary-color);
+  background: var(--surface-strong);
+}
+.bs-layer-item__preview {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+  flex-shrink: 0;
+}
+.bs-layer-item__label {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-color);
+}
+.bs-layer-item__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* ─── CONTROLS GRID ──────────────────────────────────── */
+
+.bs-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.bs-control-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.bs-control-group--inline { flex-direction: row; align-items: center; justify-content: space-between; }
+.bs-control-group__top { display: flex; justify-content: space-between; }
+.bs-control-group__label { font-size: 0.78rem; color: var(--text-muted); }
+.bs-control-group__value { font-size: 0.78rem; color: var(--primary-color); font-family: var(--font-heading); }
+
+.bs-slider {
+  width: 100%;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+.bs-color-row { display: flex; align-items: center; gap: 0.5rem; }
+.bs-color-input { width: 40px; height: 32px; border: none; border-radius: 6px; cursor: pointer; padding: 0; }
+.bs-color-hex { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
+.bs-toggle-btn {
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-color);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bs-toggle-btn.is-active {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(0,255,204,0.08);
+}
+
+/* ─── CODE OUTPUT ─────────────────────────────────────── */
+
+.bs-format-btns { display: flex; gap: 0.25rem; }
+.bs-tab-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.78rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bs-tab-btn.is-active {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(0,255,204,0.08);
+}
+.bs-code-block {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--text-color);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0 0 0.75rem;
+}
+.bs-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border-strong);
+  background: rgba(0,255,204,0.08);
+  color: var(--primary-color);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bs-copy-btn:hover { background: rgba(0,255,204,0.15); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .bs-workspace { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .bs-controls-grid { grid-template-columns: 1fr; }
+  .bs-preview-box-wrap { min-height: 200px; }
+}
