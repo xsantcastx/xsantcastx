@@ -99,7 +99,7 @@ def _generate_files(tool: dict, class_name: str, slug: str) -> dict:
     ts = _strip_fences(call_claude(
         system=TS_SYSTEM,
         messages=[{"role": "user", "content": base + "\n\nGenerate the complete .component.ts file."}],
-        max_tokens=6000, model=SONNET,
+        max_tokens=4096, model=SONNET,
     ))
 
     print("[development] Generating .html…")
@@ -107,7 +107,7 @@ def _generate_files(tool: dict, class_name: str, slug: str) -> dict:
         system=HTML_SYSTEM,
         messages=[{"role": "user", "content":
             base + f"\n\nTS file:\n{ts[:3000]}\n\nGenerate the complete .component.html file."}],
-        max_tokens=3000, model=SONNET,
+        max_tokens=4096, model=SONNET,
     ))
 
     print("[development] Generating .css…")
@@ -115,7 +115,7 @@ def _generate_files(tool: dict, class_name: str, slug: str) -> dict:
         system=CSS_SYSTEM,
         messages=[{"role": "user", "content":
             base + f"\n\nHTML template:\n{html[:2000]}\n\nGenerate the complete .component.css file."}],
-        max_tokens=3000, model=SONNET,
+        max_tokens=4096, model=SONNET,
     ))
 
     print("[development] Generating icon…")

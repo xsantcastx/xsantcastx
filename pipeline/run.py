@@ -10,6 +10,7 @@ Usage:
   python pipeline/run.py --date 2026-03-23 # rerun for a specific date
 """
 import argparse
+import json
 import os
 import sys
 import traceback
@@ -27,7 +28,7 @@ except ImportError:
 # Make sure the pipeline package is importable regardless of CWD
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agents import research, planning, development, deploy
+from agents import research, planning, development, deploy, social
 
 
 def _validate_env() -> None:
@@ -52,9 +53,9 @@ def main() -> int:
         "--from-agent",
         type=int,
         default=1,
-        choices=[1, 2, 3, 4],
+        choices=[1, 2, 3, 4, 5],
         metavar="N",
-        help="Start from agent N (1=research, 2=planning, 3=development, 4=deploy). "
+        help="Start from agent N (1=research, 2=planning, 3=development, 4=deploy, 5=social). "
              "Defaults to 1 (full run). Prior agents' outputs must exist.",
     )
     parser.add_argument(
@@ -77,11 +78,33 @@ def main() -> int:
     run_dir = _make_run_dir(date_str)
     print(f"Run directory: {run_dir}\n")
 
+    draft_mode = os.getenv("SOCIAL_DRAFT_MODE", "true").lower() == "true"
+
+    def _build_social_context() -> dict:
+        """Assemble context for the social agent from prior agents' outputs."""
+        ctx: dict = {"run_dir": run_dir}
+        plan_path = run_dir / "02_plan.json"
+        dev_path = run_dir / "03_dev.json"
+        if plan_path.exists():
+            plan = json.loads(plan_path.read_text())
+            tool = plan.get("tool", {})
+            ctx["tool_name"] = tool.get("name", "")
+            ctx["slug"] = tool.get("slug", "")
+            ctx["description"] = tool.get("description", "")
+            ctx["seo_keywords"] = tool.get("seo_keywords", "")
+            ctx["pain_points"] = tool.get("pain_points", "")
+        if dev_path.exists():
+            dev = json.loads(dev_path.read_text())
+            slug = dev.get("slug", ctx.get("slug", ""))
+            ctx["live_url"] = f"https://xsantcastx.web.app/tools/{slug}"
+        return ctx
+
     agents = [
         (1, "Research",     lambda: research.run(run_dir)),
         (2, "Planning",     lambda: planning.run(run_dir)),
         (3, "Development",  lambda: development.run(run_dir)),
         (4, "Deploy",       lambda: deploy.run(run_dir, date_str)),
+        (5, "Social",       lambda: social.run(_build_social_context(), draft_mode=draft_mode)),
     ]
 
     for agent_num, agent_name, agent_fn in agents:
