@@ -551,4 +551,122 @@ export class EmailDeliverabilityAuditorComponent implements OnInit {
       if (status === 'pass') status = 'warn';
     }
 
-    if (alignmentDkim ===
+    if (alignmentDkim === 'r') {
+      issues.push('DKIM alignment is "relaxed" — strict alignment (adkim=s) provides stronger protection.');
+      suggestions.push('Set adkim=s in your DMARC record for strict DKIM alignment.');
+      if (status === 'pass') status = 'warn';
+    }
+
+    if (alignmentSpf === 'r') {
+      issues.push('SPF alignment is "relaxed" — strict alignment (aspf=s) provides stronger protection.');
+      suggestions.push('Set aspf=s in your DMARC record for strict SPF alignment.');
+      if (status === 'pass') status = 'warn';
+    }
+
+    const pctValue = pctTag ? parseInt(pctTag.value, 10) : 100;
+    if (!isNaN(pctValue) && pctValue < 100) {
+      issues.push(`DMARC pct=${pctValue} — only ${pctValue}% of messages are subject to DMARC filtering.`);
+      suggestions.push('Set pct=100 to apply DMARC policy to all messages once you have verified your configuration.');
+      if (status === 'pass') status = 'warn';
+    }
+
+    const correctedRecord = 'v=DMARC1; p=reject; adkim=s; aspf=s; rua=mailto:dmarc@yourdomain.com; pct=100';
+
+    return {
+      raw: dmarcRecord,
+      tags,
+      policy,
+      alignmentSpf,
+      alignmentDkim,
+      status: issues.length === 0 ? 'pass' : status,
+      issues,
+      suggestions,
+      correctedRecord
+    };
+  }
+
+  private async parseMx(answers: any[]): Promise<MxResult> {
+    const mxAnswers = answers.filter((a: any) => a.type === 15);
+
+    if (mxAnswers.length === 0) {
+      return {
+        records: [],
+        status: 'missing',
+        issues: ['No MX records found for this domain. Emails cannot be delivered to this domain.'],
+        suggestions: ['Add MX records pointing to your email provider\'s mail servers.']
+      };
+    }
+
+    const records: MxRecord[] = [];
+    const issues: string[] = [];
+    const suggestions: string[] = [];
+    let status: RecordStatus = 'pass';
+
+    for (const answer of mxAnswers) {
+      const parts = (answer.data as string).trim().split(/\s+/);
+      const priority = parseInt(parts[0], 10);
+      const hostname = (parts[1] || '').replace(/\.$/, '');
+      let resolvedIps: string[] = [];
+      try {
+        const aAnswers = await this.queryDns(hostname, 'A');
+        resolvedIps = aAnswers.filter((a: any) => a.type === 1).map((a: any) => a.data as string);
+      } catch {
+        resolvedIps = [];
+      }
+      records.push({ priority, hostname, resolvedIps });
+    }
+
+    records.sort((a, b) => a.priority - b.priority);
+
+    if (records.length === 1) {
+      issues.push('Only one MX record found — consider adding a backup MX record for redundancy.');
+      suggestions.push('Add a secondary MX record with a higher priority number for failover.');
+      if (status === 'pass') status = 'warn';
+    }
+
+    return {
+      records,
+      status: issues.length === 0 ? 'pass' : status,
+      issues,
+      suggestions
+    };
+  }
+
+  private calculateScore(
+    spf: SpfResult | null,
+    dkim: DkimResult[],
+    dmarc: DmarcResult | null,
+    mx: MxResult | null
+  ): { spf: number; dkim: number; dmarc: number; mx: number } {
+    let spfScore = 0;
+    if (spf) {
+      if (spf.status === 'pass') spfScore = 30;
+      else if (spf.status === 'warn') spfScore = 20;
+      else if (spf.status === 'fail') spfScore = 5;
+    }
+
+    let dkimScore = 0;
+    if (dkim.length > 0) {
+      const best = dkim.find(d => d.status === 'pass') || dkim[0];
+      if (best.status === 'pass') dkimScore = 25;
+      else if (best.status === 'warn') dkimScore = 15;
+      else if (best.status === 'fail') dkimScore = 5;
+    }
+
+    let dmarcScore = 0;
+    if (dmarc) {
+      if (dmarc.status === 'pass') dmarcScore = 35;
+      else if (dmarc.status === 'warn') dmarcScore = 20;
+      else if (dmarc.status === 'fail') dmarcScore = 5;
+    }
+
+    let mxScore = 0;
+    if (mx) {
+      if (mx.status === 'pass') mxScore = 10;
+      else if (mx.status === 'warn') mxScore = 7;
+      else if (mx.status === 'fail') mxScore = 2;
+    }
+
+    return { spf: spfScore, dkim: dkimScore, dmarc: dmarcScore, mx: mxScore };
+  }
+}

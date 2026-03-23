@@ -152,4 +152,230 @@
           <div class="eda-breakdown-row">
             <span class="eda-breakdown-label">SPF</span>
             <div class="eda-breakdown-bar-wrap">
-              <div class="eda-
+              <div class="eda-breakdown-bar" [style.width.%]="(results.scoreBreakdown.spf / 30) * 100" [class.eda-breakdown-bar--pass]="results.spf?.status === 'pass'" [class.eda-breakdown-bar--warn]="results.spf?.status === 'warn'" [class.eda-breakdown-bar--fail]="results.spf?.status === 'fail' || results.spf?.status === 'missing'"></div>
+            </div>
+            <span class="eda-breakdown-value">{{ results.scoreBreakdown.spf }}/30</span>
+          </div>
+          <div class="eda-breakdown-row">
+            <span class="eda-breakdown-label">DKIM</span>
+            <div class="eda-breakdown-bar-wrap">
+              <div class="eda-breakdown-bar" [style.width.%]="(results.scoreBreakdown.dkim / 25) * 100" [class.eda-breakdown-bar--pass]="results.dkim.length > 0 && results.dkim[0].status === 'pass'" [class.eda-breakdown-bar--warn]="results.dkim.length > 0 && results.dkim[0].status === 'warn'" [class.eda-breakdown-bar--fail]="results.dkim.length === 0 || results.dkim[0].status === 'fail'"></div>
+            </div>
+            <span class="eda-breakdown-value">{{ results.scoreBreakdown.dkim }}/25</span>
+          </div>
+          <div class="eda-breakdown-row">
+            <span class="eda-breakdown-label">DMARC</span>
+            <div class="eda-breakdown-bar-wrap">
+              <div class="eda-breakdown-bar" [style.width.%]="(results.scoreBreakdown.dmarc / 35) * 100" [class.eda-breakdown-bar--pass]="results.dmarc?.status === 'pass'" [class.eda-breakdown-bar--warn]="results.dmarc?.status === 'warn'" [class.eda-breakdown-bar--fail]="results.dmarc?.status === 'fail' || results.dmarc?.status === 'missing'"></div>
+            </div>
+            <span class="eda-breakdown-value">{{ results.scoreBreakdown.dmarc }}/35</span>
+          </div>
+          <div class="eda-breakdown-row">
+            <span class="eda-breakdown-label">MX</span>
+            <div class="eda-breakdown-bar-wrap">
+              <div class="eda-breakdown-bar" [style.width.%]="(results.scoreBreakdown.mx / 10) * 100" [class.eda-breakdown-bar--pass]="results.mx?.status === 'pass'" [class.eda-breakdown-bar--warn]="results.mx?.status === 'warn'" [class.eda-breakdown-bar--fail]="results.mx?.status === 'fail' || results.mx?.status === 'missing'"></div>
+            </div>
+            <span class="eda-breakdown-value">{{ results.scoreBreakdown.mx }}/10</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPF Panel -->
+    <section class="eda-panel" *ngIf="results.spf">
+      <div class="eda-panel__header" (click)="toggleAccordion('spf')">
+        <div class="eda-panel__title-row">
+          <span class="eda-badge" [ngClass]="getStatusClass(results.spf.status)">
+            {{ getStatusIcon(results.spf.status) }} {{ results.spf.status | titlecase }}
+          </span>
+          <h3 class="eda-panel__title">SPF Record</h3>
+        </div>
+        <svg class="eda-panel__chevron" [class.eda-panel__chevron--open]="isAccordionOpen('spf')" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="eda-panel__body" *ngIf="isAccordionOpen('spf')">
+        <div class="eda-record-raw">
+          <span class="eda-record-raw__label">Raw Record</span>
+          <code class="eda-record-raw__value">{{ results.spf.raw || 'No SPF record found' }}</code>
+        </div>
+        <div class="eda-issues" *ngIf="results.spf.issues.length > 0">
+          <div class="eda-issue" *ngFor="let issue of results.spf.issues">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ issue }}
+          </div>
+        </div>
+        <div class="eda-suggestions" *ngIf="results.spf.suggestions.length > 0">
+          <div class="eda-suggestion" *ngFor="let s of results.spf.suggestions">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ s }}
+          </div>
+        </div>
+        <div class="eda-corrected" *ngIf="results.spf.correctedRecord && results.spf.suggestions.length > 0">
+          <span class="eda-corrected__label">Suggested Record</span>
+          <code class="eda-corrected__value">{{ results.spf.correctedRecord }}</code>
+          <button type="button" class="eda-copy-btn" (click)="copySnippet(results.spf.correctedRecord)">
+            {{ isCopied(results.spf.correctedRecord) ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DKIM Panel -->
+    <section class="eda-panel">
+      <div class="eda-panel__header" (click)="toggleAccordion('dkim')">
+        <div class="eda-panel__title-row">
+          <span class="eda-badge" [ngClass]="getStatusClass(results.dkim[0]?.status || 'missing')">
+            {{ getStatusIcon(results.dkim[0]?.status || 'missing') }} {{ (results.dkim[0]?.status || 'missing') | titlecase }}
+          </span>
+          <h3 class="eda-panel__title">DKIM Records</h3>
+        </div>
+        <svg class="eda-panel__chevron" [class.eda-panel__chevron--open]="isAccordionOpen('dkim')" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="eda-panel__body" *ngIf="isAccordionOpen('dkim')">
+        <div class="eda-tabs" *ngIf="results.dkim.length > 1">
+          <button
+            type="button"
+            class="eda-tab"
+            *ngFor="let dkimItem of results.dkim; let i = index"
+            [class.eda-tab--active]="activeDkimTab === i"
+            (click)="setDkimTab(i)"
+          >{{ dkimItem.selector }}</button>
+        </div>
+        <ng-container *ngIf="results.dkim[activeDkimTab] as dkimItem">
+          <div class="eda-record-raw">
+            <span class="eda-record-raw__label">Selector: {{ dkimItem.selector }}</span>
+            <code class="eda-record-raw__value">{{ dkimItem.raw || 'No DKIM record found for this selector' }}</code>
+          </div>
+          <div class="eda-issues" *ngIf="dkimItem.issues.length > 0">
+            <div class="eda-issue" *ngFor="let issue of dkimItem.issues">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {{ issue }}
+            </div>
+          </div>
+          <div class="eda-suggestions" *ngIf="dkimItem.suggestions.length > 0">
+            <div class="eda-suggestion" *ngFor="let s of dkimItem.suggestions">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              {{ s }}
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <!-- DMARC Panel -->
+    <ng-container *ngIf="results.dmarc as dmarc">
+    <section class="eda-panel">
+      <div class="eda-panel__header" (click)="toggleAccordion('dmarc')">
+        <div class="eda-panel__title-row">
+          <span class="eda-badge" [ngClass]="getStatusClass(dmarc.status)">
+            {{ getStatusIcon(dmarc.status) }} {{ dmarc.status | titlecase }}
+          </span>
+          <h3 class="eda-panel__title">DMARC Record</h3>
+        </div>
+        <svg class="eda-panel__chevron" [class.eda-panel__chevron--open]="isAccordionOpen('dmarc')" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="eda-panel__body" *ngIf="isAccordionOpen('dmarc')">
+        <div class="eda-record-raw">
+          <span class="eda-record-raw__label">Raw Record</span>
+          <code class="eda-record-raw__value">{{ dmarc.raw || 'No DMARC record found' }}</code>
+        </div>
+        <div class="eda-dmarc-policy" *ngIf="dmarc.policy !== 'missing'">
+          <span class="eda-policy-badge" [ngClass]="getDmarcPolicyClass(dmarc.policy)">Policy: {{ dmarc.policy }}</span>
+        </div>
+        <div class="eda-issues" *ngIf="dmarc.issues.length > 0">
+          <div class="eda-issue" *ngFor="let issue of dmarc.issues">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ issue }}
+          </div>
+        </div>
+        <div class="eda-suggestions" *ngIf="dmarc.suggestions.length > 0">
+          <div class="eda-suggestion" *ngFor="let s of dmarc.suggestions">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ s }}
+          </div>
+        </div>
+        <div class="eda-corrected" *ngIf="dmarc.correctedRecord && dmarc.suggestions.length > 0">
+          <span class="eda-corrected__label">Suggested Record</span>
+          <code class="eda-corrected__value">{{ dmarc.correctedRecord }}</code>
+          <button type="button" class="eda-copy-btn" (click)="copySnippet(dmarc.correctedRecord)">
+            {{ isCopied(dmarc.correctedRecord) ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+      </div>
+    </section>
+    </ng-container>
+
+    <!-- MX Panel -->
+    <ng-container *ngIf="results.mx as mx">
+    <section class="eda-panel">
+      <div class="eda-panel__header" (click)="toggleAccordion('mx')">
+        <div class="eda-panel__title-row">
+          <span class="eda-badge" [ngClass]="getStatusClass(mx.status)">
+            {{ getStatusIcon(mx.status) }} {{ mx.status | titlecase }}
+          </span>
+          <h3 class="eda-panel__title">MX Records</h3>
+        </div>
+        <svg class="eda-panel__chevron" [class.eda-panel__chevron--open]="isAccordionOpen('mx')" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="eda-panel__body" *ngIf="isAccordionOpen('mx')">
+        <div class="eda-mx-records" *ngIf="mx.records.length > 0">
+          <div class="eda-mx-record" *ngFor="let rec of mx.records">
+            <span class="eda-mx-priority">{{ rec.priority }}</span>
+            <span class="eda-mx-hostname">{{ rec.hostname }}</span>
+            <span class="eda-mx-ips" *ngIf="rec.resolvedIps.length > 0">→ {{ rec.resolvedIps.join(', ') }}</span>
+          </div>
+        </div>
+        <div class="eda-issues" *ngIf="mx.issues.length > 0">
+          <div class="eda-issue" *ngFor="let issue of mx.issues">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ issue }}
+          </div>
+        </div>
+        <div class="eda-suggestions" *ngIf="mx.suggestions.length > 0">
+          <div class="eda-suggestion" *ngFor="let s of mx.suggestions">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ s }}
+          </div>
+        </div>
+      </div>
+    </section>
+    </ng-container>
+
+    <!-- All Fixes Summary -->
+    <section class="eda-fixes-panel" *ngIf="getAllFixes().length > 0">
+      <h3 class="eda-fixes-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Recommended Fixes
+      </h3>
+      <div class="eda-fix" *ngFor="let fix of getAllFixes()">
+        <div class="eda-fix__header">
+          <span class="eda-fix__title">{{ fix.title }}</span>
+          <button type="button" class="eda-copy-btn" (click)="copySnippet(fix.snippet)">
+            {{ isCopied(fix.snippet) ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+        <code class="eda-fix__snippet">{{ fix.snippet }}</code>
+      </div>
+    </section>
+
+    <!-- Share Results -->
+    <section class="eda-share-panel">
+      <p class="eda-share-text">Share this audit</p>
+      <div class="eda-share-row">
+        <input type="text" class="eda-share-url" [value]="shareResultUrl()" readonly />
+        <button type="button" class="eda-copy-btn" (click)="copyShareUrl()">
+          {{ isCopied(shareResultUrl()) ? 'Copied!' : 'Copy Link' }}
+        </button>
+      </div>
+    </section>
+
+  </div><!-- /.eda-results -->
+
+</div><!-- /.eda-page -->
