@@ -104,6 +104,17 @@ export class ToolsComponent {
 <circle cx="17" cy="17" r="3.5" stroke`
       },
       {
+        id: 'ssl-certificate-inspector',
+        title: 'SSL Certificate Inspector',
+        description: 'Inspect SSL/TLS certificates, visualize chain of trust, and audit CA reputation instantly.',
+        route: '/tools/ssl-certificate-inspector',
+        status: 'live',
+        tags: ['Security', 'SSL/TLS', 'Networking', 'DevTools', 'HTTPS'],
+        icon: `<path d="M12 2L4 5v6c0 4.418 3.358 8.547 8 9.95C16.642 19.547 20 15.418 20 11V5L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+<circle cx="12" cy="11" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+<path d="M10.5 13.5L9 16h6l-1.5-2.5" stroke="`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),
