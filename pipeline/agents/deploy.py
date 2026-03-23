@@ -6,6 +6,7 @@ Output: runs/YYYY-MM-DD/04_deploy.json
 """
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -13,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.github_api import create_pr, poll_workflow_run, get_workflow_run_logs
-from utils.claude_client import call_claude_json
+from utils.claude_client import call_claude, HAIKU
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
@@ -90,58 +91,85 @@ def _push(branch: str) -> None:
 # CI fix loop helpers
 # ---------------------------------------------------------------------------
 
-FIX_SYSTEM = """\
-You are an Angular expert fixing a CI build failure. You will receive:
-1. The failed GitHub Actions log output
-2. The current content of the Angular files that need fixing
+DIAGNOSE_SYSTEM = """\
+You are an Angular build expert. Given CI failure logs and a .component.ts file,
+identify WHICH file has the error and what the fix is.
+Reply in 3 lines max: FILE: <ts|html|css>, ERROR: <short description>, FIX: <what to change>."""
 
-Diagnose the build error and return fixed file contents. Return ONLY valid JSON:
-{
-  "component_ts": "...fixed .ts content or null if unchanged...",
-  "component_html": "...fixed .html content or null if unchanged...",
-  "component_css": "...fixed .css content or null if unchanged...",
-  "explanation": "What was wrong and what you fixed"
-}
-"""
+FIX_TS_SYSTEM   = "Fix the Angular TypeScript build error described. Return ONLY the complete corrected .ts file — no markdown, no explanation."
+FIX_HTML_SYSTEM = "Fix the Angular HTML template error described. Return ONLY the complete corrected .html file — no markdown, no explanation."
+FIX_CSS_SYSTEM  = "Fix the CSS error described. Return ONLY the complete corrected .css file — no markdown, no explanation."
+
+
+def _strip_fences(text: str) -> str:
+    text = text.strip()
+    text = re.sub(r"^```[\w]*\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    return text.strip()
 
 
 def _attempt_ci_fix(slug: str, run_id: int, attempt: int) -> bool:
-    """Read CI logs, ask Claude for a fix, apply it. Returns True if files were changed."""
+    """Read CI logs, ask Claude to diagnose + fix. Returns True if any file changed."""
     print(f"[deploy] Fetching CI logs for run {run_id}…")
     logs = get_workflow_run_logs(run_id)
 
     tool_dir = REPO_ROOT / "src" / "app" / "tools" / slug
-    ts_content = (tool_dir / f"{slug}.component.ts").read_text()
-    html_content = (tool_dir / f"{slug}.component.html").read_text()
-    css_content = (tool_dir / f"{slug}.component.css").read_text()
+    ts_path   = tool_dir / f"{slug}.component.ts"
+    html_path = tool_dir / f"{slug}.component.html"
+    css_path  = tool_dir / f"{slug}.component.css"
 
-    prompt = (
-        f"CI build failed (attempt {attempt}). Here are the logs:\n\n"
-        f"```\n{logs}\n```\n\n"
-        f"Current {slug}.component.ts:\n```typescript\n{ts_content}\n```\n\n"
-        f"Current {slug}.component.html:\n```html\n{html_content}\n```\n\n"
-        f"Current {slug}.component.css:\n```css\n{css_content}\n```\n\n"
-        "Fix the build errors. Return null for any file that does not need changes."
+    ts_content = ts_path.read_text()
+
+    # Step 1: cheap haiku call — identify which file needs fixing
+    diagnosis = call_claude(
+        system=DIAGNOSE_SYSTEM,
+        messages=[{"role": "user", "content":
+            f"Logs (last 3000 chars):\n{logs[-3000:]}\n\n"
+            f".ts file (first 2000 chars):\n{ts_content[:2000]}\n\nDiagnose."}],
+        max_tokens=200, model=HAIKU,
     )
+    print(f"[deploy] Diagnosis: {diagnosis.strip()}")
 
-    fixed = call_claude_json(
-        system=FIX_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=8096,
-    )
-
-    print(f"[deploy] Claude fix explanation: {fixed.get('explanation', '(none)')}")
-
+    # Step 2: fix the identified file (plain text, sonnet)
+    from utils.claude_client import SONNET
     changed = False
-    for key, filename in [
-        ("component_ts", f"{slug}.component.ts"),
-        ("component_html", f"{slug}.component.html"),
-        ("component_css", f"{slug}.component.css"),
-    ]:
-        new_content = fixed.get(key)
-        if new_content and new_content.strip():
-            (tool_dir / filename).write_text(new_content)
-            print(f"[deploy] Applied fix to {filename}")
+    target = diagnosis.lower()
+
+    if "html" in target:
+        html_content = html_path.read_text()
+        fixed = _strip_fences(call_claude(
+            system=FIX_HTML_SYSTEM,
+            messages=[{"role": "user", "content":
+                f"Error: {diagnosis}\n\nCurrent HTML:\n{html_content}\n\nReturn fixed HTML."}],
+            max_tokens=3000, model=SONNET,
+        ))
+        if fixed:
+            html_path.write_text(fixed)
+            print("[deploy] Applied fix to .html")
+            changed = True
+    elif "css" in target:
+        css_content = css_path.read_text()
+        fixed = _strip_fences(call_claude(
+            system=FIX_CSS_SYSTEM,
+            messages=[{"role": "user", "content":
+                f"Error: {diagnosis}\n\nCurrent CSS:\n{css_content}\n\nReturn fixed CSS."}],
+            max_tokens=2000, model=SONNET,
+        ))
+        if fixed:
+            css_path.write_text(fixed)
+            print("[deploy] Applied fix to .css")
+            changed = True
+    else:
+        # Default: fix .ts
+        fixed = _strip_fences(call_claude(
+            system=FIX_TS_SYSTEM,
+            messages=[{"role": "user", "content":
+                f"Error: {diagnosis}\n\nCurrent TS:\n{ts_content}\n\nReturn fixed TypeScript."}],
+            max_tokens=5000, model=SONNET,
+        ))
+        if fixed:
+            ts_path.write_text(fixed)
+            print("[deploy] Applied fix to .ts")
             changed = True
 
     return changed
