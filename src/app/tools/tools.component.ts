@@ -93,6 +93,17 @@ export class ToolsComponent {
 <line x1="18" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
       },
       {
+        id: 'email-deliverability-auditor',
+        title: 'Email Deliverability Auditor',
+        description: 'Audit SPF, DKIM, DMARC & MX records and get instant fix suggestions for email delivery.',
+        route: '/tools/email-deliverability-auditor',
+        status: 'live',
+        tags: ['Email', 'DNS', 'Security', 'DevTools', 'SPF', 'DMARC'],
+        icon: `<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z" stroke-width="1.5" fill="none"/>
+<path d="M3 5l9 7 9-7" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="17" cy="17" r="3.5" stroke`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),

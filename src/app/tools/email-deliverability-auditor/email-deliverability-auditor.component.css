@@ -1,0 +1,332 @@
+/* ============================================================
+   Email Deliverability Auditor — Component Styles
+   ============================================================ */
+
+/* ---------- Page Shell ---------- */
+.eda-page {
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+  font-family: var(--font-body);
+  color: var(--text-color);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ---------- Back Link ---------- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-md);
+  transition: color 0.2s, background 0.2s;
+  margin-bottom: 1.75rem;
+}
+.back-link:hover {
+  color: var(--text-color);
+  background: var(--surface-hover);
+}
+
+/* ---------- Tool Header ---------- */
+.tool-header {
+  margin-bottom: 2.25rem;
+}
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--highlight-color);
+  margin: 0 0 0.55rem;
+}
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.65rem;
+  line-height: 1.2;
+  color: var(--text-color);
+}
+.tool-header__subtitle {
+  font-size: 0.93rem;
+  color: var(--text-muted);
+  margin: 0 0 1.1rem;
+  max-width: 660px;
+  line-height: 1.6;
+}
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.38rem 0.85rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.15s;
+  border: 1px solid var(--glass-border);
+}
+.share-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+.share-btn--twitter {
+  background: var(--surface-color);
+  color: var(--text-color);
+}
+.share-btn--linkedin {
+  background: var(--surface-color);
+  color: var(--text-color);
+}
+
+/* ---------- Error ---------- */
+.tool-error {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border-strong);
+  border-left: 3px solid var(--highlight-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  color: var(--highlight-color);
+  font-size: 0.86rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ============================================================
+   Hero Input Section
+   ============================================================ */
+.eda-hero-input {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+}
+
+.eda-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.eda-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.eda-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eda-field input,
+.eda-field select {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 0.65rem 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  min-width: 0;
+}
+.eda-field input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.eda-field input:focus,
+.eda-field select:focus {
+  border-color: var(--highlight-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-color) 18%, transparent);
+}
+.eda-field select option {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+.eda-selector-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* ---------- Audit Button ---------- */
+.eda-btn-audit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--primary-color);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.67rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+  align-self: flex-end;
+}
+.eda-btn-audit:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-strong);
+}
+.eda-btn-audit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Spinner ---------- */
+.eda-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--text-color) 30%, transparent);
+  border-top-color: var(--text-color);
+  border-radius: 50%;
+  animation: eda-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes eda-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Score Card
+   ============================================================ */
+.eda-score-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Circular gauge */
+.eda-gauge {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+.eda-gauge svg {
+  transform: rotate(-90deg);
+  width: 120px;
+  height: 120px;
+}
+.eda-gauge__track {
+  fill: none;
+  stroke: var(--surface-strong);
+  stroke-width: 8;
+}
+.eda-gauge__fill {
+  fill: none;
+  stroke: var(--secondary-color);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 301.6;
+  stroke-dashoffset: 301.6;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 0.4s ease;
+}
+.eda-gauge__fill--good   { stroke: var(--secondary-color); }
+.eda-gauge__fill--warn   { stroke: var(--primary-color); }
+.eda-gauge__fill--fail   { stroke: var(--highlight-color); }
+
+.eda-gauge__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.eda-gauge__score {
+  font-family: var(--font-heading);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-color);
+}
+.eda-gauge__max {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Summary chips */
+.eda-score-info {
+  flex: 1;
+  min-width: 200px;
+}
+.eda-score-info h2 {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--text-color);
+}
+.eda-score-info p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1.1rem;
+  line-height: 1.5;
+}
+.eda-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.eda-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.eda-chip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
