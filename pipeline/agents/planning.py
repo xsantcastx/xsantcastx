@@ -1,6 +1,7 @@
 """Agent 2 — Planning Agent.
 
 Takes the research output and uses Claude to pick the single best tool to build today.
+Handles both live research data and the synthesized-from-knowledge fallback.
 Output: runs/YYYY-MM-DD/02_plan.json
 """
 import json
@@ -11,9 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.claude_client import call_claude_json
 
-# ------------------------------------------------------------------
-# Context about the site that Claude needs to make a good decision
-# ------------------------------------------------------------------
 SITE_CONTEXT = """\
 Site: xsantcastx.web.app
 Framework: Angular 20, module-based (NOT standalone components), TypeScript
@@ -38,14 +36,14 @@ Coming soon (also skip these):
 SYSTEM = f"""\
 You are a product strategist and SEO expert specialising in developer tools.
 
-Given a list of pain points found on Reddit, select the SINGLE BEST tool to build for
-a developer/designer tools website. The tool MUST:
+Given a list of pain points, select the SINGLE BEST tool to build for a developer/designer
+tools website. The tool MUST:
 
 1. Have high SEO search volume — people actively search for this kind of tool online
 2. Run entirely in the browser — no server, no file uploads to a backend, no external APIs
 3. Be implementable as a single Angular component (~200-400 lines of TypeScript)
 4. NOT duplicate an existing tool on the site (see site context below)
-5. Solve a clear, evidenced pain point from the research
+5. Address a real, evidenced pain point
 
 Site context:
 {SITE_CONTEXT}
@@ -87,23 +85,37 @@ def run(run_dir: Path) -> dict:
         raise FileNotFoundError(f"Research output not found: {research_path}")
 
     research = json.loads(research_path.read_text())
+    pain_points = research.get("pain_points", [])
+    source = research.get("source", "unknown")
+
+    if pain_points:
+        user_msg = (
+            f"Here are the top pain points discovered (source: {source}):\n\n"
+            f"{json.dumps(research, indent=2, ensure_ascii=False)}\n\n"
+            "Select the single best tool to build today and return valid JSON."
+        )
+    else:
+        # Fallback: no research data at all — let Claude pick freely
+        print("[planning] No pain points in research — asking Claude to pick a tool from its knowledge.")
+        user_msg = (
+            "No community pain-point data is available today. "
+            "Based on your knowledge of what web developers and designers commonly search for, "
+            "choose the single best free browser-based tool to build for this site. "
+            "It should have high SEO value, not duplicate the existing tools, "
+            "and be implementable as a single Angular component. "
+            "Return valid JSON."
+        )
 
     result = call_claude_json(
         system=SYSTEM,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    "Here are the top pain points discovered from Reddit:\n\n"
-                    f"{json.dumps(research, indent=2, ensure_ascii=False)}\n\n"
-                    "Select the single best tool to build today and return valid JSON."
-                ),
-            }
-        ],
+        messages=[{"role": "user", "content": user_msg}],
         max_tokens=2048,
     )
 
     tool = result.get("tool", {})
+    if not tool.get("slug"):
+        raise ValueError(f"Claude returned a plan with no slug: {result}")
+
     output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
     print(f"[planning] Selected tool: {tool.get('name')} (slug: {tool.get('slug')})")
     print(f"[planning] Why chosen: {tool.get('why_chosen', '')[:120]}")
