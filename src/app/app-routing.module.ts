@@ -12,6 +12,7 @@ import { ColorPaletteComponent } from './tools/color-palette/color-palette.compo
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
+import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -273,6 +274,33 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'Gmail Deliverability Checker', item: `${SITE_URL}/tools/gmail-deliverability-checker` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/box-shadow-generator',
+    component: BoxShadowGeneratorComponent,
+    title: 'CSS Box Shadow Generator — Live Preview | xsantcastx',
+    data: {
+      description: 'Design beautiful CSS box shadows visually with multiple layers, live preview, and one-click code copy. Free browser-based tool for developers and designers.',
+      keywords: 'css box shadow generator, box shadow css, css shadow generator, drop shadow tool, css box shadow examples, shadow generator online, css shadow maker',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'CSS Box Shadow Generator',
+        url: `${SITE_URL}/tools/box-shadow-generator`,
+        description: 'Design beautiful CSS box shadows visually with multiple layers, live preview, and one-click code copy. Free browser-based tool for developers and designers.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'CSS Box Shadow Generator', item: `${SITE_URL}/tools/box-shadow-generator` }
           ]
         }
       }

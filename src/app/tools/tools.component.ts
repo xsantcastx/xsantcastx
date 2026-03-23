@@ -76,7 +76,21 @@ export class ToolsComponent {
         tags: ['email-marketing', 'devops', 'dns-tools', 'gmail', 'security', 'indie-hackers'],
         icon: `<path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
 <path d="M3 6l9 7 9-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="17.5" cy="17.5" r`
+<circle cx="17.5" cy="17.5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+<polyline points="15.5 17.5 17 19 20 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
+      },
+      {
+        id: 'box-shadow-generator',
+        title: 'CSS Box Shadow Generator',
+        description: 'Visually design layered CSS box shadows with live preview and code export.',
+        route: '/tools/box-shadow-generator',
+        status: 'live',
+        tags: ['CSS', 'Design', 'Generator'],
+        icon: `<rect x="4" y="6" width="12" height="10" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+<rect x="8" y="9" width="12" height="10" rx="2" stroke="currentColor" stroke-width="2" fill="none" opacity="0.4"/>
+<path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="2" fill="none"/>
+<path d="M19 14l2 2-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<line x1="18" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
       },
       {
         id: 'gradient-generator',
