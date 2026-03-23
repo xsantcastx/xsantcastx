@@ -1,0 +1,339 @@
+:root {
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
+}
+
+/* ─── Page Layout ─── */
+.gdc-page {
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: var(--font-body);
+  color: var(--text-color);
+}
+
+/* ─── Back Link ─── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.75rem;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.back-link:hover {
+  color: var(--text-color);
+  background: var(--surface-hover);
+}
+
+/* ─── Tool Header ─── */
+.tool-header {
+  margin-bottom: 2.5rem;
+}
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin: 0 0 0.55rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.65rem;
+  color: var(--text-color);
+  line-height: 1.2;
+}
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0 0 1.25rem;
+  line-height: 1.6;
+  max-width: 600px;
+}
+
+/* ─── Share Buttons ─── */
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  border: 1px solid var(--glass-border);
+}
+
+.share-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.share-btn--twitter {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+.share-btn--linkedin {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+/* ─── Error Banner ─── */
+.gdc-error {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: color-mix(in srgb, var(--highlight-color) 12%, var(--surface-color));
+  border: 1px solid color-mix(in srgb, var(--highlight-color) 35%, transparent);
+  color: var(--highlight-color);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Glass Card Base ─── */
+.gdc-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 1.5rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.gdc-card:hover {
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--shadow-strong);
+}
+
+.gdc-card__title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gdc-card__title svg {
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+/* ─── Section: Domain Input & Quick Scan ─── */
+.gdc-scan {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.gdc-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.gdc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.gdc-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gdc-field input,
+.gdc-field select,
+.gdc-field textarea {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 0.65rem 0.85rem;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gdc-field input::placeholder,
+.gdc-field textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.gdc-field input:focus,
+.gdc-field select:focus,
+.gdc-field textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.gdc-field select option {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+.gdc-field textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ─── Scan Button ─── */
+.gdc-btn-scan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-color);
+  color: var(--surface-color);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  white-space: nowrap;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--primary-color) 30%, transparent);
+  flex-shrink: 0;
+}
+
+.gdc-btn-scan:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--primary-color) 40%, transparent);
+}
+
+.gdc-btn-scan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.gdc-btn-scan svg {
+  transition: transform var(--transition-base);
+}
+
+.gdc-btn-scan.scanning svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Provider Presets ─── */
+.gdc-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.gdc-presets__label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.gdc-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.gdc-preset-btn:hover {
+  color: var(--text-color);
+  border-color: var(--primary-color);
+  background: var(--surface-hover);
+}
+
+.gdc-preset-btn.active {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-strong));
+}
+
+/* ─── Authentication Status Display ─── */
+.gdc-auth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.gdc-auth-item {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color var(--transition-base);
+}
+
+.gdc-auth-item.status-pass {
+  border-color: color-mix(in srgb, var(--secondary-color) 50%, transparent);
+  background: color-mix(in srgb, var(--secondary-color) 8%, var(--surface-strong));
+}
+
+.gdc-auth-item.status-fail {
+  border-color: color-mix(in srgb, var(--highlight-color) 50%, transparent);
+  background: color-mix(in srgb, var(--highlight-color) 8%, var(--surface-strong));
+}
+
+.gdc-auth-item.status-warn {
+  border-color
