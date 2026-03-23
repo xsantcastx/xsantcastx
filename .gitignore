@@ -85,3 +85,10 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Pipeline run artifacts (JSON outputs, logs) — generated tool source files are NOT ignored
+runs/
+
+# Pipeline local env overrides
+pipeline/.env
+pipeline/.env.local
