@@ -38,6 +38,7 @@ import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.compo
 import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
+import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
 import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
@@ -73,6 +74,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     ColorPaletteComponent,
     ContrastCheckerComponent,
     ImageCompressorComponent,
+    GmailDeliverabilityCheckerComponent,
     BoxShadowGeneratorComponent,
     NewsFeedComponent,
     ServicesComponent,
