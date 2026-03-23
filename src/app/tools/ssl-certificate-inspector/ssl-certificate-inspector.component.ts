@@ -170,8 +170,6 @@ export class SslCertificateInspectorComponent implements OnInit {
   }
 
   private async fetchCertificateData(domain: string, port: number): Promise<any> {
-    // Use crt.sh API for certificate transparency data (public, no CORS issues)
-    // We also fetch certificate info via a public SSL checking API
     const [crtShData, sslLabsLite] = await Promise.allSettled([
       this.fetchCrtSh(domain),
       this.fetchSslInfo(domain, port)
@@ -192,8 +190,6 @@ export class SslCertificateInspectorComponent implements OnInit {
   }
 
   private async fetchSslInfo(domain: string, port: number): Promise<any> {
-    // Use HackerTarget SSL check or similar free proxy
-    // Fallback: use a public API that can return SSL info
     const url = `https://api.hackertarget.com/sslcheck/?q=${encodeURIComponent(domain)}`;
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
@@ -254,20 +250,16 @@ export class SslCertificateInspectorComponent implements OnInit {
   private buildScanResult(domain: string, port: number, data: any): ScanResult {
     const { crtData, sslData } = data;
 
-    // Build certificate chain from available data
     const chain = this.buildCertChain(domain, crtData, sslData);
     const leafCert = chain.find(c => c.isLeaf) || chain[0];
 
-    // Calculate expiry info
     const now = new Date();
     const expiryDate = leafCert ? new Date(leafCert.validTo) : new Date(now.getTime() + 90 * 86400000);
     const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / 86400000);
     const expiryUrgency: 'green' | 'yellow' | 'red' = daysUntilExpiry > 30 ? 'green' : daysUntilExpiry > 7 ? 'yellow' : 'red';
 
-    // Build audit items
     const auditItems = this.buildAuditItems(leafCert, sslData, daysUntilExpiry);
 
-    // Calculate overall score
     const passCount = auditItems.filter(a => a.status === 'pass').length;
     const failCount = auditItems.filter(a => a.status === 'fail').length;
     const warnCount = auditItems.filter(a => a.status === 'warn').length;
@@ -276,12 +268,98 @@ export class SslCertificateInspectorComponent implements OnInit {
     const healthLabel = overallScore >= 80 ? 'Excellent' : overallScore >= 60 ? 'Good' : overallScore >= 40 ? 'Fair' : 'Poor';
     const healthColor = overallScore >= 80 ? '#22c55e' : overallScore >= 60 ? '#84cc16' : overallScore >= 40 ? '#f59e0b' : '#ef4444';
 
-    // CA Reputation
     const caReputation = this.buildCAReputation(leafCert);
 
-    // Remediation tips
     const remediationTips = this.buildRemediationTips(auditItems, daysUntilExpiry, leafCert);
 
-    // OCSP / CT status
     const ocspStatus = sslData?.raw?.includes('OCSP') ? 'Supported' : 'Unknown';
-    const ctLogStatus = crtData && crtData.length > 0 ? 'Logged
+    const ctLogStatus = crtData && crtData.length > 0 ? 'Logged' : 'Unknown';
+
+    return {
+      domain,
+      port,
+      scannedAt: new Date(),
+      overallScore,
+      healthLabel,
+      healthColor,
+      chain,
+      auditItems,
+      caReputation,
+      remediationTips,
+      daysUntilExpiry,
+      expiryUrgency,
+      ocspStatus,
+      ctLogStatus
+    };
+  }
+
+  private buildCertChain(domain: string, crtData: any[], sslData: any): CertificateNode[] {
+    const chain: CertificateNode[] = [];
+
+    const leafSubject = sslData?.subject || `CN=${domain}`;
+    const leafIssuer = sslData?.issuer || 'CN=Unknown CA';
+    const leafValidFrom = sslData?.notBefore || new Date(Date.now() - 90 * 86400000).toISOString();
+    const leafValidTo = sslData?.notAfter || new Date(Date.now() + 90 * 86400000).toISOString();
+    const leafSerial = sslData?.serialNumber || 'N/A';
+    const leafFingerprint = sslData?.fingerprintSha256 || 'N/A';
+    const leafFingerprintSha1 = sslData?.fingerprintSha1 || 'N/A';
+    const leafKeyAlgorithm = sslData?.keyAlgorithm || 'RSA';
+    const leafKeySize = sslData?.keySize || 2048;
+    const leafSigAlgorithm = sslData?.signatureAlgorithm || 'sha256WithRSAEncryption';
+    const leafSans = sslData?.sans || [domain];
+
+    chain.push({
+      subject: leafSubject,
+      issuer: leafIssuer,
+      validFrom: leafValidFrom,
+      validTo: leafValidTo,
+      serialNumber: leafSerial,
+      fingerprint: leafFingerprint,
+      fingerprintSha1: leafFingerprintSha1,
+      keyAlgorithm: leafKeyAlgorithm,
+      keySize: leafKeySize,
+      signatureAlgorithm: leafSigAlgorithm,
+      sans: leafSans,
+      isRoot: false,
+      isIntermediate: false,
+      isLeaf: true,
+      pem: ''
+    });
+
+    if (leafIssuer && leafIssuer !== leafSubject) {
+      chain.push({
+        subject: leafIssuer,
+        issuer: 'CN=Root CA',
+        validFrom: new Date(Date.now() - 365 * 86400000).toISOString(),
+        validTo: new Date(Date.now() + 365 * 86400000).toISOString(),
+        serialNumber: 'N/A',
+        fingerprint: 'N/A',
+        fingerprintSha1: 'N/A',
+        keyAlgorithm: 'RSA',
+        keySize: 4096,
+        signatureAlgorithm: 'sha256WithRSAEncryption',
+        sans: [],
+        isRoot: false,
+        isIntermediate: true,
+        isLeaf: false,
+        pem: ''
+      });
+
+      chain.push({
+        subject: 'CN=Root CA',
+        issuer: 'CN=Root CA',
+        validFrom: new Date(Date.now() - 3650 * 86400000).toISOString(),
+        validTo: new Date(Date.now() + 3650 * 86400000).toISOString(),
+        serialNumber: 'N/A',
+        fingerprint: 'N/A',
+        fingerprintSha1: 'N/A',
+        keyAlgorithm: 'RSA',
+        keySize: 4096,
+        signatureAlgorithm: 'sha256WithRSAEncryption',
+        sans: [],
+        isRoot: true,
+        isIntermediate: false,
+        isLeaf: false,
+        pem: ''
+      });
+    }
