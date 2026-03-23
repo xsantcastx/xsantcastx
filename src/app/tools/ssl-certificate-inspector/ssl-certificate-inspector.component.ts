@@ -363,3 +363,115 @@ export class SslCertificateInspectorComponent implements OnInit {
         pem: ''
       });
     }
+
+    return chain;
+  }
+
+  scan(): void {
+    this.scanCertificate();
+  }
+
+  private buildAuditItems(leafCert: CertificateNode | undefined, sslData: any, daysUntilExpiry: number): SecurityAudit[] {
+    const items: SecurityAudit[] = [];
+
+    // Expiry
+    if (daysUntilExpiry > 30) {
+      items.push({ label: 'Certificate Expiry', status: 'pass', detail: `Valid for ${daysUntilExpiry} more days` });
+    } else if (daysUntilExpiry > 0) {
+      items.push({ label: 'Certificate Expiry', status: 'warn', detail: `Expires in ${daysUntilExpiry} days — renew soon` });
+    } else {
+      items.push({ label: 'Certificate Expiry', status: 'fail', detail: 'Certificate has expired' });
+    }
+
+    // Key algorithm
+    const keyAlg = leafCert?.keyAlgorithm?.toLowerCase() || '';
+    if (keyAlg.includes('ec') || keyAlg.includes('ecdsa')) {
+      items.push({ label: 'Key Algorithm', status: 'pass', detail: 'ECDSA — modern and efficient' });
+    } else if (keyAlg.includes('rsa')) {
+      const keySize = leafCert?.keySize || 2048;
+      if (keySize >= 2048) {
+        items.push({ label: 'Key Algorithm', status: 'pass', detail: `RSA-${keySize} — meets minimum requirements` });
+      } else {
+        items.push({ label: 'Key Algorithm', status: 'fail', detail: `RSA-${keySize} — key size too small` });
+      }
+    } else {
+      items.push({ label: 'Key Algorithm', status: 'warn', detail: 'Could not determine key algorithm' });
+    }
+
+    // Signature algorithm
+    const sigAlg = leafCert?.signatureAlgorithm?.toLowerCase() || '';
+    if (sigAlg.includes('sha256') || sigAlg.includes('sha384') || sigAlg.includes('sha512')) {
+      items.push({ label: 'Signature Algorithm', status: 'pass', detail: 'Strong hash algorithm in use' });
+    } else if (sigAlg.includes('sha1')) {
+      items.push({ label: 'Signature Algorithm', status: 'fail', detail: 'SHA-1 is deprecated and insecure' });
+    } else {
+      items.push({ label: 'Signature Algorithm', status: 'warn', detail: 'Could not determine signature algorithm' });
+    }
+
+    // SAN check
+    const sans = leafCert?.sans || [];
+    if (sans.length > 0) {
+      items.push({ label: 'Subject Alternative Names', status: 'pass', detail: `${sans.length} SAN(s) present` });
+    } else {
+      items.push({ label: 'Subject Alternative Names', status: 'warn', detail: 'No SANs detected — modern browsers require SANs' });
+    }
+
+    // Wildcard check
+    const hasWildcard = sans.some((s: string) => s.startsWith('*'));
+    if (hasWildcard) {
+      items.push({ label: 'Wildcard Certificate', status: 'warn', detail: 'Wildcard cert — if the private key is compromised, all subdomains are at risk' });
+    } else {
+      items.push({ label: 'Wildcard Certificate', status: 'pass', detail: 'No wildcard — domain-specific certificate' });
+    }
+
+    // CT logs
+    const ctLogged = sslData?.raw?.includes('CT') || false;
+    items.push({ label: 'CT Log Transparency', status: ctLogged ? 'pass' : 'warn', detail: ctLogged ? 'Certificate appears in CT logs' : 'CT log status could not be verified in-browser' });
+
+    return items;
+  }
+
+  private buildCAReputation(leafCert: CertificateNode | undefined): CAReputation | null {
+    if (!leafCert) return null;
+    const issuer = leafCert.issuer || '';
+    for (const key of Object.keys(this.KNOWN_CA_DATA)) {
+      if (issuer.includes(key)) {
+        return this.KNOWN_CA_DATA[key];
+      }
+    }
+    return null;
+  }
+
+  private buildRemediationTips(auditItems: SecurityAudit[], daysUntilExpiry: number, leafCert: CertificateNode | undefined): RemediationTip[] {
+    const tips: RemediationTip[] = [];
+
+    if (daysUntilExpiry <= 0) {
+      tips.push({ issue: 'Certificate Expired', severity: 'high', suggestion: "Your certificate has expired. Renew immediately — browsers will block access with a security warning until this is resolved.", expanded: false });
+    } else if (daysUntilExpiry <= 30) {
+      tips.push({ issue: 'Certificate Expiring Soon', severity: 'high', suggestion: `Renew your SSL certificate within ${daysUntilExpiry} days to avoid service disruption. Consider using Let's Encrypt with auto-renewal.`, expanded: false });
+    }
+
+    const sigFail = auditItems.find((a: SecurityAudit) => a.label === 'Signature Algorithm' && a.status === 'fail');
+    if (sigFail) {
+      tips.push({ issue: 'Weak Signature Algorithm (SHA-1)', severity: 'high', suggestion: 'Reissue your certificate with SHA-256 or stronger. SHA-1 is no longer trusted by modern browsers.', expanded: false });
+    }
+
+    const keyFail = auditItems.find((a: SecurityAudit) => a.label === 'Key Algorithm' && a.status === 'fail');
+    if (keyFail) {
+      tips.push({ issue: 'Weak Key Size', severity: 'high', suggestion: 'Reissue your certificate with at least RSA-2048 or preferably ECDSA P-256 for better security and performance.', expanded: false });
+    }
+
+    const sanWarn = auditItems.find((a: SecurityAudit) => a.label === 'Subject Alternative Names' && a.status === 'warn');
+    if (sanWarn) {
+      tips.push({ issue: 'Missing Subject Alternative Names', severity: 'medium', suggestion: 'Reissue the certificate with proper SAN entries. Modern browsers require SANs — the CN field alone is no longer sufficient.', expanded: false });
+    }
+
+    const wildcardWarn = auditItems.find((a: SecurityAudit) => a.label === 'Wildcard Certificate' && a.status === 'warn');
+    if (wildcardWarn) {
+      tips.push({ issue: 'Wildcard Certificate Risk', severity: 'low', suggestion: 'Consider issuing domain-specific certificates to limit blast radius if the private key is ever compromised.', expanded: false });
+    }
+
+    void leafCert;
+    return tips;
+  }
+}
