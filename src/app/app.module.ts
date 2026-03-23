@@ -39,6 +39,7 @@ import { ColorPaletteComponent } from './tools/color-palette/color-palette.compo
 import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
+import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -74,6 +75,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     ContrastCheckerComponent,
     ImageCompressorComponent,
     GmailDeliverabilityCheckerComponent,
+    BoxShadowGeneratorComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,
