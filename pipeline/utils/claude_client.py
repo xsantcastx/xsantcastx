@@ -1,17 +1,30 @@
-"""Anthropic SDK wrapper for the pipeline."""
+"""Anthropic SDK wrapper for the pipeline.
+
+Model selection by agent:
+  research  → haiku   (fast, cheap — just extracting structured data)
+  planning  → haiku   (fast, cheap — picking from a list)
+  development → sonnet (needs code quality)
+  deploy fix  → haiku  (log reading, simple fix identification)
+"""
 import os
 import json
 import re
 import anthropic
 
-MODEL = "claude-opus-4-6"
+HAIKU  = "claude-haiku-4-5-20251001"
+SONNET = "claude-sonnet-4-6"
+OPUS   = "claude-opus-4-6"
+
+# Default model — overridden per call
+DEFAULT_MODEL = SONNET
 
 
-def call_claude(system: str, messages: list[dict], max_tokens: int = 8096) -> str:
+def call_claude(system: str, messages: list[dict], max_tokens: int = 2048,
+                model: str = DEFAULT_MODEL) -> str:
     """Call Claude and return the text of the first content block."""
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     response = client.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=max_tokens,
         system=system,
         messages=messages,
@@ -19,15 +32,15 @@ def call_claude(system: str, messages: list[dict], max_tokens: int = 8096) -> st
     return response.content[0].text
 
 
-def call_claude_json(system: str, messages: list[dict], max_tokens: int = 8096, retries: int = 2) -> dict:
+def call_claude_json(system: str, messages: list[dict], max_tokens: int = 2048,
+                     model: str = DEFAULT_MODEL, retries: int = 2) -> dict:
     """Call Claude and parse the response as JSON.
 
     Strips markdown code fences if present, then parses. Retries on parse failure.
     """
     for attempt in range(retries + 1):
-        raw = call_claude(system, messages, max_tokens=max_tokens)
+        raw = call_claude(system, messages, max_tokens=max_tokens, model=model)
 
-        # Strip ```json ... ``` fences if present
         stripped = raw.strip()
         if stripped.startswith("```"):
             stripped = re.sub(r"^```(?:json)?\s*", "", stripped)
@@ -39,10 +52,9 @@ def call_claude_json(system: str, messages: list[dict], max_tokens: int = 8096, 
             if attempt == retries:
                 raise ValueError(
                     f"Claude returned non-JSON after {retries + 1} attempts.\n"
-                    f"Raw response (first 500 chars): {raw[:500]}"
+                    f"Raw response (first 300 chars): {raw[:300]}"
                 ) from exc
 
-            # Ask Claude to fix its own output
             messages = messages + [
                 {"role": "assistant", "content": raw},
                 {
@@ -50,9 +62,8 @@ def call_claude_json(system: str, messages: list[dict], max_tokens: int = 8096, 
                     "content": (
                         "Your response was not valid JSON. "
                         f"Parse error: {exc}. "
-                        "Please return ONLY valid JSON with no markdown fences or extra text."
+                        "Return ONLY valid JSON, no markdown fences or extra text."
                     ),
                 },
             ]
-    # Unreachable but satisfies type checkers
     raise RuntimeError("Unexpected exit from retry loop")
