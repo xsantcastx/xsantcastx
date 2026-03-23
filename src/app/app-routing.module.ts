@@ -13,6 +13,7 @@ import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-chec
 import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
 import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
 import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
+import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -301,6 +302,33 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'CSS Box Shadow Generator', item: `${SITE_URL}/tools/box-shadow-generator` }
+          ]
+        }
+      }
+    }
+  },
+    {
+    path: 'tools/email-deliverability-auditor',
+    component: EmailDeliverabilityAuditorComponent,
+    title: 'Email Deliverability Auditor | xsantcastx',
+    data: {
+      description: 'Free in-browser SPF, DKIM, DMARC & MX record auditor. Instantly find email deliverability issues and get actionable fix suggestions — no signup required.',
+      keywords: 'email deliverability checker, SPF validator, DKIM checker, DMARC auditor, MX record lookup, DNS email configuration',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Email Deliverability Auditor',
+        url: `${SITE_URL}/tools/email-deliverability-auditor`,
+        description: 'Free in-browser SPF, DKIM, DMARC & MX record auditor. Instantly find email deliverability issues and get actionable fix suggestions — no signup required.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'Email Deliverability Auditor', item: `${SITE_URL}/tools/email-deliverability-auditor` }
           ]
         }
       }
