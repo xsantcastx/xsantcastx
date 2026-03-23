@@ -14,6 +14,7 @@ import { ImageCompressorComponent } from './tools/image-compressor/image-compres
 import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
 import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
 import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
+import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -329,6 +330,33 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'Email Deliverability Auditor', item: `${SITE_URL}/tools/email-deliverability-auditor` }
+          ]
+        }
+      }
+    }
+  },
+    {
+    path: 'tools/ssl-certificate-inspector',
+    component: SslCertificateInspectorComponent,
+    title: 'SSL Certificate Inspector & Chain Analyzer | xsantcastx',
+    data: {
+      description: 'Check SSL/TLS certificates for expiry, weak algorithms, and risky CAs. Visualize the full certificate chain and get actionable security insights in-browser.',
+      keywords: 'SSL certificate checker, TLS certificate analyzer, certificate chain visualization, CA reputation audit, HTTPS security tool',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'SSL Certificate Inspector',
+        url: `${SITE_URL}/tools/ssl-certificate-inspector`,
+        description: 'Check SSL/TLS certificates for expiry, weak algorithms, and risky CAs. Visualize the full certificate chain and get actionable security insights in-browser.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'SSL Certificate Inspector', item: `${SITE_URL}/tools/ssl-certificate-inspector` }
           ]
         }
       }
