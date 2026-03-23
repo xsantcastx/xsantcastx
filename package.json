@@ -21,6 +21,7 @@
     "@angular/router": "^20.0.4",
     "@getbrevo/brevo": "^3.0.1",
     "@tsparticles/angular": "^3.0.0",
+    "@tsparticles/engine": "^3.9.1",
     "@types/nodemailer": "^7.0.2",
     "firebase": "^11.9.1",
     "jspdf": "^4.2.1",
