@@ -1,0 +1,393 @@
+<div class="gdc-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">DNS &amp; Email Tools</p>
+    <h1 class="tool-header__title">Gmail Deliverability Checker</h1>
+    <p class="tool-header__subtitle">Diagnose email delivery issues and auto-generate SPF, DKIM, DMARC DNS record fixes instantly — no backend required.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+  </header>
+
+  <!-- Global error -->
+  <div class="gdc-error" *ngIf="error">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    {{ error }}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 1 — Domain Input & Quick Scan
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-scan-section">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Domain Input &amp; Quick Scan
+    </h2>
+
+    <div class="gdc-form-grid">
+
+      <!-- Domain name -->
+      <div class="gdc-field">
+        <label class="gdc-label" for="domainInput">Domain Name <span class="gdc-required">*</span></label>
+        <div class="gdc-input-prefix-wrap">
+          <span class="gdc-input-prefix">&#64;</span>
+          <input
+            id="domainInput"
+            type="text"
+            class="gdc-input gdc-input--prefixed"
+            placeholder="yourdomain.com"
+            [(ngModel)]="domainName"
+            [disabled]="isScanning"
+          />
+        </div>
+        <p class="gdc-field-hint">Enter the domain used in your From: address (e.g. yourdomain.com)</p>
+      </div>
+
+      <!-- Email provider preset -->
+      <div class="gdc-field">
+        <label class="gdc-label" for="providerSelect">Email Provider</label>
+        <div class="gdc-select-wrap">
+          <select
+            id="providerSelect"
+            class="gdc-select"
+            [(ngModel)]="emailProvider"
+            (change)="onProviderChange()"
+            [disabled]="isScanning"
+          >
+            <option *ngFor="let p of providers" [value]="p.value">{{ p.label }}</option>
+          </select>
+          <svg class="gdc-select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Existing SPF -->
+      <div class="gdc-field gdc-field--full">
+        <label class="gdc-label" for="existingSpf">Existing SPF Record <span class="gdc-optional">(optional)</span></label>
+        <input
+          id="existingSpf"
+          type="text"
+          class="gdc-input"
+          placeholder="v=spf1 include:_spf.google.com ~all"
+          [(ngModel)]="existingSpfRecord"
+          [disabled]="isScanning"
+        />
+        <p class="gdc-field-hint">Paste your current TXT record from DNS if you have one</p>
+      </div>
+
+      <!-- Existing DKIM public key -->
+      <div class="gdc-field gdc-field--full">
+        <label class="gdc-label" for="existingDkim">Existing DKIM Public Key <span class="gdc-optional">(optional)</span></label>
+        <textarea
+          id="existingDkim"
+          class="gdc-textarea"
+          rows="3"
+          placeholder="v=DKIM1; k=rsa; p=MIIBIjANBgkqhki..."
+          [(ngModel)]="existingDkimPublicKey"
+          [disabled]="isScanning"
+        ></textarea>
+        <p class="gdc-field-hint">Paste the p= value from your DKIM DNS record if available</p>
+      </div>
+
+    </div>
+
+    <!-- Scan button -->
+    <button
+      type="button"
+      class="gdc-btn gdc-btn--primary gdc-btn--lg"
+      (click)="scan()"
+      [disabled]="isScanning || !domainName.trim()"
+    >
+      <svg *ngIf="!isScanning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <svg *ngIf="isScanning" class="gdc-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <span *ngIf="!isScanning">Run Deliverability Scan</span>
+      <span *ngIf="isScanning">Scanning {{ domainName }}…</span>
+    </button>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 2 — Authentication Status Display
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-status-section" *ngIf="hasScanned">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Authentication Status for <span class="gdc-domain-highlight">{{ domainName }}</span>
+    </h2>
+
+    <div class="gdc-status-grid">
+
+      <!-- SPF status -->
+      <div class="gdc-status-card"
+        [class.gdc-status-card--valid]="validationStatus.spf === 'valid'"
+        [class.gdc-status-card--invalid]="validationStatus.spf === 'invalid'"
+        [class.gdc-status-card--missing]="validationStatus.spf === 'missing'"
+        [class.gdc-status-card--unknown]="validationStatus.spf === 'unknown'">
+        <div class="gdc-status-card__header">
+          <span class="gdc-status-badge"
+            [class.gdc-status-badge--valid]="validationStatus.spf === 'valid'"
+            [class.gdc-status-badge--invalid]="validationStatus.spf === 'invalid'"
+            [class.gdc-status-badge--missing]="validationStatus.spf === 'missing'"
+            [class.gdc-status-badge--unknown]="validationStatus.spf === 'unknown'">
+            <svg *ngIf="validationStatus.spf === 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg *ngIf="validationStatus.spf !== 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
+          <span class="gdc-status-card__label">SPF</span>
+        </div>
+        <p class="gdc-status-card__state">{{ getStatusIcon(validationStatus.spf) }} {{ validationStatus.spf | titlecase }}</p>
+        <p class="gdc-status-card__desc">Sender Policy Framework — authorizes which mail servers can send on your behalf.</p>
+      </div>
+
+      <!-- DKIM status -->
+      <div class="gdc-status-card"
+        [class.gdc-status-card--valid]="validationStatus.dkim === 'valid'"
+        [class.gdc-status-card--invalid]="validationStatus.dkim === 'invalid'"
+        [class.gdc-status-card--missing]="validationStatus.dkim === 'missing'"
+        [class.gdc-status-card--unknown]="validationStatus.dkim === 'unknown'">
+        <div class="gdc-status-card__header">
+          <span class="gdc-status-badge"
+            [class.gdc-status-badge--valid]="validationStatus.dkim === 'valid'"
+            [class.gdc-status-badge--invalid]="validationStatus.dkim === 'invalid'"
+            [class.gdc-status-badge--missing]="validationStatus.dkim === 'missing'"
+            [class.gdc-status-badge--unknown]="validationStatus.dkim === 'unknown'">
+            <svg *ngIf="validationStatus.dkim === 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg *ngIf="validationStatus.dkim !== 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
+          <span class="gdc-status-card__label">DKIM</span>
+        </div>
+        <p class="gdc-status-card__state">{{ getStatusIcon(validationStatus.dkim) }} {{ validationStatus.dkim | titlecase }}</p>
+        <p class="gdc-status-card__desc">DomainKeys Identified Mail — cryptographic signature that proves email integrity.</p>
+      </div>
+
+      <!-- DMARC status -->
+      <div class="gdc-status-card"
+        [class.gdc-status-card--valid]="validationStatus.dmarc === 'valid'"
+        [class.gdc-status-card--invalid]="validationStatus.dmarc === 'invalid'"
+        [class.gdc-status-card--missing]="validationStatus.dmarc === 'missing'"
+        [class.gdc-status-card--unknown]="validationStatus.dmarc === 'unknown'">
+        <div class="gdc-status-card__header">
+          <span class="gdc-status-badge"
+            [class.gdc-status-badge--valid]="validationStatus.dmarc === 'valid'"
+            [class.gdc-status-badge--invalid]="validationStatus.dmarc === 'invalid'"
+            [class.gdc-status-badge--missing]="validationStatus.dmarc === 'missing'"
+            [class.gdc-status-badge--unknown]="validationStatus.dmarc === 'unknown'">
+            <svg *ngIf="validationStatus.dmarc === 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg *ngIf="validationStatus.dmarc !== 'valid'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
+          <span class="gdc-status-card__label">DMARC</span>
+        </div>
+        <p class="gdc-status-card__state">{{ getStatusIcon(validationStatus.dmarc) }} {{ validationStatus.dmarc | titlecase }}</p>
+        <p class="gdc-status-card__desc">Domain-based Message Authentication — policy that combines SPF &amp; DKIM and reports abuse.</p>
+      </div>
+
+    </div>
+
+    <!-- Overall score -->
+    <div class="gdc-score-row">
+      <div class="gdc-score" [class]="scoreClass">
+        <span class="gdc-score__value">{{ overallScore }}</span>
+        <span class="gdc-score__label">/ 100</span>
+      </div>
+      <div class="gdc-score-meta">
+        <p class="gdc-score-meta__title">Deliverability Score</p>
+        <p class="gdc-score-meta__detail">
+          <span *ngIf="errorCount > 0" class="gdc-badge gdc-badge--error">{{ errorCount }} error{{ errorCount > 1 ? 's' : '' }}</span>
+          <span *ngIf="warningCount > 0" class="gdc-badge gdc-badge--warning">{{ warningCount }} warning{{ warningCount > 1 ? 's' : '' }}</span>
+          <span *ngIf="errorCount === 0 && warningCount === 0" class="gdc-badge gdc-badge--valid">All checks passed</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 3 — Configuration
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-config-section" *ngIf="hasScanned">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Configuration &amp; Generator
+    </h2>
+
+    <div class="gdc-config-grid">
+
+      <!-- SPF config -->
+      <div class="gdc-config-group">
+        <h3 class="gdc-config-group__title">SPF Settings</h3>
+        <div class="gdc-field">
+          <label class="gdc-label">All Mechanism</label>
+          <div class="gdc-radio-group">
+            <label *ngFor="let m of spfMechanisms" class="gdc-radio-label">
+              <input type="radio" [(ngModel)]="spfAllMechanism" [value]="m.value" class="gdc-radio" />
+              <span class="gdc-radio-text">
+                <strong>{{ m.label }}</strong>
+                <em>{{ m.description }}</em>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="gdc-field">
+          <label class="gdc-label" for="customIncludes">Additional Includes <span class="gdc-optional">(optional)</span></label>
+          <input id="customIncludes" type="text" class="gdc-input" placeholder="mailchimp.com, sendgrid.net" [(ngModel)]="customSpfIncludes" />
+          <p class="gdc-field-hint">Comma-separated domains to include (without include: prefix)</p>
+        </div>
+        <div class="gdc-field">
+          <label class="gdc-label" for="customIps">Additional IP Addresses <span class="gdc-optional">(optional)</span></label>
+          <input id="customIps" type="text" class="gdc-input" placeholder="203.0.113.1, 2001:db8::1" [(ngModel)]="customIpList" />
+          <p class="gdc-field-hint">Comma-separated IPv4 or IPv6 addresses</p>
+        </div>
+      </div>
+
+      <!-- DKIM config -->
+      <div class="gdc-config-group">
+        <h3 class="gdc-config-group__title">DKIM Settings</h3>
+        <div class="gdc-field">
+          <label class="gdc-label" for="dkimSelector">DKIM Selector</label>
+          <input id="dkimSelector" type="text" class="gdc-input" placeholder="google" [(ngModel)]="dkimSelector" />
+          <p class="gdc-field-hint">The selector used in your DKIM DNS record (e.g. google, s1, mail)</p>
+        </div>
+      </div>
+
+      <!-- DMARC config -->
+      <div class="gdc-config-group">
+        <h3 class="gdc-config-group__title">DMARC Settings</h3>
+        <div class="gdc-field">
+          <label class="gdc-label">Policy</label>
+          <div class="gdc-radio-group">
+            <label *ngFor="let p of dmarcPolicies" class="gdc-radio-label">
+              <input type="radio" [(ngModel)]="dmarcPolicy" [value]="p.value" class="gdc-radio" />
+              <span class="gdc-radio-text">
+                <strong>{{ p.label }}</strong>
+                <em>{{ p.description }}</em>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="gdc-field">
+          <label class="gdc-label" for="dmarcPct">Percentage of Emails</label>
+          <div class="gdc-inline-control">
+            <input id="dmarcPct" type="range" min="1" max="100" step="1" [(ngModel)]="dmarcPct" class="gdc-slider" />
+            <span class="gdc-slider-value">{{ dmarcPct }}%</span>
+          </div>
+          <p class="gdc-field-hint">Start at 10% and gradually increase to 100%</p>
+        </div>
+        <div class="gdc-field">
+          <label class="gdc-label" for="ruaEmail">Reporting Email <span class="gdc-optional">(optional)</span></label>
+          <input id="ruaEmail" type="email" class="gdc-input" placeholder="dmarc-reports@yourdomain.com" [(ngModel)]="dmarcRuaEmail" />
+          <p class="gdc-field-hint">Receive daily DMARC aggregate reports at this address</p>
+        </div>
+      </div>
+
+    </div>
+
+    <button type="button" class="gdc-btn gdc-btn--secondary" (click)="regenerate()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-7.5"/></svg>
+      Regenerate Records
+    </button>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 4 — Generated DNS Records
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-records-section" *ngIf="hasScanned">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Generated DNS Records
+    </h2>
+
+    <!-- Tabs -->
+    <div class="gdc-tabs">
+      <button type="button" class="gdc-tab" [class.gdc-tab--active]="activeTab === 'spf'" (click)="setActiveTab('spf')">SPF</button>
+      <button type="button" class="gdc-tab" [class.gdc-tab--active]="activeTab === 'dkim'" (click)="setActiveTab('dkim')">DKIM</button>
+      <button type="button" class="gdc-tab" [class.gdc-tab--active]="activeTab === 'dmarc'" (click)="setActiveTab('dmarc')">DMARC</button>
+    </div>
+
+    <!-- Active record -->
+    <div class="gdc-record-panel" *ngIf="activeRecord">
+      <table class="gdc-record-table">
+        <tbody>
+          <tr>
+            <th>Type</th>
+            <td><span class="gdc-record-type">{{ activeRecord.type }}</span></td>
+          </tr>
+          <tr>
+            <th>Host / Name</th>
+            <td><code class="gdc-code">{{ activeRecord.host }}</code></td>
+          </tr>
+          <tr>
+            <th>Value</th>
+            <td>
+              <div class="gdc-record-value-wrap">
+                <code class="gdc-code gdc-code--block">{{ activeRecord.value }}</code>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>TTL</th>
+            <td>{{ activeRecord.ttl }}s</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="gdc-record-actions">
+        <button type="button" class="gdc-btn gdc-btn--primary" (click)="copyValue(activeRecord)">
+          <svg *ngIf="!activeRecord.copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <svg *ngIf="activeRecord.copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {{ activeRecord.copied ? 'Copied!' : 'Copy Value' }}
+        </button>
+        <button type="button" class="gdc-btn gdc-btn--ghost" (click)="copyRecord(activeRecord)">
+          Copy Full Record
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 5 — Diagnostic Issues
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-diagnostics-section" *ngIf="hasScanned && diagnosticIssues.length > 0">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Diagnostic Issues
+    </h2>
+    <div class="gdc-issue-list">
+      <div class="gdc-issue" *ngFor="let issue of diagnosticIssues" [class]="getSeverityClass(issue.severity)">
+        <div class="gdc-issue__header">
+          <span class="gdc-issue__icon">{{ getSeverityIcon(issue.severity) }}</span>
+          <strong class="gdc-issue__title">{{ issue.title }}</strong>
+        </div>
+        <p class="gdc-issue__desc">{{ issue.description }}</p>
+        <p class="gdc-issue__fix"><strong>Fix:</strong> {{ issue.fix }}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 6 — Implementation Steps
+  ═══════════════════════════════════════════════ -->
+  <section class="gdc-card gdc-steps-section" *ngIf="hasScanned && implementationSteps.length > 0">
+    <h2 class="gdc-card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Implementation Steps
+    </h2>
+    <ol class="gdc-steps-list">
+      <li *ngFor="let step of implementationSteps; let i = index" class="gdc-step">
+        <span class="gdc-step__num">{{ i + 1 }}</span>
+        <span class="gdc-step__text">{{ step }}</span>
+      </li>
+    </ol>
+  </section>
+
+</div>
