@@ -79,6 +79,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     GmailDeliverabilityCheckerComponent,
     BoxShadowGeneratorComponent,
     EmailDeliverabilityAuditorComponent,
+    SslCertificateInspectorComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,
