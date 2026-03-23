@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       from_agent:
-        description: 'Start from agent number (1=research, 2=planning, 3=development, 4=deploy)'
+        description: 'Start from agent number (1=research, 2=planning, 3=development, 4=deploy, 5=social)'
         required: false
         default: '1'
         type: choice
-        options: ['1', '2', '3', '4']
+        options: ['1', '2', '3', '4', '5']
       date_override:
         description: 'Override run date (YYYY-MM-DD, leave blank for today)'
         required: false
@@ -63,6 +63,18 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           DEPLOY_TO_MAIN: ${{ vars.DEPLOY_TO_MAIN || 'false' }}
+          # Social Media — Agent 5 (missing secrets are handled gracefully)
+          SOCIAL_DRAFT_MODE: ${{ vars.SOCIAL_DRAFT_MODE || 'true' }}
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
         run: python pipeline/run.py ${{ steps.args.outputs.extra }}
 
       - name: Upload run artifacts on failure
