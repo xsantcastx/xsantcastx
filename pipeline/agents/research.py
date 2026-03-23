@@ -73,7 +73,7 @@ def run(run_dir: Path) -> dict:
             system=SYSTEM_FROM_POSTS,
             messages=[{"role": "user", "content":
                 f"Posts:\n{json.dumps(trimmed, ensure_ascii=False)}\n\nExtract top 10 pain points. Return JSON."}],
-            max_tokens=1500,
+            max_tokens=2500,
             model=HAIKU,
         )
     else:
@@ -82,7 +82,7 @@ def run(run_dir: Path) -> dict:
             system=SYSTEM_FROM_KNOWLEDGE,
             messages=[{"role": "user", "content":
                 "Generate top 10 developer tool pain points. Return JSON."}],
-            max_tokens=1500,
+            max_tokens=2500,
             model=HAIKU,
         )
 
