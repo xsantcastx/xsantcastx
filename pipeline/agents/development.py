@@ -34,21 +34,25 @@ RULES (violating any will break the build):
 - twitterShareUrl and linkedInShareUrl readonly properties using SITE_URL
 """
 
-TS_SYSTEM = f"Expert Angular developer. Generate a complete .component.ts file.\n{_RULES}\nReturn ONLY raw TypeScript — no markdown, no explanation."
+_COMPLETE = "IMPORTANT: Write the COMPLETE file from start to finish. Do NOT truncate or summarize any section. This is a production file and must be 100% complete."
 
-HTML_SYSTEM = """\
+TS_SYSTEM = f"Expert Angular developer. Generate a complete .component.ts file.\n{_RULES}\n{_COMPLETE}\nReturn ONLY raw TypeScript — no markdown, no explanation."
+
+HTML_SYSTEM = f"""\
 Expert Angular developer. Generate a complete .component.html template.
 Must include: .back-link button (goBack()), .tool-header (.tool-header__eyebrow/title/subtitle),
 .tool-header__share (Twitter + LinkedIn), and the tool UI.
 Use *ngIf/*ngFor only. Bind to all properties/methods in the TS file.
+{_COMPLETE}
 Return ONLY raw HTML — no markdown, no explanation."""
 
-CSS_SYSTEM = """\
+CSS_SYSTEM = f"""\
 Expert CSS developer. Generate a complete .component.css file for a dark glassmorphism Angular tool.
 Use ONLY CSS variables: --primary-color, --secondary-color, --highlight-color, --surface-color,
 --surface-strong, --surface-hover, --glass-border, --glass-border-strong, --shadow-soft,
 --shadow-strong, --text-color, --text-muted, --radius-md, --radius-lg, --font-heading, --font-body.
 No hardcoded hex colours. Include mobile responsive styles (max-width: 640px).
+{_COMPLETE}
 Return ONLY raw CSS — no markdown, no explanation."""
 
 ICON_SYSTEM = "Return ONLY inner SVG elements for a 24x24 stroke icon. No <svg> wrapper. Example: <path d=\"M3 3h18v18H3z\"/>. Nothing else."
@@ -82,6 +86,51 @@ def _esc(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Structural validation
+# ---------------------------------------------------------------------------
+
+def _validate_ts(content: str) -> bool:
+    """TypeScript: brace counts must match within ±1 (template literal tolerance)."""
+    opens = content.count('{')
+    closes = content.count('}')
+    return abs(opens - closes) <= 1
+
+
+def _validate_html(content: str) -> bool:
+    """HTML: must end with a closing tag (not mid-tag or mid-attribute)."""
+    stripped = content.strip()
+    return bool(re.search(r'</(div|section|main|article|header|footer|ul|ol|li|p|span|h[1-6])>\s*$', stripped))
+
+
+def _validate_css(content: str) -> bool:
+    """CSS: brace counts must match exactly."""
+    opens = content.count('{')
+    closes = content.count('}')
+    return abs(opens - closes) <= 1
+
+
+_RETRY_MSG = "The previous response was truncated. Please regenerate the COMPLETE file without any truncation."
+
+
+def _call_with_validation(system: str, messages: list, max_tokens: int, validator, file_type: str) -> str:
+    """Call Claude and retry up to 2 times if structural validation fails."""
+    for attempt in range(3):
+        raw = call_claude(system=system, messages=messages, max_tokens=max_tokens, model=SONNET)
+        content = _strip_fences(raw)
+        if validator(content):
+            if attempt > 0:
+                print(f"[development] {file_type} validated OK on attempt {attempt + 1}")
+            return content
+        print(f"[development] {file_type} validation failed (attempt {attempt + 1}/3) — retrying…")
+        # Append retry instruction to the last user message
+        messages = messages[:-1] + [
+            {"role": "user", "content": messages[-1]["content"] + f"\n\n{_RETRY_MSG}"}
+        ]
+    print(f"[development] WARNING: {file_type} still failed validation after 3 attempts — using last result.")
+    return content
+
+
+# ---------------------------------------------------------------------------
 # Code generation
 # ---------------------------------------------------------------------------
 
@@ -96,27 +145,33 @@ def _generate_files(tool: dict, class_name: str, slug: str) -> dict:
     )
 
     print("[development] Generating .ts…")
-    ts = _strip_fences(call_claude(
+    ts = _call_with_validation(
         system=TS_SYSTEM,
         messages=[{"role": "user", "content": base + "\n\nGenerate the complete .component.ts file."}],
-        max_tokens=4096, model=SONNET,
-    ))
+        max_tokens=6000,
+        validator=_validate_ts,
+        file_type=".ts",
+    )
 
     print("[development] Generating .html…")
-    html = _strip_fences(call_claude(
+    html = _call_with_validation(
         system=HTML_SYSTEM,
         messages=[{"role": "user", "content":
             base + f"\n\nTS file:\n{ts[:3000]}\n\nGenerate the complete .component.html file."}],
-        max_tokens=4096, model=SONNET,
-    ))
+        max_tokens=5000,
+        validator=_validate_html,
+        file_type=".html",
+    )
 
     print("[development] Generating .css…")
-    css = _strip_fences(call_claude(
+    css = _call_with_validation(
         system=CSS_SYSTEM,
         messages=[{"role": "user", "content":
             base + f"\n\nHTML template:\n{html[:2000]}\n\nGenerate the complete .component.css file."}],
-        max_tokens=4096, model=SONNET,
-    ))
+        max_tokens=3000,
+        validator=_validate_css,
+        file_type=".css",
+    )
 
     print("[development] Generating icon…")
     icon = _strip_fences(call_claude(

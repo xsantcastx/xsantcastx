@@ -81,6 +81,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     BoxShadowGeneratorComponent,
     EmailDeliverabilityAuditorComponent,
     SslCertificateInspectorComponent,
+    SvgToCodeComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,

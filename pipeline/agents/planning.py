@@ -24,10 +24,14 @@ Target users: web devs, designers, indie hackers"""
 
 # ── Proposer ──────────────────────────────────────────────────────────────────
 
+_COMPLEXITY_CAP = "COMPLEXITY CAP: The proposed tool must have at most 4 TypeScript methods, at most 3 UI sections, and must use zero external npm packages."
+
 PROPOSER_SYSTEM = f"""\
 You are a product strategist. Your job is to propose ONE browser tool idea.
 It MUST: run fully in-browser (no backend), be one Angular component, have high SEO value,
 not duplicate existing tools.
+
+{_COMPLEXITY_CAP}
 
 {SITE_CONTEXT}
 
@@ -118,6 +122,8 @@ JUDGE_SYSTEM = f"""\
 You are the final decision-maker. You receive 3 tool proposals and their critiques.
 Pick the SINGLE BEST tool to build and produce its complete spec.
 
+{_COMPLEXITY_CAP}
+
 {SITE_CONTEXT}
 
 Return ONLY valid JSON — no markdown:
@@ -170,6 +176,8 @@ FALLBACK_SYSTEM = f"""\
 You are a product strategist. Pick the SINGLE BEST browser tool to build today.
 It MUST: run fully in-browser (no backend), be one Angular component, have high SEO value,
 not duplicate existing tools.
+
+{_COMPLEXITY_CAP}
 
 {SITE_CONTEXT}
 

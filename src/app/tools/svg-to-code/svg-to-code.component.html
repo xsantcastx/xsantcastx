@@ -111,7 +111,7 @@
         </div>
       </section>
 
-      <!-- Configuration Bar -->
+      <!-- Configuration Panel -->
       <section class="stc-panel stc-panel--config">
         <div class="stc-panel__header">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -214,7 +214,7 @@
                 </span>
                 <span class="stc-toggle__text">
                   Batch mode
-                  <span class="stc-toggle__hint">Convert multiple SVGs and download as ZIP</span>
+                  <span class="stc-toggle__hint">Convert multiple SVGs and download as individual files</span>
                 </span>
               </label>
 
@@ -257,9 +257,198 @@
             </div>
             <div class="stc-batch-item__meta">
               <span class="stc-badge stc-badge--size">{{ item.originalBytes }} B → {{ item.optimizedBytes }} B</span>
+              <button type="button" class="stc-icon-btn" (click)="copyBatchItem(item)" aria-label="Copy code">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <button type="button" class="stc-icon-btn" (click)="downloadBatchItem(item)" aria-label="Download file">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
             </div>
           </li>
         </ul>
         <button type="button" class="stc-download-zip-btn" (click)="downloadBatchZip()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download All Files
+        </button>
+      </section>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         RIGHT COLUMN — Output + Preview + Stats
+    ════════════════════════════════════════════ -->
+    <div class="stc-right">
+
+      <!-- Output Panel -->
+      <section class="stc-panel stc-panel--output">
+        <div class="stc-panel__header">
+
+          <!-- Tabs -->
+          <div class="stc-tabs">
+            <button
+              type="button"
+              class="stc-tab"
+              [class.stc-tab--active]="activeTab === 'output'"
+              (click)="activeTab = 'output'"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+              Code
+            </button>
+            <button
+              type="button"
+              class="stc-tab"
+              [class.stc-tab--active]="activeTab === 'preview'"
+              (click)="activeTab = 'preview'"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Preview
+            </button>
+            <button
+              type="button"
+              class="stc-tab"
+              [class.stc-tab--active]="activeTab === 'optimization'"
+              (click)="activeTab = 'optimization'"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Stats
+            </button>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="stc-output-actions" *ngIf="generatedCode">
+            <button type="button" class="stc-action-btn" (click)="copyCode()" [class.stc-action-btn--success]="copied">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              {{ copied ? 'Copied!' : 'Copy' }}
+            </button>
+            <button type="button" class="stc-action-btn" (click)="downloadCode()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Code Output Tab -->
+        <div class="stc-tab-content" *ngIf="activeTab === 'output'">
+          <div class="stc-empty" *ngIf="!generatedCode">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            <p>Paste SVG code and click <strong>Convert</strong> to generate your component</p>
+          </div>
+          <pre class="stc-code-pre" *ngIf="generatedCode"><code class="stc-code">{{ generatedCode }}</code></pre>
+        </div>
+
+        <!-- Preview Tab -->
+        <div class="stc-tab-content stc-tab-content--preview" *ngIf="activeTab === 'preview'">
+          <div class="stc-empty" *ngIf="!svgInput.trim()">
+            <p>No SVG to preview yet</p>
+          </div>
+          <div class="stc-preview-area" *ngIf="svgInput.trim()">
+            <div class="stc-preview-controls">
+              <label class="stc-label">Color</label>
+              <input type="color" [(ngModel)]="previewColor" class="stc-color-input" />
+              <label class="stc-label">Size</label>
+              <input type="range" min="16" max="128" step="4" [(ngModel)]="previewSize" class="stc-range" />
+              <span class="stc-preview-size-label">{{ previewSize }}px</span>
+            </div>
+            <div class="stc-preview-canvas">
+              <div
+                class="stc-preview-icon"
+                [style.color]="previewColor"
+                [style.width.px]="previewSize"
+                [style.height.px]="previewSize"
+                [innerHTML]="svgInput"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="stc-tab-content" *ngIf="activeTab === 'optimization'">
+          <div class="stc-empty" *ngIf="!generatedCode">
+            <p>Convert an SVG to see optimization stats</p>
+          </div>
+          <div class="stc-stats" *ngIf="generatedCode">
+
+            <!-- Size stats -->
+            <div class="stc-stat-group">
+              <h3 class="stc-stat-group__title">File Size</h3>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">Original</span>
+                <span class="stc-stat-value">{{ originalBytes }} B</span>
+              </div>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">Optimized</span>
+                <span class="stc-stat-value stc-stat-value--good">{{ optimizedBytes }} B</span>
+              </div>
+              <div class="stc-stat-row" *ngIf="originalBytes > 0">
+                <span class="stc-stat-label">Savings</span>
+                <span class="stc-stat-value stc-stat-value--highlight">
+                  {{ ((originalBytes - optimizedBytes) / originalBytes * 100).toFixed(0) }}%
+                </span>
+              </div>
+            </div>
+
+            <!-- A11y stats -->
+            <div class="stc-stat-group">
+              <h3 class="stc-stat-group__title">Accessibility</h3>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">role="img"</span>
+                <span class="stc-a11y-badge" [class.stc-a11y-badge--pass]="a11yStatus.hasRole" [class.stc-a11y-badge--fail]="!a11yStatus.hasRole">
+                  {{ a11yStatus.hasRole ? '✓' : '✗' }}
+                </span>
+              </div>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">&lt;title&gt;</span>
+                <span class="stc-a11y-badge" [class.stc-a11y-badge--pass]="a11yStatus.hasTitle" [class.stc-a11y-badge--fail]="!a11yStatus.hasTitle">
+                  {{ a11yStatus.hasTitle ? '✓' : '✗' }}
+                </span>
+              </div>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">aria-label</span>
+                <span class="stc-a11y-badge" [class.stc-a11y-badge--pass]="a11yStatus.hasAriaLabel" [class.stc-a11y-badge--fail]="!a11yStatus.hasAriaLabel">
+                  {{ a11yStatus.hasAriaLabel ? '✓' : '✗' }}
+                </span>
+              </div>
+              <div class="stc-stat-row">
+                <span class="stc-stat-label">aria-hidden</span>
+                <span class="stc-a11y-badge" [class.stc-a11y-badge--pass]="a11yStatus.hasAriaHidden" [class.stc-a11y-badge--fail]="!a11yStatus.hasAriaHidden">
+                  {{ a11yStatus.hasAriaHidden ? '✓' : '✗' }}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </div>
+
+</div>
