@@ -19,6 +19,83 @@
     <app-contact></app-contact>
   </section>
 
+  <section id="live-preview" class="section live-preview-section">
+    <div class="container live-preview">
+
+      <!-- Mini dashboard preview card -->
+      <div class="lp-visual" aria-hidden="true">
+        <div class="lp-card">
+          <!-- Card header bar -->
+          <div class="lp-card__header">
+            <span class="lp-card__live-badge">
+              <span class="lp-card__live-dot"></span>LIVE
+            </span>
+            <span class="lp-card__label">MISSION CONTROL</span>
+            <span class="lp-card__clock">00:04:23</span>
+          </div>
+
+          <!-- Log lines -->
+          <div class="lp-feed">
+            <div class="lp-line lp-line--system lp-line-1">
+              <span class="lp-line__ts">00:04:19</span>
+              <span class="lp-line__dot lp-dot--system"></span>
+              <span class="lp-line__text">Session initialized — Claude Sonnet 4.6</span>
+            </div>
+            <div class="lp-line lp-line--tool lp-line-2">
+              <span class="lp-line__ts">00:04:20</span>
+              <span class="lp-line__dot lp-dot--tool"></span>
+              <span class="lp-line__badge">Read</span>
+              <span class="lp-line__text">Read("app-routing.module.ts")</span>
+            </div>
+            <div class="lp-line lp-line--think lp-line-3">
+              <span class="lp-line__ts">00:04:21</span>
+              <span class="lp-line__dot lp-dot--think"></span>
+              <span class="lp-line__text lp-line__text--italic">Planning component architecture...</span>
+            </div>
+            <div class="lp-line lp-line--tool lp-line-4">
+              <span class="lp-line__ts">00:04:22</span>
+              <span class="lp-line__dot lp-dot--tool"></span>
+              <span class="lp-line__badge">Write</span>
+              <span class="lp-line__text">Write("live/live.component.ts")</span>
+            </div>
+            <div class="lp-line lp-line--success lp-line-5">
+              <span class="lp-line__ts">00:04:23</span>
+              <span class="lp-line__dot lp-dot--success"></span>
+              <span class="lp-line__text">Feature deployed successfully</span>
+            </div>
+          </div>
+
+          <!-- Progress row -->
+          <div class="lp-card__footer">
+            <div class="lp-card__progress-track">
+              <div class="lp-card__progress-fill"></div>
+            </div>
+            <span class="lp-card__cursor">claude&#64;xsantcastx:~$&nbsp;<span class="lp-card__blink">█</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text column -->
+      <div class="lp-text">
+        <p class="lp-text__eyebrow">
+          <span class="lp-eyebrow-dot"></span>AI in Real Time
+        </p>
+        <h2 class="lp-text__title">Watch Me Work<br><span class="lp-text__title--accent">Live</span></h2>
+        <p class="lp-text__desc">
+          A real-time broadcast of Claude AI in action — tool calls, file edits, build commands, and task completions streaming live as they happen.
+          Mission control for the curious.
+        </p>
+        <div class="lp-text__pills">
+          <span class="lp-pill lp-pill--cyan">Real-Time Feed</span>
+          <span class="lp-pill lp-pill--violet">Tool Calls</span>
+          <span class="lp-pill lp-pill--cyan">AI Activity</span>
+        </div>
+        <a routerLink="/live" class="cta-button lp-text__btn">Watch Live &rarr;</a>
+      </div>
+
+    </div>
+  </section>
+
   <section id="tools-cta" class="section tools-cta-section">
     <div class="container tools-cta">
       <div class="tools-cta__text">
