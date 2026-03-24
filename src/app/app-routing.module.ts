@@ -15,6 +15,7 @@ import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverabilit
 import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
 import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
 import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
+import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 
@@ -357,6 +358,33 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'SSL Certificate Inspector', item: `${SITE_URL}/tools/ssl-certificate-inspector` }
+          ]
+        }
+      }
+    }
+  },
+    {
+    path: 'tools/svg-to-code',
+    component: SvgToCodeComponent,
+    title: 'SVG to Code Converter – React, Vue & Angular | xsantcastx',
+    data: {
+      description: 'Instantly convert SVG files into production-ready React, Vue, or Angular components with size props, color overrides, and ARIA accessibility attributes.',
+      keywords: 'SVG to React component, SVG to Vue, SVG to Angular, SVG code generator, SVG optimizer, accessible SVG component',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'SVG to Code Converter',
+        url: `${SITE_URL}/tools/svg-to-code`,
+        description: 'Instantly convert SVG files into production-ready React, Vue, or Angular components with size props, color overrides, and ARIA accessibility attributes.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'SVG to Code Converter', item: `${SITE_URL}/tools/svg-to-code` }
           ]
         }
       }
