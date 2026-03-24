@@ -51,6 +51,7 @@ import { ScrollTrackingDirective } from './scroll-tracking.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
+import { LiveComponent } from './live/live.component';
 
 
 @NgModule({
@@ -86,7 +87,8 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
     ServicesComponent,
     AboutComponent,
     CookieBannerComponent,
-    ScrollTrackingDirective
+    ScrollTrackingDirective,
+    LiveComponent
   ],
   bootstrap: [AppComponent],
   imports: [

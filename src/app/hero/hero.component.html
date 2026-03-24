@@ -51,37 +51,59 @@
             <span class="btn-minimize"></span>
             <span class="btn-maximize"></span>
           </div>
-          <div class="terminal-title">xsantcastx&#64;enterprise:~$</div>
+          <div class="terminal-title">
+            <span class="terminal-live-dot"></span>
+            claude&#64;xsantcastx:~$ LIVE
+          </div>
         </div>
         <div class="terminal-content">
-          <div class="code-snippet">
-            <div class="code-line">
-              <span class="prompt">$</span> <span class="code-keyword">const</span> <span class="code-var">enterprise</span> = <span class="code-bracket">{{'{'}}</span>
+          <div class="hero-feed">
+
+            <div class="hero-feed__header">
+              <span class="hero-feed__live-badge"><span class="hero-feed__live-dot"></span>LIVE</span>
+              <span class="hero-feed__label">MISSION CONTROL</span>
+              <span class="hero-feed__clock">00:04:23</span>
             </div>
-            <div class="code-line indent">
-              <span class="code-property">name:</span> <span class="code-string">'xsantcastx'</span>,
+
+            <div class="hero-feed__line hfl--sys hfl-1">
+              <span class="hfl__dot hfl__dot--sys"></span>
+              <span class="hfl__text hfl__text--sys">Session initialized &mdash; Claude Sonnet 4.6</span>
             </div>
-            <div class="code-line indent">
-              <span class="code-property">type:</span> <span class="code-string">'Full-Stack Development'</span>,
+            <div class="hero-feed__line hfl--tool hfl-2">
+              <span class="hfl__dot hfl__dot--tool"></span>
+              <span class="hfl__badge">Read</span>
+              <span class="hfl__text">Read("app-routing.module.ts")</span>
             </div>
-            <div class="code-line indent">
-              <span class="code-property">stack:</span> <span class="code-bracket">[</span><span class="code-string">'React'</span>, <span class="code-string">'Angular'</span>, <span class="code-string">'Node.js'</span><span class="code-bracket">]</span>,
+            <div class="hero-feed__line hfl--think hfl-3">
+              <span class="hfl__dot hfl__dot--think"></span>
+              <span class="hfl__text hfl__text--think">Planning neon cyberpunk UI architecture...</span>
             </div>
-            <div class="code-line indent">
-              <span class="code-property">mission:</span> <span class="code-string">'Digital Innovation'</span>
+            <div class="hero-feed__line hfl--tool hfl-4">
+              <span class="hfl__dot hfl__dot--tool"></span>
+              <span class="hfl__badge">Write</span>
+              <span class="hfl__text">Write("live/live.component.ts")</span>
             </div>
-            <div class="code-line">
-              <span class="code-bracket">{{'}'}};</span>
+            <div class="hero-feed__line hfl--success hfl-5">
+              <span class="hfl__dot hfl__dot--success"></span>
+              <span class="hfl__text hfl__text--success">Feature deployed successfully</span>
             </div>
-            <div class="code-line">
-              <span class="prompt">$</span> <span class="code-command">enterprise.deploy()</span>
+
+            <div class="hero-feed__progress">
+              <div class="hero-feed__progress-fill"></div>
             </div>
-            <div class="code-line output">
-              <span class="code-success">✓ Ready to transform your ideas</span>
+
+            <div class="hero-feed__cursor">
+              <span class="hero-feed__prompt">claude&#64;xsantcastx:~$&nbsp;</span>
+              <span class="hero-feed__blink">█</span>
             </div>
+
           </div>
         </div>
       </div>
+      <a routerLink="/live" class="hero-watch-link">
+        <span class="hero-watch-dot"></span>
+        Watch Live &rarr;
+      </a>
     </div>
   </div>
   

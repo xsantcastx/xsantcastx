@@ -18,6 +18,7 @@ import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspec
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
+import { LiveComponent } from './live/live.component';
 
 const routes: Routes = [
   {
@@ -388,6 +389,16 @@ const routes: Routes = [
           ]
         }
       }
+    }
+  },
+  {
+    path: 'live',
+    component: LiveComponent,
+    title: 'Watch Live Work — AI Mission Control | xsantcastx',
+    data: {
+      description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
+      keywords: 'watch ai work live, claude ai real time, ai mission control, live coding stream, ai development feed',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
     }
   },
   { path: '', redirectTo: '/home', pathMatch: 'full' }
