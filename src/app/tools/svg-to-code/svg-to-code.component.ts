@@ -141,6 +141,10 @@ export class SvgToCodeComponent {
     reader.readAsText(file);
   }
 
+  convertSvg(): void {
+    this.generate();
+  }
+
   generate(): void {
     this.error = '';
     if (!this.svgInput.trim()) {
@@ -157,6 +161,10 @@ export class SvgToCodeComponent {
     this.generatedCode = this.buildComponent(svgToProcess, this.componentName);
     this.a11yStatus = this.computeA11yStatus(this.generatedCode);
     this.activeTab = 'output';
+  }
+
+  getFrameworkLabel(): string {
+    return this.frameworks.find(f => f.value === this.selectedFramework)?.label ?? this.selectedFramework;
   }
 
   private runOptimize(svg: string): string {
@@ -392,24 +400,40 @@ export class ${name}Component {${sizeInputs}${ariaInputs}
 
   downloadCode(): void {
     if (!this.generatedCode) return;
-    const ext = this.selectedFramework === 'vue3'
-      ? 'vue'
-      : this.selectedFramework === 'react-tsx'
-        ? 'tsx'
-        : this.selectedFramework === 'react-jsx'
-          ? 'jsx'
-          : 'ts';
+    const ext = this.getFileExtension();
     const filename = `${this.componentName}.${ext}`;
     this.triggerDownload(this.generatedCode, filename);
   }
 
   downloadBatchItem(item: SvgBatchItem): void {
-    const ext = this.selectedFramework === 'vue3'
-      ? 'vue'
-      : this.selectedFramework === 'react-tsx'
-        ? 'tsx'
-        : this.selectedFramework === 'react-jsx'
-          ? 'jsx'
-          : 'ts';
+    const ext = this.getFileExtension();
     const filename = `${item.name}.${ext}`;
-    this.triggerDownload
+    this.triggerDownload(item.generatedCode, filename);
+  }
+
+  downloadBatchZip(): void {
+    this.batchItems.forEach(item => {
+      const ext = this.getFileExtension();
+      this.triggerDownload(item.generatedCode, `${item.name}.${ext}`);
+    });
+  }
+
+  private getFileExtension(): string {
+    switch (this.selectedFramework) {
+      case 'vue3': return 'vue';
+      case 'react-tsx': return 'tsx';
+      case 'react-jsx': return 'jsx';
+      default: return 'ts';
+    }
+  }
+
+  private triggerDownload(content: string, filename: string): void {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
