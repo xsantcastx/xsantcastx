@@ -115,6 +115,18 @@ export class ToolsComponent {
 <path d="M10.5 13.5L9 16h6l-1.5-2.5" stroke="`
       },
       {
+        id: 'svg-to-code',
+        title: 'SVG to Code Converter',
+        description: 'Convert SVGs to optimized React, Vue, or Angular components with props and a11y.',
+        route: '/tools/svg-to-code',
+        status: 'live',
+        tags: ['SVG', 'React', 'Vue', 'Angular', 'Components', 'Accessibility', 'Optimization', 'Frontend', 'Code Generator'],
+        icon: `<path d="M3 6l4 6-4 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+<rect x="14" y="4" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+<path d="M16 11v2a1 1 0 001 1h2" stroke="currentColor"`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),
