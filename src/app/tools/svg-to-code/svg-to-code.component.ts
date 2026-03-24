@@ -1,5 +1,3 @@
-Looking at the code, it's cut off at the end with an incomplete statement `const s`. I'll complete the `buildAngular` method and ensure the class is properly closed.
-
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
@@ -339,7 +337,7 @@ defineProps({${sizeProps}${ariaProps}
       ? `\n      role="img"\n      [attr.aria-label]="ariaLabel"\n      [attr.aria-hidden]="ariaHidden"`
       : '';
     const titleEl = this.addA11y ? `\n      <title *ngIf="title">{{title}}</title>` : '';
-    const importsList = this.addA11y ? `Component, Input` : `Component, Input`;
+    const importsList = `Component, Input`;
     return `import { ${importsList} } from '@angular/core';
 
 @Component({
@@ -394,10 +392,24 @@ export class ${name}Component {${sizeInputs}${ariaInputs}
 
   downloadCode(): void {
     if (!this.generatedCode) return;
-    const ext = this.selectedFramework === 'vue3' ? 'vue' : this.selectedFramework === 'react-tsx' ? 'tsx' : this.selectedFramework === 'react-jsx' ? 'jsx' : 'ts';
+    const ext = this.selectedFramework === 'vue3'
+      ? 'vue'
+      : this.selectedFramework === 'react-tsx'
+        ? 'tsx'
+        : this.selectedFramework === 'react-jsx'
+          ? 'jsx'
+          : 'ts';
     const filename = `${this.componentName}.${ext}`;
     this.triggerDownload(this.generatedCode, filename);
   }
 
   downloadBatchItem(item: SvgBatchItem): void {
-    const ext = this.selectedFramework === 'vue3' ? 'vue' : this.selectedFramework === 'react-tsx' ? 'tsx' : this.selectedFramework === 'react-jsx' ? 'jsx'
+    const ext = this.selectedFramework === 'vue3'
+      ? 'vue'
+      : this.selectedFramework === 'react-tsx'
+        ? 'tsx'
+        : this.selectedFramework === 'react-jsx'
+          ? 'jsx'
+          : 'ts';
+    const filename = `${item.name}.${ext}`;
+    this.triggerDownload
