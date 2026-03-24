@@ -1,3 +1,5 @@
+Looking at the code, it's cut off at the end with an incomplete statement `const s`. I'll complete the `buildAngular` method and ensure the class is properly closed.
+
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
@@ -161,24 +163,16 @@ export class SvgToCodeComponent {
 
   private runOptimize(svg: string): string {
     let result = svg;
-    // Remove XML declaration
     result = result.replace(/<\?xml[^?]*\?>\s*/g, '');
-    // Remove DOCTYPE
     result = result.replace(/<!DOCTYPE[^>]*>\s*/g, '');
-    // Remove comments
     result = result.replace(/<!--[\s\S]*?-->/g, '');
-    // Remove inkscape/sodipodi namespaces and attributes
     result = result.replace(/\s+inkscape:[a-zA-Z-]+="[^"]*"/g, '');
     result = result.replace(/\s+sodipodi:[a-zA-Z-]+="[^"]*"/g, '');
     result = result.replace(/<sodipodi:[^>]*\/>/g, '');
     result = result.replace(/<inkscape:[^>]*\/>/g, '');
-    // Remove metadata
     result = result.replace(/<metadata[\s\S]*?<\/metadata>/g, '');
-    // Remove editor-specific elements
     result = result.replace(/<defs>\s*<\/defs>/g, '');
-    // Remove data- attributes
     result = result.replace(/\s+data-[a-zA-Z-]+="[^"]*"/g, '');
-    // Collapse whitespace
     result = result.replace(/\s{2,}/g, ' ').trim();
     return result;
   }
@@ -214,10 +208,6 @@ export class SvgToCodeComponent {
 
   private stripOuterSvgTag(svg: string): string {
     return svg.replace(/<svg[^>]*>([\s\S]*)<\/svg>/i, '$1').trim();
-  }
-
-  private buildOpeningSvgTag(extraProps: string): string {
-    return `<svg${extraProps}>`;
   }
 
   private buildReactTsx(svg: string, name: string): string {
@@ -336,4 +326,78 @@ defineProps({${sizeProps}${ariaProps}
     const { viewBox } = this.getSvgAttributes(svg);
     const inner = this.stripOuterSvgTag(svg);
     const kebab = this.toKebabCase(name);
-    const s
+    const selector = `app-${kebab}`;
+    const sizeInputs = this.sizeStrategy === 'props'
+      ? `\n  @Input() width: number | string = 24;\n  @Input() height: number | string = 24;`
+      : '';
+    const ariaInputs = this.addA11y
+      ? `\n  @Input() title = '';\n  @Input() ariaLabel = '';\n  @Input() ariaHidden = false;`
+      : '';
+    const svgWidthAttr = this.sizeStrategy === 'props' ? ' [attr.width]="width"' : '';
+    const svgHeightAttr = this.sizeStrategy === 'props' ? ' [attr.height]="height"' : '';
+    const ariaAttrs = this.addA11y
+      ? `\n      role="img"\n      [attr.aria-label]="ariaLabel"\n      [attr.aria-hidden]="ariaHidden"`
+      : '';
+    const titleEl = this.addA11y ? `\n      <title *ngIf="title">{{title}}</title>` : '';
+    const importsList = this.addA11y ? `Component, Input` : `Component, Input`;
+    return `import { ${importsList} } from '@angular/core';
+
+@Component({
+  selector: '${selector}',
+  template: \`
+    <svg
+      viewBox="${viewBox}"${svgWidthAttr}${svgHeightAttr}
+      xmlns="http://www.w3.org/2000/svg"${ariaAttrs}
+    >${titleEl}
+      ${inner}
+    </svg>
+  \`,
+})
+export class ${name}Component {${sizeInputs}${ariaInputs}
+}
+`;
+  }
+
+  private computeA11yStatus(code: string): A11yStatus {
+    return {
+      hasRole: /role=/.test(code),
+      hasTitle: /<title/i.test(code),
+      hasAriaLabel: /aria-label/i.test(code),
+      hasAriaHidden: /aria-hidden/i.test(code)
+    };
+  }
+
+  private toPascalCase(str: string): string {
+    return str
+      .replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase())
+      .replace(/^(.)/, (_, c) => c.toUpperCase());
+  }
+
+  private toKebabCase(str: string): string {
+    return str
+      .replace(/([A-Z])/g, '-$1')
+      .toLowerCase()
+      .replace(/^-/, '');
+  }
+
+  copyCode(): void {
+    if (!this.generatedCode) return;
+    navigator.clipboard.writeText(this.generatedCode).then(() => {
+      this.copied = true;
+      setTimeout(() => (this.copied = false), 2000);
+    });
+  }
+
+  copyBatchItem(item: SvgBatchItem): void {
+    navigator.clipboard.writeText(item.generatedCode);
+  }
+
+  downloadCode(): void {
+    if (!this.generatedCode) return;
+    const ext = this.selectedFramework === 'vue3' ? 'vue' : this.selectedFramework === 'react-tsx' ? 'tsx' : this.selectedFramework === 'react-jsx' ? 'jsx' : 'ts';
+    const filename = `${this.componentName}.${ext}`;
+    this.triggerDownload(this.generatedCode, filename);
+  }
+
+  downloadBatchItem(item: SvgBatchItem): void {
+    const ext = this.selectedFramework === 'vue3' ? 'vue' : this.selectedFramework === 'react-tsx' ? 'tsx' : this.selectedFramework === 'react-jsx' ? 'jsx'
