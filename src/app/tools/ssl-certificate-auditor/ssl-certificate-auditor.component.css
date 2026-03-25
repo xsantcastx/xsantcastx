@@ -1,0 +1,362 @@
+/* ============================================================
+   SSL Certificate Auditor — component styles
+   app-ssl-certificate-auditor
+   ============================================================ */
+
+/* ── Page shell ─────────────────────────────────────────────── */
+.ssl-auditor-page {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  font-family: var(--font-body);
+  color: var(--text-color);
+}
+
+/* ── Back link ──────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: var(--text-color);
+}
+
+/* ── Tool header ────────────────────────────────────────────── */
+.tool-header {
+  margin-bottom: 2.25rem;
+}
+
+.tool-header__eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--highlight-color);
+  margin: 0 0 0.5rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 0.6rem;
+  line-height: 1.2;
+}
+
+.tool-header__subtitle {
+  font-size: 0.93rem;
+  color: var(--text-muted);
+  margin: 0 0 1.25rem;
+  line-height: 1.6;
+  max-width: 600px;
+}
+
+/* ── Share buttons ──────────────────────────────────────────── */
+.tool-header__share {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+}
+
+.share-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.share-btn--twitter {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+.share-btn--linkedin {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+/* ── Error banner ───────────────────────────────────────────── */
+.tool-error {
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--secondary-color) 50%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--secondary-color);
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Glass card base ────────────────────────────────────────── */
+.glass-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Input Section ──────────────────────────────────────────── */
+.input-section {
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-section__label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+}
+
+.domain-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.domain-input {
+  flex: 1;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 0.7rem 1rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
+}
+
+.domain-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.domain-input:focus {
+  border-color: var(--highlight-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-color) 20%, transparent);
+}
+
+.btn-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-color);
+  color: var(--text-color);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-check:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-strong);
+}
+
+.btn-check:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-check svg {
+  flex-shrink: 0;
+}
+
+/* PEM toggle */
+.pem-toggle-row {
+  margin-top: 1rem;
+}
+
+.btn-pem-toggle {
+  background: none;
+  border: none;
+  color: var(--highlight-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.2s ease;
+}
+
+.btn-pem-toggle:hover {
+  opacity: 0.75;
+}
+
+.btn-pem-toggle svg {
+  transition: transform 0.25s ease;
+}
+
+.btn-pem-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+.pem-area-wrapper {
+  margin-top: 0.85rem;
+  animation: slideDown 0.22s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pem-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.pem-textarea {
+  width: 100%;
+  min-height: 140px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  padding: 0.75rem 1rem;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pem-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.pem-textarea:focus {
+  border-color: var(--highlight-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-color) 20%, transparent);
+}
+
+/* ── Loading state ──────────────────────────────────────────── */
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+  color: var(--highlight-color);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Empty / placeholder state ──────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state svg {
+  opacity: 0.35;
+  color: var(--highlight-color);
+}
+
+.empty-state__title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  opacity: 0.7;
+}
+
+.empty-state__body {
+  font-size: 0.85rem;
+  margin: 0;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* ── Certificate Details Panel ──────────────────────────────── */
+.cert-details-panel {
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cert-details-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color) 8%, transparent),
+    transparent 60%

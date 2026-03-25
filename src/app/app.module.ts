@@ -43,6 +43,7 @@ import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-sh
 import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
 import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
+import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
