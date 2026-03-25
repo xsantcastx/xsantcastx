@@ -1,4 +1,5 @@
-import { Directive, inject, OnInit, OnDestroy } from '@angular/core';
+import { Directive, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { AnalyticsService } from './analytics.service';
 
 @Directive({
@@ -7,11 +8,12 @@ import { AnalyticsService } from './analytics.service';
 })
 export class ScrollTrackingDirective implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private scrollHandler?: () => void;
   private trackedMilestones = new Set<number>();
 
   ngOnInit(): void {
-    this.setupScrollTracking();
+    if (this.isBrowser) this.setupScrollTracking();
   }
 
   ngOnDestroy(): void {

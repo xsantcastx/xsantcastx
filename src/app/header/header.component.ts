@@ -61,14 +61,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    if (typeof window === 'undefined') return;
+
     this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
-
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => this.updateHeaderOffset());
-    } else {
-      this.updateHeaderOffset();
-    }
-
+    window.requestAnimationFrame(() => this.updateHeaderOffset());
     this.setupResizeListener();
     this.handleScroll();
   }

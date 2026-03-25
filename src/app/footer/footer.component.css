@@ -80,6 +80,13 @@ footer {
   color: rgba(226, 234, 255, 0.72);
 }
 
+.build-version {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.7rem;
+  color: rgba(0, 255, 204, 0.35);
+  letter-spacing: 0.12em;
+}
+
 .social-links {
   display: flex;
   justify-content: center;

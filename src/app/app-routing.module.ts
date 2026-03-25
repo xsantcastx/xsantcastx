@@ -25,19 +25,33 @@ const routes: Routes = [
   {
     path: 'home',
     component: LandingComponent,
-    title: 'xsantcastx | Full-Stack Developer & Studio Utilities',
+    title: 'xsantcastx | Full-Stack Developer & Free Browser Tools',
     data: {
-      description: 'xsantcastx — Full-Stack Developer building modern web apps and free browser-based tools for designers and developers. No installs, no accounts.',
-      keywords: 'full stack developer, web development, angular, typescript, free browser tools, pdf generator, color palette',
+      description: 'xsantcastx — Full-Stack Developer building modern web apps and free browser tools. CSS Box Shadow Generator, Email Deliverability Auditor, SSL Inspector, SVG to Code & more. No sign-up.',
+      keywords: 'full stack developer, web development, angular, typescript, css box shadow generator, email deliverability checker, ssl certificate checker, svg to react component, free browser tools, pdf generator, color palette',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
-        '@type': 'Person',
-        name: 'xsantcastx',
-        url: SITE_URL,
-        jobTitle: 'Full-Stack Developer',
-        description: 'Independent developer building web applications and free browser tools.',
-        sameAs: []
+        '@graph': [
+          {
+            '@type': 'Person',
+            '@id': `${SITE_URL}/#person`,
+            name: 'xsantcastx',
+            url: SITE_URL,
+            jobTitle: 'Full-Stack Developer',
+            description: 'Independent developer building web applications and free browser tools for designers and developers.',
+            knowsAbout: ['Angular', 'TypeScript', 'Node.js', 'Firebase', 'React', 'Web Development'],
+            sameAs: []
+          },
+          {
+            '@type': 'WebPage',
+            '@id': `${SITE_URL}/home`,
+            url: `${SITE_URL}/home`,
+            name: 'xsantcastx | Full-Stack Developer & Free Browser Tools',
+            description: 'Portfolio and free browser tools — CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor and more.',
+            author: { '@id': `${SITE_URL}/#person` }
+          }
+        ]
       }
     }
   },
@@ -80,21 +94,81 @@ const routes: Routes = [
   {
     path: 'tools',
     component: ToolsComponent,
-    title: 'Free Browser Tools for Designers & Developers | xsantcastx',
+    title: 'Free Online Tools for Developers & Designers — No Sign-Up | xsantcastx',
     data: {
-      description: 'Free browser-based tools — PDF Catalog Generator, Color Palette Extractor, and more. No sign-up, no installs, no uploads. Just open and use.',
-      keywords: 'free online tools, browser tools, pdf catalog generator, color palette extractor, developer tools, design tools, no sign up',
+      description: 'Free browser tools: CSS Box Shadow Generator, Email Deliverability Auditor, Gmail Checker, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor & more.',
+      keywords: 'free online tools, css box shadow generator, email deliverability checker, gmail deliverability, ssl certificate checker, svg to react component, pdf catalog generator, color palette extractor, wcag contrast checker, image compressor, browser tools, no sign up',
       ogImage: `${SITE_URL}/assets/og/og-tools.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
-        name: 'Free Browser Tools',
-        description: 'Free browser-based tools for designers and developers',
+        name: 'Free Browser Tools for Developers & Designers',
+        description: 'Free browser-based tools — CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code Converter, PDF Catalog Generator, Color Palette Extractor, WCAG Contrast Checker, Image Compressor. No sign-up required.',
         url: `${SITE_URL}/tools`,
         itemListElement: [
           {
             '@type': 'ListItem',
             position: 1,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'CSS Box Shadow Generator',
+              url: `${SITE_URL}/tools/box-shadow-generator`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'Email Deliverability Auditor',
+              url: `${SITE_URL}/tools/email-deliverability-auditor`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'Gmail Deliverability Checker',
+              url: `${SITE_URL}/tools/gmail-deliverability-checker`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 4,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'SSL Certificate Inspector',
+              url: `${SITE_URL}/tools/ssl-certificate-inspector`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 5,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'SVG to Code Converter',
+              url: `${SITE_URL}/tools/svg-to-code`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 6,
             item: {
               '@type': 'SoftwareApplication',
               name: 'PDF Catalog Generator',
@@ -106,12 +180,36 @@ const routes: Routes = [
           },
           {
             '@type': 'ListItem',
-            position: 2,
+            position: 7,
             item: {
               '@type': 'SoftwareApplication',
               name: 'Color Palette Extractor',
               url: `${SITE_URL}/tools/color-palette`,
               applicationCategory: 'DesignApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 8,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'WCAG Contrast Checker',
+              url: `${SITE_URL}/tools/contrast-checker`,
+              applicationCategory: 'DesignApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 9,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'Image Compressor',
+              url: `${SITE_URL}/tools/image-compressor`,
+              applicationCategory: 'UtilityApplication',
               operatingSystem: 'Web Browser',
               offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
             }
@@ -260,20 +358,29 @@ const routes: Routes = [
     {
     path: 'tools/gmail-deliverability-checker',
     component: GmailDeliverabilityCheckerComponent,
-    title: 'Gmail Deliverability Checker | xsantcastx',
+    title: 'Free Gmail Deliverability Checker — Fix SPF, DKIM & DMARC Issues | xsantcastx',
     data: {
-      description: 'Browser-based tool to diagnose Gmail delivery issues and auto-generate SPF, DKIM, DMARC configuration fixes instantly.',
-      keywords: 'Gmail deliverability, SPF generator, DKIM, DMARC, email authentication, DNS records',
+      description: 'Free tool to diagnose why your emails land in Gmail spam. Check SPF, DKIM, DMARC & MX records, get auto-generated DNS fixes, and improve inbox delivery rates instantly.',
+      keywords: 'gmail deliverability checker, emails going to spam gmail, fix gmail spam filter, SPF record generator, DKIM checker, DMARC setup, email authentication DNS, inbox delivery tool',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'Gmail Deliverability Checker',
         url: `${SITE_URL}/tools/gmail-deliverability-checker`,
-        description: 'Browser-based tool to diagnose Gmail delivery issues and auto-generate SPF, DKIM, DMARC configuration fixes instantly.',
-        applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Any Web Browser',
+        description: 'Free browser-based tool to diagnose Gmail delivery problems. Checks SPF, DKIM, DMARC and MX records, identifies issues, and auto-generates ready-to-copy DNS configuration fixes.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'SPF record validation and auto-generator',
+          'DKIM DNS record checker',
+          'DMARC policy analyzer',
+          'MX record lookup',
+          'Gmail-specific spam filter diagnostics',
+          'Ready-to-copy DNS fix suggestions',
+          'No account required'
+        ],
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
@@ -287,20 +394,29 @@ const routes: Routes = [
   {
     path: 'tools/box-shadow-generator',
     component: BoxShadowGeneratorComponent,
-    title: 'CSS Box Shadow Generator — Live Preview | xsantcastx',
+    title: 'Free CSS Box Shadow Generator — Live Preview & Code Copy | xsantcastx',
     data: {
-      description: 'Design beautiful CSS box shadows visually with multiple layers, live preview, and one-click code copy. Free browser-based tool for developers and designers.',
-      keywords: 'css box shadow generator, box shadow css, css shadow generator, drop shadow tool, css box shadow examples, shadow generator online, css shadow maker',
+      description: 'Generate CSS box shadows visually with live preview. Add multiple shadow layers, adjust blur, spread, offset and color, then copy the ready-to-use CSS code in one click. Free, no sign-up.',
+      keywords: 'css box shadow generator, free box shadow generator, box shadow css tool, css drop shadow generator, multi-layer shadow, css shadow maker online, box shadow examples, css shadow code',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'CSS Box Shadow Generator',
         url: `${SITE_URL}/tools/box-shadow-generator`,
-        description: 'Design beautiful CSS box shadows visually with multiple layers, live preview, and one-click code copy. Free browser-based tool for developers and designers.',
-        applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Any Web Browser',
+        description: 'Design CSS box shadows visually. Add multiple layers, control blur, spread, offset, color and inset, see a live preview, and copy the finished CSS box-shadow property instantly.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Multiple shadow layers',
+          'Live visual preview',
+          'Adjustable blur, spread, X and Y offset',
+          'Inset shadow support',
+          'RGBA color picker',
+          'One-click CSS code copy',
+          'No account required'
+        ],
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
@@ -314,20 +430,29 @@ const routes: Routes = [
     {
     path: 'tools/email-deliverability-auditor',
     component: EmailDeliverabilityAuditorComponent,
-    title: 'Email Deliverability Auditor | xsantcastx',
+    title: 'Free Email Deliverability Auditor — Check SPF, DKIM, DMARC & MX Records | xsantcastx',
     data: {
-      description: 'Free in-browser SPF, DKIM, DMARC & MX record auditor. Instantly find email deliverability issues and get actionable fix suggestions — no signup required.',
-      keywords: 'email deliverability checker, SPF validator, DKIM checker, DMARC auditor, MX record lookup, DNS email configuration',
+      description: 'Audit your email deliverability for free. Instantly check SPF, DKIM, DMARC and MX DNS records for any domain, find misconfigurations, and get step-by-step fix recommendations. No sign-up.',
+      keywords: 'email deliverability auditor, check email deliverability free, SPF record checker, DKIM validator, DMARC record checker, MX record lookup, email DNS audit, fix email going to spam',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'Email Deliverability Auditor',
         url: `${SITE_URL}/tools/email-deliverability-auditor`,
-        description: 'Free in-browser SPF, DKIM, DMARC & MX record auditor. Instantly find email deliverability issues and get actionable fix suggestions — no signup required.',
-        applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Any Web Browser',
+        description: 'Free browser-based email deliverability auditor. Enter any domain to check SPF, DKIM, DMARC and MX DNS records, identify misconfigurations, and get actionable fix recommendations instantly.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'SPF record validation',
+          'DKIM DNS record lookup',
+          'DMARC policy checker',
+          'MX record audit',
+          'Actionable fix recommendations',
+          'Shareable result URL with ?domain= parameter',
+          'No account required'
+        ],
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
@@ -341,20 +466,29 @@ const routes: Routes = [
     {
     path: 'tools/ssl-certificate-inspector',
     component: SslCertificateInspectorComponent,
-    title: 'SSL Certificate Inspector & Chain Analyzer | xsantcastx',
+    title: 'Free SSL Certificate Checker — Inspect TLS Chain & Expiry Online | xsantcastx',
     data: {
-      description: 'Check SSL/TLS certificates for expiry, weak algorithms, and risky CAs. Visualize the full certificate chain and get actionable security insights in-browser.',
-      keywords: 'SSL certificate checker, TLS certificate analyzer, certificate chain visualization, CA reputation audit, HTTPS security tool',
+      description: 'Check SSL/TLS certificates for free online. Verify expiry dates, detect weak algorithms, inspect the full certificate chain, and audit Certificate Authority reputation — no install needed.',
+      keywords: 'ssl certificate checker, free ssl checker online, check ssl certificate expiry, tls certificate analyzer, certificate chain inspector, CA audit tool, https security checker, ssl expiration checker',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'SSL Certificate Inspector',
         url: `${SITE_URL}/tools/ssl-certificate-inspector`,
-        description: 'Check SSL/TLS certificates for expiry, weak algorithms, and risky CAs. Visualize the full certificate chain and get actionable security insights in-browser.',
-        applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Any Web Browser',
+        description: 'Free online SSL/TLS certificate checker. Enter any domain to inspect certificate expiry, cipher strength, full chain visualization, and Certificate Authority reputation — runs in your browser.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'SSL/TLS certificate expiry checker',
+          'Full certificate chain visualization',
+          'Weak cipher algorithm detection',
+          'Certificate Authority reputation audit',
+          'Subject Alternative Names (SAN) inspection',
+          'Pre-fill domain via ?domain= URL parameter',
+          'No account required'
+        ],
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
@@ -368,20 +502,29 @@ const routes: Routes = [
     {
     path: 'tools/svg-to-code',
     component: SvgToCodeComponent,
-    title: 'SVG to Code Converter – React, Vue & Angular | xsantcastx',
+    title: 'Free SVG to Code Converter — React, Vue & Angular Components | xsantcastx',
     data: {
-      description: 'Instantly convert SVG files into production-ready React, Vue, or Angular components with size props, color overrides, and ARIA accessibility attributes.',
-      keywords: 'SVG to React component, SVG to Vue, SVG to Angular, SVG code generator, SVG optimizer, accessible SVG component',
+      description: 'Convert SVG files to React, Vue, or Angular components free online. Generates clean, production-ready code with size props, color overrides, and ARIA accessibility attributes built in.',
+      keywords: 'svg to react component, svg to jsx, svg to vue component, svg to angular component, svg code generator online, convert svg to component free, svgr online, svg to typescript component',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'SVG to Code Converter',
         url: `${SITE_URL}/tools/svg-to-code`,
-        description: 'Instantly convert SVG files into production-ready React, Vue, or Angular components with size props, color overrides, and ARIA accessibility attributes.',
-        applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Any Web Browser',
+        description: 'Free browser-based SVG to component converter. Paste or upload an SVG and instantly get a production-ready React (JSX/TSX), Vue, or Angular component with configurable props and ARIA attributes.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Convert SVG to React JSX and TSX',
+          'Convert SVG to Vue component',
+          'Convert SVG to Angular component',
+          'Size and color override props',
+          'ARIA accessibility attributes',
+          'SVG optimization and cleanup',
+          'No account required'
+        ],
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [

@@ -12,11 +12,11 @@ import { environment } from '../environments/environment';
 
 @Injectable()
 export class AppCheckInterceptor implements HttpInterceptor {
-  private readonly appCheck = inject(AppCheck);
+  private readonly appCheck = inject(AppCheck, { optional: true }) as AppCheck | null;
   private readonly protectedOrigins = environment.appCheck?.protectedOrigins ?? [];
 
   intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    if (!this.requiresAppCheck(req.url)) {
+    if (!this.appCheck || !this.requiresAppCheck(req.url)) {
       return next.handle(req);
     }
 

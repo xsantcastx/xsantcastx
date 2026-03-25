@@ -10,13 +10,13 @@ export class AppTitleStrategy extends TitleStrategy {
 
   override updateTitle(routerState: RouterStateSnapshot): void {
     const title = this.buildTitle(routerState);
-    
+
     if (title !== undefined) {
-      // Set page title with brand prefix for SEO and Analytics
-      this.title.setTitle(`xsantcastx | ${title}`);
+      // Avoid double-branding for titles that already contain the brand name
+      const branded = title.includes('xsantcastx') ? title : `xsantcastx | ${title}`;
+      this.title.setTitle(branded);
     } else {
-      // Default title when no specific title is set
-      this.title.setTitle('xsantcastx | Full Stack Developer & Digital Solutions');
+      this.title.setTitle('xsantcastx | Full-Stack Developer & Free Browser Tools');
     }
   }
 }

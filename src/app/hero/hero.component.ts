@@ -1,4 +1,5 @@
-import { Component, AfterViewInit, ElementRef, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription, Observable } from 'rxjs';
 import { AuthServiceService } from '../auth-service.service';
@@ -18,6 +19,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private authService = inject(AuthServiceService);
   private firebaseService = inject(FirebaseService);
   private router = inject(Router);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   user$: Observable<User | null> = this.authService.user$;
 
@@ -56,6 +58,8 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngAfterViewInit() {
+    if (!this.isBrowser) return;
+
     const sections = this.elRef.nativeElement.querySelectorAll("section");
 
     const observer = new IntersectionObserver(entries => {
