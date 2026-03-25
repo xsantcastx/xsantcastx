@@ -288,6 +288,7 @@ export class LiveComponent implements OnInit, OnDestroy {
   private useFirestoreActivity = false;
   private entryCounter = 0;
   private botCounter = 0;
+  private static readonly STALE_MS = 5 * 60 * 1000; // 5 minutes
 
   // REST polling timers
   private activityPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -415,17 +416,45 @@ export class LiveComponent implements OnInit, OnDestroy {
 
   private async pollActivity(): Promise<void> {
     const docs = await fsGet('claude-activity');
-    if (docs.length === 0) return; // Keep mock running
 
     // Sort by timestamp ascending
-    docs.sort((a, b) => {
-      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
-      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
-      return ta - tb;
-    });
+    if (docs.length > 0) {
+      docs.sort((a, b) => {
+        const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
+        const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
+        return ta - tb;
+      });
+    }
+
+    // Check staleness: if newest entry is older than 5 min, fall back to mock
+    const newest = docs.length > 0 ? docs[docs.length - 1] : null;
+    const newestTs = newest?.['timestamp'] instanceof Date ? newest['timestamp'].getTime() : 0;
+    const isStale = docs.length === 0 || (Date.now() - newestTs) > LiveComponent.STALE_MS;
+
+    if (isStale) {
+      // Switch back to mock if we were on real data
+      if (this.useFirestoreActivity) {
+        this.useFirestoreActivity = false;
+        this.knownActivityIds.clear();
+        this.activityLog = [];
+        this.toolCounts = {};
+        this.toolStats = [];
+        this.metrics = [
+          { label: 'TOOL CALLS',    value: 0, icon: '⚡' },
+          { label: 'FILES TOUCHED', value: 0, icon: '◈'  },
+          { label: 'COMMANDS RUN',  value: 0, icon: '▶'  },
+          { label: 'TASKS DONE',    value: 0, icon: '✓'  },
+        ];
+        this.mockSeqIndex = 0;
+        this.mockEntryIndex = 0;
+        this.startMockSimulation();
+        this.cdr.detectChanges();
+      }
+      return; // Mock is running
+    }
 
     if (!this.useFirestoreActivity) {
-      // First time we see real data → stop mock, replace feed
+      // First time we see fresh real data → stop mock, replace feed
       this.useFirestoreActivity = true;
       if (this.mockTimer) clearTimeout(this.mockTimer);
       this.activityLog = docs.map(d => ({
@@ -439,6 +468,9 @@ export class LiveComponent implements OnInit, OnDestroy {
       }));
       this.knownActivityIds = new Set(docs.map(d => d['id']));
       // Rebuild metrics from real data
+      this.toolCounts = {};
+      this.metrics[0].value = 0; this.metrics[1].value = 0;
+      this.metrics[2].value = 0; this.metrics[3].value = 0;
       for (const entry of this.activityLog) this.updateMetrics(entry);
       this.cdr.detectChanges();
       this.scrollEl(this.feedContainer);
