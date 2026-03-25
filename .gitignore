@@ -18,6 +18,7 @@ out-tsc/
 .env.local
 .env.development
 .env.production
+params.env
 # Note: src/environments/*.ts are now tracked (contain only safe public config)
 
 # API Keys and Configuration Files
