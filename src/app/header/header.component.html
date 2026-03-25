@@ -35,6 +35,9 @@
     <a href="#about" [class.active]="currentSection === 'about'" (click)="scrollToSection('about'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.about') }}</a>
     <a href="#contact" [class.active]="currentSection === 'contact'" (click)="scrollToSection('contact'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.contact') }}</a>
     <a routerLink="/tools" routerLinkActive="active" (click)="closeMobileMenu()">Tools</a>
+    <a routerLink="/live" routerLinkActive="active" class="nav-live-link" (click)="closeMobileMenu()">
+      <span class="nav-live-dot"></span>LIVE
+    </a>
   </div>
 
   <!-- Desktop Language Toggle -->

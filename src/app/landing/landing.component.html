@@ -1,140 +1,362 @@
-<main class="portfolio-container" appScrollTracking>
-  <section id="hero" class="section">
-    <app-hero></app-hero>
+<div class="homepage">
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1 — HERO
+       ═══════════════════════════════════════════ -->
+  <section class="hp-hero">
+    <div class="hp-hero__bg">
+      <div class="hp-hero__bg-glow hp-hero__bg-glow--cyan"></div>
+      <div class="hp-hero__bg-glow hp-hero__bg-glow--purple"></div>
+      <div class="hp-hero__grid-lines"></div>
+    </div>
+
+    <div class="hp-hero__inner">
+      <!-- LEFT: copy -->
+      <div class="hp-hero__text">
+        <p class="hp-hero__eyebrow">
+          <span class="hp-hero__eyebrow-dot"></span>
+          Free Tools Platform
+        </p>
+        <h1 class="hp-hero__title">
+          The Best Free Tools<br>
+          for Developers<br>
+          <span class="hp-hero__title--accent">&amp; Designers</span>
+        </h1>
+        <p class="hp-hero__sub">
+          CSS Box Shadow Generator, Email Deliverability Auditor,<br class="hp-hero__sub-br">
+          SSL Inspector &amp; more — all free, no sign-up.
+        </p>
+        <div class="hp-hero__cta">
+          <a routerLink="/tools" class="cta-button hp-hero__cta-primary">
+            Explore All Tools
+          </a>
+          <a routerLink="/live" class="cta-button is-ghost hp-hero__cta-ghost">
+            <span class="hp-live-dot"></span>
+            Watch Live Work
+          </a>
+        </div>
+      </div>
+
+      <!-- RIGHT: animated card carousel -->
+      <div class="hp-hero__visual">
+        <div class="hero-carousel">
+          <div
+            class="hc-card"
+            *ngFor="let tool of heroCarouselTools; let i = index"
+            [style.--ci]="i"
+          >
+            <div class="hc-card__top">
+              <span class="hc-card__icon">{{ tool.icon }}</span>
+              <span class="hc-card__cat">{{ tool.category }}</span>
+            </div>
+            <h3 class="hc-card__name">{{ tool.name }}</h3>
+            <p class="hc-card__desc">{{ tool.desc }}</p>
+            <div class="hc-card__footer">
+              <span class="hc-card__cta">Try it &rarr;</span>
+              <span class="hc-card__num">0{{ i + 1 }}/0{{ heroCarouselTools.length }}</span>
+            </div>
+          </div>
+        </div>
+        <p class="hp-hero__carousel-hint">
+          <span class="hp-live-dot"></span>
+          {{ tools.length }} tools available — cycling preview
+        </p>
+      </div>
+    </div>
+
+    <div class="hp-hero__scroll-hint">
+      <div class="hp-hero__scroll-mouse"></div>
+    </div>
   </section>
 
-  <section id="services" class="section">
-    <app-services></app-services>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2 — STATS BAR
+       ═══════════════════════════════════════════ -->
+  <div class="hp-stats">
+    <div class="hp-stats__inner">
+      <div class="hp-stat">
+        <span class="hp-stat__icon">⬡</span>
+        <span class="hp-stat__num">{{ tools.length }}</span>
+        <span class="hp-stat__label">Free Tools</span>
+      </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◉</span>
+        <span class="hp-stat__val">Always Free</span>
+        <span class="hp-stat__label">Forever, no catch</span>
+      </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◑</span>
+        <span class="hp-stat__val">No Sign-Up</span>
+        <span class="hp-stat__label">Open &amp; use instantly</span>
+      </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◈</span>
+        <span class="hp-stat__val">Built in Public</span>
+        <span class="hp-stat__label">Watch it happen live</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 3 — TOOL GRID
+       ═══════════════════════════════════════════ -->
+  <section class="hp-tools" id="tools-section">
+    <div class="hp-tools__inner">
+      <div class="hp-tools__hd">
+        <div class="hp-tools__hd-text">
+          <p class="hp-section-eyebrow">All Tools</p>
+          <h2 class="hp-section-title">Browse &amp; Filter</h2>
+        </div>
+        <div class="hp-tools__search-wrap">
+          <span class="hp-tools__search-icon">⌕</span>
+          <input
+            id="tool-search-input"
+            class="hp-tools__search"
+            type="text"
+            [(ngModel)]="searchQuery"
+            placeholder="Search tools..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <span class="hp-tools__search-kbd">⌘K</span>
+        </div>
+      </div>
+
+      <div class="hp-tools__cats">
+        <button
+          class="hp-cat-btn"
+          *ngFor="let cat of categories"
+          [class.active]="activeCategory === cat"
+          (click)="setCategory(cat)"
+        >{{ cat }}</button>
+      </div>
+
+      <div class="hp-tools__grid">
+        <a
+          class="hp-tool-card glass-card"
+          *ngFor="let tool of filteredTools"
+          [routerLink]="tool.route"
+        >
+          <div class="hp-tool-card__icon-wrap">
+            <span class="hp-tool-card__icon">{{ tool.icon }}</span>
+          </div>
+          <div class="hp-tool-card__body">
+            <span class="hp-tool-card__cat">{{ tool.category }}</span>
+            <h3 class="hp-tool-card__name">{{ tool.name }}</h3>
+            <p class="hp-tool-card__desc">{{ tool.desc }}</p>
+          </div>
+          <span class="hp-tool-card__cta">Try it &rarr;</span>
+        </a>
+
+        <div class="hp-tools__empty" *ngIf="filteredTools.length === 0">
+          <span class="hp-tools__empty-icon">◌</span>
+          <p>No tools match "{{ searchQuery }}"</p>
+          <button class="hp-tools__clear-btn" (click)="searchQuery = ''; activeCategory = 'All'">Clear search</button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section id="projects" class="section">
-    <app-projects></app-projects>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 4 — FEATURED SPOTLIGHT
+       ═══════════════════════════════════════════ -->
+  <section class="hp-spotlight">
+    <div class="hp-spotlight__inner">
+      <div class="hp-spotlight__label">
+        <span class="hp-spotlight__label-dot"></span>
+        Featured Tool
+      </div>
+      <div class="hp-spotlight__card glass-card">
+        <div class="hp-spotlight__left">
+          <span class="hp-spotlight__cat">{{ spotlightTool.category }}</span>
+          <h2 class="hp-spotlight__name">{{ spotlightTool.name }}</h2>
+          <p class="hp-spotlight__desc">{{ spotlightTool.desc }}</p>
+          <ul class="hp-spotlight__features">
+            <li *ngFor="let f of spotlightTool.features">
+              <span class="hp-spotlight__check">✓</span>
+              {{ f }}
+            </li>
+          </ul>
+          <a [routerLink]="spotlightTool.route" class="cta-button hp-spotlight__btn">
+            Open Tool &rarr;
+          </a>
+        </div>
+        <div class="hp-spotlight__right" aria-hidden="true">
+          <div class="hp-spotlight__preview">
+            <div class="hp-sp__bar">
+              <span class="hp-sp__dot hp-sp__dot--red"></span>
+              <span class="hp-sp__dot hp-sp__dot--yellow"></span>
+              <span class="hp-sp__dot hp-sp__dot--green"></span>
+              <span class="hp-sp__title">{{ spotlightTool.name }}</span>
+            </div>
+            <div class="hp-sp__body">
+              <div class="hp-sp__icon-big">{{ spotlightTool.icon }}</div>
+              <div class="hp-sp__lines">
+                <div class="hp-sp__line hp-sp__line--long"></div>
+                <div class="hp-sp__line hp-sp__line--med"></div>
+                <div class="hp-sp__line hp-sp__line--short"></div>
+              </div>
+              <div class="hp-sp__output">
+                <span class="hp-sp__prompt">$ running tool</span>
+                <span class="hp-sp__blink">_</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section id="about" class="section">
-    <app-about></app-about>
-  </section>
 
-  <section id="contact" class="section">
-    <app-contact></app-contact>
-  </section>
+  <!-- ═══════════════════════════════════════════
+       SECTION 5 — WATCH LIVE WORK
+       ═══════════════════════════════════════════ -->
+  <section class="hp-live">
+    <div class="hp-live__inner">
+      <div class="hp-live__text">
+        <p class="hp-live__eyebrow">
+          <span class="hp-live-badge">
+            <span class="hp-live-dot"></span>LIVE
+          </span>
+          AI in Real Time
+        </p>
+        <h2 class="hp-live__title">
+          Watch AI Build<br>
+          <span class="hp-live__title--accent">This Site in Real Time</span>
+        </h2>
+        <p class="hp-live__desc">
+          A real-time broadcast of Claude AI in action — tool calls, file edits, build commands,
+          and task completions streaming live as they happen. Mission control for the curious.
+        </p>
+        <div class="hp-live__pills">
+          <span class="hp-live__pill hp-live__pill--cyan">Real-Time Feed</span>
+          <span class="hp-live__pill hp-live__pill--violet">Tool Calls</span>
+          <span class="hp-live__pill hp-live__pill--cyan">AI Activity</span>
+        </div>
+        <a routerLink="/live" class="cta-button hp-live__btn">Watch Now &rarr;</a>
+      </div>
 
-  <section id="live-preview" class="section live-preview-section">
-    <div class="container live-preview">
-
-      <!-- Mini dashboard preview card -->
-      <div class="lp-visual" aria-hidden="true">
-        <div class="lp-card">
-          <!-- Card header bar -->
-          <div class="lp-card__header">
-            <span class="lp-card__live-badge">
-              <span class="lp-card__live-dot"></span>LIVE
+      <div class="hp-live__visual" aria-hidden="true">
+        <div class="hp-live__card">
+          <div class="hp-live__card-hd">
+            <span class="hp-live-badge">
+              <span class="hp-live-dot"></span>LIVE
             </span>
-            <span class="lp-card__label">MISSION CONTROL</span>
-            <span class="lp-card__clock">00:04:23</span>
+            <span class="hp-live__mc-label">MISSION CONTROL</span>
+            <span class="hp-live__clock">00:04:23</span>
           </div>
-
-          <!-- Log lines -->
-          <div class="lp-feed">
-            <div class="lp-line lp-line--system lp-line-1">
-              <span class="lp-line__ts">00:04:19</span>
-              <span class="lp-line__dot lp-dot--system"></span>
-              <span class="lp-line__text">Session initialized — Claude Sonnet 4.6</span>
+          <div class="hp-live__feed">
+            <div class="hp-lf-line hp-lf-line--sys hp-lf-1">
+              <span class="hp-lf__dot hp-lf__dot--sys"></span>
+              <span class="hp-lf__text hp-lf__text--muted">Session initialized — Claude Sonnet 4.6</span>
             </div>
-            <div class="lp-line lp-line--tool lp-line-2">
-              <span class="lp-line__ts">00:04:20</span>
-              <span class="lp-line__dot lp-dot--tool"></span>
-              <span class="lp-line__badge">Read</span>
-              <span class="lp-line__text">Read("app-routing.module.ts")</span>
+            <div class="hp-lf-line hp-lf-line--tool hp-lf-2">
+              <span class="hp-lf__dot hp-lf__dot--cyan"></span>
+              <span class="hp-lf__badge">Read</span>
+              <span class="hp-lf__text">Read("landing.component.html")</span>
             </div>
-            <div class="lp-line lp-line--think lp-line-3">
-              <span class="lp-line__ts">00:04:21</span>
-              <span class="lp-line__dot lp-dot--think"></span>
-              <span class="lp-line__text lp-line__text--italic">Planning component architecture...</span>
+            <div class="hp-lf-line hp-lf-line--think hp-lf-3">
+              <span class="hp-lf__dot hp-lf__dot--violet"></span>
+              <span class="hp-lf__text hp-lf__text--italic">Planning hero section layout...</span>
             </div>
-            <div class="lp-line lp-line--tool lp-line-4">
-              <span class="lp-line__ts">00:04:22</span>
-              <span class="lp-line__dot lp-dot--tool"></span>
-              <span class="lp-line__badge">Write</span>
-              <span class="lp-line__text">Write("live/live.component.ts")</span>
+            <div class="hp-lf-line hp-lf-line--tool hp-lf-4">
+              <span class="hp-lf__dot hp-lf__dot--cyan"></span>
+              <span class="hp-lf__badge">Write</span>
+              <span class="hp-lf__text">Write("landing.component.css")</span>
             </div>
-            <div class="lp-line lp-line--success lp-line-5">
-              <span class="lp-line__ts">00:04:23</span>
-              <span class="lp-line__dot lp-dot--success"></span>
-              <span class="lp-line__text">Feature deployed successfully</span>
+            <div class="hp-lf-line hp-lf-line--success hp-lf-5">
+              <span class="hp-lf__dot hp-lf__dot--green"></span>
+              <span class="hp-lf__text hp-lf__text--success">Feature deployed successfully</span>
             </div>
           </div>
-
-          <!-- Progress row -->
-          <div class="lp-card__footer">
-            <div class="lp-card__progress-track">
-              <div class="lp-card__progress-fill"></div>
+          <div class="hp-live__card-ft">
+            <div class="hp-live__progress">
+              <div class="hp-live__progress-fill"></div>
             </div>
-            <span class="lp-card__cursor">claude&#64;xsantcastx:~$&nbsp;<span class="lp-card__blink">█</span></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Text column -->
-      <div class="lp-text">
-        <p class="lp-text__eyebrow">
-          <span class="lp-eyebrow-dot"></span>AI in Real Time
-        </p>
-        <h2 class="lp-text__title">Watch Me Work<br><span class="lp-text__title--accent">Live</span></h2>
-        <p class="lp-text__desc">
-          A real-time broadcast of Claude AI in action — tool calls, file edits, build commands, and task completions streaming live as they happen.
-          Mission control for the curious.
-        </p>
-        <div class="lp-text__pills">
-          <span class="lp-pill lp-pill--cyan">Real-Time Feed</span>
-          <span class="lp-pill lp-pill--violet">Tool Calls</span>
-          <span class="lp-pill lp-pill--cyan">AI Activity</span>
-        </div>
-        <a routerLink="/live" class="cta-button lp-text__btn">Watch Live &rarr;</a>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="tools-cta" class="section tools-cta-section">
-    <div class="container tools-cta">
-      <div class="tools-cta__text">
-        <p class="tools-cta__eyebrow">Studio Utilities</p>
-        <h2 class="tools-cta__title">Free Browser Tools</h2>
-        <p class="tools-cta__desc">
-          A growing set of browser-based utilities for creative and developer workflows.
-          No sign-up, no uploads, no limits — just open and use.
-        </p>
-        <div class="tools-cta__pills">
-          <span class="tools-cta__pill">PDF Catalog Generator</span>
-          <span class="tools-cta__pill">Color Palette Extractor</span>
-          <span class="tools-cta__pill tools-cta__pill--more">+ more coming</span>
-        </div>
-        <a routerLink="/tools" class="cta-button tools-cta__btn">Explore Tools</a>
-      </div>
-      <div class="tools-cta__visual" aria-hidden="true">
-        <div class="tools-cta__card">
-          <div class="tools-cta__card-bar"></div>
-          <div class="tools-cta__card-row">
-            <span class="tools-cta__dot tools-cta__dot--green"></span>
-            <span class="tools-cta__card-label">PDF Catalog Builder</span>
-          </div>
-          <div class="tools-cta__card-row">
-            <span class="tools-cta__dot tools-cta__dot--purple"></span>
-            <span class="tools-cta__card-label">Color Palette Extractor</span>
-          </div>
-          <div class="tools-cta__card-row tools-cta__card-row--muted">
-            <span class="tools-cta__dot"></span>
-            <span class="tools-cta__card-label">Contrast Checker</span>
-            <span class="tools-cta__badge-soon">Soon</span>
-          </div>
-          <div class="tools-cta__card-row tools-cta__card-row--muted">
-            <span class="tools-cta__dot"></span>
-            <span class="tools-cta__card-label">Image Compressor</span>
-            <span class="tools-cta__badge-soon">Soon</span>
+            <span class="hp-live__cursor">claude&#64;xsantcastx:~$&nbsp;<span class="hp-live__blink">█</span></span>
           </div>
         </div>
       </div>
     </div>
   </section>
-</main>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 6 — CHANGELOG
+       ═══════════════════════════════════════════ -->
+  <section class="hp-changelog">
+    <div class="hp-changelog__inner">
+      <p class="hp-section-eyebrow">What's New</p>
+      <h2 class="hp-section-title">Recent Updates</h2>
+      <div class="hp-changelog__list">
+        <div class="hp-cl-item" *ngFor="let item of changelog; let i = index" [class.hp-cl-item--latest]="i === 0">
+          <div class="hp-cl-item__line-wrap">
+            <div class="hp-cl-item__dot"></div>
+            <div class="hp-cl-item__line" *ngIf="i < changelog.length - 1"></div>
+          </div>
+          <div class="hp-cl-item__content">
+            <span class="hp-cl-item__date">{{ item.date }}</span>
+            <span class="hp-cl-item__text">{{ item.text }}</span>
+            <span class="hp-cl-item__new" *ngIf="i === 0">New</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 7 — FOOTER CTA
+       ═══════════════════════════════════════════ -->
+  <section class="hp-footer-cta">
+    <div class="hp-footer-cta__inner">
+      <div class="hp-footer-cta__text">
+        <h2 class="hp-footer-cta__title">More tools shipping weekly.</h2>
+        <p class="hp-footer-cta__sub">No spam. No account needed. Just useful things.</p>
+      </div>
+
+      <form class="hp-sub-form" (ngSubmit)="onSubscribe()" *ngIf="subscribeStatus !== 'success'">
+        <input
+          type="email"
+          class="hp-sub-form__input"
+          [(ngModel)]="subscribeEmail"
+          name="subscribeEmail"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+        <button type="submit" class="cta-button hp-sub-form__btn" [disabled]="subscribeStatus === 'loading'">
+          <span *ngIf="subscribeStatus !== 'loading'">Notify Me</span>
+          <span *ngIf="subscribeStatus === 'loading'" class="hp-sub-form__spinner">...</span>
+        </button>
+      </form>
+
+      <p class="hp-sub-success" *ngIf="subscribeStatus === 'success'">
+        <span class="hp-sub-success__icon">✓</span>
+        You're on the list. We'll ping you when something new ships.
+      </p>
+      <p class="hp-sub-error" *ngIf="subscribeStatus === 'error'">
+        Something went wrong — try again or check back soon.
+      </p>
+
+      <div class="hp-footer-cta__social">
+        <a href="https://github.com/xsantcastx" target="_blank" rel="noopener" class="hp-social-link" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+        </a>
+        <a href="https://twitter.com/xsantcastx" target="_blank" rel="noopener" class="hp-social-link" aria-label="Twitter/X">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="https://www.twitch.tv/xsantcastx" target="_blank" rel="noopener" class="hp-social-link" aria-label="Twitch">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div>
