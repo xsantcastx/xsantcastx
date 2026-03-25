@@ -1,0 +1,16 @@
+/home
+/skills
+/projects
+/contact
+/donate
+/live
+/tools
+/tools/box-shadow-generator
+/tools/email-deliverability-auditor
+/tools/gmail-deliverability-checker
+/tools/ssl-certificate-inspector
+/tools/svg-to-code
+/tools/image-compressor
+/tools/pdf-generator
+/tools/color-palette
+/tools/contrast-checker

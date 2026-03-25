@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
   providedIn: 'root'
@@ -6,9 +7,12 @@ import { Injectable } from '@angular/core';
 export class TrackingPreventionService {
   private trackingPreventionDetected = false;
   private mitigationApplied = false;
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   constructor() {
-    this.detectAndMitigate();
+    if (this.isBrowser) {
+      this.detectAndMitigate();
+    }
   }
 
   private detectAndMitigate(): void {

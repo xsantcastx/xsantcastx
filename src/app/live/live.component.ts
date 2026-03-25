@@ -4,8 +4,11 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  PLATFORM_ID,
+  inject
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 // ─── Firestore REST API (bypasses App Check) ──────────────────────────────────
@@ -297,9 +300,12 @@ export class LiveComponent implements OnInit, OnDestroy {
   private knownActivityIds = new Set<string>();
   private knownChatIds = new Set<string>();
 
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
+    if (!this.isBrowser) return;
     this.startClock();
     this.startSessionTimer();
     this.initChatUsername();

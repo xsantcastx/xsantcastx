@@ -1,4 +1,5 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
@@ -23,6 +24,8 @@ interface CompressedImage {
   standalone: false
 })
 export class ImageCompressorComponent implements OnDestroy {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   images: CompressedImage[] = [];
   quality = 80;
   outputFormat: 'same' | 'jpeg' | 'webp' = 'same';
@@ -38,7 +41,7 @@ export class ImageCompressorComponent implements OnDestroy {
   readonly MAX_FILES = 20;
 
   constructor(private router: Router, private translationService: TranslationService) {
-    this.detectWebPSupport();
+    if (this.isBrowser) this.detectWebPSupport();
   }
 
   translate(key: string): string {
