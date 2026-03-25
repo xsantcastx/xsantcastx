@@ -97,6 +97,15 @@ export class LandingComponent implements OnInit, OnDestroy {
       features: ['React JSX/TSX output', 'Vue & Angular support', 'Color & size props', 'ARIA accessibility']
     },
     {
+      id: 'json-formatter',
+      name: 'JSON Formatter & Validator',
+      desc: 'Format, validate, minify and repair JSON with live syntax checking and one-click copy.',
+      route: '/tools/json-formatter',
+      category: 'Code Converters',
+      icon: '{}',
+      features: ['Live validation', 'Syntax highlighting', 'Sort keys & minify', 'Repair broken JSON']
+    },
+    {
       id: 'pdf-generator',
       name: 'PDF Catalog Generator',
       desc: 'Build professional product catalogs from images and export as PDF instantly.',

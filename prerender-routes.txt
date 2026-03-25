@@ -14,3 +14,4 @@
 /tools/pdf-generator
 /tools/color-palette
 /tools/contrast-checker
+/tools/json-formatter

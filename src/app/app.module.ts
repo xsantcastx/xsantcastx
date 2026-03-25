@@ -48,6 +48,7 @@ import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverabilit
 import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
+import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -89,6 +90,7 @@ import { LiveComponent } from './live/live.component';
     SslCertificateInspectorComponent,
     SslCertificateAuditorComponent,
     SvgToCodeComponent,
+    JsonFormatterComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,

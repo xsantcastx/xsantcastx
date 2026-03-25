@@ -133,6 +133,15 @@ export class ToolsComponent {
 <path d="M16 11v2a1 1 0 001 1h2" stroke="currentColor"`
       },
       {
+        id: 'json-formatter',
+        title: 'JSON Formatter & Validator',
+        description: 'Format, validate, minify and repair JSON with live syntax checking and one-click copy.',
+        route: '/tools/json-formatter',
+        status: 'live',
+        tags: ['JSON', 'Formatter', 'Validator', 'Code Tools'],
+        icon: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="11" y2="17"/><polyline points="10 9 9 9 8 9"/>`
+      },
+      {
         id: 'ssl-certificate-auditor',
         title: 'SSL Certificate Auditor',
         description: 'Audit SSL certificates, verify CA chain, and surface security flags instantly.',

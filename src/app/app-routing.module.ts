@@ -17,6 +17,7 @@ import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverabilit
 import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
+import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -209,6 +210,18 @@ const routes: Routes = [
               '@type': 'SoftwareApplication',
               name: 'Image Compressor',
               url: `${SITE_URL}/tools/image-compressor`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 10,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'JSON Formatter & Validator',
+              url: `${SITE_URL}/tools/json-formatter`,
               applicationCategory: 'UtilityApplication',
               operatingSystem: 'Web Browser',
               offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
@@ -567,6 +580,45 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'SSL Certificate Auditor', item: `${SITE_URL}/tools/ssl-certificate-auditor` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/json-formatter',
+    component: JsonFormatterComponent,
+    title: 'Free JSON Formatter & Validator — Prettify, Minify & Repair | xsantcastx',
+    data: {
+      description: 'Format, validate, and minify JSON online for free. Live syntax checking, key sorting, one-click copy and JSON repair. No sign-up required.',
+      keywords: 'json formatter online free, json validator, prettify json, minify json, json beautifier, format json, json lint, json repair',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'JSON Formatter & Validator',
+        url: `${SITE_URL}/tools/json-formatter`,
+        description: 'Free browser-based JSON formatter, validator and minifier. Paste JSON to get live validation, syntax highlighting, key sorting, one-click copy and automatic repair of common errors — no account required.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Format & prettify JSON with 2 spaces, 4 spaces or tabs',
+          'Minify & compress JSON',
+          'Live JSON validation with line/column error details',
+          'Syntax highlighting',
+          'Sort keys alphabetically',
+          'Repair mode: fix trailing commas, single quotes, unquoted keys, JS comments',
+          'Copy output to clipboard',
+          'Download as .json file',
+          'Line count and byte size stats',
+          'No account required'
+        ],
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'JSON Formatter & Validator', item: `${SITE_URL}/tools/json-formatter` }
           ]
         }
       }

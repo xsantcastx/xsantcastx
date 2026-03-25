@@ -1,0 +1,533 @@
+/* ══════════════════════════════════════════════════════════════
+   JSON Formatter — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.jf-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.jf-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.jf-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.jf-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.jf-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.jf-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Input panel body ──────────────────────────────────────── */
+.jf-panel__body--input {
+  padding: 0;
+}
+
+.jf-char-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Textarea ──────────────────────────────────────────────── */
+.jf-textarea {
+  width: 100%;
+  min-height: 320px;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.jf-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.jf-textarea:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* ── Options panel ─────────────────────────────────────────── */
+.jf-options-grid {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.jf-option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.jf-option-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-option-hint {
+  font-size: 0.73rem;
+  color: rgba(214, 221, 235, 0.5);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Segmented control ─────────────────────────────────────── */
+.jf-seg-ctrl {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.jf-seg-btn {
+  flex: 1;
+  padding: 0.38rem 0.6rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.jf-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.jf-seg-btn--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* ── Toggle ────────────────────────────────────────────────── */
+.jf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+.jf-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.jf-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 20px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.jf-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 999px;
+  transition: left 0.2s ease, background 0.2s ease;
+}
+
+.jf-toggle input:checked ~ .jf-toggle__track {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.jf-toggle input:checked ~ .jf-toggle__track .jf-toggle__thumb {
+  left: 20px;
+  background: var(--primary-color);
+}
+
+.jf-toggle__label {
+  font-size: 0.82rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.jf-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--secondary-color);
+}
+
+/* ── Primary action buttons ────────────────────────────────── */
+.jf-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.jf-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.jf-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.jf-btn:not(:disabled):hover { transform: translateY(-1px); opacity: 0.9; }
+.jf-btn:not(:disabled):active { transform: translateY(0); }
+
+.jf-btn--primary {
+  background: var(--primary-color);
+  color: #000;
+}
+
+.jf-btn--secondary {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+}
+.jf-btn--secondary:not(:disabled):hover {
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.jf-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.jf-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.jf-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.jf-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.jf-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Status bar ─────────────────────────────────────────────── */
+.jf-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.jf-status-bar--idle {
+  background: rgba(214, 221, 235, 0.04);
+  color: rgba(214, 221, 235, 0.5);
+}
+
+.jf-status-bar--valid {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+
+.jf-status-bar--invalid {
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border-color: rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+.jf-status-error {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+.jf-status-loc {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  font-family: 'Fira Code', monospace;
+  padding: 0.1rem 0.45rem;
+  background: rgba(255, 77, 106, 0.12);
+  border-radius: 4px;
+}
+
+/* ── Output panel ──────────────────────────────────────────── */
+.jf-panel--output {
+  flex: 1;
+}
+
+.jf-output-body {
+  min-height: 320px;
+  position: relative;
+}
+
+.jf-output-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.jf-code-pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: 0;              /* removes gap between inline-block code children */
+  background: transparent;
+  line-height: 1;
+}
+
+.jf-code-pre code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-color);
+  display: block;
+  white-space: pre;
+  word-break: normal;
+}
+
+/* ── Syntax highlight token colors ────────────────────────── */
+:host ::ng-deep .jf-key  { color: #7ec8e3; }    /* light blue  — keys */
+:host ::ng-deep .jf-str  { color: #a8e6a3; }    /* soft green  — strings */
+:host ::ng-deep .jf-num  { color: #ffb86c; }    /* orange      — numbers */
+:host ::ng-deep .jf-bool { color: #ff79c6; }    /* pink        — booleans */
+:host ::ng-deep .jf-null { color: #6272a4; }    /* muted blue  — null */
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.jf-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.6rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.jf-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.9rem;
+  flex: 1;
+  min-width: 60px;
+}
+
+.jf-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.jf-stat__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+}
+
+.jf-stat__value--green { color: var(--primary-color); }
+.jf-stat__value--muted { color: var(--text-muted); }
+
+.jf-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .jf-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .jf-col--right {
+    order: -1;
+  }
+
+  .jf-textarea {
+    min-height: 220px;
+  }
+
+  .jf-actions {
+    flex-direction: column;
+  }
+}
