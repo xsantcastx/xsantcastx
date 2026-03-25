@@ -240,6 +240,18 @@ const routes: Routes = [
               operatingSystem: 'Web Browser',
               offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
             }
+          },
+          {
+            '@type': 'ListItem',
+            position: 12,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'Regex Tester',
+              url: `${SITE_URL}/tools/regex-tester`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
           }
         ]
       }

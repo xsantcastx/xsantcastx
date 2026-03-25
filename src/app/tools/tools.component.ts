@@ -164,6 +164,17 @@ export class ToolsComponent {
 <path d="M16 16l1 1 2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
       },
       {
+        id: 'regex-tester',
+        title: 'Regex Tester',
+        description: 'Test and debug regular expressions live with match highlighting, capture groups, flags and plain-English explanations.',
+        route: '/tools/regex-tester',
+        status: 'live',
+        tags: ['Regex', 'Code Tools', 'Debugger', 'Developer'],
+        icon: `<path d="M3 9h18M3 15h18" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+<path d="M7 5l-4 7 4 7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M17 5l4 7-4 7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),
