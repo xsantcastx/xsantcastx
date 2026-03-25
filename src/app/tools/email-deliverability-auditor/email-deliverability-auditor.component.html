@@ -225,8 +225,8 @@
     <section class="eda-panel">
       <div class="eda-panel__header" (click)="toggleAccordion('dkim')">
         <div class="eda-panel__title-row">
-          <span class="eda-badge" [ngClass]="getStatusClass(results.dkim[0]?.status || 'missing')">
-            {{ getStatusIcon(results.dkim[0]?.status || 'missing') }} {{ (results.dkim[0]?.status || 'missing') | titlecase }}
+          <span class="eda-badge" [ngClass]="getStatusClass(results.dkim[0].status || 'missing')">
+            {{ getStatusIcon(results.dkim[0].status || 'missing') }} {{ (results.dkim[0].status || 'missing') | titlecase }}
           </span>
           <h3 class="eda-panel__title">DKIM Records</h3>
         </div>
