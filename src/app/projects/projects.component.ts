@@ -57,7 +57,7 @@ export class ProjectsComponent implements OnInit {
       descriptionKey: 'projects.items.lux.description',
       image: 'assets/placeholder-lux.svg',
       previewImage: 'assets/placeholder-lux.svg',
-      liveUrl: 'http://theluxvending.com',
+      liveUrl: 'https://theluxvending.com',
       featureKeys: [
         'projects.items.lux.features.calculator',
         'projects.items.lux.features.eligibility',
