@@ -9,6 +9,13 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "/home",
+        "type": 302
+      }
+    ],
     "rewrites": [
       {
         "source": "/api/send-contact",
@@ -19,7 +26,7 @@
       },
       {
         "source": "**",
-        "destination": "/index.html"
+        "destination": "/index.csr.html"
       }
     ]
   },
