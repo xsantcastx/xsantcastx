@@ -115,6 +115,15 @@ export class LandingComponent implements OnInit, OnDestroy {
       features: ['Encode & decode text', 'URL-safe Base64', 'File drag & drop encode', 'Live conversion']
     },
     {
+      id: 'regex-tester',
+      name: 'Regex Tester',
+      desc: 'Test regular expressions live with match highlighting, capture groups, flags and plain-English explanations.',
+      route: '/tools/regex-tester',
+      category: 'Code Converters',
+      icon: '.*',
+      features: ['Live match highlighting', 'Capture groups', 'g i m s u flags', 'Plain-English explanation']
+    },
+    {
       id: 'pdf-generator',
       name: 'PDF Catalog Generator',
       desc: 'Build professional product catalogs from images and export as PDF instantly.',
