@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 import { Functions, httpsCallable } from '@angular/fire/functions';
@@ -25,6 +26,7 @@ export interface DonationAmount {
 })
 export class PaymentService {
   private functions = inject(Functions);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private stripe: any;
   private paypalLoaded = new BehaviorSubject<boolean>(false);
   private stripeLoaded = new BehaviorSubject<boolean>(false);
@@ -41,7 +43,9 @@ export class PaymentService {
   ];
 
   constructor() {
-    this.initializePaymentSDKs();
+    if (this.isBrowser) {
+      this.initializePaymentSDKs();
+    }
   }
 
   private initializePaymentSDKs(): void {

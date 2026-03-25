@@ -26,12 +26,7 @@
       [attr.tabindex]="tool.status === 'live' ? 0 : null"
       (keydown.enter)="navigate(tool)"
     >
-      <div class="tool-card__icon" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
-             [innerHTML]="tool.icon">
-        </svg>
-      </div>
+      <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
 
       <div class="tool-card__body">
         <div class="tool-card__title-row">

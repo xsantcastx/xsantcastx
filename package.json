@@ -1,6 +1,6 @@
 {
   "name": "xsantcastx",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -18,9 +18,12 @@
     "@angular/forms": "^20.0.4",
     "@angular/platform-browser": "^20.0.4",
     "@angular/platform-browser-dynamic": "^20.0.4",
+    "@angular/platform-server": "^20.0.4",
     "@angular/router": "^20.0.4",
+    "@angular/ssr": "^20.0.4",
     "@getbrevo/brevo": "^3.0.1",
     "@tsparticles/angular": "^3.0.0",
+    "@tsparticles/engine": "^3.9.1",
     "@types/nodemailer": "^7.0.2",
     "firebase": "^11.9.1",
     "jspdf": "^4.2.1",
@@ -33,12 +36,14 @@
     "@angular/cli": "~20.0.3",
     "@angular/compiler-cli": "^20.0.4",
     "@types/jasmine": "~4.3.0",
+    "chokidar": "^4.0.3",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "readdirp": "^4.1.2",
     "typescript": "~5.8.3"
   }
 }

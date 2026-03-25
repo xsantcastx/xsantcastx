@@ -21,7 +21,8 @@ export interface UserProperties {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  private analytics = inject(Analytics);
+  // null on server (Analytics not provided); canTrack() guards all call sites
+  private analytics = inject(Analytics, { optional: true }) as Analytics;
   private consentService = inject(ConsentService);
   private debugService = inject(AnalyticsDebugService);
   private platformId = inject(PLATFORM_ID);
@@ -38,7 +39,7 @@ export class AnalyticsService {
   }
 
   private canTrack(): boolean {
-    return this.isBrowser && this.consentService.hasConsent();
+    return this.isBrowser && !!this.analytics && this.consentService.hasConsent();
   }
 
   /**
@@ -289,6 +290,7 @@ export class AnalyticsService {
    * Track consent banner interactions
    */
   trackConsentDecision(decision: 'accepted' | 'denied'): void {
+    if (!this.isBrowser || !this.analytics) return;
     // This should track even without consent (for compliance reporting)
     logEvent(this.analytics, 'consent_decision', {
       decision,

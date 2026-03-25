@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
 
 interface Translations {
@@ -12,6 +13,7 @@ interface Translations {
   providedIn: 'root'
 })
 export class TranslationService {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private currentLanguageSubject = new BehaviorSubject<string>('en');
   public currentLanguage$ = this.currentLanguageSubject.asObservable();
 
@@ -364,13 +366,13 @@ export class TranslationService {
   };
 
   constructor() {
-    const savedLanguage = localStorage.getItem('preferred-language') || 'en';
+    const savedLanguage = (this.isBrowser ? localStorage.getItem('preferred-language') : null) || 'en';
     this.currentLanguageSubject.next(savedLanguage);
   }
 
   setLanguage(language: string): void {
     this.currentLanguageSubject.next(language);
-    localStorage.setItem('preferred-language', language);
+    if (this.isBrowser) localStorage.setItem('preferred-language', language);
   }
 
   getCurrentLanguage(): string {

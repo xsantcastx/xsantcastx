@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
 
@@ -23,10 +24,15 @@ export class ToolsComponent {
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Just found these free browser tools — PDF Catalog Generator, Color Palette Extractor and more. No sign-up, runs entirely in your browser 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools')}`;
 
-  constructor(private router: Router, private translationService: TranslationService) {}
+  constructor(private router: Router, private translationService: TranslationService, private sanitizer: DomSanitizer) {}
 
   translate(key: string): string {
     return this.translationService.translate(key);
+  }
+
+  getIconHtml(tool: ToolCard): SafeHtml {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${tool.icon}</svg>`;
+    return this.sanitizer.bypassSecurityTrustHtml(svg);
   }
 
   get tools(): ToolCard[] {
