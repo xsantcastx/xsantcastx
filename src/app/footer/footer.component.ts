@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { TranslationService } from '../translation.service';
 import { PaymentService, DonationAmount, PaymentResult } from '../payment.service';
 import { environment } from '../../environments/environment';
+import { version } from '../../../package.json';
 
 interface CryptoAddress {
   name: string;
@@ -16,6 +17,7 @@ interface CryptoAddress {
     standalone: false
 })
 export class FooterComponent implements OnInit {
+  readonly appVersion: string = version;
   currentLang: string = 'en';
   showCryptoModal: boolean = false;
   showPayPalModal: boolean = false;
