@@ -16,6 +16,7 @@ import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-sh
 import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
 import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
+import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -399,6 +400,33 @@ const routes: Routes = [
       description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
       keywords: 'watch ai work live, claude ai real time, ai mission control, live coding stream, ai development feed',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+    }
+  },
+    {
+    path: 'tools/ssl-certificate-auditor',
+    component: SslCertificateAuditorComponent,
+    title: 'SSL Certificate Auditor | xsantcastx',
+    data: {
+      description: 'Quickly audit SSL/TLS certificates, verify root CA ownership, check expiry, and surface security flags—no backend required.',
+      keywords: 'SSL certificate checker, root CA analyzer, HTTPS validator, TLS certificate audit',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'SSL Certificate Auditor',
+        url: `${SITE_URL}/tools/ssl-certificate-auditor`,
+        description: 'Quickly audit SSL/TLS certificates, verify root CA ownership, check expiry, and surface security flags—no backend required.',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'SSL Certificate Auditor', item: `${SITE_URL}/tools/ssl-certificate-auditor` }
+          ]
+        }
+      }
     }
   },
   { path: '', redirectTo: '/home', pathMatch: 'full' }

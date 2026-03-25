@@ -127,6 +127,17 @@ export class ToolsComponent {
 <path d="M16 11v2a1 1 0 001 1h2" stroke="currentColor"`
       },
       {
+        id: 'ssl-certificate-auditor',
+        title: 'SSL Certificate Auditor',
+        description: 'Audit SSL certificates, verify CA chain, and surface security flags instantly.',
+        route: '/tools/ssl-certificate-auditor',
+        status: 'live',
+        tags: ['Security', 'SSL/TLS', 'DevTools', 'HTTPS', 'Networking'],
+        icon: `<path d="M12 2L4 5v6c0 4.418 3.358 8.538 8 9.95C16.642 19.538 20 15.418 20 11V5L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M12 6v1" stroke="currentColor" stroke`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),
