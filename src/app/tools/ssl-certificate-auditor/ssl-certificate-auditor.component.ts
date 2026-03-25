@@ -82,13 +82,10 @@ export class SslCertificateAuditorComponent {
 
   normalizeDomain(input: string): string {
     let domain = input.trim();
-    // Strip protocol
     domain = domain.replace(/^https?:\/\//i, '');
-    // Strip path, query, hash
     domain = domain.split('/')[0];
     domain = domain.split('?')[0];
     domain = domain.split('#')[0];
-    // Strip port
     domain = domain.split(':')[0];
     return domain.toLowerCase();
   }
@@ -127,6 +124,10 @@ export class SslCertificateAuditorComponent {
     } finally {
       this.loading = false;
     }
+  }
+
+  private async parsePemCertificate(pem: string): Promise<void> {
+    this.error = 'PEM parsing is not supported in this version.';
   }
 
   private async fetchCertificateForDomain(domain: string): Promise<void> {
@@ -273,6 +274,10 @@ export class SslCertificateAuditorComponent {
       flags,
       rawPem: ''
     };
+  }
+
+  private formatDate(date: Date): string {
+    return date.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
   }
 
   private extractCN(dn: string): string {
@@ -450,9 +455,4 @@ export class SslCertificateAuditorComponent {
         detail: `Certificate has a validity period of ${validityDays} days, exceeding the 398-day browser limit.`,
         remediation: 'Reissue the certificate with a validity period of 398 days or less. Modern browsers distrust certificates with longer validity.'
       });
-    } else if (validityDays > 0) {
-      flags.push({
-        id: 'validity_period',
-        label: 'Validity Period Compliant',
-        status: 'pass',
-        detail: `Certificate validity period is ${validityDays} days (within the recommended
+    } else if
