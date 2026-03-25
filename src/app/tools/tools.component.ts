@@ -153,6 +153,17 @@ export class ToolsComponent {
 <path d="M12 6v1" stroke="currentColor" stroke`
       },
       {
+        id: 'base64-encoder',
+        title: 'Base64 Encoder & Decoder',
+        description: 'Encode text or files to Base64 and decode Base64 back to text with URL-safe mode and live conversion.',
+        route: '/tools/base64-encoder',
+        status: 'live',
+        tags: ['Base64', 'Encoding', 'Code Tools', 'Utilities'],
+        icon: `<path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+<rect x="14" y="13" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+<path d="M16 16l1 1 2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
+      },
+      {
         id: 'gradient-generator',
         title: this.translate('tools.gradient.title'),
         description: this.translate('tools.gradient.desc'),

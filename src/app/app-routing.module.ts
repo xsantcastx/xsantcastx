@@ -18,6 +18,8 @@ import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspec
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
 import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
+import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
+import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -222,6 +224,18 @@ const routes: Routes = [
               '@type': 'SoftwareApplication',
               name: 'JSON Formatter & Validator',
               url: `${SITE_URL}/tools/json-formatter`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
+          },
+          {
+            '@type': 'ListItem',
+            position: 11,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'Base64 Encoder & Decoder',
+              url: `${SITE_URL}/tools/base64-encoder`,
               applicationCategory: 'UtilityApplication',
               operatingSystem: 'Web Browser',
               offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
@@ -621,6 +635,86 @@ const routes: Routes = [
             { '@type': 'ListItem', position: 2, name: 'JSON Formatter & Validator', item: `${SITE_URL}/tools/json-formatter` }
           ]
         }
+      }
+    }
+  },
+  {
+    path: 'tools/base64-encoder',
+    component: Base64EncoderComponent,
+    title: 'Free Base64 Encoder & Decoder Online — Text & File Support | xsantcastx',
+    data: {
+      description: 'Encode and decode Base64 online for free. Supports text, URL-safe Base64, and file encoding. Live conversion, no sign-up required.',
+      keywords: 'base64 encoder online free, base64 decoder, base64 encode text, base64 file encoder, url safe base64',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Base64 Encoder & Decoder',
+        url: `${SITE_URL}/tools/base64-encoder`,
+        description: 'Free browser-based Base64 encoder and decoder. Encode text or files to Base64, decode Base64 to text, URL-safe mode, live conversion — no account required.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Any Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Encode text to Base64',
+          'Decode Base64 to text',
+          'URL-safe Base64 (RFC 4648)',
+          'File encode mode — drag & drop any file',
+          'Live conversion with 300ms debounce',
+          'Unicode / UTF-8 support',
+          'Copy output to clipboard',
+          'Character count and size stats',
+          'No account required'
+        ],
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'Base64 Encoder & Decoder', item: `${SITE_URL}/tools/base64-encoder` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/regex-tester',
+    component: RegexTesterComponent,
+    title: 'Free Regex Tester Online — Live Match Highlighting & Explanation | xsantcastx',
+    data: {
+      description: 'Test and debug regular expressions online for free. Live match highlighting, capture groups, flags, and plain-English regex explanations. No sign-up.',
+      keywords: 'regex tester online free, regular expression tester, regex match, test regex javascript, regex debugger, regex live preview, capture groups, regex flags',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'SoftwareApplication',
+            name: 'Regex Tester',
+            url: `${SITE_URL}/tools/regex-tester`,
+            description: 'Free browser-based regular expression tester. Enter a pattern, set flags (g, i, m, s, u), and see all matches highlighted live with capture groups, match indices, and a plain-English breakdown of your regex — no account required.',
+            applicationCategory: 'UtilityApplication',
+            operatingSystem: 'Any Web Browser',
+            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+            featureList: [
+              'Live match highlighting with 300ms debounce',
+              'Regex flags: g, i, m, s, u',
+              'Match results with index, value, start/end positions',
+              'Capture groups ($1, $2, named groups)',
+              'Plain-English regex explanation',
+              'Common patterns library: email, URL, phone, IP, date, hex color, ZIP, HTML tag',
+              'Copy /pattern/flags to clipboard',
+              'Error display for invalid regex',
+              'No account required'
+            ]
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+              { '@type': 'ListItem', position: 2, name: 'Regex Tester', item: `${SITE_URL}/tools/regex-tester` }
+            ]
+          }
+        ]
       }
     }
   },

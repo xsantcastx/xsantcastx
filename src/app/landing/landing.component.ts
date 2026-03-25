@@ -106,6 +106,15 @@ export class LandingComponent implements OnInit, OnDestroy {
       features: ['Live validation', 'Syntax highlighting', 'Sort keys & minify', 'Repair broken JSON']
     },
     {
+      id: 'base64-encoder',
+      name: 'Base64 Encoder & Decoder',
+      desc: 'Encode text or files to Base64 and decode back to text. URL-safe mode, live conversion.',
+      route: '/tools/base64-encoder',
+      category: 'Code Converters',
+      icon: '64',
+      features: ['Encode & decode text', 'URL-safe Base64', 'File drag & drop encode', 'Live conversion']
+    },
+    {
       id: 'pdf-generator',
       name: 'PDF Catalog Generator',
       desc: 'Build professional product catalogs from images and export as PDF instantly.',
