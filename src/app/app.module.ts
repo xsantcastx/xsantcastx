@@ -1,5 +1,9 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+
+// True only in a real browser — evaluated at module-load time so server prerender
+// skips all browser-only Firebase services entirely.
+const isBrowserEnv = typeof window !== 'undefined';
 import { TitleStrategy } from '@angular/router';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -102,34 +106,40 @@ import { LiveComponent } from './live/live.component';
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAnalytics(() => getAnalytics()),
-    providePerformance(() => getPerformance()),
-    provideAppCheck(() => {
-      const siteKey = environment.appCheck?.siteKey ?? '';
-      const rawDebugToken = environment.appCheck?.debugToken;
-      const debugToken =
-        rawDebugToken && rawDebugToken !== 'undefined' && rawDebugToken !== 'null'
-          ? rawDebugToken
-          : undefined;
-      const globalScope = globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: unknown; __xsantcastxAppCheck?: ReturnType<typeof initializeAppCheck> };
+    // Analytics, Performance and AppCheck require browser APIs — skip on server
+    ...(isBrowserEnv ? [
+      provideAnalytics(() => getAnalytics()),
+      providePerformance(() => getPerformance()),
+      provideAppCheck(() => {
+        const siteKey = environment.appCheck?.siteKey ?? '';
+        const rawDebugToken = environment.appCheck?.debugToken;
+        const debugToken =
+          rawDebugToken && rawDebugToken !== 'undefined' && rawDebugToken !== 'null'
+            ? rawDebugToken
+            : undefined;
+        const globalScope = globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: unknown; __xsantcastxAppCheck?: ReturnType<typeof initializeAppCheck> };
 
-      if (!siteKey || siteKey.startsWith('REPLACE_WITH')) {
-        console.warn('[AppModule] Firebase App Check site key is not configured. Update environment.appCheck.siteKey before deploying.');
-      }
+        if (!siteKey || siteKey.startsWith('REPLACE_WITH')) {
+          console.warn('[AppModule] Firebase App Check site key is not configured. Update environment.appCheck.siteKey before deploying.');
+        }
 
-      if (debugToken) {
-        globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'auto' ? true : debugToken;
-      }
+        if (debugToken) {
+          globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'auto' ? true : debugToken;
+        }
 
-      if (!globalScope.__xsantcastxAppCheck) {
-        globalScope.__xsantcastxAppCheck = initializeAppCheck(getApp(), {
-          provider: new ReCaptchaV3Provider(siteKey),
-          isTokenAutoRefreshEnabled: true
-        });
-      }
+        if (!globalScope.__xsantcastxAppCheck) {
+          globalScope.__xsantcastxAppCheck = initializeAppCheck(getApp(), {
+            provider: new ReCaptchaV3Provider(siteKey),
+            isTokenAutoRefreshEnabled: true
+          });
+        }
 
-      return globalScope.__xsantcastxAppCheck;
-    }),
+        return globalScope.__xsantcastxAppCheck;
+      }),
+      // Firebase Analytics automatic tracking services (browser only)
+      ScreenTrackingService,
+      UserTrackingService
+    ] as any[] : []),
     provideFirestore(() => {
       const app = getApp();
       return initializeFirestore(app, {
@@ -142,10 +152,7 @@ import { LiveComponent } from './live/live.component';
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names
-    { provide: TitleStrategy, useClass: AppTitleStrategy },
-    // Firebase Analytics automatic tracking services
-    ScreenTrackingService,
-    UserTrackingService
+    { provide: TitleStrategy, useClass: AppTitleStrategy }
   ]
 })
 export class AppModule { }

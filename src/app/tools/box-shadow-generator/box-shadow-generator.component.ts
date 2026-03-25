@@ -338,7 +338,7 @@ export class BoxShadowGeneratorComponent {
 
   getLayerPreviewStyle(layer: ShadowLayer): { [key: string]: string } {
     return {
-      'box-shadow': this.layerToCssValue(layer)
+      'boxShadow': this.layerToCssValue(layer)
     };
   }
 
@@ -350,7 +350,7 @@ export class BoxShadowGeneratorComponent {
       return `${insetStr}${l.horizontalOffset}px ${l.verticalOffset}px ${l.blurRadius}px ${l.spreadRadius}px ${colorStr}`;
     }).join(', ');
     return {
-      'box-shadow': values
+      'boxShadow': values
     };
   }
 

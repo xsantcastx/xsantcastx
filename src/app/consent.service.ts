@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 declare global {
-  interface Window { 
+  interface Window {
     dataLayer: any[];
     gtag?: (...args: any[]) => void;
   }
@@ -20,16 +21,20 @@ export interface ConsentSettings {
 export class ConsentService {
   private consentKey = 'xsantcastx_consent';
   private consentGiven = false;
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   constructor() {
-    this.initializeDataLayer();
-    this.setDefaultConsent();
-    this.checkStoredConsent();
+    if (this.isBrowser) {
+      this.initializeDataLayer();
+      this.setDefaultConsent();
+      this.checkStoredConsent();
+    }
   }
 
   private initializeDataLayer(): void {
     window.dataLayer = window.dataLayer || [];
-    
+
     // Define gtag function
     window.gtag = function(...args: any[]) {
       window.dataLayer.push(args);
@@ -58,8 +63,9 @@ export class ConsentService {
    */
   acceptAnalyticsConsent(): void {
     this.consentGiven = true;
+    if (!this.isBrowser) return;
     localStorage.setItem(this.consentKey, 'accepted');
-    
+
     window.gtag!('consent', 'update', {
       analytics_storage: 'granted',
       functionality_storage: 'granted'
@@ -73,8 +79,9 @@ export class ConsentService {
    */
   denyConsent(): void {
     this.consentGiven = false;
+    if (!this.isBrowser) return;
     localStorage.setItem(this.consentKey, 'denied');
-    
+
     window.gtag!('consent', 'update', {
       analytics_storage: 'denied',
       functionality_storage: 'denied'
@@ -87,6 +94,7 @@ export class ConsentService {
    * Reset consent (user can change their mind)
    */
   resetConsent(): void {
+    if (!this.isBrowser) return;
     localStorage.removeItem(this.consentKey);
     this.consentGiven = false;
     this.setDefaultConsent();
@@ -103,6 +111,7 @@ export class ConsentService {
    * Check if user has made a consent decision
    */
   hasConsentDecision(): boolean {
+    if (!this.isBrowser) return false;
     return localStorage.getItem(this.consentKey) !== null;
   }
 
@@ -110,6 +119,7 @@ export class ConsentService {
    * Get current consent status from localStorage
    */
   getConsentStatus(): 'accepted' | 'denied' | null {
+    if (!this.isBrowser) return null;
     const stored = localStorage.getItem(this.consentKey);
     return stored as 'accepted' | 'denied' | null;
   }

@@ -739,7 +739,7 @@
         <!-- MINIMAL grid -->
         <div *ngIf="pg.type === 'minimal'" class="prev-page prev-page--content">
           <div class="prev-chrome-top"><span class="prev-chrome-section">{{ pg.sectionName }}</span></div>
-          <div class="prev-grid" [style.grid-template-columns]="'repeat(' + pg.cols + ', 1fr)'">
+          <div class="prev-grid" [style.gridTemplateColumns]="'repeat(' + pg.cols + ', 1fr)'">
             <div *ngFor="let product of pg.products" class="prev-cell prev-cell--minimal">
               <img *ngIf="product.images.length > 0" [src]="product.images[0].dataUrl" [alt]="product.name" loading="lazy" />
               <div *ngIf="product.images.length === 0" class="prev-cell-empty"></div>
@@ -755,7 +755,7 @@
         <!-- DETAILED grid -->
         <div *ngIf="pg.type === 'detailed'" class="prev-page prev-page--content">
           <div class="prev-chrome-top"><span class="prev-chrome-section">{{ pg.sectionName }}</span></div>
-          <div class="prev-grid" [style.grid-template-columns]="'repeat(' + pg.cols + ', 1fr)'">
+          <div class="prev-grid" [style.gridTemplateColumns]="'repeat(' + pg.cols + ', 1fr)'">
             <div *ngFor="let product of pg.products" class="prev-cell prev-cell--detailed">
               <div class="prev-cell-img">
                 <img *ngIf="product.images.length > 0" [src]="product.images[0].dataUrl" [alt]="product.name" loading="lazy" />
@@ -777,8 +777,8 @@
           <div class="prev-collage">
             <div *ngFor="let cell of (pg.collageLayout?.cells ?? []); let ci = index; trackBy: trackByIndex"
                  class="prev-cell prev-cell--editorial"
-                 [style.grid-column]="(cell.colStart + 1) + ' / span ' + cell.colSpan"
-                 [style.grid-row]="(cell.rowStart + 1) + ' / span ' + cell.rowSpan">
+                 [style.gridColumn]="(cell.colStart + 1) + ' / span ' + cell.colSpan"
+                 [style.gridRow]="(cell.rowStart + 1) + ' / span ' + cell.rowSpan">
               <img *ngIf="pg.products![ci].images.length > 0"
                    [src]="pg.products![ci].images[0].dataUrl"
                    [alt]="pg.products![ci].name" loading="lazy" />
