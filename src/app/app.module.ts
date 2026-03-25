@@ -83,6 +83,7 @@ import { LiveComponent } from './live/live.component';
     BoxShadowGeneratorComponent,
     EmailDeliverabilityAuditorComponent,
     SslCertificateInspectorComponent,
+    SslCertificateAuditorComponent,
     SvgToCodeComponent,
     NewsFeedComponent,
     ServicesComponent,

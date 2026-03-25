@@ -455,4 +455,16 @@ export class SslCertificateAuditorComponent {
         detail: `Certificate has a validity period of ${validityDays} days, exceeding the 398-day browser limit.`,
         remediation: 'Reissue the certificate with a validity period of 398 days or less. Modern browsers distrust certificates with longer validity.'
       });
-    } else if
+    } else {
+      flags.push({
+        id: 'validity_period',
+        label: 'Certificate Validity Period',
+        status: 'pass',
+        detail: `Certificate has a validity period of ${validityDays} days.`,
+        remediation: 'No action needed.'
+      });
+    }
+
+    return flags;
+  }
+}
