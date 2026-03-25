@@ -130,9 +130,6 @@ export class SslCertificateAuditorComponent {
   }
 
   private async fetchCertificateForDomain(domain: string): Promise<void> {
-    // Since browser JS cannot directly open TLS connections to inspect raw certificates,
-    // we simulate by fetching the domain and extracting what we can via a CORS-friendly approach.
-    // We use the public crt.sh API to retrieve certificate info (no backend required).
     const apiUrl = `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json`;
 
     let crtShData: any[] = [];
@@ -146,19 +143,16 @@ export class SslCertificateAuditorComponent {
     }
 
     if (!crtShData || crtShData.length === 0) {
-      // Attempt fetch to at least verify HTTPS connectivity
       try {
         await fetch(`https://${domain}`, { mode: 'no-cors', signal: AbortSignal.timeout(8000) });
       } catch (e: any) {
         throw new Error(`Unable to reach https://${domain}. Check the domain and try again.`);
       }
 
-      // Build a minimal result if we can't get crt.sh data
       this.result = this.buildMinimalResult(domain);
       return;
     }
 
-    // Sort by not_after descending to get the most recent cert
     crtShData.sort((a: any, b: any) => {
       const dateA = new Date(a.not_after || 0).getTime();
       const dateB = new Date(b.not_after || 0).getTime();
@@ -216,7 +210,6 @@ export class SslCertificateAuditorComponent {
     const now = new Date();
     const daysToExpiry = Math.floor((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Build SANs from name_value field (crt.sh puts SANs here as newline-separated)
     const sans: string[] = [];
     if (entry.name_value) {
       const rawSans: string[] = entry.name_value.split('\n');
@@ -230,10 +223,8 @@ export class SslCertificateAuditorComponent {
     const isSelfSigned = this.detectSelfSigned(issuerName, commonName);
     const isWildcard = sans.some(s => s.startsWith('*.')) || commonName.startsWith('*.');
 
-    // Compute a pseudo-fingerprint using Web Crypto on the entry id + CN
     const fingerprint = await this.computePseudoFingerprint(entry.id, commonName, entry.not_after);
 
-    // Extract org from issuer_name
     const orgMatch = issuerName.match(/O=([^,]+)/);
     const organization = orgMatch ? orgMatch[1].trim() : 'Unknown';
 
@@ -333,7 +324,6 @@ export class SslCertificateAuditorComponent {
   ): SecurityFlag[] {
     const flags: SecurityFlag[] = [];
 
-    // Expiry check
     if (daysToExpiry < 0) {
       flags.push({
         id: 'expiry',
@@ -368,7 +358,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // Self-signed check
     if (isSelfSigned) {
       flags.push({
         id: 'self_signed',
@@ -387,7 +376,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // Wildcard check
     if (isWildcard) {
       flags.push({
         id: 'wildcard',
@@ -398,7 +386,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // SAN count
     if (sans.length > 50) {
       flags.push({
         id: 'san_count',
@@ -417,7 +404,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // CT Log check (all crt.sh entries are CT-logged by definition)
     if (allEntries && allEntries.length > 0) {
       flags.push({
         id: 'ct_log',
@@ -436,7 +422,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // Signature algorithm check
     const weakSig = sigAlgo.toLowerCase().includes('sha1') || sigAlgo.toLowerCase().includes('md5');
     if (weakSig) {
       flags.push({
@@ -456,7 +441,6 @@ export class SslCertificateAuditorComponent {
       });
     }
 
-    // Validity period check (too long = bad practice)
     const validityDays = Math.floor((validTo.getTime() - validFrom.getTime()) / (1000 * 60 * 60 * 24));
     if (validityDays > 398) {
       flags.push({
@@ -471,69 +455,4 @@ export class SslCertificateAuditorComponent {
         id: 'validity_period',
         label: 'Validity Period Compliant',
         status: 'pass',
-        detail: `Certificate validity period is ${validityDays} days (within the recommended 398-day limit).`,
-        remediation: 'No action needed.'
-      });
-    }
-
-    return flags;
-  }
-
-  private async parsePemCertificate(pem: string): Promise<void> {
-    this.loading = true;
-    this.error = '';
-    this.result = null;
-
-    try {
-      // Extract base64 content from PEM
-      const pemBody = pem
-        .replace(/-----BEGIN CERTIFICATE-----/g, '')
-        .replace(/-----END CERTIFICATE-----/g, '')
-        .replace(/\s+/g, '');
-
-      if (!pemBody) {
-        throw new Error('Invalid PEM format. Ensure the certificate starts with -----BEGIN CERTIFICATE-----');
-      }
-
-      // Decode base64 to binary
-      const binaryStr = atob(pemBody);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
-
-      // Compute SHA-256 fingerprint using Web Crypto
-      const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
-
-      // Parse ASN.1 DER structure
-      const parsed = this.parseDer(bytes);
-
-      const now = new Date();
-      const daysToExpiry = Math.floor((parsed.validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const isSelfSigned = this.detectSelfSigned(parsed.issuer, parsed.commonName);
-      const isWildcard = parsed.sans.some(s => s.startsWith('*.')) || parsed.commonName.startsWith('*.');
-
-      const flags = this.buildSecurityFlags(
-        daysToExpiry,
-        isSelfSigned,
-        isWildcard,
-        parsed.sans,
-        parsed.issuer,
-        parsed.signatureAlgorithm,
-        parsed.validFrom,
-        parsed.validTo,
-        [{}]
-      );
-
-      const fields: CertificateField[] = [
-        { label: 'Common Name (CN)', value: parsed.commonName },
-        { label: 'Subject', value: parsed.subject },
-        { label: 'Issuer', value: parsed.issuer },
-        { label: 'Issuer CN', value: this.extractCN(parsed.issuer) },
-        { label: 'Organization', value: parsed.organization },
-        { label: 'Valid From', value: this.formatDate(parsed.validFrom) },
-        { label: 'Valid To', value: this.formatDate(parsed.validTo) },
-        { label: 'Days to Expiry', value: daysToExpiry > 0 ? `${daysToExpiry} days` : 'EXPIRED' },
-        { label: 'Serial Number',
+        detail: `Certificate validity period is ${validityDays} days (within the recommended
