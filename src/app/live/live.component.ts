@@ -6,21 +6,77 @@ import {
   ElementRef,
   ChangeDetectorRef
 } from '@angular/core';
-import {
-  Firestore,
-  collection,
-  collectionData,
-  query,
-  orderBy,
-  limit,
-  doc,
-  setDoc,
-  deleteDoc,
-  addDoc
-} from '@angular/fire/firestore';
-import { serverTimestamp } from 'firebase/firestore';
-import { Subscription, EMPTY } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+
+// ─── Firestore REST API (bypasses App Check) ──────────────────────────────────
+
+const FS_PROJECT = environment.firebase.projectId;
+const FS_KEY     = environment.firebase.apiKey;
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents`;
+
+function parseDoc(doc: any): Record<string, any> {
+  const id = (doc.name || '').split('/').pop() || '';
+  const result: Record<string, any> = { id };
+  for (const [key, val] of Object.entries(doc.fields || {})) {
+    const v = val as any;
+    if (v.stringValue  !== undefined) result[key] = v.stringValue;
+    else if (v.integerValue  !== undefined) result[key] = parseInt(v.integerValue, 10);
+    else if (v.doubleValue   !== undefined) result[key] = v.doubleValue;
+    else if (v.booleanValue  !== undefined) result[key] = v.booleanValue;
+    else if (v.timestampValue !== undefined) result[key] = new Date(v.timestampValue);
+    else if (v.nullValue     !== undefined) result[key] = null;
+  }
+  return result;
+}
+
+function toFields(obj: Record<string, any>): Record<string, any> {
+  const fields: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val instanceof Date)       fields[key] = { timestampValue: val.toISOString() };
+    else if (typeof val === 'string')  fields[key] = { stringValue: val };
+    else if (typeof val === 'number')  fields[key] = { integerValue: String(val) };
+    else if (typeof val === 'boolean') fields[key] = { booleanValue: val };
+  }
+  return fields;
+}
+
+async function fsGet(col: string): Promise<Record<string, any>[]> {
+  try {
+    const res = await fetch(`${FS_BASE}/${col}?pageSize=200&key=${FS_KEY}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.documents || []).map(parseDoc);
+  } catch { return []; }
+}
+
+async function fsPost(col: string, obj: Record<string, any>): Promise<boolean> {
+  try {
+    const res = await fetch(`${FS_BASE}/${col}?key=${FS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: toFields(obj) })
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+async function fsPut(col: string, docId: string, obj: Record<string, any>): Promise<boolean> {
+  try {
+    const res = await fetch(`${FS_BASE}/${col}/${docId}?key=${FS_KEY}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: toFields(obj) })
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+async function fsDeleteDoc(col: string, docId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${FS_BASE}/${col}/${docId}?key=${FS_KEY}`, { method: 'DELETE' });
+    return res.ok;
+  } catch { return false; }
+}
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -214,20 +270,17 @@ export class LiveComponent implements OnInit, OnDestroy {
   chatUsername = '';
   editingUsername = false;
   usernameInput = '';
-  chatFirestoreAvailable = false;
 
   // Bot chat
   botMessages: BotMessage[] = [];
 
   // Private state
-  private subscriptions: Subscription[] = [];
   private sessionId = Math.random().toString(36).slice(2, 10);
   private mockSeqIndex = 0;
   private mockEntryIndex = 0;
   private mockTimer: ReturnType<typeof setTimeout> | null = null;
   private botMockIndex = 0;
   private botTimer: ReturnType<typeof setTimeout> | null = null;
-  private viewerTimer: ReturnType<typeof setInterval> | null = null;
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private sessionTimer: ReturnType<typeof setInterval> | null = null;
   private sessionStartTime = new Date();
@@ -236,10 +289,14 @@ export class LiveComponent implements OnInit, OnDestroy {
   private entryCounter = 0;
   private botCounter = 0;
 
-  constructor(
-    private firestore: Firestore,
-    private cdr: ChangeDetectorRef
-  ) {}
+  // REST polling timers
+  private activityPollTimer: ReturnType<typeof setInterval> | null = null;
+  private chatPollTimer: ReturnType<typeof setInterval> | null = null;
+  private viewerPollTimer: ReturnType<typeof setInterval> | null = null;
+  private knownActivityIds = new Set<string>();
+  private knownChatIds = new Set<string>();
+
+  constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.startClock();
@@ -256,30 +313,27 @@ export class LiveComponent implements OnInit, OnDestroy {
       isSystem: true,
     });
 
-    // Start all feeds
+    // Start mock feeds
     this.startMockSimulation();
     this.startBotMock();
-    this.startMockViewerCount();
 
-    // Try Firestore overrides (real data replaces mock when available)
-    this.tryFirestoreActivity();
-    this.tryFirestoreChat();
-    this.tryFirestoreBotChat();
-    this.tryFirestoreViewers();
+    // Start REST API polling (replaces Firebase SDK listeners)
+    this.startActivityPolling();
+    this.startChatPolling();
+    this.startViewerPolling();
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(s => s.unsubscribe());
-    if (this.mockTimer)    clearTimeout(this.mockTimer);
-    if (this.botTimer)     clearTimeout(this.botTimer);
-    if (this.clockTimer)   clearInterval(this.clockTimer);
-    if (this.sessionTimer) clearInterval(this.sessionTimer);
-    if (this.viewerTimer)  clearInterval(this.viewerTimer);
+    if (this.mockTimer)         clearTimeout(this.mockTimer);
+    if (this.botTimer)          clearTimeout(this.botTimer);
+    if (this.clockTimer)        clearInterval(this.clockTimer);
+    if (this.sessionTimer)      clearInterval(this.sessionTimer);
+    if (this.activityPollTimer) clearInterval(this.activityPollTimer);
+    if (this.chatPollTimer)     clearInterval(this.chatPollTimer);
+    if (this.viewerPollTimer)   clearInterval(this.viewerPollTimer);
 
-    // Remove presence record
-    try {
-      deleteDoc(doc(this.firestore, 'live-viewers', this.sessionId));
-    } catch { /* ignore */ }
+    // Remove presence record via REST
+    fsDeleteDoc('live-viewers', this.sessionId);
   }
 
   // ─── TrackBy ──────────────────────────────────────────────────────────────
@@ -307,67 +361,106 @@ export class LiveComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  // ─── Viewer Count ─────────────────────────────────────────────────────────
+  // ─── Viewer Count (REST polling) ──────────────────────────────────────────
 
-  private startMockViewerCount(): void {
-    this.viewerCount = Math.floor(Math.random() * 5) + 3;
-    this.viewerTimer = setInterval(() => {
-      if (Math.random() < 0.4) {
-        const delta = Math.random() < 0.55 ? 1 : -1;
-        this.viewerCount = Math.min(15, Math.max(2, this.viewerCount + delta));
-        this.cdr.detectChanges();
+  private startViewerPolling(): void {
+    // Register own presence immediately
+    this.registerPresence();
+
+    // Poll viewer count + heartbeat every 8s
+    this.viewerPollTimer = setInterval(() => this.pollViewers(), 8000);
+    // First poll now
+    this.pollViewers();
+  }
+
+  private async registerPresence(): Promise<void> {
+    await fsPut('live-viewers', this.sessionId, {
+      sessionId: this.sessionId,
+      timestamp: new Date(),
+    });
+  }
+
+  private async pollViewers(): Promise<void> {
+    // Heartbeat — refresh own presence
+    this.registerPresence();
+
+    const docs = await fsGet('live-viewers');
+    if (docs.length > 0) {
+      // Prune stale viewers (older than 30s)
+      const cutoff = Date.now() - 30000;
+      const active = docs.filter(d => {
+        const ts = d['timestamp'];
+        return ts instanceof Date && ts.getTime() > cutoff;
+      });
+      // Clean up stale docs
+      const stale = docs.filter(d => {
+        const ts = d['timestamp'];
+        return !(ts instanceof Date && ts.getTime() > cutoff);
+      });
+      for (const s of stale) fsDeleteDoc('live-viewers', s['id']);
+
+      this.viewerCount = Math.max(1, active.length);
+      this.cdr.detectChanges();
+    }
+  }
+
+  // ─── Activity Feed (REST polling + mock fallback) ─────────────────────────
+
+  private startActivityPolling(): void {
+    // Poll every 4s
+    this.activityPollTimer = setInterval(() => this.pollActivity(), 4000);
+    // First poll now
+    this.pollActivity();
+  }
+
+  private async pollActivity(): Promise<void> {
+    const docs = await fsGet('claude-activity');
+    if (docs.length === 0) return; // Keep mock running
+
+    // Sort by timestamp ascending
+    docs.sort((a, b) => {
+      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
+      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
+      return ta - tb;
+    });
+
+    if (!this.useFirestoreActivity) {
+      // First time we see real data → stop mock, replace feed
+      this.useFirestoreActivity = true;
+      if (this.mockTimer) clearTimeout(this.mockTimer);
+      this.activityLog = docs.map(d => ({
+        id: d['id'],
+        type: d['type'] || 'system',
+        text: d['text'] || '',
+        tool: d['tool'] || undefined,
+        detail: d['detail'] || undefined,
+        timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+        isNew: false,
+      }));
+      this.knownActivityIds = new Set(docs.map(d => d['id']));
+      // Rebuild metrics from real data
+      for (const entry of this.activityLog) this.updateMetrics(entry);
+      this.cdr.detectChanges();
+      this.scrollEl(this.feedContainer);
+    } else {
+      // Incremental: add only new entries
+      for (const d of docs) {
+        if (this.knownActivityIds.has(d['id'])) continue;
+        this.knownActivityIds.add(d['id']);
+        const entry: ActivityEntry = {
+          id: d['id'],
+          type: d['type'] || 'system',
+          text: d['text'] || '',
+          tool: d['tool'] || undefined,
+          detail: d['detail'] || undefined,
+          timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+          isNew: true,
+        };
+        if (entry.type === 'tool_call') this.currentTool = entry.tool ?? '';
+        else if (entry.type === 'success' || entry.type === 'error') this.currentTool = '';
+        this.pushEntry(entry);
       }
-    }, 10000);
-  }
-
-  private tryFirestoreViewers(): void {
-    try {
-      // Register own presence
-      setDoc(doc(this.firestore, 'live-viewers', this.sessionId), {
-        timestamp: serverTimestamp(),
-        sessionId: this.sessionId,
-      }).catch(() => {/* App Check may block — ignore */});
-
-      // Listen to viewer count
-      const viewersRef = collection(this.firestore, 'live-viewers');
-      const sub = collectionData(viewersRef).pipe(catchError(() => EMPTY))
-        .subscribe((docs: any[]) => {
-          if (docs && docs.length > 0) {
-            if (this.viewerTimer) clearInterval(this.viewerTimer);
-            this.viewerCount = docs.length;
-            this.cdr.detectChanges();
-          }
-        });
-      this.subscriptions.push(sub);
-    } catch { /* ignore */ }
-  }
-
-  // ─── Activity Feed (mock + Firestore override) ─────────────────────────────
-
-  private tryFirestoreActivity(): void {
-    try {
-      const actRef = collection(this.firestore, 'claude-activity');
-      const q = query(actRef, orderBy('timestamp', 'desc'), limit(100));
-      const sub = collectionData(q, { idField: 'id' }).pipe(catchError(() => EMPTY))
-        .subscribe((docs: any[]) => {
-          if (!docs || docs.length === 0) return;
-          if (!this.useFirestoreActivity) {
-            this.useFirestoreActivity = true;
-            if (this.mockTimer) clearTimeout(this.mockTimer);
-            this.activityLog = docs
-              .map(d => ({ ...d, timestamp: d['timestamp']?.toDate ? d['timestamp'].toDate() : new Date(), isNew: false }))
-              .reverse();
-            this.cdr.detectChanges();
-            this.scrollEl(this.feedContainer);
-          } else {
-            const latest = docs[0];
-            if (!this.activityLog.find(e => e.id === latest['id'])) {
-              this.pushEntry({ ...latest, timestamp: latest['timestamp']?.toDate ? latest['timestamp'].toDate() : new Date() });
-            }
-          }
-        });
-      this.subscriptions.push(sub);
-    } catch { /* ignore */ }
+    }
   }
 
   private startMockSimulation(): void {
@@ -446,7 +539,7 @@ export class LiveComponent implements OnInit, OnDestroy {
     }));
   }
 
-  // ─── User Chat ────────────────────────────────────────────────────────────
+  // ─── User Chat (REST polling + REST send) ─────────────────────────────────
 
   private initChatUsername(): void {
     const stored = localStorage.getItem('live-chat-username');
@@ -477,30 +570,73 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.editingUsername = false;
   }
 
-  sendMessage(): void {
+  private startChatPolling(): void {
+    this.chatPollTimer = setInterval(() => this.pollChat(), 3000);
+    this.pollChat();
+  }
+
+  private async pollChat(): Promise<void> {
+    const docs = await fsGet('live-chat');
+    if (docs.length === 0) return;
+
+    // Sort by timestamp ascending
+    docs.sort((a, b) => {
+      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
+      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
+      return ta - tb;
+    });
+
+    // Keep system message, replace rest with Firestore data
+    const systemMsg = this.chatMessages.find(m => m.isSystem);
+    const firestoreMsgs: ChatMessage[] = docs.map(d => ({
+      id: d['id'],
+      name: d['name'] ?? 'anonymous',
+      message: d['message'] ?? '',
+      timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+      color: d['color'] ?? this.getUserColor(d['name'] ?? ''),
+      isNew: !this.knownChatIds.has(d['id']),
+    }));
+
+    // Track new messages for animation
+    const hadNew = firestoreMsgs.some(m => m.isNew);
+    for (const d of docs) this.knownChatIds.add(d['id']);
+
+    this.chatMessages = systemMsg ? [systemMsg, ...firestoreMsgs] : firestoreMsgs;
+    this.cdr.detectChanges();
+    if (hadNew) this.scrollEl(this.chatContainer);
+
+    // Clear isNew after animation
+    setTimeout(() => {
+      for (const m of this.chatMessages) m.isNew = false;
+      this.cdr.detectChanges();
+    }, 600);
+  }
+
+  async sendMessage(): Promise<void> {
     const text = this.chatInput.trim();
     if (!text || !this.chatUsername) return;
     this.chatInput = '';
 
-    const msg: ChatMessage = {
+    const color = this.getUserColor(this.chatUsername);
+
+    // Optimistic local add
+    const localMsg: ChatMessage = {
       id: `local-${Date.now()}`,
       name: this.chatUsername,
       message: text,
       timestamp: new Date(),
-      color: this.getUserColor(this.chatUsername),
+      color,
       isNew: true,
     };
+    this.pushChatMessage(localMsg);
 
-    if (this.chatFirestoreAvailable) {
-      addDoc(collection(this.firestore, 'live-chat'), {
-        name: msg.name,
-        message: msg.message,
-        timestamp: serverTimestamp(),
-        color: msg.color,
-      }).catch(() => this.pushChatMessage(msg));
-    } else {
-      this.pushChatMessage(msg);
-    }
+    // Send to Firestore via REST
+    await fsPost('live-chat', {
+      name: this.chatUsername,
+      message: text,
+      timestamp: new Date(),
+      color,
+    });
   }
 
   private pushChatMessage(msg: ChatMessage): void {
@@ -510,32 +646,6 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
     this.scrollEl(this.chatContainer);
     setTimeout(() => { msg.isNew = false; this.cdr.detectChanges(); }, 600);
-  }
-
-  private tryFirestoreChat(): void {
-    try {
-      const chatRef = collection(this.firestore, 'live-chat');
-      const q = query(chatRef, orderBy('timestamp', 'asc'), limit(100));
-      const sub = collectionData(q, { idField: 'id' }).pipe(catchError(() => EMPTY))
-        .subscribe((docs: any[]) => {
-          if (!docs) return;
-          this.chatFirestoreAvailable = true;
-          // Merge Firestore messages with local (keep system message)
-          const systemMsg = this.chatMessages.find(m => m.isSystem);
-          const firestoreMsgs: ChatMessage[] = docs.map(d => ({
-            id: d['id'],
-            name: d['name'] ?? 'anonymous',
-            message: d['message'] ?? '',
-            timestamp: d['timestamp']?.toDate ? d['timestamp'].toDate() : new Date(),
-            color: d['color'] ?? this.getUserColor(d['name'] ?? ''),
-            isNew: false,
-          }));
-          this.chatMessages = systemMsg ? [systemMsg, ...firestoreMsgs] : firestoreMsgs;
-          this.cdr.detectChanges();
-          this.scrollEl(this.chatContainer);
-        });
-      this.subscriptions.push(sub);
-    } catch { /* ignore */ }
   }
 
   getUserColor(name: string): string {
@@ -573,29 +683,6 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
     this.scrollEl(this.botContainer);
     setTimeout(() => { msg.isNew = false; this.cdr.detectChanges(); }, 600);
-  }
-
-  private tryFirestoreBotChat(): void {
-    try {
-      const botRef = collection(this.firestore, 'bot-chat');
-      const q = query(botRef, orderBy('timestamp', 'asc'), limit(100));
-      const sub = collectionData(q, { idField: 'id' }).pipe(catchError(() => EMPTY))
-        .subscribe((docs: any[]) => {
-          if (!docs || docs.length === 0) return;
-          if (this.botTimer) clearTimeout(this.botTimer);
-          this.botMessages = docs.map(d => ({
-            id: d['id'],
-            botName: d['botName'] ?? 'Agent',
-            botId: d['botId'] ?? 'ops',
-            message: d['message'] ?? '',
-            timestamp: d['timestamp']?.toDate ? d['timestamp'].toDate() : new Date(),
-            isNew: false,
-          }));
-          this.cdr.detectChanges();
-          this.scrollEl(this.botContainer);
-        });
-      this.subscriptions.push(sub);
-    } catch { /* ignore */ }
   }
 
   getBotColor(botId: string): string {
