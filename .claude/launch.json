@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "xsantcastx dev server",
+      "name": "xsantcastx",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
       "port": 4200

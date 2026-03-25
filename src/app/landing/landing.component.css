@@ -1473,3 +1473,15 @@
   .hc-card { opacity: 1; transform: none; }
   .hp-lf-line { opacity: 1; }
 }
+
+/* ─── Ad banner (between tool grid & spotlight) ─────────────────── */
+.hp-ad-banner {
+  padding: 0 var(--page-gutter);
+}
+
+.hp-ad-banner__inner {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 2rem 0 0.5rem;
+}
+

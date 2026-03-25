@@ -49,6 +49,8 @@ import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspec
 import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
 import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
 import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
+import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
+import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -58,6 +60,8 @@ import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
 import { LiveComponent } from './live/live.component';
+import { CarbonAdComponent } from './shared/carbon-ad/carbon-ad.component';
+import { AdsenseComponent } from './shared/adsense/adsense.component';
 
 
 @NgModule({
@@ -91,12 +95,16 @@ import { LiveComponent } from './live/live.component';
     SslCertificateAuditorComponent,
     SvgToCodeComponent,
     JsonFormatterComponent,
+    RegexTesterComponent,
+    Base64EncoderComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,
     CookieBannerComponent,
     ScrollTrackingDirective,
-    LiveComponent
+    LiveComponent,
+    CarbonAdComponent,
+    AdsenseComponent
   ],
   bootstrap: [AppComponent],
   imports: [
