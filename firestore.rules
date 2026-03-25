@@ -21,6 +21,43 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ── Live Activity Feed ────────────────────────────────────────────────────
+    // Written by the Claude Code PostToolUse hook; read by the /live page.
+    match /claude-activity/{docId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['type', 'text', 'timestamp'])
+                   && request.resource.data.type in ['tool_call', 'thinking', 'success', 'error', 'system', 'output']
+                   && request.resource.data.text is string
+                   && request.resource.data.text.size() <= 300;
+      allow delete: if true;  // hook prunes old entries
+      allow update: if false;
+    }
+
+    // ── Live Viewer Presence ──────────────────────────────────────────────────
+    match /live-viewers/{sessionId} {
+      allow read:   if true;
+      allow create, update: if request.resource.data.keys().hasAll(['sessionId', 'timestamp']);
+      allow delete: if true;
+    }
+
+    // ── Live Chat ─────────────────────────────────────────────────────────────
+    match /live-chat/{msgId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['name', 'message', 'timestamp'])
+                   && request.resource.data.message is string
+                   && request.resource.data.message.size() <= 200
+                   && request.resource.data.name is string
+                   && request.resource.data.name.size() <= 20;
+      allow update, delete: if false;
+    }
+
+    // ── Bot Agent Chat ────────────────────────────────────────────────────────
+    match /bot-chat/{msgId} {
+      allow read:   if true;
+      allow create: if request.resource.data.keys().hasAll(['botName', 'message', 'timestamp']);
+      allow update, delete: if false;
+    }
+
     // ── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

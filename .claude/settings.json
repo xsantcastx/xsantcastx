@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/xsantcastx/Documents/1. Projects/xsantcastx/scripts/live-hook.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
