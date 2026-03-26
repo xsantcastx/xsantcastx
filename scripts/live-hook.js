@@ -133,6 +133,47 @@ async function firestoreDelete(docName) {
   }, null);
 }
 
+// ── Agent status + bot comms helpers ─────────────────────────────────────────
+
+function firestorePut(collection, docId, fields) {
+  const body = JSON.stringify({ fields });
+  return httpsRequest({
+    hostname: 'firestore.googleapis.com',
+    path:     `/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}?key=${API_KEY}`,
+    method:   'PATCH',
+    headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+  }, body);
+}
+
+function postComms(botName, botId, message) {
+  const body = JSON.stringify({
+    fields: {
+      botName:   { stringValue: botName },
+      botId:     { stringValue: botId },
+      message:   { stringValue: message },
+      timestamp: { timestampValue: new Date().toISOString() }
+    }
+  });
+  return httpsRequest({
+    hostname: 'firestore.googleapis.com',
+    path:     `/v1/projects/${PROJECT_ID}/databases/(default)/documents/agent-comms?key=${API_KEY}`,
+    method:   'POST',
+    headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+  }, body);
+}
+
+// Track tool call count per session for progress estimation
+const PROGRESS_FILE = path.join(os.tmpdir(), 'claude-live-progress.json');
+
+function getProgress() {
+  try { return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8')); }
+  catch { return { toolCalls: 0, task: '' }; }
+}
+
+function saveProgress(data) {
+  try { fs.writeFileSync(PROGRESS_FILE, JSON.stringify(data)); } catch {}
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -149,11 +190,13 @@ async function main() {
 
   const now = new Date().toISOString();
   const toPost = [];
+  const commsQueue = [];
 
   // Detect new session → emit "Session initialized" system entry + prune old docs
   const state = getSessionState();
   if (state.lastSessionId !== session_id) {
     saveSessionState({ lastSessionId: session_id });
+    saveProgress({ toolCalls: 0, task: 'New session' });
 
     toPost.push({
       type:      { stringValue: 'system' },
@@ -163,6 +206,19 @@ async function main() {
       sessionId: { stringValue: session_id || 'unknown' }
     });
 
+    // Post bot comms for session start
+    commsQueue.push(['ClaudeOps', 'ops', 'New session initialized. Scanning workspace...']);
+    commsQueue.push(['ClaudeReview', 'review', 'Review agent online. Standing by.']);
+
+    // Update agent status — new session
+    firestorePut('agent-status', 'current', {
+      task:      { stringValue: 'Initializing session...' },
+      progress:  { integerValue: '0' },
+      agent:     { stringValue: 'ClaudeOps' },
+      isActive:  { booleanValue: true },
+      timestamp: { timestampValue: now },
+    }).catch(() => {});
+
     // Prune old entries async (don't await — don't block the hook)
     listDocNames().then(async (names) => {
       if (names.length > MAX_ENTRIES) {
@@ -171,6 +227,10 @@ async function main() {
       }
     }).catch(() => {});
   }
+
+  // Track progress
+  const progress = getProgress();
+  progress.toolCalls++;
 
   // Build the tool_call entry
   const text   = buildText(tool_name, tool_input);
@@ -187,8 +247,58 @@ async function main() {
 
   toPost.push(fields);
 
-  // Post entries in order
+  // Derive current task from TodoWrite calls
+  if (tool_name === 'TodoWrite' && tool_input.todos?.length > 0) {
+    const inProgress = tool_input.todos.find(t => t.status === 'in_progress');
+    const completed  = tool_input.todos.filter(t => t.status === 'completed').length;
+    const total      = tool_input.todos.length;
+    const pct        = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const taskName   = inProgress?.activeForm || inProgress?.content || 'Processing...';
+
+    progress.task = taskName;
+
+    // Update agent-status with task info
+    firestorePut('agent-status', 'current', {
+      task:      { stringValue: taskName },
+      progress:  { integerValue: String(pct) },
+      agent:     { stringValue: 'ClaudeOps' },
+      isActive:  { booleanValue: true },
+      timestamp: { timestampValue: now },
+    }).catch(() => {});
+
+    commsQueue.push(['ClaudeOps', 'ops', `Task: ${taskName} (${pct}%)`]);
+    if (completed > 0) {
+      commsQueue.push(['ClaudeAnalytics', 'analytics', `Progress: ${completed}/${total} steps complete`]);
+    }
+  }
+
+  // Bot comms for interesting tool calls
+  if (tool_name === 'Bash' && tool_input.command) {
+    const cmd = tool_input.command;
+    if (cmd.includes('npm run build') || cmd.includes('ng build')) {
+      commsQueue.push(['ClaudeReview', 'review', 'Build triggered. Monitoring output...']);
+    } else if (cmd.includes('firebase deploy')) {
+      commsQueue.push(['ClaudeOps', 'ops', 'Deploying to Firebase hosting...']);
+    } else if (cmd.includes('git push')) {
+      commsQueue.push(['ClaudeOps', 'ops', 'Pushing changes to remote...']);
+    }
+  }
+
+  if (tool_name === 'Write') {
+    const fp = relPath(tool_input.file_path || '');
+    commsQueue.push(['ClaudeReview', 'review', `New file: ${fp}. Queued for review.`]);
+  }
+
+  // Update progress tracking
+  saveProgress(progress);
+
+  // Post activity entries in order
   for (const f of toPost) await firestorePost(f);
+
+  // Post bot comms (fire and forget — don't block hook exit)
+  for (const [bn, bi, msg] of commsQueue) {
+    postComms(bn, bi, msg).catch(() => {});
+  }
 
   process.exit(0);
 }
