@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
+import { ToolsDataService } from './tools-data.service';
 
 export interface ToolCard {
   id: string;
@@ -20,11 +21,24 @@ export interface ToolCard {
   styleUrls: ['./tools.component.css'],
   standalone: false
 })
-export class ToolsComponent {
+export class ToolsComponent implements OnInit {
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Just found these free browser tools — PDF Catalog Generator, Color Palette Extractor and more. No sign-up, runs entirely in your browser 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools')}`;
 
-  constructor(private router: Router, private translationService: TranslationService, private sanitizer: DomSanitizer) {}
+  activeTag: string | null = null;
+
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private translationService: TranslationService,
+    private sanitizer: DomSanitizer,
+  ) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      this.activeTag = params['tag'] || null;
+    });
+  }
 
   translate(key: string): string {
     return this.translationService.translate(key);
@@ -195,9 +209,65 @@ export class ToolsComponent {
     ];
   }
 
+  get filteredTools(): ToolCard[] {
+    if (!this.activeTag) return this.tools;
+    const tag = this.activeTag.toLowerCase();
+    return this.tools.filter(t => t.tags.some(tg => tg.toLowerCase() === tag));
+  }
+
+  get allTags(): string[] {
+    const tagSet = new Set<string>();
+    this.tools.forEach(t => t.tags.forEach(tag => tagSet.add(tag)));
+    return Array.from(tagSet).sort();
+  }
+
+  filterByTag(tag: string, event: Event): void {
+    event.stopPropagation();
+    if (this.activeTag?.toLowerCase() === tag.toLowerCase()) {
+      this.clearTag();
+    } else {
+      this.activeTag = tag;
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tag },
+        queryParamsHandling: 'merge'
+      });
+    }
+  }
+
+  clearTag(): void {
+    this.activeTag = null;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tag: null },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  isTagActive(tag: string): boolean {
+    return this.activeTag?.toLowerCase() === tag.toLowerCase();
+  }
+
   navigate(tool: ToolCard) {
     if (tool.status === 'live') {
       this.router.navigate([tool.route]);
     }
+  }
+
+  /** Get related tools that share tags with a given tool */
+  static getRelatedTools(tools: ToolCard[], currentId: string, count: number = 4): ToolCard[] {
+    const current = tools.find(t => t.id === currentId);
+    if (!current) return [];
+    const currentTags = new Set(current.tags.map(t => t.toLowerCase()));
+    return tools
+      .filter(t => t.id !== currentId && t.status === 'live')
+      .map(t => ({
+        tool: t,
+        score: t.tags.filter(tag => currentTags.has(tag.toLowerCase())).length
+      }))
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, count)
+      .map(r => r.tool);
   }
 }

@@ -15,9 +15,21 @@
     </div>
   </div>
 
+  <!-- Active tag filter bar -->
+  <div class="tools-filter-bar" *ngIf="activeTag">
+    <span class="tools-filter-bar__label">Filtered by:</span>
+    <span class="tools-filter-bar__tag">
+      {{ activeTag }}
+      <button class="tools-filter-bar__clear" (click)="clearTag()" aria-label="Clear tag filter">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </span>
+    <span class="tools-filter-bar__count">{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+  </div>
+
   <div class="tools-grid">
     <div
-      *ngFor="let tool of tools"
+      *ngFor="let tool of filteredTools"
       class="tool-card"
       [class.tool-card--live]="tool.status === 'live'"
       [class.tool-card--soon]="tool.status === 'coming-soon'"
@@ -35,7 +47,14 @@
         </div>
         <p class="tool-card__desc">{{ tool.description }}</p>
         <div class="tool-card__tags">
-          <span *ngFor="let tag of tool.tags" class="tool-tag">{{ tag }}</span>
+          <button
+            *ngFor="let tag of tool.tags"
+            class="tool-tag"
+            [class.tool-tag--active]="isTagActive(tag)"
+            (click)="filterByTag(tag, $event)"
+            [attr.aria-pressed]="isTagActive(tag)"
+            [attr.aria-label]="'Filter by ' + tag"
+          >{{ tag }}</button>
         </div>
       </div>
 
@@ -46,6 +65,13 @@
           <polyline points="12 5 19 12 12 19"/>
         </svg>
       </div>
+    </div>
+
+    <!-- Empty state when filter returns no results -->
+    <div class="tools-empty" *ngIf="filteredTools.length === 0 && activeTag">
+      <span class="tools-empty__icon">◌</span>
+      <p>No tools match the tag "{{ activeTag }}"</p>
+      <button class="tools-empty__clear" (click)="clearTag()">Show all tools</button>
     </div>
   </div>
 </div>

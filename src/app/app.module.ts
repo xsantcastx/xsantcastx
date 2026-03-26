@@ -63,6 +63,7 @@ import { LiveComponent } from './live/live.component';
 import { CarbonAdComponent } from './shared/carbon-ad/carbon-ad.component';
 import { AdsenseComponent } from './shared/adsense/adsense.component';
 import { NotFoundComponent } from './not-found/not-found.component';
+import { RelatedToolsComponent } from './shared/related-tools.component';
 
 
 @NgModule({
@@ -106,7 +107,8 @@ import { NotFoundComponent } from './not-found/not-found.component';
     LiveComponent,
     CarbonAdComponent,
     AdsenseComponent,
-    NotFoundComponent
+    NotFoundComponent,
+    RelatedToolsComponent
   ],
   bootstrap: [AppComponent],
   imports: [
