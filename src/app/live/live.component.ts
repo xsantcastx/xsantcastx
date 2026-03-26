@@ -289,6 +289,7 @@ export class LiveComponent implements OnInit, OnDestroy {
   private sessionStartTime = new Date();
   private toolCounts: Record<string, number> = {};
   private useFirestoreActivity = false;
+  private useFirestoreComms = false;
   private entryCounter = 0;
   private botCounter = 0;
   private static readonly STALE_MS = 5 * 60 * 1000; // 5 minutes
@@ -297,8 +298,11 @@ export class LiveComponent implements OnInit, OnDestroy {
   private activityPollTimer: ReturnType<typeof setInterval> | null = null;
   private chatPollTimer: ReturnType<typeof setInterval> | null = null;
   private viewerPollTimer: ReturnType<typeof setInterval> | null = null;
+  private statusPollTimer: ReturnType<typeof setInterval> | null = null;
+  private commsPollTimer: ReturnType<typeof setInterval> | null = null;
   private knownActivityIds = new Set<string>();
   private knownChatIds = new Set<string>();
+  private knownCommsIds = new Set<string>();
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -320,7 +324,7 @@ export class LiveComponent implements OnInit, OnDestroy {
       isSystem: true,
     });
 
-    // Start mock feeds
+    // Start mock feeds (will be replaced by real data when available)
     this.startMockSimulation();
     this.startBotMock();
 
@@ -328,6 +332,8 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.startActivityPolling();
     this.startChatPolling();
     this.startViewerPolling();
+    this.startStatusPolling();
+    this.startCommsPolling();
   }
 
   ngOnDestroy(): void {
@@ -338,6 +344,8 @@ export class LiveComponent implements OnInit, OnDestroy {
     if (this.activityPollTimer) clearInterval(this.activityPollTimer);
     if (this.chatPollTimer)     clearInterval(this.chatPollTimer);
     if (this.viewerPollTimer)   clearInterval(this.viewerPollTimer);
+    if (this.statusPollTimer)   clearInterval(this.statusPollTimer);
+    if (this.commsPollTimer)    clearInterval(this.commsPollTimer);
 
     // Remove presence record via REST
     fsDeleteDoc('live-viewers', this.sessionId);
@@ -690,6 +698,109 @@ export class LiveComponent implements OnInit, OnDestroy {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xfffffff;
     return USER_COLORS[hash % USER_COLORS.length];
+  }
+
+  // ─── Agent Status (REST polling) ─────────────────────────────────────────
+
+  private startStatusPolling(): void {
+    this.statusPollTimer = setInterval(() => this.pollStatus(), 4000);
+    this.pollStatus();
+  }
+
+  private async pollStatus(): Promise<void> {
+    try {
+      const res = await fetch(`${FS_BASE}/agent-status/current?key=${FS_KEY}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.fields) return;
+
+      const fields = data.fields;
+      const ts = fields.timestamp?.timestampValue ? new Date(fields.timestamp.timestampValue) : null;
+
+      // Only use real status if it's fresh (within STALE_MS)
+      if (!ts || (Date.now() - ts.getTime()) > LiveComponent.STALE_MS) return;
+
+      const task = fields.task?.stringValue || '';
+      const progress = parseInt(fields.progress?.integerValue || '0', 10);
+      const isActive = fields.isActive?.booleanValue ?? false;
+
+      if (task && this.useFirestoreActivity) {
+        this.currentTask = task;
+        this.taskProgress = progress;
+        this.isActive = isActive;
+        this.cdr.detectChanges();
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ─── Agent Comms (REST polling) ────────────────────────────────────────────
+
+  private startCommsPolling(): void {
+    this.commsPollTimer = setInterval(() => this.pollComms(), 5000);
+    this.pollComms();
+  }
+
+  private async pollComms(): Promise<void> {
+    const docs = await fsGet('agent-comms');
+    if (docs.length === 0) return;
+
+    // Sort by timestamp ascending
+    docs.sort((a, b) => {
+      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
+      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
+      return ta - tb;
+    });
+
+    // Check staleness: if newest entry is older than STALE_MS, stay on mock
+    const newest = docs[docs.length - 1];
+    const newestTs = newest?.['timestamp'] instanceof Date ? newest['timestamp'].getTime() : 0;
+    const isStale = (Date.now() - newestTs) > LiveComponent.STALE_MS;
+
+    if (isStale) {
+      // Fall back to mock if we were on real comms
+      if (this.useFirestoreComms) {
+        this.useFirestoreComms = false;
+        this.knownCommsIds.clear();
+        this.botMessages = [];
+        this.startBotMock();
+        this.cdr.detectChanges();
+      }
+      return;
+    }
+
+    if (!this.useFirestoreComms) {
+      // First time with fresh real data → stop mock, replace bot messages
+      this.useFirestoreComms = true;
+      if (this.botTimer) clearTimeout(this.botTimer);
+
+      // Take the last 50 messages
+      const recent = docs.slice(-50);
+      this.botMessages = recent.map(d => ({
+        id: d['id'],
+        botName: d['botName'] || 'ClaudeOps',
+        botId: d['botId'] || 'ops',
+        message: d['message'] || '',
+        timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+        isNew: false,
+      }));
+      this.knownCommsIds = new Set(recent.map(d => d['id']));
+      this.cdr.detectChanges();
+      this.scrollEl(this.botContainer);
+    } else {
+      // Incremental: add only new entries
+      for (const d of docs) {
+        if (this.knownCommsIds.has(d['id'])) continue;
+        this.knownCommsIds.add(d['id']);
+        this.pushBotMessage({
+          id: d['id'],
+          botName: d['botName'] || 'ClaudeOps',
+          botId: d['botId'] || 'ops',
+          message: d['message'] || '',
+          timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+          isNew: true,
+        });
+      }
+    }
   }
 
   // ─── Bot Chat ─────────────────────────────────────────────────────────────

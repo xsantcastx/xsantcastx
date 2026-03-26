@@ -245,7 +245,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (isOnHome) {
       doScroll();
     } else {
-      this.router.navigate(['/home']).then(() => setTimeout(doScroll, 80));
+      this.router.navigate(['/home']).then(() => setTimeout(doScroll, 300));
     }
   }
 
