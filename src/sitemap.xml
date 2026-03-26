@@ -127,4 +127,11 @@
     <priority>0.4</priority>
   </url>
 
+  <url>
+    <loc>https://xsantcastx.com/404</loc>
+    <lastmod>2026-03-26</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+
 </urlset>

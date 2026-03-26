@@ -62,6 +62,7 @@ import { AppTitleStrategy } from './shared/title-strategy.service';
 import { LiveComponent } from './live/live.component';
 import { CarbonAdComponent } from './shared/carbon-ad/carbon-ad.component';
 import { AdsenseComponent } from './shared/adsense/adsense.component';
+import { NotFoundComponent } from './not-found/not-found.component';
 
 
 @NgModule({
@@ -104,7 +105,8 @@ import { AdsenseComponent } from './shared/adsense/adsense.component';
     ScrollTrackingDirective,
     LiveComponent,
     CarbonAdComponent,
-    AdsenseComponent
+    AdsenseComponent,
+    NotFoundComponent
   ],
   bootstrap: [AppComponent],
   imports: [

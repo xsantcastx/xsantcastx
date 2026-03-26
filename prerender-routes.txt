@@ -17,3 +17,4 @@
 /tools/json-formatter
 /tools/base64-encoder
 /tools/regex-tester
+/404
