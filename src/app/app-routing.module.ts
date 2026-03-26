@@ -20,6 +20,7 @@ import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/
 import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
 import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
 import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
+import { NotFoundComponent } from './not-found/not-found.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -730,7 +731,16 @@ const routes: Routes = [
       }
     }
   },
-  { path: '', redirectTo: '/home', pathMatch: 'full' }
+  { path: '', redirectTo: '/home', pathMatch: 'full' },
+  {
+    path: '**',
+    component: NotFoundComponent,
+    title: '404 — Page Not Found | xsantcastx',
+    data: {
+      description: 'The page you are looking for does not exist. Browse free developer tools or return to the homepage.',
+      keywords: '404, page not found, xsantcastx'
+    }
+  }
 ];
 
 @NgModule({
