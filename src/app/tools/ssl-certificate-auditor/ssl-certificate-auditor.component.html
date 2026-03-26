@@ -240,3 +240,12 @@
         </svg>
         Security Audit
         <span class="ssl-auditor__tab-count" *ngIf="result.flags.length > 0">{{ result.flags.length }}</span>
+      </button>
+
+    </div>
+
+  </div>
+
+  <app-related-tools [currentToolId]="'ssl-certificate-auditor'"></app-related-tools>
+
+</div>
