@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
@@ -41,6 +42,7 @@ interface ValidationStatus {
   standalone: false
 })
 export class GmailDeliverabilityCheckerComponent {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   // Inputs
   domainName = '';
@@ -426,6 +428,7 @@ export class GmailDeliverabilityCheckerComponent {
   }
 
   copyRecord(record: DnsRecord): void {
+    if (!this.isBrowser) return;
     const text = `Type: ${record.type}\nHost: ${record.host}\nValue: ${record.value}\nTTL: ${record.ttl}`;
     navigator.clipboard.writeText(text).then(() => {
       record.copied = true;
@@ -444,6 +447,7 @@ export class GmailDeliverabilityCheckerComponent {
   }
 
   copyValue(record: DnsRecord): void {
+    if (!this.isBrowser) return;
     navigator.clipboard.writeText(record.value).then(() => {
       record.copied = true;
       setTimeout(() => { record.copied = false; }, 2000);

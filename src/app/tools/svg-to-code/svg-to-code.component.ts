@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
@@ -28,6 +29,8 @@ interface A11yStatus {
   standalone: false
 })
 export class SvgToCodeComponent {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   svgInput = '';
   componentName = 'MyIcon';
   selectedFramework: Framework = 'react-tsx';
@@ -105,6 +108,7 @@ export class SvgToCodeComponent {
   }
 
   private readSvgFile(file: File): void {
+    if (!this.isBrowser) return;
     if (!file.name.endsWith('.svg') && file.type !== 'image/svg+xml') {
       this.error = 'Please upload an SVG file.';
       return;
@@ -124,6 +128,7 @@ export class SvgToCodeComponent {
   }
 
   private readBatchFile(file: File): void {
+    if (!this.isBrowser) return;
     if (!file.name.endsWith('.svg') && file.type !== 'image/svg+xml') return;
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -387,7 +392,7 @@ export class ${name}Component {${sizeInputs}${ariaInputs}
   }
 
   copyCode(): void {
-    if (!this.generatedCode) return;
+    if (!this.isBrowser || !this.generatedCode) return;
     navigator.clipboard.writeText(this.generatedCode).then(() => {
       this.copied = true;
       setTimeout(() => (this.copied = false), 2000);
@@ -395,6 +400,7 @@ export class ${name}Component {${sizeInputs}${ariaInputs}
   }
 
   copyBatchItem(item: SvgBatchItem): void {
+    if (!this.isBrowser) return;
     navigator.clipboard.writeText(item.generatedCode);
   }
 
@@ -428,6 +434,7 @@ export class ${name}Component {${sizeInputs}${ariaInputs}
   }
 
   private triggerDownload(content: string, filename: string): void {
+    if (!this.isBrowser) return;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
