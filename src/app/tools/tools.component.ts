@@ -3,7 +3,6 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
-import { ToolsDataService } from './tools-data.service';
 
 export interface ToolCard {
   id: string;
