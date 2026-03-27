@@ -153,13 +153,8 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   /** Tools shown in the hero carousel — pick 5 spread across categories */
   get heroCarouselTools(): Tool[] {
-    return [
-      this.tools[0], // CSS Box Shadow
-      this.tools[3], // Email Auditor
-      this.tools[5], // SSL Inspector
-      this.tools[6], // SVG to Code
-      this.tools[7]  // PDF Generator
-    ];
+    const ids = ['box-shadow', 'email-auditor', 'ssl-inspector', 'svg-to-code', 'pdf-generator'];
+    return ids.map(id => this.tools.find(t => t.id === id)).filter((t): t is Tool => !!t);
   }
 
   get filteredTools(): Tool[] {
