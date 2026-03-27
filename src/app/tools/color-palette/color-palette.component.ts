@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
@@ -17,6 +18,8 @@ interface PaletteColor {
   standalone: false
 })
 export class ColorPaletteComponent {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   imageUrl: string | null = null;
   palette: PaletteColor[] = [];
   colorFormat: 'hex' | 'rgb' | 'hsl' = 'hex';
@@ -66,6 +69,7 @@ export class ColorPaletteComponent {
   }
 
   private processFile(file: File): void {
+    if (!this.isBrowser) return;
     if (!file.type.startsWith('image/')) {
       this.error = 'Please upload an image file.';
       return;
@@ -84,6 +88,7 @@ export class ColorPaletteComponent {
   }
 
   private extractPalette(dataUrl: string): void {
+    if (!this.isBrowser) return;
     const img = new Image();
     img.onload = () => {
       const maxSize = 200;
@@ -221,6 +226,7 @@ export class ColorPaletteComponent {
   }
 
   copyColor(color: PaletteColor): void {
+    if (!this.isBrowser) return;
     const value = this.getColorValue(color);
     navigator.clipboard.writeText(value).then(() => {
       this.copiedHex = color.hex;
@@ -233,6 +239,7 @@ export class ColorPaletteComponent {
   }
 
   exportAs(format: 'css' | 'tailwind' | 'json'): void {
+    if (!this.isBrowser) return;
     let content = '';
     let filename = '';
     let mimeType = '';

@@ -157,6 +157,7 @@ export class Base64EncoderComponent implements OnDestroy {
   }
 
   private processFile(file: File) {
+    if (!this.isBrowser) return;
     this.fileName = file.name;
     this.fileSize = file.size;
     this.fileMimeType = file.type || 'application/octet-stream';
@@ -214,6 +215,7 @@ export class Base64EncoderComponent implements OnDestroy {
   }
 
   private fallbackCopy(text: string) {
+    if (!this.isBrowser) return;
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';

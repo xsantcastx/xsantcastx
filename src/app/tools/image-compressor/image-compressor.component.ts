@@ -49,6 +49,7 @@ export class ImageCompressorComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (!this.isBrowser) return;
     this.images.forEach(img => {
       if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
       if (img.originalUrl) URL.revokeObjectURL(img.originalUrl);
@@ -84,6 +85,7 @@ export class ImageCompressorComponent implements OnDestroy {
   }
 
   private handleFiles(files: FileList): void {
+    if (!this.isBrowser) return;
     this.error = '';
     const valid = Array.from(files).filter(f => this.ACCEPTED_TYPES.includes(f.type));
     if (!valid.length) {
@@ -153,6 +155,7 @@ export class ImageCompressorComponent implements OnDestroy {
   }
 
   private doCompress(file: File): Promise<Blob> {
+    if (!this.isBrowser) return Promise.reject(new Error('Not in browser'));
     return new Promise((resolve, reject) => {
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
@@ -187,7 +190,7 @@ export class ImageCompressorComponent implements OnDestroy {
   }
 
   downloadSingle(entry: CompressedImage): void {
-    if (!entry.compressedBlob) return;
+    if (!this.isBrowser || !entry.compressedBlob) return;
     const url = URL.createObjectURL(entry.compressedBlob);
     const a = document.createElement('a');
     a.href = url;
