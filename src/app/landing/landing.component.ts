@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from 
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { ChangelogService, ChangelogDay } from '../changelog.service';
+import { Subscription } from 'rxjs';
 
 export interface Tool {
   id: string;
@@ -23,6 +25,11 @@ export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private changelogService = inject(ChangelogService);
+  private changelogSub?: Subscription;
+
+  changelogDays: ChangelogDay[] = [];
+  changelogLoading = true;
 
   activeCategory = 'All';
   searchQuery = '';
@@ -143,24 +150,6 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
   ];
 
-  readonly changelog = [
-    { date: 'Mar 28', text: 'Testimonials & client trust signals section added to Amarka' },
-    { date: 'Mar 28', text: 'Custom order/quote form completed with dimensions field and validation' },
-    { date: 'Mar 28', text: 'SEO meta tags & structured data — Open Graph, Twitter Cards, JSON-LD' },
-    { date: 'Mar 28', text: 'Tool QA — 13 tools tested, 11 healthy, 2 known bugs tracked' },
-    { date: 'Mar 27', text: 'Firestore offline resilience — persistent cache + timeout fallbacks' },
-    { date: 'Mar 27', text: 'Button typography standardized to Brand Bible Zone 3/3b specs' },
-    { date: 'Mar 27', text: '/about page deployed with 5 premium sections' },
-    { date: 'Mar 27', text: 'datos-tecnicos redesigned with dark/gold premium layout' },
-    { date: 'Mar 27', text: 'heroCarouselTools fix — correct tools now cycle in carousel' },
-    { date: 'Mar 27', text: 'SSR isPlatformBrowser guards added to 5 tool components' },
-    { date: 'Mar 27', text: 'CI upgraded to Node 22' },
-    { date: 'Feb 2026', text: 'SVG to Code Converter & Image Compressor launched' },
-    { date: 'Jan 2026', text: 'Watch Live Work / AI Mission Control launched' },
-    { date: 'Dec 2025', text: 'Gmail Deliverability Checker & Email Auditor added' },
-    { date: 'Nov 2025', text: 'SSR + Firebase Hosting deployed, site goes live' }
-  ];
-
   /** Tools shown in the hero carousel — pick 5 spread across categories */
   get heroCarouselTools(): Tool[] {
     const ids = ['box-shadow', 'email-auditor', 'ssl-inspector', 'svg-to-code', 'pdf-generator'];
@@ -182,9 +171,24 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
+    this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
+      next: (days) => {
+        this.changelogDays = days;
+        this.changelogLoading = false;
+      },
+      error: () => {
+        this.changelogLoading = false;
+      }
+    });
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    this.changelogSub?.unsubscribe();
+  }
+
+  toggleChangelogDay(day: ChangelogDay): void {
+    day.expanded = !day.expanded;
+  }
 
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
