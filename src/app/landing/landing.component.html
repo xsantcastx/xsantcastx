@@ -303,18 +303,47 @@
   <section class="hp-changelog">
     <div class="hp-changelog__inner">
       <p class="hp-section-eyebrow">What's New</p>
-      <h2 class="hp-section-title">Recent Updates</h2>
-      <div class="hp-changelog__list">
-        <div class="hp-cl-item" *ngFor="let item of changelog; let i = index" [class.hp-cl-item--latest]="i === 0">
-          <div class="hp-cl-item__line-wrap">
-            <div class="hp-cl-item__dot"></div>
-            <div class="hp-cl-item__line" *ngIf="i < changelog.length - 1"></div>
+      <h2 class="hp-section-title">Latest Updates</h2>
+
+      <!-- Loading state -->
+      <div class="hp-cl-loading" *ngIf="changelogLoading">
+        <div class="hp-cl-loading__bar"></div>
+        <div class="hp-cl-loading__bar hp-cl-loading__bar--short"></div>
+        <div class="hp-cl-loading__bar"></div>
+      </div>
+
+      <!-- Grouped changelog -->
+      <div class="hp-cl-feed" *ngIf="!changelogLoading">
+
+        <div class="hp-cl-empty" *ngIf="changelogDays.length === 0">
+          No updates yet — check back soon.
+        </div>
+
+        <div class="hp-cl-day" *ngFor="let day of changelogDays; let di = index">
+
+          <!-- Day header (clickable to expand/collapse) -->
+          <button class="hp-cl-day__header" (click)="toggleChangelogDay(day)" [attr.aria-expanded]="day.expanded">
+            <span class="hp-cl-day__dot" [class.hp-cl-day__dot--latest]="di === 0"></span>
+            <span class="hp-cl-day__label">{{ day.dateLabel }}</span>
+            <span class="hp-cl-day__count">{{ day.entries.length }} update{{ day.entries.length !== 1 ? 's' : '' }}</span>
+            <span class="hp-cl-day__new-badge" *ngIf="di === 0">New</span>
+            <span class="hp-cl-day__chevron" [class.hp-cl-day__chevron--open]="day.expanded">&#x203A;</span>
+          </button>
+
+          <!-- Entries (expanded view) -->
+          <div class="hp-cl-entries" [class.hp-cl-entries--open]="day.expanded">
+            <div class="hp-cl-entry" *ngFor="let entry of day.entries">
+              <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
+              <div class="hp-cl-entry__body">
+                <p class="hp-cl-entry__title">{{ entry.title }}</p>
+                <p class="hp-cl-entry__details">{{ entry.details }}</p>
+              </div>
+            </div>
           </div>
-          <div class="hp-cl-item__content">
-            <span class="hp-cl-item__date">{{ item.date }}</span>
-            <span class="hp-cl-item__text">{{ item.text }}</span>
-            <span class="hp-cl-item__new" *ngIf="i === 0">New</span>
-          </div>
+
+          <!-- Connector line between days -->
+          <div class="hp-cl-day__connector" *ngIf="di < changelogDays.length - 1"></div>
+
         </div>
       </div>
     </div>
