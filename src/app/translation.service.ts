@@ -354,6 +354,13 @@ export class TranslationService {
     'tools.pdf.done': { en: 'Done', es: 'Listo' },
     'tools.pdf.reset': { en: 'Reset', es: 'Restablecer' },
 
+    // SVG to Code Converter
+    'tools.svgToCode.title': { en: 'SVG to Code Converter', es: 'Convertidor de SVG a Código' },
+    'tools.svgToCode.desc': { en: 'Convert SVGs to optimized React, Vue, or Angular components with props and a11y.', es: 'Convierte SVGs en componentes optimizados de React, Vue o Angular con props y accesibilidad.' },
+    'tools.svgToCode.eyebrow': { en: 'Code Converters', es: 'Convertidores de Código' },
+    'tools.svgToCode.page.title': { en: 'SVG to Code Converter', es: 'Convertidor de SVG a Código' },
+    'tools.svgToCode.page.subtitle': { en: 'Convert SVG files into production-ready React, Vue 3, or Angular components with configurable props, accessibility attributes, and SVG optimization.', es: 'Convierte archivos SVG en componentes listos para producción de React, Vue 3 o Angular con props configurables, atributos de accesibilidad y optimización de SVG.' },
+
     // Cookie Banner / GDPR Consent
     'cookies.banner.title': { en: 'Cookie Preferences', es: 'Preferencias de Cookies' },
     'cookies.banner.description': { en: 'We use analytics cookies to improve your experience and understand how our site is used.', es: 'Usamos cookies de analytics para mejorar tu experiencia y entender como se usa nuestro sitio.' },
