@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, collection, query, where, orderBy, limit, collectionData } from '@angular/fire/firestore';
+import { Firestore, collection, query, orderBy, limit, collectionData } from '@angular/fire/firestore';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
@@ -32,16 +32,11 @@ export class ChangelogService {
     }
 
     const col = collection(this.firestore, 'changelog');
-    const q = query(
-      col,
-      where('project', '==', 'xsantcastx'),
-      orderBy('date', 'desc'),
-      limit(50)
-    );
+    const q = query(col, orderBy('date', 'desc'), limit(50));
 
     return collectionData(q, { idField: 'id' }).pipe(
       map((entries: any[]) => this.groupByDay(entries)),
-      catchError(() => of([]))
+      catchError((err) => { console.error('[ChangelogService]', err); return of([]); })
     );
   }
 
