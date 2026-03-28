@@ -144,7 +144,17 @@ export class LandingComponent implements OnInit, OnDestroy {
   ];
 
   readonly changelog = [
-    { date: 'Mar 2026', text: 'SEO improvements & Core Web Vitals optimization' },
+    { date: 'Mar 28', text: 'Testimonials & client trust signals section added to Amarka' },
+    { date: 'Mar 28', text: 'Custom order/quote form completed with dimensions field and validation' },
+    { date: 'Mar 28', text: 'SEO meta tags & structured data — Open Graph, Twitter Cards, JSON-LD' },
+    { date: 'Mar 28', text: 'Tool QA — 13 tools tested, 11 healthy, 2 known bugs tracked' },
+    { date: 'Mar 27', text: 'Firestore offline resilience — persistent cache + timeout fallbacks' },
+    { date: 'Mar 27', text: 'Button typography standardized to Brand Bible Zone 3/3b specs' },
+    { date: 'Mar 27', text: '/about page deployed with 5 premium sections' },
+    { date: 'Mar 27', text: 'datos-tecnicos redesigned with dark/gold premium layout' },
+    { date: 'Mar 27', text: 'heroCarouselTools fix — correct tools now cycle in carousel' },
+    { date: 'Mar 27', text: 'SSR isPlatformBrowser guards added to 5 tool components' },
+    { date: 'Mar 27', text: 'CI upgraded to Node 22' },
     { date: 'Feb 2026', text: 'SVG to Code Converter & Image Compressor launched' },
     { date: 'Jan 2026', text: 'Watch Live Work / AI Mission Control launched' },
     { date: 'Dec 2025', text: 'Gmail Deliverability Checker & Email Auditor added' },
