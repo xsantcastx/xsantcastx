@@ -24,11 +24,17 @@ import {
 // Import contact functions
 import { sendContactEmail } from "./contact";
 
+// Import activity feed pruning trigger
+import { pruneActivityFeed } from "./pruneActivity";
+
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
 
 // Export contact functions
 export { sendContactEmail };
+
+// Export activity feed pruning (Firestore onCreate trigger)
+export { pruneActivityFeed };
 
 // Export PayPal functions
 export const paypal = {
