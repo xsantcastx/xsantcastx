@@ -18,4 +18,17 @@
 /tools/base64-encoder
 /tools/regex-tester
 /tools/ssl-certificate-auditor
+/embed/json-formatter
+/embed/base64-encoder
+/embed/regex-tester
+/embed/box-shadow-generator
+/embed/color-palette
+/embed/contrast-checker
+/embed/image-compressor
+/embed/pdf-generator
+/embed/gmail-deliverability-checker
+/embed/email-deliverability-auditor
+/embed/ssl-certificate-inspector
+/embed/ssl-certificate-auditor
+/embed/svg-to-code
 /404
