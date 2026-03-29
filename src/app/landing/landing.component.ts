@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { ChangelogService, ChangelogDay } from '../changelog.service';
 import { Subscription } from 'rxjs';
+import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
 
 export interface Tool {
   id: string;
@@ -39,130 +40,28 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly categories = ['All', 'CSS Tools', 'Email Tools', 'Security Tools', 'Code Converters', 'Productivity'];
 
-  readonly tools: Tool[] = [
-    {
-      id: 'box-shadow',
-      name: 'CSS Box Shadow Generator',
-      desc: 'Design multi-layer CSS shadows visually with live preview and one-click copy.',
-      route: '/tools/box-shadow-generator',
-      category: 'CSS Tools',
-      icon: '◻',
-      features: ['Multiple shadow layers', 'Live visual preview', 'RGBA color picker', 'One-click CSS copy']
-    },
-    {
-      id: 'color-palette',
-      name: 'Color Palette Extractor',
-      desc: 'Extract dominant colors from any image. Export as CSS variables, Tailwind, or JSON.',
-      route: '/tools/color-palette',
-      category: 'CSS Tools',
-      icon: '◉',
-      features: ['Dominant color extraction', 'HEX, RGB & HSL formats', 'Export CSS variables', 'Export Tailwind config']
-    },
-    {
-      id: 'contrast-checker',
-      name: 'WCAG Contrast Checker',
-      desc: 'Test foreground/background pairs against WCAG AA & AAA accessibility standards.',
-      route: '/tools/contrast-checker',
-      category: 'CSS Tools',
-      icon: '◑',
-      features: ['AA & AAA compliance', 'Normal & large text', 'UI component checks', 'Color picker']
-    },
-    {
-      id: 'email-auditor',
-      name: 'Email Deliverability Auditor',
-      desc: 'Audit SPF, DKIM, DMARC & MX DNS records. Get actionable fix recommendations.',
-      route: '/tools/email-deliverability-auditor',
-      category: 'Email Tools',
-      icon: '◈',
-      features: ['SPF record validation', 'DKIM DNS lookup', 'DMARC policy check', 'Fix recommendations']
-    },
-    {
-      id: 'gmail-checker',
-      name: 'Gmail Deliverability Checker',
-      desc: 'Diagnose why emails land in Gmail spam. Auto-generate ready-to-copy DNS fixes.',
-      route: '/tools/gmail-deliverability-checker',
-      category: 'Email Tools',
-      icon: '◎',
-      features: ['Gmail-specific diagnostics', 'SPF auto-generator', 'Ready-to-copy DNS fixes', 'MX record lookup']
-    },
-    {
-      id: 'ssl-inspector',
-      name: 'SSL Certificate Inspector',
-      desc: 'Inspect TLS cert chains, expiry dates, cipher strength, and CA reputation.',
-      route: '/tools/ssl-certificate-inspector',
-      category: 'Security Tools',
-      icon: '⬡',
-      features: ['Certificate expiry check', 'Full chain visualization', 'Weak cipher detection', 'CA reputation audit']
-    },
-    {
-      id: 'svg-to-code',
-      name: 'SVG to Code Converter',
-      desc: 'Convert SVGs to React, Vue, or Angular components with props and ARIA attributes.',
-      route: '/tools/svg-to-code',
-      category: 'Code Converters',
-      icon: '⟨⟩',
-      features: ['React JSX/TSX output', 'Vue & Angular support', 'Color & size props', 'ARIA accessibility']
-    },
-    {
-      id: 'json-formatter',
-      name: 'JSON Formatter & Validator',
-      desc: 'Format, validate, minify and repair JSON with live syntax checking and one-click copy.',
-      route: '/tools/json-formatter',
-      category: 'Code Converters',
-      icon: '{}',
-      features: ['Live validation', 'Syntax highlighting', 'Sort keys & minify', 'Repair broken JSON']
-    },
-    {
-      id: 'base64-encoder',
-      name: 'Base64 Encoder & Decoder',
-      desc: 'Encode text or files to Base64 and decode back to text. URL-safe mode, live conversion.',
-      route: '/tools/base64-encoder',
-      category: 'Code Converters',
-      icon: '64',
-      features: ['Encode & decode text', 'URL-safe Base64', 'File drag & drop encode', 'Live conversion']
-    },
-    {
-      id: 'regex-tester',
-      name: 'Regex Tester',
-      desc: 'Test regular expressions live with match highlighting, capture groups, flags and plain-English explanations.',
-      route: '/tools/regex-tester',
-      category: 'Code Converters',
-      icon: '.*',
-      features: ['Live match highlighting', 'Capture groups', 'g i m s u flags', 'Plain-English explanation']
-    },
-    {
-      id: 'pdf-generator',
-      name: 'PDF Catalog Generator',
-      desc: 'Build professional product catalogs from images and export as PDF instantly.',
-      route: '/tools/pdf-generator',
-      category: 'Productivity',
-      icon: '▤',
-      features: ['Drag & drop upload', 'Multiple layout templates', 'Custom accent colors', 'Auto-save to browser']
-    },
-    {
-      id: 'image-compressor',
-      name: 'Image Compressor',
-      desc: 'Compress JPEG, PNG, and WebP images in-browser. No uploads, instant download.',
-      route: '/tools/image-compressor',
-      category: 'Productivity',
-      icon: '▣',
-      features: ['JPEG, PNG & WebP', 'Batch up to 20 images', 'Live quality preview', 'No server uploads']
-    },
-    {
-      id: 'ssl-auditor',
-      name: 'SSL Certificate Auditor',
-      desc: 'Audit SSL/TLS certificates, verify root CA ownership, check expiry, and surface security flags.',
-      route: '/tools/ssl-certificate-auditor',
-      category: 'Security Tools',
-      icon: '🔒',
-      features: ['Root CA verification', 'Certificate expiry check', 'Security flag audit', 'No backend required']
-    }
-  ];
+  /** Derive landing-page Tool view models from the single registry source of truth */
+  readonly tools: Tool[] = getLiveTools().map(t => ({
+    id: t.id,
+    name: t.title,
+    desc: t.description,
+    route: t.route,
+    category: t.category,
+    icon: t.textIcon,
+    features: t.features,
+  }));
 
-  /** Tools shown in the hero carousel — pick 5 spread across categories */
+  /** Tools shown in the hero carousel — uses featured flag from registry */
   get heroCarouselTools(): Tool[] {
-    const ids = ['box-shadow', 'email-auditor', 'ssl-inspector', 'svg-to-code', 'pdf-generator'];
-    return ids.map(id => this.tools.find(t => t.id === id)).filter((t): t is Tool => !!t);
+    return getFeaturedTools().map(t => ({
+      id: t.id,
+      name: t.title,
+      desc: t.description,
+      route: t.route,
+      category: t.category,
+      icon: t.textIcon,
+      features: t.features,
+    }));
   }
 
   get filteredTools(): Tool[] {
