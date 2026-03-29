@@ -64,6 +64,8 @@ import { CarbonAdComponent } from './shared/carbon-ad/carbon-ad.component';
 import { AdsenseComponent } from './shared/adsense/adsense.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { RelatedToolsComponent } from './shared/related-tools.component';
+import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
+import { EmbedCodeGeneratorComponent } from './shared/embed-code-generator/embed-code-generator.component';
 
 
 @NgModule({
@@ -108,7 +110,9 @@ import { RelatedToolsComponent } from './shared/related-tools.component';
     CarbonAdComponent,
     AdsenseComponent,
     NotFoundComponent,
-    RelatedToolsComponent
+    RelatedToolsComponent,
+    EmbedBarComponent,
+    EmbedCodeGeneratorComponent
   ],
   bootstrap: [AppComponent],
   imports: [

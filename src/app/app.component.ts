@@ -1,5 +1,7 @@
 import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
 
 @Component({
@@ -10,12 +12,21 @@ import { SeoService } from './seo.service';
 })
 export class AppComponent implements OnInit {
   title = 'xsantcastx';
+  isEmbedMode = false;
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   constructor(private seo: SeoService) {}
 
   ngOnInit() {
     this.seo.init();
+
+    // Detect embed routes
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
+    ).subscribe(e => {
+      this.isEmbedMode = e.urlAfterRedirects.startsWith('/embed/');
+    });
 
     if (!isPlatformBrowser(this.platformId)) return;
 

@@ -731,6 +731,21 @@ const routes: Routes = [
       }
     }
   },
+  // ── Embed routes (minimal chrome, iframe-friendly) ──────────────────────
+  { path: 'embed/json-formatter', component: JsonFormatterComponent, data: { embed: true } },
+  { path: 'embed/base64-encoder', component: Base64EncoderComponent, data: { embed: true } },
+  { path: 'embed/regex-tester', component: RegexTesterComponent, data: { embed: true } },
+  { path: 'embed/box-shadow-generator', component: BoxShadowGeneratorComponent, data: { embed: true } },
+  { path: 'embed/color-palette', component: ColorPaletteComponent, data: { embed: true } },
+  { path: 'embed/contrast-checker', component: ContrastCheckerComponent, data: { embed: true } },
+  { path: 'embed/image-compressor', component: ImageCompressorComponent, data: { embed: true } },
+  { path: 'embed/pdf-generator', component: PdfGeneratorComponent, data: { embed: true } },
+  { path: 'embed/gmail-deliverability-checker', component: GmailDeliverabilityCheckerComponent, data: { embed: true } },
+  { path: 'embed/email-deliverability-auditor', component: EmailDeliverabilityAuditorComponent, data: { embed: true } },
+  { path: 'embed/ssl-certificate-inspector', component: SslCertificateInspectorComponent, data: { embed: true } },
+  { path: 'embed/ssl-certificate-auditor', component: SslCertificateAuditorComponent, data: { embed: true } },
+  { path: 'embed/svg-to-code', component: SvgToCodeComponent, data: { embed: true } },
+
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {
     path: '**',

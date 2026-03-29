@@ -1,9 +1,10 @@
-<div class="particle-layer"></div>
-<app-header></app-header>
+<div class="particle-layer" *ngIf="!isEmbedMode"></div>
+<app-header *ngIf="!isEmbedMode"></app-header>
 
 <router-outlet></router-outlet>
 
-<app-footer></app-footer>
+<app-embed-bar *ngIf="isEmbedMode"></app-embed-bar>
+<app-footer *ngIf="!isEmbedMode"></app-footer>
 
 <!-- GDPR Cookie Banner -->
-<app-cookie-banner></app-cookie-banner>
+<app-cookie-banner *ngIf="!isEmbedMode"></app-cookie-banner>
