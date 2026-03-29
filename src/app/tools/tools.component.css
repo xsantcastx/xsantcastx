@@ -390,10 +390,36 @@
 
 /* ─── RESPONSIVE ─────────────────────────────────────── */
 
+/* Tablet: 2-column grid, slightly smaller cards */
+@media (max-width: 768px) {
+  .tools-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .tool-card {
+    padding: 1.25rem;
+  }
+}
+
+/* Mobile: single column, touch-optimized */
 @media (max-width: 640px) {
+  .tools-page {
+    padding-top: calc(var(--header-offset) + 1.5rem);
+    padding-bottom: 3rem;
+  }
+
   .tools-header__top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tools-header__title {
+    font-size: clamp(1.6rem, 7vw, 2.2rem);
+  }
+
+  .tools-header__subtitle {
+    font-size: 0.9rem;
   }
 
   .tools-search-wrap {
@@ -402,18 +428,128 @@
 
   .tools-search__input {
     width: 100%;
+    padding: 0.8rem 3rem 0.8rem 2.4rem;
+    font-size: 1rem; /* prevent iOS zoom on focus */
   }
 
+  /* Horizontal scroll for categories on mobile */
   .tools-categories {
-    gap: 0.4rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.5rem;
+    margin-left: calc(var(--page-gutter) * -1);
+    margin-right: calc(var(--page-gutter) * -1);
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+    padding-bottom: 0.25rem;
+  }
+  .tools-categories::-webkit-scrollbar {
+    display: none;
   }
 
+  /* Larger touch targets for category buttons (min 44px height) */
   .tools-cat-btn {
-    padding: 0.4rem 0.85rem;
-    font-size: 0.75rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
   }
 
   .tools-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .tool-card {
+    padding: 1rem 1rem 1rem 0.85rem;
+    gap: 0.85rem;
+  }
+
+  /* Smaller icon on mobile */
+  .tool-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .tool-card__title {
+    font-size: 0.9rem;
+  }
+
+  .tool-card__desc {
+    font-size: 0.8rem;
+    margin-bottom: 0.65rem;
+    line-height: 1.5;
+  }
+
+  /* Larger touch targets for tags (min 44px tap area) */
+  .tool-tag {
+    font-size: 0.65rem;
+    padding: 0.3rem 0.65rem;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tool-card__tags {
+    gap: 0.4rem;
+  }
+
+  .tool-card__arrow {
+    display: none; /* save space — the whole card is tappable */
+  }
+
+  /* Filter bar responsive */
+  .tools-filter-bar {
+    flex-wrap: wrap;
+    padding: 0.6rem 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .tools-filter-bar__count {
+    width: 100%;
+    margin-left: 0;
+    text-align: right;
+  }
+
+  /* Share buttons */
+  .tools-header__share {
+    width: 100%;
+  }
+
+  .share-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+}
+
+/* Small phones (< 375px) */
+@media (max-width: 374px) {
+  .tools-page {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .tool-card {
+    padding: 0.85rem 0.75rem;
+    gap: 0.7rem;
+  }
+
+  .tool-card__icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tool-card__title {
+    font-size: 0.85rem;
+  }
+
+  .tool-card__desc {
+    font-size: 0.78rem;
   }
 }
