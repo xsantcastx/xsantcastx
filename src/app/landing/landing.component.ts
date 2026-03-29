@@ -147,6 +147,15 @@ export class LandingComponent implements OnInit, OnDestroy {
       category: 'Productivity',
       icon: '▣',
       features: ['JPEG, PNG & WebP', 'Batch up to 20 images', 'Live quality preview', 'No server uploads']
+    },
+    {
+      id: 'ssl-auditor',
+      name: 'SSL Certificate Auditor',
+      desc: 'Audit SSL/TLS certificates, verify root CA ownership, check expiry, and surface security flags.',
+      route: '/tools/ssl-certificate-auditor',
+      category: 'Security Tools',
+      icon: '🔒',
+      features: ['Root CA verification', 'Certificate expiry check', 'Security flag audit', 'No backend required']
     }
   ];
 

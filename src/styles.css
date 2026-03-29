@@ -17,6 +17,7 @@
   --section-gap: clamp(3.5rem, 8vw, 6.5rem);
   --radius-md: 16px;
   --radius-lg: 24px;
+  --success-color: #4ade80;
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --header-offset: 96px;
