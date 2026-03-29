@@ -1,8 +1,27 @@
 <div class="tools-page">
   <div class="tools-header">
-    <div class="tools-header__eyebrow">{{ translate('tools.page.eyebrow') }}</div>
-    <h1 class="tools-header__title">{{ translate('tools.page.title') }}</h1>
-    <p class="tools-header__subtitle">{{ translate('tools.page.subtitle') }}</p>
+    <div class="tools-header__top">
+      <div class="tools-header__text">
+        <div class="tools-header__eyebrow">{{ translate('tools.page.eyebrow') }}</div>
+        <h1 class="tools-header__title">{{ translate('tools.page.title') }}</h1>
+        <p class="tools-header__subtitle">{{ translate('tools.page.subtitle') }}</p>
+      </div>
+      <div class="tools-search-wrap">
+        <span class="tools-search__icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input
+          id="tools-search-input"
+          class="tools-search__input"
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search tools..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="tools-search__kbd" aria-hidden="true">⌘K</span>
+      </div>
+    </div>
     <div class="tools-header__share">
       <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X / Twitter">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
@@ -15,6 +34,16 @@
     </div>
   </div>
 
+  <!-- Category filter buttons -->
+  <div class="tools-categories">
+    <button
+      class="tools-cat-btn"
+      *ngFor="let cat of categories"
+      [class.tools-cat-btn--active]="activeCategory === cat"
+      (click)="setCategory(cat)"
+    >{{ cat }}</button>
+  </div>
+
   <!-- Active tag filter bar -->
   <div class="tools-filter-bar" *ngIf="activeTag">
     <span class="tools-filter-bar__label">Filtered by:</span>
@@ -25,6 +54,12 @@
       </button>
     </span>
     <span class="tools-filter-bar__count">{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+  </div>
+
+  <!-- Results count -->
+  <div class="tools-results-count" *ngIf="searchQuery || activeCategory !== 'All'">
+    <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+    <button class="tools-results-count__clear" (click)="clearAll()" *ngIf="searchQuery || activeCategory !== 'All' || activeTag">Clear filters</button>
   </div>
 
   <div class="tools-grid">
@@ -68,10 +103,12 @@
     </div>
 
     <!-- Empty state when filter returns no results -->
-    <div class="tools-empty" *ngIf="filteredTools.length === 0 && activeTag">
+    <div class="tools-empty" *ngIf="filteredTools.length === 0">
       <span class="tools-empty__icon">◌</span>
-      <p>No tools match the tag "{{ activeTag }}"</p>
-      <button class="tools-empty__clear" (click)="clearTag()">Show all tools</button>
+      <p *ngIf="searchQuery">No tools match "{{ searchQuery }}"</p>
+      <p *ngIf="!searchQuery && activeTag">No tools match the tag "{{ activeTag }}"</p>
+      <p *ngIf="!searchQuery && !activeTag && activeCategory !== 'All'">No tools in "{{ activeCategory }}" yet</p>
+      <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
     </div>
   </div>
 </div>
