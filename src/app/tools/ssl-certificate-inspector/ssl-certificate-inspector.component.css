@@ -96,12 +96,12 @@
 }
 
 .share-btn--twitter {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-strong, rgba(0, 0, 0, 0.35));
   color: var(--text-color);
 }
 
 .share-btn--linkedin {
-  background: rgba(10, 102, 194, 0.2);
+  background: color-mix(in srgb, var(--secondary-color) 20%, transparent);
   color: var(--text-color);
 }
 
