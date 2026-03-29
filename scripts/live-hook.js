@@ -14,7 +14,7 @@ const PROJECT_ID   = 'xsantcastx-1694b';
 const API_KEY      = 'AIzaSyAABzajHVAd6NbLjMGk4IIVA9pB1T-P7To';
 const COLLECTION   = 'claude-activity';
 const SESSION_FILE = path.join(os.tmpdir(), 'claude-live-session.json');
-const MAX_ENTRIES  = 200; // keep at most this many docs (pruned on new session)
+// MAX_ENTRIES pruning moved to pruneActivityFeed Cloud Function
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,33 +105,10 @@ function firestorePost(fields) {
   }, body);
 }
 
-/**
- * List document names in COLLECTION so we can prune old ones.
- * Returns array of full resource names like "projects/.../documents/claude-activity/docId"
- */
-async function listDocNames() {
-  const res = await httpsRequest({
-    hostname: 'firestore.googleapis.com',
-    path:     `/v1/projects/${PROJECT_ID}/databases/(default)/documents/${COLLECTION}?pageSize=300&key=${API_KEY}`,
-    method:   'GET',
-    headers:  { 'Content-Type': 'application/json' }
-  }, null);
-  if (!res) return [];
-  try {
-    const json = JSON.parse(res.data);
-    return (json.documents || []).map(d => d.name);
-  } catch { return []; }
-}
-
-async function firestoreDelete(docName) {
-  const shortName = docName.replace('projects/', '/projects/');
-  return httpsRequest({
-    hostname: 'firestore.googleapis.com',
-    path:     `/v1${shortName}?key=${API_KEY}`,
-    method:   'DELETE',
-    headers:  {}
-  }, null);
-}
+// NOTE: Pruning of old claude-activity entries is now handled by the
+// pruneActivityFeed Cloud Function (Firestore onCreate trigger) using
+// Firebase Admin SDK. Direct client-side deletes were removed to close
+// a DoS vulnerability (unauthenticated delete was allowed by rules).
 
 // ── Agent status + bot comms helpers ─────────────────────────────────────────
 
@@ -219,13 +196,7 @@ async function main() {
       timestamp: { timestampValue: now },
     }).catch(() => {});
 
-    // Prune old entries async (don't await — don't block the hook)
-    listDocNames().then(async (names) => {
-      if (names.length > MAX_ENTRIES) {
-        const toDelete = names.slice(0, names.length - MAX_ENTRIES);
-        for (const name of toDelete) await firestoreDelete(name);
-      }
-    }).catch(() => {});
+    // Pruning is now handled server-side by the pruneActivityFeed Cloud Function.
   }
 
   // Track progress
