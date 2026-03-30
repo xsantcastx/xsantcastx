@@ -66,6 +66,8 @@ import { NotFoundComponent } from './not-found/not-found.component';
 import { RelatedToolsComponent } from './shared/related-tools.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { EmbedCodeGeneratorComponent } from './shared/embed-code-generator/embed-code-generator.component';
+import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
+import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-capture.component';
 
 
 @NgModule({
@@ -112,7 +114,9 @@ import { EmbedCodeGeneratorComponent } from './shared/embed-code-generator/embed
     NotFoundComponent,
     RelatedToolsComponent,
     EmbedBarComponent,
-    EmbedCodeGeneratorComponent
+    EmbedCodeGeneratorComponent,
+    EmbedLandingComponent,
+    NewsletterCaptureComponent
   ],
   bootstrap: [AppComponent],
   imports: [
