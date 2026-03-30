@@ -20,7 +20,9 @@ import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/
 import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
 import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
 import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
+import { GradientGeneratorComponent } from './tools/gradient-generator/gradient-generator.component';
 import { NotFoundComponent } from './not-found/not-found.component';
+import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -253,6 +255,18 @@ const routes: Routes = [
               operatingSystem: 'Web Browser',
               offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
             }
+          },
+          {
+            '@type': 'ListItem',
+            position: 13,
+            item: {
+              '@type': 'SoftwareApplication',
+              name: 'CSS Gradient Generator',
+              url: `${SITE_URL}/tools/gradient-generator`,
+              applicationCategory: 'UtilityApplication',
+              operatingSystem: 'Web Browser',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+            }
           }
         ]
       }
@@ -462,6 +476,42 @@ const routes: Routes = [
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
             { '@type': 'ListItem', position: 2, name: 'CSS Box Shadow Generator', item: `${SITE_URL}/tools/box-shadow-generator` }
+          ]
+        }
+      }
+    }
+  },
+  {
+    path: 'tools/gradient-generator',
+    component: GradientGeneratorComponent,
+    title: 'Free CSS Gradient Generator — Linear, Radial & Conic | xsantcastx',
+    data: {
+      description: 'Create beautiful CSS gradients for free. Build linear, radial and conic gradients with a visual editor, live preview and one-click code copy. No sign-up.',
+      keywords: 'css gradient generator, linear gradient, radial gradient, conic gradient, css gradient maker, gradient creator online, css background gradient, gradient color picker',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'CSS Gradient Generator',
+        url: `${SITE_URL}/tools/gradient-generator`,
+        description: 'Free browser-based CSS gradient generator. Create linear, radial and conic gradients visually, add and remove color stops, adjust angles and positions, and copy ready-to-use CSS code instantly.',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Linear, radial and conic gradient types',
+          'Visual color stop editor',
+          'Angle and position controls',
+          'Live gradient preview',
+          'Preset gradient library',
+          'One-click CSS code copy',
+          'No account required'
+        ],
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+            { '@type': 'ListItem', position: 2, name: 'CSS Gradient Generator', item: `${SITE_URL}/tools/gradient-generator` }
           ]
         }
       }
@@ -731,6 +781,24 @@ const routes: Routes = [
       }
     }
   },
+  // ── Embed landing page (docs + pricing for embedders) ───────────────────
+  {
+    path: 'embed',
+    component: EmbedLandingComponent,
+    title: 'Embed Developer Tools on Your Site — Free Widgets | xsantcastx',
+    data: {
+      description: 'Embed free developer tools on your blog, docs, or app. JSON Formatter, Base64 Encoder, Regex Tester, and more. One iframe tag, zero setup.',
+      keywords: 'embed developer tools, embeddable widgets, iframe tools, json formatter widget, developer tool embed, free embed',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Embed Developer Tools — xsantcastx',
+        description: 'Embed free browser-based developer tools on any website with a single iframe tag.',
+        url: `${SITE_URL}/embed`
+      }
+    }
+  },
+
   // ── Embed routes (minimal chrome, iframe-friendly) ──────────────────────
   { path: 'embed/json-formatter', component: JsonFormatterComponent, data: { embed: true } },
   { path: 'embed/base64-encoder', component: Base64EncoderComponent, data: { embed: true } },
@@ -745,6 +813,7 @@ const routes: Routes = [
   { path: 'embed/ssl-certificate-inspector', component: SslCertificateInspectorComponent, data: { embed: true } },
   { path: 'embed/ssl-certificate-auditor', component: SslCertificateAuditorComponent, data: { embed: true } },
   { path: 'embed/svg-to-code', component: SvgToCodeComponent, data: { embed: true } },
+  { path: 'embed/gradient-generator', component: GradientGeneratorComponent, data: { embed: true } },
 
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {

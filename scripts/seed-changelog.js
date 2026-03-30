@@ -15,6 +15,39 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 const entries = [
+  // March 30, 2026
+  {
+    date: new Date('2026-03-30'),
+    title: 'CSS Gradient Generator — new tool launched',
+    details: 'Full-featured gradient builder supporting linear, radial, and conic gradients. Includes color stop management, 8 curated presets (Cyberpunk, Sunset, Ocean, etc.), live preview, and one-click CSS/Tailwind code copy.',
+    category: 'tool',
+    project: 'xsantcastx',
+    createdAt: new Date(),
+  },
+  {
+    date: new Date('2026-03-30'),
+    title: 'Fixed scrolling background color flickering',
+    details: 'Disabled scroll-based body gradient switching that caused jarring color shifts between sections. CSS gradients cannot transition smoothly — replaced with a single consistent background gradient.',
+    category: 'fix',
+    project: 'xsantcastx',
+    createdAt: new Date(),
+  },
+  {
+    date: new Date('2026-03-30'),
+    title: 'Glitch effect smoothed — no more keyword color flashing',
+    details: 'Added debounce guard, staggered wave animation (120ms per element), extended glitch duration to 800ms, and increased cycle interval to 3.5s. CSS transitions upgraded to 0.6s cubic-bezier easing. Keywords in glitch-out mode no longer all turn magenta.',
+    category: 'fix',
+    project: 'xsantcastx',
+    createdAt: new Date(),
+  },
+  {
+    date: new Date('2026-03-30'),
+    title: 'Firebase CommonJS build warnings resolved',
+    details: 'Added allowedCommonJsDependencies to angular.json for @firebase/firestore, @firebase/database, @grpc/grpc-js, faye-websocket, and related modules. Eliminates optimization bailout warnings during build.',
+    category: 'infrastructure',
+    project: 'xsantcastx',
+    createdAt: new Date(),
+  },
   // March 28, 2026
   {
     date: new Date('2026-03-28'),

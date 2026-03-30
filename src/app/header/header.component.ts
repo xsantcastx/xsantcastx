@@ -119,7 +119,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       if (element && scrollPosition >= element.offsetTop) {
         if (this.currentSection !== sections[i]) {
           this.currentSection = sections[i];
-          this.updateBodyBackground(sections[i]);
+          // Background switching disabled to prevent flickering
         }
         return;
       }
@@ -127,7 +127,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     if (this.currentSection !== 'hero') {
       this.currentSection = 'hero';
-      this.updateBodyBackground('hero');
+      // Background switching disabled to prevent flickering
     }
   }
 

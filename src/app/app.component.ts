@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
+import { EmbedService } from './shared/embed.service';
 
 @Component({
     selector: 'app-root',
@@ -12,38 +13,44 @@ import { SeoService } from './seo.service';
 })
 export class AppComponent implements OnInit {
   title = 'xsantcastx';
-  isEmbedMode = false;
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+  readonly embed = inject(EmbedService);
 
   constructor(private seo: SeoService) {}
+
+  get isEmbedMode(): boolean {
+    return this.embed.isEmbed;
+  }
+
+  get showEmbedBranding(): boolean {
+    return this.embed.showBranding;
+  }
 
   ngOnInit() {
     this.seo.init();
 
-    // Detect embed routes
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
-    ).subscribe(e => {
-      this.isEmbedMode = e.urlAfterRedirects.startsWith('/embed/');
-    });
-
     if (!isPlatformBrowser(this.platformId)) return;
 
+    let glitchPending = false;
     const triggerRandomGlitch = () => {
-      const keywords = document.querySelectorAll('.keyword');
-      keywords.forEach((el) => {
-        if (Math.random() < 0.1) {
+      if (glitchPending) return;
+      glitchPending = true;
+      const keywords = Array.from(document.querySelectorAll('.keyword'));
+      const candidates = keywords.filter(() => Math.random() < 0.08);
+      candidates.forEach((el, i) => {
+        setTimeout(() => {
           el.classList.add('glitch');
-          setTimeout(() => el.classList.remove('glitch'), 300);
-        }
+          setTimeout(() => el.classList.remove('glitch'), 800);
+        }, i * 120);
       });
+      setTimeout(() => { glitchPending = false; }, candidates.length * 120 + 800);
     };
 
     setInterval(() => {
       if (document.body.classList.contains('glitch-out')) {
         triggerRandomGlitch();
       }
-    }, 2000);
+    }, 3500);
   }
 }

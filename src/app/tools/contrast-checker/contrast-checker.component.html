@@ -38,8 +38,9 @@
               <div class="cc-swatch" [style.background]="fg"></div>
               <input type="color" class="cc-color-input" [value]="fg" (input)="onFgPicker($any($event.target).value)" aria-label="Foreground color picker" />
             </div>
-            <input type="text" class="cc-hex-input" [value]="fgInput" (input)="onFgText($any($event.target).value)" maxlength="7" placeholder="#ffffff" aria-label="Foreground hex value" spellcheck="false" />
+            <input type="text" class="cc-hex-input" [class.cc-hex-input--error]="fgError" [value]="fgInput" (input)="onFgText($any($event.target).value)" maxlength="7" placeholder="#ffffff" aria-label="Foreground hex value" spellcheck="false" />
           </div>
+          <span *ngIf="fgError" class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
         </div>
 
         <!-- Swap -->
@@ -58,18 +59,19 @@
               <div class="cc-swatch" [style.background]="bg"></div>
               <input type="color" class="cc-color-input" [value]="bg" (input)="onBgPicker($any($event.target).value)" aria-label="Background color picker" />
             </div>
-            <input type="text" class="cc-hex-input" [value]="bgInput" (input)="onBgText($any($event.target).value)" maxlength="7" placeholder="#000000" aria-label="Background hex value" spellcheck="false" />
+            <input type="text" class="cc-hex-input" [class.cc-hex-input--error]="bgError" [value]="bgInput" (input)="onBgText($any($event.target).value)" maxlength="7" placeholder="#000000" aria-label="Background hex value" spellcheck="false" />
           </div>
+          <span *ngIf="bgError" class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
         </div>
       </div>
 
       <!-- Ratio -->
-      <div class="cc-ratio-block">
-        <span class="cc-ratio-number" [style.color]="scoreColor">{{ ratioLabel }}</span>
+      <div class="cc-ratio-block" [class.cc-ratio-block--error]="hasInputError">
+        <span class="cc-ratio-number" [style.color]="hasInputError ? '' : scoreColor">{{ hasInputError ? '—' : ratioLabel }}</span>
         <div class="cc-ratio-meta">
           <span class="cc-ratio-label">{{ translate('tools.contrast.ratio') }}</span>
-          <span class="cc-grade-badge" [class.cc-grade--aaa]="overallGrade === 'AAA'" [class.cc-grade--aa]="overallGrade === 'AA'" [class.cc-grade--fail]="overallGrade === 'Fail'">
-            {{ overallGrade }}
+          <span class="cc-grade-badge" [class.cc-grade--aaa]="!hasInputError && overallGrade === 'AAA'" [class.cc-grade--aa]="!hasInputError && overallGrade === 'AA'" [class.cc-grade--fail]="hasInputError || overallGrade === 'Fail'">
+            {{ hasInputError ? '—' : overallGrade }}
           </span>
         </div>
         <button class="cc-copy-ratio" (click)="copyRatio()" type="button">

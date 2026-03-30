@@ -223,21 +223,22 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     features: ['Root CA verification', 'Certificate expiry check', 'Security flag audit', 'No backend required'],
   },
 
-  // ── Coming Soon ───────────────────────────────────────────────────────────
   {
     id: 'gradient-generator',
     title: 'CSS Gradient Generator',
     description: 'Create beautiful CSS gradients with a visual editor and export ready-to-use code.',
     titleKey: 'tools.gradient.title',
     descriptionKey: 'tools.gradient.desc',
-    route: '',
-    status: 'coming-soon',
+    route: '/tools/gradient-generator',
+    status: 'live',
     category: 'CSS Tools',
     tags: ['CSS', 'Design', 'Colors'],
     svgIcon: `<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="currentColor" stop-opacity="1"/><stop offset="100%" stop-color="currentColor" stop-opacity="0.15"/></linearGradient></defs><rect x="3" y="3" width="18" height="18" rx="3" fill="url(#g)" stroke="currentColor"/>`,
     textIcon: '◧',
     features: ['Linear, radial & conic', 'Visual stop editor', 'Angle control', 'One-click CSS copy'],
   },
+
+  // ── Coming Soon ───────────────────────────────────────────────────────────
   {
     id: 'font-pairer',
     title: 'Font Pairer',

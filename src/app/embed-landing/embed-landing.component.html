@@ -1,0 +1,117 @@
+<section class="embed-hero">
+  <p class="embed-hero__eyebrow">Embed System</p>
+  <h1 class="embed-hero__title">Embed xsantcastx Tools<br>on Your Site</h1>
+  <p class="embed-hero__subtitle">
+    Drop any developer tool into your blog, docs, or app with a single iframe tag.
+    Free tier includes branding. Pro removes it.
+  </p>
+</section>
+
+<section class="embed-section">
+  <h2 class="embed-section__heading">How It Works</h2>
+  <div class="embed-steps">
+    <div class="embed-step">
+      <span class="embed-step__number">1</span>
+      <h3 class="embed-step__title">Pick a tool</h3>
+      <p class="embed-step__desc">Choose from {{ tools.length }} free browser-based developer tools.</p>
+    </div>
+    <div class="embed-step">
+      <span class="embed-step__number">2</span>
+      <h3 class="embed-step__title">Copy the embed code</h3>
+      <p class="embed-step__desc">One iframe tag. Customize width, height, and theme.</p>
+    </div>
+    <div class="embed-step">
+      <span class="embed-step__number">3</span>
+      <h3 class="embed-step__title">Paste and ship</h3>
+      <p class="embed-step__desc">Works on any site — HTML, WordPress, Notion, docs, anywhere iframes are supported.</p>
+    </div>
+  </div>
+</section>
+
+<section class="embed-section">
+  <h2 class="embed-section__heading">Available Tools</h2>
+  <div class="embed-tool-grid">
+    <div
+      *ngFor="let tool of tools"
+      class="embed-tool-card"
+      [class.embed-tool-card--active]="selectedTool?.id === tool.id"
+      (click)="selectTool(tool)">
+      <div class="embed-tool-card__header">
+        <span class="embed-tool-card__icon">{{ tool.textIcon }}</span>
+        <h3 class="embed-tool-card__title">{{ tool.title }}</h3>
+      </div>
+      <p class="embed-tool-card__desc">{{ tool.description }}</p>
+      <div class="embed-tool-card__actions">
+        <button class="embed-tool-card__copy" (click)="copyEmbedCode(tool); $event.stopPropagation()">
+          {{ copiedSlug === tool.id ? 'Copied!' : 'Copy embed code' }}
+        </button>
+        <a class="embed-tool-card__preview-link"
+           [href]="siteUrl + '/embed/' + tool.id + '?theme=dark'"
+           target="_blank" rel="noopener">
+          Preview
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="embed-section" *ngIf="selectedTool">
+  <h2 class="embed-section__heading">Embed Code</h2>
+  <div class="embed-code-block">
+    <pre class="embed-code-block__pre"><code>{{ embedPreviewCode }}</code></pre>
+    <button class="embed-code-block__copy" (click)="copyEmbedCode(selectedTool!)">
+      {{ copiedSlug === selectedTool!.id ? 'Copied!' : 'Copy' }}
+    </button>
+  </div>
+</section>
+
+<section class="embed-section">
+  <h2 class="embed-section__heading">Parameters</h2>
+  <div class="embed-params-table">
+    <div class="embed-params-row embed-params-row--header">
+      <span>Parameter</span>
+      <span>Values</span>
+      <span>Default</span>
+      <span>Description</span>
+    </div>
+    <div class="embed-params-row">
+      <code>theme</code>
+      <span>dark | light</span>
+      <span>dark</span>
+      <span>Color scheme of the embedded tool</span>
+    </div>
+    <div class="embed-params-row">
+      <code>branding</code>
+      <span>true | false</span>
+      <span>true</span>
+      <span>Show "Powered by xsantcastx" bar. Pro tier required to hide.</span>
+    </div>
+  </div>
+</section>
+
+<section class="embed-section">
+  <h2 class="embed-section__heading">Pricing</h2>
+  <div class="embed-pricing">
+    <div class="embed-pricing__card">
+      <h3 class="embed-pricing__tier">Free</h3>
+      <p class="embed-pricing__price">$0</p>
+      <ul class="embed-pricing__features">
+        <li>All tools embeddable</li>
+        <li>Unlimited embeds</li>
+        <li>"Powered by xsantcastx" branding</li>
+        <li>Dark &amp; light themes</li>
+      </ul>
+    </div>
+    <div class="embed-pricing__card embed-pricing__card--pro">
+      <h3 class="embed-pricing__tier">Pro</h3>
+      <p class="embed-pricing__price">Coming soon</p>
+      <ul class="embed-pricing__features">
+        <li>Everything in Free</li>
+        <li>Remove branding</li>
+        <li>Custom domain allowlist</li>
+        <li>Priority CDN delivery</li>
+        <li>Usage analytics</li>
+      </ul>
+    </div>
+  </div>
+</section>

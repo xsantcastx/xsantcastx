@@ -44,7 +44,7 @@ body {
   background: linear-gradient(135deg, #07090f 0%, #0b1325 55%, #0a162f 100%);
   min-height: 100vh;
   overflow-x: hidden;
-  transition: background 0.6s ease, color 0.6s ease;
+  transition: color 0.6s ease;
   position: relative;
 }
 
@@ -272,26 +272,7 @@ router-outlet + * {
   }
 }
 
-/* ===== Background variants for scroll syncing ===== */
-body.bg-hero {
-  background: linear-gradient(135deg, #060b18 0%, #0f1f3d 55%, #06101f 100%);
-}
-
-body.bg-services {
-  background: linear-gradient(135deg, #071221 0%, #0f2e48 48%, #0a1c31 100%);
-}
-
-body.bg-projects {
-  background: linear-gradient(135deg, #081325 0%, #101b37 45%, #07101f 100%);
-}
-
-body.bg-about {
-  background: linear-gradient(135deg, #0a1329 0%, #241c46 50%, #101836 100%);
-}
-
-body.bg-contact {
-  background: linear-gradient(135deg, #141437 0%, #281f54 50%, #101533 100%);
-}
+/* Background variants for scroll syncing removed — single gradient prevents flickering */
 
 /* ===== Ambient Effects ===== */
 @keyframes backgroundShift {
@@ -356,19 +337,19 @@ body.glitch-out {
 
 body.glitch-out .keyword.glitch {
   color: var(--highlight-color);
-  text-shadow: 0 0 3px var(--highlight-color), 0 0 6px var(--highlight-color);
-  transform: translateX(1px);
+  text-shadow: 0 0 2px var(--highlight-color), 0 0 4px var(--highlight-color);
+  transform: translateX(0.5px);
 }
 
 body.glitch-out .keyword {
-  color: var(--highlight-color);
-  text-shadow: 0 0 5px var(--highlight-color), 0 0 10px var(--highlight-color);
+  color: rgba(0, 229, 255, 0.88);
+  text-shadow: 0 0 2px rgba(255, 0, 255, 0.15);
 }
 
 .keyword {
   color: rgba(0, 229, 255, 0.88);
   font-weight: 600;
-  transition: color 0.3s ease, text-shadow 0.3s ease;
+  transition: color 0.6s cubic-bezier(0.4, 0, 0.2, 1), text-shadow 0.6s ease, transform 0.6s ease;
 }
 
 .keyword:hover {
@@ -999,4 +980,24 @@ app-header .logo:focus-visible .nav-buzzword {
     transform: translateY(0) scale(1);
     filter: none;
   }
+}
+
+/* ===== Embed Mode ===== */
+.embed-mode {
+  padding: 12px;
+  min-height: calc(100vh - 36px); /* Reserve space for embed bar */
+  overflow: auto;
+}
+
+/* Light theme override for embeds on light-background sites */
+.embed-theme-light {
+  --surface-color: rgba(245, 245, 250, 0.92);
+  --surface-strong: rgba(235, 235, 245, 0.96);
+  --surface-hover: rgba(225, 225, 240, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 150, 200, 0.25);
+  --text-color: #1a1a2e;
+  --text-muted: rgba(40, 44, 60, 0.76);
+  background: #fafafa;
+  color: #1a1a2e;
 }

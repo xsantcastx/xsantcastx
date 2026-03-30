@@ -51,6 +51,7 @@ import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/
 import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
 import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
 import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
+import { GradientGeneratorComponent } from './tools/gradient-generator/gradient-generator.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -103,6 +104,7 @@ import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-captu
     JsonFormatterComponent,
     RegexTesterComponent,
     Base64EncoderComponent,
+    GradientGeneratorComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,

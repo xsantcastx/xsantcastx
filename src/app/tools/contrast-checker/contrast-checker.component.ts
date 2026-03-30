@@ -23,6 +23,9 @@ export class ContrastCheckerComponent {
   fgInput = '#ffffff';
   bgInput = '#1a237e';
 
+  fgError = false;
+  bgError = false;
+
   copied = false;
 
   readonly twitterShareUrl  = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free WCAG Contrast Checker — instantly test AA/AAA compliance for any color pair. Runs in the browser, no sign-up ♿')}&url=${encodeURIComponent(SITE_URL + '/tools/contrast-checker')}`;
@@ -57,6 +60,10 @@ export class ContrastCheckerComponent {
     const g = this.linearize(parseInt(hex.slice(3, 5), 16));
     const b = this.linearize(parseInt(hex.slice(5, 7), 16));
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  get hasInputError(): boolean {
+    return this.fgError || this.bgError;
   }
 
   get ratio(): number {
@@ -108,33 +115,50 @@ export class ContrastCheckerComponent {
   onFgText(value: string): void {
     this.fgInput = value;
     const hex = value.startsWith('#') ? value : '#' + value;
-    if (this.isValidHex(hex)) this.fg = hex;
+    if (this.isValidHex(hex)) {
+      this.fg = hex;
+      this.fgError = false;
+    } else {
+      // Show error only when input is long enough to be a complete attempt
+      this.fgError = value.replace('#', '').length > 0 && !this.isValidHex(hex);
+    }
   }
 
   onBgText(value: string): void {
     this.bgInput = value;
     const hex = value.startsWith('#') ? value : '#' + value;
-    if (this.isValidHex(hex)) this.bg = hex;
+    if (this.isValidHex(hex)) {
+      this.bg = hex;
+      this.bgError = false;
+    } else {
+      this.bgError = value.replace('#', '').length > 0 && !this.isValidHex(hex);
+    }
   }
 
   onFgPicker(value: string): void {
     this.fg = value;
     this.fgInput = value;
+    this.fgError = false;
   }
 
   onBgPicker(value: string): void {
     this.bg = value;
     this.bgInput = value;
+    this.bgError = false;
   }
 
   swap(): void {
     [this.fg, this.bg]           = [this.bg, this.fg];
     [this.fgInput, this.bgInput] = [this.bgInput, this.fgInput];
+    this.fgError = false;
+    this.bgError = false;
   }
 
   applyPreset(p: { fg: string; bg: string }): void {
     this.fg = this.fgInput = p.fg;
     this.bg = this.bgInput = p.bg;
+    this.fgError = false;
+    this.bgError = false;
   }
 
   copyRatio(): void {
