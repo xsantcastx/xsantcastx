@@ -268,6 +268,7 @@ export class TranslationService {
     'tools.contrast.preset.navy.white': { en: 'Navy / White', es: 'Azul / Blanco' },
     'tools.contrast.preset.danger': { en: 'Danger', es: 'Peligro' },
     'tools.contrast.preset.warning': { en: 'Warning', es: 'Advertencia' },
+    'tools.contrast.invalidHex': { en: 'Invalid hex color', es: 'Color hex inválido' },
 
     // Image Compressor page
     'tools.compressor.eyebrow': { en: 'Image Tools', es: 'Herramientas de Imagen' },

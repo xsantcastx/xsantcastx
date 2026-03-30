@@ -18,6 +18,7 @@
 /tools/base64-encoder
 /tools/regex-tester
 /tools/ssl-certificate-auditor
+/embed
 /embed/json-formatter
 /embed/base64-encoder
 /embed/regex-tester

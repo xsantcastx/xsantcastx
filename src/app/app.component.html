@@ -1,9 +1,11 @@
 <div class="particle-layer" *ngIf="!isEmbedMode"></div>
 <app-header *ngIf="!isEmbedMode"></app-header>
 
-<router-outlet></router-outlet>
+<div [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
+  <router-outlet></router-outlet>
+</div>
 
-<app-embed-bar *ngIf="isEmbedMode"></app-embed-bar>
+<app-embed-bar *ngIf="isEmbedMode && showEmbedBranding"></app-embed-bar>
 <app-footer *ngIf="!isEmbedMode"></app-footer>
 
 <!-- GDPR Cookie Banner -->

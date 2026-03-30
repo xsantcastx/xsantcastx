@@ -36,7 +36,26 @@
             "server": "src/main.server.ts",
             "prerender": {
               "routesFile": "prerender-routes.txt"
-            }
+            },
+            "allowedCommonJsDependencies": [
+              "@firebase/firestore",
+              "@firebase/database",
+              "@firebase/auth",
+              "@firebase/app",
+              "@firebase/functions",
+              "@firebase/storage",
+              "@grpc/grpc-js",
+              "@grpc/proto-loader",
+              "faye-websocket",
+              "jspdf",
+              "html2canvas",
+              "fflate",
+              "dompurify",
+              "canvg",
+              "core-js",
+              "raf",
+              "rgbcolor"
+            ]
           },
           "configurations": {
             "production": {
