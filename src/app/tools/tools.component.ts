@@ -165,6 +165,11 @@ export class ToolsComponent implements OnInit {
     }
   }
 
+  handleCardClick(event: Event, tool: ToolCard) {
+    event.preventDefault();
+    this.navigate(tool);
+  }
+
   /** Get related tools that share tags with a given tool (delegates to registry) */
   static getRelatedTools(tools: ToolCard[], currentId: string, count: number = 4): ToolCard[] {
     // Delegate to the registry helper, then map back to ToolCard format

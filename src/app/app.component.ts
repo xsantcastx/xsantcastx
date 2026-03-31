@@ -4,6 +4,8 @@ import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
 import { EmbedService } from './shared/embed.service';
+import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
+import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 
 @Component({
     selector: 'app-root',
@@ -16,6 +18,8 @@ export class AppComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   readonly embed = inject(EmbedService);
+  private visitCounter = inject(VisitCounterService);
+  private eggTriggers = inject(GlobalEggTriggersService);
 
   constructor(private seo: SeoService) {}
 
@@ -31,6 +35,12 @@ export class AppComponent implements OnInit {
     this.seo.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
+
+    // Track site visit and trigger milestone celebration if applicable
+    this.visitCounter.recordVisit();
+
+    // Initialize global easter egg triggers
+    this.eggTriggers.init();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {

@@ -52,6 +52,12 @@ import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.co
 import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
 import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
 import { GradientGeneratorComponent } from './tools/gradient-generator/gradient-generator.component';
+import { JwtDecoderComponent } from './tools/jwt-decoder/jwt-decoder.component';
+import { UuidGeneratorComponent } from './tools/uuid-generator/uuid-generator.component';
+import { HashGeneratorComponent } from './tools/hash-generator/hash-generator.component';
+import { MetaTagGeneratorComponent } from './tools/meta-tag-generator/meta-tag-generator.component';
+import { EnvValidatorComponent } from './tools/env-validator/env-validator.component';
+import { FontPairerComponent } from './tools/font-pairer/font-pairer.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -69,6 +75,10 @@ import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { EmbedCodeGeneratorComponent } from './shared/embed-code-generator/embed-code-generator.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-capture.component';
+import { ToolUsageCounterComponent } from './shared/tool-usage-counter/tool-usage-counter.component';
+import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
+import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
+import { AffiliateCTAComponent } from './shared/affiliate/affiliate-cta.component';
 
 
 @NgModule({
@@ -105,6 +115,12 @@ import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-captu
     RegexTesterComponent,
     Base64EncoderComponent,
     GradientGeneratorComponent,
+    JwtDecoderComponent,
+    UuidGeneratorComponent,
+    HashGeneratorComponent,
+    MetaTagGeneratorComponent,
+    EnvValidatorComponent,
+    FontPairerComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,
@@ -118,7 +134,11 @@ import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-captu
     EmbedBarComponent,
     EmbedCodeGeneratorComponent,
     EmbedLandingComponent,
-    NewsletterCaptureComponent
+    NewsletterCaptureComponent,
+    ToolUsageCounterComponent,
+    MilestoneEffectComponent,
+    EggDiscoveryComponent,
+    AffiliateCTAComponent
   ],
   bootstrap: [AppComponent],
   imports: [

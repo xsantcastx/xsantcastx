@@ -180,6 +180,11 @@
 
 /* ─── CARD ───────────────────────────────────────────── */
 
+a.tool-card {
+  text-decoration: none;
+  color: inherit;
+}
+
 .tool-card {
   display: flex;
   align-items: flex-start;

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd \\\"/Users/xsantcastx/Documents/1. Projects/xsantcastx\\\" && npx ng build 2>&1 | grep -cE \\\"WARNING|ReferenceError\\\" && echo \\\"---\\\" && npx ng build 2>&1 | tail -3\",\"timeout\":180000,\"descr...",
+  "error": "Exit code 1\n0",
+  "timestamp": "2026-03-30T20:55:19.813Z",
+  "retry_count": 1
+}

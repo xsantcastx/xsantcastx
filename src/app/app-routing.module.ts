@@ -21,6 +21,12 @@ import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.co
 import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
 import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
 import { GradientGeneratorComponent } from './tools/gradient-generator/gradient-generator.component';
+import { JwtDecoderComponent } from './tools/jwt-decoder/jwt-decoder.component';
+import { UuidGeneratorComponent } from './tools/uuid-generator/uuid-generator.component';
+import { HashGeneratorComponent } from './tools/hash-generator/hash-generator.component';
+import { MetaTagGeneratorComponent } from './tools/meta-tag-generator/meta-tag-generator.component';
+import { EnvValidatorComponent } from './tools/env-validator/env-validator.component';
+import { FontPairerComponent } from './tools/font-pairer/font-pairer.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { RouteTitles } from './shared/title-strategy.service';
@@ -67,7 +73,17 @@ const routes: Routes = [
     title: RouteTitles.skills,
     data: {
       description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more. Full-stack expertise for modern web and mobile applications.',
-      keywords: 'angular, react, typescript, nodejs, firebase, full stack skills, web developer skills'
+      keywords: 'angular, react, typescript, nodejs, firebase, full stack skills, web developer skills',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: 'Skills — xsantcastx',
+        url: `${SITE_URL}/skills`,
+        description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more.',
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+          { '@type': 'ListItem', position: 2, name: 'Skills', item: `${SITE_URL}/skills` }
+        ]}
+      }
     }
   },
   {
@@ -76,7 +92,17 @@ const routes: Routes = [
     title: RouteTitles.projects,
     data: {
       description: 'Portfolio of real-world projects: e-commerce platforms, web applications, and developer tools built with Angular, Firebase, and TypeScript.',
-      keywords: 'portfolio, web projects, angular projects, firebase projects, case studies, web applications'
+      keywords: 'portfolio, web projects, angular projects, firebase projects, case studies, web applications',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Projects — xsantcastx',
+        url: `${SITE_URL}/projects`,
+        description: 'Portfolio of real-world projects built with Angular, Firebase, and TypeScript.',
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+          { '@type': 'ListItem', position: 2, name: 'Projects', item: `${SITE_URL}/projects` }
+        ]}
+      }
     }
   },
   {
@@ -85,7 +111,13 @@ const routes: Routes = [
     title: RouteTitles.contact,
     data: {
       description: 'Get in touch for freelance web development, project collaboration, or consulting. Based in Spain, working globally.',
-      keywords: 'hire developer, freelance web development, contact, project consultation'
+      keywords: 'hire developer, freelance web development, contact, project consultation',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact — xsantcastx',
+        url: `${SITE_URL}/contact`,
+        description: 'Get in touch for freelance web development, project collaboration, or consulting.'
+      }
     }
   },
   {
@@ -94,7 +126,13 @@ const routes: Routes = [
     title: RouteTitles.donate,
     data: {
       description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.',
-      keywords: 'donate, support developer, open source, sponsorship'
+      keywords: 'donate, support developer, open source, sponsorship',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: 'Donate — xsantcastx',
+        url: `${SITE_URL}/donate`,
+        description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.'
+      }
     }
   },
   {
@@ -633,6 +671,15 @@ const routes: Routes = [
       description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
       keywords: 'watch ai work live, claude ai real time, ai mission control, live coding stream, ai development feed',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: 'Watch Live — AI Mission Control',
+        url: `${SITE_URL}/live`,
+        description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity.',
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+          { '@type': 'ListItem', position: 2, name: 'Live', item: `${SITE_URL}/live` }
+        ]}
+      }
     }
   },
     {
@@ -799,6 +846,134 @@ const routes: Routes = [
     }
   },
 
+  // ── New tool routes (batch 2026-03-30) ──────────────────────────────────
+  {
+    path: 'tools/jwt-decoder',
+    component: JwtDecoderComponent,
+    title: 'Free JWT Decoder & Debugger — Inspect Tokens Instantly | xsantcastx',
+    data: {
+      description: 'Decode and inspect JSON Web Tokens for free. View header, payload, claims with human-readable labels, and expiration countdown. Client-side only.',
+      keywords: 'jwt decoder, jwt debugger, json web token decoder, jwt inspector, jwt viewer, decode jwt token online free',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: 'JWT Decoder & Debugger', url: `${SITE_URL}/tools/jwt-decoder`,
+        description: 'Free browser-based JWT decoder. Inspect header, payload, claims and expiration status instantly.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: 'JWT Decoder', item: `${SITE_URL}/tools/jwt-decoder` }
+        ]}
+      }
+    }
+  },
+  {
+    path: 'tools/uuid-generator',
+    component: UuidGeneratorComponent,
+    title: 'Free UUID/GUID Generator — v1, v4 & ULID | xsantcastx',
+    data: {
+      description: 'Generate UUID v1, v4, and ULID identifiers for free. Bulk generation, format options, and UUID validator. Client-side only.',
+      keywords: 'uuid generator, guid generator, uuid v4, uuid v1, ulid generator, bulk uuid, uuid validator, random uuid online',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: 'UUID/GUID Generator', url: `${SITE_URL}/tools/uuid-generator`,
+        description: 'Free browser-based UUID generator. Create v1, v4 and ULID identifiers with bulk mode and validation.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: 'UUID Generator', item: `${SITE_URL}/tools/uuid-generator` }
+        ]}
+      }
+    }
+  },
+  {
+    path: 'tools/hash-generator',
+    component: HashGeneratorComponent,
+    title: 'Free Hash Generator — MD5, SHA-256, SHA-512 | xsantcastx',
+    data: {
+      description: 'Generate MD5, SHA-1, SHA-256, SHA-384, SHA-512 hashes from text or files for free. Compare hashes and drag-drop file support. Client-side only.',
+      keywords: 'hash generator, md5 hash, sha256 hash, sha512 hash, file hash generator, hash comparison tool, online hash calculator',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: 'Hash Generator', url: `${SITE_URL}/tools/hash-generator`,
+        description: 'Free browser-based hash generator. Create MD5, SHA-1, SHA-256, SHA-384, SHA-512 hashes from text or files.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: 'Hash Generator', item: `${SITE_URL}/tools/hash-generator` }
+        ]}
+      }
+    }
+  },
+  {
+    path: 'tools/meta-tag-generator',
+    component: MetaTagGeneratorComponent,
+    title: 'Free Open Graph & Meta Tag Generator — SEO & Social Cards | xsantcastx',
+    data: {
+      description: 'Generate Open Graph, Twitter Card, and SEO meta tags for free. Live social preview mockups for Facebook, Twitter, LinkedIn. One-click HTML copy.',
+      keywords: 'meta tag generator, open graph generator, twitter card generator, seo meta tags, og tags, social media preview, meta description generator',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: 'Open Graph & Meta Tag Generator', url: `${SITE_URL}/tools/meta-tag-generator`,
+        description: 'Free browser-based meta tag generator with live social preview mockups for Facebook, Twitter and LinkedIn.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: 'Meta Tag Generator', item: `${SITE_URL}/tools/meta-tag-generator` }
+        ]}
+      }
+    }
+  },
+  {
+    path: 'tools/env-validator',
+    component: EnvValidatorComponent,
+    title: 'Free .env File Validator & Secret Scanner | xsantcastx',
+    data: {
+      description: 'Validate .env file syntax and scan for exposed API keys, tokens, and secrets for free. Export sanitized .env.example files. Client-side only.',
+      keywords: 'env file validator, secret scanner, env syntax checker, api key scanner, dotenv validator, env file linter, secret detection',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: '.env File Validator & Secret Scanner', url: `${SITE_URL}/tools/env-validator`,
+        description: 'Free browser-based .env file validator and secret scanner. Detect exposed API keys, tokens and passwords.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: '.env Validator', item: `${SITE_URL}/tools/env-validator` }
+        ]}
+      }
+    }
+  },
+  {
+    path: 'tools/font-pairer',
+    component: FontPairerComponent,
+    title: 'Free Font Pairer — Google Font Combinations with Live Preview | xsantcastx',
+    data: {
+      description: 'Find beautiful Google Font pairings for free. 18 curated heading + body combinations with live preview, category filters, and CSS export.',
+      keywords: 'font pairer, google fonts pairing, font combination tool, typography pairing, heading body font pair, font matcher, web font pairing',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: 'Font Pairer', url: `${SITE_URL}/tools/font-pairer`,
+        description: 'Free browser-based font pairing tool. Browse 18 curated Google Font combinations with live preview and CSS export.',
+        applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` },
+          { '@type': 'ListItem', position: 2, name: 'Font Pairer', item: `${SITE_URL}/tools/font-pairer` }
+        ]}
+      }
+    }
+  },
+
   // ── Embed routes (minimal chrome, iframe-friendly) ──────────────────────
   { path: 'embed/json-formatter', component: JsonFormatterComponent, data: { embed: true } },
   { path: 'embed/base64-encoder', component: Base64EncoderComponent, data: { embed: true } },
@@ -814,6 +989,12 @@ const routes: Routes = [
   { path: 'embed/ssl-certificate-auditor', component: SslCertificateAuditorComponent, data: { embed: true } },
   { path: 'embed/svg-to-code', component: SvgToCodeComponent, data: { embed: true } },
   { path: 'embed/gradient-generator', component: GradientGeneratorComponent, data: { embed: true } },
+  { path: 'embed/jwt-decoder', component: JwtDecoderComponent, data: { embed: true } },
+  { path: 'embed/uuid-generator', component: UuidGeneratorComponent, data: { embed: true } },
+  { path: 'embed/hash-generator', component: HashGeneratorComponent, data: { embed: true } },
+  { path: 'embed/meta-tag-generator', component: MetaTagGeneratorComponent, data: { embed: true } },
+  { path: 'embed/env-validator', component: EnvValidatorComponent, data: { embed: true } },
+  { path: 'embed/font-pairer', component: FontPairerComponent, data: { embed: true } },
 
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {
