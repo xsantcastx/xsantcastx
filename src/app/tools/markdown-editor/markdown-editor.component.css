@@ -1,0 +1,632 @@
+/* ══════════════════════════════════════════════════════════════
+   Markdown Editor — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.mde-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Toolbar ───────────────────────────────────────────────── */
+.mde-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  flex-wrap: wrap;
+}
+
+.mde-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.mde-toolbar-btn:hover {
+  color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  border-color: rgba(0, 255, 204, 0.2);
+}
+.mde-toolbar-btn:active {
+  transform: scale(0.92);
+}
+
+.mde-toolbar-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--glass-border);
+  margin: 0 0.35rem;
+  flex-shrink: 0;
+}
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.mde-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.mde-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.mde-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.mde-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.mde-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mde-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Input panel body ──────────────────────────────────────── */
+.mde-panel__body--input {
+  padding: 0;
+}
+
+.mde-char-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Textarea ──────────────────────────────────────────────── */
+.mde-textarea {
+  width: 100%;
+  min-height: 520px;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.mde-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.mde-textarea:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.mde-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.mde-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.mde-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.mde-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.mde-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Preview panel ─────────────────────────────────────────── */
+.mde-panel--preview {
+  flex: 1;
+}
+
+.mde-preview-body {
+  min-height: 520px;
+  position: relative;
+}
+
+.mde-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* ── Preview content (rendered markdown) ───────────────────── */
+.mde-preview-content {
+  padding: 1.25rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--text-color);
+  overflow-x: auto;
+  word-wrap: break-word;
+}
+
+/* Headings */
+:host ::ng-deep .mde-preview-content h1 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(0, 255, 204, 0.15);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 20px rgba(0, 255, 204, 0.25);
+}
+
+:host ::ng-deep .mde-preview-content h2 {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 1.5rem 0 0.75rem 0;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: -0.01em;
+}
+
+:host ::ng-deep .mde-preview-content h3 {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 1.25rem 0 0.5rem 0;
+}
+
+:host ::ng-deep .mde-preview-content h4,
+:host ::ng-deep .mde-preview-content h5,
+:host ::ng-deep .mde-preview-content h6 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1rem 0 0.4rem 0;
+}
+
+/* Paragraphs */
+:host ::ng-deep .mde-preview-content p {
+  margin: 0 0 1rem 0;
+}
+
+/* Strong / em / del */
+:host ::ng-deep .mde-preview-content strong {
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+:host ::ng-deep .mde-preview-content em {
+  font-style: italic;
+  color: rgba(214, 221, 235, 0.85);
+}
+
+:host ::ng-deep .mde-preview-content del {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* Links */
+:host ::ng-deep .mde-preview-content a {
+  color: var(--primary-color);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+  transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+:host ::ng-deep .mde-preview-content a:hover {
+  border-color: var(--primary-color);
+  opacity: 0.85;
+}
+
+/* Images */
+:host ::ng-deep .mde-preview-content .mde-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  margin: 0.75rem 0;
+}
+
+/* Inline code */
+:host ::ng-deep .mde-preview-content .mde-inline-code {
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.15);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.82em;
+  color: var(--primary-color);
+}
+
+/* Code blocks */
+:host ::ng-deep .mde-preview-content .mde-code-block {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+:host ::ng-deep .mde-preview-content .mde-code-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--primary-color);
+  border-radius: 3px 0 0 3px;
+  opacity: 0.5;
+}
+
+:host ::ng-deep .mde-preview-content .mde-code-block code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-color);
+  display: block;
+  white-space: pre;
+}
+
+/* Blockquotes */
+:host ::ng-deep .mde-preview-content .mde-blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1.25rem;
+  border-left: 3px solid var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 4%, transparent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  color: rgba(214, 221, 235, 0.75);
+  font-style: italic;
+}
+
+/* Lists */
+:host ::ng-deep .mde-preview-content ul,
+:host ::ng-deep .mde-preview-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.75rem;
+}
+
+:host ::ng-deep .mde-preview-content li {
+  margin-bottom: 0.35rem;
+  line-height: 1.65;
+}
+
+:host ::ng-deep .mde-preview-content li::marker {
+  color: var(--primary-color);
+}
+
+/* Task lists */
+:host ::ng-deep .mde-preview-content .mde-task-list {
+  list-style: none;
+  padding-left: 0.5rem;
+}
+
+:host ::ng-deep .mde-preview-content .mde-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+:host ::ng-deep .mde-preview-content .mde-task-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--glass-border);
+  border-radius: 3px;
+  background: transparent;
+  margin-top: 3px;
+  flex-shrink: 0;
+  cursor: default;
+  position: relative;
+}
+
+:host ::ng-deep .mde-preview-content .mde-task-item input[type="checkbox"]:checked {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+:host ::ng-deep .mde-preview-content .mde-task-item input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid #000;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+:host ::ng-deep .mde-preview-content .mde-task-done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+/* Tables */
+:host ::ng-deep .mde-preview-content .mde-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+
+:host ::ng-deep .mde-preview-content .mde-table th {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+}
+
+:host ::ng-deep .mde-preview-content .mde-table td {
+  border: 1px solid var(--glass-border);
+  padding: 0.5rem 0.85rem;
+  color: var(--text-color);
+}
+
+:host ::ng-deep .mde-preview-content .mde-table tr:hover td {
+  background: rgba(0, 255, 204, 0.03);
+}
+
+/* Horizontal rule */
+:host ::ng-deep .mde-preview-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--primary-color),
+    transparent
+  );
+  opacity: 0.35;
+  margin: 1.5rem 0;
+}
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.mde-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 1rem;
+  margin-top: 1.25rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.mde-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.9rem;
+  flex: 1;
+  min-width: 60px;
+}
+
+.mde-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.mde-stat__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+}
+
+.mde-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .mde-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mde-textarea {
+    min-height: 280px;
+  }
+
+  .mde-preview-body {
+    min-height: 280px;
+  }
+
+  .mde-toolbar {
+    gap: 0.15rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .mde-toolbar-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .mde-toolbar-divider {
+    height: 18px;
+    margin: 0 0.2rem;
+  }
+
+  .mde-panel__header {
+    flex-wrap: wrap;
+  }
+
+  .mde-panel__actions {
+    flex-wrap: wrap;
+  }
+
+  .mde-char-count {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .mde-toolbar-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mde-toolbar-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .mde-preview-content {
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+}

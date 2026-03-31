@@ -79,6 +79,15 @@ import { ToolUsageCounterComponent } from './shared/tool-usage-counter/tool-usag
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { AffiliateCTAComponent } from './shared/affiliate/affiliate-cta.component';
+import { CronBuilderComponent } from './tools/cron-builder/cron-builder.component';
+import { ApiRequestBuilderComponent } from './tools/api-request-builder/api-request-builder.component';
+import { JsonToTsComponent } from './tools/json-to-ts/json-to-ts.component';
+import { MarkdownEditorComponent } from './tools/markdown-editor/markdown-editor.component';
+import { DiffCheckerComponent } from './tools/diff-checker/diff-checker.component';
+import { TimestampConverterComponent } from './tools/timestamp-converter/timestamp-converter.component';
+import { UrlEncoderComponent } from './tools/url-encoder/url-encoder.component';
+import { SqlFormatterComponent } from './tools/sql-formatter/sql-formatter.component';
+import { BaseConverterComponent } from './tools/base-converter/base-converter.component';
 
 
 @NgModule({
@@ -138,7 +147,16 @@ import { AffiliateCTAComponent } from './shared/affiliate/affiliate-cta.componen
     ToolUsageCounterComponent,
     MilestoneEffectComponent,
     EggDiscoveryComponent,
-    AffiliateCTAComponent
+    AffiliateCTAComponent,
+    CronBuilderComponent,
+    ApiRequestBuilderComponent,
+    JsonToTsComponent,
+    MarkdownEditorComponent,
+    DiffCheckerComponent,
+    TimestampConverterComponent,
+    UrlEncoderComponent,
+    SqlFormatterComponent,
+    BaseConverterComponent
   ],
   bootstrap: [AppComponent],
   imports: [

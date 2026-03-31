@@ -242,7 +242,135 @@
         Security Audit
         <span class="ssl-auditor__tab-count" *ngIf="result.flags.length > 0">{{ result.flags.length }}</span>
       </button>
+      <button
+        type="button"
+        class="ssl-auditor__tab"
+        [class.ssl-auditor__tab--active]="activeTab === 'raw'"
+        (click)="activeTab = 'raw'"
+        *ngIf="result.sans && result.sans.length > 0"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        SANs
+        <span class="ssl-auditor__tab-count ssl-auditor__tab-count--info">{{ result.sans.length }}</span>
+      </button>
+    </div>
 
+    <!-- Tab Content: Certificate Details -->
+    <div class="ssl-auditor__tab-panel" *ngIf="activeTab === 'details'">
+      <div class="ssl-auditor__details-grid">
+        <div class="ssl-auditor__detail-card" *ngFor="let field of result.fields">
+          <p class="ssl-auditor__detail-label">{{ field.label }}</p>
+          <p class="ssl-auditor__detail-value" [class.ssl-auditor__detail-value--mono]="isMonoField(field.label)">
+            {{ field.value }}
+            <button
+              *ngIf="isCopyableField(field.label)"
+              type="button"
+              class="ssl-auditor__copy-btn"
+              (click)="copyToClipboard(field.value, field.label)"
+              [attr.aria-label]="'Copy ' + field.label"
+            >
+              <svg *ngIf="copiedField !== field.label" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <svg *ngIf="copiedField === field.label" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Content: Security Audit -->
+    <div class="ssl-auditor__tab-panel" *ngIf="activeTab === 'flags'">
+      <div class="ssl-auditor__flags-list">
+        <div
+          class="ssl-auditor__flag-card"
+          *ngFor="let flag of result.flags"
+          [class.ssl-auditor__flag-card--pass]="flag.status === 'pass'"
+          [class.ssl-auditor__flag-card--warn]="flag.status === 'warn'"
+          [class.ssl-auditor__flag-card--fail]="flag.status === 'fail'"
+          [class.ssl-auditor__flag-card--info]="flag.status === 'info'"
+        >
+          <div class="ssl-auditor__flag-header">
+            <div class="ssl-auditor__flag-icon">
+              <!-- Pass icon -->
+              <svg *ngIf="flag.status === 'pass'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <!-- Warn icon -->
+              <svg *ngIf="flag.status === 'warn'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <!-- Fail icon -->
+              <svg *ngIf="flag.status === 'fail'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              <!-- Info icon -->
+              <svg *ngIf="flag.status === 'info'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </div>
+            <div class="ssl-auditor__flag-title">
+              <span class="ssl-auditor__flag-status-badge"
+                [class.ssl-auditor__flag-status-badge--pass]="flag.status === 'pass'"
+                [class.ssl-auditor__flag-status-badge--warn]="flag.status === 'warn'"
+                [class.ssl-auditor__flag-status-badge--fail]="flag.status === 'fail'"
+                [class.ssl-auditor__flag-status-badge--info]="flag.status === 'info'"
+              >{{ flag.status | uppercase }}</span>
+              {{ flag.label }}
+            </div>
+          </div>
+          <p class="ssl-auditor__flag-detail">{{ flag.detail }}</p>
+          <p class="ssl-auditor__flag-remediation" *ngIf="flag.status !== 'pass'">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            {{ flag.remediation }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Content: SANs -->
+    <div class="ssl-auditor__tab-panel" *ngIf="activeTab === 'raw'">
+      <div class="ssl-auditor__sans-card">
+        <div class="ssl-auditor__sans-header">
+          <p class="ssl-auditor__sans-title">Subject Alternative Names ({{ result.sans.length }})</p>
+          <button type="button" class="ssl-auditor__copy-btn ssl-auditor__copy-btn--outline" (click)="copyToClipboard(result.sans.join('\n'), 'SANs')" aria-label="Copy all SANs">
+            <svg *ngIf="copiedField !== 'SANs'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg *ngIf="copiedField === 'SANs'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ copiedField === 'SANs' ? 'Copied!' : 'Copy All' }}
+          </button>
+        </div>
+        <div class="ssl-auditor__sans-list">
+          <div class="ssl-auditor__san-item" *ngFor="let san of result.sans">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="ssl-auditor__san-name" [class.ssl-auditor__san-name--wildcard]="san.startsWith('*.')">{{ san }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>

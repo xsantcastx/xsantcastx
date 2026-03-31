@@ -44,6 +44,16 @@ stripe.config.ts
 paypal.config.ts
 social-auth.config.ts
 
+# Claude Code & OMC local state
+.claude/worktrees/
+.omc/
+**/.omc/
+
+# Seed scripts (contain API keys)
+seed-changelog-client.mjs
+functions/seed-changelog-rest.js
+functions/seed-changelog.js
+
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # Compiled output

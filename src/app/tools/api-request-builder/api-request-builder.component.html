@@ -1,0 +1,264 @@
+<div class="arb-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Developer Tools</p>
+    <h1 class="tool-header__title">API Request <span class="tool-header__amp">Builder</span></h1>
+    <p class="tool-header__subtitle">Build, send and inspect HTTP requests directly from your browser — no backend, no sign-up.</p>
+    <app-tool-usage-counter [toolSlug]="'api-request-builder'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="arb-layout">
+
+    <!-- ── LEFT: Request Config ── -->
+    <div class="arb-col arb-col--left">
+
+      <!-- Method + URL -->
+      <div class="arb-panel">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Request
+          </span>
+          <div class="arb-panel__actions">
+            <button class="arb-btn-ghost arb-btn-sm" (click)="copyCurl()" [disabled]="!requestUrl.trim()" [class.arb-btn-ghost--success]="copiedCurl">
+              <ng-container *ngIf="!copiedCurl">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                cURL
+              </ng-container>
+              <ng-container *ngIf="copiedCurl">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+        <div class="arb-panel__body">
+          <div class="arb-url-row">
+            <select class="arb-method-select" [(ngModel)]="httpMethod" [style.color]="methodColor">
+              <option *ngFor="let m of methods" [value]="m">{{ m }}</option>
+            </select>
+            <input
+              class="arb-url-input"
+              type="text"
+              [(ngModel)]="requestUrl"
+              placeholder="https://api.example.com/endpoint"
+              spellcheck="false"
+              autocomplete="off"
+              (keydown.enter)="sendRequest()"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Headers -->
+      <div class="arb-panel">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+            Headers
+          </span>
+          <div class="arb-panel__actions">
+            <button class="arb-btn-ghost arb-btn-sm" (click)="addHeader()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add
+            </button>
+          </div>
+        </div>
+        <div class="arb-panel__body arb-headers-body">
+          <div class="arb-header-row" *ngFor="let h of requestHeaders; let i = index">
+            <input
+              class="arb-header-input arb-header-input--key"
+              type="text"
+              [(ngModel)]="h.key"
+              placeholder="Header name"
+              spellcheck="false"
+            />
+            <input
+              class="arb-header-input arb-header-input--value"
+              type="text"
+              [(ngModel)]="h.value"
+              placeholder="Value"
+              spellcheck="false"
+            />
+            <button class="arb-header-remove" (click)="removeHeader(i)" title="Remove header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="arb-panel" *ngIf="showBody">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Body
+          </span>
+          <div class="arb-panel__actions">
+            <div class="arb-seg-ctrl">
+              <button class="arb-seg-btn" [class.arb-seg-btn--active]="contentType === 'json'" (click)="contentType = 'json'">JSON</button>
+              <button class="arb-seg-btn" [class.arb-seg-btn--active]="contentType === 'form-data'" (click)="contentType = 'form-data'">Form</button>
+              <button class="arb-seg-btn" [class.arb-seg-btn--active]="contentType === 'raw'" (click)="contentType = 'raw'">Raw</button>
+            </div>
+          </div>
+        </div>
+        <div class="arb-panel__body arb-panel__body--input">
+          <textarea
+            class="arb-textarea"
+            [(ngModel)]="requestBody"
+            [placeholder]="bodyPlaceholder"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Send Button -->
+      <div class="arb-actions">
+        <button class="arb-btn arb-btn--primary" (click)="sendRequest()" [disabled]="!requestUrl.trim() || loading">
+          <ng-container *ngIf="!loading">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Request
+          </ng-container>
+          <ng-container *ngIf="loading">
+            <span class="arb-spinner"></span>
+            Sending...
+          </ng-container>
+        </button>
+        <button class="arb-btn arb-btn--secondary" (click)="showHistory = !showHistory">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          History ({{ history.length }})
+        </button>
+      </div>
+
+      <!-- History Panel -->
+      <div class="arb-panel arb-panel--history" *ngIf="showHistory && history.length > 0">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Recent Requests
+          </span>
+          <div class="arb-panel__actions">
+            <button class="arb-btn-ghost arb-btn-sm" (click)="clearHistory()">Clear All</button>
+          </div>
+        </div>
+        <div class="arb-panel__body arb-history-body">
+          <button class="arb-history-item" *ngFor="let entry of history" (click)="loadFromHistory(entry)">
+            <span class="arb-history-method" [style.color]="methodColor">{{ entry.method }}</span>
+            <span class="arb-history-url">{{ entry.url }}</span>
+            <span class="arb-history-meta">
+              <span class="arb-history-status" [class.arb-history-status--ok]="entry.status >= 200 && entry.status < 300"
+                    [class.arb-history-status--err]="entry.status >= 400 || entry.status === 0">{{ entry.status || 'ERR' }}</span>
+              <span class="arb-history-time">{{ entry.duration }}ms</span>
+              <span class="arb-history-ts">{{ formatTimestamp(entry.timestamp) }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="arb-history-empty" *ngIf="showHistory && history.length === 0">
+        <p>No requests yet. Send one to get started.</p>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- ── RIGHT: Response ── -->
+    <div class="arb-col arb-col--right">
+
+      <!-- Status bar -->
+      <div class="arb-status-bar" *ngIf="hasResponse"
+           [class.arb-status-bar--success]="responseStatus >= 200 && responseStatus < 300"
+           [class.arb-status-bar--redirect]="responseStatus >= 300 && responseStatus < 400"
+           [class.arb-status-bar--client-error]="responseStatus >= 400 && responseStatus < 500"
+           [class.arb-status-bar--server-error]="responseStatus >= 500"
+           [class.arb-status-bar--error]="responseStatus === 0">
+        <span class="arb-status-code">{{ responseStatus || 'ERR' }}</span>
+        <span class="arb-status-text">{{ responseStatusText || responseError }}</span>
+        <span class="arb-status-time">{{ responseDuration }}ms</span>
+      </div>
+
+      <div class="arb-status-bar arb-status-bar--idle" *ngIf="!hasResponse && !loading">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Send a request to see the response</span>
+      </div>
+
+      <div class="arb-status-bar arb-status-bar--loading" *ngIf="loading">
+        <span class="arb-spinner arb-spinner--sm"></span>
+        <span>Waiting for response...</span>
+      </div>
+
+      <!-- Error display -->
+      <div class="arb-error-panel" *ngIf="responseError">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span>{{ responseError }}</span>
+      </div>
+
+      <!-- Response Headers -->
+      <div class="arb-panel" *ngIf="hasResponse && responseHeaders">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+            Response Headers
+          </span>
+        </div>
+        <div class="arb-panel__body">
+          <pre class="arb-code-pre"><code class="arb-code">{{ responseHeaders }}</code></pre>
+        </div>
+      </div>
+
+      <!-- Response Body -->
+      <div class="arb-panel arb-panel--response" *ngIf="hasResponse && responseBody">
+        <div class="arb-panel__header">
+          <span class="arb-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Response Body
+          </span>
+          <div class="arb-panel__actions">
+            <button class="arb-btn-ghost arb-btn-sm" (click)="copyResponse()" [class.arb-btn-ghost--success]="copiedResponse">
+              <ng-container *ngIf="!copiedResponse">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copiedResponse">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+        <div class="arb-panel__body">
+          <pre class="arb-code-pre"><code class="arb-code">{{ responseBody }}</code></pre>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="arb-panel arb-panel--empty" *ngIf="!hasResponse && !loading">
+        <div class="arb-empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <span>Response will appear here</span>
+          <span class="arb-empty-hint">Enter a URL and hit Send to get started</span>
+        </div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="api-request-builder" toolName="API Request Builder"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'api-request-builder'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Developer Tools'" [toolSlug]="'api-request-builder'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'api-request-builder'"></app-related-tools>
+
+</div>

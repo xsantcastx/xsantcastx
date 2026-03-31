@@ -765,6 +765,11 @@
   text-align: center;
 }
 
+.ssl-auditor__tab-count--info {
+  background: rgba(123, 97, 255, 0.15);
+  color: var(--secondary-color);
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .ssl-auditor__domain-row { flex-direction: column; }
@@ -774,23 +779,303 @@
   .ssl-auditor__hero-right { margin-top: 1rem; }
 }
 
-/* ── Certificate Details Panel ──────────────────────────────── */
-.cert-details-panel {
-  padding: 1.75rem;
-  margin-bottom: 1.5rem;
-  position: relative;
-  overflow: hidden;
+/* ── Tab Content Panel ─────────────────────────────────────── */
+.ssl-auditor__tab-panel {
+  animation: fadeIn 0.25s ease;
 }
 
-.cert-details-panel::before {
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Certificate Details Grid ─────────────────────────────── */
+.ssl-auditor__details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.ssl-auditor__detail-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  transition: border-color 0.2s ease;
+}
+
+.ssl-auditor__detail-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.ssl-auditor__detail-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 0.4rem;
+}
+
+.ssl-auditor__detail-value {
+  font-size: 0.88rem;
+  color: var(--text-color);
+  margin: 0;
+  word-break: break-all;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ssl-auditor__detail-value--mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+}
+
+.ssl-auditor__copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.ssl-auditor__copy-btn:hover {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.ssl-auditor__copy-btn--outline {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  gap: 0.35rem;
+  opacity: 0.7;
+}
+
+.ssl-auditor__copy-btn--outline:hover {
+  opacity: 1;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* ── Security Flags List ──────────────────────────────────── */
+.ssl-auditor__flags-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ssl-auditor__flag-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.ssl-auditor__flag-card::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--primary-color) 8%, transparent),
-    transparent 60%
-  );
-  pointer-events: none;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+.ssl-auditor__flag-card--pass::before { background: var(--primary-color); }
+.ssl-auditor__flag-card--warn::before { background: #ffc83c; }
+.ssl-auditor__flag-card--fail::before { background: #ff5050; }
+.ssl-auditor__flag-card--info::before { background: var(--secondary-color); }
+
+.ssl-auditor__flag-card--pass { border-color: rgba(0, 255, 204, 0.12); }
+.ssl-auditor__flag-card--warn { border-color: rgba(255, 200, 60, 0.15); }
+.ssl-auditor__flag-card--fail { border-color: rgba(255, 80, 80, 0.15); }
+.ssl-auditor__flag-card--info { border-color: rgba(123, 97, 255, 0.15); }
+
+.ssl-auditor__flag-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.ssl-auditor__flag-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.ssl-auditor__flag-card--pass .ssl-auditor__flag-icon {
+  background: rgba(0, 255, 204, 0.1);
+  color: var(--primary-color);
+}
+.ssl-auditor__flag-card--warn .ssl-auditor__flag-icon {
+  background: rgba(255, 200, 60, 0.1);
+  color: #ffc83c;
+}
+.ssl-auditor__flag-card--fail .ssl-auditor__flag-icon {
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff5050;
+}
+.ssl-auditor__flag-card--info .ssl-auditor__flag-icon {
+  background: rgba(123, 97, 255, 0.1);
+  color: var(--secondary-color);
+}
+
+.ssl-auditor__flag-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ssl-auditor__flag-status-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ssl-auditor__flag-status-badge--pass {
+  background: rgba(0, 255, 204, 0.1);
+  color: var(--primary-color);
+}
+.ssl-auditor__flag-status-badge--warn {
+  background: rgba(255, 200, 60, 0.12);
+  color: #ffc83c;
+}
+.ssl-auditor__flag-status-badge--fail {
+  background: rgba(255, 80, 80, 0.12);
+  color: #ff5050;
+}
+.ssl-auditor__flag-status-badge--info {
+  background: rgba(123, 97, 255, 0.1);
+  color: var(--secondary-color);
+}
+
+.ssl-auditor__flag-detail {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.55;
+  padding-left: 2.35rem;
+}
+
+.ssl-auditor__flag-remediation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  padding-left: 2.35rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.ssl-auditor__flag-remediation svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* ── SANs Card ────────────────────────────────────────────── */
+.ssl-auditor__sans-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.ssl-auditor__sans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ssl-auditor__sans-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.ssl-auditor__sans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ssl-auditor__san-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  color: var(--text-color);
+  transition: background 0.15s;
+}
+
+.ssl-auditor__san-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ssl-auditor__san-item svg {
+  color: var(--text-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.ssl-auditor__san-name {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.ssl-auditor__san-name--wildcard {
+  color: var(--secondary-color);
+}
+
+/* ── Responsive: Tab content ──────────────────────────────── */
+@media (max-width: 640px) {
+  .ssl-auditor__details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ssl-auditor__flag-detail,
+  .ssl-auditor__flag-remediation {
+    padding-left: 0;
+  }
+
+  .ssl-auditor__tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }

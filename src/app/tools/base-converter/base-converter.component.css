@@ -1,0 +1,710 @@
+/* ══════════════════════════════════════════════════════════════
+   Number Base Converter — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.bc-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.bc-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.bc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.bc-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.bc-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.bc-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bc-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.bc-panel__body {
+  padding: 1rem 1.1rem;
+}
+
+.bc-panel__body--input {
+  padding: 0;
+}
+
+.bc-char-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Base selector ─────────────────────────────────────────── */
+.bc-base-selector {
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bc-base-selector__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Segmented control ─────────────────────────────────────── */
+.bc-seg-ctrl {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.bc-seg-ctrl--sm {
+  gap: 0.25rem;
+}
+
+.bc-seg-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.bc-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.bc-seg-btn--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.08);
+}
+
+.bc-seg-btn--sm {
+  flex-direction: row;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.73rem;
+}
+
+.bc-seg-btn__name {
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.bc-seg-btn__value {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  font-family: 'Fira Code', monospace;
+}
+
+.bc-seg-btn--active .bc-seg-btn__value {
+  opacity: 1;
+}
+
+/* ── Input field ───────────────────────────────────────────── */
+.bc-input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.bc-input-prefix {
+  position: absolute;
+  left: 1.1rem;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bc-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 1.1rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+  letter-spacing: 0.05em;
+}
+
+.bc-input--prefixed {
+  padding-left: 2.8rem;
+}
+
+.bc-input::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+
+.bc-input:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* ── Options panel ─────────────────────────────────────────── */
+.bc-options-grid {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bc-option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.bc-option-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bc-option-hint {
+  font-size: 0.73rem;
+  color: rgba(214, 221, 235, 0.5);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Toggle ────────────────────────────────────────────────── */
+.bc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+.bc-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.bc-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 20px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.bc-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 999px;
+  transition: left 0.2s ease, background 0.2s ease;
+}
+
+.bc-toggle input:checked ~ .bc-toggle__track {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.bc-toggle input:checked ~ .bc-toggle__track .bc-toggle__thumb {
+  left: 20px;
+  background: var(--primary-color);
+}
+
+.bc-toggle__label {
+  font-size: 0.82rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.bc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--secondary-color);
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.bc-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.bc-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.bc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.bc-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.bc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Quick values grid ─────────────────────────────────────── */
+.bc-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+}
+
+.bc-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.bc-quick-btn:hover {
+  border-color: rgba(0, 255, 204, 0.3);
+  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.05);
+}
+
+.bc-quick-btn__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bc-quick-btn__value {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--primary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Status bar ─────────────────────────────────────────────── */
+.bc-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.bc-status-bar--idle {
+  background: rgba(214, 221, 235, 0.04);
+  color: rgba(214, 221, 235, 0.5);
+}
+
+.bc-status-bar--valid {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+
+.bc-status-bar--invalid {
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border-color: rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+.bc-status-error {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+/* ── Results panel ─────────────────────────────────────────── */
+.bc-panel--output {
+  flex: 1;
+}
+
+.bc-results-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.bc-result-row {
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.15s ease;
+}
+
+.bc-result-row:last-child {
+  border-bottom: none;
+}
+
+.bc-result-row:hover {
+  background: rgba(0, 255, 204, 0.02);
+}
+
+.bc-result-row--source {
+  background: color-mix(in srgb, var(--primary-color) 4%, transparent);
+  border-left: 2px solid var(--primary-color);
+}
+
+.bc-result-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.bc-result-row__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.bc-result-row__prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.1rem 0.35rem;
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--primary-color);
+}
+
+.bc-result-row__value {
+  display: block;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-color);
+  word-break: break-all;
+  letter-spacing: 0.04em;
+}
+
+.bc-result-row__value--binary {
+  color: var(--primary-color);
+  letter-spacing: 0.08em;
+}
+
+.bc-result-row__value--hex {
+  color: var(--secondary-color, #7b61ff);
+}
+
+/* ── Empty / error states ──────────────────────────────────── */
+.bc-results-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 260px;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.bc-results-empty--error {
+  color: rgba(255, 77, 106, 0.6);
+}
+
+/* ── Bit visualization ─────────────────────────────────────── */
+.bc-bits-body {
+  padding: 1rem;
+}
+
+.bc-bit-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.bc-bit-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.bc-bit-group__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.bc-bit-cells {
+  display: flex;
+  gap: 2px;
+}
+
+.bc-bit-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  border: 1px solid var(--glass-border);
+}
+
+.bc-bit-cell--on {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.45);
+  color: var(--primary-color);
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.15), inset 0 0 6px rgba(0, 255, 204, 0.05);
+}
+
+.bc-bit-cell--off {
+  background: var(--surface-strong);
+  color: rgba(214, 221, 235, 0.3);
+}
+
+.bc-bit-group__positions {
+  display: flex;
+  gap: 2px;
+}
+
+.bc-bit-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  font-size: 0.55rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-family: 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .bc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bc-col--right {
+    order: -1;
+  }
+
+  .bc-seg-ctrl {
+    flex-wrap: wrap;
+  }
+
+  .bc-seg-btn {
+    min-width: calc(50% - 0.2rem);
+  }
+
+  .bc-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bc-bit-cell {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
+  }
+
+  .bc-bit-pos {
+    width: 24px;
+    font-size: 0.5rem;
+  }
+
+  .bc-bit-groups {
+    gap: 0.75rem;
+  }
+
+  .bc-input {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .bc-bit-cell {
+    width: 20px;
+    height: 20px;
+    font-size: 0.6rem;
+  }
+
+  .bc-bit-pos {
+    width: 20px;
+    font-size: 0.45rem;
+  }
+
+  .bc-result-row__value {
+    font-size: 0.8rem;
+  }
+}
