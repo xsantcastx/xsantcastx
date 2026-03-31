@@ -48,6 +48,17 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'svg-code',        name: 'SVG Whisperer',        description: 'Converted an SVG with 50+ elements',              tool: 'svg-to-code',               rarity: 'epic',      icon: '🎨' },
   { id: 'pdf-catalog',     name: 'Catalog King',         description: 'Generated a PDF with 20+ products',               tool: 'pdf-generator',             rarity: 'rare',      icon: '📚' },
   { id: 'gmail-self',      name: 'Self Check',           description: 'Checked your own Gmail deliverability',           tool: 'gmail-deliverability-checker', rarity: 'common', icon: '📬' },
+
+  // ── Batch 2 tools ──────────────────────────────────────────
+  { id: 'cron-chaos',      name: 'Chaos Mode',           description: 'Set a cron to run every single minute',            tool: 'cron-builder',              rarity: 'rare',      icon: '💥' },
+  { id: 'api-teapot',      name: "I'm a Teapot",         description: 'Got a 418 status code or requested a teapot URL',  tool: 'api-request-builder',       rarity: 'epic',      icon: '🫖' },
+  { id: 'json-ts-hidden',  name: 'Type Hunter',          description: 'Converted JSON containing an easter_egg key',      tool: 'json-to-ts',                rarity: 'rare',      icon: '🔎' },
+  { id: 'md-hello-world',  name: 'Hello World',          description: 'Started your markdown with # Hello World',         tool: 'markdown-editor',           rarity: 'common',    icon: '👋' },
+  { id: 'diff-identical',  name: 'Spot the Difference',  description: 'Compared two identical texts',                      tool: 'diff-checker',              rarity: 'common',    icon: '🪞' },
+  { id: 'timestamp-epoch', name: 'In the Beginning',     description: 'Converted Unix epoch zero (Jan 1, 1970)',           tool: 'timestamp-converter',       rarity: 'rare',      icon: '🌅' },
+  { id: 'url-rickroll',    name: 'Never Gonna Give You Up', description: 'Encoded a URL containing a rickroll',            tool: 'url-encoder',               rarity: 'epic',      icon: '🕺' },
+  { id: 'sql-drop',        name: 'Bobby Tables',         description: 'Formatted SQL containing DROP TABLE',              tool: 'sql-formatter',             rarity: 'rare',      icon: '🗑️' },
+  { id: 'base-meaning',    name: '42 in Every Base',     description: 'Entered 42 in the number base converter',          tool: 'base-converter',            rarity: 'common',    icon: '🔢' },
 ];
 
 @Injectable({ providedIn: 'root' })

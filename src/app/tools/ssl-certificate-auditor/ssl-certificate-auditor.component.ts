@@ -56,6 +56,7 @@ export class SslCertificateAuditorComponent {
   error = '';
   result: CertificateResult | null = null;
   copiedFingerprint = false;
+  copiedField = '';
   activeTab: 'details' | 'flags' | 'raw' = 'details';
 
   constructor(private router: Router, private translationService: TranslationService) {}
@@ -66,6 +67,26 @@ export class SslCertificateAuditorComponent {
 
   goBack(): void {
     this.router.navigate(['/tools']);
+  }
+
+  isMonoField(label: string): boolean {
+    const monoLabels = ['Serial Number', 'SHA-256 Fingerprint', 'crt.sh Entry ID', 'Signature Algorithm', 'Key Algorithm'];
+    return monoLabels.includes(label);
+  }
+
+  isCopyableField(label: string): boolean {
+    const copyLabels = ['SHA-256 Fingerprint', 'Serial Number', 'Common Name (CN)', 'Issuer', 'Subject'];
+    return copyLabels.includes(label);
+  }
+
+  async copyToClipboard(text: string, label: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copiedField = label;
+      setTimeout(() => { this.copiedField = ''; }, 2000);
+    } catch (_) {
+      // Clipboard API may not be available
+    }
   }
 
   togglePemPanel(): void {
