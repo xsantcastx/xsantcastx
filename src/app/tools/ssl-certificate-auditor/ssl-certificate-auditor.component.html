@@ -27,6 +27,7 @@
         LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'ssl-certificate-auditor'"></app-tool-usage-counter>
   </header>
 
   <!-- Input Section -->
@@ -249,6 +250,8 @@
   <app-embed-code-generator toolSlug="ssl-certificate-auditor" toolName="SSL Certificate Auditor"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'ssl-certificate-auditor'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Security Tools'" [toolSlug]="'ssl-certificate-auditor'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'ssl-certificate-auditor'"></app-related-tools>
 

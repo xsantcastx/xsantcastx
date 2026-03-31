@@ -1,0 +1,279 @@
+<div class="fp-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    {{ translate('tools.common.back') }}
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Typography Tool</p>
+    <h1 class="tool-header__title">Font Pairer</h1>
+    <p class="tool-header__subtitle">Discover beautiful font combinations with live preview. Browse curated heading + body pairings, customize sizes, and copy CSS or Google Fonts link tags instantly.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.share') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'font-pairer'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="fp-workspace">
+
+    <!-- LEFT COLUMN: Preview + Code -->
+    <div class="fp-left">
+
+      <!-- Live Preview Panel -->
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Live Preview</span>
+          <div class="fp-preview-controls">
+            <button type="button" class="fp-context-btn" [class.is-active]="previewContext === 'hero'" (click)="setPreviewContext('hero')">Hero</button>
+            <button type="button" class="fp-context-btn" [class.is-active]="previewContext === 'article'" (click)="setPreviewContext('article')">Article</button>
+            <button type="button" class="fp-context-btn" [class.is-active]="previewContext === 'card'" (click)="setPreviewContext('card')">Card</button>
+            <button type="button" class="fp-icon-btn fp-shuffle-btn" (click)="shufflePairing()" title="Shuffle pairing">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                <line x1="4" y1="4" x2="9" y2="9"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Hero Preview -->
+        <div class="fp-preview-area" *ngIf="previewContext === 'hero'">
+          <div class="fp-hero-preview">
+            <h2 class="fp-hero-heading" [ngStyle]="headingStyle" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
+            <p class="fp-hero-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
+          </div>
+        </div>
+
+        <!-- Article Preview -->
+        <div class="fp-preview-area" *ngIf="previewContext === 'article'">
+          <div class="fp-article-preview">
+            <span class="fp-article-meta" [ngStyle]="bodyStyle" style="font-size: 12px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em;">Design &middot; 5 min read</span>
+            <h2 class="fp-article-heading" [ngStyle]="headingStyle" style="font-size: 32px; margin: 0.5rem 0 1rem;" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
+            <p class="fp-article-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
+            <p class="fp-article-body" [ngStyle]="bodyStyle" style="opacity: 0.6;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+          </div>
+        </div>
+
+        <!-- Card Preview -->
+        <div class="fp-preview-area fp-preview-area--cards" *ngIf="previewContext === 'card'">
+          <div class="fp-card-preview" *ngFor="let i of [1, 2, 3]">
+            <div class="fp-card-preview__img"></div>
+            <div class="fp-card-preview__content">
+              <h3 class="fp-card-preview__title" [ngStyle]="headingStyle" style="font-size: 18px;">{{ i === 1 ? 'Design Systems' : i === 2 ? 'Color Theory' : 'Typography' }}</h3>
+              <p class="fp-card-preview__text" [ngStyle]="bodyStyle" style="font-size: 14px;">A short description of the topic that shows how body text looks at smaller sizes.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pairing name -->
+        <div class="fp-preview-meta">
+          <span class="fp-preview-meta__name">{{ activePairing.name }}</span>
+          <span class="fp-preview-meta__fonts">{{ activePairing.heading }} + {{ activePairing.body }}</span>
+          <span class="fp-preview-meta__badge">{{ activePairing.category }}</span>
+        </div>
+      </div>
+
+      <!-- Code Output -->
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Generated Code</span>
+          <div class="fp-format-btns">
+            <button type="button" class="fp-toggle-btn is-active">CSS</button>
+          </div>
+        </div>
+
+        <div class="fp-code-block">
+          <pre class="fp-code-pre"><code>{{ cssCode }}</code></pre>
+        </div>
+
+        <div class="fp-code-actions">
+          <button type="button" class="fp-btn fp-btn--primary" (click)="copyCSS()">
+            <svg *ngIf="!cssCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg *ngIf="cssCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ cssCopied ? 'Copied!' : 'Copy CSS' }}
+          </button>
+          <button type="button" class="fp-btn fp-btn--ghost" (click)="copyLink()">
+            <svg *ngIf="!linkCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <svg *ngIf="linkCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ linkCopied ? 'Copied!' : 'Copy &lt;link&gt; Tags' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Google Fonts Link Tags -->
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Google Fonts &lt;link&gt;</span>
+        </div>
+        <div class="fp-code-block">
+          <pre class="fp-code-pre"><code>{{ googleFontsLink }}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Controls + Pairings -->
+    <div class="fp-right">
+
+      <!-- Typography Controls -->
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Heading Controls</span>
+          <span class="fp-card__label fp-card__label--font">{{ activePairing.heading }}</span>
+        </div>
+
+        <div class="fp-controls-grid">
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Font Size</label>
+              <span class="fp-control-group__value">{{ headingSize }}px</span>
+            </div>
+            <input type="range" min="16" max="96" step="1" [value]="headingSize" (input)="updateHeadingSize($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Font Weight</label>
+              <span class="fp-control-group__value">{{ headingWeight }}</span>
+            </div>
+            <input type="range" min="100" max="900" step="100" [value]="headingWeight" (input)="updateHeadingWeight($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Line Height</label>
+              <span class="fp-control-group__value">{{ headingLineHeight }}</span>
+            </div>
+            <input type="range" min="0.8" max="2.0" step="0.05" [value]="headingLineHeight" (input)="updateHeadingLineHeight($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Letter Spacing</label>
+              <span class="fp-control-group__value">{{ headingLetterSpacing }}em</span>
+            </div>
+            <input type="range" min="-0.1" max="0.3" step="0.01" [value]="headingLetterSpacing" (input)="updateHeadingLetterSpacing($event)" class="fp-slider" />
+          </div>
+        </div>
+      </div>
+
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Body Controls</span>
+          <span class="fp-card__label fp-card__label--font">{{ activePairing.body }}</span>
+        </div>
+
+        <div class="fp-controls-grid">
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Font Size</label>
+              <span class="fp-control-group__value">{{ bodySize }}px</span>
+            </div>
+            <input type="range" min="10" max="32" step="1" [value]="bodySize" (input)="updateBodySize($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Font Weight</label>
+              <span class="fp-control-group__value">{{ bodyWeight }}</span>
+            </div>
+            <input type="range" min="100" max="900" step="100" [value]="bodyWeight" (input)="updateBodyWeight($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Line Height</label>
+              <span class="fp-control-group__value">{{ bodyLineHeight }}</span>
+            </div>
+            <input type="range" min="1.0" max="2.5" step="0.05" [value]="bodyLineHeight" (input)="updateBodyLineHeight($event)" class="fp-slider" />
+          </div>
+
+          <div class="fp-control-group">
+            <div class="fp-control-group__top">
+              <label class="fp-control-group__label">Letter Spacing</label>
+              <span class="fp-control-group__value">{{ bodyLetterSpacing }}em</span>
+            </div>
+            <input type="range" min="-0.05" max="0.2" step="0.005" [value]="bodyLetterSpacing" (input)="updateBodyLetterSpacing($event)" class="fp-slider" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Font Pairings List -->
+      <div class="fp-card">
+        <div class="fp-card__header">
+          <span class="fp-card__label">Font Pairings</span>
+          <button type="button" class="fp-btn fp-btn--primary fp-btn--sm" (click)="shufflePairing()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+              <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+              <line x1="4" y1="4" x2="9" y2="9"/>
+            </svg>
+            Shuffle
+          </button>
+        </div>
+
+        <!-- Category Filters -->
+        <div class="fp-category-filters">
+          <button
+            type="button"
+            class="fp-category-btn"
+            *ngFor="let cat of categories; trackBy: trackByCategoryValue"
+            [class.is-active]="activeCategory === cat.value"
+            (click)="selectCategory(cat.value)"
+          >{{ cat.label }}</button>
+        </div>
+
+        <!-- Pairing List -->
+        <div class="fp-pairing-list">
+          <div
+            class="fp-pairing-item"
+            *ngFor="let pairing of filteredPairings; trackBy: trackByPairingId"
+            [class.is-active]="activePairing.id === pairing.id"
+            (click)="selectPairing(pairing)"
+          >
+            <div class="fp-pairing-item__info">
+              <span class="fp-pairing-item__name">{{ pairing.name }}</span>
+              <span class="fp-pairing-item__fonts">{{ pairing.heading }} + {{ pairing.body }}</span>
+            </div>
+            <span class="fp-pairing-item__badge">{{ pairing.category }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <app-embed-code-generator toolSlug="font-pairer" toolName="Font Pairer"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'font-pairer'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'font-pairer'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'font-pairer'"></app-related-tools>
+
+</div>

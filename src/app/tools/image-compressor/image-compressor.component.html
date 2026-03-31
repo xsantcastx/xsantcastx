@@ -23,6 +23,7 @@
         LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'image-compressor'"></app-tool-usage-counter>
   </header>
 
   <!-- Global error -->
@@ -229,6 +230,8 @@
   <app-embed-code-generator toolSlug="image-compressor" toolName="Image Compressor"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'image-compressor'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Productivity'" [toolSlug]="'image-compressor'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'image-compressor'"></app-related-tools>
 

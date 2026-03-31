@@ -23,6 +23,7 @@
         LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'gmail-deliverability-checker'"></app-tool-usage-counter>
   </header>
 
   <!-- Global error -->
@@ -393,6 +394,8 @@
   <app-embed-code-generator toolSlug="gmail-deliverability-checker" toolName="Gmail Deliverability Checker"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'gmail-deliverability-checker'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Email Tools'" [toolSlug]="'gmail-deliverability-checker'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'gmail-deliverability-checker'"></app-related-tools>
 

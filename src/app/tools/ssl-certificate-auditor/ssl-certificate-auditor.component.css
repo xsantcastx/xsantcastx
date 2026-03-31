@@ -343,6 +343,437 @@
   line-height: 1.5;
 }
 
+/* ── Input Section (ssl-auditor__ prefixed) ────────────────── */
+.ssl-auditor__input-section {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.ssl-auditor__domain-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.ssl-auditor__domain-field { flex: 1; min-width: 0; }
+
+.ssl-auditor__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+}
+
+.ssl-auditor__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ssl-auditor__input-prefix {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.ssl-auditor__domain-input {
+  flex: 1;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 0.7rem 2.5rem 0.7rem 2.6rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
+  width: 100%;
+}
+
+.ssl-auditor__domain-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+.ssl-auditor__domain-input:focus {
+  border-color: var(--highlight-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-color) 20%, transparent);
+}
+
+.ssl-auditor__clear-btn {
+  position: absolute;
+  right: 0.65rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.ssl-auditor__clear-btn:hover { opacity: 1; }
+.ssl-auditor__clear-btn:disabled { cursor: not-allowed; }
+
+.ssl-auditor__check-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-color);
+  color: #0a0f1a;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+.ssl-auditor__check-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-strong);
+}
+.ssl-auditor__check-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* ── PEM Toggle ────────────────────────────────────────────── */
+.ssl-auditor__pem-toggle {
+  background: none;
+  border: none;
+  color: var(--highlight-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.2s ease;
+}
+.ssl-auditor__pem-toggle:hover { opacity: 0.75; }
+.ssl-auditor__pem-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ssl-auditor__pem-panel {
+  margin-top: 0.85rem;
+  animation: slideDown 0.22s ease;
+}
+
+.ssl-auditor__pem-textarea {
+  width: 100%;
+  min-height: 140px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  padding: 0.75rem 1rem;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.ssl-auditor__pem-textarea::placeholder { color: var(--text-muted); opacity: 0.6; }
+.ssl-auditor__pem-textarea:focus {
+  border-color: var(--highlight-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-color) 20%, transparent);
+}
+
+.ssl-auditor__pem-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0;
+  opacity: 0.7;
+}
+
+/* ── Error ──────────────────────────────────────────────────── */
+.ssl-auditor__error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: color-mix(in srgb, #ff4d4d 12%, transparent);
+  border: 1px solid color-mix(in srgb, #ff4d4d 40%, transparent);
+  border-radius: var(--radius-md);
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Loading ────────────────────────────────────────────────── */
+.ssl-auditor__loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.ssl-auditor__loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2.5rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 400px;
+}
+
+.ssl-auditor__spin { animation: spin 0.9s linear infinite; color: var(--highlight-color); }
+.ssl-auditor__spin--lg { width: 32px; height: 32px; }
+
+.ssl-auditor__loading-text {
+  font-size: 0.95rem;
+  color: var(--text-color);
+  font-weight: 600;
+  margin: 0;
+}
+
+.ssl-auditor__loading-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Results ────────────────────────────────────────────────── */
+.ssl-auditor__results { margin-bottom: 2rem; }
+
+/* ── Hero Card ──────────────────────────────────────────────── */
+.ssl-auditor__hero-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  background: var(--surface-color);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft), 0 0 20px -10px rgba(0, 255, 204, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+.ssl-auditor__hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.05), transparent 60%);
+  pointer-events: none;
+}
+.ssl-auditor__hero-card--warn {
+  border-color: rgba(255, 200, 60, 0.3);
+  box-shadow: var(--shadow-soft), 0 0 20px -10px rgba(255, 200, 60, 0.15);
+}
+.ssl-auditor__hero-card--warn::before {
+  background: linear-gradient(135deg, rgba(255, 200, 60, 0.06), transparent 60%);
+}
+.ssl-auditor__hero-card--danger {
+  border-color: rgba(255, 80, 80, 0.3);
+  box-shadow: var(--shadow-soft), 0 0 20px -10px rgba(255, 80, 80, 0.15);
+}
+.ssl-auditor__hero-card--danger::before {
+  background: linear-gradient(135deg, rgba(255, 80, 80, 0.06), transparent 60%);
+}
+
+.ssl-auditor__hero-left { flex: 1; min-width: 0; }
+
+.ssl-auditor__hero-domain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.ssl-auditor__hero-lock {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(0, 255, 204, 0.1);
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+.ssl-auditor__hero-lock--warn {
+  background: rgba(255, 200, 60, 0.1);
+  border-color: rgba(255, 200, 60, 0.25);
+  color: #ffc83c;
+}
+.ssl-auditor__hero-lock--danger {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: rgba(255, 80, 80, 0.25);
+  color: #ff5050;
+}
+
+.ssl-auditor__hero-cn {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+  word-break: break-all;
+}
+
+.ssl-auditor__hero-org {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.ssl-auditor__hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ssl-auditor__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+.ssl-auditor__badge--pass {
+  background: rgba(0, 255, 204, 0.1);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+.ssl-auditor__badge--warn {
+  background: rgba(255, 200, 60, 0.1);
+  border-color: rgba(255, 200, 60, 0.25);
+  color: #ffc83c;
+}
+.ssl-auditor__badge--fail {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: rgba(255, 80, 80, 0.25);
+  color: #ff5050;
+}
+.ssl-auditor__badge--info {
+  background: rgba(123, 97, 255, 0.1);
+  border-color: rgba(123, 97, 255, 0.25);
+  color: var(--secondary-color);
+}
+
+/* ── Expiry Ring ────────────────────────────────────────────── */
+.ssl-auditor__hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ssl-auditor__expiry-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--glass-border);
+}
+.ssl-auditor__expiry-ring--pass { border-color: rgba(0, 255, 204, 0.4); }
+.ssl-auditor__expiry-ring--warn { border-color: rgba(255, 200, 60, 0.5); }
+.ssl-auditor__expiry-ring--danger { border-color: rgba(255, 80, 80, 0.5); }
+
+.ssl-auditor__expiry-days {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  line-height: 1;
+}
+
+.ssl-auditor__expiry-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ssl-auditor__expiry-until {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0.4rem 0 0;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────── */
+.ssl-auditor__tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0;
+}
+
+.ssl-auditor__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.ssl-auditor__tab:hover { color: var(--text-color); }
+.ssl-auditor__tab--active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.ssl-auditor__tab-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(255, 200, 60, 0.15);
+  color: #ffc83c;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ssl-auditor__domain-row { flex-direction: column; }
+  .ssl-auditor__hero-card { flex-direction: column; text-align: center; }
+  .ssl-auditor__hero-domain-row { justify-content: center; }
+  .ssl-auditor__hero-badges { justify-content: center; }
+  .ssl-auditor__hero-right { margin-top: 1rem; }
+}
+
 /* ── Certificate Details Panel ──────────────────────────────── */
 .cert-details-panel {
   padding: 1.75rem;

@@ -21,6 +21,7 @@
         LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'contrast-checker'"></app-tool-usage-counter>
   </header>
 
   <div class="cc-workspace">
@@ -132,6 +133,8 @@
   <app-embed-code-generator toolSlug="contrast-checker" toolName="WCAG Contrast Checker"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'contrast-checker'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'contrast-checker'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'contrast-checker'"></app-related-tools>
 

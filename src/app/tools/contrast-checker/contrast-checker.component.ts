@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface WcagResult {
   level: 'AA' | 'AAA';
@@ -17,6 +18,7 @@ interface WcagResult {
   standalone: false,
 })
 export class ContrastCheckerComponent {
+  private readonly eggs = inject(EasterEggService);
   fg = '#ffffff';
   bg = '#1a237e';
 
@@ -130,6 +132,8 @@ export class ContrastCheckerComponent {
     if (this.isValidHex(hex)) {
       this.bg = hex;
       this.bgError = false;
+      // Easter egg: identical foreground and background
+      if (this.fg.toLowerCase() === this.bg.toLowerCase()) this.eggs.trigger('monochrome');
     } else {
       this.bgError = value.replace('#', '').length > 0 && !this.isValidHex(hex);
     }

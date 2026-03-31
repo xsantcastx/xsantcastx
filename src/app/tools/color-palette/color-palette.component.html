@@ -23,6 +23,7 @@
         LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'color-palette'"></app-tool-usage-counter>
   </header>
 
   <!-- Error -->
@@ -143,6 +144,8 @@
   <app-embed-code-generator toolSlug="color-palette" toolName="Color Palette Extractor"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'color-palette'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'color-palette'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'color-palette'"></app-related-tools>
 

@@ -63,15 +63,13 @@
   </div>
 
   <div class="tools-grid">
-    <div
+    <a
       *ngFor="let tool of filteredTools"
       class="tool-card"
       [class.tool-card--live]="tool.status === 'live'"
       [class.tool-card--soon]="tool.status === 'coming-soon'"
-      (click)="navigate(tool)"
-      [attr.role]="tool.status === 'live' ? 'button' : null"
-      [attr.tabindex]="tool.status === 'live' ? 0 : null"
-      (keydown.enter)="navigate(tool)"
+      [href]="tool.status === 'live' ? tool.route : null"
+      (click)="handleCardClick($event, tool)"
     >
       <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
 
@@ -100,7 +98,7 @@
           <polyline points="12 5 19 12 12 19"/>
         </svg>
       </div>
-    </div>
+    </a>
 
     <!-- Empty state when filter returns no results -->
     <div class="tools-empty" *ngIf="filteredTools.length === 0">

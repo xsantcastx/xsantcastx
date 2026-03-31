@@ -21,6 +21,7 @@
         Share on LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'base64-encoder'"></app-tool-usage-counter>
   </header>
 
   <!-- Workspace -->
@@ -239,6 +240,8 @@
   <app-embed-code-generator toolSlug="base64-encoder" toolName="Base64 Encoder & Decoder"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'base64-encoder'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Code Converters'" [toolSlug]="'base64-encoder'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'base64-encoder'"></app-related-tools>
 

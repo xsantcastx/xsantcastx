@@ -21,6 +21,7 @@
         Share on LinkedIn
       </a>
     </div>
+    <app-tool-usage-counter [toolSlug]="'regex-tester'"></app-tool-usage-counter>
   </header>
 
   <!-- ── Pattern Bar ── -->
@@ -229,6 +230,8 @@
   <app-embed-code-generator toolSlug="regex-tester" toolName="Regex Tester"></app-embed-code-generator>
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'regex-tester'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Code Converters'" [toolSlug]="'regex-tester'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'regex-tester'"></app-related-tools>
 
