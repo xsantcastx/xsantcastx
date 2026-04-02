@@ -1,0 +1,324 @@
+<div class="qr-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Generators</p>
+    <h1 class="tool-header__title">QR Code <span class="tool-header__amp">Generator</span></h1>
+    <p class="tool-header__subtitle">Generate QR codes from text, URLs, email, WiFi credentials, or vCard contacts — customize colors, download as PNG or SVG, no sign-up required.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'qr-generator'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="qr-layout">
+
+    <!-- LEFT: Input + Options -->
+    <div class="qr-col qr-col--left">
+
+      <!-- Content Type Selector -->
+      <div class="qr-panel">
+        <div class="qr-panel__header">
+          <span class="qr-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Content Type
+          </span>
+        </div>
+        <div class="qr-panel__body qr-content-types">
+          <button class="qr-type-btn" [class.qr-type-btn--active]="contentType === 'text'" (click)="setContentType('text')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Text
+          </button>
+          <button class="qr-type-btn" [class.qr-type-btn--active]="contentType === 'url'" (click)="setContentType('url')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            URL
+          </button>
+          <button class="qr-type-btn" [class.qr-type-btn--active]="contentType === 'email'" (click)="setContentType('email')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Email
+          </button>
+          <button class="qr-type-btn" [class.qr-type-btn--active]="contentType === 'wifi'" (click)="setContentType('wifi')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            WiFi
+          </button>
+          <button class="qr-type-btn" [class.qr-type-btn--active]="contentType === 'vcard'" (click)="setContentType('vcard')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            vCard
+          </button>
+        </div>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="qr-panel">
+        <div class="qr-panel__header">
+          <span class="qr-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Input
+          </span>
+          <div class="qr-panel__actions">
+            <button class="qr-btn-ghost qr-btn-sm" (click)="loadSample()" title="Load sample">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Sample
+            </button>
+            <button class="qr-btn-ghost qr-btn-sm" (click)="clearAll()" title="Clear">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Text / URL input -->
+        <div class="qr-panel__body qr-panel__body--input" *ngIf="contentType === 'text' || contentType === 'url'">
+          <textarea
+            class="qr-textarea"
+            [(ngModel)]="textInput"
+            (ngModelChange)="onInput()"
+            [placeholder]="contentType === 'text' ? 'Type or paste text to encode as QR code...' : 'Enter URL (e.g. https://example.com)'"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+
+        <!-- Email input -->
+        <div class="qr-panel__body qr-form-fields" *ngIf="contentType === 'email'">
+          <div class="qr-field">
+            <label class="qr-field__label">To</label>
+            <input type="email" class="qr-input" [(ngModel)]="emailTo" (ngModelChange)="onInput()" placeholder="recipient@example.com" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Subject</label>
+            <input type="text" class="qr-input" [(ngModel)]="emailSubject" (ngModelChange)="onInput()" placeholder="Email subject" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Body</label>
+            <textarea class="qr-textarea qr-textarea--sm" [(ngModel)]="emailBody" (ngModelChange)="onInput()" placeholder="Email body text..."></textarea>
+          </div>
+        </div>
+
+        <!-- WiFi input -->
+        <div class="qr-panel__body qr-form-fields" *ngIf="contentType === 'wifi'">
+          <div class="qr-field">
+            <label class="qr-field__label">Network Name (SSID)</label>
+            <input type="text" class="qr-input" [(ngModel)]="wifi.ssid" (ngModelChange)="onInput()" placeholder="My WiFi Network" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Password</label>
+            <input type="text" class="qr-input" [(ngModel)]="wifi.password" (ngModelChange)="onInput()" placeholder="Network password" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Encryption</label>
+            <div class="qr-seg-ctrl">
+              <button class="qr-seg-btn" [class.qr-seg-btn--active]="wifi.encryption === 'WPA'" (click)="wifi.encryption = 'WPA'; onInput()">WPA/WPA2</button>
+              <button class="qr-seg-btn" [class.qr-seg-btn--active]="wifi.encryption === 'WEP'" (click)="wifi.encryption = 'WEP'; onInput()">WEP</button>
+              <button class="qr-seg-btn" [class.qr-seg-btn--active]="wifi.encryption === 'nopass'" (click)="wifi.encryption = 'nopass'; onInput()">None</button>
+            </div>
+          </div>
+          <div class="qr-field">
+            <label class="qr-toggle" for="wifiHidden">
+              <input type="checkbox" id="wifiHidden" [(ngModel)]="wifi.hidden" (ngModelChange)="onInput()" />
+              <span class="qr-toggle__track"><span class="qr-toggle__thumb"></span></span>
+              <span class="qr-toggle__label">Hidden network</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- vCard input -->
+        <div class="qr-panel__body qr-form-fields" *ngIf="contentType === 'vcard'">
+          <div class="qr-field-row">
+            <div class="qr-field">
+              <label class="qr-field__label">First Name</label>
+              <input type="text" class="qr-input" [(ngModel)]="vcard.firstName" (ngModelChange)="onInput()" placeholder="John" />
+            </div>
+            <div class="qr-field">
+              <label class="qr-field__label">Last Name</label>
+              <input type="text" class="qr-input" [(ngModel)]="vcard.lastName" (ngModelChange)="onInput()" placeholder="Doe" />
+            </div>
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Phone</label>
+            <input type="tel" class="qr-input" [(ngModel)]="vcard.phone" (ngModelChange)="onInput()" placeholder="+1 555 123 4567" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Email</label>
+            <input type="email" class="qr-input" [(ngModel)]="vcard.email" (ngModelChange)="onInput()" placeholder="john@example.com" />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Organization</label>
+            <input type="text" class="qr-input" [(ngModel)]="vcard.organization" (ngModelChange)="onInput()" placeholder="Acme Inc." />
+          </div>
+          <div class="qr-field">
+            <label class="qr-field__label">Website</label>
+            <input type="url" class="qr-input" [(ngModel)]="vcard.url" (ngModelChange)="onInput()" placeholder="https://example.com" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Customization Panel -->
+      <div class="qr-panel">
+        <div class="qr-panel__header">
+          <span class="qr-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+            Customize
+          </span>
+        </div>
+        <div class="qr-panel__body qr-options-grid">
+
+          <!-- Size slider -->
+          <div class="qr-option-row">
+            <span class="qr-option-label">Size: {{ qrSize }}px</span>
+            <input
+              type="range"
+              class="qr-range"
+              min="100"
+              max="500"
+              step="10"
+              [(ngModel)]="qrSize"
+              (ngModelChange)="onSettingsChange()"
+            />
+          </div>
+
+          <!-- Colors -->
+          <div class="qr-option-row qr-color-row">
+            <div class="qr-color-field">
+              <label class="qr-option-label">Foreground</label>
+              <div class="qr-color-picker">
+                <input type="color" [(ngModel)]="fgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" />
+                <span class="qr-color-value">{{ fgColor }}</span>
+              </div>
+            </div>
+            <div class="qr-color-field">
+              <label class="qr-option-label">Background</label>
+              <div class="qr-color-picker">
+                <input type="color" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" />
+                <span class="qr-color-value">{{ bgColor }}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- RIGHT: Preview + Download -->
+    <div class="qr-col qr-col--right">
+
+      <!-- Status bar -->
+      <div class="qr-status-bar"
+        [class.qr-status-bar--valid]="qrGenerated && !errorMessage"
+        [class.qr-status-bar--invalid]="!!errorMessage"
+        [class.qr-status-bar--idle]="!qrGenerated && !errorMessage">
+        <ng-container *ngIf="!qrGenerated && !errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Waiting for input...</span>
+        </ng-container>
+        <ng-container *ngIf="qrGenerated && !errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>QR code generated</span>
+        </ng-container>
+        <ng-container *ngIf="errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="qr-status-error">{{ errorMessage }}</span>
+        </ng-container>
+      </div>
+
+      <!-- Preview Panel -->
+      <div class="qr-panel qr-panel--output">
+        <div class="qr-panel__header">
+          <span class="qr-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Preview
+          </span>
+          <div class="qr-panel__actions">
+            <button class="qr-btn-ghost qr-btn-sm" (click)="copyQR()" [disabled]="!qrGenerated" [class.qr-btn-ghost--success]="copied">
+              <ng-container *ngIf="!copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+
+        <div class="qr-preview-body">
+          <canvas #qrCanvas class="qr-canvas" [class.qr-canvas--visible]="qrGenerated" [width]="qrSize" [height]="qrSize"></canvas>
+          <div class="qr-preview-empty" *ngIf="!qrGenerated && !errorMessage">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M20 14v3h-3"/><path d="M14 20h3"/><path d="M20 20h0"/></svg>
+            <span>Your QR code will appear here</span>
+          </div>
+          <div class="qr-preview-error" *ngIf="errorMessage">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ errorMessage }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Panel -->
+      <div class="qr-panel" *ngIf="qrGenerated">
+        <div class="qr-panel__header">
+          <span class="qr-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </span>
+        </div>
+        <div class="qr-panel__body qr-download-actions">
+          <button class="qr-download-btn" (click)="downloadPNG()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Download PNG
+          </button>
+          <button class="qr-download-btn" (click)="downloadSVG()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Download SVG
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="qr-stats" *ngIf="qrGenerated">
+        <div class="qr-stat">
+          <span class="qr-stat__label">Type</span>
+          <span class="qr-stat__value qr-stat__value--cyan">{{ contentType | uppercase }}</span>
+        </div>
+        <div class="qr-stat-divider"></div>
+        <div class="qr-stat">
+          <span class="qr-stat__label">Size</span>
+          <span class="qr-stat__value">{{ qrSize }}<span class="qr-stat__unit">px</span></span>
+        </div>
+        <div class="qr-stat-divider"></div>
+        <div class="qr-stat">
+          <span class="qr-stat__label">Format</span>
+          <span class="qr-stat__value qr-stat__value--cyan">PNG / SVG</span>
+        </div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="qr-generator" toolName="QR Code Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'qr-generator'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Generators'" [toolSlug]="'qr-generator'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'qr-generator'"></app-related-tools>
+
+</div>

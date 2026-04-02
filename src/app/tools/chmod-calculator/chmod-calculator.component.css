@@ -1,0 +1,661 @@
+/* ══════════════════════════════════════════════════════════════
+   Chmod Calculator — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.ch-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.ch-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.ch-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.ch-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.ch-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.ch-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ch-panel__body {
+  padding: 1rem 1.1rem;
+}
+
+/* ── Permission Matrix ─────────────────────────────────────── */
+.ch-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1.25rem;
+}
+
+.ch-matrix__header,
+.ch-matrix__row {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr 1fr 120px;
+  align-items: center;
+  gap: 0;
+}
+
+.ch-matrix__header {
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.ch-matrix__row {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(214, 221, 235, 0.06);
+}
+
+.ch-matrix__row:last-child {
+  border-bottom: none;
+}
+
+.ch-matrix__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ch-matrix__cell--label {
+  justify-content: flex-start;
+}
+
+.ch-matrix__cell--head {
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.ch-matrix__cell--value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.ch-matrix__bit {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem;
+  color: rgba(214, 221, 235, 0.35);
+  font-weight: 400;
+}
+
+.ch-matrix__role {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.ch-matrix__role--owner { color: var(--primary-color); }
+.ch-matrix__role--group { color: var(--secondary-color); }
+.ch-matrix__role--others { color: #ff8a65; }
+
+.ch-matrix__octal {
+  font-family: 'Fira Code', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.ch-matrix__symbolic {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Checkbox ──────────────────────────────────────────────── */
+.ch-checkbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ch-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ch-checkbox__mark {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.ch-checkbox__mark::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 7px;
+  width: 5px;
+  height: 10px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: border-color 0.15s ease;
+}
+
+.ch-checkbox input:checked ~ .ch-checkbox__mark {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.5);
+}
+
+.ch-checkbox input:checked ~ .ch-checkbox__mark::after {
+  border-color: var(--primary-color);
+}
+
+.ch-checkbox:hover .ch-checkbox__mark {
+  border-color: rgba(0, 255, 204, 0.3);
+}
+
+/* ── Numeric Input ─────────────────────────────────────────── */
+.ch-numeric-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ch-numeric-input__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ch-numeric-input__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ch-numeric-input__hint {
+  font-size: 0.72rem;
+  color: rgba(214, 221, 235, 0.4);
+}
+
+.ch-input {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  caret-color: var(--primary-color);
+}
+
+.ch-input:focus {
+  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(0, 255, 204, 0.015);
+}
+
+.ch-input--mono {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  width: 90px;
+  text-align: center;
+}
+
+.ch-input--sm {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  width: auto;
+  flex: 1;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.ch-error {
+  font-size: 0.73rem;
+  color: #ff4d6a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Presets ────────────────────────────────────────────────── */
+.ch-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.ch-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  font-family: var(--font-body);
+}
+
+.ch-preset:hover {
+  border-color: rgba(0, 255, 204, 0.25);
+  background: rgba(0, 255, 204, 0.03);
+}
+
+.ch-preset--active {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
+.ch-preset__value {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.ch-preset--active .ch-preset__value {
+  color: var(--primary-color);
+}
+
+.ch-preset__desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Umask ──────────────────────────────────────────────────── */
+.ch-umask {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ch-umask__results {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.ch-umask__result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 70px;
+  padding: 0.15rem 0.5rem;
+}
+
+.ch-umask__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.ch-umask__value {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.ch-umask__value--symbolic {
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+}
+
+.ch-umask__divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Result Panel ──────────────────────────────────────────── */
+.ch-panel--output {
+  flex: 1;
+}
+
+.ch-result-body {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ch-result-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ch-result-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ch-result-block__label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ch-result-block__value--large {
+  font-family: 'Fira Code', monospace;
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: 0.2em;
+  text-align: center;
+  padding: 0.5rem 0;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.ch-result-block__value--symbolic {
+  font-family: 'Fira Code', monospace;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 0.6rem 0;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.ch-sym--owner { color: var(--primary-color); }
+.ch-sym--group { color: var(--secondary-color); }
+.ch-sym--others { color: #ff8a65; }
+
+.ch-result-block__command {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.ch-result-block__command code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.88rem;
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+.ch-filepath-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.ch-filepath-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* ── Breakdown Panel ───────────────────────────────────────── */
+.ch-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ch-breakdown__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(214, 221, 235, 0.06);
+}
+
+.ch-breakdown__row:last-child {
+  border-bottom: none;
+}
+
+.ch-breakdown__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 85px;
+}
+
+.ch-breakdown__perms {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.ch-perm-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  color: rgba(214, 221, 235, 0.25);
+  transition: all 0.15s ease;
+}
+
+.ch-perm-tag--active {
+  background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+}
+
+.ch-breakdown__desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.ch-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.ch-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.ch-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.ch-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.ch-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ch-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ch-matrix__header,
+  .ch-matrix__row {
+    grid-template-columns: 70px 1fr 1fr 1fr 90px;
+  }
+
+  .ch-result-block__value--large {
+    font-size: 2rem;
+  }
+
+  .ch-result-block__value--symbolic {
+    font-size: 1.2rem;
+  }
+
+  .ch-presets {
+    grid-template-columns: 1fr;
+  }
+
+  .ch-umask__results {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ch-umask__divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .ch-breakdown__row {
+    flex-wrap: wrap;
+  }
+}

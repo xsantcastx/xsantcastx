@@ -59,6 +59,23 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'url-rickroll',    name: 'Never Gonna Give You Up', description: 'Encoded a URL containing a rickroll',            tool: 'url-encoder',               rarity: 'epic',      icon: '🕺' },
   { id: 'sql-drop',        name: 'Bobby Tables',         description: 'Formatted SQL containing DROP TABLE',              tool: 'sql-formatter',             rarity: 'rare',      icon: '🗑️' },
   { id: 'base-meaning',    name: '42 in Every Base',     description: 'Entered 42 in the number base converter',          tool: 'base-converter',            rarity: 'common',    icon: '🔢' },
+
+  // ── Batch 3 tools ──────────────────────────────────────────
+  { id: 'pw-one-char',     name: 'Security Theater',     description: 'Generated a 1-character password',                  tool: 'password-generator',        rarity: 'rare',      icon: '🔓' },
+  { id: 'qr-self',         name: 'Self-Referential',     description: 'Generated a QR code for "xsantcastx"',              tool: 'qr-generator',              rarity: 'rare',      icon: '🔄' },
+  { id: 'lorem-42',        name: 'The Ultimate Filler',  description: 'Generated exactly 42 paragraphs of lorem ipsum',    tool: 'lorem-generator',           rarity: 'rare',      icon: '📜' },
+  { id: 'color-void',      name: 'Into the Void',        description: 'Converted pure black #000000',                      tool: 'color-converter',           rarity: 'common',    icon: '🕳️' },
+  { id: 'case-monotone',   name: 'Monotone',             description: 'Entered text that is all the same character',       tool: 'case-converter',            rarity: 'epic',      icon: '🔇' },
+  { id: 'flex-dozen',      name: 'The Dirty Dozen',      description: 'Added 12 flex children to the playground',          tool: 'flexbox-generator',         rarity: 'rare',      icon: '📦' },
+  { id: 'chmod-god',       name: 'God Mode',             description: 'Set file permissions to 777',                       tool: 'chmod-calculator',          rarity: 'rare',      icon: '👑' },
+  { id: 'html-xss',        name: 'Nice Try',             description: 'Tried encoding a <script> tag',                     tool: 'html-entities',             rarity: 'common',    icon: '🛡️' },
+  { id: 'json-abyss',      name: 'The Abyss',            description: 'Explored JSON nested deeper than 15 levels',        tool: 'json-path',                 rarity: 'epic',      icon: '🌊' },
+  { id: 'css-zero',        name: 'Zero Dimensions',      description: 'Converted 0 in the CSS units converter',            tool: 'css-units',                 rarity: 'common',    icon: '0️⃣' },
+  { id: 'ar-square',       name: 'Perfect Square',       description: 'Created a perfect 1:1 aspect ratio',                tool: 'aspect-ratio',              rarity: 'common',    icon: '⬜' },
+  { id: 'css-important',   name: '!important Overload',  description: 'Minified CSS with 5+ !important declarations',      tool: 'css-minifier',              rarity: 'rare',      icon: '⚠️' },
+  { id: 'http-teapot-ref', name: 'Teapot Enthusiast',    description: 'Looked up HTTP status code 418',                    tool: 'http-status',               rarity: 'rare',      icon: '🫖' },
+  { id: 'br-circle',       name: 'Full Circle',          description: 'Set all border corners to 50% making a circle',     tool: 'border-radius',             rarity: 'common',    icon: '⭕' },
+  { id: 'emoji-skull',     name: 'Memento Mori',         description: 'Copied the skull emoji',                            tool: 'emoji-picker',              rarity: 'rare',      icon: '💀' },
 ];
 
 @Injectable({ providedIn: 'root' })
