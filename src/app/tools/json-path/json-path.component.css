@@ -1,0 +1,556 @@
+/* ══════════════════════════════════════════════════════════════
+   JSON Path Finder — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.jp-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.jp-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.jp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.jp-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.jp-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.jp-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jp-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Input panel body ──────────────────────────────────────── */
+.jp-panel__body--input {
+  padding: 0;
+}
+
+/* ── Textarea ──────────────────────────────────────────────── */
+.jp-textarea {
+  width: 100%;
+  min-height: 320px;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.jp-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.jp-textarea:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* ── Path Display Panel ───────────────────────────────────── */
+.jp-path-display {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.jp-path-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.jp-path-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jp-path-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.jp-path-code {
+  flex: 1;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  color: var(--primary-color);
+  background: rgba(0, 255, 204, 0.06);
+  border: 1px solid rgba(0, 255, 204, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.75rem;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── Status bar ─────────────────────────────────────────────── */
+.jp-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.jp-status-bar--idle {
+  background: rgba(214, 221, 235, 0.04);
+  color: rgba(214, 221, 235, 0.5);
+}
+
+.jp-status-bar--valid {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+
+.jp-status-bar--invalid {
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border-color: rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+.jp-status-error {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+/* ── Search bar ────────────────────────────────────────────── */
+.jp-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+
+.jp-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  outline: none;
+  caret-color: var(--primary-color);
+}
+.jp-search-input::placeholder {
+  color: rgba(214, 221, 235, 0.3);
+}
+
+.jp-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+.jp-search-clear:hover {
+  color: var(--text-color);
+}
+
+/* ── Tree ──────────────────────────────────────────────────── */
+.jp-tree-body {
+  min-height: 320px;
+  max-height: 600px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.jp-tree {
+  padding: 0.5rem 0;
+}
+
+.jp-tree-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* ── Tree node ─────────────────────────────────────────────── */
+.jp-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  min-height: 28px;
+  user-select: none;
+}
+
+.jp-tree-node:hover {
+  background: rgba(0, 255, 204, 0.04);
+}
+
+.jp-tree-node--selected {
+  background: rgba(0, 255, 204, 0.08) !important;
+  border-right: 2px solid var(--primary-color);
+}
+
+.jp-tree-node--highlight {
+  /* subtle highlight for search matches */
+}
+
+/* ── Toggle arrow ──────────────────────────────────────────── */
+.jp-tree-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.jp-tree-toggle--expanded {
+  transform: rotate(90deg);
+}
+
+.jp-tree-toggle:hover {
+  color: var(--primary-color);
+}
+
+.jp-tree-toggle-placeholder {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Tree key ──────────────────────────────────────────────── */
+.jp-tree-key {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.8rem;
+  color: #7ec8e3;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.jp-tree-key--root {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+/* ── Tree value ────────────────────────────────────────────── */
+.jp-tree-value {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  flex: 1;
+  min-width: 0;
+}
+
+.jp-tree-value--string  { color: #a8e6a3; }
+.jp-tree-value--number  { color: #ffb86c; }
+.jp-tree-value--boolean { color: #ff79c6; }
+.jp-tree-value--null    { color: #6272a4; font-style: italic; }
+.jp-tree-value--object  { color: var(--text-muted); }
+.jp-tree-value--array   { color: var(--text-muted); }
+
+/* ── Type badge ────────────────────────────────────────────── */
+.jp-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.jp-type-badge--string {
+  background: rgba(168, 230, 163, 0.12);
+  border: 1px solid rgba(168, 230, 163, 0.25);
+  color: #a8e6a3;
+}
+
+.jp-type-badge--number {
+  background: rgba(255, 184, 108, 0.12);
+  border: 1px solid rgba(255, 184, 108, 0.25);
+  color: #ffb86c;
+}
+
+.jp-type-badge--boolean {
+  background: rgba(255, 121, 198, 0.12);
+  border: 1px solid rgba(255, 121, 198, 0.25);
+  color: #ff79c6;
+}
+
+.jp-type-badge--null {
+  background: rgba(98, 114, 164, 0.12);
+  border: 1px solid rgba(98, 114, 164, 0.25);
+  color: #6272a4;
+}
+
+.jp-type-badge--object {
+  background: rgba(0, 255, 204, 0.08);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  color: var(--primary-color);
+}
+
+.jp-type-badge--array {
+  background: rgba(123, 97, 255, 0.12);
+  border: 1px solid rgba(123, 97, 255, 0.25);
+  color: var(--secondary-color);
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.jp-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.jp-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.jp-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.jp-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.jp-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.jp-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.jp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.9rem;
+  flex: 1;
+  min-width: 60px;
+}
+
+.jp-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.jp-stat__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+}
+
+.jp-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────── */
+.jp-tree-body::-webkit-scrollbar {
+  width: 6px;
+}
+.jp-tree-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.jp-tree-body::-webkit-scrollbar-thumb {
+  background: rgba(214, 221, 235, 0.15);
+  border-radius: 3px;
+}
+.jp-tree-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 221, 235, 0.25);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .jp-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .jp-col--right {
+    order: -1;
+  }
+
+  .jp-textarea {
+    min-height: 220px;
+  }
+
+  .jp-tree-body {
+    max-height: 400px;
+  }
+
+  .jp-tree-value {
+    max-width: 150px;
+  }
+}

@@ -88,6 +88,21 @@ import { TimestampConverterComponent } from './tools/timestamp-converter/timesta
 import { UrlEncoderComponent } from './tools/url-encoder/url-encoder.component';
 import { SqlFormatterComponent } from './tools/sql-formatter/sql-formatter.component';
 import { BaseConverterComponent } from './tools/base-converter/base-converter.component';
+import { PasswordGeneratorComponent } from './tools/password-generator/password-generator.component';
+import { QrGeneratorComponent } from './tools/qr-generator/qr-generator.component';
+import { LoremGeneratorComponent } from './tools/lorem-generator/lorem-generator.component';
+import { ColorConverterComponent } from './tools/color-converter/color-converter.component';
+import { CaseConverterComponent } from './tools/case-converter/case-converter.component';
+import { FlexboxGeneratorComponent } from './tools/flexbox-generator/flexbox-generator.component';
+import { ChmodCalculatorComponent } from './tools/chmod-calculator/chmod-calculator.component';
+import { HtmlEntitiesComponent } from './tools/html-entities/html-entities.component';
+import { JsonPathComponent } from './tools/json-path/json-path.component';
+import { CssUnitsComponent } from './tools/css-units/css-units.component';
+import { AspectRatioComponent } from './tools/aspect-ratio/aspect-ratio.component';
+import { CssMinifierComponent } from './tools/css-minifier/css-minifier.component';
+import { HttpStatusComponent } from './tools/http-status/http-status.component';
+import { BorderRadiusComponent } from './tools/border-radius/border-radius.component';
+import { EmojiPickerComponent } from './tools/emoji-picker/emoji-picker.component';
 
 
 @NgModule({
@@ -156,7 +171,22 @@ import { BaseConverterComponent } from './tools/base-converter/base-converter.co
     TimestampConverterComponent,
     UrlEncoderComponent,
     SqlFormatterComponent,
-    BaseConverterComponent
+    BaseConverterComponent,
+    PasswordGeneratorComponent,
+    QrGeneratorComponent,
+    LoremGeneratorComponent,
+    ColorConverterComponent,
+    CaseConverterComponent,
+    FlexboxGeneratorComponent,
+    ChmodCalculatorComponent,
+    HtmlEntitiesComponent,
+    JsonPathComponent,
+    CssUnitsComponent,
+    AspectRatioComponent,
+    CssMinifierComponent,
+    HttpStatusComponent,
+    BorderRadiusComponent,
+    EmojiPickerComponent
   ],
   bootstrap: [AppComponent],
   imports: [

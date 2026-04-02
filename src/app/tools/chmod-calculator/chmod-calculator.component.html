@@ -1,0 +1,389 @@
+<div class="ch-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">DevOps Utilities</p>
+    <h1 class="tool-header__title">Chmod <span class="tool-header__amp">Calculator</span></h1>
+    <p class="tool-header__subtitle">Interactive file permission calculator with numeric &amp; symbolic notation, presets, umask calculator, and ready-to-use commands.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'chmod-calculator'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="ch-layout">
+
+    <!-- ── LEFT: Permission Matrix + Presets ── -->
+    <div class="ch-col ch-col--left">
+
+      <!-- Permission Matrix Panel -->
+      <div class="ch-panel">
+        <div class="ch-panel__header">
+          <span class="ch-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Permission Matrix
+          </span>
+        </div>
+        <div class="ch-panel__body">
+
+          <!-- Matrix Table -->
+          <div class="ch-matrix">
+            <div class="ch-matrix__header">
+              <div class="ch-matrix__cell ch-matrix__cell--label"></div>
+              <div class="ch-matrix__cell ch-matrix__cell--head">Read <span class="ch-matrix__bit">4</span></div>
+              <div class="ch-matrix__cell ch-matrix__cell--head">Write <span class="ch-matrix__bit">2</span></div>
+              <div class="ch-matrix__cell ch-matrix__cell--head">Execute <span class="ch-matrix__bit">1</span></div>
+              <div class="ch-matrix__cell ch-matrix__cell--head ch-matrix__cell--value">Value</div>
+            </div>
+
+            <!-- Owner -->
+            <div class="ch-matrix__row">
+              <div class="ch-matrix__cell ch-matrix__cell--label">
+                <span class="ch-matrix__role ch-matrix__role--owner">Owner</span>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="owner.read" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="owner.write" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="owner.execute" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell ch-matrix__cell--value">
+                <span class="ch-matrix__octal">{{ numericValue[0] }}</span>
+                <span class="ch-matrix__symbolic">{{ ownerSymbolic }}</span>
+              </div>
+            </div>
+
+            <!-- Group -->
+            <div class="ch-matrix__row">
+              <div class="ch-matrix__cell ch-matrix__cell--label">
+                <span class="ch-matrix__role ch-matrix__role--group">Group</span>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="group.read" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="group.write" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="group.execute" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell ch-matrix__cell--value">
+                <span class="ch-matrix__octal">{{ numericValue[1] }}</span>
+                <span class="ch-matrix__symbolic">{{ groupSymbolic }}</span>
+              </div>
+            </div>
+
+            <!-- Others -->
+            <div class="ch-matrix__row">
+              <div class="ch-matrix__cell ch-matrix__cell--label">
+                <span class="ch-matrix__role ch-matrix__role--others">Others</span>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="others.read" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="others.write" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell">
+                <label class="ch-checkbox">
+                  <input type="checkbox" [(ngModel)]="others.execute" (ngModelChange)="onPermissionChange()" />
+                  <span class="ch-checkbox__mark"></span>
+                </label>
+              </div>
+              <div class="ch-matrix__cell ch-matrix__cell--value">
+                <span class="ch-matrix__octal">{{ numericValue[2] }}</span>
+                <span class="ch-matrix__symbolic">{{ othersSymbolic }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Numeric Input -->
+          <div class="ch-numeric-input">
+            <label class="ch-numeric-input__label" for="numericInput">Numeric Value</label>
+            <div class="ch-numeric-input__row">
+              <input
+                type="text"
+                id="numericInput"
+                class="ch-input ch-input--mono"
+                [(ngModel)]="numericInput"
+                (ngModelChange)="onNumericInput()"
+                maxlength="3"
+                placeholder="755"
+                spellcheck="false"
+                autocomplete="off"
+              />
+              <span class="ch-numeric-input__hint">Type 3 octal digits (0-7)</span>
+            </div>
+            <p class="ch-error" *ngIf="numericError">{{ numericError }}</p>
+          </div>
+
+        </div>
+      </div><!-- /matrix panel -->
+
+      <!-- Presets Panel -->
+      <div class="ch-panel">
+        <div class="ch-panel__header">
+          <span class="ch-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Common Presets
+          </span>
+        </div>
+        <div class="ch-panel__body ch-presets">
+          <button
+            *ngFor="let preset of presets"
+            class="ch-preset"
+            [class.ch-preset--active]="numericValue === preset.numeric"
+            (click)="applyPreset(preset)"
+            [title]="preset.description"
+          >
+            <span class="ch-preset__value">{{ preset.label }}</span>
+            <span class="ch-preset__desc">{{ preset.description }}</span>
+          </button>
+        </div>
+      </div><!-- /presets panel -->
+
+      <!-- Umask Panel -->
+      <div class="ch-panel">
+        <div class="ch-panel__header">
+          <span class="ch-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Umask Calculator
+          </span>
+        </div>
+        <div class="ch-panel__body ch-umask">
+          <div class="ch-numeric-input">
+            <label class="ch-numeric-input__label" for="umaskInput">Umask Value</label>
+            <div class="ch-numeric-input__row">
+              <input
+                type="text"
+                id="umaskInput"
+                class="ch-input ch-input--mono"
+                [(ngModel)]="umaskInput"
+                (ngModelChange)="onUmaskInput()"
+                maxlength="4"
+                placeholder="022"
+                spellcheck="false"
+                autocomplete="off"
+              />
+              <span class="ch-numeric-input__hint">e.g. 022, 077, 0027</span>
+            </div>
+            <p class="ch-error" *ngIf="umaskError">{{ umaskError }}</p>
+          </div>
+
+          <div class="ch-umask__results" *ngIf="!umaskError && umaskInput">
+            <div class="ch-umask__result">
+              <span class="ch-umask__label">New files</span>
+              <span class="ch-umask__value">{{ umaskFilePermission }}</span>
+            </div>
+            <div class="ch-umask__divider"></div>
+            <div class="ch-umask__result">
+              <span class="ch-umask__label">New directories</span>
+              <span class="ch-umask__value">{{ umaskDirPermission }}</span>
+            </div>
+            <div class="ch-umask__divider"></div>
+            <div class="ch-umask__result">
+              <span class="ch-umask__label">Symbolic (files)</span>
+              <span class="ch-umask__value ch-umask__value--symbolic">{{ umaskSymbolic }}</span>
+            </div>
+          </div>
+
+          <button class="ch-btn-ghost ch-btn-sm" (click)="copyUmaskResult()" [disabled]="!!umaskError || !umaskInput" [class.ch-btn-ghost--success]="copiedUmask">
+            <ng-container *ngIf="!copiedUmask">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy Umask Result
+            </ng-container>
+            <ng-container *ngIf="copiedUmask">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Copied!
+            </ng-container>
+          </button>
+        </div>
+      </div><!-- /umask panel -->
+
+    </div><!-- /left col -->
+
+    <!-- ── RIGHT: Output ── -->
+    <div class="ch-col ch-col--right">
+
+      <!-- Result Display -->
+      <div class="ch-panel ch-panel--output">
+        <div class="ch-panel__header">
+          <span class="ch-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Result
+          </span>
+        </div>
+
+        <div class="ch-result-body">
+
+          <!-- Numeric -->
+          <div class="ch-result-block">
+            <div class="ch-result-block__header">
+              <span class="ch-result-block__label">Numeric Notation</span>
+              <button class="ch-btn-ghost ch-btn-sm" (click)="copyNumeric()" [class.ch-btn-ghost--success]="copiedNumeric">
+                <ng-container *ngIf="!copiedNumeric">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </ng-container>
+                <ng-container *ngIf="copiedNumeric">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                </ng-container>
+              </button>
+            </div>
+            <div class="ch-result-block__value ch-result-block__value--large">{{ numericValue }}</div>
+          </div>
+
+          <!-- Symbolic -->
+          <div class="ch-result-block">
+            <div class="ch-result-block__header">
+              <span class="ch-result-block__label">Symbolic Notation</span>
+              <button class="ch-btn-ghost ch-btn-sm" (click)="copySymbolic()" [class.ch-btn-ghost--success]="copiedSymbolic">
+                <ng-container *ngIf="!copiedSymbolic">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </ng-container>
+                <ng-container *ngIf="copiedSymbolic">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                </ng-container>
+              </button>
+            </div>
+            <div class="ch-result-block__value ch-result-block__value--symbolic">
+              <span class="ch-sym ch-sym--owner">{{ ownerSymbolic }}</span><span class="ch-sym ch-sym--group">{{ groupSymbolic }}</span><span class="ch-sym ch-sym--others">{{ othersSymbolic }}</span>
+            </div>
+          </div>
+
+          <!-- Command -->
+          <div class="ch-result-block">
+            <div class="ch-result-block__header">
+              <span class="ch-result-block__label">chmod Command</span>
+              <button class="ch-btn-ghost ch-btn-sm" (click)="copyCommand()" [class.ch-btn-ghost--success]="copiedCommand">
+                <ng-container *ngIf="!copiedCommand">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </ng-container>
+                <ng-container *ngIf="copiedCommand">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                </ng-container>
+              </button>
+            </div>
+            <div class="ch-result-block__command">
+              <code>{{ chmodCommand }}</code>
+            </div>
+            <div class="ch-filepath-row">
+              <label class="ch-filepath-label" for="filePath">File path:</label>
+              <input
+                type="text"
+                id="filePath"
+                class="ch-input ch-input--mono ch-input--sm"
+                [(ngModel)]="filePath"
+                placeholder="./file.sh"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /result panel -->
+
+      <!-- Visual Breakdown -->
+      <div class="ch-panel">
+        <div class="ch-panel__header">
+          <span class="ch-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Breakdown
+          </span>
+        </div>
+        <div class="ch-panel__body ch-breakdown">
+          <div class="ch-breakdown__row">
+            <span class="ch-breakdown__label ch-matrix__role--owner">Owner (u)</span>
+            <div class="ch-breakdown__perms">
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="owner.read">r</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="owner.write">w</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="owner.execute">x</span>
+            </div>
+            <span class="ch-breakdown__desc">
+              {{ owner.read ? 'Read' : '' }}{{ owner.read && (owner.write || owner.execute) ? ', ' : '' }}{{ owner.write ? 'Write' : '' }}{{ owner.write && owner.execute ? ', ' : '' }}{{ owner.execute ? 'Execute' : '' }}{{ !owner.read && !owner.write && !owner.execute ? 'No access' : '' }}
+            </span>
+          </div>
+          <div class="ch-breakdown__row">
+            <span class="ch-breakdown__label ch-matrix__role--group">Group (g)</span>
+            <div class="ch-breakdown__perms">
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="group.read">r</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="group.write">w</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="group.execute">x</span>
+            </div>
+            <span class="ch-breakdown__desc">
+              {{ group.read ? 'Read' : '' }}{{ group.read && (group.write || group.execute) ? ', ' : '' }}{{ group.write ? 'Write' : '' }}{{ group.write && group.execute ? ', ' : '' }}{{ group.execute ? 'Execute' : '' }}{{ !group.read && !group.write && !group.execute ? 'No access' : '' }}
+            </span>
+          </div>
+          <div class="ch-breakdown__row">
+            <span class="ch-breakdown__label ch-matrix__role--others">Others (o)</span>
+            <div class="ch-breakdown__perms">
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="others.read">r</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="others.write">w</span>
+              <span class="ch-perm-tag" [class.ch-perm-tag--active]="others.execute">x</span>
+            </div>
+            <span class="ch-breakdown__desc">
+              {{ others.read ? 'Read' : '' }}{{ others.read && (others.write || others.execute) ? ', ' : '' }}{{ others.write ? 'Write' : '' }}{{ others.write && others.execute ? ', ' : '' }}{{ others.execute ? 'Execute' : '' }}{{ !others.read && !others.write && !others.execute ? 'No access' : '' }}
+            </span>
+          </div>
+        </div>
+      </div><!-- /breakdown panel -->
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="chmod-calculator" toolName="Chmod Calculator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'chmod-calculator'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'DevOps Utilities'" [toolSlug]="'chmod-calculator'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'chmod-calculator'"></app-related-tools>
+
+</div>

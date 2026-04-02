@@ -1,0 +1,280 @@
+<div class="br-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    {{ translate('tools.common.back') }}
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tool</p>
+    <h1 class="tool-header__title">Border Radius Generator</h1>
+    <p class="tool-header__subtitle">Visually design CSS border-radius with individual corner controls, advanced blob shapes, and one-click code export. No sign-up, runs entirely in your browser.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.share') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'border-radius'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="br-workspace">
+
+    <!-- LEFT COLUMN: Preview + Code -->
+    <div class="br-left">
+
+      <!-- Live Preview Panel -->
+      <div class="br-card">
+        <div class="br-card__header">
+          <span class="br-card__label">Live Preview</span>
+          <div class="br-preview-controls">
+            <button type="button" class="br-icon-btn br-icon-btn--danger" (click)="resetAll()" title="Reset all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="br-preview-area" [style.background]="previewBgColor">
+          <div
+            class="br-preview-box"
+            [style.background]="previewBoxColor"
+            [style.width.px]="previewBoxWidth"
+            [style.height.px]="previewBoxHeight"
+            [style.borderRadius]="borderRadiusInline"
+          >
+            <!-- Corner labels -->
+            <span class="br-corner-label br-corner-label--tl">{{ advancedMode ? advancedCorners.topLeftH + '/' + advancedCorners.topLeftV : corners.topLeft }}{{ unit }}</span>
+            <span class="br-corner-label br-corner-label--tr">{{ advancedMode ? advancedCorners.topRightH + '/' + advancedCorners.topRightV : corners.topRight }}{{ unit }}</span>
+            <span class="br-corner-label br-corner-label--br">{{ advancedMode ? advancedCorners.bottomRightH + '/' + advancedCorners.bottomRightV : corners.bottomRight }}{{ unit }}</span>
+            <span class="br-corner-label br-corner-label--bl">{{ advancedMode ? advancedCorners.bottomLeftH + '/' + advancedCorners.bottomLeftV : corners.bottomLeft }}{{ unit }}</span>
+          </div>
+        </div>
+
+        <!-- Preview customization -->
+        <div class="br-preview-settings">
+          <div class="br-inline-control">
+            <label class="br-inline-control__label">Background</label>
+            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="br-color-input" />
+          </div>
+          <div class="br-inline-control">
+            <label class="br-inline-control__label">Box Color</label>
+            <input type="color" [value]="previewBoxColor" (input)="onPreviewBoxColorChange($event)" class="br-color-input" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Output -->
+      <div class="br-card">
+        <div class="br-card__header">
+          <span class="br-card__label">Generated Code</span>
+          <div class="br-format-btns">
+            <button type="button" class="br-tab-btn" [class.is-active]="codeFormat === 'css'" (click)="codeFormat = 'css'">CSS</button>
+            <button type="button" class="br-tab-btn" [class.is-active]="codeFormat === 'tailwind'" (click)="codeFormat = 'tailwind'">Tailwind</button>
+          </div>
+        </div>
+        <pre class="br-code-block">{{ displayedCode }}</pre>
+        <button type="button" class="br-copy-btn" (click)="copyDisplayedCode()">
+          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ codeCopied ? 'Copied!' : 'Copy Code' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Controls + Presets -->
+    <div class="br-right">
+
+      <!-- Controls -->
+      <div class="br-card">
+        <div class="br-card__header">
+          <span class="br-card__label">Corner Controls</span>
+          <div class="br-header-actions">
+            <button type="button" class="br-toggle-btn" [class.is-active]="unit === '%'" (click)="toggleUnit()">
+              {{ unit === 'px' ? 'px' : '%' }}
+            </button>
+            <button type="button" class="br-toggle-btn" [class.is-active]="linked" (click)="toggleLinked()" title="Link/Unlink corners">
+              <svg *ngIf="linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              <svg *ngIf="!linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6a5 5 0 0 1 0-10h3"/>
+                <line x1="8" y1="12" x2="16" y2="12" stroke-dasharray="2 3"/>
+              </svg>
+              {{ linked ? 'Linked' : 'Unlinked' }}
+            </button>
+            <button type="button" class="br-toggle-btn" [class.is-active]="advancedMode" (click)="toggleAdvancedMode()">
+              Advanced
+            </button>
+          </div>
+        </div>
+
+        <!-- Simple mode -->
+        <div class="br-controls-grid" *ngIf="!advancedMode">
+          <!-- Top Left -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Left</label>
+              <span class="br-control-group__value">{{ corners.topLeft }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="sliderMax" step="1"
+              [value]="corners.topLeft" (input)="onCornerChange('topLeft', $event)" class="br-slider" />
+          </div>
+
+          <!-- Top Right -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Right</label>
+              <span class="br-control-group__value">{{ corners.topRight }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="sliderMax" step="1"
+              [value]="corners.topRight" (input)="onCornerChange('topRight', $event)" class="br-slider" />
+          </div>
+
+          <!-- Bottom Right -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Right</label>
+              <span class="br-control-group__value">{{ corners.bottomRight }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="sliderMax" step="1"
+              [value]="corners.bottomRight" (input)="onCornerChange('bottomRight', $event)" class="br-slider" />
+          </div>
+
+          <!-- Bottom Left -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Left</label>
+              <span class="br-control-group__value">{{ corners.bottomLeft }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="sliderMax" step="1"
+              [value]="corners.bottomLeft" (input)="onCornerChange('bottomLeft', $event)" class="br-slider" />
+          </div>
+        </div>
+
+        <!-- Advanced mode (8-value) -->
+        <div class="br-controls-grid br-controls-grid--advanced" *ngIf="advancedMode">
+          <p class="br-advanced-hint">Horizontal / Vertical radii per corner for blob shapes</p>
+
+          <!-- Top Left H/V -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Left H</label>
+              <span class="br-control-group__value">{{ advancedCorners.topLeftH }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.topLeftH" (input)="onAdvancedCornerChange('topLeftH', $event)" class="br-slider" />
+          </div>
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Left V</label>
+              <span class="br-control-group__value">{{ advancedCorners.topLeftV }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.topLeftV" (input)="onAdvancedCornerChange('topLeftV', $event)" class="br-slider" />
+          </div>
+
+          <!-- Top Right H/V -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Right H</label>
+              <span class="br-control-group__value">{{ advancedCorners.topRightH }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.topRightH" (input)="onAdvancedCornerChange('topRightH', $event)" class="br-slider" />
+          </div>
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Top Right V</label>
+              <span class="br-control-group__value">{{ advancedCorners.topRightV }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.topRightV" (input)="onAdvancedCornerChange('topRightV', $event)" class="br-slider" />
+          </div>
+
+          <!-- Bottom Right H/V -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Right H</label>
+              <span class="br-control-group__value">{{ advancedCorners.bottomRightH }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.bottomRightH" (input)="onAdvancedCornerChange('bottomRightH', $event)" class="br-slider" />
+          </div>
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Right V</label>
+              <span class="br-control-group__value">{{ advancedCorners.bottomRightV }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.bottomRightV" (input)="onAdvancedCornerChange('bottomRightV', $event)" class="br-slider" />
+          </div>
+
+          <!-- Bottom Left H/V -->
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Left H</label>
+              <span class="br-control-group__value">{{ advancedCorners.bottomLeftH }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.bottomLeftH" (input)="onAdvancedCornerChange('bottomLeftH', $event)" class="br-slider" />
+          </div>
+          <div class="br-control-group">
+            <div class="br-control-group__top">
+              <label class="br-control-group__label">Bottom Left V</label>
+              <span class="br-control-group__value">{{ advancedCorners.bottomLeftV }}{{ unit }}</span>
+            </div>
+            <input type="range" min="0" [max]="advancedSliderMax" step="1"
+              [value]="advancedCorners.bottomLeftV" (input)="onAdvancedCornerChange('bottomLeftV', $event)" class="br-slider" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="br-card">
+        <div class="br-card__header">
+          <span class="br-card__label">Presets</span>
+        </div>
+        <div class="br-presets-grid">
+          <button
+            type="button"
+            class="br-preset-item"
+            *ngFor="let preset of presets; trackBy: trackByPresetName"
+            (click)="applyPreset(preset)"
+          >
+            <div class="br-preset-preview" [ngStyle]="getPresetPreviewStyle(preset)"></div>
+            <span class="br-preset-name">{{ preset.name }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <app-embed-code-generator toolSlug="border-radius" toolName="CSS Border Radius Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'border-radius'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'border-radius'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'border-radius'"></app-related-tools>
+
+</div>

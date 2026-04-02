@@ -1,0 +1,111 @@
+<div class="ep-page">
+  <button type="button" class="ep-back" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="ep-header">
+    <p class="ep-header__eyebrow">Productivity</p>
+    <h1 class="ep-header__title">Emoji Picker & Search</h1>
+    <p class="ep-header__subtitle">Search 500+ emojis, copy as emoji, HTML entity, or Unicode codepoint. Click to copy instantly.</p>
+    <div class="ep-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="ep-share-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="ep-share-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'emoji-picker'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Controls bar -->
+  <div class="ep-controls">
+    <div class="ep-search-wrap">
+      <svg class="ep-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="ep-search" type="text" [(ngModel)]="searchQuery" (input)="onSearchInput()" placeholder="Search emojis..." autocomplete="off" spellcheck="false"/>
+      <button *ngIf="searchQuery" class="ep-search-clear" (click)="clearSearch()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="ep-options">
+      <!-- Skin tone -->
+      <div class="ep-skin-wrap">
+        <button class="ep-skin-btn" (click)="toggleSkinTonePicker()" title="Skin tone">{{ currentSkinToneSwatch }}</button>
+        <div class="ep-skin-picker" *ngIf="showSkinTonePicker">
+          <button *ngFor="let tone of skinTones; let i = index" class="ep-skin-option" [class.ep-skin-option--active]="selectedSkinToneIndex === i" (click)="selectSkinTone(i)">{{ i === 0 ? '\u270B' : '\u270B' + tone.modifier }}</button>
+        </div>
+      </div>
+
+      <!-- Grid size -->
+      <div class="ep-size-btns">
+        <button class="ep-size-btn" [class.ep-size-btn--active]="gridSize === 'small'" (click)="setGridSize('small')" title="Small">S</button>
+        <button class="ep-size-btn" [class.ep-size-btn--active]="gridSize === 'medium'" (click)="setGridSize('medium')" title="Medium">M</button>
+        <button class="ep-size-btn" [class.ep-size-btn--active]="gridSize === 'large'" (click)="setGridSize('large')" title="Large">L</button>
+      </div>
+
+      <!-- Copy format -->
+      <div class="ep-format-btns">
+        <button class="ep-format-btn" [class.ep-format-btn--active]="copyFormat === 'emoji'" (click)="setCopyFormat('emoji')">Emoji</button>
+        <button class="ep-format-btn" [class.ep-format-btn--active]="copyFormat === 'html'" (click)="setCopyFormat('html')">HTML</button>
+        <button class="ep-format-btn" [class.ep-format-btn--active]="copyFormat === 'unicode'" (click)="setCopyFormat('unicode')">Unicode</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ep-layout">
+    <!-- Category tabs -->
+    <div class="ep-cat-tabs">
+      <button *ngFor="let cat of categories" class="ep-cat-tab" [class.ep-cat-tab--active]="activeCategoryId === cat.id" (click)="setActiveCategory(cat.id)" [title]="cat.label">{{ cat.icon }}</button>
+    </div>
+
+    <!-- Emoji grid -->
+    <div class="ep-grid-area">
+      <!-- Recent -->
+      <div class="ep-section" *ngIf="recentEmojis.length > 0 && !searchQuery">
+        <p class="ep-section__label">Recently Used</p>
+        <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
+          <button *ngFor="let emoji of recentEmojis" class="ep-emoji" (click)="onRecentClick(emoji)" [title]="'Recently used'">{{ emoji }}</button>
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div *ngFor="let cat of filteredCategories" class="ep-section" [id]="'ep-cat-' + cat.id">
+        <p class="ep-section__label">{{ cat.icon }} {{ cat.label }}</p>
+        <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
+          <button *ngFor="let entry of cat.emojis" class="ep-emoji" (click)="onEmojiClick(entry)" [title]="entry.name">{{ applySkinTone(entry.emoji) }}</button>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div class="ep-empty" *ngIf="flatFilteredCount === 0">
+        <p>No emojis match "{{ searchQuery }}"</p>
+        <button class="ep-empty__clear" (click)="clearSearch()">Clear search</button>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="ep-detail" *ngIf="selectedEmoji">
+      <div class="ep-detail__preview">{{ selectedEmoji.emoji }}</div>
+      <p class="ep-detail__name">{{ selectedEmoji.name }}</p>
+      <div class="ep-detail__row">
+        <span class="ep-detail__label">Unicode</span>
+        <code class="ep-detail__value">{{ selectedEmoji.codepoint }}</code>
+      </div>
+      <div class="ep-detail__row">
+        <span class="ep-detail__label">HTML</span>
+        <code class="ep-detail__value">{{ selectedEmoji.htmlEntity }}</code>
+      </div>
+      <div class="ep-detail__copied" *ngIf="copied">Copied: {{ copiedText }}</div>
+    </div>
+  </div>
+
+  <p class="ep-count">{{ flatFilteredCount }} emojis</p>
+
+  <app-embed-code-generator toolSlug="emoji-picker" toolName="Emoji Picker"></app-embed-code-generator>
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'emoji-picker'"></app-newsletter-capture>
+  <app-related-tools [currentToolId]="'emoji-picker'"></app-related-tools>
+</div>

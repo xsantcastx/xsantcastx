@@ -1,0 +1,464 @@
+/* ══════════════════════════════════════════════════════════════
+   Color Converter — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.cc-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.cc-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.cc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.cc-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.cc-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.cc-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cc-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cc-panel__body {
+  padding: 1rem 1.1rem;
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.cc-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.cc-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.cc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.cc-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.cc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* ── Color Picker + Swatch ─────────────────────────────────── */
+.cc-picker-body {
+  padding: 1.25rem 1.1rem;
+}
+
+.cc-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cc-native-picker {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+.cc-native-picker:hover {
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.cc-native-picker::-webkit-color-swatch-wrapper { padding: 2px; }
+.cc-native-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+.cc-native-picker::-moz-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+.cc-swatch {
+  flex: 1;
+  height: 56px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+
+.cc-swatch__label {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6), 0 0 1px rgba(0,0,0,0.8);
+  letter-spacing: 0.04em;
+}
+
+/* ── Format inputs ─────────────────────────────────────────── */
+.cc-formats-body {
+  padding: 0.75rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cc-format-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cc-format-label {
+  width: 42px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.cc-format-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.5rem;
+  transition: border-color 0.2s ease;
+}
+.cc-format-input-wrap:focus-within {
+  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(0, 255, 204, 0.015);
+}
+
+.cc-format-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  outline: none;
+  caret-color: var(--primary-color);
+  min-width: 0;
+}
+.cc-format-input::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+
+.cc-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+.cc-copy-btn:hover { color: var(--text-color); }
+.cc-copy-btn--copied { color: var(--primary-color) !important; }
+
+/* ── Status bar ─────────────────────────────────────────────── */
+.cc-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.cc-status-bar--invalid {
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border-color: rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+.cc-status-error {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+/* ── Harmonies ─────────────────────────────────────────────── */
+.cc-harmonies-body {
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.cc-harmony-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cc-harmony-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cc-harmony-swatches {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cc-harmony-swatch {
+  flex: 1;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.3rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.cc-harmony-swatch:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
+.cc-harmony-hex {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7), 0 0 1px rgba(0,0,0,0.9);
+  letter-spacing: 0.02em;
+}
+
+/* ── Tints & Shades ────────────────────────────────────────── */
+.cc-tints-body {
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cc-tints-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cc-tints-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.cc-tints-strip {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.cc-tint-swatch {
+  flex: 1;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.cc-tint-swatch:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
+.cc-tint-swatch--base {
+  flex: 2;
+  border-color: rgba(0, 255, 204, 0.35);
+}
+
+/* ── CSS Variables output ──────────────────────────────────── */
+.cc-code-pre {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  background: transparent;
+}
+
+.cc-code-pre code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--primary-color);
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-col--right {
+    order: 0;
+  }
+
+  .cc-harmony-swatch {
+    height: 38px;
+  }
+
+  .cc-harmony-hex {
+    font-size: 0.55rem;
+  }
+
+  .cc-tint-swatch {
+    height: 26px;
+  }
+}
