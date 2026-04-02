@@ -1,0 +1,315 @@
+<div class="ag-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tool</p>
+    <h1 class="tool-header__title">CSS Animation Generator</h1>
+    <p class="tool-header__subtitle">Visually build CSS keyframe animations with live preview and one-click code export. No sign-up, runs entirely in your browser.</p>
+  </header>
+
+  <!-- Inject dynamic keyframes into a style tag -->
+  <style>{{ previewKeyframesCSS }}</style>
+
+  <!-- Main workspace -->
+  <div class="ag-workspace">
+
+    <!-- ═══ LEFT COLUMN: Preview + Code ═══ -->
+    <div class="ag-left">
+
+      <!-- Live Preview Panel -->
+      <div class="ag-card">
+        <div class="ag-card__header">
+          <span class="ag-card__label">Live Preview</span>
+          <div class="ag-preview-controls">
+            <button type="button" class="ag-icon-btn" (click)="togglePlayback()" [title]="isPlaying ? 'Pause' : 'Play'">
+              <svg *ngIf="isPlaying" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              <svg *ngIf="!isPlaying" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            </button>
+            <button type="button" class="ag-icon-btn" (click)="restartAnimation()" title="Restart">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-7.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="ag-preview-area" [style.background]="previewBgColor">
+          <div
+            class="ag-preview-box"
+            [style.borderRadius.px]="previewBorderRadius"
+            [style.animation]="previewAnimationStyle"
+            [style.backgroundColor]="previewBoxColor"
+          ></div>
+        </div>
+
+        <!-- Preview customization -->
+        <div class="ag-preview-settings">
+          <div class="ag-inline-control">
+            <label class="ag-inline-control__label">Background</label>
+            <input type="color" [value]="previewBgColor" (input)="previewBgColor = $any($event.target).value" class="ag-color-input" />
+          </div>
+          <div class="ag-inline-control">
+            <label class="ag-inline-control__label">Box Color</label>
+            <input type="color" [value]="previewBoxColor" (input)="previewBoxColor = $any($event.target).value" class="ag-color-input" />
+          </div>
+          <div class="ag-inline-control">
+            <label class="ag-inline-control__label">Radius</label>
+            <input type="range" min="0" max="100" step="1" [value]="previewBorderRadius" (input)="previewBorderRadius = +$any($event.target).value" class="ag-slider" />
+            <span class="ag-slider-value">{{ previewBorderRadius }}px</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Code -->
+      <div class="ag-card">
+        <div class="ag-card__header">
+          <span class="ag-card__label">Generated Code</span>
+        </div>
+        <div class="ag-code-block">
+          <pre class="ag-code-pre"><code>{{ generatedCSS }}</code></pre>
+        </div>
+        <div class="ag-code-actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="copyCode()">
+            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ codeCopied ? 'Copied!' : 'Copy Code' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RIGHT COLUMN: Keyframes + Controls + Presets ═══ -->
+    <div class="ag-right">
+
+      <!-- Animation Controls -->
+      <div class="ag-card">
+        <div class="ag-card__header">
+          <span class="ag-card__label">Animation Settings</span>
+        </div>
+
+        <div class="ag-controls-grid">
+          <!-- Animation Name -->
+          <div class="ag-control-group ag-control-group--full">
+            <label class="ag-control-group__label">Animation Name</label>
+            <input type="text" class="ag-text-input" [(ngModel)]="animationName" placeholder="my-animation" />
+          </div>
+
+          <!-- Duration -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Duration</label>
+              <span class="ag-control-group__value">{{ duration }}s</span>
+            </div>
+            <input type="range" min="0.05" max="10" step="0.05" [value]="duration" (input)="onDurationChange($event)" class="ag-slider" />
+          </div>
+
+          <!-- Delay -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Delay</label>
+              <span class="ag-control-group__value">{{ delay }}s</span>
+            </div>
+            <input type="range" min="0" max="5" step="0.1" [value]="delay" (input)="onDelayChange($event)" class="ag-slider" />
+          </div>
+
+          <!-- Timing Function -->
+          <div class="ag-control-group">
+            <label class="ag-control-group__label">Timing Function</label>
+            <div class="ag-select-wrap">
+              <select class="ag-select" [ngModel]="timingFunction" (ngModelChange)="onTimingFunctionChange($event)">
+                <option *ngFor="let tf of timingFunctions" [value]="tf">{{ tf }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Custom Cubic Bezier -->
+          <div class="ag-control-group" *ngIf="timingFunction === 'cubic-bezier'">
+            <label class="ag-control-group__label">Cubic Bezier</label>
+            <input type="text" class="ag-text-input" [(ngModel)]="customCubicBezier" placeholder="0.25, 0.1, 0.25, 1.0" />
+          </div>
+
+          <!-- Iteration Count -->
+          <div class="ag-control-group">
+            <label class="ag-control-group__label">Iteration Count</label>
+            <div class="ag-iteration-row">
+              <input
+                type="number"
+                class="ag-text-input ag-text-input--sm"
+                [ngModel]="iterationCount"
+                (ngModelChange)="onIterationCountChange($event)"
+                [disabled]="iterationCount === 'infinite'"
+                min="1"
+                max="100"
+              />
+              <button
+                type="button"
+                class="ag-toggle-btn"
+                [class.is-active]="iterationCount === 'infinite'"
+                (click)="onIterationCountChange(iterationCount === 'infinite' ? '1' : 'infinite')"
+              >Infinite</button>
+            </div>
+          </div>
+
+          <!-- Direction -->
+          <div class="ag-control-group">
+            <label class="ag-control-group__label">Direction</label>
+            <div class="ag-select-wrap">
+              <select class="ag-select" [ngModel]="direction" (ngModelChange)="onDirectionChange($event)">
+                <option *ngFor="let dir of directions" [value]="dir">{{ dir }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyframe List -->
+      <div class="ag-card">
+        <div class="ag-card__header">
+          <span class="ag-card__label">Keyframes</span>
+          <div class="ag-add-keyframe" *ngIf="unusedPercents.length > 0">
+            <select class="ag-select ag-select--sm" #addKfSelect>
+              <option *ngFor="let p of unusedPercents" [value]="p">{{ p }}%</option>
+            </select>
+            <button type="button" class="ag-btn ag-btn--primary ag-btn--sm" (click)="addKeyframe(+addKfSelect.value)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div class="ag-keyframe-list">
+          <div
+            class="ag-keyframe-item"
+            *ngFor="let kf of keyframes; let i = index; trackBy: trackByPercent"
+            [class.is-active]="activeKeyframeIndex === i"
+            (click)="selectKeyframe(i)"
+          >
+            <span class="ag-keyframe-item__percent">{{ kf.percent }}%</span>
+            <span class="ag-keyframe-item__detail">
+              T({{ kf.translateX }},{{ kf.translateY }}) R{{ kf.rotate }} S({{ kf.scaleX }},{{ kf.scaleY }}) O{{ kf.opacity }}
+            </span>
+            <div class="ag-keyframe-item__swatch" [style.backgroundColor]="kf.backgroundColor"></div>
+            <button
+              type="button"
+              class="ag-icon-btn ag-icon-btn--xs ag-icon-btn--danger"
+              [disabled]="keyframes.length <= 2"
+              (click)="removeKeyframe(i); $event.stopPropagation()"
+              title="Remove"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyframe Properties Editor -->
+      <div class="ag-card" *ngIf="activeKeyframe">
+        <div class="ag-card__header">
+          <span class="ag-card__label">{{ activeKeyframe.percent }}% Properties</span>
+        </div>
+
+        <div class="ag-controls-grid">
+          <!-- Translate X -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Translate X</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.translateX }}px</span>
+            </div>
+            <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateX" (input)="updateKeyframeField('translateX', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Translate Y -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Translate Y</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.translateY }}px</span>
+            </div>
+            <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateY" (input)="updateKeyframeField('translateY', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Rotate -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Rotate</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.rotate }}&deg;</span>
+            </div>
+            <input type="range" min="-360" max="360" step="1" [value]="activeKeyframe.rotate" (input)="updateKeyframeField('rotate', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Scale X -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Scale X</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.scaleX }}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleX" (input)="updateKeyframeField('scaleX', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Scale Y -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Scale Y</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.scaleY }}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleY" (input)="updateKeyframeField('scaleY', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Opacity -->
+          <div class="ag-control-group">
+            <div class="ag-control-group__top">
+              <label class="ag-control-group__label">Opacity</label>
+              <span class="ag-control-group__value">{{ activeKeyframe.opacity }}</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.01" [value]="activeKeyframe.opacity" (input)="updateKeyframeField('opacity', $event)" class="ag-slider" />
+          </div>
+
+          <!-- Background Color -->
+          <div class="ag-control-group ag-control-group--full">
+            <label class="ag-control-group__label">Background Color</label>
+            <div class="ag-color-row">
+              <input type="color" [value]="activeKeyframe.backgroundColor" (input)="updateKeyframeColor($event)" class="ag-color-input" />
+              <span class="ag-color-hex">{{ activeKeyframe.backgroundColor }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="ag-card">
+        <div class="ag-card__header">
+          <span class="ag-card__label">Presets</span>
+        </div>
+        <div class="ag-presets-grid">
+          <button
+            type="button"
+            class="ag-preset-btn"
+            *ngFor="let preset of presets; trackBy: trackByPresetName"
+            (click)="applyPreset(preset)"
+          >{{ preset.name }}</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>

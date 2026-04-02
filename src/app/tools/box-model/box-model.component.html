@@ -1,0 +1,312 @@
+<div class="bm-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    {{ translate('tools.common.back') }}
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tool</p>
+    <h1 class="tool-header__title">Box Model Visualizer</h1>
+    <p class="tool-header__subtitle">Interactive CSS box model diagram with live preview. Adjust margin, border, padding, and content dimensions to generate ready-to-use CSS code.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.share') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'box-model'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="bm-workspace">
+
+    <!-- LEFT COLUMN: Diagram + Computed Sizes + Code -->
+    <div class="bm-left">
+
+      <!-- Live Box Model Diagram -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Box Model Diagram</span>
+          <div class="bm-preview-controls">
+            <button type="button" class="bm-toggle-btn" [class.is-active]="boxSizing === 'border-box'" (click)="toggleBoxSizing()">
+              {{ boxSizing }}
+            </button>
+            <button type="button" class="bm-icon-btn bm-icon-btn--danger" (click)="resetAll()" title="Reset all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="bm-diagram-area">
+          <div class="bm-diagram-wrapper" [style.transform]="'scale(' + diagramScale + ')'">
+            <!-- Margin layer -->
+            <div class="bm-layer bm-layer--margin"
+              [style.padding.px]="margin.top"
+              [style.paddingRight.px]="margin.right"
+              [style.paddingBottom.px]="margin.bottom"
+              [style.paddingLeft.px]="margin.left">
+              <span class="bm-layer-label bm-layer-label--top">{{ margin.top }}</span>
+              <span class="bm-layer-label bm-layer-label--right">{{ margin.right }}</span>
+              <span class="bm-layer-label bm-layer-label--bottom">{{ margin.bottom }}</span>
+              <span class="bm-layer-label bm-layer-label--left">{{ margin.left }}</span>
+              <span class="bm-layer-name bm-layer-name--margin">margin</span>
+
+              <!-- Border layer -->
+              <div class="bm-layer bm-layer--border"
+                [style.borderTopWidth.px]="border.top.width"
+                [style.borderTopStyle]="border.top.style"
+                [style.borderTopColor]="border.top.color"
+                [style.borderRightWidth.px]="border.right.width"
+                [style.borderRightStyle]="border.right.style"
+                [style.borderRightColor]="border.right.color"
+                [style.borderBottomWidth.px]="border.bottom.width"
+                [style.borderBottomStyle]="border.bottom.style"
+                [style.borderBottomColor]="border.bottom.color"
+                [style.borderLeftWidth.px]="border.left.width"
+                [style.borderLeftStyle]="border.left.style"
+                [style.borderLeftColor]="border.left.color">
+                <span class="bm-layer-label bm-layer-label--top bm-layer-label--border-val">{{ border.top.width }}</span>
+                <span class="bm-layer-label bm-layer-label--right bm-layer-label--border-val">{{ border.right.width }}</span>
+                <span class="bm-layer-label bm-layer-label--bottom bm-layer-label--border-val">{{ border.bottom.width }}</span>
+                <span class="bm-layer-label bm-layer-label--left bm-layer-label--border-val">{{ border.left.width }}</span>
+                <span class="bm-layer-name bm-layer-name--border">border</span>
+
+                <!-- Padding layer -->
+                <div class="bm-layer bm-layer--padding"
+                  [style.padding.px]="padding.top"
+                  [style.paddingRight.px]="padding.right"
+                  [style.paddingBottom.px]="padding.bottom"
+                  [style.paddingLeft.px]="padding.left">
+                  <span class="bm-layer-label bm-layer-label--top">{{ padding.top }}</span>
+                  <span class="bm-layer-label bm-layer-label--right">{{ padding.right }}</span>
+                  <span class="bm-layer-label bm-layer-label--bottom">{{ padding.bottom }}</span>
+                  <span class="bm-layer-label bm-layer-label--left">{{ padding.left }}</span>
+                  <span class="bm-layer-name bm-layer-name--padding">padding</span>
+
+                  <!-- Content layer -->
+                  <div class="bm-layer bm-layer--content"
+                    [style.width.px]="renderedContentWidth"
+                    [style.height.px]="renderedContentHeight">
+                    <span class="bm-content-dims">{{ renderedContentWidth }} &times; {{ renderedContentHeight }}</span>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Computed Size -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Computed Dimensions</span>
+        </div>
+        <div class="bm-computed-grid">
+          <div class="bm-computed-item">
+            <span class="bm-computed-item__label">Content</span>
+            <span class="bm-computed-item__value">{{ renderedContentWidth }} &times; {{ renderedContentHeight }}px</span>
+          </div>
+          <div class="bm-computed-item">
+            <span class="bm-computed-item__label">+ Padding</span>
+            <span class="bm-computed-item__value">{{ renderedContentWidth + totalPaddingH }} &times; {{ renderedContentHeight + totalPaddingV }}px</span>
+          </div>
+          <div class="bm-computed-item">
+            <span class="bm-computed-item__label">+ Border</span>
+            <span class="bm-computed-item__value">{{ computedWidth }} &times; {{ computedHeight }}px</span>
+          </div>
+          <div class="bm-computed-item bm-computed-item--total">
+            <span class="bm-computed-item__label">+ Margin (total space)</span>
+            <span class="bm-computed-item__value">{{ totalWidth }} &times; {{ totalHeight }}px</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Output -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Generated CSS</span>
+        </div>
+        <pre class="bm-code-block">{{ cssCode }}</pre>
+        <button type="button" class="bm-copy-btn" (click)="copyCode()">
+          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ codeCopied ? 'Copied!' : 'Copy Code' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Controls + Presets -->
+    <div class="bm-right">
+
+      <!-- Shorthand toggle -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Input Mode</span>
+          <button type="button" class="bm-toggle-btn" [class.is-active]="shorthand" (click)="toggleShorthand()">
+            {{ shorthand ? 'Uniform (1 value)' : 'Per-side (4 values)' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Dimensions -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Content Dimensions</span>
+        </div>
+        <div class="bm-controls-grid bm-controls-grid--2col">
+          <div class="bm-control-group">
+            <div class="bm-control-group__top">
+              <label class="bm-control-group__label">Width</label>
+              <span class="bm-control-group__value">{{ contentWidth }}px</span>
+            </div>
+            <input type="range" min="0" max="600" step="1"
+              [value]="contentWidth" (input)="onDimensionChange('width', $event)" class="bm-slider" />
+          </div>
+          <div class="bm-control-group">
+            <div class="bm-control-group__top">
+              <label class="bm-control-group__label">Height</label>
+              <span class="bm-control-group__value">{{ contentHeight }}px</span>
+            </div>
+            <input type="range" min="0" max="600" step="1"
+              [value]="contentHeight" (input)="onDimensionChange('height', $event)" class="bm-slider" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Margin Controls -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Margin</span>
+          <span class="bm-card__hint">{{ margin.top + margin.right + margin.bottom + margin.left }}px total</span>
+        </div>
+        <div class="bm-controls-grid" [class.bm-controls-grid--2col]="!shorthand">
+          <div class="bm-control-group" *ngIf="shorthand">
+            <div class="bm-control-group__top">
+              <label class="bm-control-group__label">All Sides</label>
+              <span class="bm-control-group__value">{{ margin.top }}px</span>
+            </div>
+            <input type="range" min="0" max="100" step="1"
+              [value]="margin.top" (input)="onMarginChange('top', $event)" class="bm-slider" />
+          </div>
+          <ng-container *ngIf="!shorthand">
+            <div class="bm-control-group" *ngFor="let side of sides">
+              <div class="bm-control-group__top">
+                <label class="bm-control-group__label">{{ side | titlecase }}</label>
+                <span class="bm-control-group__value">{{ margin[side] }}px</span>
+              </div>
+              <input type="range" min="0" max="100" step="1"
+                [value]="margin[side]" (input)="onMarginChange(side, $event)" class="bm-slider" />
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Border Controls -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Border</span>
+        </div>
+        <div class="bm-border-controls">
+          <!-- Shorthand: single border control -->
+          <div class="bm-border-row" *ngIf="shorthand">
+            <span class="bm-border-row__side">All</span>
+            <input type="range" min="0" max="20" step="1"
+              [value]="border.top.width" (input)="onBorderWidthChange('top', $event)" class="bm-slider bm-slider--short" />
+            <span class="bm-border-row__val">{{ border.top.width }}px</span>
+            <select class="bm-select" [value]="border.top.style" (change)="onBorderStyleChange('top', $event)">
+              <option *ngFor="let s of borderStyles" [value]="s">{{ s }}</option>
+            </select>
+            <input type="color" [value]="border.top.color" (input)="onBorderColorChange('top', $event)" class="bm-color-input" />
+          </div>
+          <!-- Per-side border controls -->
+          <ng-container *ngIf="!shorthand">
+            <div class="bm-border-row" *ngFor="let side of sides">
+              <span class="bm-border-row__side">{{ side | titlecase }}</span>
+              <input type="range" min="0" max="20" step="1"
+                [value]="border[side].width" (input)="onBorderWidthChange(side, $event)" class="bm-slider bm-slider--short" />
+              <span class="bm-border-row__val">{{ border[side].width }}px</span>
+              <select class="bm-select" [value]="border[side].style" (change)="onBorderStyleChange(side, $event)">
+                <option *ngFor="let s of borderStyles" [value]="s">{{ s }}</option>
+              </select>
+              <input type="color" [value]="border[side].color" (input)="onBorderColorChange(side, $event)" class="bm-color-input" />
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Padding Controls -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Padding</span>
+          <span class="bm-card__hint">{{ padding.top + padding.right + padding.bottom + padding.left }}px total</span>
+        </div>
+        <div class="bm-controls-grid" [class.bm-controls-grid--2col]="!shorthand">
+          <div class="bm-control-group" *ngIf="shorthand">
+            <div class="bm-control-group__top">
+              <label class="bm-control-group__label">All Sides</label>
+              <span class="bm-control-group__value">{{ padding.top }}px</span>
+            </div>
+            <input type="range" min="0" max="100" step="1"
+              [value]="padding.top" (input)="onPaddingChange('top', $event)" class="bm-slider" />
+          </div>
+          <ng-container *ngIf="!shorthand">
+            <div class="bm-control-group" *ngFor="let side of sides">
+              <div class="bm-control-group__top">
+                <label class="bm-control-group__label">{{ side | titlecase }}</label>
+                <span class="bm-control-group__value">{{ padding[side] }}px</span>
+              </div>
+              <input type="range" min="0" max="100" step="1"
+                [value]="padding[side]" (input)="onPaddingChange(side, $event)" class="bm-slider" />
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="bm-card">
+        <div class="bm-card__header">
+          <span class="bm-card__label">Presets</span>
+        </div>
+        <div class="bm-presets-grid">
+          <button
+            type="button"
+            class="bm-preset-item"
+            *ngFor="let preset of presets; trackBy: trackByPresetName"
+            (click)="applyPreset(preset)"
+          >
+            <span class="bm-preset-name">{{ preset.name }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <app-embed-code-generator toolSlug="box-model" toolName="CSS Box Model Visualizer"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'box-model'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'box-model'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'box-model'"></app-related-tools>
+
+</div>

@@ -1,0 +1,246 @@
+<div class="sm-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Developer Tools</p>
+    <h1 class="tool-header__title">Code Snippet <span class="tool-header__amp">Manager</span></h1>
+    <p class="tool-header__subtitle">Save, organize, and search your code snippets locally. Syntax highlighting, tagging, and instant search — all in your browser.</p>
+  </header>
+
+  <!-- Stats Bar -->
+  <div class="sm-stats-bar">
+    <div class="sm-stat">
+      <span class="sm-stat__label">Snippets</span>
+      <span class="sm-stat__value">{{ snippetCount }}</span>
+    </div>
+    <div class="sm-stat-divider"></div>
+    <div class="sm-stat">
+      <span class="sm-stat__label">Languages</span>
+      <span class="sm-stat__value">{{ uniqueLanguages.length }}</span>
+    </div>
+    <div class="sm-stat-divider"></div>
+    <div class="sm-stat">
+      <span class="sm-stat__label">Storage</span>
+      <span class="sm-stat__value">{{ storageUsed }}</span>
+    </div>
+  </div>
+
+  <!-- ═══ LIST VIEW ═══ -->
+  <ng-container *ngIf="viewMode === 'list'">
+
+    <!-- Toolbar -->
+    <div class="sm-toolbar">
+      <div class="sm-toolbar__left">
+        <div class="sm-search-wrap">
+          <svg class="sm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            class="sm-search-input"
+            type="text"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchInput()"
+            placeholder="Search by title, tag, or language..."
+            spellcheck="false"
+          />
+          <button class="sm-search-clear" *ngIf="searchQuery" (click)="searchQuery = ''">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <select class="sm-filter-select" [(ngModel)]="filterLanguage">
+          <option value="">All Languages</option>
+          <option *ngFor="let lang of uniqueLanguages" [value]="lang">{{ lang }}</option>
+        </select>
+
+        <button class="sm-btn-ghost sm-btn-sm" *ngIf="searchQuery || filterLanguage" (click)="clearFilters()">
+          Clear Filters
+        </button>
+      </div>
+
+      <div class="sm-toolbar__right">
+        <button class="sm-btn-ghost sm-btn-sm" (click)="triggerImport()" title="Import snippets from JSON">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import
+        </button>
+        <button class="sm-btn-ghost sm-btn-sm" (click)="exportAll()" [disabled]="snippets.length === 0" title="Export all snippets as JSON">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button class="sm-btn sm-btn--primary" (click)="openCreate()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Snippet
+        </button>
+      </div>
+    </div>
+
+    <!-- Import success message -->
+    <div class="sm-toast sm-toast--success" *ngIf="showImportSuccess">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Imported {{ importedCount }} snippet{{ importedCount !== 1 ? 's' : '' }} successfully!
+    </div>
+
+    <!-- Empty state -->
+    <div class="sm-empty" *ngIf="snippets.length === 0">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+      <p class="sm-empty__title">No snippets yet</p>
+      <p class="sm-empty__text">Create your first code snippet or import from a JSON file.</p>
+      <button class="sm-btn sm-btn--primary" (click)="openCreate()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Snippet
+      </button>
+    </div>
+
+    <!-- No results state -->
+    <div class="sm-empty" *ngIf="snippets.length > 0 && filteredSnippets.length === 0">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <p class="sm-empty__title">No matching snippets</p>
+      <p class="sm-empty__text">Try adjusting your search or filters.</p>
+    </div>
+
+    <!-- Snippet List -->
+    <div class="sm-list">
+      <div class="sm-card" *ngFor="let snippet of filteredSnippets">
+        <div class="sm-card__header">
+          <div class="sm-card__meta">
+            <span class="sm-card__lang-dot" [style.background]="getLanguageColor(snippet.language)"></span>
+            <span class="sm-card__lang">{{ snippet.language }}</span>
+            <span class="sm-card__date">{{ formatDate(snippet.updatedAt) }}</span>
+          </div>
+          <div class="sm-card__actions">
+            <button class="sm-btn-icon" (click)="copySnippet(snippet.code)" title="Copy code">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            </button>
+            <button class="sm-btn-icon" (click)="openEdit(snippet)" title="Edit snippet">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="sm-btn-icon sm-btn-icon--danger" (click)="confirmDelete(snippet.id)" title="Delete snippet">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <h3 class="sm-card__title">{{ snippet.title }}</h3>
+
+        <div class="sm-card__tags" *ngIf="snippet.tags.length > 0">
+          <span class="sm-tag" *ngFor="let tag of snippet.tags">{{ tag }}</span>
+        </div>
+
+        <div class="sm-card__code">
+          <pre class="sm-code-pre"><code [innerHTML]="highlightCode(truncateCode(snippet.code), snippet.language)"></code></pre>
+        </div>
+
+        <!-- Delete confirmation -->
+        <div class="sm-delete-confirm" *ngIf="showDeleteConfirm === snippet.id">
+          <span class="sm-delete-confirm__text">Delete this snippet?</span>
+          <button class="sm-btn-ghost sm-btn-sm sm-btn--danger-text" (click)="deleteSnippet(snippet.id)">Delete</button>
+          <button class="sm-btn-ghost sm-btn-sm" (click)="cancelDelete()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ═══ CREATE / EDIT VIEW ═══ -->
+  <ng-container *ngIf="viewMode === 'create' || viewMode === 'edit'">
+
+    <div class="sm-form-panel">
+      <div class="sm-panel__header">
+        <span class="sm-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ng-container *ngIf="viewMode === 'create'"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></ng-container>
+            <ng-container *ngIf="viewMode === 'edit'"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></ng-container>
+          </svg>
+          {{ viewMode === 'create' ? 'New Snippet' : 'Edit Snippet' }}
+        </span>
+      </div>
+
+      <div class="sm-form-body">
+        <!-- Title -->
+        <div class="sm-field">
+          <label class="sm-field__label" for="smTitle">Title</label>
+          <input
+            class="sm-field__input"
+            id="smTitle"
+            type="text"
+            [(ngModel)]="formTitle"
+            placeholder="e.g. Debounce utility function"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- Language -->
+        <div class="sm-field">
+          <label class="sm-field__label" for="smLang">Language</label>
+          <select class="sm-field__select" id="smLang" [(ngModel)]="formLanguage" (ngModelChange)="updatePreview()">
+            <option *ngFor="let lang of languages" [value]="lang">{{ lang }}</option>
+          </select>
+        </div>
+
+        <!-- Tags -->
+        <div class="sm-field">
+          <label class="sm-field__label" for="smTags">Tags <span class="sm-field__hint">(comma-separated)</span></label>
+          <input
+            class="sm-field__input"
+            id="smTags"
+            type="text"
+            [(ngModel)]="formTags"
+            placeholder="e.g. utility, async, react"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- Code -->
+        <div class="sm-field">
+          <label class="sm-field__label" for="smCode">Code</label>
+          <textarea
+            class="sm-code-textarea"
+            id="smCode"
+            [(ngModel)]="formCode"
+            (ngModelChange)="updatePreview()"
+            placeholder="Paste or type your code here..."
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="sm-field" *ngIf="formCode">
+          <label class="sm-field__label">Preview</label>
+          <div class="sm-preview-box">
+            <pre class="sm-code-pre"><code [innerHTML]="previewHtml"></code></pre>
+          </div>
+        </div>
+
+        <!-- Form actions -->
+        <div class="sm-form-actions">
+          <button class="sm-btn sm-btn--primary" (click)="saveSnippet()" [disabled]="!formTitle.trim() || !formCode.trim()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ viewMode === 'create' ? 'Save Snippet' : 'Update Snippet' }}
+          </button>
+          <button class="sm-btn sm-btn--secondary" (click)="cancelForm()">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- Copy toast -->
+  <div class="sm-toast sm-toast--copy" *ngIf="copied">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Copied to clipboard!
+  </div>
+
+</div>

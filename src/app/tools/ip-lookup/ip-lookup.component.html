@@ -1,0 +1,290 @@
+<div class="il-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Network Tools</p>
+    <h1 class="tool-header__title">IP Address <span class="tool-header__amp">Info</span></h1>
+    <p class="tool-header__subtitle">Detect your public IP, validate IPv4/IPv6 addresses, calculate subnets, and explore private IP ranges -- no sign-up required.</p>
+  </header>
+
+  <!-- Tab navigation -->
+  <div class="il-tabs">
+    <button class="il-tab" [class.il-tab--active]="activeTab === 'myip'" (click)="setTab('myip')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      My IP
+    </button>
+    <button class="il-tab" [class.il-tab--active]="activeTab === 'validate'" (click)="setTab('validate')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Validate
+    </button>
+    <button class="il-tab" [class.il-tab--active]="activeTab === 'subnet'" (click)="setTab('subnet')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Subnet Calc
+    </button>
+    <button class="il-tab" [class.il-tab--active]="activeTab === 'reference'" (click)="setTab('reference')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Reference
+    </button>
+  </div>
+
+  <!-- ═══ MY IP TAB ═══ -->
+  <div class="il-content" *ngIf="activeTab === 'myip'">
+    <div class="il-panel">
+      <div class="il-panel__header">
+        <span class="il-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Your Public IP
+        </span>
+        <div class="il-panel__actions">
+          <button class="il-btn-ghost il-btn-sm" (click)="fetchPublicIp()" [disabled]="ipLoading">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div class="il-panel__body il-myip-body">
+
+        <!-- Loading -->
+        <div class="il-myip-loading" *ngIf="ipLoading">
+          <div class="il-spinner"></div>
+          <span>Detecting your IP address...</span>
+        </div>
+
+        <!-- Error -->
+        <div class="il-myip-error" *ngIf="!ipLoading && ipError">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span>{{ ipError }}</span>
+        </div>
+
+        <!-- Result -->
+        <div class="il-myip-result" *ngIf="!ipLoading && publicIp && !ipError">
+          <span class="il-myip-version-badge">{{ ipVersion }}</span>
+          <span class="il-myip-address">{{ publicIp }}</span>
+          <button class="il-btn-copy" (click)="copyIp()" [class.il-btn-copy--success]="ipCopied">
+            <ng-container *ngIf="!ipCopied">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy
+            </ng-container>
+            <ng-container *ngIf="ipCopied">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Copied!
+            </ng-container>
+          </button>
+        </div>
+
+        <!-- Idle (SSR) -->
+        <div class="il-myip-idle" *ngIf="!ipLoading && !publicIp && !ipError">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span>Click Refresh to detect your IP</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ VALIDATE TAB ═══ -->
+  <div class="il-content" *ngIf="activeTab === 'validate'">
+    <div class="il-panel">
+      <div class="il-panel__header">
+        <span class="il-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          IP Format Validator
+        </span>
+      </div>
+      <div class="il-panel__body">
+        <div class="il-validate-form">
+          <label class="il-label" for="validateIp">Paste any IP address to check</label>
+          <input
+            id="validateIp"
+            type="text"
+            class="il-input"
+            [(ngModel)]="validateInput"
+            (ngModelChange)="onValidateInput()"
+            placeholder="e.g. 192.168.1.1 or 2001:db8::1"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Validation result -->
+        <div class="il-validate-result" *ngIf="validateResult">
+          <div class="il-validate-badge"
+            [class.il-validate-badge--valid]="validateResult.valid"
+            [class.il-validate-badge--invalid]="!validateResult.valid">
+            <svg *ngIf="validateResult.valid" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg *ngIf="!validateResult.valid" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>{{ validateResult.message }}</span>
+          </div>
+          <div class="il-validate-version" *ngIf="validateResult.valid">
+            <span class="il-label">Version</span>
+            <span class="il-value-mono">{{ validateResult.version }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SUBNET TAB ═══ -->
+  <div class="il-content" *ngIf="activeTab === 'subnet'">
+    <div class="il-panel">
+      <div class="il-panel__header">
+        <span class="il-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Subnet Calculator
+        </span>
+      </div>
+      <div class="il-panel__body">
+        <div class="il-subnet-form">
+          <div class="il-subnet-row">
+            <div class="il-field">
+              <label class="il-label" for="subnetIp">IP Address</label>
+              <input
+                id="subnetIp"
+                type="text"
+                class="il-input"
+                [(ngModel)]="subnetIp"
+                placeholder="e.g. 192.168.1.0"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+            <div class="il-field il-field--cidr">
+              <label class="il-label" for="subnetCidr">CIDR</label>
+              <div class="il-cidr-wrap">
+                <span class="il-cidr-slash">/</span>
+                <input
+                  id="subnetCidr"
+                  type="number"
+                  class="il-input il-input--cidr"
+                  [(ngModel)]="subnetCidr"
+                  min="0"
+                  max="32"
+                />
+              </div>
+            </div>
+          </div>
+          <button class="il-btn-primary" (click)="calculateSubnet()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Calculate
+          </button>
+        </div>
+
+        <!-- Error -->
+        <div class="il-subnet-error" *ngIf="subnetError">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          {{ subnetError }}
+        </div>
+
+        <!-- Results -->
+        <div class="il-subnet-results" *ngIf="subnetResult">
+          <div class="il-result-grid">
+            <div class="il-result-item">
+              <span class="il-result-label">Network Address</span>
+              <span class="il-result-value">{{ subnetResult.network }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">Broadcast Address</span>
+              <span class="il-result-value">{{ subnetResult.broadcast }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">First Host</span>
+              <span class="il-result-value">{{ subnetResult.firstHost }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">Last Host</span>
+              <span class="il-result-value">{{ subnetResult.lastHost }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">Total Usable Hosts</span>
+              <span class="il-result-value il-result-value--accent">{{ subnetResult.totalHosts | number }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">Subnet Mask</span>
+              <span class="il-result-value">{{ subnetResult.subnetMask }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">Wildcard Mask</span>
+              <span class="il-result-value">{{ subnetResult.wildcardMask }}</span>
+            </div>
+            <div class="il-result-item">
+              <span class="il-result-label">CIDR Notation</span>
+              <span class="il-result-value il-result-value--accent">/{{ subnetResult.cidr }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REFERENCE TAB ═══ -->
+  <div class="il-content" *ngIf="activeTab === 'reference'">
+
+    <!-- IPv4 Private Ranges -->
+    <div class="il-panel">
+      <div class="il-panel__header">
+        <span class="il-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          IPv4 Private / Reserved Ranges
+        </span>
+      </div>
+      <div class="il-panel__body il-panel__body--table">
+        <div class="il-table-wrap">
+          <table class="il-table">
+            <thead>
+              <tr>
+                <th>Range (CIDR)</th>
+                <th>Class</th>
+                <th>Usable Hosts</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of privateRanges">
+                <td class="il-mono">{{ r.range }}</td>
+                <td>{{ r.class }}</td>
+                <td class="il-mono">{{ r.hosts }}</td>
+                <td>{{ r.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- IPv6 Reserved -->
+    <div class="il-panel il-panel--mt">
+      <div class="il-panel__header">
+        <span class="il-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          IPv6 Reserved Ranges
+        </span>
+      </div>
+      <div class="il-panel__body il-panel__body--table">
+        <div class="il-table-wrap">
+          <table class="il-table">
+            <thead>
+              <tr>
+                <th>Range</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of ipv6Reserved">
+                <td class="il-mono">{{ r.range }}</td>
+                <td>{{ r.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

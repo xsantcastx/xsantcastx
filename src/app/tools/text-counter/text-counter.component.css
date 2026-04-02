@@ -1,0 +1,409 @@
+/* ==============================================================
+   Text Counter & Analyzer — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ============================================================== */
+
+.txc-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* -- Back link ------------------------------------------------ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* -- Tool header ---------------------------------------------- */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* -- Two-column layout ---------------------------------------- */
+.txc-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.txc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* -- Panel (glass card) --------------------------------------- */
+.txc-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.txc-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.txc-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.txc-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* -- Input panel body ----------------------------------------- */
+.txc-panel__body--input {
+  padding: 0;
+}
+
+.txc-char-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Textarea ------------------------------------------------- */
+.txc-textarea {
+  width: 100%;
+  min-height: 340px;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.txc-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.txc-textarea:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* -- Ghost/small buttons -------------------------------------- */
+.txc-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.txc-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.txc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.txc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* -- Stats grid ----------------------------------------------- */
+.txc-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.txc-stat-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.txc-stat-card:hover {
+  border-color: rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.05);
+}
+
+.txc-stat-card--wide {
+  grid-column: span 1;
+}
+
+.txc-stat-card__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.txc-stat-card__value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+  line-height: 1.2;
+}
+
+.txc-stat-card__value--primary { color: var(--primary-color); }
+.txc-stat-card__value--cyan { color: #00ffd5; }
+.txc-stat-card__value--purple { color: var(--secondary-color); }
+.txc-stat-card__value--mono {
+  font-size: 0.82rem;
+  font-weight: 600;
+  word-break: break-all;
+  color: var(--primary-color);
+}
+
+.txc-stat-card__hint {
+  font-size: 0.65rem;
+  color: rgba(214, 221, 235, 0.35);
+  margin-top: -0.05rem;
+}
+
+/* -- Empty state ---------------------------------------------- */
+.txc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+/* -- Tabs ----------------------------------------------------- */
+.txc-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.txc-tab {
+  padding: 0.35rem 0.75rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.73rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.txc-tab:hover {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.15);
+}
+.txc-tab--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.35);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* -- Frequency list ------------------------------------------- */
+.txc-freq-body {
+  padding: 0.75rem 1rem;
+}
+
+.txc-freq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.txc-freq-item {
+  display: grid;
+  grid-template-columns: 1.5rem 5.5rem 1fr 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+.txc-freq-rank {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(214, 221, 235, 0.3);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.txc-freq-word {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txc-freq-word--char {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.txc-freq-bar-wrap {
+  height: 6px;
+  background: rgba(214, 221, 235, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.txc-freq-bar {
+  height: 100%;
+  background: var(--primary-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.txc-freq-bar--purple {
+  background: var(--secondary-color);
+}
+
+.txc-freq-bar--gold {
+  background: #ffcc00;
+}
+
+.txc-freq-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Fira Code', monospace;
+}
+
+.txc-freq-empty {
+  font-size: 0.8rem;
+  color: rgba(214, 221, 235, 0.3);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* -- Show more button ----------------------------------------- */
+.txc-show-more {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background: none;
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.73rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.txc-show-more:hover {
+  color: var(--primary-color);
+  border-color: rgba(0, 255, 204, 0.3);
+}
+
+/* -- Responsive ----------------------------------------------- */
+@media (max-width: 768px) {
+  .txc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .txc-col--right {
+    order: -1;
+  }
+
+  .txc-textarea {
+    min-height: 220px;
+  }
+
+  .txc-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .txc-freq-item {
+    grid-template-columns: 1.2rem 4rem 1fr 2.5rem;
+  }
+
+  .txc-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .txc-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

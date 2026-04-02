@@ -1,0 +1,293 @@
+<div class="mt-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Markdown Tools</p>
+    <h1 class="tool-header__title">Markdown Table <span class="tool-header__amp">Generator</span></h1>
+    <p class="tool-header__subtitle">Visual table editor with live Markdown preview, CSV import, HTML export, and column alignment controls.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'md-table-generator'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="mt-layout">
+
+    <!-- ── LEFT: Table Editor ── -->
+    <div class="mt-col mt-col--left">
+
+      <!-- Controls Panel -->
+      <div class="mt-panel">
+        <div class="mt-panel__header">
+          <span class="mt-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            Table Editor
+          </span>
+          <div class="mt-panel__actions">
+            <button class="mt-btn-ghost mt-btn-sm" (click)="toggleCsvImport()" title="Import CSV">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CSV Import
+            </button>
+            <button class="mt-btn-ghost mt-btn-sm" (click)="clearTable()" title="Reset table">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- CSV Import Panel -->
+        <div class="mt-csv-panel" *ngIf="showCsvImport">
+          <div class="mt-csv-controls">
+            <label class="mt-csv-label">
+              Delimiter:
+              <select [(ngModel)]="csvDelimiter" class="mt-csv-select">
+                <option value=",">,  (comma)</option>
+                <option value="&#9;">Tab</option>
+                <option value=";">; (semicolon)</option>
+                <option value="|">| (pipe)</option>
+              </select>
+            </label>
+            <button class="mt-btn-primary mt-btn-sm" (click)="importCsv()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Import
+            </button>
+          </div>
+          <textarea
+            class="mt-textarea mt-textarea--csv"
+            [(ngModel)]="csvInput"
+            placeholder="Paste CSV data here...&#10;&#10;Name,Role,Level&#10;Alice,Engineer,Senior&#10;Bob,Designer,Mid"
+            spellcheck="false"
+          ></textarea>
+          <p class="mt-csv-hint" *ngIf="errorMessage">{{ errorMessage }}</p>
+        </div>
+
+        <!-- Table grid -->
+        <div class="mt-panel__body">
+          <div class="mt-table-wrap">
+            <table class="mt-table">
+              <!-- Alignment controls row -->
+              <thead>
+                <tr class="mt-align-row">
+                  <th class="mt-row-action-cell"></th>
+                  <th *ngFor="let a of alignments; let ci = index; trackBy: trackByIndex" class="mt-align-cell">
+                    <button class="mt-align-btn" (click)="cycleAlignment(ci)" [title]="'Alignment: ' + a">
+                      <span class="mt-align-indicator" [attr.data-align]="a">{{ getAlignmentLabel(a) }}</span>
+                    </button>
+                    <button
+                      class="mt-col-remove"
+                      (click)="removeColumn(ci)"
+                      [disabled]="cols <= 1"
+                      title="Remove column">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </th>
+                  <th class="mt-add-col-cell">
+                    <button class="mt-add-btn" (click)="addColumn()" [disabled]="cols >= MAX_SIZE" title="Add column">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                  </th>
+                </tr>
+                <!-- Header cells -->
+                <tr class="mt-header-row">
+                  <td class="mt-row-action-cell mt-row-label">H</td>
+                  <th *ngFor="let header of headers; let ci = index; trackBy: trackByIndex" class="mt-header-cell">
+                    <input
+                      class="mt-cell-input mt-cell-input--header"
+                      [(ngModel)]="header.value"
+                      (ngModelChange)="onCellChange()"
+                      [placeholder]="'Header ' + (ci + 1)"
+                      spellcheck="false"
+                    />
+                  </th>
+                  <td class="mt-add-col-cell"></td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of body; let ri = index; trackBy: trackByIndex" class="mt-body-row">
+                  <td class="mt-row-action-cell">
+                    <button
+                      class="mt-row-remove"
+                      (click)="removeRow(ri)"
+                      [disabled]="body.length <= 1"
+                      title="Remove row">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </td>
+                  <td *ngFor="let cell of row; let ci = index; trackBy: trackByIndex" class="mt-body-cell">
+                    <input
+                      class="mt-cell-input"
+                      [(ngModel)]="cell.value"
+                      (ngModelChange)="onCellChange()"
+                      [placeholder]="'R' + (ri + 1) + 'C' + (ci + 1)"
+                      spellcheck="false"
+                    />
+                  </td>
+                  <td class="mt-add-col-cell"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Add row button -->
+          <div class="mt-add-row-wrap">
+            <button class="mt-add-row-btn" (click)="addRow()" [disabled]="body.length >= MAX_SIZE">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Row
+            </button>
+            <span class="mt-size-label">{{ body.length }} x {{ cols }} (max {{ MAX_SIZE }}x{{ MAX_SIZE }})</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- ── RIGHT: Output ── -->
+    <div class="mt-col mt-col--right">
+
+      <!-- Options bar -->
+      <div class="mt-options-bar">
+        <div class="mt-seg-ctrl">
+          <button class="mt-seg-btn" [class.mt-seg-btn--active]="outputFormat === 'markdown'" (click)="setOutputFormat('markdown')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17l5-5-5-5"/><path d="M14 3v18"/><path d="M22 17l-5-5 5-5"/></svg>
+            Markdown
+          </button>
+          <button class="mt-seg-btn" [class.mt-seg-btn--active]="outputFormat === 'html'" (click)="setOutputFormat('html')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            HTML
+          </button>
+        </div>
+        <label class="mt-toggle" for="compactMode">
+          <input type="checkbox" id="compactMode" [(ngModel)]="compactFormat" (ngModelChange)="toggleCompact()" />
+          <span class="mt-toggle__track"><span class="mt-toggle__thumb"></span></span>
+          <span class="mt-toggle__label">Compact</span>
+        </label>
+      </div>
+
+      <!-- Markdown Output Panel -->
+      <div class="mt-panel mt-panel--output">
+        <div class="mt-panel__header">
+          <span class="mt-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            {{ outputFormat === 'markdown' ? 'Markdown' : 'HTML' }} Output
+          </span>
+          <div class="mt-panel__actions">
+            <!-- Copy Markdown -->
+            <button
+              class="mt-btn-ghost mt-btn-sm"
+              *ngIf="outputFormat === 'markdown'"
+              (click)="copyMarkdown()"
+              [disabled]="!markdownOutput"
+              [class.mt-btn-ghost--success]="copiedMd">
+              <ng-container *ngIf="!copiedMd">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copiedMd">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+            <!-- Copy HTML -->
+            <button
+              class="mt-btn-ghost mt-btn-sm"
+              *ngIf="outputFormat === 'html'"
+              (click)="copyHtml()"
+              [disabled]="!htmlOutput"
+              [class.mt-btn-ghost--success]="copiedHtml">
+              <ng-container *ngIf="!copiedHtml">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copiedHtml">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+
+        <!-- Output body -->
+        <div class="mt-output-body">
+          <pre class="mt-code-pre"><code>{{ currentOutput }}</code></pre>
+        </div>
+      </div>
+
+      <!-- Live Preview Panel -->
+      <div class="mt-panel mt-panel--preview">
+        <div class="mt-panel__header">
+          <span class="mt-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Live Preview
+          </span>
+        </div>
+        <div class="mt-preview-body">
+          <table class="mt-preview-table">
+            <thead>
+              <tr>
+                <th *ngFor="let h of headers; let ci = index; trackBy: trackByIndex"
+                    [style.text-align]="alignments[ci]">
+                  {{ h.value || 'Header ' + (ci + 1) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of body; let ri = index; trackBy: trackByIndex">
+                <td *ngFor="let cell of row; let ci = index; trackBy: trackByIndex"
+                    [style.text-align]="alignments[ci]">
+                  {{ cell.value || '-' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="mt-stats">
+        <div class="mt-stat">
+          <span class="mt-stat__label">Rows</span>
+          <span class="mt-stat__value">{{ body.length }}</span>
+        </div>
+        <div class="mt-stat-divider"></div>
+        <div class="mt-stat">
+          <span class="mt-stat__label">Cols</span>
+          <span class="mt-stat__value">{{ cols }}</span>
+        </div>
+        <div class="mt-stat-divider"></div>
+        <div class="mt-stat">
+          <span class="mt-stat__label">MD Size</span>
+          <span class="mt-stat__value">{{ markdownOutput.length | number }} <span class="mt-stat__unit">ch</span></span>
+        </div>
+        <div class="mt-stat-divider"></div>
+        <div class="mt-stat">
+          <span class="mt-stat__label">Format</span>
+          <span class="mt-stat__value mt-stat__value--cyan">{{ compactFormat ? 'Compact' : 'Pretty' }}</span>
+        </div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="md-table-generator" toolName="Markdown Table Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'md-table-generator'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Markdown Tools'" [toolSlug]="'md-table-generator'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'md-table-generator'"></app-related-tools>
+
+</div>

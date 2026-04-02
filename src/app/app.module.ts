@@ -103,6 +103,26 @@ import { CssMinifierComponent } from './tools/css-minifier/css-minifier.componen
 import { HttpStatusComponent } from './tools/http-status/http-status.component';
 import { BorderRadiusComponent } from './tools/border-radius/border-radius.component';
 import { EmojiPickerComponent } from './tools/emoji-picker/emoji-picker.component';
+import { IpLookupComponent } from './tools/ip-lookup/ip-lookup.component';
+import { GridGeneratorComponent } from './tools/grid-generator/grid-generator.component';
+import { YamlJsonComponent } from './tools/yaml-json/yaml-json.component';
+import { JwtGeneratorComponent } from './tools/jwt-generator/jwt-generator.component';
+import { TailwindLookupComponent } from './tools/tailwind-lookup/tailwind-lookup.component';
+import { MdTableGeneratorComponent } from './tools/md-table-generator/md-table-generator.component';
+import { JsonEscapeComponent } from './tools/json-escape/json-escape.component';
+import { AnimationGeneratorComponent } from './tools/animation-generator/animation-generator.component';
+import { TextCounterComponent } from './tools/text-counter/text-counter.component';
+import { ScreenInfoComponent } from './tools/screen-info/screen-info.component';
+import { SlugGeneratorComponent } from './tools/slug-generator/slug-generator.component';
+import { CsvJsonComponent } from './tools/csv-json/csv-json.component';
+import { FaviconGeneratorComponent } from './tools/favicon-generator/favicon-generator.component';
+import { KeyboardShortcutsComponent } from './tools/keyboard-shortcuts/keyboard-shortcuts.component';
+import { PlaceholderImageComponent } from './tools/placeholder-image/placeholder-image.component';
+import { ColorBlindnessComponent } from './tools/color-blindness/color-blindness.component';
+import { RobotsGeneratorComponent } from './tools/robots-generator/robots-generator.component';
+import { DnsLookupComponent } from './tools/dns-lookup/dns-lookup.component';
+import { BoxModelComponent } from './tools/box-model/box-model.component';
+import { SnippetManagerComponent } from './tools/snippet-manager/snippet-manager.component';
 
 
 @NgModule({
@@ -186,7 +206,27 @@ import { EmojiPickerComponent } from './tools/emoji-picker/emoji-picker.componen
     CssMinifierComponent,
     HttpStatusComponent,
     BorderRadiusComponent,
-    EmojiPickerComponent
+    EmojiPickerComponent,
+    IpLookupComponent,
+    GridGeneratorComponent,
+    YamlJsonComponent,
+    JwtGeneratorComponent,
+    TailwindLookupComponent,
+    MdTableGeneratorComponent,
+    JsonEscapeComponent,
+    AnimationGeneratorComponent,
+    TextCounterComponent,
+    ScreenInfoComponent,
+    SlugGeneratorComponent,
+    CsvJsonComponent,
+    FaviconGeneratorComponent,
+    KeyboardShortcutsComponent,
+    PlaceholderImageComponent,
+    ColorBlindnessComponent,
+    RobotsGeneratorComponent,
+    DnsLookupComponent,
+    BoxModelComponent,
+    SnippetManagerComponent
   ],
   bootstrap: [AppComponent],
   imports: [

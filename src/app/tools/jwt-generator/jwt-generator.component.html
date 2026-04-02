@@ -1,0 +1,301 @@
+<div class="jg-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Security Tools</p>
+    <h1 class="tool-header__title">JWT Generator <span class="tool-header__amp">&</span> Builder</h1>
+    <p class="tool-header__subtitle">Build and sign JSON Web Tokens visually — configure headers, set claims, pick expiration dates, and sign with HMAC. Client-side only, no data sent anywhere.</p>
+  </header>
+
+  <!-- Workspace -->
+  <div class="jg-layout">
+
+    <!-- LEFT: Builder -->
+    <div class="jg-col jg-col--left">
+
+      <!-- Algorithm Panel -->
+      <div class="jg-panel">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Header
+          </span>
+          <div class="jg-panel__actions">
+            <button class="jg-btn-ghost jg-btn-sm" (click)="clearAll()" title="Reset everything">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Reset
+            </button>
+          </div>
+        </div>
+        <div class="jg-panel__body">
+          <div class="jg-field">
+            <label class="jg-label">Algorithm</label>
+            <div class="jg-algo-group">
+              <button
+                *ngFor="let alg of algorithms"
+                class="jg-algo-btn"
+                [class.jg-algo-btn--active]="algorithm === alg"
+                [class.jg-algo-btn--danger]="alg === 'none'"
+                (click)="algorithm = alg; onAlgorithmChange()">
+                {{ alg }}
+              </button>
+            </div>
+            <p class="jg-field-hint" *ngIf="algorithm === 'none'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Unsigned tokens are insecure and should only be used for testing.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payload Panel -->
+      <div class="jg-panel">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <span class="jg-dot jg-dot--payload"></span>
+            Payload Claims
+          </span>
+        </div>
+        <div class="jg-panel__body">
+
+          <!-- Issuer -->
+          <div class="jg-field">
+            <label class="jg-label">Issuer <span class="jg-label-key">iss</span></label>
+            <input
+              type="text"
+              class="jg-input"
+              [(ngModel)]="issuer"
+              (ngModelChange)="updatePreview()"
+              placeholder="e.g. https://auth.example.com"
+              spellcheck="false"
+              autocomplete="off" />
+          </div>
+
+          <!-- Subject -->
+          <div class="jg-field">
+            <label class="jg-label">Subject <span class="jg-label-key">sub</span></label>
+            <input
+              type="text"
+              class="jg-input"
+              [(ngModel)]="subject"
+              (ngModelChange)="updatePreview()"
+              placeholder="e.g. user_123456"
+              spellcheck="false"
+              autocomplete="off" />
+          </div>
+
+          <!-- Audience -->
+          <div class="jg-field">
+            <label class="jg-label">Audience <span class="jg-label-key">aud</span></label>
+            <input
+              type="text"
+              class="jg-input"
+              [(ngModel)]="audience"
+              (ngModelChange)="updatePreview()"
+              placeholder="e.g. https://api.example.com"
+              spellcheck="false"
+              autocomplete="off" />
+          </div>
+
+          <!-- Expiration -->
+          <div class="jg-field">
+            <label class="jg-label">Expiration <span class="jg-label-key">exp</span></label>
+            <div class="jg-date-row">
+              <input
+                type="date"
+                class="jg-input jg-input--date"
+                [(ngModel)]="expirationDate"
+                (ngModelChange)="updatePreview()" />
+              <input
+                type="time"
+                class="jg-input jg-input--time"
+                [(ngModel)]="expirationTime"
+                (ngModelChange)="updatePreview()" />
+            </div>
+          </div>
+
+          <!-- Issued At toggle -->
+          <div class="jg-field jg-field--inline">
+            <label class="jg-toggle">
+              <input type="checkbox" [(ngModel)]="issuedAtNow" (ngModelChange)="updatePreview()" />
+              <span class="jg-toggle__track"></span>
+            </label>
+            <span class="jg-label">Issued At (iat) <span class="jg-label-key">now</span></span>
+          </div>
+
+          <!-- Not Before toggle -->
+          <div class="jg-field jg-field--inline">
+            <label class="jg-toggle">
+              <input type="checkbox" [(ngModel)]="notBeforeNow" (ngModelChange)="updatePreview()" />
+              <span class="jg-toggle__track"></span>
+            </label>
+            <span class="jg-label">Not Before (nbf) <span class="jg-label-key">now</span></span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Custom Claims Panel -->
+      <div class="jg-panel">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Custom Claims
+          </span>
+          <span class="jg-claim-count" *ngIf="customClaims.length">{{ customClaims.length }} added</span>
+        </div>
+        <div class="jg-panel__body">
+
+          <!-- Existing custom claims -->
+          <div class="jg-custom-claim" *ngFor="let claim of customClaims; let i = index">
+            <span class="jg-custom-claim__key">{{ claim.key }}</span>
+            <span class="jg-custom-claim__value">{{ claim.value }}</span>
+            <button class="jg-btn-remove" (click)="removeCustomClaim(i)" title="Remove claim">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Add new claim -->
+          <div class="jg-add-claim">
+            <input
+              type="text"
+              class="jg-input jg-input--sm"
+              [(ngModel)]="newClaimKey"
+              placeholder="key"
+              spellcheck="false"
+              autocomplete="off"
+              (keydown.enter)="addCustomClaim()" />
+            <input
+              type="text"
+              class="jg-input jg-input--sm"
+              [(ngModel)]="newClaimValue"
+              placeholder="value"
+              spellcheck="false"
+              autocomplete="off"
+              (keydown.enter)="addCustomClaim()" />
+            <button class="jg-btn-add" (click)="addCustomClaim()" [disabled]="!newClaimKey.trim()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <p class="jg-field-hint">Values are auto-parsed: numbers, booleans, arrays, and objects are detected. Strings remain as-is.</p>
+        </div>
+      </div>
+
+      <!-- Secret & Generate -->
+      <div class="jg-panel">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Sign &amp; Generate
+          </span>
+        </div>
+        <div class="jg-panel__body">
+          <div class="jg-field" *ngIf="algorithm !== 'none'">
+            <label class="jg-label">Secret Key</label>
+            <input
+              type="password"
+              class="jg-input jg-input--secret"
+              [(ngModel)]="secret"
+              placeholder="Enter your HMAC secret key"
+              spellcheck="false"
+              autocomplete="off" />
+          </div>
+          <div class="jg-field" *ngIf="algorithm === 'none'">
+            <p class="jg-field-hint jg-field-hint--warn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              No secret required. Token will be unsigned.
+            </p>
+          </div>
+          <button
+            class="jg-btn-generate"
+            (click)="generateToken()"
+            [disabled]="isGenerating">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            {{ isGenerating ? 'Signing...' : 'Generate Token' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="jg-status-bar jg-status-bar--error" *ngIf="generateError">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span class="jg-status-error">{{ generateError }}</span>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="jg-notice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>All signing happens locally in your browser via the Web Crypto API. No keys or tokens are transmitted.</span>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- RIGHT: Output & Preview -->
+    <div class="jg-col jg-col--right">
+
+      <!-- Generated Token -->
+      <div class="jg-panel">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <span class="jg-dot jg-dot--token"></span>
+            Generated Token
+          </span>
+          <div class="jg-panel__actions" *ngIf="generatedToken">
+            <button class="jg-btn-ghost jg-btn-sm" (click)="copyToken()" [class.jg-btn-ghost--success]="copiedToken">
+              <ng-container *ngIf="!copiedToken">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copiedToken">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+        <div class="jg-output-body">
+          <div class="jg-output-empty" *ngIf="!generatedToken">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Configure claims and click Generate Token</span>
+          </div>
+          <pre class="jg-code-pre jg-code-pre--token" *ngIf="generatedToken"><code class="jg-token-raw">{{ generatedToken }}</code></pre>
+        </div>
+      </div>
+
+      <!-- Decode Preview: Header -->
+      <div class="jg-panel" *ngIf="previewHeaderJson">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <span class="jg-dot jg-dot--header"></span>
+            Header Preview
+            <span class="jg-badge">{{ algorithm }}</span>
+          </span>
+        </div>
+        <div class="jg-output-body">
+          <pre class="jg-code-pre"><code [innerHTML]="previewHeaderHtml"></code></pre>
+        </div>
+      </div>
+
+      <!-- Decode Preview: Payload -->
+      <div class="jg-panel" *ngIf="previewPayloadJson">
+        <div class="jg-panel__header">
+          <span class="jg-panel__title">
+            <span class="jg-dot jg-dot--payload"></span>
+            Payload Preview
+          </span>
+        </div>
+        <div class="jg-output-body">
+          <pre class="jg-code-pre"><code [innerHTML]="previewPayloadHtml"></code></pre>
+        </div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+</div>

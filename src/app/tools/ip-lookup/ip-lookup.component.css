@@ -1,0 +1,575 @@
+/* ==============================================================
+   IP Lookup — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   il- prefix namespace
+   ============================================================== */
+
+.il-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* -- Back link ------------------------------------------------ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* -- Tool header ---------------------------------------------- */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 580px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* -- Tabs ----------------------------------------------------- */
+.il-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.il-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.il-tab:hover {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.2);
+}
+.il-tab--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* -- Content area --------------------------------------------- */
+.il-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* -- Panel (glass card) --------------------------------------- */
+.il-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.il-panel--mt { margin-top: 0.25rem; }
+
+.il-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.il-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.il-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.il-panel__body {
+  padding: 1.25rem 1.1rem;
+}
+.il-panel__body--table {
+  padding: 0;
+}
+
+/* -- My IP section -------------------------------------------- */
+.il-myip-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 1rem;
+}
+
+.il-myip-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.il-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2.5px solid var(--glass-border);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: il-spin 0.8s linear infinite;
+}
+@keyframes il-spin {
+  to { transform: rotate(360deg); }
+}
+
+.il-myip-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(255, 77, 106, 0.7);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.il-myip-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.85rem;
+}
+
+.il-myip-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.il-myip-version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--secondary-color);
+}
+
+.il-myip-address {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  color: var(--primary-color);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 20px rgba(0, 255, 204, 0.25);
+  text-align: center;
+  word-break: break-all;
+  padding: 0 1rem;
+}
+
+.il-btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.il-btn-copy:hover {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.il-btn-copy--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+/* -- Validate section ----------------------------------------- */
+.il-validate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.il-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.il-input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  box-sizing: border-box;
+}
+.il-input::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.il-input:focus {
+  border-color: rgba(0, 255, 204, 0.35);
+  background: rgba(0, 255, 204, 0.015);
+}
+
+.il-validate-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.il-validate-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--glass-border);
+}
+.il-validate-badge--valid {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+.il-validate-badge--invalid {
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border-color: rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+.il-validate-version {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+}
+
+.il-value-mono {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* -- Subnet section ------------------------------------------- */
+.il-subnet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.il-subnet-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.il-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.il-field--cidr {
+  flex: 0 0 100px;
+}
+
+.il-cidr-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.il-cidr-slash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 38px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  color: var(--primary-color);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.il-input--cidr {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.il-input--cidr::-webkit-outer-spin-button,
+.il-input--cidr::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.il-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.25rem;
+  background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.35);
+  border-radius: var(--radius-md);
+  color: var(--primary-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+}
+.il-btn-primary:hover {
+  background: color-mix(in srgb, var(--primary-color) 22%, transparent);
+  border-color: rgba(0, 255, 204, 0.55);
+  box-shadow: 0 0 16px rgba(0, 255, 204, 0.15);
+}
+
+.il-subnet-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  border: 1px solid rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.il-subnet-results {
+  margin-top: 1.25rem;
+}
+
+.il-result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.il-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.il-result-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.il-result-value {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-color);
+  font-variant-numeric: tabular-nums;
+}
+.il-result-value--accent {
+  color: var(--primary-color);
+  text-shadow: 0 0 12px rgba(0, 255, 204, 0.2);
+}
+
+/* -- Ghost button --------------------------------------------- */
+.il-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.il-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.il-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.il-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+/* -- Reference tables ----------------------------------------- */
+.il-table-wrap {
+  overflow-x: auto;
+}
+
+.il-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.il-table thead th {
+  padding: 0.65rem 1rem;
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--glass-border);
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.5);
+  white-space: nowrap;
+}
+
+.il-table tbody td {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+.il-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.il-table tbody tr:hover td {
+  background: rgba(0, 255, 204, 0.025);
+}
+
+.il-mono {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  color: var(--primary-color);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+/* -- Responsive ----------------------------------------------- */
+@media (max-width: 768px) {
+  .il-tabs {
+    gap: 0.25rem;
+  }
+
+  .il-tab {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .il-subnet-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .il-field--cidr {
+    flex: 1;
+  }
+
+  .il-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .il-myip-address {
+    font-size: 1.2rem;
+  }
+
+  .il-table {
+    font-size: 0.75rem;
+  }
+
+  .il-table thead th,
+  .il-table tbody td {
+    padding: 0.5rem 0.65rem;
+  }
+}
