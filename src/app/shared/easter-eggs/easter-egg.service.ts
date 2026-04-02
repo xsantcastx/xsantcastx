@@ -76,6 +76,28 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'http-teapot-ref', name: 'Teapot Enthusiast',    description: 'Looked up HTTP status code 418',                    tool: 'http-status',               rarity: 'rare',      icon: '🫖' },
   { id: 'br-circle',       name: 'Full Circle',          description: 'Set all border corners to 50% making a circle',     tool: 'border-radius',             rarity: 'common',    icon: '⭕' },
   { id: 'emoji-skull',     name: 'Memento Mori',         description: 'Copied the skull emoji',                            tool: 'emoji-picker',              rarity: 'rare',      icon: '💀' },
+
+  // ── Batch 4 tools ──────────────────────────────────────────
+  { id: 'ip-localhost',    name: 'There\'s No Place Like Home', description: 'Looked up 127.0.0.1',                         tool: 'ip-lookup',                 rarity: 'common',    icon: '🏠' },
+  { id: 'grid-matrix',     name: 'The Matrix',           description: 'Created a 12x12 CSS Grid',                           tool: 'grid-generator',            rarity: 'epic',      icon: '🟩' },
+  { id: 'yaml-hidden',     name: 'YAML Egg',             description: 'Converted YAML containing an easter_egg key',        tool: 'yaml-json',                 rarity: 'rare',      icon: '🥚' },
+  { id: 'jwt-insecure',    name: 'Living Dangerously',   description: 'Generated a JWT with algorithm set to none',          tool: 'jwt-generator',             rarity: 'rare',      icon: '⚠️' },
+  { id: 'tw-hidden',       name: 'Visibility: Hidden',   description: 'Searched for "hidden" in Tailwind lookup',            tool: 'tailwind-lookup',           rarity: 'common',    icon: '👻' },
+  { id: 'md-lonely-cell',  name: 'Lonely Cell',          description: 'Created a markdown table with just 1 cell',           tool: 'md-table-generator',        rarity: 'rare',      icon: '📎' },
+  { id: 'json-newlines',   name: 'Newline Enthusiast',   description: 'Escaped triple newlines in JSON',                     tool: 'json-escape',               rarity: 'common',    icon: '↵' },
+  { id: 'anim-seizure',    name: 'Ludicrous Speed',      description: 'Set infinite animation under 0.1s duration',          tool: 'animation-generator',       rarity: 'epic',      icon: '🚀' },
+  { id: 'text-hello',      name: 'Iconic Greeting',      description: 'Analyzed the text "hello world"',                     tool: 'text-counter',              rarity: 'common',    icon: '👋' },
+  { id: 'screen-classic',  name: 'Retro Display',        description: 'Using a 1x DPR non-retina screen',                    tool: 'screen-info',               rarity: 'rare',      icon: '🖥️' },
+  { id: 'slug-classic',    name: 'The OG Slug',          description: 'Slugified "hello world" to hello-world',              tool: 'slug-generator',            rarity: 'common',    icon: '🐌' },
+  { id: 'csv-lonely',      name: 'Lonely Data Point',    description: 'Converted a CSV with just 1 cell',                    tool: 'csv-json',                  rarity: 'rare',      icon: '📊' },
+  { id: 'favicon-x',       name: 'X Marks the Spot',     description: 'Generated a favicon with the letter X',               tool: 'favicon-generator',         rarity: 'rare',      icon: '❌' },
+  { id: 'ks-konami',       name: 'Meta Konami',          description: 'Searched for "konami" in keyboard shortcuts',          tool: 'keyboard-shortcuts',        rarity: 'rare',      icon: '🎮' },
+  { id: 'ph-pixel',        name: 'One Pixel Wonder',     description: 'Generated a 1x1 placeholder image',                   tool: 'placeholder-image',         rarity: 'epic',      icon: '🔍' },
+  { id: 'cb-gray-world',   name: 'Gray World',           description: 'Simulated color blindness on pure gray',              tool: 'color-blindness',           rarity: 'common',    icon: '🌫️' },
+  { id: 'robots-blackout', name: 'Total Blackout',       description: 'Set all robots directives to block everything',        tool: 'robots-generator',          rarity: 'rare',      icon: '🚫' },
+  { id: 'dns-localhost',   name: 'DNS: Nowhere',         description: 'Looked up DNS for localhost',                          tool: 'dns-lookup',                rarity: 'common',    icon: '🔄' },
+  { id: 'box-reset',       name: 'Box Model Reset',      description: 'Set all margins and paddings to zero',                tool: 'box-model',                 rarity: 'common',    icon: '📦' },
+  { id: 'snippet-collector', name: 'Code Collector',     description: 'Saved 10 code snippets',                              tool: 'snippet-manager',           rarity: 'rare',      icon: '📚' },
 ];
 
 @Injectable({ providedIn: 'root' })

@@ -1,0 +1,214 @@
+<div class="cbs-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Accessibility</p>
+    <h1 class="tool-header__title">Color Blindness <span class="tool-header__amp">Simulator</span></h1>
+    <p class="tool-header__subtitle">See how your colors appear under different types of color vision deficiency. Test contrast, simulate swatches, and apply filters to images.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 1: COLOR SWATCH SIMULATOR
+       ══════════════════════════════════════════════════════════ -->
+  <section class="cbs-section">
+    <div class="cbs-section__header">
+      <h2 class="cbs-section__title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="3.5"/><circle cx="6.5" cy="17.5" r="3.5"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
+        Color Swatch Simulator
+      </h2>
+      <p class="cbs-section__desc">Pick a color and see how it appears under each type of color vision deficiency.</p>
+    </div>
+
+    <!-- Color picker row -->
+    <div class="cbs-picker-row">
+      <div class="cbs-picker-group">
+        <label class="cbs-label">Select Color</label>
+        <div class="cbs-picker-wrap">
+          <input
+            type="color"
+            class="cbs-color-input"
+            [value]="selectedColor"
+            (input)="onPickerChange($any($event.target).value)"
+          />
+          <input
+            type="text"
+            class="cbs-hex-input"
+            [(ngModel)]="hexInput"
+            (input)="onHexInput()"
+            placeholder="#e74c3c"
+            spellcheck="false"
+            maxlength="7"
+          />
+        </div>
+      </div>
+      <div class="cbs-original-swatch" [style.background-color]="selectedColor">
+        <span class="cbs-swatch-label" [style.color]="getTextColor(selectedColor)">Original</span>
+        <span class="cbs-swatch-hex" [style.color]="getTextColor(selectedColor)">{{ selectedColor }}</span>
+      </div>
+    </div>
+
+    <!-- Simulation grid -->
+    <div class="cbs-swatch-grid">
+      <div class="cbs-swatch-card" *ngFor="let sim of simulations">
+        <div class="cbs-swatch-color" [style.background-color]="sim.hex">
+          <span class="cbs-swatch-hex" [style.color]="getTextColor(sim.hex)">{{ sim.hex }}</span>
+        </div>
+        <div class="cbs-swatch-info">
+          <span class="cbs-swatch-name">{{ sim.label }}</span>
+          <span class="cbs-swatch-desc">{{ sim.description }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 2: CONTRAST CHECKER
+       ══════════════════════════════════════════════════════════ -->
+  <section class="cbs-section">
+    <div class="cbs-section__header">
+      <h2 class="cbs-section__title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z"/></svg>
+        Contrast Check by CVD Type
+      </h2>
+      <p class="cbs-section__desc">Set text and background colors, then see contrast ratios under each color vision deficiency.</p>
+    </div>
+
+    <!-- Contrast color pickers -->
+    <div class="cbs-contrast-pickers">
+      <div class="cbs-picker-group">
+        <label class="cbs-label">Text Color</label>
+        <div class="cbs-picker-wrap">
+          <input
+            type="color"
+            class="cbs-color-input"
+            [value]="textColor"
+            (input)="onTextPickerChange($any($event.target).value)"
+          />
+          <input
+            type="text"
+            class="cbs-hex-input"
+            [(ngModel)]="textColorInput"
+            (input)="onTextColorInput()"
+            placeholder="#ffffff"
+            spellcheck="false"
+            maxlength="7"
+          />
+        </div>
+      </div>
+      <div class="cbs-picker-group">
+        <label class="cbs-label">Background Color</label>
+        <div class="cbs-picker-wrap">
+          <input
+            type="color"
+            class="cbs-color-input"
+            [value]="bgColor"
+            (input)="onBgPickerChange($any($event.target).value)"
+          />
+          <input
+            type="text"
+            class="cbs-hex-input"
+            [(ngModel)]="bgColorInput"
+            (input)="onBgColorInput()"
+            placeholder="#e74c3c"
+            spellcheck="false"
+            maxlength="7"
+          />
+        </div>
+      </div>
+      <div class="cbs-picker-group cbs-picker-group--wide">
+        <label class="cbs-label">Sample Text</label>
+        <input
+          type="text"
+          class="cbs-text-input"
+          [(ngModel)]="sampleText"
+          placeholder="Enter sample text..."
+        />
+      </div>
+      <button class="cbs-btn" (click)="computeContrast()">Check Contrast</button>
+    </div>
+
+    <!-- Contrast results -->
+    <div class="cbs-contrast-grid" *ngIf="contrastResults.length">
+      <div class="cbs-contrast-card" *ngFor="let cr of contrastResults">
+        <div class="cbs-contrast-preview" [style.background-color]="cr.bgHex" [style.color]="cr.fgHex">
+          {{ sampleText }}
+        </div>
+        <div class="cbs-contrast-meta">
+          <span class="cbs-contrast-label">{{ cr.label }}</span>
+          <span class="cbs-contrast-ratio">{{ cr.ratio }}:1</span>
+          <div class="cbs-contrast-badges">
+            <span class="cbs-badge" [class.cbs-badge--pass]="cr.aaLarge" [class.cbs-badge--fail]="!cr.aaLarge">AA Large</span>
+            <span class="cbs-badge" [class.cbs-badge--pass]="cr.aa" [class.cbs-badge--fail]="!cr.aa">AA</span>
+            <span class="cbs-badge" [class.cbs-badge--pass]="cr.aaa" [class.cbs-badge--fail]="!cr.aaa">AAA</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 3: IMAGE FILTER
+       ══════════════════════════════════════════════════════════ -->
+  <section class="cbs-section">
+    <div class="cbs-section__header">
+      <h2 class="cbs-section__title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Image Filter
+      </h2>
+      <p class="cbs-section__desc">Upload an image and apply color blindness filters to see how it looks to people with different types of CVD.</p>
+    </div>
+
+    <!-- Drop zone -->
+    <div *ngIf="!imageLoaded"
+      class="cbs-dropzone"
+      [class.cbs-dropzone--over]="isDragOver"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+      (click)="imgInput.click()"
+    >
+      <input #imgInput type="file" accept="image/*" style="display:none" (change)="onFileSelect($event)" />
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span class="cbs-dropzone__label">Drop an image here</span>
+      <span class="cbs-dropzone__hint">or click to browse (PNG, JPG, WebP, etc.)</span>
+    </div>
+
+    <!-- Image canvas + filter controls -->
+    <div *ngIf="imageLoaded" class="cbs-image-workspace">
+      <div class="cbs-filter-bar">
+        <label class="cbs-label">Filter</label>
+        <select class="cbs-select" [(ngModel)]="selectedFilter" (ngModelChange)="onFilterChange()">
+          <option *ngFor="let opt of filterOptions" [value]="opt.key">{{ opt.label }}</option>
+        </select>
+        <span class="cbs-filter-desc" *ngIf="selectedFilter !== 'normal'">{{ typeDescriptions[selectedFilter] }}</span>
+        <button class="cbs-btn cbs-btn--ghost" (click)="clearImage()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          Remove
+        </button>
+      </div>
+      <div class="cbs-canvas-wrap">
+        <canvas #canvasEl class="cbs-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Hidden source canvas for pixel data -->
+    <canvas #sourceCanvas style="display:none"></canvas>
+  </section>
+
+</div>

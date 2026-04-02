@@ -1,0 +1,312 @@
+<div class="cj-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Data Tools</p>
+    <h1 class="tool-header__title">CSV <span class="tool-header__amp">&harr;</span> JSON <span class="tool-header__amp">Converter</span></h1>
+    <p class="tool-header__subtitle">Convert between CSV and JSON bidirectionally. Handles quoted fields, nested objects, multiple delimiters &mdash; all client-side, no data leaves your browser.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'csv-json'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="cj-layout">
+
+    <!-- LEFT: Input + Options -->
+    <div class="cj-col cj-col--left">
+
+      <!-- Direction toggle -->
+      <div class="cj-panel">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+            Direction
+          </span>
+        </div>
+        <div class="cj-panel__body cj-options-grid">
+          <div class="cj-option-row">
+            <div class="cj-seg-ctrl">
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="direction === 'csv-to-json'" (click)="setDirection('csv-to-json')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                CSV &rarr; JSON
+              </button>
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="direction === 'json-to-csv'" (click)="setDirection('json-to-csv')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                JSON &rarr; CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="cj-panel">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Input <span class="cj-badge">{{ direction === 'csv-to-json' ? 'CSV' : 'JSON' }}</span>
+          </span>
+          <div class="cj-panel__actions">
+            <span class="cj-char-count">{{ inputCharCount | number }} chars</span>
+            <button class="cj-btn-ghost cj-btn-sm" (click)="loadSample()" title="Load sample">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Sample
+            </button>
+            <button class="cj-btn-ghost cj-btn-sm" (click)="clearAll()" [disabled]="!input && !fileName" title="Clear">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="cj-panel__body cj-panel__body--input">
+          <textarea
+            class="cj-textarea"
+            [(ngModel)]="input"
+            (ngModelChange)="onInput()"
+            [placeholder]="direction === 'csv-to-json' ? 'Paste CSV data here...\n\ne.g. name,email,age\nAlice,alice@example.com,28' : 'Paste JSON array here...\n\ne.g. [{&quot;name&quot;:&quot;Alice&quot;,&quot;age&quot;:28}]'"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- File upload drop zone -->
+      <div class="cj-panel">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            File Upload
+          </span>
+        </div>
+        <div class="cj-panel__body">
+          <div
+            class="cj-dropzone"
+            [class.cj-dropzone--over]="isDragOver"
+            [class.cj-dropzone--has-file]="!!fileName"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave()"
+            (drop)="onDrop($event)"
+            (click)="fileInput.click()"
+          >
+            <input #fileInput type="file" accept=".csv,.json,.tsv,.txt" style="display:none" (change)="onFileSelect($event)" />
+            <ng-container *ngIf="!fileName">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="cj-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span class="cj-dropzone__label">Drop a .csv or .json file here</span>
+              <span class="cj-dropzone__hint">or click to browse &mdash; auto-detects direction from file type</span>
+            </ng-container>
+            <ng-container *ngIf="fileName">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="cj-dropzone__icon cj-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span class="cj-dropzone__label">{{ fileName }}</span>
+              <span class="cj-dropzone__hint">Click to replace</span>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options Panel -->
+      <div class="cj-panel">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+            Options
+          </span>
+        </div>
+        <div class="cj-panel__body cj-options-grid">
+
+          <!-- Delimiter -->
+          <div class="cj-option-row">
+            <span class="cj-option-label">Delimiter</span>
+            <div class="cj-seg-ctrl cj-seg-ctrl--wrap">
+              <button
+                *ngFor="let opt of delimiterOptions"
+                class="cj-seg-btn"
+                [class.cj-seg-btn--active]="delimiter === opt.value"
+                (click)="delimiter = opt.value; onOptionChange()"
+              >{{ opt.label }}</button>
+            </div>
+          </div>
+
+          <!-- Quote character -->
+          <div class="cj-option-row">
+            <span class="cj-option-label">Quote Character</span>
+            <div class="cj-seg-ctrl">
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="quoteChar === '&quot;'" (click)="setQuoteChar('double')">Double (&quot;)</button>
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="quoteChar === &quot;'&quot;" (click)="setQuoteChar('single')">Single (')</button>
+            </div>
+          </div>
+
+          <!-- First row as headers -->
+          <div class="cj-option-row">
+            <label class="cj-toggle" for="firstRowHeaders">
+              <input type="checkbox" id="firstRowHeaders" [(ngModel)]="firstRowHeaders" (ngModelChange)="onOptionChange()" />
+              <span class="cj-toggle__track"><span class="cj-toggle__thumb"></span></span>
+              <span class="cj-toggle__label">First row as headers</span>
+            </label>
+          </div>
+
+          <!-- Output format (CSV to JSON only) -->
+          <div class="cj-option-row" *ngIf="direction === 'csv-to-json'">
+            <span class="cj-option-label">Output Format</span>
+            <div class="cj-seg-ctrl cj-seg-ctrl--wrap">
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="outputFormat === 'objects'" (click)="outputFormat = 'objects'; onOptionChange()">Objects</button>
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="outputFormat === 'arrays'" (click)="outputFormat = 'arrays'; onOptionChange()">Arrays</button>
+              <button class="cj-seg-btn" [class.cj-seg-btn--active]="outputFormat === 'nested'" (click)="outputFormat = 'nested'; onOptionChange()">Nested</button>
+            </div>
+            <p class="cj-option-hint" *ngIf="outputFormat === 'objects'">Each row becomes a JSON object keyed by header names.</p>
+            <p class="cj-option-hint" *ngIf="outputFormat === 'arrays'">Output as a 2D array including headers.</p>
+            <p class="cj-option-hint" *ngIf="outputFormat === 'nested'">Dot-notation headers (e.g. "address.city") become nested objects.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Output -->
+    <div class="cj-col cj-col--right">
+
+      <!-- Status bar -->
+      <div class="cj-status-bar"
+        [class.cj-status-bar--valid]="hasOutput && !errorMessage"
+        [class.cj-status-bar--invalid]="!!errorMessage"
+        [class.cj-status-bar--idle]="!hasOutput && !errorMessage && !isProcessing"
+        [class.cj-status-bar--processing]="isProcessing">
+        <ng-container *ngIf="!hasOutput && !errorMessage && !isProcessing">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Waiting for input...</span>
+        </ng-container>
+        <ng-container *ngIf="isProcessing">
+          <svg class="cj-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="50" stroke-dashoffset="20"/></svg>
+          <span>Converting...</span>
+        </ng-container>
+        <ng-container *ngIf="hasOutput && !errorMessage && !isProcessing">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>{{ directionLabel }} &mdash; {{ outputLineCount | number }} lines</span>
+        </ng-container>
+        <ng-container *ngIf="errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="cj-status-error">{{ errorMessage }}</span>
+        </ng-container>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="cj-panel cj-panel--output">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Output <span class="cj-badge">{{ direction === 'csv-to-json' ? 'JSON' : 'CSV' }}</span>
+          </span>
+          <div class="cj-panel__actions" *ngIf="hasOutput">
+            <button class="cj-btn-ghost cj-btn-sm" (click)="copyOutput()" [class.cj-btn-ghost--success]="copied">
+              <ng-container *ngIf="!copied">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copied">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+            <button class="cj-btn-ghost cj-btn-sm" (click)="downloadOutput()" title="Download">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {{ direction === 'csv-to-json' ? '.json' : '.csv' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="cj-output-body">
+          <!-- Output code -->
+          <pre class="cj-output-code" *ngIf="hasOutput">{{ output }}</pre>
+
+          <!-- Empty state -->
+          <div class="cj-output-empty" *ngIf="!hasOutput && !errorMessage">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+            <span>Converted output will appear here</span>
+          </div>
+
+          <!-- Error state -->
+          <div class="cj-output-error" *ngIf="errorMessage && !hasOutput">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ errorMessage }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Table -->
+      <div class="cj-panel" *ngIf="previewHeaders.length > 0">
+        <div class="cj-panel__header">
+          <span class="cj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+            Preview <span class="cj-badge">{{ previewRows.length }} rows</span>
+          </span>
+        </div>
+        <div class="cj-panel__body cj-table-wrap">
+          <table class="cj-table">
+            <thead>
+              <tr>
+                <th class="cj-table__row-num">#</th>
+                <th *ngFor="let h of previewHeaders">{{ h }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of previewRows; let i = index">
+                <td class="cj-table__row-num">{{ i + 1 }}</td>
+                <td *ngFor="let h of previewHeaders">{{ row[h] }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="cj-stats" *ngIf="hasOutput">
+        <div class="cj-stat">
+          <span class="cj-stat__label">Direction</span>
+          <span class="cj-stat__value cj-stat__value--cyan">{{ directionLabel }}</span>
+        </div>
+        <div class="cj-stat-divider"></div>
+        <div class="cj-stat">
+          <span class="cj-stat__label">Input</span>
+          <span class="cj-stat__value">{{ inputCharCount | number }} <span class="cj-stat__unit">ch</span></span>
+        </div>
+        <div class="cj-stat-divider"></div>
+        <div class="cj-stat">
+          <span class="cj-stat__label">Output</span>
+          <span class="cj-stat__value">{{ outputLineCount | number }} <span class="cj-stat__unit">lines</span></span>
+        </div>
+        <div class="cj-stat-divider"></div>
+        <div class="cj-stat">
+          <span class="cj-stat__label">Delimiter</span>
+          <span class="cj-stat__value cj-stat__value--cyan">{{ delimiterLabel }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <app-embed-code-generator toolSlug="csv-json" toolName="CSV JSON Converter"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'csv-json'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Data Tools'" [toolSlug]="'csv-json'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'csv-json'"></app-related-tools>
+
+</div>

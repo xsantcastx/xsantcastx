@@ -1,0 +1,195 @@
+<div class="txc-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Text Tools</p>
+    <h1 class="tool-header__title">Text Counter <span class="tool-header__amp">&</span> Analyzer</h1>
+    <p class="tool-header__subtitle">Paste text and get instant stats: word count, character count, reading time, keyword density, and more — real-time as you type.</p>
+  </header>
+
+  <!-- Main layout -->
+  <div class="txc-layout">
+
+    <!-- LEFT: Input -->
+    <div class="txc-col txc-col--left">
+
+      <!-- Input panel -->
+      <div class="txc-panel">
+        <div class="txc-panel__header">
+          <span class="txc-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Input Text
+          </span>
+          <div class="txc-panel__actions">
+            <span class="txc-char-count" *ngIf="characters > 0">{{ characters | number }} chars</span>
+            <button class="txc-btn-ghost txc-btn-sm" (click)="loadSample()" title="Load sample">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Sample
+            </button>
+            <button class="txc-btn-ghost txc-btn-sm" (click)="clearAll()" [disabled]="!textInput" title="Clear">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="txc-panel__body txc-panel__body--input">
+          <textarea
+            class="txc-textarea"
+            [(ngModel)]="textInput"
+            (ngModelChange)="onInput()"
+            placeholder="Paste or type your text here to analyze...
+
+Try pasting an article, essay, email, or any block of text to get instant statistics."
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Frequency tabs panel -->
+      <div class="txc-panel" *ngIf="words > 0">
+        <div class="txc-panel__header">
+          <div class="txc-tabs">
+            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'words'" (click)="setTab('words')">Top Words</button>
+            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'chars'" (click)="setTab('chars')">Char Frequency</button>
+            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'density'" (click)="setTab('density')">Keyword Density</button>
+          </div>
+        </div>
+        <div class="txc-panel__body txc-freq-body">
+
+          <!-- Top Words -->
+          <div *ngIf="activeTab === 'words'" class="txc-freq-list">
+            <div class="txc-freq-item" *ngFor="let item of topWords; let i = index">
+              <span class="txc-freq-rank">{{ i + 1 }}</span>
+              <span class="txc-freq-word">{{ item.word }}</span>
+              <div class="txc-freq-bar-wrap">
+                <div class="txc-freq-bar" [style.width.%]="topWords.length ? (item.count / topWords[0].count) * 100 : 0"></div>
+              </div>
+              <span class="txc-freq-count">{{ item.count }}</span>
+            </div>
+            <div class="txc-freq-empty" *ngIf="topWords.length === 0">No words found.</div>
+          </div>
+
+          <!-- Char Frequency -->
+          <div *ngIf="activeTab === 'chars'" class="txc-freq-list">
+            <div class="txc-freq-item" *ngFor="let item of charFrequency; let i = index">
+              <span class="txc-freq-rank">{{ i + 1 }}</span>
+              <span class="txc-freq-word txc-freq-word--char">{{ item.char }}</span>
+              <div class="txc-freq-bar-wrap">
+                <div class="txc-freq-bar txc-freq-bar--purple" [style.width.%]="charFrequency.length ? (item.count / charFrequency[0].count) * 100 : 0"></div>
+              </div>
+              <span class="txc-freq-count">{{ item.percentage }}%</span>
+            </div>
+            <div class="txc-freq-empty" *ngIf="charFrequency.length === 0">No characters found.</div>
+          </div>
+
+          <!-- Keyword Density -->
+          <div *ngIf="activeTab === 'density'" class="txc-freq-list">
+            <div class="txc-freq-item" *ngFor="let item of visibleDensity; let i = index">
+              <span class="txc-freq-rank">{{ i + 1 }}</span>
+              <span class="txc-freq-word">{{ item.word }}</span>
+              <div class="txc-freq-bar-wrap">
+                <div class="txc-freq-bar txc-freq-bar--gold" [style.width.%]="keywordDensity.length ? (item.density / keywordDensity[0].density) * 100 : 0"></div>
+              </div>
+              <span class="txc-freq-count">{{ item.density }}%</span>
+            </div>
+            <button
+              class="txc-show-more"
+              *ngIf="keywordDensity.length > 15"
+              (click)="showAllDensity = !showAllDensity">
+              {{ showAllDensity ? 'Show less' : 'Show all ' + keywordDensity.length + ' words' }}
+            </button>
+            <div class="txc-freq-empty" *ngIf="keywordDensity.length === 0">No keywords found.</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Stats -->
+    <div class="txc-col txc-col--right">
+
+      <!-- Stats grid -->
+      <div class="txc-stats-grid">
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Characters</span>
+          <span class="txc-stat-card__value">{{ characters | number }}</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Without Spaces</span>
+          <span class="txc-stat-card__value">{{ charactersNoSpaces | number }}</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Words</span>
+          <span class="txc-stat-card__value txc-stat-card__value--primary">{{ words | number }}</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Sentences</span>
+          <span class="txc-stat-card__value">{{ sentences | number }}</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Paragraphs</span>
+          <span class="txc-stat-card__value">{{ paragraphs | number }}</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Lines</span>
+          <span class="txc-stat-card__value">{{ lines | number }}</span>
+        </div>
+
+        <div class="txc-stat-card txc-stat-card--wide">
+          <span class="txc-stat-card__label">Reading Time</span>
+          <span class="txc-stat-card__value txc-stat-card__value--cyan">{{ readingTime || '0s' }}</span>
+          <span class="txc-stat-card__hint">avg 200 wpm</span>
+        </div>
+
+        <div class="txc-stat-card txc-stat-card--wide">
+          <span class="txc-stat-card__label">Speaking Time</span>
+          <span class="txc-stat-card__value txc-stat-card__value--purple">{{ speakingTime || '0s' }}</span>
+          <span class="txc-stat-card__hint">avg 130 wpm</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Avg Word Length</span>
+          <span class="txc-stat-card__value">{{ averageWordLength }}</span>
+          <span class="txc-stat-card__hint">chars</span>
+        </div>
+
+        <div class="txc-stat-card">
+          <span class="txc-stat-card__label">Longest Word</span>
+          <span class="txc-stat-card__value txc-stat-card__value--mono">{{ longestWord || '---' }}</span>
+        </div>
+
+      </div>
+
+      <!-- Empty state -->
+      <div class="txc-empty-state" *ngIf="words === 0">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span>Type or paste text to see live stats</span>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

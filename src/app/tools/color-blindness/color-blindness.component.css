@@ -1,0 +1,529 @@
+/* ==============================================================
+   Color Blindness Simulator — Component Styles
+   Cyberpunk design system (cbs- prefix)
+   ============================================================== */
+
+.cbs-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* -- Back link ------------------------------------------------ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* -- Tool header ---------------------------------------------- */
+.tool-header { margin-bottom: 2.5rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* -- Sections ------------------------------------------------- */
+.cbs-section {
+  margin-bottom: 3rem;
+}
+
+.cbs-section__header {
+  margin-bottom: 1.25rem;
+}
+
+.cbs-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 0.35rem;
+}
+
+.cbs-section__desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* -- Labels & inputs ------------------------------------------ */
+.cbs-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.cbs-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cbs-color-input {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+.cbs-color-input:hover {
+  border-color: var(--primary-color);
+}
+.cbs-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.cbs-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: calc(var(--radius-md) - 3px);
+}
+.cbs-color-input::-moz-color-swatch {
+  border: none;
+  border-radius: calc(var(--radius-md) - 3px);
+}
+
+.cbs-hex-input {
+  width: 100px;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.cbs-hex-input:focus {
+  border-color: rgba(0, 255, 204, 0.45);
+}
+
+.cbs-text-input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.cbs-text-input:focus {
+  border-color: rgba(0, 255, 204, 0.45);
+}
+
+/* -- Picker row (section 1) ----------------------------------- */
+.cbs-picker-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.cbs-original-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 80px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  transition: background-color 0.2s ease;
+}
+
+.cbs-swatch-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.cbs-swatch-hex {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* -- Swatch grid ---------------------------------------------- */
+.cbs-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.cbs-swatch-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.cbs-swatch-card:hover {
+  border-color: rgba(0, 255, 204, 0.3);
+  transform: translateY(-2px);
+}
+
+.cbs-swatch-color {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0.5rem 0.65rem;
+  transition: background-color 0.2s ease;
+}
+
+.cbs-swatch-info {
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cbs-swatch-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.cbs-swatch-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* -- Contrast section ----------------------------------------- */
+.cbs-contrast-pickers {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.cbs-picker-group { flex-shrink: 0; }
+.cbs-picker-group--wide { flex: 1; min-width: 200px; }
+
+.cbs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.35);
+  border-radius: var(--radius-md);
+  color: var(--primary-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cbs-btn:hover {
+  background: color-mix(in srgb, var(--primary-color) 22%, transparent);
+  border-color: rgba(0, 255, 204, 0.55);
+  transform: translateY(-1px);
+}
+
+.cbs-btn--ghost {
+  background: none;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+.cbs-btn--ghost:hover {
+  background: none;
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+
+/* -- Contrast results grid ------------------------------------ */
+.cbs-contrast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.cbs-contrast-card {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.2s ease;
+}
+.cbs-contrast-card:hover {
+  border-color: rgba(0, 255, 204, 0.25);
+}
+
+.cbs-contrast-preview {
+  padding: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-body);
+  word-break: break-word;
+}
+
+.cbs-contrast-meta {
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.cbs-contrast-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: 0.03em;
+}
+
+.cbs-contrast-ratio {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.cbs-contrast-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.cbs-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cbs-badge--pass {
+  background: color-mix(in srgb, #00ffcc 15%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.3);
+  color: #00ffcc;
+}
+
+.cbs-badge--fail {
+  background: color-mix(in srgb, #ff4d6a 12%, transparent);
+  border: 1px solid rgba(255, 77, 106, 0.3);
+  color: #ff4d6a;
+}
+
+/* -- Drop zone ------------------------------------------------ */
+.cbs-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 200px;
+  padding: 2rem 1.5rem;
+  border: 1.5px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface-color);
+}
+.cbs-dropzone:hover,
+.cbs-dropzone--over {
+  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(0, 255, 204, 0.03);
+  color: var(--text-color);
+}
+
+.cbs-dropzone__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.cbs-dropzone__hint {
+  font-size: 0.75rem;
+  color: rgba(214, 221, 235, 0.5);
+  max-width: 300px;
+}
+
+/* -- Image workspace ------------------------------------------ */
+.cbs-image-workspace {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.cbs-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  flex-wrap: wrap;
+}
+
+.cbs-filter-bar .cbs-label {
+  margin-bottom: 0;
+}
+
+.cbs-select {
+  padding: 0.4rem 0.65rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.cbs-select:focus {
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.cbs-select option {
+  background: var(--surface-strong);
+  color: var(--text-color);
+}
+
+.cbs-filter-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  flex: 1;
+}
+
+.cbs-canvas-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: repeating-conic-gradient(rgba(255,255,255,0.03) 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+  min-height: 200px;
+}
+
+.cbs-canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* -- Responsive ----------------------------------------------- */
+@media (max-width: 768px) {
+  .cbs-swatch-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .cbs-contrast-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cbs-picker-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cbs-original-swatch {
+    width: 100%;
+    height: 60px;
+  }
+
+  .cbs-contrast-pickers {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cbs-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

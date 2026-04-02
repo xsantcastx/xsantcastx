@@ -1,0 +1,202 @@
+<div class="ks-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Developer References</p>
+    <h1 class="tool-header__title">Keyboard Shortcuts <span class="tool-header__amp">Reference</span></h1>
+    <p class="tool-header__subtitle">Searchable reference of 200+ keyboard shortcuts for VS Code, Chrome DevTools, Git, Terminal, macOS &amp; Windows. Auto-detects your OS for Cmd vs Ctrl.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'keyboard-shortcuts'"></app-tool-usage-counter>
+  </header>
+
+  <!-- OS Indicator -->
+  <div class="ks-os-badge">
+    <span class="ks-os-badge__icon" *ngIf="isMac">&#63743;</span>
+    <span class="ks-os-badge__icon" *ngIf="!isMac">&#8862;</span>
+    <span class="ks-os-badge__text">Showing {{ isMac ? 'macOS (Cmd)' : 'Windows/Linux (Ctrl)' }} key combos</span>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="ks-controls">
+
+    <!-- Search bar -->
+    <div class="ks-search">
+      <svg class="ks-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input
+        class="ks-search__input"
+        type="text"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchInput()"
+        placeholder="Search by action (e.g. copy) or key (e.g. Ctrl+C)..."
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+      />
+      <button class="ks-search__clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchInput()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="ks-tabs">
+      <button
+        *ngFor="let cat of categories"
+        class="ks-tab"
+        [class.ks-tab--active]="activeCategory === cat.key"
+        [style.--tab-color]="cat.color"
+        (click)="setCategory(cat.key)"
+      >
+        {{ cat.label }}
+      </button>
+    </div>
+
+    <!-- Result count -->
+    <div class="ks-result-count">
+      <span>{{ resultCount }} shortcut{{ resultCount === 1 ? '' : 's' }}</span>
+    </div>
+  </div>
+
+  <!-- Shortcut List -->
+  <div class="ks-layout">
+
+    <!-- List panel -->
+    <div class="ks-list-col" [class.ks-list-col--has-detail]="!!selectedShortcut">
+      <div class="ks-list">
+
+        <!-- Empty state -->
+        <div class="ks-empty" *ngIf="filteredShortcuts.length === 0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>No shortcuts found matching "{{ searchQuery }}"</span>
+        </div>
+
+        <!-- Shortcut entries -->
+        <button
+          *ngFor="let entry of filteredShortcuts"
+          class="ks-entry"
+          [class.ks-entry--selected]="selectedShortcut === entry"
+          [style.--entry-color]="getCategoryColor(entry.category)"
+          (click)="selectShortcut(entry)"
+        >
+          <!-- Keys rendering -->
+          <div class="ks-entry__keys">
+            <ng-container *ngIf="!isGitCommand(entry)">
+              <ng-container *ngFor="let key of getDisplayKeys(entry); let last = last">
+                <kbd class="ks-kbd">{{ key }}</kbd>
+                <span class="ks-kbd-sep" *ngIf="!last">+</span>
+              </ng-container>
+            </ng-container>
+            <ng-container *ngIf="isGitCommand(entry)">
+              <code class="ks-git-cmd">{{ getGitCommand(entry) }}</code>
+            </ng-container>
+          </div>
+          <div class="ks-entry__info">
+            <span class="ks-entry__desc">{{ entry.description }}</span>
+          </div>
+          <span class="ks-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ getCategoryLabel(entry.category) }}</span>
+          <svg class="ks-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="ks-detail-col" *ngIf="selectedShortcut">
+      <div class="ks-detail">
+
+        <div class="ks-detail__header">
+          <div class="ks-detail__title-row">
+            <span class="ks-detail__category-dot" [style.background]="getCategoryColor(selectedShortcut.category)"></span>
+            <div>
+              <h2 class="ks-detail__name">{{ selectedShortcut.description }}</h2>
+              <span class="ks-detail__category" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</span>
+            </div>
+          </div>
+          <button class="ks-detail__close" (click)="closeDetail()" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="ks-detail__body">
+
+          <!-- Visual key rendering -->
+          <div class="ks-detail__section">
+            <h3 class="ks-detail__label">Shortcut</h3>
+            <div class="ks-detail__keys-large">
+              <ng-container *ngIf="!isGitCommand(selectedShortcut)">
+                <ng-container *ngFor="let key of getDisplayKeys(selectedShortcut); let last = last">
+                  <kbd class="ks-kbd ks-kbd--lg">{{ key }}</kbd>
+                  <span class="ks-kbd-sep ks-kbd-sep--lg" *ngIf="!last">+</span>
+                </ng-container>
+              </ng-container>
+              <ng-container *ngIf="isGitCommand(selectedShortcut)">
+                <code class="ks-git-cmd ks-git-cmd--lg">{{ getGitCommand(selectedShortcut) }}</code>
+              </ng-container>
+            </div>
+          </div>
+
+          <!-- Alt OS keys (if available) -->
+          <div class="ks-detail__section" *ngIf="!isGitCommand(selectedShortcut) && selectedShortcut.keysMac">
+            <h3 class="ks-detail__label">{{ isMac ? 'Windows / Linux' : 'macOS' }}</h3>
+            <div class="ks-detail__keys-alt">
+              <ng-container *ngFor="let key of (isMac ? selectedShortcut.keys : selectedShortcut.keysMac!); let last = last">
+                <kbd class="ks-kbd ks-kbd--alt">{{ key }}</kbd>
+                <span class="ks-kbd-sep ks-kbd-sep--alt" *ngIf="!last">+</span>
+              </ng-container>
+            </div>
+          </div>
+
+          <div class="ks-detail__section">
+            <h3 class="ks-detail__label">Action</h3>
+            <p class="ks-detail__text">{{ selectedShortcut.description }}</p>
+          </div>
+
+          <div class="ks-detail__section">
+            <h3 class="ks-detail__label">Category</h3>
+            <p class="ks-detail__text" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</p>
+          </div>
+
+        </div>
+
+        <div class="ks-detail__footer">
+          <button class="ks-btn-copy" (click)="copyShortcut(selectedShortcut)" [class.ks-btn-copy--success]="copied">
+            <ng-container *ngIf="!copied">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy Shortcut
+            </ng-container>
+            <ng-container *ngIf="copied">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Copied!
+            </ng-container>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="keyboard-shortcuts" toolName="Keyboard Shortcuts Reference"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'keyboard-shortcuts'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Developer References'" [toolSlug]="'keyboard-shortcuts'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'keyboard-shortcuts'"></app-related-tools>
+
+</div>

@@ -1,0 +1,177 @@
+<div class="yj-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Code Converters</p>
+    <h1 class="tool-header__title">YAML <span class="tool-header__amp">&harr;</span> JSON Converter</h1>
+    <p class="tool-header__subtitle">Convert between YAML and JSON instantly — bidirectional conversion with syntax highlighting, no sign-up required.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'yaml-json'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Direction Toggle -->
+  <div class="yj-direction-bar">
+    <button class="yj-direction-btn" [class.yj-direction-btn--active]="direction === 'yaml-to-json'" (click)="direction !== 'yaml-to-json' && toggleDirection()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      YAML &rarr; JSON
+    </button>
+    <button class="yj-swap-btn" (click)="toggleDirection()" title="Swap direction">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    </button>
+    <button class="yj-direction-btn" [class.yj-direction-btn--active]="direction === 'json-to-yaml'" (click)="direction !== 'json-to-yaml' && toggleDirection()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      JSON &rarr; YAML
+    </button>
+  </div>
+
+  <!-- Workspace -->
+  <div class="yj-layout">
+
+    <!-- LEFT: Input -->
+    <div class="yj-col yj-col--left">
+      <div class="yj-panel">
+        <div class="yj-panel__header">
+          <span class="yj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {{ directionLabel }} Input
+          </span>
+          <div class="yj-panel__actions">
+            <span class="yj-char-count">{{ inputBytes }} bytes</span>
+            <button class="yj-btn-ghost yj-btn-sm" (click)="loadSampleYaml()" title="Load sample YAML">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              YAML
+            </button>
+            <button class="yj-btn-ghost yj-btn-sm" (click)="loadSampleJson()" title="Load sample JSON">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              JSON
+            </button>
+            <button class="yj-btn-ghost yj-btn-sm" (click)="clearAll()" [disabled]="!input" title="Clear input">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="yj-panel__body yj-panel__body--input">
+          <textarea
+            class="yj-textarea"
+            [(ngModel)]="input"
+            (ngModelChange)="onInput()"
+            [placeholder]="inputPlaceholder"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="yj-actions">
+        <button class="yj-btn yj-btn--primary" (click)="convert()" [disabled]="!input.trim()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Convert {{ directionLabel }} to {{ outputLabel }}
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Output -->
+    <div class="yj-col yj-col--right">
+
+      <!-- Status bar -->
+      <div class="yj-status-bar"
+        [class.yj-status-bar--valid]="output && !errorMessage"
+        [class.yj-status-bar--invalid]="errorMessage"
+        [class.yj-status-bar--idle]="!output && !errorMessage">
+        <ng-container *ngIf="!output && !errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Waiting for input...</span>
+        </ng-container>
+        <ng-container *ngIf="output && !errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Converted successfully</span>
+        </ng-container>
+        <ng-container *ngIf="errorMessage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="yj-status-error">{{ errorMessage }}</span>
+        </ng-container>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="yj-panel yj-panel--output">
+        <div class="yj-panel__header">
+          <span class="yj-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            {{ outputLabel }} Output
+          </span>
+          <div class="yj-panel__actions">
+            <button class="yj-btn-ghost yj-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.yj-btn-ghost--success]="copied">
+              <ng-container *ngIf="!copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+
+        <!-- Code display -->
+        <div class="yj-output-body">
+          <pre class="yj-code-pre" *ngIf="output"><code [innerHTML]="highlightedHtml"></code></pre>
+          <div class="yj-output-empty" *ngIf="!output">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            <span>Converted output will appear here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="yj-stats" *ngIf="output">
+        <div class="yj-stat">
+          <span class="yj-stat__label">Lines</span>
+          <span class="yj-stat__value">{{ lineCount | number }}</span>
+        </div>
+        <div class="yj-stat-divider"></div>
+        <div class="yj-stat">
+          <span class="yj-stat__label">Input</span>
+          <span class="yj-stat__value">{{ formatBytes(inputBytes) }}</span>
+        </div>
+        <div class="yj-stat-divider"></div>
+        <div class="yj-stat">
+          <span class="yj-stat__label">Output</span>
+          <span class="yj-stat__value">{{ formatBytes(outputBytes) }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <app-embed-code-generator toolSlug="yaml-json" toolName="YAML &harr; JSON Converter"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'yaml-json'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Code Converters'" [toolSlug]="'yaml-json'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'yaml-json'"></app-related-tools>
+
+</div>

@@ -1,0 +1,692 @@
+/* ==============================================================
+   Markdown Table Generator — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   mt- prefix namespace
+   ============================================================== */
+
+.mt-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+/* -- Back link ------------------------------------------------ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* -- Tool header ---------------------------------------------- */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 580px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* -- Two-column layout ---------------------------------------- */
+.mt-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.mt-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* -- Panel (glass card) --------------------------------------- */
+.mt-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.mt-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.mt-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mt-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.mt-panel__body {
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* -- Ghost / small buttons ------------------------------------ */
+.mt-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.mt-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.mt-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.mt-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+.mt-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+
+.mt-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.4);
+  border-radius: 8px;
+  color: var(--primary-color);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.mt-btn-primary:hover {
+  background: color-mix(in srgb, var(--primary-color) 25%, transparent);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+}
+
+/* -- CSV Import panel ----------------------------------------- */
+.mt-csv-panel {
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 255, 204, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mt-csv-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mt-csv-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mt-csv-select {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  outline: none;
+  cursor: pointer;
+}
+.mt-csv-select:focus {
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
+.mt-csv-hint {
+  font-size: 0.73rem;
+  color: #ff4d6a;
+  margin: 0;
+}
+
+.mt-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  padding: 0.75rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.mt-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.mt-textarea--csv {
+  min-height: 120px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-strong);
+}
+.mt-textarea--csv:focus {
+  border-color: rgba(0, 255, 204, 0.3);
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* -- Table editor --------------------------------------------- */
+.mt-table-wrap {
+  overflow-x: auto;
+  margin: 0 -0.25rem;
+}
+
+.mt-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: max-content;
+}
+
+/* Alignment row */
+.mt-align-row th {
+  padding: 0.2rem 0.15rem;
+  vertical-align: middle;
+}
+
+.mt-align-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  justify-content: center;
+  padding: 0.15rem 0.25rem !important;
+}
+
+.mt-align-btn {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  color: var(--primary-color);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: 22px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mt-align-btn:hover {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 6px rgba(0, 255, 204, 0.1);
+}
+
+.mt-col-remove,
+.mt-row-remove {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(214, 221, 235, 0.3);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.mt-col-remove:hover:not(:disabled),
+.mt-row-remove:hover:not(:disabled) {
+  color: #ff4d6a;
+  border-color: rgba(255, 77, 106, 0.3);
+  background: rgba(255, 77, 106, 0.08);
+}
+.mt-col-remove:disabled,
+.mt-row-remove:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+}
+
+.mt-row-action-cell {
+  width: 28px;
+  min-width: 28px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.15rem !important;
+}
+
+.mt-row-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(214, 221, 235, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.mt-add-col-cell {
+  width: 32px;
+  min-width: 32px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.15rem !important;
+}
+
+/* Header cells */
+.mt-header-cell {
+  padding: 0.15rem 0.15rem !important;
+}
+
+.mt-cell-input {
+  width: 100%;
+  min-width: 80px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.55rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+.mt-cell-input:focus {
+  border-color: rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.08), inset 0 0 8px rgba(0, 255, 204, 0.03);
+}
+.mt-cell-input::placeholder {
+  color: rgba(214, 221, 235, 0.2);
+  font-size: 0.7rem;
+}
+
+.mt-cell-input--header {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--primary-color) 5%, var(--surface-strong));
+  border-color: rgba(0, 255, 204, 0.15);
+}
+.mt-cell-input--header:focus {
+  border-color: rgba(0, 255, 204, 0.5);
+}
+
+/* Body cells */
+.mt-body-cell {
+  padding: 0.15rem 0.15rem !important;
+}
+
+/* Add buttons */
+.mt-add-btn {
+  background: var(--surface-strong);
+  border: 1px dashed var(--glass-border);
+  border-radius: 6px;
+  color: rgba(214, 221, 235, 0.4);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mt-add-btn:hover:not(:disabled) {
+  color: var(--primary-color);
+  border-color: rgba(0, 255, 204, 0.35);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+.mt-add-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+.mt-add-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.mt-add-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  background: var(--surface-strong);
+  border: 1px dashed var(--glass-border);
+  border-radius: 8px;
+  color: rgba(214, 221, 235, 0.5);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mt-add-row-btn:hover:not(:disabled) {
+  color: var(--primary-color);
+  border-color: rgba(0, 255, 204, 0.35);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+.mt-add-row-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+.mt-size-label {
+  font-size: 0.7rem;
+  color: rgba(214, 221, 235, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Options bar ---------------------------------------------- */
+.mt-options-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  backdrop-filter: blur(8px);
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* -- Segmented control ---------------------------------------- */
+.mt-seg-ctrl {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mt-seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.75rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.mt-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.mt-seg-btn--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* -- Toggle --------------------------------------------------- */
+.mt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+}
+.mt-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mt-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mt-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--text-muted);
+  border-radius: 999px;
+  transition: left 0.2s ease, background 0.2s ease;
+}
+
+.mt-toggle input:checked ~ .mt-toggle__track {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.mt-toggle input:checked ~ .mt-toggle__track .mt-toggle__thumb {
+  left: 18px;
+  background: var(--primary-color);
+}
+
+.mt-toggle__label {
+  font-size: 0.78rem;
+  color: var(--text-color);
+}
+
+/* -- Output panel --------------------------------------------- */
+.mt-panel--output {
+  flex: 1;
+}
+
+.mt-output-body {
+  min-height: 180px;
+  max-height: 420px;
+  overflow: auto;
+  position: relative;
+}
+
+.mt-code-pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  background: transparent;
+}
+
+.mt-code-pre code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--primary-color);
+  display: block;
+  white-space: pre;
+  word-break: break-all;
+}
+
+/* -- Preview panel -------------------------------------------- */
+.mt-panel--preview {}
+
+.mt-preview-body {
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.mt-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.mt-preview-table th {
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  border: 1px solid rgba(0, 255, 204, 0.15);
+  padding: 0.45rem 0.7rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.mt-preview-table td {
+  border: 1px solid var(--glass-border);
+  padding: 0.4rem 0.7rem;
+  color: var(--text-color);
+  font-size: 0.8rem;
+}
+
+.mt-preview-table tbody tr:hover {
+  background: rgba(0, 255, 204, 0.03);
+}
+
+/* -- Stats bar ------------------------------------------------ */
+.mt-stats {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.mt-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.9rem;
+  flex: 1;
+  min-width: 50px;
+}
+
+.mt-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.mt-stat__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.mt-stat__unit {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.mt-stat__value--cyan { color: var(--primary-color); }
+
+.mt-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* -- Responsive ----------------------------------------------- */
+@media (max-width: 900px) {
+  .mt-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .mt-cell-input {
+    min-width: 60px;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.4rem;
+  }
+}

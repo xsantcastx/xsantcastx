@@ -1,0 +1,622 @@
+/* ==============================================================
+   Keyboard Shortcuts Reference — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ============================================================== */
+
+.ks-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* -- Back link ------------------------------------------------ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* -- Tool header ---------------------------------------------- */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* -- OS Badge ------------------------------------------------- */
+.ks-os-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  margin-bottom: 1.25rem;
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 25%, transparent);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+.ks-os-badge__icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.ks-os-badge__text {
+  letter-spacing: 0.02em;
+}
+
+/* -- Controls: search + tabs ---------------------------------- */
+.ks-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* -- Search bar ----------------------------------------------- */
+.ks-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+.ks-search:focus-within {
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
+.ks-search__icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.ks-search__input {
+  width: 100%;
+  padding: 0.85rem 2.8rem 0.85rem 2.8rem;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  caret-color: var(--primary-color);
+}
+.ks-search__input::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+
+.ks-search__clear {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.ks-search__clear:hover {
+  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* -- Category tabs -------------------------------------------- */
+.ks-tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.ks-tab {
+  padding: 0.4rem 0.85rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.ks-tab:hover {
+  color: var(--text-color);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.ks-tab--active {
+  background: color-mix(in srgb, var(--tab-color, var(--primary-color)) 14%, transparent);
+  border-color: color-mix(in srgb, var(--tab-color, var(--primary-color)) 45%, transparent);
+  color: var(--tab-color, var(--primary-color));
+  font-weight: 600;
+}
+
+/* -- Result count --------------------------------------------- */
+.ks-result-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Two-column layout ---------------------------------------- */
+.ks-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+.ks-list-col--has-detail ~ .ks-detail-col {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .ks-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* -- Shortcut list -------------------------------------------- */
+.ks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* -- Empty state ---------------------------------------------- */
+.ks-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* -- Shortcut entry card -------------------------------------- */
+.ks-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-body);
+  border-left: 3px solid var(--entry-color, var(--glass-border));
+}
+.ks-entry:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--surface-strong);
+}
+.ks-entry--selected {
+  background: color-mix(in srgb, var(--entry-color, var(--primary-color)) 8%, transparent);
+  border-color: color-mix(in srgb, var(--entry-color, var(--primary-color)) 35%, transparent);
+  border-left-color: var(--entry-color, var(--primary-color));
+}
+
+/* -- Keyboard key rendering (kbd) ----------------------------- */
+.ks-entry__keys {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  min-width: 120px;
+  flex-wrap: wrap;
+}
+
+.ks-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.4rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.ks-kbd--lg {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.6rem;
+  font-size: 0.82rem;
+  border-radius: 7px;
+  border-bottom-width: 3px;
+  background: linear-gradient(180deg, rgba(0, 255, 204, 0.12) 0%, rgba(0, 255, 204, 0.03) 100%);
+  border-color: rgba(0, 255, 204, 0.2);
+  border-bottom-color: rgba(0, 255, 204, 0.15);
+  color: var(--primary-color);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(0, 255, 204, 0.08),
+    inset 0 1px 0 rgba(0, 255, 204, 0.1);
+}
+
+.ks-kbd--alt {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 0.45rem;
+  font-size: 0.7rem;
+  opacity: 0.65;
+}
+
+.ks-kbd-sep {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.4;
+  margin: 0 0.05rem;
+  font-weight: 400;
+}
+.ks-kbd-sep--lg {
+  font-size: 0.75rem;
+  margin: 0 0.15rem;
+  color: var(--primary-color);
+  opacity: 0.5;
+}
+.ks-kbd-sep--alt {
+  font-size: 0.6rem;
+  opacity: 0.3;
+}
+
+/* -- Git command rendering ------------------------------------ */
+.ks-git-cmd {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #F05032;
+  background: rgba(240, 80, 50, 0.08);
+  border: 1px solid rgba(240, 80, 50, 0.15);
+  border-radius: 5px;
+  padding: 0.25rem 0.55rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  display: inline-block;
+}
+
+.ks-git-cmd--lg {
+  font-size: 0.9rem;
+  padding: 0.45rem 0.85rem;
+  max-width: none;
+  border-radius: 7px;
+  box-shadow: 0 0 12px rgba(240, 80, 50, 0.08);
+}
+
+/* -- Entry info ----------------------------------------------- */
+.ks-entry__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.ks-entry__desc {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-entry__badge {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ks-entry__chevron {
+  color: var(--text-muted);
+  opacity: 0.3;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ks-entry:hover .ks-entry__chevron { opacity: 0.6; }
+.ks-entry--selected .ks-entry__chevron {
+  opacity: 0.8;
+  transform: rotate(90deg);
+}
+
+/* -- Detail panel --------------------------------------------- */
+.ks-detail {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  position: sticky;
+  top: calc(var(--header-offset) + 1rem);
+}
+
+.ks-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.ks-detail__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.ks-detail__category-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.ks-detail__name {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 0.2rem;
+  line-height: 1.2;
+}
+
+.ks-detail__category {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ks-detail__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.ks-detail__close:hover {
+  color: var(--text-color);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ks-detail__body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ks-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ks-detail__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+.ks-detail__text {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.ks-detail__keys-large {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+
+.ks-detail__keys-alt {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+  padding: 0.25rem 0;
+}
+
+.ks-detail__footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+}
+
+/* -- Copy button ---------------------------------------------- */
+.ks-btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.ks-btn-copy:hover {
+  color: var(--text-color);
+  border-color: rgba(0, 255, 204, 0.25);
+}
+.ks-btn-copy--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+
+/* -- Responsive ----------------------------------------------- */
+@media (max-width: 768px) {
+  .ks-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ks-detail {
+    position: static;
+  }
+
+  .ks-entry__keys {
+    min-width: 80px;
+  }
+
+  .ks-entry__badge {
+    display: none;
+  }
+
+  .ks-entry__desc {
+    font-size: 0.74rem;
+  }
+
+  .ks-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ks-tabs::-webkit-scrollbar { display: none; }
+
+  .ks-git-cmd {
+    max-width: 130px;
+    font-size: 0.65rem;
+  }
+
+  .ks-os-badge {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ks-entry__keys {
+    min-width: 60px;
+  }
+
+  .ks-kbd {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 0.3rem;
+    font-size: 0.6rem;
+  }
+
+  .ks-git-cmd {
+    max-width: 100px;
+    font-size: 0.6rem;
+  }
+}
