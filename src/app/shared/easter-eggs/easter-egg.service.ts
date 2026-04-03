@@ -98,6 +98,7 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'dns-localhost',   name: 'DNS: Nowhere',         description: 'Looked up DNS for localhost',                          tool: 'dns-lookup',                rarity: 'common',    icon: '🔄' },
   { id: 'box-reset',       name: 'Box Model Reset',      description: 'Set all margins and paddings to zero',                tool: 'box-model',                 rarity: 'common',    icon: '📦' },
   { id: 'snippet-collector', name: 'Code Collector',     description: 'Saved 10 code snippets',                              tool: 'snippet-manager',           rarity: 'rare',      icon: '📚' },
+  { id: 'schema-mega',       name: 'Schema Architect',    description: 'Generated a schema with 20+ top-level properties',    tool: 'json-schema',               rarity: 'rare',      icon: '🏗️' },
 ];
 
 @Injectable({ providedIn: 'root' })
