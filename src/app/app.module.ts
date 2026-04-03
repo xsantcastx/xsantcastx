@@ -123,6 +123,25 @@ import { RobotsGeneratorComponent } from './tools/robots-generator/robots-genera
 import { DnsLookupComponent } from './tools/dns-lookup/dns-lookup.component';
 import { BoxModelComponent } from './tools/box-model/box-model.component';
 import { SnippetManagerComponent } from './tools/snippet-manager/snippet-manager.component';
+import { RegexGeneratorComponent } from './tools/regex-generator/regex-generator.component';
+import { TextShadowComponent } from './tools/text-shadow/text-shadow.component';
+import { HtmlToMdComponent } from './tools/html-to-md/html-to-md.component';
+import { DataSizeComponent } from './tools/data-size/data-size.component';
+import { ColorShadesComponent } from './tools/color-shades/color-shades.component';
+import { GitReferenceComponent } from './tools/git-reference/git-reference.component';
+import { ResponsivePreviewComponent } from './tools/responsive-preview/responsive-preview.component';
+import { PomodoroComponent } from './tools/pomodoro/pomodoro.component';
+import { CssFilterComponent } from './tools/css-filter/css-filter.component';
+import { NpmSearchComponent } from './tools/npm-search/npm-search.component';
+import { JsonMinifierComponent } from './tools/json-minifier/json-minifier.component';
+import { MorseCodeComponent } from './tools/morse-code/morse-code.component';
+import { BinaryTextComponent } from './tools/binary-text/binary-text.component';
+import { StringRepeaterComponent } from './tools/string-repeater/string-repeater.component';
+import { MockDataComponent } from './tools/mock-data/mock-data.component';
+import { ApcaContrastComponent } from './tools/apca-contrast/apca-contrast.component';
+import { TsPlaygroundComponent } from './tools/ts-playground/ts-playground.component';
+import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.component';
+import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
 
 
 @NgModule({
@@ -226,7 +245,26 @@ import { SnippetManagerComponent } from './tools/snippet-manager/snippet-manager
     RobotsGeneratorComponent,
     DnsLookupComponent,
     BoxModelComponent,
-    SnippetManagerComponent
+    SnippetManagerComponent,
+    RegexGeneratorComponent,
+    TextShadowComponent,
+    HtmlToMdComponent,
+    DataSizeComponent,
+    ColorShadesComponent,
+    GitReferenceComponent,
+    ResponsivePreviewComponent,
+    PomodoroComponent,
+    CssFilterComponent,
+    NpmSearchComponent,
+    JsonMinifierComponent,
+    MorseCodeComponent,
+    BinaryTextComponent,
+    StringRepeaterComponent,
+    MockDataComponent,
+    ApcaContrastComponent,
+    TsPlaygroundComponent,
+    CaesarCipherComponent,
+    DesignTokensComponent
   ],
   bootstrap: [AppComponent],
   imports: [

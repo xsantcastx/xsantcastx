@@ -1,0 +1,265 @@
+<div class="ac-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Accessibility</p>
+    <h1 class="tool-header__title">APCA Contrast <span class="tool-header__amp">&</span> WCAG 3</h1>
+    <p class="tool-header__subtitle">Compare WCAG 2.x contrast ratio with APCA (WCAG 3 draft) Lc value side by side. Font-size and weight aware compliance checking.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'apca-contrast'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Live Preview -->
+  <div class="ac-preview" [style.background-color]="bgColor">
+    <span class="ac-preview__text" [style.color]="textColor" [style.font-size.px]="fontSize" [style.font-weight]="fontWeight">
+      The quick brown fox jumps over the lazy dog
+    </span>
+    <span class="ac-preview__meta">Live Preview &mdash; {{ fontSize }}px / {{ fontWeight }}w</span>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="ac-layout">
+
+    <!-- LEFT: Inputs -->
+    <div class="ac-col ac-col--left">
+
+      <!-- Color Inputs Panel -->
+      <div class="ac-panel">
+        <div class="ac-panel__header">
+          <span class="ac-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/></svg>
+            Colors
+          </span>
+          <div class="ac-panel__actions">
+            <button class="ac-btn-ghost ac-btn-sm" (click)="swapColors()" title="Swap colors">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Swap
+            </button>
+          </div>
+        </div>
+        <div class="ac-panel__body ac-colors-grid">
+          <!-- Text color -->
+          <div class="ac-color-field">
+            <label class="ac-color-label">Text Color</label>
+            <div class="ac-color-row">
+              <input type="color" class="ac-color-picker" [value]="textColor" (input)="onTextPickerChange($any($event.target).value)" />
+              <input type="text" class="ac-color-input" [class.ac-color-input--error]="textColorError" [value]="textColorInput" (input)="onTextColorInput($any($event.target).value)" placeholder="#e0e0e0" spellcheck="false" autocomplete="off" />
+              <span class="ac-color-swatch" [style.background-color]="textColor"></span>
+            </div>
+          </div>
+          <!-- Background color -->
+          <div class="ac-color-field">
+            <label class="ac-color-label">Background Color</label>
+            <div class="ac-color-row">
+              <input type="color" class="ac-color-picker" [value]="bgColor" (input)="onBgPickerChange($any($event.target).value)" />
+              <input type="text" class="ac-color-input" [class.ac-color-input--error]="bgColorError" [value]="bgColorInput" (input)="onBgColorInput($any($event.target).value)" placeholder="#0a0a1a" spellcheck="false" autocomplete="off" />
+              <span class="ac-color-swatch" [style.background-color]="bgColor"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Font Settings Panel -->
+      <div class="ac-panel">
+        <div class="ac-panel__header">
+          <span class="ac-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            Font Settings <span class="ac-badge">APCA</span>
+          </span>
+        </div>
+        <div class="ac-panel__body ac-font-grid">
+          <div class="ac-font-field">
+            <label class="ac-color-label">Font Size (px)</label>
+            <input type="number" class="ac-number-input" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" />
+            <input type="range" class="ac-range" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" />
+          </div>
+          <div class="ac-font-field">
+            <label class="ac-color-label">Font Weight</label>
+            <input type="number" class="ac-number-input" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" />
+            <input type="range" class="ac-range" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="ac-panel">
+        <div class="ac-panel__header">
+          <span class="ac-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Presets
+          </span>
+        </div>
+        <div class="ac-panel__body ac-presets">
+          <button class="ac-preset-btn" (click)="loadSample('accessible')">
+            <span class="ac-preset-dot ac-preset-dot--pass"></span>
+            Accessible
+          </button>
+          <button class="ac-preset-btn" (click)="loadSample('borderline')">
+            <span class="ac-preset-dot ac-preset-dot--warn"></span>
+            Borderline
+          </button>
+          <button class="ac-preset-btn" (click)="loadSample('poor')">
+            <span class="ac-preset-dot ac-preset-dot--fail"></span>
+            Poor Contrast
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- RIGHT: Results -->
+    <div class="ac-col ac-col--right">
+
+      <!-- Score Cards -->
+      <div class="ac-scores">
+        <div class="ac-score-card" [class]="'ac-score-card--' + wcagGradeClass">
+          <span class="ac-score-card__label">WCAG 2.x Ratio</span>
+          <span class="ac-score-card__value">{{ wcagRatio }}:1</span>
+          <span class="ac-score-card__grade">{{ wcagGrade }}</span>
+        </div>
+        <div class="ac-score-card" [class]="'ac-score-card--' + apcaGradeClass">
+          <span class="ac-score-card__label">APCA Lc Value</span>
+          <span class="ac-score-card__value">Lc {{ apcaLc }}</span>
+          <span class="ac-score-card__grade">{{ apcaGrade }}</span>
+        </div>
+      </div>
+
+      <!-- Polarity indicator -->
+      <div class="ac-polarity">
+        <span class="ac-polarity__label">Polarity:</span>
+        <span class="ac-polarity__value">{{ polarity }}</span>
+      </div>
+
+      <!-- Tab selector -->
+      <div class="ac-tab-bar">
+        <button class="ac-tab-btn" [class.ac-tab-btn--active]="activeTab === 'side-by-side'" (click)="setTab('side-by-side')">Side-by-Side</button>
+        <button class="ac-tab-btn" [class.ac-tab-btn--active]="activeTab === 'wcag2'" (click)="setTab('wcag2')">WCAG 2.x</button>
+        <button class="ac-tab-btn" [class.ac-tab-btn--active]="activeTab === 'apca'" (click)="setTab('apca')">APCA / WCAG 3</button>
+      </div>
+
+      <!-- Results table(s) -->
+      <div class="ac-results" *ngIf="activeTab === 'side-by-side' || activeTab === 'wcag2'">
+        <div class="ac-panel">
+          <div class="ac-panel__header">
+            <span class="ac-panel__title">WCAG 2.x Compliance</span>
+          </div>
+          <div class="ac-table-wrap">
+            <table class="ac-table">
+              <thead>
+                <tr>
+                  <th>Level</th>
+                  <th>Context</th>
+                  <th>Required</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of wcagResults">
+                  <td><span class="ac-level-badge">{{ r.level }}</span></td>
+                  <td>{{ r.context }}</td>
+                  <td class="ac-mono">{{ r.required }}:1</td>
+                  <td>
+                    <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
+                      {{ r.passes ? 'PASS' : 'FAIL' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="ac-results" *ngIf="activeTab === 'side-by-side' || activeTab === 'apca'">
+        <div class="ac-panel">
+          <div class="ac-panel__header">
+            <span class="ac-panel__title">APCA Compliance <span class="ac-badge">Font-Aware</span></span>
+          </div>
+          <div class="ac-table-wrap">
+            <table class="ac-table">
+              <thead>
+                <tr>
+                  <th>Use Case</th>
+                  <th>Min Size</th>
+                  <th>Min Weight</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of apcaResults">
+                  <td>{{ r.use }}</td>
+                  <td class="ac-mono">{{ r.minFontSize > 0 ? r.minFontSize + 'px' : 'N/A' }}</td>
+                  <td class="ac-mono">{{ r.minWeight > 0 ? r.minWeight : 'N/A' }}</td>
+                  <td>
+                    <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
+                      {{ r.passes ? 'PASS' : 'FAIL' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggestion -->
+      <div class="ac-suggestion" *ngIf="suggestion">
+        <div class="ac-panel">
+          <div class="ac-panel__header">
+            <span class="ac-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Nearest Accessible Color
+            </span>
+          </div>
+          <div class="ac-panel__body ac-suggestion-body">
+            <div class="ac-suggestion-preview">
+              <span class="ac-color-swatch ac-color-swatch--lg" [style.background-color]="suggestion.hex"></span>
+              <div class="ac-suggestion-info">
+                <span class="ac-suggestion-hex">{{ suggestion.hex }}</span>
+                <span class="ac-suggestion-stats">WCAG {{ suggestion.wcagRatio }}:1 | Lc {{ suggestion.apcaLc }}</span>
+              </div>
+            </div>
+            <button class="ac-btn-primary" (click)="applySuggestion()">Apply Suggestion</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Copy -->
+      <button class="ac-btn-ghost ac-btn-copy" (click)="copyResults()" [class.ac-btn-ghost--success]="copied">
+        <ng-container *ngIf="!copied">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copy Results
+        </ng-container>
+        <ng-container *ngIf="copied">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Copied!
+        </ng-container>
+      </button>
+
+    </div><!-- /right col -->
+  </div><!-- /layout -->
+
+  <app-embed-code-generator toolSlug="apca-contrast" toolName="APCA Contrast Calculator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'apca-contrast'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Accessibility'" [toolSlug]="'apca-contrast'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'apca-contrast'"></app-related-tools>
+
+</div>
