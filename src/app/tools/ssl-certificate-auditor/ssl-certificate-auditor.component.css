@@ -3,6 +3,11 @@
    app-ssl-certificate-auditor
    ============================================================ */
 
+:host {
+  --error-color: #ff5050;
+  --warning-color: #ffc83c;
+}
+
 /* ── Page shell ─────────────────────────────────────────────── */
 .ssl-auditor-page {
   width: 100%;
@@ -431,7 +436,7 @@
   align-items: center;
   gap: 0.5rem;
   background: var(--primary-color);
-  color: #0a0f1a;
+  color: var(--surface-strong);
   border: none;
   border-radius: var(--radius-md);
   font-family: var(--font-body);
@@ -508,10 +513,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: color-mix(in srgb, #ff4d4d 12%, transparent);
-  border: 1px solid color-mix(in srgb, #ff4d4d 40%, transparent);
+  background: color-mix(in srgb, var(--error-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error-color) 40%, transparent);
   border-radius: var(--radius-md);
-  color: #ff6b6b;
+  color: var(--error-color);
   font-size: 0.875rem;
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
@@ -618,12 +623,12 @@
 .ssl-auditor__hero-lock--warn {
   background: rgba(255, 200, 60, 0.1);
   border-color: rgba(255, 200, 60, 0.25);
-  color: #ffc83c;
+  color: var(--warning-color);
 }
 .ssl-auditor__hero-lock--danger {
   background: rgba(255, 80, 80, 0.1);
   border-color: rgba(255, 80, 80, 0.25);
-  color: #ff5050;
+  color: var(--error-color);
 }
 
 .ssl-auditor__hero-cn {
@@ -668,12 +673,12 @@
 .ssl-auditor__badge--warn {
   background: rgba(255, 200, 60, 0.1);
   border-color: rgba(255, 200, 60, 0.25);
-  color: #ffc83c;
+  color: var(--warning-color);
 }
 .ssl-auditor__badge--fail {
   background: rgba(255, 80, 80, 0.1);
   border-color: rgba(255, 80, 80, 0.25);
-  color: #ff5050;
+  color: var(--error-color);
 }
 .ssl-auditor__badge--info {
   background: rgba(123, 97, 255, 0.1);
@@ -758,7 +763,7 @@
   font-size: 0.65rem;
   font-weight: 700;
   background: rgba(255, 200, 60, 0.15);
-  color: #ffc83c;
+  color: var(--warning-color);
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   min-width: 18px;
@@ -895,8 +900,8 @@
 }
 
 .ssl-auditor__flag-card--pass::before { background: var(--primary-color); }
-.ssl-auditor__flag-card--warn::before { background: #ffc83c; }
-.ssl-auditor__flag-card--fail::before { background: #ff5050; }
+.ssl-auditor__flag-card--warn::before { background: var(--warning-color); }
+.ssl-auditor__flag-card--fail::before { background: var(--error-color); }
 .ssl-auditor__flag-card--info::before { background: var(--secondary-color); }
 
 .ssl-auditor__flag-card--pass { border-color: rgba(0, 255, 204, 0.12); }
@@ -927,11 +932,11 @@
 }
 .ssl-auditor__flag-card--warn .ssl-auditor__flag-icon {
   background: rgba(255, 200, 60, 0.1);
-  color: #ffc83c;
+  color: var(--warning-color);
 }
 .ssl-auditor__flag-card--fail .ssl-auditor__flag-icon {
   background: rgba(255, 80, 80, 0.1);
-  color: #ff5050;
+  color: var(--error-color);
 }
 .ssl-auditor__flag-card--info .ssl-auditor__flag-icon {
   background: rgba(123, 97, 255, 0.1);
@@ -963,11 +968,11 @@
 }
 .ssl-auditor__flag-status-badge--warn {
   background: rgba(255, 200, 60, 0.12);
-  color: #ffc83c;
+  color: var(--warning-color);
 }
 .ssl-auditor__flag-status-badge--fail {
   background: rgba(255, 80, 80, 0.12);
-  color: #ff5050;
+  color: var(--error-color);
 }
 .ssl-auditor__flag-status-badge--info {
   background: rgba(123, 97, 255, 0.1);
