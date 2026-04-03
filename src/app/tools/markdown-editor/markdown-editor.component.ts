@@ -275,6 +275,21 @@ Inline \`code\` looks like this. **Enjoy writing markdown!**`;
     setTimeout(() => (this.copied = false), 2000);
   }
 
+  // ── URL sanitizer (blocks javascript:, data:, vbscript: protocols) ────
+  private sanitizeUrl(url: string): string {
+    const trimmed = url.trim();
+    // Allow only safe schemes — block javascript:, data:, vbscript: etc.
+    if (/^(https?:|mailto:|tel:|#|\/)/i.test(trimmed)) {
+      return trimmed;
+    }
+    // Relative URLs (no scheme) are safe
+    if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:/i.test(trimmed)) {
+      return trimmed;
+    }
+    // Dangerous scheme detected — neutralize
+    return '#';
+  }
+
   // ── Markdown-to-HTML parser (GFM subset, no external libs) ────────────
 
   private parseMarkdown(md: string): string {
@@ -320,11 +335,15 @@ Inline \`code\` looks like this. **Enjoy writing markdown!**`;
     // Ordered lists
     html = this.parseLists(html, /^\d+\.\s+(.+)$/gm, 'ol');
 
-    // Images (before links to avoid conflict)
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="mde-img">');
+    // Images (before links to avoid conflict) — sanitize src to block javascript:/data: XSS
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match: string, alt: string, src: string) =>
+      `<img src="${this.sanitizeUrl(src)}" alt="${alt}" class="mde-img">`
+    );
 
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Links — sanitize href to block javascript:/data:/vbscript: XSS
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match: string, text: string, href: string) =>
+      `<a href="${this.sanitizeUrl(href)}" target="_blank" rel="noopener noreferrer">${text}</a>`
+    );
 
     // Inline code
     html = html.replace(/`([^`]+)`/g, '<code class="mde-inline-code">$1</code>');
