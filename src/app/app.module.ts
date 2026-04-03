@@ -142,6 +142,7 @@ import { ApcaContrastComponent } from './tools/apca-contrast/apca-contrast.compo
 import { TsPlaygroundComponent } from './tools/ts-playground/ts-playground.component';
 import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.component';
 import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
+import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
 
 
 @NgModule({
@@ -264,7 +265,8 @@ import { DesignTokensComponent } from './tools/design-tokens/design-tokens.compo
     ApcaContrastComponent,
     TsPlaygroundComponent,
     CaesarCipherComponent,
-    DesignTokensComponent
+    DesignTokensComponent,
+    JsonSchemaComponent
   ],
   bootstrap: [AppComponent],
   imports: [

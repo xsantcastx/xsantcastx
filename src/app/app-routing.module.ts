@@ -90,6 +90,7 @@ import { ApcaContrastComponent } from './tools/apca-contrast/apca-contrast.compo
 import { TsPlaygroundComponent } from './tools/ts-playground/ts-playground.component';
 import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.component';
 import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
+import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { RouteTitles } from './shared/title-strategy.service';
@@ -1107,6 +1108,7 @@ const routes: Routes = [
   { path: 'tools/ts-playground', component: TsPlaygroundComponent, title: 'TypeScript Type Reference & Playground | xsantcastx', data: { description: 'Interactive reference of TypeScript utility types with examples.', keywords: 'typescript types, utility types, typescript reference, partial record omit', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'TypeScript Type Reference', url: `${SITE_URL}/tools/ts-playground`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } } } },
   { path: 'tools/caesar-cipher', component: CaesarCipherComponent, title: 'Free ROT13 & Caesar Cipher | xsantcastx', data: { description: 'Encode/decode ROT13 and Caesar cipher with brute force view.', keywords: 'rot13, caesar cipher, cipher encoder, brute force cipher, rotation cipher', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'ROT13 & Caesar Cipher', url: `${SITE_URL}/tools/caesar-cipher`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } } } },
   { path: 'tools/design-tokens', component: DesignTokensComponent, title: 'Free Design Token Converter | xsantcastx', data: { description: 'Convert design tokens to CSS variables, SCSS, or Tailwind config.', keywords: 'design tokens, figma tokens, css variables generator, scss variables, tailwind config', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Design Token Converter', url: `${SITE_URL}/tools/design-tokens`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } } } },
+  { path: 'tools/json-schema', component: JsonSchemaComponent, title: 'Free JSON Schema Generator — Draft-07 | xsantcastx', data: { description: 'Paste JSON and generate a valid JSON Schema (draft-07) with type detection and format inference. Free, client-side, no sign-up required.', keywords: 'json schema generator, json to schema, json schema draft-07, json schema validator, generate json schema online', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'JSON Schema Generator', url: `${SITE_URL}/tools/json-schema`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'JSON Schema Generator', item: `${SITE_URL}/tools/json-schema` }] } } } },
 
   // ── Embed routes (minimal chrome, iframe-friendly) ──────────────────────
   { path: 'embed/json-formatter', component: JsonFormatterComponent, data: { embed: true } },
@@ -1192,6 +1194,7 @@ const routes: Routes = [
   { path: 'embed/ts-playground', component: TsPlaygroundComponent, data: { embed: true } },
   { path: 'embed/caesar-cipher', component: CaesarCipherComponent, data: { embed: true } },
   { path: 'embed/design-tokens', component: DesignTokensComponent, data: { embed: true } },
+  { path: 'embed/json-schema', component: JsonSchemaComponent, data: { embed: true } },
 
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {

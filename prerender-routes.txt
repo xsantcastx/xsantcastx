@@ -173,3 +173,5 @@
 /embed/ts-playground
 /embed/caesar-cipher
 /embed/design-tokens
+/tools/json-schema
+/embed/json-schema
