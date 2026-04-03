@@ -3,6 +3,10 @@
    Matches the xsantcastx neon cyberpunk design system
    ══════════════════════════════════════════════════════════════ */
 
+:host {
+  --error-color: #ff4d6a;
+}
+
 .sm-page {
   min-height: 100vh;
   padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
@@ -209,7 +213,7 @@
   border-color: rgba(0, 255, 204, 0.4);
 }
 .sm-filter-select option {
-  background: #1a1a2e;
+  background: var(--surface-strong);
   color: var(--text-color);
 }
 
@@ -239,7 +243,7 @@
 
 .sm-btn--primary {
   background: var(--primary-color);
-  color: #000;
+  color: #000; /* Keep black for contrast */
 }
 
 .sm-btn--secondary {
@@ -277,7 +281,7 @@
 
 .sm-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
 
-.sm-btn--danger-text { color: #ff4d6a !important; }
+.sm-btn--danger-text { color: var(--error-color) !important; }
 .sm-btn--danger-text:hover { border-color: rgba(255, 77, 106, 0.4) !important; }
 
 /* ── Icon buttons (card actions) ───────────────────────────── */
@@ -301,7 +305,7 @@
   background: var(--surface-strong);
 }
 .sm-btn-icon--danger:hover {
-  color: #ff4d6a;
+  color: var(--error-color);
   border-color: rgba(255, 77, 106, 0.3);
   background: rgba(255, 77, 106, 0.08);
 }
@@ -474,7 +478,7 @@
 
 .sm-delete-confirm__text {
   font-size: 0.8rem;
-  color: #ff4d6a;
+  color: var(--error-color);
   font-weight: 500;
   flex: 1;
 }
@@ -583,7 +587,7 @@
   border-color: rgba(0, 255, 204, 0.4);
 }
 .sm-field__select option {
-  background: #1a1a2e;
+  background: var(--surface-strong);
   color: var(--text-color);
 }
 
@@ -651,13 +655,13 @@
 }
 
 .sm-toast--copy {
-  background: color-mix(in srgb, var(--primary-color) 15%, #1a1a2e);
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--surface-strong));
   border: 1px solid rgba(0, 255, 204, 0.3);
   color: var(--primary-color);
 }
 
 .sm-toast--success {
-  background: color-mix(in srgb, var(--primary-color) 12%, #1a1a2e);
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--surface-strong));
   border: 1px solid rgba(0, 255, 204, 0.25);
   color: var(--primary-color);
   position: relative;
