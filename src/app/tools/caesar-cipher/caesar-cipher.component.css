@@ -1,0 +1,613 @@
+/* ══════════════════════════════════════════════════════════════
+   Caesar Cipher — Component Styles
+   Matches the xsantcastx neon cyberpunk design system
+   ══════════════════════════════════════════════════════════════ */
+
+.cc2-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: var(--primary-color); }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--primary-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 540px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ── Two-column layout ─────────────────────────────────────── */
+.cc2-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.cc2-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel (glass card) ────────────────────────────────────── */
+.cc2-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.cc2-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  gap: 0.75rem;
+}
+
+.cc2-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cc2-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Input panel body ──────────────────────────────────────── */
+.cc2-panel__body--input {
+  padding: 0;
+}
+
+.cc2-char-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Textarea ──────────────────────────────────────────────── */
+.cc2-textarea {
+  width: 100%;
+  min-height: 280px;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  resize: vertical;
+  outline: none;
+  caret-color: var(--primary-color);
+  box-sizing: border-box;
+}
+.cc2-textarea::placeholder {
+  color: rgba(214, 221, 235, 0.28);
+}
+.cc2-textarea:focus {
+  background: rgba(0, 255, 204, 0.015);
+}
+
+/* ── Options panel ─────────────────────────────────────────── */
+.cc2-options-grid {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cc2-option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.cc2-option-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cc2-option-hint {
+  font-size: 0.73rem;
+  color: rgba(214, 221, 235, 0.5);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Segmented control ─────────────────────────────────────── */
+.cc2-seg-ctrl {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.cc2-seg-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.8rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.cc2-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.cc2-seg-btn--active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  border-color: rgba(0, 255, 204, 0.4);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* ── Shift slider ──────────────────────────────────────────── */
+.cc2-shift-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cc2-shift-value {
+  font-family: 'Fira Code', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  min-width: 2ch;
+  text-align: right;
+  text-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+}
+
+.cc2-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.cc2-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border: 2px solid rgba(0, 255, 204, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);
+  transition: box-shadow 0.2s ease;
+}
+.cc2-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 18px rgba(0, 255, 204, 0.55);
+}
+
+.cc2-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border: 2px solid rgba(0, 255, 204, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);
+}
+
+.cc2-shift-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* ── Toggle ────────────────────────────────────────────────── */
+.cc2-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+.cc2-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cc2-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 20px;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.cc2-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 999px;
+  transition: left 0.2s ease, background 0.2s ease;
+}
+
+.cc2-toggle input:checked ~ .cc2-toggle__track {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-color: rgba(0, 255, 204, 0.45);
+}
+.cc2-toggle input:checked ~ .cc2-toggle__track .cc2-toggle__thumb {
+  left: 20px;
+  background: var(--primary-color);
+}
+
+.cc2-toggle__label {
+  font-size: 0.82rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cc2-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--secondary-color);
+}
+
+/* ── Ghost/small buttons ───────────────────────────────────── */
+.cc2-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.cc2-btn-ghost:hover:not(:disabled) {
+  color: var(--text-color);
+  border-color: rgba(0,255,204,0.25);
+}
+.cc2-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.cc2-btn-ghost--success {
+  color: var(--primary-color) !important;
+  border-color: rgba(0, 255, 204, 0.35) !important;
+}
+.cc2-btn-ghost--active {
+  color: var(--primary-color);
+  border-color: rgba(0, 255, 204, 0.4);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.cc2-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
+.cc2-btn-xs { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 6px; }
+
+/* ── Status bar ─────────────────────────────────────────────── */
+.cc2-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.cc2-status-bar--idle {
+  background: rgba(214, 221, 235, 0.04);
+  color: rgba(214, 221, 235, 0.5);
+}
+
+.cc2-status-bar--valid {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  border-color: rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+}
+
+/* ── Output panel ──────────────────────────────────────────── */
+.cc2-panel--output {
+  flex: 1;
+}
+
+.cc2-output-body {
+  min-height: 280px;
+  position: relative;
+}
+
+.cc2-output-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(214, 221, 235, 0.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.cc2-code-pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  background: transparent;
+}
+
+.cc2-code-pre code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--primary-color);
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.cc2-stats {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.cc2-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.9rem;
+  flex: 1;
+  min-width: 50px;
+}
+
+.cc2-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.cc2-stat__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+  font-family: 'Fira Code', monospace;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.cc2-stat__unit {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.cc2-stat__value--cyan { color: var(--primary-color); }
+
+.cc2-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Brute Force Panel ─────────────────────────────────────── */
+.cc2-panel--brute {
+  max-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cc2-brute-list {
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 204, 0.2) transparent;
+}
+.cc2-brute-list::-webkit-scrollbar {
+  width: 5px;
+}
+.cc2-brute-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cc2-brute-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 204, 0.2);
+  border-radius: 999px;
+}
+
+.cc2-brute-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 1.1rem;
+  transition: background 0.15s ease;
+}
+.cc2-brute-item:hover {
+  background: rgba(0, 255, 204, 0.03);
+}
+
+.cc2-brute-item--active {
+  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  border-left: 2px solid var(--primary-color);
+}
+
+.cc2-brute-shift {
+  flex-shrink: 0;
+  width: 62px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Fira Code', monospace;
+}
+
+.cc2-brute-shift--rot13 {
+  color: var(--primary-color);
+  text-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+}
+
+.cc2-brute-text {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cc2-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cc2-col--right {
+    order: -1;
+  }
+
+  .cc2-textarea {
+    min-height: 200px;
+  }
+
+  .cc2-output-body {
+    min-height: 200px;
+  }
+
+  .cc2-panel--brute {
+    max-height: 380px;
+  }
+
+  .cc2-brute-shift {
+    width: 52px;
+    font-size: 0.62rem;
+  }
+}

@@ -1,0 +1,207 @@
+<div class="md-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Data Utilities</p>
+    <h1 class="tool-header__title">Mock Data <span class="tool-header__amp">Generator</span></h1>
+    <p class="tool-header__subtitle">Generate random mock data instantly — names, emails, addresses, UUIDs & more. Export as JSON, CSV, or SQL INSERT. 100% client-side.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'mock-data'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Workspace -->
+  <div class="md-layout">
+
+    <!-- LEFT: Controls -->
+    <div class="md-col md-col--left">
+
+      <!-- Fields Panel -->
+      <div class="md-panel">
+        <div class="md-panel__header">
+          <span class="md-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Columns
+          </span>
+          <div class="md-panel__actions">
+            <button class="md-btn-ghost md-btn-sm" (click)="toggleAll(true)">All</button>
+            <button class="md-btn-ghost md-btn-sm" (click)="toggleAll(false)">None</button>
+          </div>
+        </div>
+        <div class="md-panel__body md-fields-grid">
+          <label class="md-field-toggle" *ngFor="let field of fields">
+            <input type="checkbox" [(ngModel)]="field.enabled" />
+            <span class="md-field-toggle__track"><span class="md-field-toggle__thumb"></span></span>
+            <span class="md-field-toggle__label">{{ field.label }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Options Panel -->
+      <div class="md-panel">
+        <div class="md-panel__header">
+          <span class="md-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+            Options
+          </span>
+        </div>
+        <div class="md-panel__body md-options-grid">
+
+          <!-- Quantity -->
+          <div class="md-option-row">
+            <span class="md-option-label">Quantity</span>
+            <div class="md-quantity-row">
+              <input
+                type="range"
+                class="md-range"
+                [(ngModel)]="quantity"
+                min="1"
+                max="100"
+                step="1"
+              />
+              <input
+                type="number"
+                class="md-quantity-input"
+                [(ngModel)]="quantity"
+                min="1"
+                max="100"
+              />
+            </div>
+          </div>
+
+          <!-- Output format -->
+          <div class="md-option-row">
+            <span class="md-option-label">Format</span>
+            <div class="md-seg-ctrl">
+              <button class="md-seg-btn" [class.md-seg-btn--active]="outputFormat === 'json'" (click)="setFormat('json')">JSON</button>
+              <button class="md-seg-btn" [class.md-seg-btn--active]="outputFormat === 'csv'" (click)="setFormat('csv')">CSV</button>
+              <button class="md-seg-btn" [class.md-seg-btn--active]="outputFormat === 'sql'" (click)="setFormat('sql')">SQL</button>
+            </div>
+          </div>
+
+          <!-- Table name (SQL only) -->
+          <div class="md-option-row" *ngIf="outputFormat === 'sql'">
+            <span class="md-option-label">Table Name</span>
+            <input
+              type="text"
+              class="md-text-input"
+              [(ngModel)]="tableName"
+              placeholder="users"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Generate Button -->
+      <button class="md-generate-btn" (click)="generate()" [disabled]="!hasEnabledFields">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+        Generate {{ quantity }} Record{{ quantity !== 1 ? 's' : '' }}
+      </button>
+
+    </div>
+
+    <!-- RIGHT: Output -->
+    <div class="md-col md-col--right">
+
+      <!-- Status bar -->
+      <div class="md-status-bar"
+        [class.md-status-bar--valid]="generated && output"
+        [class.md-status-bar--idle]="!generated">
+        <ng-container *ngIf="!generated">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Configure fields and click Generate</span>
+        </ng-container>
+        <ng-container *ngIf="generated && output">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Generated {{ recordCount }} records as {{ outputFormat | uppercase }}</span>
+        </ng-container>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="md-panel md-panel--output">
+        <div class="md-panel__header">
+          <span class="md-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Output
+          </span>
+          <div class="md-panel__actions">
+            <span class="md-char-count" *ngIf="output">{{ outputLineCount }} lines</span>
+            <button class="md-btn-ghost md-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.md-btn-ghost--success]="copied">
+              <ng-container *ngIf="!copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+            <button class="md-btn-ghost md-btn-sm" (click)="downloadOutput()" [disabled]="!output">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+
+        <!-- Output body -->
+        <div class="md-output-body">
+          <pre class="md-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
+          <div class="md-output-empty" *ngIf="!output">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+            <span>Generated mock data will appear here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="md-stats" *ngIf="output">
+        <div class="md-stat">
+          <span class="md-stat__label">Records</span>
+          <span class="md-stat__value">{{ recordCount }}</span>
+        </div>
+        <div class="md-stat-divider"></div>
+        <div class="md-stat">
+          <span class="md-stat__label">Columns</span>
+          <span class="md-stat__value">{{ enabledFields.length }}</span>
+        </div>
+        <div class="md-stat-divider"></div>
+        <div class="md-stat">
+          <span class="md-stat__label">Lines</span>
+          <span class="md-stat__value">{{ outputLineCount }}</span>
+        </div>
+        <div class="md-stat-divider"></div>
+        <div class="md-stat">
+          <span class="md-stat__label">Format</span>
+          <span class="md-stat__value md-stat__value--cyan">{{ outputFormat | uppercase }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <app-embed-code-generator toolSlug="mock-data" toolName="Mock Data Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'mock-data'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'Data Utilities'" [toolSlug]="'mock-data'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'mock-data'"></app-related-tools>
+
+</div>

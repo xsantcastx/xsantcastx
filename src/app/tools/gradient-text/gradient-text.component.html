@@ -1,0 +1,190 @@
+<div class="gt-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    {{ translate('tools.common.back') }}
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tool</p>
+    <h1 class="tool-header__title">Gradient Text Generator</h1>
+    <p class="tool-header__subtitle">Apply stunning CSS gradient effects to text with live preview. Supports linear &amp; radial gradients, color stops, animation, and 10 curated presets.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.share') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'gradient-text'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="gt-workspace">
+
+    <!-- LEFT COLUMN: Preview + Code -->
+    <div class="gt-left">
+
+      <!-- Live Preview -->
+      <div class="gt-card">
+        <div class="gt-card__header">
+          <span class="gt-card__label">Live Preview</span>
+          <div class="gt-preview-controls">
+            <button type="button" class="gt-icon-btn" [class.is-active]="animated" (click)="toggleAnimation()" title="Toggle animation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            </button>
+            <button type="button" class="gt-icon-btn gt-icon-btn--danger" (click)="resetAll()" title="Reset all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="gt-preview-area">
+          <span class="gt-preview-text" [ngStyle]="previewStyles">{{ previewText }}</span>
+        </div>
+
+        <!-- Preview text controls -->
+        <div class="gt-preview-settings">
+          <div class="gt-inline-control gt-inline-control--wide">
+            <label class="gt-inline-control__label">Text</label>
+            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="gt-text-input" placeholder="Enter preview text" />
+          </div>
+          <div class="gt-inline-control">
+            <label class="gt-inline-control__label">Size</label>
+            <input type="range" min="16" max="128" step="1" [value]="fontSize" (input)="onFontSizeChange($event)" class="gt-slider" />
+            <span class="gt-slider-value">{{ fontSize }}px</span>
+          </div>
+          <div class="gt-inline-control">
+            <label class="gt-inline-control__label">Weight</label>
+            <input type="range" min="100" max="900" step="100" [value]="fontWeight" (input)="onFontWeightChange($event)" class="gt-slider" />
+            <span class="gt-slider-value">{{ fontWeight }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Code -->
+      <div class="gt-card">
+        <div class="gt-card__header">
+          <span class="gt-card__label">Generated Code</span>
+        </div>
+        <div class="gt-code-block">
+          <pre class="gt-code-pre"><code>{{ cssCode }}</code></pre>
+        </div>
+        <div class="gt-code-actions">
+          <button type="button" class="gt-btn gt-btn--primary" (click)="copyCSS()">
+            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ codeCopied ? 'Copied!' : 'Copy Code' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Controls + Presets -->
+    <div class="gt-right">
+
+      <!-- Gradient Type & Angle -->
+      <div class="gt-card">
+        <div class="gt-card__header">
+          <span class="gt-card__label">Gradient Settings</span>
+        </div>
+        <div class="gt-controls-grid">
+          <div class="gt-control-group gt-control-group--inline">
+            <label class="gt-control-group__label">Type</label>
+            <div class="gt-format-btns">
+              <button type="button" class="gt-toggle-btn" [class.is-active]="gradientType === 'linear'" (click)="onTypeChange('linear')">Linear</button>
+              <button type="button" class="gt-toggle-btn" [class.is-active]="gradientType === 'radial'" (click)="onTypeChange('radial')">Radial</button>
+            </div>
+          </div>
+          <div class="gt-control-group" *ngIf="gradientType === 'linear'">
+            <div class="gt-control-group__top">
+              <label class="gt-control-group__label">Angle</label>
+              <span class="gt-control-group__value">{{ angle }}&deg;</span>
+            </div>
+            <input type="range" min="0" max="360" step="1" [value]="angle" (input)="onAngleChange($event)" class="gt-slider" />
+          </div>
+          <div class="gt-control-group gt-control-group--inline">
+            <label class="gt-control-group__label">Animated</label>
+            <button type="button" class="gt-toggle-btn" [class.is-active]="animated" (click)="toggleAnimation()">{{ animated ? 'On' : 'Off' }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Stops -->
+      <div class="gt-card">
+        <div class="gt-card__header">
+          <span class="gt-card__label">Color Stops</span>
+          <button type="button" class="gt-btn gt-btn--primary gt-btn--sm" (click)="addColorStop()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Stop
+          </button>
+        </div>
+
+        <!-- Gradient bar preview -->
+        <div class="gt-gradient-bar" [style.background]="gradientValue"></div>
+
+        <div class="gt-stop-list">
+          <div class="gt-stop-item" *ngFor="let stop of colorStops; let i = index; trackBy: trackByStopId">
+            <input type="color" [value]="stop.color" (input)="onStopColorChange(i, $event)" class="gt-color-input" />
+            <span class="gt-stop-hex">{{ stop.color }}</span>
+            <input type="range" min="0" max="100" step="1" [value]="stop.position" (input)="onStopPositionChange(i, $event)" class="gt-slider gt-slider--stop" />
+            <span class="gt-stop-pos">{{ stop.position }}%</span>
+            <button type="button" class="gt-icon-btn gt-icon-btn--xs gt-icon-btn--danger" [disabled]="colorStops.length <= 2" (click)="removeColorStop(i)" title="Remove stop">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="gt-card">
+        <div class="gt-card__header">
+          <span class="gt-card__label">Presets</span>
+        </div>
+        <div class="gt-preset-grid">
+          <button
+            type="button"
+            class="gt-preset-btn"
+            *ngFor="let preset of presets; trackBy: trackByPresetName"
+            (click)="applyPreset(preset)"
+          >
+            <div class="gt-preset-swatch" [style.background]="getPresetGradient(preset)"></div>
+            <span class="gt-preset-name">{{ preset.name }}</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <app-embed-code-generator toolSlug="gradient-text" toolName="CSS Gradient Text Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'gradient-text'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'gradient-text'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'gradient-text'"></app-related-tools>
+
+</div>

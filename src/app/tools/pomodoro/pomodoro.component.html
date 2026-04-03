@@ -1,0 +1,225 @@
+<div class="pm-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Productivity</p>
+    <h1 class="tool-header__title">Pomodoro <span class="tool-header__amp">Timer</span></h1>
+    <p class="tool-header__subtitle">Stay focused with timed work sessions and breaks. 4 pomodoros earns a long break. No sign-up required.</p>
+  </header>
+
+  <!-- Workspace -->
+  <div class="pm-layout">
+
+    <!-- ── LEFT: Timer ── -->
+    <div class="pm-col pm-col--left">
+
+      <!-- Mode Selector -->
+      <div class="pm-panel">
+        <div class="pm-panel__header">
+          <span class="pm-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Mode
+          </span>
+        </div>
+        <div class="pm-mode-selector">
+          <button class="pm-seg-btn"
+                  [class.pm-seg-btn--active]="currentMode === 'work'"
+                  [disabled]="timerState === 'running'"
+                  (click)="setMode('work')">
+            Focus
+          </button>
+          <button class="pm-seg-btn"
+                  [class.pm-seg-btn--active]="currentMode === 'shortBreak'"
+                  [disabled]="timerState === 'running'"
+                  (click)="setMode('shortBreak')">
+            Short Break
+          </button>
+          <button class="pm-seg-btn"
+                  [class.pm-seg-btn--active]="currentMode === 'longBreak'"
+                  [disabled]="timerState === 'running'"
+                  (click)="setMode('longBreak')">
+            Long Break
+          </button>
+        </div>
+      </div>
+
+      <!-- Timer Ring -->
+      <div class="pm-panel pm-panel--timer">
+        <div class="pm-timer-container" [class.pm-timer--work]="currentMode === 'work'" [class.pm-timer--short]="currentMode === 'shortBreak'" [class.pm-timer--long]="currentMode === 'longBreak'">
+
+          <svg class="pm-ring" viewBox="0 0 260 260">
+            <!-- Background ring -->
+            <circle class="pm-ring__bg"
+                    cx="130" cy="130" r="120"
+                    fill="none"
+                    stroke-width="6"/>
+            <!-- Progress ring -->
+            <circle class="pm-ring__progress"
+                    cx="130" cy="130" r="120"
+                    fill="none"
+                    stroke-width="6"
+                    stroke-linecap="round"
+                    [attr.stroke-dasharray]="circumference"
+                    [attr.stroke-dashoffset]="strokeDashoffset"
+                    transform="rotate(-90 130 130)"/>
+            <!-- Glow ring (behind progress) -->
+            <circle class="pm-ring__glow"
+                    cx="130" cy="130" r="120"
+                    fill="none"
+                    stroke-width="12"
+                    stroke-linecap="round"
+                    [attr.stroke-dasharray]="circumference"
+                    [attr.stroke-dashoffset]="strokeDashoffset"
+                    transform="rotate(-90 130 130)"/>
+          </svg>
+
+          <div class="pm-timer-display">
+            <span class="pm-timer-mode">{{ modeLabel }}</span>
+            <span class="pm-timer-digits">
+              <span class="pm-digit">{{ displayMinutes }}</span>
+              <span class="pm-colon" [class.pm-colon--blink]="timerState === 'running'">:</span>
+              <span class="pm-digit">{{ displaySeconds }}</span>
+            </span>
+            <span class="pm-timer-status">{{ timerState === 'running' ? 'Running' : timerState === 'paused' ? 'Paused' : 'Ready' }}</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="pm-controls">
+          <button class="pm-btn pm-btn--primary" (click)="toggleTimer()">
+            <svg *ngIf="timerState !== 'running'" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg *ngIf="timerState === 'running'" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            {{ timerState === 'running' ? 'Pause' : timerState === 'paused' ? 'Resume' : 'Start' }}
+          </button>
+          <button class="pm-btn pm-btn--ghost" (click)="reset()" [disabled]="timerState === 'idle'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Reset
+          </button>
+        </div>
+
+        <!-- Session dots -->
+        <div class="pm-session-dots">
+          <span class="pm-session-label">Session {{ (completedPomodoros % pomodorosUntilLongBreak) + (currentMode === 'work' && timerState !== 'idle' ? 1 : 0) }} of {{ pomodorosUntilLongBreak }}</span>
+          <div class="pm-dots">
+            <span class="pm-dot"
+                  *ngFor="let filled of pomodoroDotsArray; let i = index"
+                  [class.pm-dot--filled]="filled">
+            </span>
+          </div>
+          <span class="pm-total-label">Total: {{ completedPomodoros }} completed</span>
+        </div>
+      </div>
+
+      <!-- Task Name -->
+      <div class="pm-panel">
+        <div class="pm-panel__header">
+          <span class="pm-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Task
+          </span>
+        </div>
+        <div class="pm-task-input-wrap">
+          <input class="pm-task-input"
+                 type="text"
+                 [(ngModel)]="taskName"
+                 placeholder="What are you working on?"
+                 maxlength="100"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: Settings + History ── -->
+    <div class="pm-col pm-col--right">
+
+      <!-- Settings -->
+      <div class="pm-panel">
+        <div class="pm-panel__header">
+          <span class="pm-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+          </span>
+        </div>
+        <div class="pm-settings-grid">
+          <div class="pm-setting-row">
+            <label class="pm-setting-label" for="workMin">Focus Duration</label>
+            <div class="pm-setting-input-wrap">
+              <input class="pm-setting-input"
+                     id="workMin"
+                     type="number"
+                     [(ngModel)]="workMinutes"
+                     (ngModelChange)="onDurationChange()"
+                     min="1" max="120" step="1"/>
+              <span class="pm-setting-unit">min</span>
+            </div>
+          </div>
+          <div class="pm-setting-row">
+            <label class="pm-setting-label" for="shortMin">Short Break</label>
+            <div class="pm-setting-input-wrap">
+              <input class="pm-setting-input"
+                     id="shortMin"
+                     type="number"
+                     [(ngModel)]="shortBreakMinutes"
+                     (ngModelChange)="onDurationChange()"
+                     min="1" max="60" step="1"/>
+              <span class="pm-setting-unit">min</span>
+            </div>
+          </div>
+          <div class="pm-setting-row">
+            <label class="pm-setting-label" for="longMin">Long Break</label>
+            <div class="pm-setting-input-wrap">
+              <input class="pm-setting-input"
+                     id="longMin"
+                     type="number"
+                     [(ngModel)]="longBreakMinutes"
+                     (ngModelChange)="onDurationChange()"
+                     min="1" max="60" step="1"/>
+              <span class="pm-setting-unit">min</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="pm-panel">
+        <div class="pm-panel__header">
+          <span class="pm-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            History
+          </span>
+          <div class="pm-panel__actions">
+            <button class="pm-btn-ghost pm-btn-sm" (click)="clearHistory()" [disabled]="history.length === 0">
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="pm-history-body">
+          <div class="pm-history-empty" *ngIf="history.length === 0">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>No sessions yet. Start your first pomodoro!</span>
+          </div>
+          <div class="pm-history-list" *ngIf="history.length > 0">
+            <div class="pm-history-item" *ngFor="let session of history; let i = index">
+              <span class="pm-history-badge"
+                    [class.pm-history-badge--work]="session.mode === 'work'"
+                    [class.pm-history-badge--short]="session.mode === 'shortBreak'"
+                    [class.pm-history-badge--long]="session.mode === 'longBreak'">
+                {{ getModeDisplayLabel(session.mode) }}
+              </span>
+              <span class="pm-history-task">{{ session.taskName }}</span>
+              <span class="pm-history-meta">
+                {{ formatDuration(session.duration) }} &middot; {{ formatTime(session.completedAt) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

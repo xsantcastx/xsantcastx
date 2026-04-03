@@ -1,0 +1,242 @@
+<div class="tsp-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">TypeScript</p>
+    <h1 class="tool-header__title">TS Type <span class="tool-header__amp">Playground</span></h1>
+    <p class="tool-header__subtitle">Write TypeScript type definitions and see them explained. Explore utility types, generics, and conditional types interactively.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'ts-playground'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Tab Navigation -->
+  <div class="tsp-tabs">
+    <button class="tsp-tab" [class.tsp-tab--active]="activeTab === 'reference'" (click)="activeTab = 'reference'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Type Reference
+    </button>
+    <button class="tsp-tab" [class.tsp-tab--active]="activeTab === 'generics'" (click)="activeTab = 'generics'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Generics Explainer
+    </button>
+    <button class="tsp-tab" [class.tsp-tab--active]="activeTab === 'playground'" (click)="activeTab = 'playground'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Playground
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: Type Reference
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tsp-content" *ngIf="activeTab === 'reference'">
+
+    <!-- Search & Filter Bar -->
+    <div class="tsp-toolbar">
+      <div class="tsp-search-wrap">
+        <svg class="tsp-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input
+          class="tsp-search"
+          type="text"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearch()"
+          placeholder="Search types... (try 'any')"
+          spellcheck="false"
+          autocomplete="off"
+        />
+      </div>
+      <div class="tsp-categories">
+        <button class="tsp-cat-btn" [class.tsp-cat-btn--active]="activeCategory === 'all'" (click)="setCategory('all')">All</button>
+        <button class="tsp-cat-btn" [class.tsp-cat-btn--active]="activeCategory === 'mapped'" (click)="setCategory('mapped')">Mapped</button>
+        <button class="tsp-cat-btn" [class.tsp-cat-btn--active]="activeCategory === 'conditional'" (click)="setCategory('conditional')">Conditional</button>
+        <button class="tsp-cat-btn" [class.tsp-cat-btn--active]="activeCategory === 'utility'" (click)="setCategory('utility')">Utility</button>
+        <button class="tsp-cat-btn" [class.tsp-cat-btn--active]="activeCategory === 'infer'" (click)="setCategory('infer')">Infer</button>
+      </div>
+    </div>
+
+    <!-- No results -->
+    <div class="tsp-empty" *ngIf="filteredTypes.length === 0">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>No types found matching "{{ searchQuery }}"</span>
+    </div>
+
+    <!-- Type Cards -->
+    <div class="tsp-type-list">
+      <div
+        class="tsp-type-card"
+        *ngFor="let entry of filteredTypes; let i = index"
+        [class.tsp-type-card--expanded]="selectedType === entry"
+        (click)="selectType(entry)"
+      >
+        <!-- Card Header -->
+        <div class="tsp-type-card__header">
+          <div class="tsp-type-card__info">
+            <span class="tsp-type-card__badge tsp-type-card__badge--{{ entry.category }}">{{ getCategoryLabel(entry.category) }}</span>
+            <h3 class="tsp-type-card__name">{{ entry.name }}</h3>
+            <p class="tsp-type-card__desc">{{ entry.description }}</p>
+          </div>
+          <svg class="tsp-type-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <!-- Card Expanded Content -->
+        <div class="tsp-type-card__body" *ngIf="selectedType === entry" (click)="$event.stopPropagation()">
+
+          <!-- Signature -->
+          <div class="tsp-section">
+            <div class="tsp-section__label">Signature</div>
+            <div class="tsp-code-block">
+              <pre class="tsp-code"><code>{{ entry.signature }}</code></pre>
+              <button class="tsp-copy-btn" (click)="copySnippet(entry.signature, 'sig-' + i)" [class.tsp-copy-btn--success]="copiedSnippet === 'sig-' + i">
+                <ng-container *ngIf="copiedSnippet !== 'sig-' + i">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </ng-container>
+                <ng-container *ngIf="copiedSnippet === 'sig-' + i">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </ng-container>
+              </button>
+            </div>
+          </div>
+
+          <!-- Explanation -->
+          <div class="tsp-section">
+            <div class="tsp-section__label">How it works</div>
+            <p class="tsp-explanation">{{ entry.explanation }}</p>
+          </div>
+
+          <!-- Example -->
+          <div class="tsp-section">
+            <div class="tsp-section__label">Example</div>
+            <div class="tsp-code-block tsp-code-block--example">
+              <pre class="tsp-code"><code>{{ entry.example }}</code></pre>
+              <button class="tsp-copy-btn" (click)="copySnippet(entry.example, 'ex-' + i)" [class.tsp-copy-btn--success]="copiedSnippet === 'ex-' + i">
+                <ng-container *ngIf="copiedSnippet !== 'ex-' + i">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </ng-container>
+                <ng-container *ngIf="copiedSnippet === 'ex-' + i">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                </ng-container>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: Generics Explainer
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tsp-content" *ngIf="activeTab === 'generics'">
+    <div class="tsp-generics-list">
+      <div class="tsp-generic-card" *ngFor="let ex of genericExamples; let i = index">
+        <h3 class="tsp-generic-card__title">{{ ex.title }}</h3>
+        <div class="tsp-code-block tsp-code-block--example">
+          <pre class="tsp-code"><code>{{ ex.code }}</code></pre>
+          <button class="tsp-copy-btn" (click)="copySnippet(ex.code, 'gen-' + i)" [class.tsp-copy-btn--success]="copiedSnippet === 'gen-' + i">
+            <ng-container *ngIf="copiedSnippet !== 'gen-' + i">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy
+            </ng-container>
+            <ng-container *ngIf="copiedSnippet === 'gen-' + i">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Copied!
+            </ng-container>
+          </button>
+        </div>
+        <p class="tsp-generic-card__explanation">{{ ex.explanation }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: Playground
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tsp-content" *ngIf="activeTab === 'playground'">
+    <div class="tsp-playground-layout">
+
+      <!-- Input -->
+      <div class="tsp-panel">
+        <div class="tsp-panel__header">
+          <span class="tsp-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Type Definitions
+          </span>
+          <div class="tsp-panel__actions">
+            <button class="tsp-btn-ghost" (click)="analyzePlayground()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Analyze
+            </button>
+          </div>
+        </div>
+        <div class="tsp-panel__body">
+          <textarea
+            class="tsp-textarea"
+            [(ngModel)]="playgroundInput"
+            placeholder="Write TypeScript type definitions here..."
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="tsp-panel">
+        <div class="tsp-panel__header">
+          <span class="tsp-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Explanation
+          </span>
+          <div class="tsp-panel__actions" *ngIf="playgroundExplanation">
+            <button class="tsp-btn-ghost" (click)="copySnippet(playgroundExplanation, 'playground-out')" [class.tsp-btn-ghost--success]="copiedSnippet === 'playground-out'">
+              <ng-container *ngIf="copiedSnippet !== 'playground-out'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copiedSnippet === 'playground-out'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+          </div>
+        </div>
+        <div class="tsp-panel__body tsp-panel__body--output">
+          <pre class="tsp-explanation-output" *ngIf="playgroundExplanation">{{ playgroundExplanation }}</pre>
+          <div class="tsp-output-empty" *ngIf="!playgroundExplanation">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Click "Analyze" to see type explanations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-embed-code-generator toolSlug="ts-playground" toolName="TypeScript Type Playground"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'ts-playground'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'TypeScript'" [toolSlug]="'ts-playground'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'ts-playground'"></app-related-tools>
+
+</div>

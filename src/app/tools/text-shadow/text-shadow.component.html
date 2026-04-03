@@ -1,0 +1,227 @@
+<div class="ts-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    {{ translate('tools.common.back') }}
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tool</p>
+    <h1 class="tool-header__title">Text Shadow Generator</h1>
+    <p class="tool-header__subtitle">Design stunning CSS text shadows with multiple layers, live preview, 8 creative presets, and one-click code export. No sign-up, runs entirely in your browser.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.share') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'text-shadow'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="ts-workspace">
+
+    <!-- LEFT COLUMN: Preview + Code -->
+    <div class="ts-left">
+
+      <!-- Live Preview Panel -->
+      <div class="ts-card">
+        <div class="ts-card__header">
+          <span class="ts-card__label">Live Preview</span>
+          <div class="ts-preview-controls">
+            <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="resetAll()" title="Reset all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="ts-preview-area" [style.background]="previewBgColor">
+          <span
+            class="ts-preview-text"
+            [style.color]="previewColor"
+            [style.fontSize.px]="previewFontSize"
+            [style.textShadow]="textShadowInline"
+          >{{ previewText }}</span>
+        </div>
+
+        <!-- Preview customization -->
+        <div class="ts-preview-settings">
+          <div class="ts-inline-control ts-inline-control--grow">
+            <label class="ts-inline-control__label">Text</label>
+            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="ts-text-input" placeholder="Preview text" />
+          </div>
+          <div class="ts-inline-control">
+            <label class="ts-inline-control__label">Size</label>
+            <input type="range" min="16" max="120" step="1" [value]="previewFontSize" (input)="onPreviewFontSizeChange($event)" class="ts-slider ts-slider--mini" />
+            <span class="ts-inline-control__value">{{ previewFontSize }}px</span>
+          </div>
+          <div class="ts-inline-control">
+            <label class="ts-inline-control__label">Color</label>
+            <input type="color" [value]="previewColor" (input)="onPreviewColorChange($event)" class="ts-color-input" />
+          </div>
+          <div class="ts-inline-control">
+            <label class="ts-inline-control__label">BG</label>
+            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="ts-color-input" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Output -->
+      <div class="ts-card">
+        <div class="ts-card__header">
+          <span class="ts-card__label">Generated CSS</span>
+        </div>
+        <pre class="ts-code-block">{{ cssCode }}</pre>
+        <button type="button" class="ts-copy-btn" (click)="copyCSS()">
+          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ codeCopied ? 'Copied!' : 'Copy Code' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Layers + Presets -->
+    <div class="ts-right">
+
+      <!-- Shadow Layers -->
+      <div class="ts-card">
+        <div class="ts-card__header">
+          <span class="ts-card__label">Shadow Layers ({{ layers.length }})</span>
+          <button type="button" class="ts-toggle-btn is-active" (click)="addLayer()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Layer
+          </button>
+        </div>
+
+        <div class="ts-layers-list">
+          <div
+            class="ts-layer"
+            *ngFor="let layer of layers; let i = index; trackBy: trackByLayerId"
+          >
+            <div class="ts-layer__header">
+              <span class="ts-layer__title">
+                <span class="ts-layer__swatch" [style.background]="layer.color"></span>
+                Layer {{ i + 1 }}
+              </span>
+              <div class="ts-layer__actions">
+                <button type="button" class="ts-icon-btn" (click)="moveLayerUp(i)" [disabled]="i === 0" title="Move up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                  </svg>
+                </button>
+                <button type="button" class="ts-icon-btn" (click)="moveLayerDown(i)" [disabled]="i === layers.length - 1" title="Move down">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <button type="button" class="ts-icon-btn" (click)="duplicateLayer(i)" title="Duplicate">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="removeLayer(i)" [disabled]="layers.length <= 1" title="Remove layer">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ts-layer__controls">
+              <!-- X Offset -->
+              <div class="ts-control-group">
+                <div class="ts-control-group__top">
+                  <label class="ts-control-group__label">X Offset</label>
+                  <span class="ts-control-group__value">{{ layer.offsetX }}px</span>
+                </div>
+                <input type="range" min="-50" max="50" step="1"
+                  [value]="layer.offsetX" (input)="onOffsetXChange(i, $event)" class="ts-slider" />
+              </div>
+
+              <!-- Y Offset -->
+              <div class="ts-control-group">
+                <div class="ts-control-group__top">
+                  <label class="ts-control-group__label">Y Offset</label>
+                  <span class="ts-control-group__value">{{ layer.offsetY }}px</span>
+                </div>
+                <input type="range" min="-50" max="50" step="1"
+                  [value]="layer.offsetY" (input)="onOffsetYChange(i, $event)" class="ts-slider" />
+              </div>
+
+              <!-- Blur -->
+              <div class="ts-control-group">
+                <div class="ts-control-group__top">
+                  <label class="ts-control-group__label">Blur</label>
+                  <span class="ts-control-group__value">{{ layer.blur }}px</span>
+                </div>
+                <input type="range" min="0" max="50" step="1"
+                  [value]="layer.blur" (input)="onBlurChange(i, $event)" class="ts-slider" />
+              </div>
+
+              <!-- Color -->
+              <div class="ts-control-group">
+                <div class="ts-control-group__top">
+                  <label class="ts-control-group__label">Color</label>
+                  <span class="ts-control-group__value">{{ layer.color }}</span>
+                </div>
+                <input type="color" [value]="layer.color" (input)="onColorChange(i, $event)" class="ts-color-input ts-color-input--wide" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="ts-card">
+        <div class="ts-card__header">
+          <span class="ts-card__label">Presets</span>
+        </div>
+        <div class="ts-presets-grid">
+          <button
+            type="button"
+            class="ts-preset-item"
+            *ngFor="let preset of presets; trackBy: trackByPresetName"
+            (click)="applyPreset(preset)"
+          >
+            <span
+              class="ts-preset-preview"
+              [style.color]="preset.previewColor || '#ffffff'"
+              [style.background]="preset.previewBg || '#0a0a0f'"
+              [style.textShadow]="getPresetShadow(preset)"
+            >Aa</span>
+            <span class="ts-preset-name">{{ preset.name }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <app-embed-code-generator toolSlug="text-shadow" toolName="CSS Text Shadow Generator"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'text-shadow'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'CSS Tools'" [toolSlug]="'text-shadow'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'text-shadow'"></app-related-tools>
+
+</div>

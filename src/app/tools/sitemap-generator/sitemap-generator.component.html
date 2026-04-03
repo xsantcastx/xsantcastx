@@ -1,0 +1,225 @@
+<div class="smg-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">SEO Tools</p>
+    <h1 class="tool-header__title">Sitemap <span class="tool-header__amp">XML</span> Generator</h1>
+    <p class="tool-header__subtitle">Generate valid sitemap.xml files with per-URL options for lastmod, changefreq and priority. Download or copy instantly.</p>
+  </header>
+
+  <!-- Workspace -->
+  <div class="smg-layout">
+
+    <!-- LEFT: Input -->
+    <div class="smg-col smg-col--left">
+
+      <!-- Bulk Add Panel -->
+      <div class="smg-panel">
+        <div class="smg-panel__header">
+          <span class="smg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Add URLs
+          </span>
+          <div class="smg-panel__actions">
+            <button class="smg-btn-ghost smg-btn-sm" (click)="loadSample()" title="Load sample URLs">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Sample
+            </button>
+            <button class="smg-btn-ghost smg-btn-sm" (click)="clearAll()" [disabled]="urls.length === 0 && !bulkInput" title="Clear all">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div class="smg-panel__body smg-panel__body--input">
+          <textarea
+            class="smg-textarea"
+            [(ngModel)]="bulkInput"
+            placeholder="Paste URLs here, one per line&#10;&#10;https://example.com/&#10;https://example.com/about&#10;https://example.com/blog"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+
+        <div class="smg-panel__footer">
+          <button class="smg-btn-primary" (click)="addBulkUrls()" [disabled]="!bulkInput.trim()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add URLs
+          </button>
+          <button class="smg-btn-secondary" (click)="addBlankUrl()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Empty Row
+          </button>
+        </div>
+      </div>
+
+      <!-- URL Entries List -->
+      <div class="smg-panel" *ngIf="urls.length > 0">
+        <div class="smg-panel__header">
+          <span class="smg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            URL Entries
+          </span>
+          <span class="smg-url-count">{{ urlCount }} URL<span *ngIf="urlCount !== 1">s</span></span>
+        </div>
+
+        <div class="smg-entries">
+          <div class="smg-entry" *ngFor="let entry of urls; let i = index; trackBy: trackByIndex">
+            <div class="smg-entry__header">
+              <span class="smg-entry__index">#{{ i + 1 }}</span>
+              <button class="smg-btn-icon smg-btn-icon--danger" (click)="removeUrl(i)" title="Remove URL">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <!-- URL -->
+            <div class="smg-field">
+              <label class="smg-field__label">URL</label>
+              <input
+                type="url"
+                class="smg-input"
+                [(ngModel)]="entry.loc"
+                (ngModelChange)="onUrlChange()"
+                placeholder="https://example.com/page"
+                spellcheck="false"
+              />
+            </div>
+
+            <div class="smg-entry__options">
+              <!-- Last Modified -->
+              <div class="smg-field smg-field--date">
+                <label class="smg-field__label">Last Modified</label>
+                <input
+                  type="date"
+                  class="smg-input smg-input--date"
+                  [(ngModel)]="entry.lastmod"
+                  (ngModelChange)="onUrlChange()"
+                />
+              </div>
+
+              <!-- Change Frequency -->
+              <div class="smg-field smg-field--freq">
+                <label class="smg-field__label">Frequency</label>
+                <select
+                  class="smg-select"
+                  [(ngModel)]="entry.changefreq"
+                  (ngModelChange)="onUrlChange()"
+                >
+                  <option *ngFor="let freq of changefreqOptions" [value]="freq">{{ freq }}</option>
+                </select>
+              </div>
+
+              <!-- Priority -->
+              <div class="smg-field smg-field--priority">
+                <label class="smg-field__label">Priority: {{ entry.priority.toFixed(1) }}</label>
+                <input
+                  type="range"
+                  class="smg-slider"
+                  [value]="entry.priority"
+                  (input)="onPriorityChange(entry, $any($event.target).value)"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                />
+                <div class="smg-slider-labels">
+                  <span>0.0</span>
+                  <span>0.5</span>
+                  <span>1.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Output -->
+    <div class="smg-col smg-col--right">
+
+      <!-- Status bar -->
+      <div class="smg-status-bar"
+        [class.smg-status-bar--valid]="xmlValid"
+        [class.smg-status-bar--invalid]="output && !xmlValid"
+        [class.smg-status-bar--idle]="!output">
+        <ng-container *ngIf="!output">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Add URLs to generate sitemap.xml</span>
+        </ng-container>
+        <ng-container *ngIf="output && xmlValid">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>{{ validationMessage }}</span>
+        </ng-container>
+        <ng-container *ngIf="output && !xmlValid">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="smg-status-error">{{ validationMessage }}</span>
+        </ng-container>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="smg-panel smg-panel--output">
+        <div class="smg-panel__header">
+          <span class="smg-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            sitemap.xml
+          </span>
+          <div class="smg-panel__actions">
+            <span class="smg-url-count" *ngIf="output">{{ urlCount }} URLs</span>
+            <button class="smg-btn-ghost smg-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.smg-btn-ghost--success]="copied">
+              <ng-container *ngIf="!copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </ng-container>
+              <ng-container *ngIf="copied">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              </ng-container>
+            </button>
+            <button class="smg-btn-ghost smg-btn-sm" (click)="downloadXml()" [disabled]="!output || !xmlValid">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+
+        <!-- Output body -->
+        <div class="smg-output-body">
+          <pre class="smg-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
+          <div class="smg-output-empty" *ngIf="!output">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span>Generated sitemap.xml will appear here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="smg-stats" *ngIf="output">
+        <div class="smg-stat">
+          <span class="smg-stat__label">URLs</span>
+          <span class="smg-stat__value smg-stat__value--cyan">{{ urlCount }}</span>
+        </div>
+        <div class="smg-stat-divider"></div>
+        <div class="smg-stat">
+          <span class="smg-stat__label">XML Size</span>
+          <span class="smg-stat__value">{{ output.length | number }} <span class="smg-stat__unit">ch</span></span>
+        </div>
+        <div class="smg-stat-divider"></div>
+        <div class="smg-stat">
+          <span class="smg-stat__label">Status</span>
+          <span class="smg-stat__value" [class.smg-stat__value--cyan]="xmlValid" [class.smg-stat__value--danger]="!xmlValid">{{ xmlValid ? 'Valid' : 'Invalid' }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
