@@ -55,6 +55,7 @@ import { IpLookupComponent } from './tools/ip-lookup/ip-lookup.component';
 import { GridGeneratorComponent } from './tools/grid-generator/grid-generator.component';
 import { YamlJsonComponent } from './tools/yaml-json/yaml-json.component';
 import { JwtGeneratorComponent } from './tools/jwt-generator/jwt-generator.component';
+import { ImageResizerComponent } from './tools/image-resizer/image-resizer.component';
 import { TailwindLookupComponent } from './tools/tailwind-lookup/tailwind-lookup.component';
 import { MdTableGeneratorComponent } from './tools/md-table-generator/md-table-generator.component';
 import { JsonEscapeComponent } from './tools/json-escape/json-escape.component';
@@ -1110,6 +1111,9 @@ const routes: Routes = [
   { path: 'tools/design-tokens', component: DesignTokensComponent, title: 'Free Design Token Converter | xsantcastx', data: { description: 'Convert design tokens to CSS variables, SCSS, or Tailwind config.', keywords: 'design tokens, figma tokens, css variables generator, scss variables, tailwind config', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Design Token Converter', url: `${SITE_URL}/tools/design-tokens`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } } } },
   { path: 'tools/json-schema', component: JsonSchemaComponent, title: 'Free JSON Schema Generator — Draft-07 | xsantcastx', data: { description: 'Paste JSON and generate a valid JSON Schema (draft-07) with type detection and format inference. Free, client-side, no sign-up required.', keywords: 'json schema generator, json to schema, json schema draft-07, json schema validator, generate json schema online', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'JSON Schema Generator', url: `${SITE_URL}/tools/json-schema`, applicationCategory: 'UtilityApplication', operatingSystem: 'Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'JSON Schema Generator', item: `${SITE_URL}/tools/json-schema` }] } } } },
 
+  // ── Batch 7 tool routes (2026-04-06) ────────────────────────────────────
+  { path: 'tools/image-resizer', component: ImageResizerComponent, title: 'Free Image Resizer — Resize, Scale & Convert Images | xsantcastx', data: { description: 'Resize images by percentage, exact dimensions, or social media presets. Free, client-side, no sign-up required.', keywords: 'resize image online, image resizer, resize photo, scale image, crop image online, social media image size, bulk image resize', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Image Resizer', url: `${SITE_URL}/tools/image-resizer`, description: 'Free browser-based image resizer. Resize by percentage, exact pixels, or social media presets — no uploads, no account required.', applicationCategory: 'UtilitiesApplication', operatingSystem: 'Any Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, featureList: ['Resize by percentage or exact dimensions', 'Social media preset sizes', 'Batch resize up to 20 images', 'Output as JPEG, PNG, or WebP', 'No server uploads — 100% client-side'], breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'Image Resizer', item: `${SITE_URL}/tools/image-resizer` }] } } } },
+
   // ── Embed routes (minimal chrome, iframe-friendly) ──────────────────────
   { path: 'embed/json-formatter', component: JsonFormatterComponent, data: { embed: true } },
   { path: 'embed/base64-encoder', component: Base64EncoderComponent, data: { embed: true } },
@@ -1195,6 +1199,7 @@ const routes: Routes = [
   { path: 'embed/caesar-cipher', component: CaesarCipherComponent, data: { embed: true } },
   { path: 'embed/design-tokens', component: DesignTokensComponent, data: { embed: true } },
   { path: 'embed/json-schema', component: JsonSchemaComponent, data: { embed: true } },
+  { path: 'embed/image-resizer', component: ImageResizerComponent, data: { embed: true } },
 
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {

@@ -175,3 +175,5 @@
 /embed/design-tokens
 /tools/json-schema
 /embed/json-schema
+/tools/image-resizer
+/embed/image-resizer

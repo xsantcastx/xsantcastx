@@ -99,6 +99,10 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'box-reset',       name: 'Box Model Reset',      description: 'Set all margins and paddings to zero',                tool: 'box-model',                 rarity: 'common',    icon: '📦' },
   { id: 'snippet-collector', name: 'Code Collector',     description: 'Saved 10 code snippets',                              tool: 'snippet-manager',           rarity: 'rare',      icon: '📚' },
   { id: 'schema-mega',       name: 'Schema Architect',    description: 'Generated a schema with 20+ top-level properties',    tool: 'json-schema',               rarity: 'rare',      icon: '🏗️' },
+
+  // ── Batch 7 tools ──────────────────────────────────────────
+  { id: 'resize-pixel',       name: 'Pixel Perfect',       description: 'Resized an image to 1x1 pixel',                        tool: 'image-resizer',             rarity: 'epic',      icon: '🔬' },
+  { id: 'resize-batch',       name: 'Assembly Line',       description: 'Batch-resized 10 or more images at once',              tool: 'image-resizer',             rarity: 'rare',      icon: '🏭' },
 ];
 
 @Injectable({ providedIn: 'root' })
