@@ -143,6 +143,7 @@ import { TsPlaygroundComponent } from './tools/ts-playground/ts-playground.compo
 import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.component';
 import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
 import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
+import { ImageResizerComponent } from './tools/image-resizer/image-resizer.component';
 
 
 @NgModule({
@@ -266,7 +267,8 @@ import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
     TsPlaygroundComponent,
     CaesarCipherComponent,
     DesignTokensComponent,
-    JsonSchemaComponent
+    JsonSchemaComponent,
+    ImageResizerComponent
   ],
   bootstrap: [AppComponent],
   imports: [

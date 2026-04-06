@@ -1,0 +1,244 @@
+<div class="ir-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Image &amp; Media</p>
+    <h1 class="tool-header__title">Image Resizer</h1>
+    <p class="tool-header__subtitle">Resize images by percentage, exact dimensions, or social media presets. All processing happens in your browser — nothing is uploaded.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'image-resizer'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Global error -->
+  <p class="tool-error" *ngIf="error">{{ error }}</p>
+
+  <!-- Drop zone (empty state) -->
+  <label
+    *ngIf="images.length === 0"
+    class="ir-upload"
+    [class.is-active]="isDragOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+  >
+    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" multiple class="ir-upload__input" (change)="onFileInput($event)" />
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="ir-upload__icon">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+    <span class="ir-upload__title">Drop images here or click to browse</span>
+    <span class="ir-upload__hint">JPEG, PNG, WebP, GIF, BMP &nbsp;&middot;&nbsp; Up to {{ MAX_FILES }} images</span>
+  </label>
+
+  <!-- Loaded state -->
+  <ng-container *ngIf="images.length > 0">
+
+    <!-- Controls bar -->
+    <div class="ir-controls">
+      <div class="ir-controls__left">
+
+        <!-- Resize mode tabs -->
+        <div class="ir-tabs">
+          <button
+            type="button"
+            class="ir-tab"
+            [class.is-active]="resizeMode === 'percentage'"
+            (click)="resizeMode = 'percentage'"
+          >Percentage</button>
+          <button
+            type="button"
+            class="ir-tab"
+            [class.is-active]="resizeMode === 'dimensions'"
+            (click)="resizeMode = 'dimensions'"
+          >Dimensions</button>
+          <button
+            type="button"
+            class="ir-tab"
+            [class.is-active]="resizeMode === 'preset'"
+            (click)="resizeMode = 'preset'"
+          >Presets</button>
+        </div>
+
+        <!-- Percentage control -->
+        <div class="ir-control-group" *ngIf="resizeMode === 'percentage'">
+          <label class="ir-label">Scale</label>
+          <div class="ir-slider-row">
+            <input type="range" min="1" max="300" step="1" [(ngModel)]="percentage" class="ir-range" />
+            <span class="ir-slider-value">{{ percentage }}%</span>
+          </div>
+          <p class="ir-hint" *ngIf="images.length > 0">
+            {{ images[0].originalWidth }}×{{ images[0].originalHeight }}
+            →
+            {{ (images[0].originalWidth * percentage / 100) | number:'1.0-0' }}×{{ (images[0].originalHeight * percentage / 100) | number:'1.0-0' }}
+          </p>
+        </div>
+
+        <!-- Dimensions control -->
+        <div class="ir-control-group" *ngIf="resizeMode === 'dimensions'">
+          <div class="ir-dims-row">
+            <div class="ir-dim-field">
+              <label class="ir-label">Width (px)</label>
+              <input type="number" min="1" max="10000" [(ngModel)]="targetWidth" (ngModelChange)="onWidthChange()" class="ir-input" />
+            </div>
+            <span class="ir-dims-x">×</span>
+            <div class="ir-dim-field">
+              <label class="ir-label">Height (px)</label>
+              <input type="number" min="1" max="10000" [(ngModel)]="targetHeight" (ngModelChange)="onHeightChange()" class="ir-input" />
+            </div>
+          </div>
+          <label class="ir-checkbox-label">
+            <input type="checkbox" [(ngModel)]="maintainAspectRatio" class="ir-checkbox" />
+            <span>Lock aspect ratio</span>
+          </label>
+        </div>
+
+        <!-- Preset control -->
+        <div class="ir-control-group ir-presets" *ngIf="resizeMode === 'preset'">
+          <div *ngFor="let cat of presetCategories" class="ir-preset-group">
+            <p class="ir-preset-cat">{{ cat }}</p>
+            <div class="ir-preset-chips">
+              <button
+                *ngFor="let p of presetsByCategory(cat)"
+                type="button"
+                class="ir-chip"
+                [class.is-active]="selectedPreset === p"
+                (click)="selectPreset(p)"
+              >{{ p.label }}</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="ir-controls__right">
+        <!-- Output format -->
+        <div class="ir-control-group">
+          <label class="ir-label">Format</label>
+          <select [(ngModel)]="outputFormat" class="ir-select">
+            <option value="same">Same as original</option>
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp" *ngIf="supportsWebP">WebP</option>
+          </select>
+        </div>
+
+        <!-- Quality -->
+        <div class="ir-control-group" *ngIf="outputFormat !== 'png'">
+          <label class="ir-label">Quality</label>
+          <div class="ir-slider-row">
+            <input type="range" min="1" max="100" step="1" [(ngModel)]="quality" class="ir-range" />
+            <span class="ir-slider-value">{{ quality }}%</span>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="ir-actions">
+          <button type="button" class="ir-btn ir-btn--primary" (click)="resizeAll()" [disabled]="isResizingAll || images.length === 0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            {{ isResizingAll ? 'Resizing...' : 'Resize All' }}
+          </button>
+          <button type="button" class="ir-btn ir-btn--secondary" (click)="downloadAll()" *ngIf="doneCount > 0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download All ({{ doneCount }})
+          </button>
+          <button type="button" class="ir-btn ir-btn--ghost" (click)="clearAll()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="ir-stats" *ngIf="doneCount > 0">
+      <span class="ir-stat">{{ doneCount }}/{{ images.length }} resized</span>
+      <span class="ir-stat" *ngIf="totalSaved > 0">{{ formatBytes(totalSaved) }} saved</span>
+      <span class="ir-stat" *ngIf="totalSaved < 0">{{ formatBytes(-totalSaved) }} larger</span>
+    </div>
+
+    <!-- Add more trigger -->
+    <label class="ir-add-more" *ngIf="images.length < MAX_FILES">
+      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" multiple class="ir-upload__input" (change)="onFileInput($event)" />
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add more images
+    </label>
+
+    <!-- Image grid -->
+    <div class="ir-grid">
+      <div class="ir-card" *ngFor="let img of images; let i = index">
+        <button type="button" class="ir-card__remove" (click)="removeImage(i)" title="Remove">&times;</button>
+
+        <!-- Preview -->
+        <div class="ir-card__preview">
+          <img [src]="img.resizedUrl || img.previewUrl" [alt]="img.file.name" class="ir-card__img" />
+        </div>
+
+        <!-- Info -->
+        <div class="ir-card__info">
+          <p class="ir-card__name" [title]="img.file.name">{{ img.file.name }}</p>
+          <p class="ir-card__meta">
+            {{ img.originalWidth }}×{{ img.originalHeight }}
+            &nbsp;&middot;&nbsp;
+            {{ formatBytes(img.file.size) }}
+          </p>
+
+          <!-- Status -->
+          <p class="ir-card__status ir-card__status--resizing" *ngIf="img.status === 'resizing'">Resizing...</p>
+          <p class="ir-card__status ir-card__status--done" *ngIf="img.status === 'done'">
+            {{ img.resizedWidth }}×{{ img.resizedHeight }}
+            &nbsp;&middot;&nbsp;
+            {{ formatBytes(img.resizedBlob!.size) }}
+          </p>
+          <p class="ir-card__status ir-card__status--error" *ngIf="img.status === 'error'">{{ img.errorMsg }}</p>
+        </div>
+
+        <!-- Card actions -->
+        <div class="ir-card__actions" *ngIf="img.status === 'done'">
+          <button type="button" class="ir-btn ir-btn--small" (click)="downloadSingle(img)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- FAQ -->
+  <section class="ir-faq">
+    <h2 class="ir-faq__title">Frequently Asked Questions</h2>
+    <details class="ir-faq__item">
+      <summary>Is my image uploaded to a server?</summary>
+      <p>No. All resizing happens entirely in your browser using the Canvas API. Your images never leave your device.</p>
+    </details>
+    <details class="ir-faq__item">
+      <summary>What image formats are supported?</summary>
+      <p>You can upload JPEG, PNG, WebP, GIF, and BMP images. You can also convert between JPEG, PNG, and WebP on output.</p>
+    </details>
+    <details class="ir-faq__item">
+      <summary>Will resizing reduce my image quality?</summary>
+      <p>Downscaling generally preserves quality well. For JPEG and WebP, use the quality slider to control the compression level. PNG output is always lossless.</p>
+    </details>
+  </section>
+
+  <!-- Newsletter + related tools -->
+  <app-newsletter-capture [toolSlug]="'image-resizer'"></app-newsletter-capture>
+  <app-affiliate-cta [category]="'Productivity'" [toolSlug]="'image-resizer'"></app-affiliate-cta>
+  <app-related-tools [currentToolId]="'image-resizer'"></app-related-tools>
+
+</div>
