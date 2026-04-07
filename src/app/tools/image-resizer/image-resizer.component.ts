@@ -192,7 +192,7 @@ export class ImageResizerComponent implements OnDestroy {
     this.resizeMode = 'preset';
     // Easter egg: resize to 1x1
     if (preset.width === 1 && preset.height === 1) {
-      this.easterEggService.tryTrigger('resize-pixel');
+      this.easterEggService.trigger('resize-pixel');
     }
   }
 
@@ -221,7 +221,7 @@ export class ImageResizerComponent implements OnDestroy {
 
     // Easter egg: resize 10+ images at once
     if (this.images.length >= 10 && this.images.every(i => i.status === 'done')) {
-      this.easterEggService.tryTrigger('resize-batch');
+      this.easterEggService.trigger('resize-batch');
     }
   }
 
