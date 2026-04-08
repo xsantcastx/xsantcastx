@@ -1,0 +1,60 @@
+<div class="hc-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">SEO Tools</p>
+    <h1 class="tool-header__title">Heading Checker</h1>
+    <p class="tool-header__subtitle">Extract HTML headings, visualize hierarchy tree, and flag SEO issues.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="hc-layout">
+    <div class="hc-panel">
+      <div class="hc-panel__header">
+        <span class="hc-panel__title">HTML Input</span>
+        <div class="hc-panel__actions">
+          <button class="hc-btn-ghost" (click)="loadSample()">Sample</button>
+          <button class="hc-btn-ghost" (click)="clearAll()" [disabled]="!htmlInput">Clear</button>
+        </div>
+      </div>
+      <div class="hc-panel__body--code">
+        <textarea class="hc-textarea" [(ngModel)]="htmlInput" (ngModelChange)="onInput()" placeholder="Paste HTML containing heading tags (h1-h6)..." spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="hc-panel" *ngIf="headings.length > 0">
+      <div class="hc-panel__header">
+        <span class="hc-panel__title">Heading Hierarchy ({{ headings.length }})</span>
+      </div>
+      <div class="hc-panel__body hc-tree">
+        <div *ngFor="let h of headings" class="hc-tree-node" [style.paddingLeft]="(h.level - 1) * 20 + 'px'">
+          <span class="hc-tree-tag" [attr.data-level]="h.level">H{{ h.level }}</span>
+          <span class="hc-tree-text">{{ h.text || '(empty)' }}</span>
+          <span class="hc-tree-line">line {{ h.line }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hc-panel" *ngIf="issues.length > 0">
+      <div class="hc-panel__header">
+        <span class="hc-panel__title">Issues ({{ issues.length }})</span>
+      </div>
+      <div class="hc-panel__body hc-issues">
+        <div *ngFor="let issue of issues" class="hc-issue" [class.hc-issue--error]="issue.type === 'error'" [class.hc-issue--warning]="issue.type === 'warning'">
+          <span class="hc-issue__badge">{{ issue.type }}</span>
+          <span class="hc-issue__msg">{{ issue.message }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hc-success" *ngIf="headings.length > 0 && issues.length === 0">
+      All headings are properly structured!
+    </div>
+  </div>
+</div>

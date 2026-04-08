@@ -1,0 +1,70 @@
+<div class="lp-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Legal</p>
+    <h1 class="tool-header__title">License Picker</h1>
+    <p class="tool-header__subtitle">Browse 15+ open source licenses, compare permissions, and generate a LICENSE file for your project.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="lp-layout">
+    <div class="lp-col lp-col--left">
+      <div class="lp-panel">
+        <div class="lp-panel__header"><span class="lp-panel__title">Licenses</span></div>
+        <div class="lp-search">
+          <input class="lp-search-input" [(ngModel)]="searchTerm" placeholder="Search licenses..." />
+        </div>
+        <div class="lp-list">
+          <button *ngFor="let lic of filteredLicenses" class="lp-list-item" [class.lp-list-item--active]="selectedLicense?.id === lic.id" (click)="selectLicense(lic)">
+            <span class="lp-list-item__name">{{ lic.name }}</span>
+            <span class="lp-list-item__cat">{{ lic.category }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lp-col lp-col--right">
+      <div class="lp-panel" *ngIf="selectedLicense">
+        <div class="lp-panel__header">
+          <span class="lp-panel__title">{{ selectedLicense.name }}</span>
+          <span class="lp-category-badge">{{ selectedLicense.category }}</span>
+        </div>
+
+        <div class="lp-details">
+          <div class="lp-detail-section">
+            <span class="lp-detail-label">Permissions</span>
+            <div class="lp-tags"><span class="lp-tag lp-tag--green" *ngFor="let p of selectedLicense.permissions">{{ p }}</span></div>
+          </div>
+          <div class="lp-detail-section" *ngIf="selectedLicense.conditions.length">
+            <span class="lp-detail-label">Conditions</span>
+            <div class="lp-tags"><span class="lp-tag lp-tag--blue" *ngFor="let c of selectedLicense.conditions">{{ c }}</span></div>
+          </div>
+          <div class="lp-detail-section" *ngIf="selectedLicense.limitations.length">
+            <span class="lp-detail-label">Limitations</span>
+            <div class="lp-tags"><span class="lp-tag lp-tag--red" *ngFor="let l of selectedLicense.limitations">{{ l }}</span></div>
+          </div>
+        </div>
+
+        <div class="lp-gen">
+          <div class="lp-gen-fields">
+            <input class="lp-input" [(ngModel)]="authorName" placeholder="Author name" />
+            <input class="lp-input" [(ngModel)]="year" placeholder="Year" />
+          </div>
+          <pre class="lp-output"><code>{{ generatedBody }}</code></pre>
+          <button class="lp-btn" (click)="copyLicense()" [class.lp-btn--success]="copied">{{ copied ? 'Copied!' : 'Copy LICENSE' }}</button>
+        </div>
+      </div>
+
+      <div class="lp-empty" *ngIf="!selectedLicense">
+        <span>Select a license to view details and generate a LICENSE file.</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,42 @@
+<div class="ml-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Reference Tools</p>
+    <h1 class="tool-header__title">MIME Type Lookup</h1>
+    <p class="tool-header__subtitle">Searchable MIME type reference. Find MIME types by file extension or search by type.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="ml-search-bar">
+    <input type="text" class="ml-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" placeholder="Search by extension (.png) or MIME type (image/png)..." />
+    <span class="ml-count">{{ filteredMimeTypes.length }} results</span>
+  </div>
+
+  <div class="ml-table-wrap">
+    <table class="ml-table">
+      <thead>
+        <tr>
+          <th>Extension</th>
+          <th>MIME Type</th>
+          <th>Category</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let entry of filteredMimeTypes" (click)="copyMime(entry)" class="ml-row">
+          <td><code class="ml-ext">{{ entry.extension }}</code></td>
+          <td><code class="ml-mime">{{ entry.mimeType }}</code></td>
+          <td><span class="ml-cat">{{ entry.category }}</span></td>
+          <td><span class="ml-copy-hint">Click to copy</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

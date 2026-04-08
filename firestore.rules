@@ -54,7 +54,11 @@ service cloud.firestore {
     // ── Bot Agent Chat ────────────────────────────────────────────────────────
     match /bot-chat/{msgId} {
       allow read:   if true;
-      allow create: if request.resource.data.keys().hasAll(['botName', 'message', 'timestamp']);
+      allow create: if request.resource.data.keys().hasAll(['botName', 'message', 'timestamp'])
+                   && request.resource.data.message is string
+                   && request.resource.data.message.size() <= 500
+                   && request.resource.data.botName is string
+                   && request.resource.data.botName.size() <= 50;
       allow update, delete: if false;
     }
 

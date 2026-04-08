@@ -1,0 +1,70 @@
+<div class="jt-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">JSON Tools</p>
+    <h1 class="tool-header__title">JSON Tree Viewer</h1>
+    <p class="tool-header__subtitle">Collapsible JSON tree viewer with type badges and search. Paste JSON to explore its structure.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="jt-layout">
+    <div class="jt-col">
+      <div class="jt-panel">
+        <div class="jt-panel__header">
+          <span class="jt-panel__title">JSON Input</span>
+          <button class="jt-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+        </div>
+        <textarea class="jt-textarea" [(ngModel)]="input" (ngModelChange)="parse()" placeholder='{"key": "value", "array": [1,2,3]}' spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="jt-col">
+      <div class="jt-panel">
+        <div class="jt-panel__header">
+          <span class="jt-panel__title">Tree View</span>
+          <div class="jt-panel__actions">
+            <span class="jt-char-count" *ngIf="nodeCount">{{ nodeCount }} nodes</span>
+            <button class="jt-btn-ghost" (click)="expandAll()" [disabled]="!nodes.length">Expand</button>
+            <button class="jt-btn-ghost" (click)="collapseAll()" [disabled]="!nodes.length">Collapse</button>
+          </div>
+        </div>
+
+        <div class="jt-search" *ngIf="nodes.length">
+          <input class="jt-search-input" [(ngModel)]="searchTerm" placeholder="Search keys or values..." />
+        </div>
+
+        <div class="jt-tree" *ngIf="nodes.length">
+          <ng-container *ngFor="let node of nodes">
+            <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node }"></ng-container>
+          </ng-container>
+        </div>
+
+        <div class="jt-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        <div class="jt-empty" *ngIf="!nodes.length && !errorMessage"><span>Paste JSON to see the tree</span></div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #treeNode let-node>
+    <div class="jt-node" [style.paddingLeft.px]="node.depth * 20" *ngIf="matchesSearch(node)">
+      <button class="jt-toggle" *ngIf="node.children" (click)="toggleNode(node)">
+        {{ node.expanded ? '\u25BC' : '\u25B6' }}
+      </button>
+      <span class="jt-key">{{ node.key }}</span>
+      <span class="jt-badge" [ngClass]="getTypeBadgeClass(node.type)">{{ node.type }}</span>
+      <span class="jt-value" *ngIf="!node.children || !node.expanded">{{ formatValue(node) }}</span>
+    </div>
+    <ng-container *ngIf="node.children && node.expanded">
+      <ng-container *ngFor="let child of node.children">
+        <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: child }"></ng-container>
+      </ng-container>
+    </ng-container>
+  </ng-template>
+</div>

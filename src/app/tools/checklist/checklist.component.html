@@ -1,0 +1,72 @@
+<div class="cl-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Productivity</p>
+    <h1 class="tool-header__title">Checklist Maker</h1>
+    <p class="tool-header__subtitle">Create checklists, check items off, and export as Markdown. Use templates for code review, deploy, or PR checklists.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="cl-layout">
+    <div class="cl-col cl-col--left">
+      <div class="cl-panel">
+        <div class="cl-panel__header">
+          <span class="cl-panel__title">Templates</span>
+        </div>
+        <div class="cl-templates">
+          <button class="cl-template-btn" *ngFor="let t of ['Code Review','Deploy','PR']" (click)="loadTemplate(t)">{{ t }}</button>
+        </div>
+      </div>
+
+      <div class="cl-panel">
+        <div class="cl-panel__header">
+          <span class="cl-panel__title">Add Item</span>
+        </div>
+        <div class="cl-add-row">
+          <input class="cl-input" [(ngModel)]="newItemText" (keyup.enter)="addItem()" placeholder="Type item and press Enter..." />
+          <button class="cl-btn" (click)="addItem()" [disabled]="!newItemText.trim()">Add</button>
+        </div>
+      </div>
+
+      <div class="cl-actions">
+        <button class="cl-btn" (click)="copyMarkdown()" [disabled]="!items.length" [class.cl-btn--success]="copied">{{ copied ? 'Copied!' : 'Export Markdown' }}</button>
+        <button class="cl-btn-ghost" (click)="clearAll()" [disabled]="!items.length">Clear All</button>
+      </div>
+    </div>
+
+    <div class="cl-col cl-col--right">
+      <div class="cl-panel">
+        <div class="cl-panel__header">
+          <span class="cl-panel__title">Checklist</span>
+          <span class="cl-progress" *ngIf="items.length">{{ checkedCount }}/{{ items.length }} ({{ progress }}%)</span>
+        </div>
+
+        <div class="cl-progress-bar" *ngIf="items.length">
+          <div class="cl-progress-bar__fill" [style.width.%]="progress"></div>
+        </div>
+
+        <div class="cl-items">
+          <div class="cl-item" *ngFor="let item of items; let i = index" [class.cl-item--checked]="item.checked">
+            <button class="cl-check" (click)="toggleItem(i)">
+              <svg *ngIf="!item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+              <svg *ngIf="item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
+            </button>
+            <span class="cl-item-text">{{ item.text }}</span>
+            <button class="cl-remove" (click)="removeItem(i)">&times;</button>
+          </div>
+        </div>
+
+        <div class="cl-empty" *ngIf="!items.length">
+          <span>Add items or load a template to get started.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

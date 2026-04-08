@@ -1,0 +1,73 @@
+<div class="tfm-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tools</p>
+    <h1 class="tool-header__title">CSS Transform Playground</h1>
+    <p class="tool-header__subtitle">Visually edit CSS transforms with translate, rotate, scale, and skew sliders.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="tfm-layout">
+    <div class="tfm-col tfm-col--left">
+      <div class="tfm-panel">
+        <div class="tfm-panel__header">
+          <span class="tfm-panel__title">Controls</span>
+          <button class="tfm-btn-ghost" (click)="resetAll()">Reset</button>
+        </div>
+        <div class="tfm-panel__body tfm-controls">
+          <div class="tfm-group">
+            <span class="tfm-group__label">Translate</span>
+            <div class="tfm-slider-row"><label>X</label><input type="range" min="-200" max="200" [(ngModel)]="translateX" /><span class="tfm-val">{{ translateX }}px</span></div>
+            <div class="tfm-slider-row"><label>Y</label><input type="range" min="-200" max="200" [(ngModel)]="translateY" /><span class="tfm-val">{{ translateY }}px</span></div>
+          </div>
+          <div class="tfm-group">
+            <span class="tfm-group__label">Rotate</span>
+            <div class="tfm-slider-row"><label>Deg</label><input type="range" min="-360" max="360" [(ngModel)]="rotate" (ngModelChange)="onRotateChange()" /><span class="tfm-val">{{ rotate }}&deg;</span></div>
+          </div>
+          <div class="tfm-group">
+            <span class="tfm-group__label">Scale</span>
+            <div class="tfm-slider-row"><label>X</label><input type="range" min="0" max="3" step="0.1" [(ngModel)]="scaleX" /><span class="tfm-val">{{ scaleX }}</span></div>
+            <div class="tfm-slider-row"><label>Y</label><input type="range" min="0" max="3" step="0.1" [(ngModel)]="scaleY" /><span class="tfm-val">{{ scaleY }}</span></div>
+          </div>
+          <div class="tfm-group">
+            <span class="tfm-group__label">Skew</span>
+            <div class="tfm-slider-row"><label>X</label><input type="range" min="-45" max="45" [(ngModel)]="skewX" /><span class="tfm-val">{{ skewX }}&deg;</span></div>
+            <div class="tfm-slider-row"><label>Y</label><input type="range" min="-45" max="45" [(ngModel)]="skewY" /><span class="tfm-val">{{ skewY }}&deg;</span></div>
+          </div>
+          <div class="tfm-group">
+            <span class="tfm-group__label">Perspective</span>
+            <div class="tfm-slider-row"><label>Px</label><input type="range" min="0" max="1000" [(ngModel)]="perspective" /><span class="tfm-val">{{ perspective }}px</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tfm-col tfm-col--right">
+      <div class="tfm-panel">
+        <div class="tfm-panel__header"><span class="tfm-panel__title">Preview</span></div>
+        <div class="tfm-panel__body tfm-preview-area">
+          <div class="tfm-preview-box" [style.transform]="transformValue">
+            Transform Me
+          </div>
+        </div>
+      </div>
+
+      <div class="tfm-panel">
+        <div class="tfm-panel__header">
+          <span class="tfm-panel__title">CSS Code</span>
+          <button class="tfm-btn-ghost" (click)="copyCode()" [class.tfm-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <div class="tfm-panel__body--code">
+          <pre class="tfm-code"><code>{{ cssCode }}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

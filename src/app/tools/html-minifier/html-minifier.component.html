@@ -1,0 +1,71 @@
+<div class="hm-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Code Formatters</p>
+    <h1 class="tool-header__title">HTML Minifier <span class="tool-header__amp">&</span> Beautifier</h1>
+    <p class="tool-header__subtitle">Minify or beautify HTML, remove comments and whitespace, see size stats.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="hm-layout">
+    <div class="hm-col">
+      <div class="hm-panel">
+        <div class="hm-panel__header">
+          <span class="hm-panel__title">Input</span>
+          <div class="hm-panel__actions">
+            <span class="hm-char-count" *ngIf="inputSize">{{ formatBytes(inputSize) }}</span>
+            <button class="hm-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+          </div>
+        </div>
+        <textarea class="hm-textarea" [(ngModel)]="input" (ngModelChange)="process()" placeholder="Paste HTML here..." spellcheck="false"></textarea>
+      </div>
+
+      <div class="hm-panel">
+        <div class="hm-panel__header"><span class="hm-panel__title">Options</span></div>
+        <div class="hm-options">
+          <div class="hm-option-row">
+            <span class="hm-option-label">Mode</span>
+            <div class="hm-seg-ctrl">
+              <button class="hm-seg-btn" [class.hm-seg-btn--active]="mode==='minify'" (click)="mode='minify'; process()">Minify</button>
+              <button class="hm-seg-btn" [class.hm-seg-btn--active]="mode==='beautify'" (click)="mode='beautify'; process()">Beautify</button>
+            </div>
+          </div>
+          <label class="hm-toggle">
+            <input type="checkbox" [(ngModel)]="removeComments" (ngModelChange)="process()" />
+            <span class="hm-toggle__track"><span class="hm-toggle__thumb"></span></span>
+            <span class="hm-toggle__label">Remove comments</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="hm-col">
+      <div class="hm-panel hm-panel--output">
+        <div class="hm-panel__header">
+          <span class="hm-panel__title">Output</span>
+          <div class="hm-panel__actions">
+            <span class="hm-char-count" *ngIf="outputSize">{{ formatBytes(outputSize) }}</span>
+            <button class="hm-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.hm-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+          </div>
+        </div>
+        <pre class="hm-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
+        <div class="hm-empty" *ngIf="!output"><span>{{ mode === 'minify' ? 'Minified' : 'Beautified' }} HTML will appear here</span></div>
+      </div>
+
+      <div class="hm-stats" *ngIf="output && mode === 'minify'">
+        <div class="hm-stat"><span class="hm-stat__label">Original</span><span class="hm-stat__value">{{ formatBytes(inputSize) }}</span></div>
+        <div class="hm-stat-divider"></div>
+        <div class="hm-stat"><span class="hm-stat__label">Minified</span><span class="hm-stat__value">{{ formatBytes(outputSize) }}</span></div>
+        <div class="hm-stat-divider"></div>
+        <div class="hm-stat"><span class="hm-stat__label">Saved</span><span class="hm-stat__value hm-stat__value--cyan">{{ savings }}%</span></div>
+      </div>
+    </div>
+  </div>
+</div>

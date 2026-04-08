@@ -1,0 +1,99 @@
+<div class="ogp-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">SEO Tools</p>
+    <h1 class="tool-header__title">OG Image Preview</h1>
+    <p class="tool-header__subtitle">Preview how your Open Graph tags will look on Facebook, Twitter/X, LinkedIn, and Discord.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="ogp-layout">
+    <div class="ogp-col ogp-col--left">
+      <div class="ogp-panel">
+        <div class="ogp-panel__header"><span class="ogp-panel__title">OG Tags</span></div>
+        <div class="ogp-form">
+          <div class="ogp-field"><label class="ogp-label">Title</label><input class="ogp-input" [(ngModel)]="ogTitle" (ngModelChange)="onTitleChange()" placeholder="My Awesome Page" /></div>
+          <div class="ogp-field"><label class="ogp-label">Description</label><textarea class="ogp-input ogp-input--area" [(ngModel)]="ogDescription" placeholder="A brief description of your page..." rows="3"></textarea></div>
+          <div class="ogp-field"><label class="ogp-label">Image URL</label><input class="ogp-input" [(ngModel)]="ogImage" placeholder="https://example.com/image.jpg" /></div>
+          <div class="ogp-field"><label class="ogp-label">Page URL</label><input class="ogp-input" [(ngModel)]="ogUrl" placeholder="https://example.com/page" /></div>
+          <div class="ogp-field"><label class="ogp-label">Site Name</label><input class="ogp-input" [(ngModel)]="ogSiteName" placeholder="My Website" /></div>
+          <div class="ogp-actions">
+            <button class="ogp-btn-ghost" (click)="clearAll()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ogp-panel">
+        <div class="ogp-panel__header">
+          <span class="ogp-panel__title">Meta Tags</span>
+          <button class="ogp-btn-ghost" (click)="copyTags()" [class.ogp-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <pre class="ogp-code"><code>{{ metaTags }}</code></pre>
+      </div>
+    </div>
+
+    <div class="ogp-col ogp-col--right">
+      <div class="ogp-panel">
+        <div class="ogp-panel__header">
+          <span class="ogp-panel__title">Preview</span>
+          <div class="ogp-tabs">
+            <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='facebook'" (click)="activePreview='facebook'">Facebook</button>
+            <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='twitter'" (click)="activePreview='twitter'">Twitter/X</button>
+            <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='linkedin'" (click)="activePreview='linkedin'">LinkedIn</button>
+            <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='discord'" (click)="activePreview='discord'">Discord</button>
+          </div>
+        </div>
+
+        <!-- Facebook Preview -->
+        <div class="ogp-preview ogp-preview--fb" *ngIf="activePreview==='facebook'">
+          <div class="ogp-preview-image" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+          <div class="ogp-preview-image ogp-preview-image--empty" *ngIf="!ogImage"></div>
+          <div class="ogp-preview-body">
+            <span class="ogp-preview-domain">{{ displayUrl | uppercase }}</span>
+            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+          </div>
+        </div>
+
+        <!-- Twitter Preview -->
+        <div class="ogp-preview ogp-preview--tw" *ngIf="activePreview==='twitter'">
+          <div class="ogp-preview-image ogp-preview-image--tw" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+          <div class="ogp-preview-image ogp-preview-image--tw ogp-preview-image--empty" *ngIf="!ogImage"></div>
+          <div class="ogp-preview-body">
+            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+            <span class="ogp-preview-domain">{{ displayUrl }}</span>
+          </div>
+        </div>
+
+        <!-- LinkedIn Preview -->
+        <div class="ogp-preview ogp-preview--li" *ngIf="activePreview==='linkedin'">
+          <div class="ogp-preview-image" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+          <div class="ogp-preview-image ogp-preview-image--empty" *ngIf="!ogImage"></div>
+          <div class="ogp-preview-body">
+            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+            <span class="ogp-preview-domain">{{ displayUrl }}</span>
+          </div>
+        </div>
+
+        <!-- Discord Preview -->
+        <div class="ogp-preview ogp-preview--dc" *ngIf="activePreview==='discord'">
+          <div class="ogp-preview-body">
+            <span class="ogp-preview-site">{{ ogSiteName || 'Website' }}</span>
+            <span class="ogp-preview-title ogp-preview-title--dc">{{ ogTitle || 'Page Title' }}</span>
+            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+          </div>
+          <div class="ogp-preview-image ogp-preview-image--dc" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+          <div class="ogp-preview-image ogp-preview-image--dc ogp-preview-image--empty" *ngIf="!ogImage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 type UuidType = 'v4' | 'v1' | 'ulid';
 type CaseFormat = 'lower' | 'upper';
@@ -20,6 +21,7 @@ interface ValidationResult {
 })
 export class UuidGeneratorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free UUID/GUID Generator — v1, v4, ULID, bulk generation, validator. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/uuid-generator')}`;
@@ -94,6 +96,11 @@ export class UuidGeneratorComponent implements OnDestroy {
     }
     this.copied = false;
     this.copiedIndex = null;
+
+    // Easter egg: "Lucky Roll" — generated a UUID starting with "000"
+    if (this.generatedUuids.some(u => u.replace(/-/g, '').toLowerCase().startsWith('000'))) {
+      this.eggs.trigger('uuid-lucky');
+    }
   }
 
   // ── UUID v4 (random) ────────────────────────────────────────────────────────

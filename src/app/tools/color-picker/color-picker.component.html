@@ -1,0 +1,103 @@
+<div class="cpk-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Design Tools</p>
+    <h1 class="tool-header__title">Color Picker</h1>
+    <p class="tool-header__subtitle">Advanced color picker with RGB/HSL sliders, hex input, and color history.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="cpk-layout">
+    <div class="cpk-col cpk-col--left">
+      <div class="cpk-preview" [style.background]="hex"></div>
+
+      <div class="cpk-panel">
+        <div class="cpk-panel__header"><span class="cpk-panel__title">Hex</span></div>
+        <div class="cpk-panel__body">
+          <input class="cpk-input" type="text" [(ngModel)]="hex" (ngModelChange)="onHexInput()" maxlength="7" spellcheck="false" />
+        </div>
+      </div>
+
+      <div class="cpk-panel">
+        <div class="cpk-panel__header"><span class="cpk-panel__title">RGB</span></div>
+        <div class="cpk-panel__body cpk-sliders">
+          <div class="cpk-slider-row">
+            <label>R</label>
+            <input type="range" min="0" max="255" [(ngModel)]="r" (ngModelChange)="onRgbChange()" />
+            <span class="cpk-slider-val">{{ r }}</span>
+          </div>
+          <div class="cpk-slider-row">
+            <label>G</label>
+            <input type="range" min="0" max="255" [(ngModel)]="g" (ngModelChange)="onRgbChange()" />
+            <span class="cpk-slider-val">{{ g }}</span>
+          </div>
+          <div class="cpk-slider-row">
+            <label>B</label>
+            <input type="range" min="0" max="255" [(ngModel)]="b" (ngModelChange)="onRgbChange()" />
+            <span class="cpk-slider-val">{{ b }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cpk-panel">
+        <div class="cpk-panel__header"><span class="cpk-panel__title">HSL</span></div>
+        <div class="cpk-panel__body cpk-sliders">
+          <div class="cpk-slider-row">
+            <label>H</label>
+            <input type="range" min="0" max="360" [(ngModel)]="h" (ngModelChange)="onHslChange()" />
+            <span class="cpk-slider-val">{{ h }}</span>
+          </div>
+          <div class="cpk-slider-row">
+            <label>S</label>
+            <input type="range" min="0" max="100" [(ngModel)]="s" (ngModelChange)="onHslChange()" />
+            <span class="cpk-slider-val">{{ s }}%</span>
+          </div>
+          <div class="cpk-slider-row">
+            <label>L</label>
+            <input type="range" min="0" max="100" [(ngModel)]="l" (ngModelChange)="onHslChange()" />
+            <span class="cpk-slider-val">{{ l }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cpk-col cpk-col--right">
+      <div class="cpk-panel">
+        <div class="cpk-panel__header"><span class="cpk-panel__title">Copy Values</span></div>
+        <div class="cpk-panel__body cpk-copy-grid">
+          <button class="cpk-copy-btn" (click)="copyColor('hex')">
+            <span class="cpk-copy-btn__label">HEX</span>
+            <code>{{ hex }}</code>
+          </button>
+          <button class="cpk-copy-btn" (click)="copyColor('rgb')">
+            <span class="cpk-copy-btn__label">RGB</span>
+            <code>{{ rgbString }}</code>
+          </button>
+          <button class="cpk-copy-btn" (click)="copyColor('hsl')">
+            <span class="cpk-copy-btn__label">HSL</span>
+            <code>{{ hslString }}</code>
+          </button>
+        </div>
+      </div>
+
+      <div class="cpk-panel" *ngIf="colorHistory.length > 0">
+        <div class="cpk-panel__header"><span class="cpk-panel__title">History</span></div>
+        <div class="cpk-panel__body cpk-history">
+          <button *ngFor="let color of colorHistory"
+            class="cpk-history-swatch"
+            [style.background]="color"
+            [title]="color"
+            (click)="selectFromHistory(color)">
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
