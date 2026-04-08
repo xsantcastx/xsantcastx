@@ -1,0 +1,87 @@
+<div class="snp-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tools</p>
+    <h1 class="tool-header__title">Scroll Snap Builder</h1>
+    <p class="tool-header__subtitle">Build CSS scroll-snap layouts with a live preview. Configure direction, snap type, and alignment.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="snp-layout">
+    <div class="snp-col snp-col--left">
+      <div class="snp-panel">
+        <div class="snp-panel__header"><span class="snp-panel__title">Options</span></div>
+        <div class="snp-options">
+          <div class="snp-field">
+            <label class="snp-label">Direction</label>
+            <div class="snp-seg-ctrl">
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="direction==='x'" (click)="direction='x'; onDirectionChange()">Horizontal</button>
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="direction==='y'" (click)="direction='y'; onDirectionChange()">Vertical</button>
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="direction==='both'" (click)="direction='both'; onDirectionChange()">Both</button>
+            </div>
+          </div>
+          <div class="snp-field">
+            <label class="snp-label">Snap Type</label>
+            <div class="snp-seg-ctrl">
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="snapType==='mandatory'" (click)="snapType='mandatory'">Mandatory</button>
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="snapType==='proximity'" (click)="snapType='proximity'">Proximity</button>
+            </div>
+          </div>
+          <div class="snp-field">
+            <label class="snp-label">Snap Align</label>
+            <div class="snp-seg-ctrl">
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="snapAlign==='start'" (click)="snapAlign='start'">Start</button>
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="snapAlign==='center'" (click)="snapAlign='center'">Center</button>
+              <button class="snp-seg-btn" [class.snp-seg-btn--active]="snapAlign==='end'" (click)="snapAlign='end'">End</button>
+            </div>
+          </div>
+          <div class="snp-field">
+            <label class="snp-label">Items</label>
+            <input class="snp-input" type="number" [(ngModel)]="itemCount" min="1" max="20" />
+          </div>
+          <div class="snp-field">
+            <label class="snp-label">Gap (px)</label>
+            <input class="snp-input" type="number" [(ngModel)]="gap" min="0" />
+          </div>
+          <div class="snp-field">
+            <label class="snp-label">Scroll Padding (px)</label>
+            <input class="snp-input" type="number" [(ngModel)]="padding" min="0" />
+          </div>
+        </div>
+      </div>
+
+      <div class="snp-panel">
+        <div class="snp-panel__header">
+          <span class="snp-panel__title">CSS Output</span>
+          <button class="snp-btn-ghost" (click)="copyCss()" [class.snp-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <pre class="snp-code"><code>{{ fullCss }}</code></pre>
+      </div>
+    </div>
+
+    <div class="snp-col snp-col--right">
+      <div class="snp-panel">
+        <div class="snp-panel__header"><span class="snp-panel__title">Live Preview</span></div>
+        <div class="snp-preview-wrap">
+          <div class="snp-preview"
+            [class.snp-preview--x]="direction==='x'"
+            [class.snp-preview--y]="direction==='y'"
+            [class.snp-preview--both]="direction==='both'"
+            [style.gap.px]="gap"
+            [style.scrollPadding.px]="padding">
+            <div *ngFor="let i of items" class="snp-preview-item" [style.backgroundColor]="getColor(i) + '22'" [style.borderColor]="getColor(i)">
+              <span [style.color]="getColor(i)">{{ i + 1 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

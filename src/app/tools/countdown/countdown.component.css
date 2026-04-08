@@ -1,0 +1,37 @@
+.cd2-page { min-height: 100vh; padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem; max-width: 1280px; margin: 0 auto; }
+.back-link { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: none; color: var(--text-muted); font-size: 0.82rem; font-family: var(--font-body); cursor: pointer; padding: 0; margin-bottom: 1.75rem; transition: color 0.2s; }
+.back-link:hover { color: #00ffcc; }
+.tool-header { margin-bottom: 2rem; }
+.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #00ffcc; margin-bottom: 0.4rem; }
+.tool-header__title { font-family: var(--font-heading); font-size: clamp(1.6rem,3.5vw,2.4rem); font-weight: 700; color: var(--text-color); margin-bottom: 0.5rem; }
+.tool-header__subtitle { font-size: 0.95rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; margin-bottom: 1rem; }
+.tool-header__share { display: flex; gap: 0.6rem; }
+.share-btn { display: inline-flex; align-items: center; padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; text-decoration: none; border: 1px solid var(--glass-border); color: var(--text-muted); background: var(--surface-strong); }
+.share-btn:hover { opacity: 0.85; color: var(--text-color); }
+.cd2-layout { display: flex; flex-direction: column; gap: 1.5rem; max-width: 700px; margin: 0 auto; }
+.cd2-panel { background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
+.cd2-panel__header { padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--glass-border); background: var(--surface-strong); }
+.cd2-panel__title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.cd2-form { padding: 1.25rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.cd2-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.cd2-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.cd2-input { padding: 0.5rem 0.8rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-family: var(--font-body); font-size: 0.85rem; outline: none; caret-color: #00ffcc; }
+.cd2-input:focus { border-color: rgba(0,255,204,0.4); }
+.cd2-actions { display: flex; gap: 0.5rem; }
+.cd2-btn { padding: 0.5rem 1.2rem; background: color-mix(in srgb, #00ffcc 15%, transparent); border: 1px solid rgba(0,255,204,0.4); border-radius: var(--radius-md); color: #00ffcc; font-family: var(--font-body); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.cd2-btn:hover:not(:disabled) { background: color-mix(in srgb, #00ffcc 25%, transparent); }
+.cd2-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.cd2-btn-ghost { padding: 0.5rem 1rem; background: none; border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-body); font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
+.cd2-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
+.cd2-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.cd2-btn-ghost--success { color: #00ffcc !important; border-color: rgba(0,255,204,0.35) !important; }
+.cd2-display-panel { background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2.5rem 2rem; text-align: center; }
+.cd2-display { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.cd2-display--expired { opacity: 0.5; }
+.cd2-unit { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.cd2-unit__value { font-family: 'Fira Code', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: #00ffcc; font-variant-numeric: tabular-nums; line-height: 1; }
+.cd2-unit__label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.cd2-separator { font-family: 'Fira Code', monospace; font-size: 2rem; color: var(--text-muted); align-self: flex-start; margin-top: 0.3rem; }
+.cd2-expired-msg { color: #7b61ff; font-size: 1rem; font-weight: 600; margin-top: 1rem; }
+.cd2-copy-btn { margin-top: 1rem; }
+@media (max-width: 768px) { .cd2-display { gap: 0.5rem; } .cd2-separator { font-size: 1.3rem; } }

@@ -1,0 +1,58 @@
+<div class="ua-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Browser Tools</p>
+    <h1 class="tool-header__title">User Agent Parser</h1>
+    <p class="tool-header__subtitle">Parse any user agent string to detect browser, OS, device type, and rendering engine.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="ua-layout">
+    <div class="ua-panel">
+      <div class="ua-panel__header">
+        <span class="ua-panel__title">User Agent String</span>
+        <div class="ua-panel__actions">
+          <button class="ua-btn-ghost" (click)="loadSample()">Sample</button>
+          <button class="ua-btn-ghost" (click)="clearAll()" [disabled]="!uaString">Clear</button>
+        </div>
+      </div>
+      <div class="ua-panel__body">
+        <textarea class="ua-textarea" [(ngModel)]="uaString" (ngModelChange)="onInput()" placeholder="Paste a user agent string or your current UA is auto-detected..." spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="ua-panel" *ngIf="parsed">
+      <div class="ua-panel__header">
+        <span class="ua-panel__title">Parsed Result</span>
+        <button class="ua-btn-ghost" (click)="copyResult()" [class.ua-btn-ghost--success]="copied">
+          {{ copied ? 'Copied!' : 'Copy' }}
+        </button>
+      </div>
+      <div class="ua-panel__body ua-results">
+        <div class="ua-result-row">
+          <span class="ua-result-label">Browser</span>
+          <span class="ua-result-value">{{ parsed.browser }} {{ parsed.browserVersion }}</span>
+        </div>
+        <div class="ua-result-row">
+          <span class="ua-result-label">Operating System</span>
+          <span class="ua-result-value">{{ parsed.os }} {{ parsed.osVersion }}</span>
+        </div>
+        <div class="ua-result-row">
+          <span class="ua-result-label">Device</span>
+          <span class="ua-result-value">{{ parsed.device }}</span>
+        </div>
+        <div class="ua-result-row">
+          <span class="ua-result-label">Engine</span>
+          <span class="ua-result-value">{{ parsed.engine }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

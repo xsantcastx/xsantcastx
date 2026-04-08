@@ -1,0 +1,68 @@
+<div class="wt-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">API Tools</p>
+    <h1 class="tool-header__title">Webhook Tester</h1>
+    <p class="tool-header__subtitle">Build webhook payloads with templates for GitHub, Stripe, and Slack. Generate cURL commands.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="wt-layout">
+    <div class="wt-col">
+      <div class="wt-panel">
+        <div class="wt-panel__header"><span class="wt-panel__title">Request</span></div>
+        <div class="wt-form">
+          <div class="wt-url-row">
+            <select class="wt-select" [(ngModel)]="method">
+              <option *ngFor="let m of methods" [value]="m">{{ m }}</option>
+            </select>
+            <input class="wt-input wt-input--url" [(ngModel)]="url" placeholder="https://example.com/webhook" />
+          </div>
+
+          <div class="wt-section">
+            <div class="wt-section-header">
+              <span class="wt-section-title">Headers</span>
+              <button class="wt-btn-ghost" (click)="addHeader()">+ Add</button>
+            </div>
+            <div class="wt-header-row" *ngFor="let h of headers; let i = index">
+              <input class="wt-input" [(ngModel)]="h.key" placeholder="Key" />
+              <input class="wt-input" [(ngModel)]="h.value" placeholder="Value" />
+              <button class="wt-remove" (click)="removeHeader(i)">&times;</button>
+            </div>
+          </div>
+
+          <div class="wt-section">
+            <div class="wt-section-header">
+              <span class="wt-section-title">Body</span>
+              <div class="wt-template-btns">
+                <button class="wt-btn-ghost" *ngFor="let t of ['GitHub Push','Stripe Payment','Slack Message']" (click)="loadTemplate(t)">{{ t }}</button>
+              </div>
+            </div>
+            <textarea class="wt-textarea" [(ngModel)]="body" (ngModelChange)="onBodyChange()" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+          </div>
+
+          <div class="wt-actions">
+            <button class="wt-btn-ghost" (click)="clearAll()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-col">
+      <div class="wt-panel">
+        <div class="wt-panel__header">
+          <span class="wt-panel__title">cURL Command</span>
+          <button class="wt-btn-ghost" (click)="copyCurl()" [class.wt-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <pre class="wt-code"><code>{{ curlCommand }}</code></pre>
+      </div>
+    </div>
+  </div>
+</div>

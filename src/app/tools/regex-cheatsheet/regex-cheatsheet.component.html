@@ -1,0 +1,48 @@
+<div class="rc-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Reference</p>
+    <h1 class="tool-header__title">Regex Cheatsheet</h1>
+    <p class="tool-header__subtitle">Categorized regex reference with {{ totalPatterns }}+ patterns. Search to find what you need.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="rc-search-bar">
+    <input class="rc-search-input" [(ngModel)]="searchTerm" (ngModelChange)="onSearch()" placeholder="Search patterns, descriptions, examples..." />
+  </div>
+
+  <div class="rc-categories">
+    <div class="rc-category" *ngFor="let cat of filteredCategories">
+      <h2 class="rc-category__title">{{ cat.name }}</h2>
+      <div class="rc-table">
+        <div class="rc-row rc-row--header">
+          <span class="rc-cell rc-cell--pattern">Pattern</span>
+          <span class="rc-cell rc-cell--desc">Description</span>
+          <span class="rc-cell rc-cell--example">Example</span>
+          <span class="rc-cell rc-cell--action"></span>
+        </div>
+        <div class="rc-row" *ngFor="let entry of cat.entries">
+          <span class="rc-cell rc-cell--pattern"><code class="rc-pattern">{{ entry.pattern }}</code></span>
+          <span class="rc-cell rc-cell--desc">{{ entry.description }}</span>
+          <span class="rc-cell rc-cell--example"><code class="rc-example">{{ entry.example }}</code></span>
+          <span class="rc-cell rc-cell--action">
+            <button class="rc-copy-btn" (click)="copyPattern(entry.pattern)" [class.rc-copy-btn--success]="copiedPattern === entry.pattern">
+              {{ copiedPattern === entry.pattern ? 'Copied' : 'Copy' }}
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rc-empty" *ngIf="filteredCategories.length === 0">
+    <span>No patterns match your search.</span>
+  </div>
+</div>

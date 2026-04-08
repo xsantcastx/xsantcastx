@@ -1,0 +1,44 @@
+<div class="aa-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Fun Tools</p>
+    <h1 class="tool-header__title">ASCII Art Generator</h1>
+    <p class="tool-header__subtitle">Type text and render it as ASCII art block letters. Supports A-Z, 0-9, and basic punctuation.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="aa-layout">
+    <div class="aa-panel">
+      <div class="aa-panel__header">
+        <span class="aa-panel__title">Input</span>
+        <div class="aa-panel__actions">
+          <button class="aa-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+        </div>
+      </div>
+      <div class="aa-input-wrap">
+        <input class="aa-input" [(ngModel)]="input" (ngModelChange)="generate()" placeholder="Type something..." maxlength="20" />
+        <span class="aa-hint">Max 20 characters</span>
+      </div>
+    </div>
+
+    <div class="aa-panel aa-panel--output">
+      <div class="aa-panel__header">
+        <span class="aa-panel__title">Output</span>
+        <button class="aa-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.aa-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      </div>
+      <div class="aa-output-body">
+        <pre class="aa-code" *ngIf="output"><code>{{ output }}</code></pre>
+        <div class="aa-empty" *ngIf="!output">
+          <span>ASCII art will appear here</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

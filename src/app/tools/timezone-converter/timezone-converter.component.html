@@ -1,0 +1,74 @@
+<div class="tz-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Utilities</p>
+    <h1 class="tool-header__title">Timezone Converter</h1>
+    <p class="tool-header__subtitle">Convert times between 30+ timezones with a world clock display.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="tz-layout">
+    <div class="tz-col tz-col--left">
+      <div class="tz-panel">
+        <div class="tz-panel__header"><span class="tz-panel__title">Convert</span></div>
+        <div class="tz-form">
+          <div class="tz-field">
+            <label class="tz-label">Date</label>
+            <input class="tz-input" type="date" [(ngModel)]="inputDate" />
+          </div>
+          <div class="tz-field">
+            <label class="tz-label">Time</label>
+            <input class="tz-input" type="time" [(ngModel)]="inputTime" />
+          </div>
+          <div class="tz-field">
+            <label class="tz-label">From</label>
+            <select class="tz-select" [(ngModel)]="sourceTimezone">
+              <option *ngFor="let tz of timezones" [value]="tz">{{ tz }}</option>
+            </select>
+          </div>
+          <div class="tz-field">
+            <label class="tz-label">To</label>
+            <select class="tz-select" [(ngModel)]="targetTimezone">
+              <option *ngFor="let tz of timezones" [value]="tz">{{ tz }}</option>
+            </select>
+          </div>
+          <button class="tz-btn" (click)="convert()">Convert</button>
+        </div>
+      </div>
+
+      <div class="tz-panel tz-result-panel" *ngIf="result">
+        <div class="tz-panel__header">
+          <span class="tz-panel__title">Result</span>
+          <button class="tz-btn-ghost" (click)="copyResult()" [class.tz-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <div class="tz-result">
+          <span class="tz-result__tz">{{ result.timezone }}</span>
+          <span class="tz-result__time">{{ result.time }}</span>
+          <span class="tz-result__date">{{ result.date }}</span>
+          <span class="tz-result__offset">{{ result.offset }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tz-col tz-col--right">
+      <div class="tz-panel">
+        <div class="tz-panel__header"><span class="tz-panel__title">World Clock</span></div>
+        <div class="tz-world">
+          <div class="tz-world-row" *ngFor="let wc of worldClock">
+            <span class="tz-world-tz">{{ wc.timezone }}</span>
+            <span class="tz-world-time">{{ wc.time }}</span>
+            <span class="tz-world-date">{{ wc.date }}</span>
+            <span class="tz-world-offset">{{ wc.offset }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

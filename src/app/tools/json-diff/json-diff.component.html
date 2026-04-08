@@ -1,0 +1,54 @@
+<div class="jd-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">JSON Tools</p>
+    <h1 class="tool-header__title">JSON Diff</h1>
+    <p class="tool-header__subtitle">Compare two JSON objects and see added, removed, and changed keys highlighted with colors.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="jd-inputs">
+    <div class="jd-panel">
+      <div class="jd-panel__header"><span class="jd-panel__title">Left JSON</span></div>
+      <textarea class="jd-textarea" [(ngModel)]="leftInput" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+    </div>
+    <div class="jd-panel">
+      <div class="jd-panel__header"><span class="jd-panel__title">Right JSON</span></div>
+      <textarea class="jd-textarea" [(ngModel)]="rightInput" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div class="jd-actions">
+    <button class="jd-btn" (click)="compare()" [disabled]="!leftInput.trim() || !rightInput.trim()">Compare</button>
+    <button class="jd-btn-ghost" (click)="clearAll()">Clear</button>
+  </div>
+
+  <div class="jd-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <div class="jd-stats" *ngIf="diffs.length">
+    <span class="jd-stat jd-stat--added">+{{ addedCount }} added</span>
+    <span class="jd-stat jd-stat--removed">-{{ removedCount }} removed</span>
+    <span class="jd-stat jd-stat--changed">~{{ changedCount }} changed</span>
+  </div>
+
+  <div class="jd-results" *ngIf="diffs.length">
+    <div *ngFor="let d of diffs" class="jd-diff-row" [ngClass]="'jd-diff-row--' + d.type">
+      <span class="jd-diff-key">{{ d.key }}</span>
+      <span class="jd-diff-badge">{{ d.type }}</span>
+      <span class="jd-diff-old" *ngIf="d.oldValue !== undefined">{{ formatValue(d.oldValue) }}</span>
+      <span class="jd-diff-arrow" *ngIf="d.type === 'changed'">&rarr;</span>
+      <span class="jd-diff-new" *ngIf="d.newValue !== undefined">{{ formatValue(d.newValue) }}</span>
+    </div>
+  </div>
+
+  <div class="jd-empty" *ngIf="!diffs.length && !errorMessage && (leftInput || rightInput)">
+    <span>No differences found or press Compare to start.</span>
+  </div>
+</div>

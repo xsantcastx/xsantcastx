@@ -144,6 +144,33 @@ import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.compo
 import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
 import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
 import { ImageResizerComponent } from './tools/image-resizer/image-resizer.component';
+import { AsciiArtComponent } from './tools/ascii-art/ascii-art.component';
+import { ButtonGeneratorComponent } from './tools/button-generator/button-generator.component';
+import { ChecklistComponent } from './tools/checklist/checklist.component';
+import { ColorNameComponent } from './tools/color-name/color-name.component';
+import { ColorPickerComponent } from './tools/color-picker/color-picker.component';
+import { CountdownComponent } from './tools/countdown/countdown.component';
+import { GitignoreGeneratorComponent } from './tools/gitignore-generator/gitignore-generator.component';
+import { HeadingCheckerComponent } from './tools/heading-checker/heading-checker.component';
+import { HmacGeneratorComponent } from './tools/hmac-generator/hmac-generator.component';
+import { HtmlMinifierComponent } from './tools/html-minifier/html-minifier.component';
+import { JsMinifierComponent } from './tools/js-minifier/js-minifier.component';
+import { JsonDiffComponent } from './tools/json-diff/json-diff.component';
+import { JsonTreeComponent } from './tools/json-tree/json-tree.component';
+import { JwtCheatsheetComponent } from './tools/jwt-cheatsheet/jwt-cheatsheet.component';
+import { LicensePickerComponent } from './tools/license-picker/license-picker.component';
+import { LinesorterComponent } from './tools/line-sorter/line-sorter.component';
+import { MimeLookupComponent } from './tools/mime-lookup/mime-lookup.component';
+import { OgImagePreviewComponent } from './tools/og-image-preview/og-image-preview.component';
+import { PackageJsonComponent } from './tools/package-json/package-json.component';
+import { RegexCheatsheetComponent } from './tools/regex-cheatsheet/regex-cheatsheet.component';
+import { ScrollSnapComponent } from './tools/scroll-snap/scroll-snap.component';
+import { SpacingScaleComponent } from './tools/spacing-scale/spacing-scale.component';
+import { TimezoneConverterComponent } from './tools/timezone-converter/timezone-converter.component';
+import { TransformPlaygroundComponent } from './tools/transform-playground/transform-playground.component';
+import { TransitionGeneratorComponent } from './tools/transition-generator/transition-generator.component';
+import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
+import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
 
 
 @NgModule({
@@ -268,7 +295,34 @@ import { ImageResizerComponent } from './tools/image-resizer/image-resizer.compo
     CaesarCipherComponent,
     DesignTokensComponent,
     JsonSchemaComponent,
-    ImageResizerComponent
+    ImageResizerComponent,
+    AsciiArtComponent,
+    ButtonGeneratorComponent,
+    ChecklistComponent,
+    ColorNameComponent,
+    ColorPickerComponent,
+    CountdownComponent,
+    GitignoreGeneratorComponent,
+    HeadingCheckerComponent,
+    HmacGeneratorComponent,
+    HtmlMinifierComponent,
+    JsMinifierComponent,
+    JsonDiffComponent,
+    JsonTreeComponent,
+    JwtCheatsheetComponent,
+    LicensePickerComponent,
+    LinesorterComponent,
+    MimeLookupComponent,
+    OgImagePreviewComponent,
+    PackageJsonComponent,
+    RegexCheatsheetComponent,
+    ScrollSnapComponent,
+    SpacingScaleComponent,
+    TimezoneConverterComponent,
+    TransformPlaygroundComponent,
+    TransitionGeneratorComponent,
+    UaParserComponent,
+    WebhookTesterComponent
   ],
   bootstrap: [AppComponent],
   imports: [

@@ -1,0 +1,90 @@
+<div class="btn-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Tools</p>
+    <h1 class="tool-header__title">Button Generator</h1>
+    <p class="tool-header__subtitle">CSS button builder with 10 presets, hover states, and live preview.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="btn-layout">
+    <div class="btn-col btn-col--left">
+      <div class="btn-panel">
+        <div class="btn-panel__header"><span class="btn-panel__title">Presets</span></div>
+        <div class="btn-panel__body btn-presets">
+          <button *ngFor="let preset of presets" class="btn-preset-chip" (click)="applyPreset(preset)">{{ preset.name }}</button>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel__header"><span class="btn-panel__title">Settings</span></div>
+        <div class="btn-panel__body btn-settings">
+          <div class="btn-field">
+            <label>Button Text</label>
+            <input type="text" [(ngModel)]="buttonText" (ngModelChange)="onTextChange()" class="btn-input" />
+          </div>
+          <div class="btn-field-row">
+            <div class="btn-field"><label>BG Color</label><input type="color" [(ngModel)]="bgColor" /></div>
+            <div class="btn-field"><label>Text Color</label><input type="color" [(ngModel)]="textColor" /></div>
+          </div>
+          <div class="btn-field">
+            <label>Border Radius: {{ borderRadius }}px</label>
+            <input type="range" min="0" max="50" [(ngModel)]="borderRadius" />
+          </div>
+          <div class="btn-field-row">
+            <div class="btn-field"><label>Padding X: {{ paddingX }}px</label><input type="range" min="4" max="60" [(ngModel)]="paddingX" /></div>
+            <div class="btn-field"><label>Padding Y: {{ paddingY }}px</label><input type="range" min="4" max="40" [(ngModel)]="paddingY" /></div>
+          </div>
+          <div class="btn-field">
+            <label>Font Size: {{ fontSize }}px</label>
+            <input type="range" min="10" max="32" [(ngModel)]="fontSize" />
+          </div>
+          <div class="btn-field-row">
+            <div class="btn-field"><label>Border Width: {{ borderWidth }}px</label><input type="range" min="0" max="6" [(ngModel)]="borderWidth" /></div>
+            <div class="btn-field"><label>Border Color</label><input type="color" [(ngModel)]="borderColor" /></div>
+          </div>
+          <div class="btn-field-row">
+            <div class="btn-field"><label>Hover BG</label><input type="color" [(ngModel)]="hoverBg" /></div>
+            <div class="btn-field"><label>Hover Text</label><input type="color" [(ngModel)]="hoverText" /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-col btn-col--right">
+      <div class="btn-panel">
+        <div class="btn-panel__header"><span class="btn-panel__title">Preview</span></div>
+        <div class="btn-panel__body btn-preview-area">
+          <button class="btn-live-preview"
+            [style.padding]="paddingY + 'px ' + paddingX + 'px'"
+            [style.fontSize]="fontSize + 'px'"
+            [style.fontWeight]="fontWeight"
+            [style.color]="textColor"
+            [style.background]="bgColor"
+            [style.borderRadius]="borderRadius + 'px'"
+            [style.border]="borderWidth + 'px solid ' + borderColor"
+            [style.boxShadow]="shadow">
+            {{ buttonText }}
+          </button>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel__header">
+          <span class="btn-panel__title">CSS Code</span>
+          <button class="btn-btn-ghost" (click)="copyCSS()" [class.btn-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <div class="btn-panel__body btn-panel__body--code">
+          <pre class="btn-code"><code>{{ cssCode }}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

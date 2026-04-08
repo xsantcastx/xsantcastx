@@ -1,0 +1,56 @@
+<div class="jsm-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Code Tools</p>
+    <h1 class="tool-header__title">JavaScript Minifier <span class="tool-header__amp">&</span> Beautifier</h1>
+    <p class="tool-header__subtitle">Minify or beautify JavaScript code with live processing.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="jsm-mode-bar">
+    <button class="jsm-seg-btn" [class.jsm-seg-btn--active]="mode === 'minify'" (click)="setMode('minify')">Minify</button>
+    <button class="jsm-seg-btn" [class.jsm-seg-btn--active]="mode === 'beautify'" (click)="setMode('beautify')">Beautify</button>
+  </div>
+
+  <div class="jsm-layout">
+    <div class="jsm-panel">
+      <div class="jsm-panel__header">
+        <span class="jsm-panel__title">Input</span>
+        <div class="jsm-panel__actions">
+          <button class="jsm-btn-ghost" (click)="loadSample()">Sample</button>
+          <button class="jsm-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+        </div>
+      </div>
+      <div class="jsm-panel__body--code">
+        <textarea class="jsm-textarea" [(ngModel)]="input" (ngModelChange)="onInput()" placeholder="Paste JavaScript code here..." spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="jsm-panel">
+      <div class="jsm-panel__header">
+        <span class="jsm-panel__title">Output</span>
+        <button class="jsm-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.jsm-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      </div>
+      <div class="jsm-panel__body--code">
+        <pre class="jsm-code" *ngIf="output"><code>{{ output }}</code></pre>
+        <div class="jsm-empty" *ngIf="!output && !errorMessage">Output will appear here</div>
+        <div class="jsm-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="jsm-stats" *ngIf="output">
+    <div class="jsm-stat"><span class="jsm-stat__label">Input</span><span class="jsm-stat__value">{{ inputSize }} B</span></div>
+    <div class="jsm-stat-divider"></div>
+    <div class="jsm-stat"><span class="jsm-stat__label">Output</span><span class="jsm-stat__value">{{ outputSize }} B</span></div>
+    <div class="jsm-stat-divider" *ngIf="mode === 'minify' && savings > 0"></div>
+    <div class="jsm-stat" *ngIf="mode === 'minify' && savings > 0"><span class="jsm-stat__label">Saved</span><span class="jsm-stat__value jsm-stat__value--cyan">{{ savings }}%</span></div>
+  </div>
+</div>

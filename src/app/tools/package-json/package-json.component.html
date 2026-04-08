@@ -1,0 +1,84 @@
+<div class="pj-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Node.js Tools</p>
+    <h1 class="tool-header__title">package.json Builder</h1>
+    <p class="tool-header__subtitle">Visual package.json editor with script presets for Node.js, React, TypeScript, and Vite.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="pj-layout">
+    <div class="pj-col pj-col--left">
+      <div class="pj-panel">
+        <div class="pj-panel__header"><span class="pj-panel__title">Details</span></div>
+        <div class="pj-form">
+          <div class="pj-field"><label class="pj-label">Name</label><input class="pj-input" [(ngModel)]="name" /></div>
+          <div class="pj-field"><label class="pj-label">Version</label><input class="pj-input" [(ngModel)]="version" (ngModelChange)="onVersionChange()" /></div>
+          <div class="pj-field"><label class="pj-label">Description</label><input class="pj-input" [(ngModel)]="description" /></div>
+          <div class="pj-field"><label class="pj-label">Main</label><input class="pj-input" [(ngModel)]="main" /></div>
+          <div class="pj-field"><label class="pj-label">Author</label><input class="pj-input" [(ngModel)]="author" /></div>
+          <div class="pj-field"><label class="pj-label">License</label><input class="pj-input" [(ngModel)]="license" /></div>
+          <div class="pj-field">
+            <label class="pj-label">Type</label>
+            <div class="pj-seg-ctrl">
+              <button class="pj-seg-btn" [class.pj-seg-btn--active]="type==='commonjs'" (click)="type='commonjs'">CommonJS</button>
+              <button class="pj-seg-btn" [class.pj-seg-btn--active]="type==='module'" (click)="type='module'">ESM</button>
+            </div>
+          </div>
+          <label class="pj-toggle">
+            <input type="checkbox" [(ngModel)]="private_" />
+            <span class="pj-toggle__track"><span class="pj-toggle__thumb"></span></span>
+            <span class="pj-toggle__label">Private</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="pj-panel">
+        <div class="pj-panel__header">
+          <span class="pj-panel__title">Scripts</span>
+          <button class="pj-btn-ghost" (click)="addScript()">+ Add</button>
+        </div>
+        <div class="pj-presets">
+          <button class="pj-preset-btn" *ngFor="let p of ['Node.js','React','TypeScript','Vite']" (click)="loadPreset(p)">{{ p }}</button>
+        </div>
+        <div class="pj-scripts">
+          <div class="pj-script-row" *ngFor="let s of scripts; let i = index">
+            <input class="pj-input pj-input--sm" [(ngModel)]="s.key" placeholder="key" />
+            <input class="pj-input pj-input--sm" [(ngModel)]="s.value" placeholder="command" />
+            <button class="pj-remove" (click)="removeScript(i)">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pj-panel">
+        <div class="pj-panel__header"><span class="pj-panel__title">Keywords</span></div>
+        <div class="pj-keywords">
+          <div class="pj-kw-input-row">
+            <input class="pj-input" [(ngModel)]="newKeyword" (keyup.enter)="addKeyword()" placeholder="Add keyword..." />
+            <button class="pj-btn-ghost" (click)="addKeyword()">Add</button>
+          </div>
+          <div class="pj-kw-tags" *ngIf="keywords.length">
+            <span class="pj-kw-tag" *ngFor="let kw of keywords; let i = index">{{ kw }} <button class="pj-kw-remove" (click)="removeKeyword(i)">&times;</button></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pj-col pj-col--right">
+      <div class="pj-panel">
+        <div class="pj-panel__header">
+          <span class="pj-panel__title">package.json</span>
+          <button class="pj-btn-ghost" (click)="copyOutput()" [class.pj-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <pre class="pj-code"><code>{{ output }}</code></pre>
+      </div>
+    </div>
+  </div>
+</div>

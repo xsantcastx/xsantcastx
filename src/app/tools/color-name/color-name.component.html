@@ -1,0 +1,65 @@
+<div class="cn-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Design Tools</p>
+    <h1 class="tool-header__title">CSS Color Name Finder</h1>
+    <p class="tool-header__subtitle">Find the closest named CSS color from any hex value. Browse all 148 named colors.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="cn-layout">
+    <div class="cn-col cn-col--left">
+      <div class="cn-panel">
+        <div class="cn-panel__header"><span class="cn-panel__title">Input Color</span></div>
+        <div class="cn-panel__body">
+          <div class="cn-input-row">
+            <input type="color" [value]="hexInput" (input)="hexInput = $any($event.target).value; onHexInput()" class="cn-color-input" />
+            <input type="text" [(ngModel)]="hexInput" (ngModelChange)="onHexInput()" class="cn-hex-input" maxlength="7" spellcheck="false" />
+          </div>
+        </div>
+      </div>
+
+      <div class="cn-panel" *ngIf="closestColor">
+        <div class="cn-panel__header">
+          <span class="cn-panel__title">Closest Match</span>
+          <button class="cn-btn-ghost" (click)="copyName()" [class.cn-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <div class="cn-panel__body cn-match">
+          <div class="cn-match__swatches">
+            <div class="cn-swatch" [style.background]="hexInput"><span class="cn-swatch__label">Input</span></div>
+            <div class="cn-swatch" [style.background]="closestColor.hex"><span class="cn-swatch__label">{{ closestColor.name }}</span></div>
+          </div>
+          <div class="cn-match__info">
+            <div class="cn-match__name">{{ closestColor.name }}</div>
+            <div class="cn-match__hex">{{ closestColor.hex }}</div>
+            <div class="cn-match__dist" *ngIf="distance === 0">Exact match!</div>
+            <div class="cn-match__dist" *ngIf="distance > 0">Distance: {{ distance }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cn-col cn-col--right">
+      <div class="cn-panel">
+        <div class="cn-panel__header">
+          <span class="cn-panel__title">All Named Colors ({{ filteredColors.length }})</span>
+        </div>
+        <div class="cn-panel__body">
+          <input type="text" [(ngModel)]="searchQuery" class="cn-search" placeholder="Search colors..." />
+          <div class="cn-color-grid">
+            <button *ngFor="let c of filteredColors" class="cn-color-tile" [style.background]="c.hex" [title]="c.name + ' ' + c.hex" (click)="selectColor(c)">
+              <span class="cn-color-tile__name">{{ c.name }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

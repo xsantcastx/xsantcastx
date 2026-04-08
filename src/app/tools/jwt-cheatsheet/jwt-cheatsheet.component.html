@@ -1,0 +1,47 @@
+<div class="jcs-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Security Tools</p>
+    <h1 class="tool-header__title">JWT Cheatsheet</h1>
+    <p class="tool-header__subtitle">JWT claims reference with algorithm comparison. Quick lookup for JSON Web Token development.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="jcs-toolbar">
+    <input type="text" class="jcs-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" placeholder="Search claims or algorithms..." />
+    <div class="jcs-tabs">
+      <button class="jcs-tab" [class.jcs-tab--active]="activeTab === 'claims'" (click)="activeTab = 'claims'">Claims ({{ filteredClaims.length }})</button>
+      <button class="jcs-tab" [class.jcs-tab--active]="activeTab === 'algorithms'" (click)="activeTab = 'algorithms'">Algorithms ({{ filteredAlgorithms.length }})</button>
+    </div>
+  </div>
+
+  <div class="jcs-list" *ngIf="activeTab === 'claims'">
+    <div *ngFor="let claim of filteredClaims" class="jcs-card" (click)="copyClaim(claim)">
+      <div class="jcs-card__head">
+        <code class="jcs-card__name">{{ claim.name }}</code>
+        <span class="jcs-card__badge" *ngIf="claim.required">required</span>
+      </div>
+      <p class="jcs-card__desc">{{ claim.description }}</p>
+      <code class="jcs-card__example">{{ claim.example }}</code>
+    </div>
+  </div>
+
+  <div class="jcs-list" *ngIf="activeTab === 'algorithms'">
+    <div *ngFor="let alg of filteredAlgorithms" class="jcs-card">
+      <div class="jcs-card__head">
+        <code class="jcs-card__name">{{ alg.name }}</code>
+        <span class="jcs-card__type">{{ alg.type }}</span>
+        <span class="jcs-card__security" [attr.data-level]="alg.security">{{ alg.security }}</span>
+      </div>
+      <p class="jcs-card__desc">{{ alg.description }}</p>
+      <span class="jcs-card__meta">Key size: {{ alg.keySize }}</span>
+    </div>
+  </div>
+</div>

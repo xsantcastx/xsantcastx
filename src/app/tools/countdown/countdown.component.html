@@ -1,0 +1,63 @@
+<div class="cd2-page">
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Utilities</p>
+    <h1 class="tool-header__title">Countdown Timer</h1>
+    <p class="tool-header__subtitle">Set a target date and time, watch the countdown live.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="cd2-layout">
+    <div class="cd2-panel">
+      <div class="cd2-panel__header"><span class="cd2-panel__title">Target</span></div>
+      <div class="cd2-form">
+        <div class="cd2-field">
+          <label class="cd2-label">Date</label>
+          <input class="cd2-input" type="date" [(ngModel)]="targetDate" />
+        </div>
+        <div class="cd2-field">
+          <label class="cd2-label">Time</label>
+          <input class="cd2-input" type="time" [(ngModel)]="targetTime" />
+        </div>
+        <div class="cd2-actions">
+          <button class="cd2-btn" (click)="start()" [disabled]="!targetDate">{{ running ? 'Restart' : 'Start' }}</button>
+          <button class="cd2-btn-ghost" (click)="stop()" [disabled]="!running">Stop</button>
+          <button class="cd2-btn-ghost" (click)="clearAll()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cd2-display-panel">
+      <div class="cd2-display" [class.cd2-display--expired]="expired">
+        <div class="cd2-unit">
+          <span class="cd2-unit__value">{{ days }}</span>
+          <span class="cd2-unit__label">Days</span>
+        </div>
+        <span class="cd2-separator">:</span>
+        <div class="cd2-unit">
+          <span class="cd2-unit__value">{{ pad(hours) }}</span>
+          <span class="cd2-unit__label">Hours</span>
+        </div>
+        <span class="cd2-separator">:</span>
+        <div class="cd2-unit">
+          <span class="cd2-unit__value">{{ pad(minutes) }}</span>
+          <span class="cd2-unit__label">Minutes</span>
+        </div>
+        <span class="cd2-separator">:</span>
+        <div class="cd2-unit">
+          <span class="cd2-unit__value">{{ pad(seconds) }}</span>
+          <span class="cd2-unit__label">Seconds</span>
+        </div>
+      </div>
+      <p class="cd2-expired-msg" *ngIf="expired">Countdown complete!</p>
+      <button class="cd2-btn-ghost cd2-copy-btn" (click)="copyDisplay()" *ngIf="running || expired" [class.cd2-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+.tz-page { min-height: 100vh; padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem; max-width: 1280px; margin: 0 auto; }
+.back-link { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: none; color: var(--text-muted); font-size: 0.82rem; font-family: var(--font-body); cursor: pointer; padding: 0; margin-bottom: 1.75rem; transition: color 0.2s; }
+.back-link:hover { color: #00ffcc; }
+.tool-header { margin-bottom: 2rem; }
+.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #00ffcc; margin-bottom: 0.4rem; }
+.tool-header__title { font-family: var(--font-heading); font-size: clamp(1.6rem,3.5vw,2.4rem); font-weight: 700; color: var(--text-color); margin-bottom: 0.5rem; }
+.tool-header__subtitle { font-size: 0.95rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; margin-bottom: 1rem; }
+.tool-header__share { display: flex; gap: 0.6rem; }
+.share-btn { display: inline-flex; align-items: center; padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; text-decoration: none; border: 1px solid var(--glass-border); color: var(--text-muted); background: var(--surface-strong); }
+.share-btn:hover { opacity: 0.85; color: var(--text-color); }
+.tz-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.tz-col { display: flex; flex-direction: column; gap: 1rem; }
+.tz-panel { background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
+.tz-panel__header { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--glass-border); background: var(--surface-strong); }
+.tz-panel__title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.tz-form { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.tz-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.tz-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.tz-input { padding: 0.5rem 0.7rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-size: 0.85rem; outline: none; caret-color: #00ffcc; }
+.tz-input:focus { border-color: rgba(0,255,204,0.4); }
+.tz-select { padding: 0.5rem 0.7rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-size: 0.82rem; outline: none; cursor: pointer; width: 100%; }
+.tz-select:focus { border-color: rgba(0,255,204,0.4); }
+.tz-btn { padding: 0.55rem 1.5rem; background: color-mix(in srgb, #00ffcc 15%, transparent); border: 1px solid rgba(0,255,204,0.4); border-radius: var(--radius-md); color: #00ffcc; font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.tz-btn:hover { background: color-mix(in srgb, #00ffcc 25%, transparent); }
+.tz-btn-ghost { display: inline-flex; align-items: center; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.73rem; cursor: pointer; transition: all 0.15s; }
+.tz-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
+.tz-btn-ghost--success { color: #00ffcc !important; border-color: rgba(0,255,204,0.35) !important; }
+.tz-result { padding: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.4rem; }
+.tz-result__tz { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.tz-result__time { font-family: 'Fira Code', monospace; font-size: 2rem; font-weight: 700; color: #00ffcc; }
+.tz-result__date { font-size: 0.9rem; color: var(--text-color); }
+.tz-result__offset { font-family: 'Fira Code', monospace; font-size: 0.78rem; color: #7b61ff; }
+.tz-world { padding: 0; }
+.tz-world-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.75rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--glass-border); align-items: center; }
+.tz-world-row:last-child { border-bottom: none; }
+.tz-world-tz { font-size: 0.8rem; color: var(--text-color); font-weight: 500; }
+.tz-world-time { font-family: 'Fira Code', monospace; font-size: 0.82rem; color: #00ffcc; font-weight: 600; }
+.tz-world-date { font-size: 0.75rem; color: var(--text-muted); }
+.tz-world-offset { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: #7b61ff; }
+@media (max-width: 768px) { .tz-layout { grid-template-columns: 1fr; } }
