@@ -236,6 +236,7 @@
   max-width: 400px;
   height: 240px;
   perspective: 800px;
+  overflow: hidden;
 }
 
 .hc-card {

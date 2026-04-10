@@ -54,18 +54,17 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
   readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
 
-  /** Tools shown in the hero carousel — uses featured flag from registry */
-  get heroCarouselTools(): Tool[] {
-    return getFeaturedTools().map(t => ({
-      id: t.id,
-      name: t.title,
-      desc: t.description,
-      route: t.route,
-      category: t.category,
-      icon: t.textIcon,
-      features: t.features,
-    }));
-  }
+  /** Tools shown in the hero carousel — capped at 5 to match the 25s/5s CSS animation cycle.
+   *  More than 5 cards causes animation collisions (card N+5 restarts before card N exits). */
+  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, 5).map(t => ({
+    id: t.id,
+    name: t.title,
+    desc: t.description,
+    route: t.route,
+    category: t.category,
+    icon: t.textIcon,
+    features: t.features,
+  }));
 
   get filteredTools(): Tool[] {
     const q = this.searchQuery.toLowerCase();
