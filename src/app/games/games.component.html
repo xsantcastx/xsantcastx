@@ -1,0 +1,97 @@
+<div class="games-page">
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <section class="gp-hero">
+    <div class="gp-hero__bg">
+      <div class="gp-hero__glow gp-hero__glow--cyan"></div>
+      <div class="gp-hero__glow gp-hero__glow--purple"></div>
+    </div>
+    <div class="gp-hero__inner">
+      <p class="gp-eyebrow">
+        <span class="gp-dot"></span>
+        Hidden inside the tools
+      </p>
+      <h1 class="gp-hero__title">Games &amp; Easter Eggs</h1>
+      <p class="gp-hero__sub">
+        Use tools, discover secrets, unlock games. {{ unlockedCount }}/{{ games.length }} games unlocked.
+      </p>
+
+      <!-- Progress bar -->
+      <div class="gp-progress-wrap">
+        <div class="gp-progress-bar">
+          <div class="gp-progress-fill" [style.width.%]="progressPercent"></div>
+        </div>
+        <span class="gp-progress-label">{{ foundCount }}/{{ totalEggs }} Easter eggs found</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ────────────────────────────────────── -->
+  <section class="gp-how">
+    <div class="gp-how__inner">
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">01</span>
+        <h3>Use a tool</h3>
+        <p>Head to <a routerLink="/tools">the tools section</a> and explore. Every tool hides at least one Easter egg.</p>
+      </div>
+      <div class="gp-how-step__arrow">→</div>
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">02</span>
+        <h3>Trigger a secret</h3>
+        <p>Do something unexpected — format deeply nested JSON, generate a UUID starting with 000, set chmod 777…</p>
+      </div>
+      <div class="gp-how-step__arrow">→</div>
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">03</span>
+        <h3>Unlock a game</h3>
+        <p>Each Easter egg unlocks a game tied to that tool's theme. Come back here to play.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── GAME GRID ───────────────────────────────────────── -->
+  <section class="gp-grid-section">
+    <div class="gp-grid-section__inner">
+      <h2 class="gp-section-title">Game Library</h2>
+
+      <div class="gp-grid">
+        <div
+          class="gp-card glass-card"
+          *ngFor="let game of games"
+          [class.gp-card--locked]="game.locked"
+          [class.gp-card--unlocked]="!game.locked"
+          [attr.data-rarity]="game.rarity"
+        >
+          <div class="gp-card__top">
+            <span class="gp-card__icon" [class.gp-card__icon--locked]="game.locked">
+              {{ game.locked ? '🔒' : game.icon }}
+            </span>
+            <span class="gp-card__rarity">{{ game.rarity }}</span>
+          </div>
+
+          <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
+          <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
+
+          <div class="gp-card__footer">
+            <button *ngIf="!game.locked" class="gp-play-btn">
+              Play &rarr;
+            </button>
+            <span *ngIf="game.locked" class="gp-locked-label">
+              Locked — find the egg to unlock
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ────────────────────────────────────────────── -->
+  <section class="gp-cta">
+    <div class="gp-cta__inner">
+      <h2>Start finding Easter eggs</h2>
+      <p>{{ totalEggs }} Easter eggs hidden across {{ games.length }} tools. Global leaderboard coming soon.</p>
+      <a routerLink="/tools" class="cta-button">Browse Tools &rarr;</a>
+    </div>
+  </section>
+
+</div>

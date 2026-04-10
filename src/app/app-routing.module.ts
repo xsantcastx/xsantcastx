@@ -121,6 +121,7 @@ import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
 import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
+import { GamesComponent } from './games/games.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -1255,6 +1256,16 @@ const routes: Routes = [
   { path: 'embed/json-schema', component: JsonSchemaComponent, data: { embed: true } },
   { path: 'embed/image-resizer', component: ImageResizerComponent, data: { embed: true } },
 
+  {
+    path: 'games',
+    component: GamesComponent,
+    title: 'Games & Easter Eggs — Unlock Hidden Games | xsantcastx',
+    data: {
+      description: 'Use tools to discover Easter eggs and unlock hidden mini-games. 106 secrets across 135 tools.',
+      keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`
+    }
+  },
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {
     path: '**',
