@@ -51,6 +51,9 @@ export class LandingComponent implements OnInit, OnDestroy {
     features: t.features,
   }));
 
+  /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
+  readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
+
   /** Tools shown in the hero carousel — uses featured flag from registry */
   get heroCarouselTools(): Tool[] {
     return getFeaturedTools().map(t => ({

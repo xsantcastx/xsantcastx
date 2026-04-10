@@ -171,6 +171,7 @@ import { TransformPlaygroundComponent } from './tools/transform-playground/trans
 import { TransitionGeneratorComponent } from './tools/transition-generator/transition-generator.component';
 import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
 import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
+import { GamesComponent } from './games/games.component';
 
 
 @NgModule({
@@ -322,7 +323,8 @@ import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.co
     TransformPlaygroundComponent,
     TransitionGeneratorComponent,
     UaParserComponent,
-    WebhookTesterComponent
+    WebhookTesterComponent,
+    GamesComponent
   ],
   bootstrap: [AppComponent],
   imports: [
