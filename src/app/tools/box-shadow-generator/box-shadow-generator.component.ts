@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface ShadowLayer {
   id: number;
@@ -113,6 +114,8 @@ export class BoxShadowGeneratorComponent {
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free CSS Box Shadow Generator — design beautiful layered shadows with live preview and one-click code copy 🎨')}&url=${encodeURIComponent(SITE_URL + '/tools/box-shadow-generator')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/box-shadow-generator')}`;
 
+  private readonly eggs = inject(EasterEggService);
+
   constructor(private router: Router, private translationService: TranslationService) {
     this.addLayer();
   }
@@ -184,6 +187,7 @@ export class BoxShadowGeneratorComponent {
     };
     this.layers.push(layer);
     this.activeLayerIndex = this.layers.length - 1;
+    if (this.layers.length >= 5) this.eggs.trigger('shadow-lord');
   }
 
   duplicateLayer(index: number): void {

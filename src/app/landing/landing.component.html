@@ -103,43 +103,25 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 3 — TOOL GRID
+       SECTION 3 — LATEST TOOLS (last 8 added)
+       Full catalog lives at /tools
        ═══════════════════════════════════════════ -->
   <section id="services" class="hp-tools">
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
         <div class="hp-tools__hd-text">
-          <p class="hp-section-eyebrow">All Tools</p>
-          <h2 class="hp-section-title">Browse &amp; Filter</h2>
+          <p class="hp-section-eyebrow">Latest Tools</p>
+          <h2 class="hp-section-title">Fresh off the forge</h2>
         </div>
-        <div class="hp-tools__search-wrap">
-          <span class="hp-tools__search-icon">⌕</span>
-          <input
-            id="tool-search-input"
-            class="hp-tools__search"
-            type="text"
-            [(ngModel)]="searchQuery"
-            placeholder="Search tools..."
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <span class="hp-tools__search-kbd">⌘K</span>
-        </div>
-      </div>
-
-      <div class="hp-tools__cats">
-        <button
-          class="hp-cat-btn"
-          *ngFor="let cat of categories"
-          [class.active]="activeCategory === cat"
-          (click)="setCategory(cat)"
-        >{{ cat }}</button>
+        <a routerLink="/tools" class="hp-tools__view-all">
+          Browse all {{ tools.length }} tools &rarr;
+        </a>
       </div>
 
       <div class="hp-tools__grid">
         <a
           class="hp-tool-card glass-card"
-          *ngFor="let tool of filteredTools"
+          *ngFor="let tool of latestTools"
           [routerLink]="tool.route"
         >
           <div class="hp-tool-card__icon-wrap">
@@ -152,12 +134,12 @@
           </div>
           <span class="hp-tool-card__cta">Try it &rarr;</span>
         </a>
+      </div>
 
-        <div class="hp-tools__empty" *ngIf="filteredTools.length === 0">
-          <span class="hp-tools__empty-icon">◌</span>
-          <p>No tools match "{{ searchQuery }}"</p>
-          <button class="hp-tools__clear-btn" (click)="searchQuery = ''; activeCategory = 'All'">Clear search</button>
-        </div>
+      <div class="hp-tools__footer">
+        <a routerLink="/tools" class="cta-button is-ghost">
+          See all {{ tools.length }} free tools &rarr;
+        </a>
       </div>
     </div>
   </section>

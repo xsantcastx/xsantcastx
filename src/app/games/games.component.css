@@ -1,0 +1,305 @@
+/* ── Layout ─────────────────────────────────────────────────── */
+.games-page {
+  min-height: 100vh;
+  background: var(--color-bg, #0a0a0f);
+  color: var(--color-text, #e2e8f0);
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.gp-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 6rem 1.5rem 4rem;
+  text-align: center;
+}
+
+.gp-hero__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gp-hero__glow {
+  position: absolute;
+  width: 40rem;
+  height: 40rem;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+}
+
+.gp-hero__glow--cyan  { background: #00ffcc; top: -10rem; left: -10rem; }
+.gp-hero__glow--purple { background: #8b5cf6; top: -10rem; right: -10rem; }
+
+.gp-hero__inner {
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.gp-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent, #00ffcc);
+  margin-bottom: 1rem;
+}
+
+.gp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent, #00ffcc);
+  animation: gp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+.gp-hero__title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  background: linear-gradient(135deg, #e2e8f0 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gp-hero__sub {
+  font-size: 1.1rem;
+  color: var(--color-text-muted, #94a3b8);
+  margin-bottom: 2rem;
+}
+
+/* ── Progress ────────────────────────────────────────────────── */
+.gp-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gp-progress-bar {
+  width: 100%;
+  max-width: 400px;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00ffcc, #8b5cf6);
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.gp-progress-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+/* ── How It Works ────────────────────────────────────────────── */
+.gp-how {
+  padding: 3rem 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.gp-how__inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.gp-how-step {
+  flex: 1;
+  min-width: 200px;
+  max-width: 260px;
+}
+
+.gp-how-step__num {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--color-accent, #00ffcc);
+  margin-bottom: 0.5rem;
+}
+
+.gp-how-step h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.gp-how-step p {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #94a3b8);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.gp-how-step p a {
+  color: var(--color-accent, #00ffcc);
+  text-decoration: none;
+}
+
+.gp-how-step__arrow {
+  font-size: 1.5rem;
+  color: rgba(255,255,255,0.2);
+  align-self: center;
+  padding-top: 1.5rem;
+}
+
+/* ── Game Grid ───────────────────────────────────────────────── */
+.gp-grid-section {
+  padding: 3rem 1.5rem 4rem;
+}
+
+.gp-grid-section__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.gp-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 2rem;
+}
+
+.gp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ── Game Card ───────────────────────────────────────────────── */
+.gp-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.gp-card--unlocked {
+  border-color: rgba(0,255,204,0.2);
+}
+
+.gp-card--unlocked:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,255,204,0.4);
+}
+
+.gp-card--locked {
+  opacity: 0.6;
+}
+
+/* Rarity accent */
+.gp-card[data-rarity="epic"]      { border-left: 3px solid #ec4899; }
+.gp-card[data-rarity="rare"]      { border-left: 3px solid #8b5cf6; }
+.gp-card[data-rarity="common"]    { border-left: 3px solid #00ffcc; }
+.gp-card[data-rarity="legendary"] { border-left: 3px solid gold; }
+
+.gp-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gp-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.gp-card__icon--locked {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.gp-card__rarity {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.07);
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.gp-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.gp-card__desc {
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #94a3b8);
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+}
+
+.gp-card__footer {
+  margin-top: auto;
+}
+
+.gp-play-btn {
+  background: linear-gradient(135deg, #00ffcc, #8b5cf6);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.gp-play-btn:hover { opacity: 0.85; }
+
+.gp-locked-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #94a3b8);
+  font-style: italic;
+}
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+.gp-cta {
+  padding: 4rem 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+
+.gp-cta__inner {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.gp-cta h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+.gp-cta p {
+  color: var(--color-text-muted, #94a3b8);
+  margin-bottom: 1.5rem;
+}
