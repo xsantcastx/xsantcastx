@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID, HostListener } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -54,15 +54,10 @@ export class ToolsComponent implements OnInit {
     });
   }
 
-  @HostListener('document:keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent): void {
-    if (!this.isBrowser) return;
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      this.focusSearch();
-    }
-  }
-
+  // Note: Cmd+K is now handled globally by CommandPaletteComponent
+  // (shared/command-palette). The local listener was removed to avoid
+  // duplicate handling. focusSearch() is still available if other code
+  // wants to imperatively focus the /tools page search input.
   focusSearch(): void {
     if (!this.isBrowser) return;
     const el = document.getElementById('tools-search-input') as HTMLInputElement | null;
