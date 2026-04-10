@@ -122,6 +122,7 @@ import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.co
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { GamesComponent } from './games/games.component';
+import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
 import { LiveComponent } from './live/live.component';
@@ -1256,6 +1257,26 @@ const routes: Routes = [
   { path: 'embed/json-schema', component: JsonSchemaComponent, data: { embed: true } },
   { path: 'embed/image-resizer', component: ImageResizerComponent, data: { embed: true } },
 
+  {
+    path: 'mcp',
+    component: McpComponent,
+    title: 'xsantcastx MCP Server — 14 Developer Tools for AI Agents',
+    data: {
+      description: 'A local MCP server with 14 developer tools: JSON formatting, UUID generation, Base64, JWT decoding, regex, hashing, color contrast, and cron expression tools.',
+      keywords: 'mcp server, model context protocol, claude tools, ai developer tools, json formatter mcp, uuid generator mcp, base64 mcp, jwt decoder mcp, regex mcp, hash generator mcp',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'xsantcastx MCP Server',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        url: 'https://www.npmjs.com/package/xsantcastx-mcp-server',
+        description: 'A local MCP server with 14 developer tools for AI agents.'
+      }
+    }
+  },
   {
     path: 'games',
     component: GamesComponent,

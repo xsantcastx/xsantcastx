@@ -177,3 +177,4 @@
 /embed/json-schema
 /tools/image-resizer
 /embed/image-resizer
+/mcp

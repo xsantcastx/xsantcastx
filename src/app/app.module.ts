@@ -172,6 +172,7 @@ import { TransitionGeneratorComponent } from './tools/transition-generator/trans
 import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
 import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
 import { GamesComponent } from './games/games.component';
+import { McpComponent } from './mcp/mcp.component';
 
 
 @NgModule({
@@ -324,7 +325,8 @@ import { GamesComponent } from './games/games.component';
     TransitionGeneratorComponent,
     UaParserComponent,
     WebhookTesterComponent,
-    GamesComponent
+    GamesComponent,
+    McpComponent
   ],
   bootstrap: [AppComponent],
   imports: [
