@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 
@@ -65,7 +66,9 @@ interface ScanResult {
   styleUrls: ['./ssl-certificate-inspector.component.css'],
   standalone: false
 })
-export class SslCertificateInspectorComponent implements OnInit {
+export class SslCertificateInspectorComponent implements OnInit, OnDestroy {
+  private paramSub?: Subscription;
+
   domain = '';
   port = 443;
   scanning = false;
@@ -108,12 +111,16 @@ export class SslCertificateInspectorComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.activatedRoute.queryParams.subscribe(params => {
+    this.paramSub = this.activatedRoute.queryParams.subscribe(params => {
       if (params['domain']) {
         this.domain = params['domain'];
         this.scanCertificate();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.paramSub?.unsubscribe();
   }
 
   translate(key: string): string {

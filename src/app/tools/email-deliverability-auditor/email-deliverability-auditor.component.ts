@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 
@@ -79,7 +80,8 @@ export interface AuditResults {
   styleUrls: ['./email-deliverability-auditor.component.css'],
   standalone: false
 })
-export class EmailDeliverabilityAuditorComponent implements OnInit {
+export class EmailDeliverabilityAuditorComponent implements OnInit, OnDestroy {
+  private paramSub?: Subscription;
 
   domain = '';
   dkimSelectorInput = '';
@@ -105,12 +107,16 @@ export class EmailDeliverabilityAuditorComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
+    this.paramSub = this.route.queryParams.subscribe(params => {
       if (params['domain']) {
         this.domain = params['domain'];
         this.runAudit();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.paramSub?.unsubscribe();
   }
 
   translate(key: string): string {

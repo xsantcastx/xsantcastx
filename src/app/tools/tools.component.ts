@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -23,8 +24,9 @@ export interface ToolCard {
   styleUrls: ['./tools.component.css'],
   standalone: false
 })
-export class ToolsComponent implements OnInit {
+export class ToolsComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private paramSub?: Subscription;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Just found these free browser tools — PDF Catalog Generator, Color Palette Extractor and more. No sign-up, runs entirely in your browser 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools')}`;
@@ -43,7 +45,7 @@ export class ToolsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
+    this.paramSub = this.route.queryParams.subscribe(params => {
       this.activeTag = params['tag'] || null;
       if (params['category']) {
         this.activeCategory = params['category'];
@@ -52,6 +54,10 @@ export class ToolsComponent implements OnInit {
         this.searchQuery = params['q'];
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.paramSub?.unsubscribe();
   }
 
   // Note: Cmd+K is now handled globally by CommandPaletteComponent
