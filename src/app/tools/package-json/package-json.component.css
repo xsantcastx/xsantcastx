@@ -38,12 +38,12 @@
 .pj-script-row { display: flex; gap: 0.4rem; align-items: center; }
 .pj-script-row .pj-input { flex: 1; }
 .pj-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
-.pj-remove:hover { color: #ff4d6a; }
+.pj-remove:hover { color: var(--error-color); }
 .pj-keywords { padding: 0.75rem 1rem; }
 .pj-kw-input-row { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
 .pj-kw-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.pj-kw-tag { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; background: color-mix(in srgb, #7b61ff 12%, transparent); border-radius: 999px; font-size: 0.72rem; color: #7b61ff; font-weight: 600; }
-.pj-kw-remove { background: none; border: none; color: #7b61ff; cursor: pointer; font-size: 0.9rem; padding: 0; }
+.pj-kw-tag { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; background: color-mix(in srgb, var(--info-color) 12%, transparent); border-radius: 999px; font-size: 0.72rem; color: var(--info-color); font-weight: 600; }
+.pj-kw-remove { background: none; border: none; color: var(--info-color); cursor: pointer; font-size: 0.9rem; padding: 0; }
 .pj-btn-ghost { display: inline-flex; align-items: center; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.73rem; cursor: pointer; transition: all 0.15s; }
 .pj-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
 .pj-btn-ghost--success { color: #00ffcc !important; border-color: rgba(0,255,204,0.35) !important; }

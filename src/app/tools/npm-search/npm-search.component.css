@@ -187,7 +187,7 @@
   cursor: pointer;
   transition: color 0.15s ease;
 }
-.ns-recent-clear:hover { color: #ff4d6a; }
+.ns-recent-clear:hover { color: var(--error-color); }
 
 /* ── Error ─────────────────────────────────────────────────── */
 .ns-error {
@@ -195,10 +195,10 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border: 1px solid rgba(255, 77, 106, 0.3);
   border-radius: var(--radius-md);
-  color: #ff4d6a;
+  color: var(--error-color);
   font-size: 0.82rem;
   margin-bottom: 1.25rem;
 }

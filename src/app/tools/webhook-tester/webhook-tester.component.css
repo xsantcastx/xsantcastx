@@ -27,7 +27,7 @@
 .wt-header-row { display: flex; gap: 0.5rem; align-items: center; }
 .wt-header-row .wt-input { flex: 1; }
 .wt-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; padding: 0 0.3rem; }
-.wt-remove:hover { color: #ff4d6a; }
+.wt-remove:hover { color: var(--error-color); }
 .wt-textarea { width: 100%; min-height: 200px; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; padding: 0.8rem; resize: vertical; outline: none; caret-color: #00ffcc; box-sizing: border-box; }
 .wt-textarea::placeholder { color: rgba(214,221,235,0.28); }
 .wt-textarea:focus { border-color: rgba(0,255,204,0.4); }

@@ -122,7 +122,7 @@
 
 .ev-panel--gitignore {
   border-color: rgba(255, 170, 50, 0.3);
-  background: color-mix(in srgb, #ffaa32 4%, var(--surface-color));
+  background: color-mix(in srgb, var(--warning-color) 4%, var(--surface-color));
 }
 
 .ev-panel__header {
@@ -147,7 +147,7 @@
 }
 
 .ev-panel__title--warn {
-  color: #ffaa32;
+  color: var(--warning-color);
 }
 
 .ev-panel__actions {
@@ -300,15 +300,15 @@
 }
 
 .ev-status-bar--warnings {
-  background: color-mix(in srgb, #ffaa32 7%, transparent);
+  background: color-mix(in srgb, var(--warning-color) 7%, transparent);
   border-color: rgba(255, 170, 50, 0.3);
-  color: #ffaa32;
+  color: var(--warning-color);
 }
 
 .ev-status-bar--errors {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 /* ── Stats bar ──────────────────────────────────────────────── */
@@ -349,9 +349,9 @@
   font-family: 'Fira Code', monospace;
 }
 
-.ev-stat__value--error { color: #ff4d6a; }
-.ev-stat__value--warn { color: #ffaa32; }
-.ev-stat__value--secret { color: #ff4d6a; text-shadow: 0 0 8px rgba(255, 77, 106, 0.5); }
+.ev-stat__value--error { color: var(--error-color); }
+.ev-stat__value--warn { color: var(--warning-color); }
+.ev-stat__value--secret { color: var(--error-color); text-shadow: 0 0 8px rgba(255, 77, 106, 0.5); }
 
 .ev-stat-divider {
   width: 1px;
@@ -394,21 +394,21 @@
 }
 
 .ev-filter-tab--error.ev-filter-tab--active {
-  background: color-mix(in srgb, #ff4d6a 12%, transparent);
+  background: color-mix(in srgb, var(--error-color) 12%, transparent);
   border-color: rgba(255, 77, 106, 0.4);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .ev-filter-tab--warning.ev-filter-tab--active {
-  background: color-mix(in srgb, #ffaa32 12%, transparent);
+  background: color-mix(in srgb, var(--warning-color) 12%, transparent);
   border-color: rgba(255, 170, 50, 0.4);
-  color: #ffaa32;
+  color: var(--warning-color);
 }
 
 .ev-filter-tab--info.ev-filter-tab--active {
-  background: color-mix(in srgb, #7b61ff 12%, transparent);
+  background: color-mix(in srgb, var(--info-color) 12%, transparent);
   border-color: rgba(123, 97, 255, 0.4);
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 .ev-filter-count {
@@ -450,9 +450,9 @@
   margin-top: 0.1rem;
 }
 
-.ev-issue--error .ev-issue__icon { color: #ff4d6a; }
-.ev-issue--warning .ev-issue__icon { color: #ffaa32; }
-.ev-issue--info .ev-issue__icon { color: #7b61ff; }
+.ev-issue--error .ev-issue__icon { color: var(--error-color); }
+.ev-issue--warning .ev-issue__icon { color: var(--warning-color); }
+.ev-issue--info .ev-issue__icon { color: var(--info-color); }
 
 .ev-issue__content {
   flex: 1;
@@ -476,15 +476,15 @@
 
 .ev-issue--error .ev-issue__severity {
   background: rgba(255, 77, 106, 0.15);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 .ev-issue--warning .ev-issue__severity {
   background: rgba(255, 170, 50, 0.15);
-  color: #ffaa32;
+  color: var(--warning-color);
 }
 .ev-issue--info .ev-issue__severity {
   background: rgba(123, 97, 255, 0.15);
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 .ev-issue__line {
@@ -519,9 +519,9 @@
 }
 .ev-line-row:hover { background: rgba(214, 221, 235, 0.03); }
 
-.ev-line-row--error { border-left-color: #ff4d6a; background: rgba(255, 77, 106, 0.04); }
-.ev-line-row--warning { border-left-color: #ffaa32; background: rgba(255, 170, 50, 0.04); }
-.ev-line-row--info { border-left-color: #7b61ff; background: rgba(123, 97, 255, 0.04); }
+.ev-line-row--error { border-left-color: var(--error-color); background: rgba(255, 77, 106, 0.04); }
+.ev-line-row--warning { border-left-color: var(--warning-color); background: rgba(255, 170, 50, 0.04); }
+.ev-line-row--info { border-left-color: var(--info-color); background: rgba(123, 97, 255, 0.04); }
 
 .ev-line-num {
   flex-shrink: 0;
@@ -549,16 +549,16 @@
   margin-left: 0.5rem;
 }
 
-.ev-line-row--error .ev-line-indicator { color: #ff4d6a; }
-.ev-line-row--warning .ev-line-indicator { color: #ffaa32; }
-.ev-line-row--info .ev-line-indicator { color: #7b61ff; }
+.ev-line-row--error .ev-line-indicator { color: var(--error-color); }
+.ev-line-row--warning .ev-line-indicator { color: var(--warning-color); }
+.ev-line-row--info .ev-line-indicator { color: var(--info-color); }
 
 /* ── Syntax tokens ────────────────────────────────────────── */
 .ev-token-key { color: #7ec8e3; }
 .ev-token-eq { color: rgba(214, 221, 235, 0.4); }
 .ev-token-value { color: #a8e6a3; }
 .ev-token-comment { color: rgba(214, 221, 235, 0.35); font-style: italic; }
-.ev-token-invalid { color: #ff4d6a; text-decoration: wavy underline; text-decoration-color: rgba(255, 77, 106, 0.5); text-underline-offset: 3px; }
+.ev-token-invalid { color: var(--error-color); text-decoration: wavy underline; text-decoration-color: rgba(255, 77, 106, 0.5); text-underline-offset: 3px; }
 
 /* ── Gitignore & Example pre ──────────────────────────────── */
 .ev-gitignore-pre,

@@ -464,9 +464,9 @@
 }
 
 .bc-status-bar--invalid {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .bc-status-error {
@@ -554,7 +554,7 @@
 }
 
 .bc-result-row__value--hex {
-  color: var(--secondary-color, #7b61ff);
+  color: var(--secondary-color, var(--info-color));
 }
 
 /* ── Empty / error states ──────────────────────────────────── */

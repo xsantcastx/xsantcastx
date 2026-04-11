@@ -315,9 +315,9 @@
   color: var(--primary-color);
 }
 .il-validate-badge--invalid {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .il-validate-version {
@@ -420,9 +420,9 @@
   margin-top: 0.75rem;
   padding: 0.55rem 1rem;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border: 1px solid rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
   font-size: 0.8rem;
   font-weight: 500;
 }

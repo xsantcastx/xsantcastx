@@ -41,6 +41,6 @@
 .ogp-preview-title--dc { color: #00b4d8; }
 .ogp-preview-desc { font-size: 0.8rem; color: var(--text-muted); display: block; line-height: 1.4; }
 .ogp-preview-site { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem; }
-.ogp-preview--dc { display: flex; flex-direction: column; border-left: 3px solid #7b61ff; padding: 0.75rem; }
+.ogp-preview--dc { display: flex; flex-direction: column; border-left: 3px solid var(--info-color); padding: 0.75rem; }
 .ogp-preview--dc .ogp-preview-body { padding: 0; }
 @media (max-width: 768px) { .ogp-layout { grid-template-columns: 1fr; } .ogp-tabs { flex-wrap: wrap; } }

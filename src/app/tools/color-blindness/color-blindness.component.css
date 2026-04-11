@@ -390,9 +390,9 @@
 }
 
 .cbs-badge--fail {
-  background: color-mix(in srgb, #ff4d6a 12%, transparent);
+  background: color-mix(in srgb, var(--error-color) 12%, transparent);
   border: 1px solid rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 /* -- Drop zone ------------------------------------------------ */

@@ -340,12 +340,12 @@
 }
 
 .mc-btn--stop {
-  background: color-mix(in srgb, #ff4d6a 15%, transparent);
+  background: color-mix(in srgb, var(--error-color) 15%, transparent);
   border-color: rgba(255, 77, 106, 0.4);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 .mc-btn--stop:hover {
-  background: color-mix(in srgb, #ff4d6a 25%, transparent);
+  background: color-mix(in srgb, var(--error-color) 25%, transparent);
 }
 
 /* ── Ghost/small buttons ───────────────────────────────────── */
@@ -410,9 +410,9 @@
 }
 
 .mc-status-bar--invalid {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .mc-status-error {

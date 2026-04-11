@@ -31,7 +31,7 @@
 .sps-step { display: grid; grid-template-columns: 80px 1fr 60px 80px; align-items: center; gap: 0.75rem; }
 .sps-step__label { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-muted); }
 .sps-step__bar-wrap { height: 20px; background: var(--surface-strong); border-radius: 4px; overflow: hidden; }
-.sps-step__bar { height: 100%; background: linear-gradient(90deg, #00ffcc, #7b61ff); border-radius: 4px; transition: width 0.3s ease; min-width: 2px; }
+.sps-step__bar { height: 100%; background: linear-gradient(90deg, #00ffcc, var(--info-color)); border-radius: 4px; transition: width 0.3s ease; min-width: 2px; }
 .sps-step__px { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-color); text-align: right; }
 .sps-step__rem { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: var(--text-muted); text-align: right; }
 @media (max-width: 768px) { .sps-layout { grid-template-columns: 1fr; } .sps-step { grid-template-columns: 70px 1fr 50px 70px; } }

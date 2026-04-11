@@ -231,7 +231,7 @@
 
 .mt-csv-hint {
   font-size: 0.73rem;
-  color: #ff4d6a;
+  color: var(--error-color);
   margin: 0;
 }
 
@@ -328,7 +328,7 @@
 }
 .mt-col-remove:hover:not(:disabled),
 .mt-row-remove:hover:not(:disabled) {
-  color: #ff4d6a;
+  color: var(--error-color);
   border-color: rgba(255, 77, 106, 0.3);
   background: rgba(255, 77, 106, 0.08);
 }

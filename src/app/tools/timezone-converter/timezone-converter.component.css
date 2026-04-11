@@ -29,12 +29,12 @@
 .tz-result__tz { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; }
 .tz-result__time { font-family: 'Fira Code', monospace; font-size: 2rem; font-weight: 700; color: #00ffcc; }
 .tz-result__date { font-size: 0.9rem; color: var(--text-color); }
-.tz-result__offset { font-family: 'Fira Code', monospace; font-size: 0.78rem; color: #7b61ff; }
+.tz-result__offset { font-family: 'Fira Code', monospace; font-size: 0.78rem; color: var(--info-color); }
 .tz-world { padding: 0; }
 .tz-world-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.75rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--glass-border); align-items: center; }
 .tz-world-row:last-child { border-bottom: none; }
 .tz-world-tz { font-size: 0.8rem; color: var(--text-color); font-weight: 500; }
 .tz-world-time { font-family: 'Fira Code', monospace; font-size: 0.82rem; color: #00ffcc; font-weight: 600; }
 .tz-world-date { font-size: 0.75rem; color: var(--text-muted); }
-.tz-world-offset { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: #7b61ff; }
+.tz-world-offset { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: var(--info-color); }
 @media (max-width: 768px) { .tz-layout { grid-template-columns: 1fr; } }

@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Cron Expression Builder — Component Styles
-   Cyberpunk theme: cyan #00ffcc, purple #7b61ff
+   Cyberpunk theme: cyan #00ffcc, purple var(--info-color)
    ══════════════════════════════════════════════════════════════ */
 
 .cb-page {
@@ -48,7 +48,7 @@
   margin-bottom: 0.5rem;
   line-height: 1.15;
 }
-.tool-header__amp { color: #7b61ff; }
+.tool-header__amp { color: var(--info-color); }
 
 .tool-header__subtitle {
   font-size: 0.95rem;
@@ -175,12 +175,12 @@
 }
 
 .cb-toggle input:checked ~ .cb-toggle__track {
-  background: color-mix(in srgb, #7b61ff 20%, transparent);
+  background: color-mix(in srgb, var(--info-color) 20%, transparent);
   border-color: rgba(123, 97, 255, 0.45);
 }
 .cb-toggle input:checked ~ .cb-toggle__track .cb-toggle__thumb {
   left: 20px;
-  background: #7b61ff;
+  background: var(--info-color);
 }
 
 .cb-toggle__label {
@@ -195,14 +195,14 @@
   display: inline-flex;
   align-items: center;
   padding: 0.1rem 0.45rem;
-  background: color-mix(in srgb, #7b61ff 18%, transparent);
+  background: color-mix(in srgb, var(--info-color) 18%, transparent);
   border: 1px solid rgba(123, 97, 255, 0.3);
   border-radius: 999px;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 /* ── Manual text input ─────────────────────────────────────── */
@@ -218,7 +218,7 @@
   text-align: center;
   padding: 1.2rem 1rem 0.4rem;
   outline: none;
-  caret-color: #7b61ff;
+  caret-color: var(--info-color);
   box-sizing: border-box;
 }
 .cb-text-input::placeholder {
@@ -262,7 +262,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 .cb-select {
@@ -374,7 +374,7 @@
   font-family: 'Fira Code', monospace;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 .cb-expression-field__label {
@@ -431,11 +431,11 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: color-mix(in srgb, #7b61ff 15%, transparent);
+  background: color-mix(in srgb, var(--info-color) 15%, transparent);
   border: 1px solid rgba(123, 97, 255, 0.3);
   font-size: 0.68rem;
   font-weight: 700;
-  color: #7b61ff;
+  color: var(--info-color);
   flex-shrink: 0;
 }
 

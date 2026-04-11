@@ -422,9 +422,9 @@
 }
 
 .hg-status-bar--invalid {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .hg-status-error {
@@ -589,9 +589,9 @@
   color: var(--primary-color);
 }
 .hg-compare-icon--mismatch {
-  background: color-mix(in srgb, #ff4d6a 12%, transparent);
+  background: color-mix(in srgb, var(--error-color) 12%, transparent);
   border: 2px solid rgba(255, 77, 106, 0.35);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .hg-compare-text {
@@ -601,7 +601,7 @@
   margin: 0;
 }
 .hg-compare-text--match { color: var(--primary-color); }
-.hg-compare-text--mismatch { color: #ff4d6a; }
+.hg-compare-text--mismatch { color: var(--error-color); }
 
 .hg-compare-hint {
   font-size: 0.75rem;

@@ -336,7 +336,7 @@
 
 .ch-error {
   font-size: 0.73rem;
-  color: #ff4d6a;
+  color: var(--error-color);
   margin: 0;
   line-height: 1.4;
 }

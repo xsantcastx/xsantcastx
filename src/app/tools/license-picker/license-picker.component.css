@@ -13,7 +13,7 @@
 .lp-panel { background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
 .lp-panel__header { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--glass-border); background: var(--surface-strong); }
 .lp-panel__title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-.lp-category-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, #7b61ff 18%, transparent); border: 1px solid rgba(123,97,255,0.3); color: #7b61ff; }
+.lp-category-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--info-color) 18%, transparent); border: 1px solid rgba(123,97,255,0.3); color: var(--info-color); }
 .lp-search { padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--glass-border); }
 .lp-search-input { width: 100%; padding: 0.4rem 0.7rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-size: 0.82rem; outline: none; caret-color: #00ffcc; box-sizing: border-box; }
 .lp-search-input:focus { border-color: rgba(0,255,204,0.4); }
@@ -31,7 +31,7 @@
 .lp-tag { font-size: 0.68rem; font-weight: 600; padding: 0.12rem 0.5rem; border-radius: 999px; }
 .lp-tag--green { background: color-mix(in srgb, #00ffcc 12%, transparent); color: #00ffcc; }
 .lp-tag--blue { background: color-mix(in srgb, #00b4d8 12%, transparent); color: #00b4d8; }
-.lp-tag--red { background: color-mix(in srgb, #ff4d6a 12%, transparent); color: #ff4d6a; }
+.lp-tag--red { background: color-mix(in srgb, var(--error-color) 12%, transparent); color: var(--error-color); }
 .lp-gen { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .lp-gen-fields { display: flex; gap: 0.5rem; }
 .lp-input { flex: 1; padding: 0.45rem 0.7rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-size: 0.82rem; outline: none; caret-color: #00ffcc; }
