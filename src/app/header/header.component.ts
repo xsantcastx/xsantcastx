@@ -5,9 +5,12 @@
   Renderer2,
   inject,
   OnInit,
-  OnDestroy
+  OnDestroy,
+  NgZone,
+  ChangeDetectorRef
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
 
@@ -19,6 +22,8 @@ import { AnalyticsService } from '../analytics.service';
 })
 export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private router = inject(Router);
+  private ngZone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
@@ -29,6 +34,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   // Perf: cache section offsets so scroll handler doesn't hit the DOM 5x per frame
   private sectionOffsets: Array<{ id: string; top: number }> = [];
   private cachedScrollableHeight = 0;
+  // Perf Phase 2: track template-bound state so we only trigger change detection
+  // when a value that actually affects the view changes. Scroll handler now runs
+  // outside the Angular zone, so CD must be explicitly opted into on state change.
+  private langSub?: Subscription;
 
   currentLang = 'en';
   mobileMenuOpen = false;
@@ -59,8 +68,14 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.translationService.currentLanguage$.subscribe(lang => {
+    // Perf Phase 2: store the subscription so it tears down on destroy. Previously
+    // this was a naked subscribe() that leaked every time the header was recreated.
+    this.langSub = this.translationService.currentLanguage$.subscribe(lang => {
+      const changed = this.currentLang !== lang;
       this.currentLang = lang;
+      if (changed) {
+        this.cdr.markForCheck();
+      }
     });
     this.setupScrollListener();
   }
@@ -69,9 +84,13 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (typeof window === 'undefined') return;
 
     this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
-    window.requestAnimationFrame(() => this.updateHeaderOffset());
+    // Run one-shot measurements outside the zone so SSR hydration + initial paint
+    // don't pay a change-detection tax for a single CSS variable write.
+    this.ngZone.runOutsideAngular(() => {
+      window.requestAnimationFrame(() => this.updateHeaderOffset());
+    });
     this.setupResizeListener();
-    this.handleScroll();
+    this.ngZone.runOutsideAngular(() => this.handleScroll());
   }
 
   ngOnDestroy(): void {
@@ -90,6 +109,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.scrollRafId = null;
     }
 
+    this.langSub?.unsubscribe();
     this.setBodyScrollLock(false);
   }
 
@@ -98,18 +118,30 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    // Perf: rAF throttle — batch all DOM reads/writes into one frame instead
-    // of firing synchronously on every scroll event (which thrashes layout on mobile).
-    this.scrollHandler = () => {
-      if (this.scrollRafId !== null) {
-        return;
-      }
-      this.scrollRafId = window.requestAnimationFrame(() => {
-        this.scrollRafId = null;
-        this.handleScroll();
-      });
-    };
-    window.addEventListener('scroll', this.scrollHandler, { passive: true });
+    // Perf Phase 2: run the scroll listener and its rAF callback OUTSIDE the
+    // Angular zone. The scroll event fires ~60×/s on mobile, and every time a
+    // zone patched callback touched a template-bound field Angular ran a full
+    // change-detection cycle over the entire component tree (114+ tools in the
+    // registry). Over 90s of continuous scroll that's ~5,400 CD passes stacking
+    // pending tasks, V8 deopts, and garbage collection pressure — exactly the
+    // "lag accumulates over time" symptom the owner reported after 9f6c586.
+    //
+    // Inside the raf callback we call handleScroll(), which internally decides
+    // whether any template-bound state (currentSection / activeWord / toggle)
+    // changed and then explicitly re-enters the zone via markForCheck() only for
+    // those frames. Static scroll rAFs (the common case) cost zero Angular work.
+    this.ngZone.runOutsideAngular(() => {
+      this.scrollHandler = () => {
+        if (this.scrollRafId !== null) {
+          return;
+        }
+        this.scrollRafId = window.requestAnimationFrame(() => {
+          this.scrollRafId = null;
+          this.handleScroll();
+        });
+      };
+      window.addEventListener('scroll', this.scrollHandler!, { passive: true });
+    });
   }
 
   private setupResizeListener(): void {
@@ -117,12 +149,16 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    this.resizeHandler = () => {
-      this.updateHeaderOffset();
-      // Section offsets change with viewport size — recache.
-      this.cacheSectionOffsets();
-    };
-    window.addEventListener('resize', this.resizeHandler);
+    // Perf Phase 2: resize is also outside the zone — it mutates layout
+    // (--header-offset CSS var + cached offsets), not template-bound state.
+    this.ngZone.runOutsideAngular(() => {
+      this.resizeHandler = () => {
+        this.updateHeaderOffset();
+        // Section offsets change with viewport size — recache.
+        this.cacheSectionOffsets();
+      };
+      window.addEventListener('resize', this.resizeHandler!);
+    });
   }
 
   /**
@@ -154,7 +190,9 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     const scrollY = window.scrollY;
     this.updateNavbarState(scrollY);
     const progress = this.updateScrollProgress(scrollY);
-    this.updateInspirationWord(progress);
+    // Track whether any template-bound state changed so we can opt back into
+    // change detection only when the view actually needs to update.
+    let viewDirty = this.updateInspirationWord(progress);
 
     // Lazy-init section cache on first scroll (after hydration) if not yet populated.
     if (this.sectionOffsets.length === 0) {
@@ -164,18 +202,30 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     const offset = (this.navbarEl?.offsetHeight ?? 70) + 30;
     const scrollPosition = scrollY + offset;
 
+    let matched = false;
     for (let i = this.sectionOffsets.length - 1; i >= 0; i--) {
       const section = this.sectionOffsets[i];
       if (scrollPosition >= section.top) {
         if (this.currentSection !== section.id) {
           this.currentSection = section.id;
+          viewDirty = true;
         }
-        return;
+        matched = true;
+        break;
       }
     }
 
-    if (this.currentSection !== 'hero') {
+    if (!matched && this.currentSection !== 'hero') {
       this.currentSection = 'hero';
+      viewDirty = true;
+    }
+
+    // Only cross the zone boundary when the view needs to re-render. On a page
+    // of static scrolling (the vast majority of rAF ticks) this is a no-op and
+    // Angular does zero work. When the active section or inspiration word
+    // actually flips we re-enter the zone once and flush one CD pass.
+    if (viewDirty) {
+      this.ngZone.run(() => this.cdr.markForCheck());
     }
   }
 
@@ -237,18 +287,24 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     body.classList.add(`bg-${section}`);
   }
 
-  private updateInspirationWord(progress: number): void {
+  /**
+   * Returns true when a template-bound field (activeWord / wordSwapToggle)
+   * was mutated, so the caller can schedule a single markForCheck instead of
+   * letting every rAF tick trigger zone-driven change detection.
+   */
+  private updateInspirationWord(progress: number): boolean {
     if (progress < 0) {
-      return;
+      return false;
     }
 
     if (Math.abs(progress - this.lastWordChangeProgress) < this.wordChangeThreshold) {
-      return;
+      return false;
     }
 
     this.activeWord = this.pickNextWord();
     this.wordSwapToggle = !this.wordSwapToggle;
     this.lastWordChangeProgress = progress;
+    return true;
   }
 
   private pickNextWord(): string {

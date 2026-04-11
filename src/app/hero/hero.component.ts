@@ -44,6 +44,18 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
 
   ngOnInit() {
     this.userSubscription = this.authService.user$.subscribe(user => {
+      // Perf Phase 2: tear down the PREVIOUS wallet/transaction Firestore
+      // listeners before attaching new ones. Previously each re-emission of
+      // user$ (e.g. auth state refresh, token rotation) stacked a brand-new
+      // pair of onSnapshot listeners on top of the old ones — they piled up
+      // over the session because nothing ever disposed the prior pair until
+      // ngOnDestroy. On extended sessions that meant ever-growing Firestore
+      // callback traffic contributing to cumulative mobile lag.
+      this.walletSubscription?.unsubscribe();
+      this.transactionSubscription?.unsubscribe();
+      this.walletSubscription = undefined;
+      this.transactionSubscription = undefined;
+
       if (user) {
         this.walletSubscription = this.firebaseService.getWallet(user.uid).subscribe(wallets => {
           this.wallets = wallets;
