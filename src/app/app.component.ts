@@ -1,4 +1,4 @@
-import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, PLATFORM_ID, NgZone, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -13,13 +13,21 @@ import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-trigge
     styleUrls: ['./app.component.css'],
     standalone: false
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'xsantcastx';
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+  private ngZone = inject(NgZone);
   readonly embed = inject(EmbedService);
   private visitCounter = inject(VisitCounterService);
   private eggTriggers = inject(GlobalEggTriggersService);
+
+  // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
+  // and so subsequent hydrations don't stack parallel intervals. Previously
+  // this was a fire-and-forget setInterval that never got cleared, which on
+  // hot reload in dev (and on any future re-init of AppComponent) would leave
+  // orphan DOM queries running on the main thread every 3.5s forever.
+  private glitchPollId: ReturnType<typeof setInterval> | null = null;
 
   constructor(private seo: SeoService) {}
 
@@ -57,10 +65,24 @@ export class AppComponent implements OnInit {
       setTimeout(() => { glitchPending = false; }, candidates.length * 120 + 800);
     };
 
-    setInterval(() => {
-      if (document.body.classList.contains('glitch-out')) {
-        triggerRandomGlitch();
-      }
-    }, 3500);
+    // Perf Phase 2: run the glitch poll OUTSIDE the Angular zone. Previously
+    // zone-patched setInterval triggered a full change-detection pass every
+    // 3.5s even when the early-return short-circuited — on a 114-tool app
+    // that's a lot of wasted CD work for a purely cosmetic effect. Also cache
+    // the interval id so ngOnDestroy can clear it.
+    this.ngZone.runOutsideAngular(() => {
+      this.glitchPollId = setInterval(() => {
+        if (document.body.classList.contains('glitch-out')) {
+          triggerRandomGlitch();
+        }
+      }, 3500);
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.glitchPollId !== null) {
+      clearInterval(this.glitchPollId);
+      this.glitchPollId = null;
+    }
   }
 }

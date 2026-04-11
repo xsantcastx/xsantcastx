@@ -1,0 +1,164 @@
+diff --git a/src/app/landing/landing.component.css b/src/app/landing/landing.component.css
+index 4045253..505fb63 100644
+--- a/src/app/landing/landing.component.css
++++ b/src/app/landing/landing.component.css
+@@ -257,6 +257,10 @@
+   will-change: transform, opacity;
+   animation-delay: calc(var(--ci, 0) * 5s);
+   cursor: default;
++  /* Decorative rotating preview — not interactive. Prevents "ghost"
++     hover/click on invisible cards during fade-out and stops the
++     rotating text from stealing focus or tab order. */
++  pointer-events: none;
+   box-shadow: 0 20px 50px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+ }
+ 
+diff --git a/src/app/landing/landing.component.html b/src/app/landing/landing.component.html
+index 11b5577..e7fe6d6 100644
+--- a/src/app/landing/landing.component.html
++++ b/src/app/landing/landing.component.html
+@@ -37,23 +37,29 @@
+         </div>
+       </div>
+ 
+-      <!-- RIGHT: animated card carousel -->
++      <!-- RIGHT: animated card carousel. aria-hidden because the rotating
++           preview is decorative; the real tool grid below is the accessible
++           entry point. Without aria-hidden, screen readers announce each
++           card as it cycles in and out which is meaningless noise. -->
+       <div class="hp-hero__visual">
+-        <div class="hero-carousel">
++        <div class="hero-carousel" aria-hidden="true">
+           <div
+             class="hc-card"
+-            *ngFor="let tool of heroCarouselTools; let i = index; trackBy: trackToolById"
+-            [style.--ci]="i"
++            *ngFor="let card of heroCarouselCards; trackBy: trackHeroCard"
++            [style.--ci]="card.ci"
+           >
+             <div class="hc-card__top">
+-              <span class="hc-card__icon">{{ tool.icon }}</span>
+-              <span class="hc-card__cat">{{ tool.category }}</span>
++              <span class="hc-card__icon">{{ card.tool.icon }}</span>
++              <span class="hc-card__cat">{{ card.tool.category }}</span>
+             </div>
+-            <h3 class="hc-card__name">{{ tool.name }}</h3>
+-            <p class="hc-card__desc">{{ tool.desc }}</p>
++            <h3 class="hc-card__name">{{ card.tool.name }}</h3>
++            <p class="hc-card__desc">{{ card.tool.desc }}</p>
+             <div class="hc-card__footer">
+               <span class="hc-card__cta">Try it &rarr;</span>
+-              <span class="hc-card__num">0{{ i + 1 }}/0{{ heroCarouselTools.length }}</span>
++              <!-- Card index counter, not a timer. Two-digit zero-padded
++                   via precomputed indexLabel/totalLabel — prevents the
++                   "01:016 looks like broken mm:ss" bug from 2026-04-10. -->
++              <span class="hc-card__num">{{ card.indexLabel }} / {{ card.totalLabel }}</span>
+             </div>
+           </div>
+         </div>
+diff --git a/src/app/landing/landing.component.ts b/src/app/landing/landing.component.ts
+index 5d21283..8285d52 100644
+--- a/src/app/landing/landing.component.ts
++++ b/src/app/landing/landing.component.ts
+@@ -16,6 +16,30 @@ export interface Tool {
+   features: string[];
+ }
+ 
++/**
++ * Hard invariant: the hero carousel CSS animation is hand-tuned for exactly
++ * HERO_CAROUSEL_MAX cards rotating over a HERO_CAROUSEL_CYCLE_SECONDS cycle
++ * with one card per (cycle / count) slice. Changing this number WITHOUT also
++ * retiming hcCardCycle in landing.component.css is a bug that causes card
++ * N+MAX to restart before card N finishes, producing z-index bleed-through
++ * and the "flickering red/orange overlay" glitch reported on 2026-04-10.
++ *
++ * If you need more featured cards, build a second carousel or rework the
++ * keyframes — do not just bump this constant.
++ */
++export const HERO_CAROUSEL_MAX = 5;
++
++/** View model for a single hero carousel slot. Precomputing the padded labels
++ *  keeps them out of the template (no pipes, no hardcoded `0` prefixes that
++ *  break the moment the count crosses 10). */
++interface HeroCarouselCard {
++  readonly tool: Tool;
++  readonly ci: number;          // slot index, fed to the CSS --ci variable
++  readonly indexLabel: string;  // e.g. "01"
++  readonly totalLabel: string;  // e.g. "05"
++  readonly ariaLabel: string;   // "Featured tool 1 of 5: Foo"
++}
++
+ @Component({
+   selector: 'app-landing',
+   templateUrl: './landing.component.html',
+@@ -54,9 +78,13 @@ export class LandingComponent implements OnInit, OnDestroy {
+   /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
+   readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
+ 
+-  /** Tools shown in the hero carousel — capped at 5 to match the 25s/5s CSS animation cycle.
+-   *  More than 5 cards causes animation collisions (card N+5 restarts before card N exits). */
+-  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, 5).map(t => ({
++  /** Tools shown in the hero carousel — capped at HERO_CAROUSEL_MAX to match the
++   *  25s / 5s-per-slot CSS animation cycle. More than HERO_CAROUSEL_MAX cards
++   *  causes animation collisions (card N+MAX restarts before card N exits),
++   *  producing z-index bleed-through and the flickering overlay reported by
++   *  the owner on 2026-04-10. Keep this derived from the constant so a future
++   *  refactor can't accidentally regress the invariant. */
++  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, HERO_CAROUSEL_MAX).map(t => ({
+     id: t.id,
+     name: t.title,
+     desc: t.description,
+@@ -66,6 +94,23 @@ export class LandingComponent implements OnInit, OnDestroy {
+     features: t.features,
+   }));
+ 
++  /** Precomputed view models for the hero carousel slots. Padding is done
++   *  once here instead of via template math like `0{{ i + 1 }}/0{{ len }}`,
++   *  which silently broke at 10+ cards and visually looked like a broken
++   *  `mm:ss` timer (see [BUG] Homepage tool cards flickering, 2026-04-10). */
++  readonly heroCarouselCards: HeroCarouselCard[] = this.heroCarouselTools.map((tool, i, arr) => {
++    const total = arr.length;
++    const indexLabel = (i + 1).toString().padStart(2, '0');
++    const totalLabel = total.toString().padStart(2, '0');
++    return {
++      tool,
++      ci: i,
++      indexLabel,
++      totalLabel,
++      ariaLabel: `Featured tool ${i + 1} of ${total}: ${tool.name}`,
++    };
++  });
++
+   get filteredTools(): Tool[] {
+     const q = this.searchQuery.toLowerCase();
+     return this.tools.filter(t => {
+@@ -80,6 +125,18 @@ export class LandingComponent implements OnInit, OnDestroy {
+   }
+ 
+   ngOnInit(): void {
++    // Belt-and-braces: if someone bumps the slice or the registry returns
++    // more than expected, warn loudly in dev so we don't silently regress
++    // back to the flickering overlay bug.
++    if (this.heroCarouselTools.length > HERO_CAROUSEL_MAX && typeof console !== 'undefined') {
++      console.warn(
++        `[landing] heroCarouselTools length (${this.heroCarouselTools.length}) exceeds ` +
++        `HERO_CAROUSEL_MAX (${HERO_CAROUSEL_MAX}) — this will cause CSS animation ` +
++        `collisions and z-index bleed-through. Retune hcCardCycle keyframes before ` +
++        `increasing the cap.`
++      );
++    }
++
+     this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
+     this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
+       next: (days) => {
+@@ -103,6 +160,10 @@ export class LandingComponent implements OnInit, OnDestroy {
+     return tool.id;
+   }
+ 
++  trackHeroCard(_index: number, card: HeroCarouselCard): string {
++    return card.tool.id;
++  }
++
+   trackChangelogDay(_index: number, day: ChangelogDay): string {
+     return day.dateLabel;
+   }
