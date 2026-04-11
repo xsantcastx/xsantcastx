@@ -257,6 +257,10 @@
   will-change: transform, opacity;
   animation-delay: calc(var(--ci, 0) * 5s);
   cursor: default;
+  /* Decorative rotating preview — not interactive. Prevents "ghost"
+     hover/click on invisible cards during fade-out and stops the
+     rotating text from stealing focus or tab order. */
+  pointer-events: none;
   box-shadow: 0 20px 50px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
