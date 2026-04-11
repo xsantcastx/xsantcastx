@@ -1,5 +1,12 @@
 /* ─── PAGE ───────────────────────────────────────────── */
 
+/* Invisible host for the dynamically-injected <style> element (see ngAfterViewInit
+   in animation-generator.component.ts). Keeps keyframe CSS out of the Angular
+   template compiler so it doesn't log CSS parse warnings. */
+.ag-keyframes-host {
+  display: none;
+}
+
 .ag-page {
   min-height: 100vh;
   padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;

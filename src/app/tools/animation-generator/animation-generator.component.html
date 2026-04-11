@@ -15,8 +15,8 @@
     <p class="tool-header__subtitle">Visually build CSS keyframe animations with live preview and one-click code export. No sign-up, runs entirely in your browser.</p>
   </header>
 
-  <!-- Inject dynamic keyframes into a style tag -->
-  <style>{{ previewKeyframesCSS }}</style>
+  <!-- Dynamic keyframes are injected by the component via Renderer2 below -->
+  <div #previewKeyframesHost class="ag-keyframes-host" aria-hidden="true"></div>
 
   <!-- Main workspace -->
   <div class="ag-workspace">
