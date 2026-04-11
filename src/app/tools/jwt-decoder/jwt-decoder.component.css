@@ -209,15 +209,15 @@
 }
 
 .jd-status-bar--expired {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .jd-status-bar--error {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .jd-status-text {
@@ -282,7 +282,7 @@
   flex-shrink: 0;
 }
 .jd-dot--header   { background: #ff6b6b; box-shadow: 0 0 6px rgba(255, 107, 107, 0.4); }
-.jd-dot--payload  { background: #7b61ff; box-shadow: 0 0 6px rgba(123, 97, 255, 0.4); }
+.jd-dot--payload  { background: var(--info-color); box-shadow: 0 0 6px rgba(123, 97, 255, 0.4); }
 .jd-dot--signature { background: #00ffcc; box-shadow: 0 0 6px rgba(0, 255, 204, 0.4); }
 
 /* -- Badge ---------------------------------------------------- */

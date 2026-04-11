@@ -32,6 +32,6 @@
 .cd2-unit__value { font-family: 'Fira Code', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: #00ffcc; font-variant-numeric: tabular-nums; line-height: 1; }
 .cd2-unit__label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
 .cd2-separator { font-family: 'Fira Code', monospace; font-size: 2rem; color: var(--text-muted); align-self: flex-start; margin-top: 0.3rem; }
-.cd2-expired-msg { color: #7b61ff; font-size: 1rem; font-weight: 600; margin-top: 1rem; }
+.cd2-expired-msg { color: var(--info-color); font-size: 1rem; font-weight: 600; margin-top: 1rem; }
 .cd2-copy-btn { margin-top: 1rem; }
 @media (max-width: 768px) { .cd2-display { gap: 0.5rem; } .cd2-separator { font-size: 1.3rem; } }

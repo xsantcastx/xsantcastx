@@ -186,9 +186,9 @@
 .pm-timer--work .pm-ring__glow { stroke: #00ffcc; }
 .pm-timer--work .pm-timer-mode { color: #00ffcc; }
 
-.pm-timer--short .pm-ring__progress { stroke: #7b61ff; }
-.pm-timer--short .pm-ring__glow { stroke: #7b61ff; }
-.pm-timer--short .pm-timer-mode { color: #7b61ff; }
+.pm-timer--short .pm-ring__progress { stroke: var(--info-color); }
+.pm-timer--short .pm-ring__glow { stroke: var(--info-color); }
+.pm-timer--short .pm-timer-mode { color: var(--info-color); }
 
 .pm-timer--long .pm-ring__progress { stroke: #ff6b9d; }
 .pm-timer--long .pm-ring__glow { stroke: #ff6b9d; }
@@ -515,7 +515,7 @@
 .pm-history-badge--short {
   background: rgba(123, 97, 255, 0.1);
   border: 1px solid rgba(123, 97, 255, 0.25);
-  color: #7b61ff;
+  color: var(--info-color);
 }
 
 .pm-history-badge--long {

@@ -29,7 +29,7 @@
 .jsm-code code { font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; color: var(--primary-color); display: block; white-space: pre-wrap; word-break: break-all; }
 .jsm-empty, .jsm-error { display: flex; align-items: center; justify-content: center; min-height: 320px; font-size: 0.82rem; text-align: center; padding: 2rem; }
 .jsm-empty { color: rgba(214,221,235,0.3); }
-.jsm-error { color: #ff4d6a; }
+.jsm-error { color: var(--error-color); }
 
 .jsm-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
 .jsm-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.25); }

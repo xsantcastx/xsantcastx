@@ -26,7 +26,7 @@
 .tfm-val { font-size: 0.75rem; font-family: 'Fira Code', monospace; color: var(--text-color); min-width: 60px; text-align: right; }
 
 .tfm-preview-area { display: flex; align-items: center; justify-content: center; min-height: 300px; background: var(--surface-strong); border-radius: var(--radius-md); overflow: hidden; }
-.tfm-preview-box { width: 120px; height: 120px; background: linear-gradient(135deg, #00ffcc, #7b61ff); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #0a0e1a; transition: transform 0.15s ease; }
+.tfm-preview-box { width: 120px; height: 120px; background: linear-gradient(135deg, #00ffcc, var(--info-color)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #0a0e1a; transition: transform 0.15s ease; }
 
 .tfm-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
 .tfm-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }

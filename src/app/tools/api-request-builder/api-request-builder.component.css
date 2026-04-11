@@ -223,7 +223,7 @@
   padding: 0;
 }
 .arb-header-remove:hover {
-  color: #ff4d6a;
+  color: var(--error-color);
   border-color: rgba(255, 77, 106, 0.3);
   background: rgba(255, 77, 106, 0.08);
 }
@@ -419,15 +419,15 @@
 }
 
 .arb-status-bar--server-error {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .arb-status-bar--error {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .arb-status-code {
@@ -465,7 +465,7 @@
   background: rgba(255, 77, 106, 0.06);
   border: 1px solid rgba(255, 77, 106, 0.2);
   border-radius: var(--radius-md);
-  color: #ff4d6a;
+  color: var(--error-color);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -584,7 +584,7 @@
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
 }
 .arb-history-status--err {
-  color: #ff4d6a;
+  color: var(--error-color);
   background: rgba(255, 77, 106, 0.12);
 }
 

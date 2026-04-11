@@ -20,23 +20,23 @@
 .jd-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .jd-btn-ghost { padding: 0.55rem 1.2rem; background: none; border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-body); font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
 .jd-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
-.jd-error { padding: 0.75rem 1rem; background: color-mix(in srgb, #ff4d6a 7%, transparent); border: 1px solid rgba(255,77,106,0.3); border-radius: var(--radius-md); color: #ff4d6a; font-size: 0.82rem; margin-bottom: 1rem; }
+.jd-error { padding: 0.75rem 1rem; background: color-mix(in srgb, var(--error-color) 7%, transparent); border: 1px solid rgba(255,77,106,0.3); border-radius: var(--radius-md); color: var(--error-color); font-size: 0.82rem; margin-bottom: 1rem; }
 .jd-stats { display: flex; gap: 1rem; margin-bottom: 1rem; }
 .jd-stat { font-size: 0.8rem; font-weight: 600; font-family: 'Fira Code', monospace; }
 .jd-stat--added { color: #00ffcc; }
-.jd-stat--removed { color: #ff4d6a; }
-.jd-stat--changed { color: #7b61ff; }
+.jd-stat--removed { color: var(--error-color); }
+.jd-stat--changed { color: var(--info-color); }
 .jd-results { display: flex; flex-direction: column; gap: 0.4rem; }
 .jd-diff-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: var(--surface-color); font-size: 0.82rem; flex-wrap: wrap; }
 .jd-diff-row--added { border-color: rgba(0,255,204,0.3); background: color-mix(in srgb, #00ffcc 5%, transparent); }
-.jd-diff-row--removed { border-color: rgba(255,77,106,0.3); background: color-mix(in srgb, #ff4d6a 5%, transparent); }
-.jd-diff-row--changed { border-color: rgba(123,97,255,0.3); background: color-mix(in srgb, #7b61ff 5%, transparent); }
+.jd-diff-row--removed { border-color: rgba(255,77,106,0.3); background: color-mix(in srgb, var(--error-color) 5%, transparent); }
+.jd-diff-row--changed { border-color: rgba(123,97,255,0.3); background: color-mix(in srgb, var(--info-color) 5%, transparent); }
 .jd-diff-key { font-family: 'Fira Code', monospace; font-weight: 600; color: var(--text-color); }
 .jd-diff-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1rem 0.45rem; border-radius: 999px; }
 .jd-diff-row--added .jd-diff-badge { background: color-mix(in srgb, #00ffcc 18%, transparent); color: #00ffcc; }
-.jd-diff-row--removed .jd-diff-badge { background: color-mix(in srgb, #ff4d6a 18%, transparent); color: #ff4d6a; }
-.jd-diff-row--changed .jd-diff-badge { background: color-mix(in srgb, #7b61ff 18%, transparent); color: #7b61ff; }
-.jd-diff-old { font-family: 'Fira Code', monospace; color: #ff4d6a; font-size: 0.8rem; }
+.jd-diff-row--removed .jd-diff-badge { background: color-mix(in srgb, var(--error-color) 18%, transparent); color: var(--error-color); }
+.jd-diff-row--changed .jd-diff-badge { background: color-mix(in srgb, var(--info-color) 18%, transparent); color: var(--info-color); }
+.jd-diff-old { font-family: 'Fira Code', monospace; color: var(--error-color); font-size: 0.8rem; }
 .jd-diff-new { font-family: 'Fira Code', monospace; color: #00ffcc; font-size: 0.8rem; }
 .jd-diff-arrow { color: var(--text-muted); }
 .jd-empty { padding: 2rem; text-align: center; color: rgba(214,221,235,0.3); font-size: 0.82rem; }

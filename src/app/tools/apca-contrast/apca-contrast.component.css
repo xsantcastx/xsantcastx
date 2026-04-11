@@ -372,7 +372,7 @@
 }
 .ac-preset-dot--pass { background: #00ffcc; box-shadow: 0 0 6px rgba(0, 255, 204, 0.5); }
 .ac-preset-dot--warn { background: #ffaa00; box-shadow: 0 0 6px rgba(255, 170, 0, 0.5); }
-.ac-preset-dot--fail { background: #ff4d6a; box-shadow: 0 0 6px rgba(255, 77, 106, 0.5); }
+.ac-preset-dot--fail { background: var(--error-color); box-shadow: 0 0 6px rgba(255, 77, 106, 0.5); }
 
 /* ── Score Cards ───────────────────────────────────────────── */
 .ac-scores {
@@ -426,7 +426,7 @@
   border-color: rgba(255, 77, 106, 0.35);
   box-shadow: 0 0 15px rgba(255, 77, 106, 0.06);
 }
-.ac-score-card--fail::before { background: #ff4d6a; }
+.ac-score-card--fail::before { background: var(--error-color); }
 
 .ac-score-card__label {
   font-size: 0.68rem;
@@ -455,7 +455,7 @@
   text-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
 }
 .ac-score-card--fail .ac-score-card__value {
-  color: #ff4d6a;
+  color: var(--error-color);
   text-shadow: 0 0 20px rgba(255, 77, 106, 0.3);
 }
 
@@ -594,7 +594,7 @@
 }
 .ac-result-tag--fail {
   background: rgba(255, 77, 106, 0.1);
-  color: #ff4d6a;
+  color: var(--error-color);
   border: 1px solid rgba(255, 77, 106, 0.3);
 }
 

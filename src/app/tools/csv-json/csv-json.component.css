@@ -21,7 +21,7 @@
 .cj-btn--ghost { background: none; color: var(--primary-color); border: 1px solid rgba(0, 255, 204, 0.2); }
 .cj-btn--ghost:hover { background: rgba(0, 255, 204, 0.06); }
 .cj-status { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.85rem; border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 500; margin-bottom: 1rem; background: rgba(0, 255, 204, 0.06); border: 1px solid rgba(0, 255, 204, 0.15); color: var(--primary-color); }
-.cj-status--error { background: rgba(255, 77, 106, 0.08); border-color: rgba(255, 77, 106, 0.2); color: #ff4d6a; }
+.cj-status--error { background: rgba(255, 77, 106, 0.08); border-color: rgba(255, 77, 106, 0.2); color: var(--error-color); }
 .cj-code { background: var(--surface-strong, rgba(255,255,255,0.04)); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1rem; font-family: monospace; font-size: 0.8rem; line-height: 1.6; color: var(--text-color); overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
 .cj-stats { display: flex; gap: 1.5rem; padding: 0.65rem 1rem; background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: var(--radius-md); margin-top: 1rem; }
 .cj-stat { display: flex; flex-direction: column; gap: 0.1rem; }

@@ -3,9 +3,9 @@
    Matches the xsantcastx neon cyberpunk design system
    ══════════════════════════════════════════════════════════════ */
 
-:host {
-  --error-color: #ff4d6a;
-}
+/* --error-color is now defined globally in src/styles.css (QoL batch 2,
+   2026-04-11). The scoped override here has been removed to avoid
+   shadowing the global token. */
 
 .sm-page {
   min-height: 100vh;

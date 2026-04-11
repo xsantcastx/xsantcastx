@@ -208,7 +208,7 @@
   border-radius: 99px;
   background: rgba(123, 97, 255, 0.12);
   border: 1px solid rgba(123, 97, 255, 0.3);
-  color: #7b61ff;
+  color: var(--info-color);
   margin-left: auto;
 }
 
@@ -325,7 +325,7 @@
 .fp-shuffle-btn {
   background: rgba(123, 97, 255, 0.1) !important;
   border-color: rgba(123, 97, 255, 0.35) !important;
-  color: #7b61ff !important;
+  color: var(--info-color) !important;
 }
 .fp-shuffle-btn:hover {
   background: rgba(123, 97, 255, 0.2) !important;
@@ -502,7 +502,7 @@
   border-radius: 99px;
   background: rgba(123, 97, 255, 0.1);
   border: 1px solid rgba(123, 97, 255, 0.25);
-  color: #7b61ff;
+  color: var(--info-color);
   white-space: nowrap;
   flex-shrink: 0;
 }

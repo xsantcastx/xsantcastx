@@ -395,8 +395,8 @@
   background: color-mix(in srgb, var(--primary-color) 6%, transparent);
 }
 .ug-validation-status--invalid {
-  color: #ff4d6a;
-  background: color-mix(in srgb, #ff4d6a 6%, transparent);
+  color: var(--error-color);
+  background: color-mix(in srgb, var(--error-color) 6%, transparent);
 }
 
 .ug-validation-details {

@@ -18,6 +18,15 @@
   --radius-md: 16px;
   --radius-lg: 24px;
   --success-color: #4ade80;
+  /* Semantic status tokens — these were duplicated as hardcoded hex values in
+     56+ tool CSS files for ~170 occurrences (see QoL batch 2, 2026-04-11).
+     Centralising here so a future palette change is a one-file edit and not
+     an archaeology project. Also gives future light-theme support a single
+     place to override. --info-color aliases --secondary-color because the
+     tool files already treat the brand purple as the "info" state. */
+  --error-color: #ff4d6a;
+  --warning-color: #ffaa32;
+  --info-color: #7b61ff;
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --header-offset: 96px;

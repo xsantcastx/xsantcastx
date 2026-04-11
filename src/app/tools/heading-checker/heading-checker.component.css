@@ -36,7 +36,7 @@
 .hc-issue--error { border-color: rgba(255,77,106,0.3); background: rgba(255,77,106,0.05); }
 .hc-issue--warning { border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.05); }
 .hc-issue__badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1rem 0.4rem; border-radius: 4px; flex-shrink: 0; }
-.hc-issue--error .hc-issue__badge { background: rgba(255,77,106,0.15); color: #ff4d6a; }
+.hc-issue--error .hc-issue__badge { background: rgba(255,77,106,0.15); color: var(--error-color); }
 .hc-issue--warning .hc-issue__badge { background: rgba(251,191,36,0.15); color: #fbbf24; }
 .hc-issue__msg { font-size: 0.82rem; color: var(--text-color); line-height: 1.5; }
 

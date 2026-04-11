@@ -339,9 +339,9 @@
 }
 
 .bt-status-bar--invalid {
-  background: color-mix(in srgb, #ff4d6a 7%, transparent);
+  background: color-mix(in srgb, var(--error-color) 7%, transparent);
   border-color: rgba(255, 77, 106, 0.3);
-  color: #ff4d6a;
+  color: var(--error-color);
 }
 
 .bt-status-error {
@@ -481,7 +481,7 @@
 .bt-breakdown-col--bytes {
   font-family: 'Fira Code', monospace;
   font-size: 0.73rem;
-  color: var(--secondary-color, #7b61ff);
+  color: var(--secondary-color, var(--info-color));
   text-align: center;
 }
 

@@ -296,10 +296,10 @@
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.6rem 0.85rem;
-  background: color-mix(in srgb, #ff4d6a 8%, transparent);
+  background: color-mix(in srgb, var(--error-color) 8%, transparent);
   border: 1px solid rgba(255, 77, 106, 0.3);
   border-radius: var(--radius-md);
-  color: #ff4d6a;
+  color: var(--error-color);
   font-size: 0.8rem;
 }
 
