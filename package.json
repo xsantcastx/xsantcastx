@@ -25,6 +25,7 @@
     "@tsparticles/angular": "^3.0.0",
     "@tsparticles/engine": "^3.9.1",
     "@types/nodemailer": "^7.0.2",
+    "axios": "^1.15.0",
     "esbuild": "0.25.9",
     "firebase": "^11.9.1",
     "jspdf": "^4.2.1",
