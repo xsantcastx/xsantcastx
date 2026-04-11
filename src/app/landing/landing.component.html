@@ -37,23 +37,29 @@
         </div>
       </div>
 
-      <!-- RIGHT: animated card carousel -->
+      <!-- RIGHT: animated card carousel. aria-hidden because the rotating
+           preview is decorative; the real tool grid below is the accessible
+           entry point. Without aria-hidden, screen readers announce each
+           card as it cycles in and out which is meaningless noise. -->
       <div class="hp-hero__visual">
-        <div class="hero-carousel">
+        <div class="hero-carousel" aria-hidden="true">
           <div
             class="hc-card"
-            *ngFor="let tool of heroCarouselTools; let i = index; trackBy: trackToolById"
-            [style.--ci]="i"
+            *ngFor="let card of heroCarouselCards; trackBy: trackHeroCard"
+            [style.--ci]="card.ci"
           >
             <div class="hc-card__top">
-              <span class="hc-card__icon">{{ tool.icon }}</span>
-              <span class="hc-card__cat">{{ tool.category }}</span>
+              <span class="hc-card__icon">{{ card.tool.icon }}</span>
+              <span class="hc-card__cat">{{ card.tool.category }}</span>
             </div>
-            <h3 class="hc-card__name">{{ tool.name }}</h3>
-            <p class="hc-card__desc">{{ tool.desc }}</p>
+            <h3 class="hc-card__name">{{ card.tool.name }}</h3>
+            <p class="hc-card__desc">{{ card.tool.desc }}</p>
             <div class="hc-card__footer">
               <span class="hc-card__cta">Try it &rarr;</span>
-              <span class="hc-card__num">0{{ i + 1 }}/0{{ heroCarouselTools.length }}</span>
+              <!-- Card index counter, not a timer. Two-digit zero-padded
+                   via precomputed indexLabel/totalLabel — prevents the
+                   "01:016 looks like broken mm:ss" bug from 2026-04-10. -->
+              <span class="hc-card__num">{{ card.indexLabel }} / {{ card.totalLabel }}</span>
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   private userSubscription: Subscription | undefined;
   private walletSubscription: Subscription | undefined;
   private transactionSubscription: Subscription | undefined;
+  private sectionObserver?: IntersectionObserver;
 
   constructor(
     private translationService: TranslationService
@@ -62,7 +63,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
 
     const sections = this.elRef.nativeElement.querySelectorAll("section");
 
-    const observer = new IntersectionObserver(entries => {
+    this.sectionObserver = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add("visible");
@@ -72,7 +73,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
       });
     }, { threshold: 0.5 });
 
-    sections.forEach((section: Element) => observer.observe(section));
+    sections.forEach((section: Element) => this.sectionObserver!.observe(section));
   }
 
   async register() {
@@ -112,6 +113,7 @@ export class HeroComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.sectionObserver?.disconnect();
     this.userSubscription?.unsubscribe();
     this.walletSubscription?.unsubscribe();
     this.transactionSubscription?.unsubscribe();

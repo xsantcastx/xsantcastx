@@ -16,6 +16,30 @@ export interface Tool {
   features: string[];
 }
 
+/**
+ * Hard invariant: the hero carousel CSS animation is hand-tuned for exactly
+ * HERO_CAROUSEL_MAX cards rotating over a HERO_CAROUSEL_CYCLE_SECONDS cycle
+ * with one card per (cycle / count) slice. Changing this number WITHOUT also
+ * retiming hcCardCycle in landing.component.css is a bug that causes card
+ * N+MAX to restart before card N finishes, producing z-index bleed-through
+ * and the "flickering red/orange overlay" glitch reported on 2026-04-10.
+ *
+ * If you need more featured cards, build a second carousel or rework the
+ * keyframes — do not just bump this constant.
+ */
+export const HERO_CAROUSEL_MAX = 5;
+
+/** View model for a single hero carousel slot. Precomputing the padded labels
+ *  keeps them out of the template (no pipes, no hardcoded `0` prefixes that
+ *  break the moment the count crosses 10). */
+interface HeroCarouselCard {
+  readonly tool: Tool;
+  readonly ci: number;          // slot index, fed to the CSS --ci variable
+  readonly indexLabel: string;  // e.g. "01"
+  readonly totalLabel: string;  // e.g. "05"
+  readonly ariaLabel: string;   // "Featured tool 1 of 5: Foo"
+}
+
 @Component({
   selector: 'app-landing',
   templateUrl: './landing.component.html',
@@ -54,9 +78,13 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
   readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
 
-  /** Tools shown in the hero carousel — capped at 5 to match the 25s/5s CSS animation cycle.
-   *  More than 5 cards causes animation collisions (card N+5 restarts before card N exits). */
-  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, 5).map(t => ({
+  /** Tools shown in the hero carousel — capped at HERO_CAROUSEL_MAX to match the
+   *  25s / 5s-per-slot CSS animation cycle. More than HERO_CAROUSEL_MAX cards
+   *  causes animation collisions (card N+MAX restarts before card N exits),
+   *  producing z-index bleed-through and the flickering overlay reported by
+   *  the owner on 2026-04-10. Keep this derived from the constant so a future
+   *  refactor can't accidentally regress the invariant. */
+  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, HERO_CAROUSEL_MAX).map(t => ({
     id: t.id,
     name: t.title,
     desc: t.description,
@@ -65,6 +93,23 @@ export class LandingComponent implements OnInit, OnDestroy {
     icon: t.textIcon,
     features: t.features,
   }));
+
+  /** Precomputed view models for the hero carousel slots. Padding is done
+   *  once here instead of via template math like `0{{ i + 1 }}/0{{ len }}`,
+   *  which silently broke at 10+ cards and visually looked like a broken
+   *  `mm:ss` timer (see [BUG] Homepage tool cards flickering, 2026-04-10). */
+  readonly heroCarouselCards: HeroCarouselCard[] = this.heroCarouselTools.map((tool, i, arr) => {
+    const total = arr.length;
+    const indexLabel = (i + 1).toString().padStart(2, '0');
+    const totalLabel = total.toString().padStart(2, '0');
+    return {
+      tool,
+      ci: i,
+      indexLabel,
+      totalLabel,
+      ariaLabel: `Featured tool ${i + 1} of ${total}: ${tool.name}`,
+    };
+  });
 
   get filteredTools(): Tool[] {
     const q = this.searchQuery.toLowerCase();
@@ -80,6 +125,18 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Belt-and-braces: if someone bumps the slice or the registry returns
+    // more than expected, warn loudly in dev so we don't silently regress
+    // back to the flickering overlay bug.
+    if (this.heroCarouselTools.length > HERO_CAROUSEL_MAX && typeof console !== 'undefined') {
+      console.warn(
+        `[landing] heroCarouselTools length (${this.heroCarouselTools.length}) exceeds ` +
+        `HERO_CAROUSEL_MAX (${HERO_CAROUSEL_MAX}) — this will cause CSS animation ` +
+        `collisions and z-index bleed-through. Retune hcCardCycle keyframes before ` +
+        `increasing the cap.`
+      );
+    }
+
     this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
     this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
       next: (days) => {
@@ -101,6 +158,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   // arrays are stable but the parent component re-renders frequently.
   trackToolById(_index: number, tool: Tool): string {
     return tool.id;
+  }
+
+  trackHeroCard(_index: number, card: HeroCarouselCard): string {
+    return card.tool.id;
   }
 
   trackChangelogDay(_index: number, day: ChangelogDay): string {
