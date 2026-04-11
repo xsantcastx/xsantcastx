@@ -1,4 +1,12 @@
-import { Component } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  DoCheck,
+  ElementRef,
+  OnDestroy,
+  Renderer2,
+  ViewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
@@ -29,7 +37,13 @@ interface AnimationPreset {
   styleUrls: ['./animation-generator.component.css'],
   standalone: false
 })
-export class AnimationGeneratorComponent {
+export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, DoCheck {
+
+  // ── Preview style injection ────────────────────────────
+  @ViewChild('previewKeyframesHost', { static: false })
+  private previewKeyframesHost?: ElementRef<HTMLElement>;
+  private injectedStyleEl: HTMLStyleElement | null = null;
+  private lastInjectedCSS = '';
 
   // ── Keyframes ──────────────────────────────────────────
   keyframes: KeyframePoint[] = [];
@@ -136,9 +150,44 @@ export class AnimationGeneratorComponent {
 
   constructor(
     private router: Router,
-    private eggs: EasterEggService
+    private eggs: EasterEggService,
+    private renderer: Renderer2
   ) {
     this.applyPreset(this.presets[0]);
+  }
+
+  ngAfterViewInit(): void {
+    // Create the <style> element once and append to the host div.
+    // Keeping it out of the Angular template avoids the compiler parsing
+    // keyframe CSS as template interpolation (which logged 3 noisy warnings).
+    if (!this.previewKeyframesHost) { return; }
+    const styleEl = this.renderer.createElement('style') as HTMLStyleElement;
+    this.renderer.appendChild(this.previewKeyframesHost.nativeElement, styleEl);
+    this.injectedStyleEl = styleEl;
+    this.syncPreviewKeyframes();
+  }
+
+  ngDoCheck(): void {
+    // Keep the injected <style> in sync when keyframes/controls change.
+    this.syncPreviewKeyframes();
+  }
+
+  ngOnDestroy(): void {
+    if (this.injectedStyleEl && this.previewKeyframesHost) {
+      this.renderer.removeChild(
+        this.previewKeyframesHost.nativeElement,
+        this.injectedStyleEl
+      );
+    }
+    this.injectedStyleEl = null;
+  }
+
+  private syncPreviewKeyframes(): void {
+    if (!this.injectedStyleEl) { return; }
+    const css = this.previewKeyframesCSS;
+    if (css === this.lastInjectedCSS) { return; }
+    this.injectedStyleEl.textContent = css;
+    this.lastInjectedCSS = css;
   }
 
   goBack(): void {
