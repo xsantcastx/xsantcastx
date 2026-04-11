@@ -24,6 +24,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private resizeHandler?: () => void;
   private lastHeaderOffset = 96;
   private bodyOverflowBackup: string | null = null;
+  // Perf: rAF throttle for scroll handler to prevent layout thrash on mobile
+  private scrollRafId: number | null = null;
+  // Perf: cache section offsets so scroll handler doesn't hit the DOM 5x per frame
+  private sectionOffsets: Array<{ id: string; top: number }> = [];
+  private cachedScrollableHeight = 0;
 
   currentLang = 'en';
   mobileMenuOpen = false;
@@ -80,6 +85,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.resizeHandler = undefined;
     }
 
+    if (this.scrollRafId !== null && typeof window !== 'undefined') {
+      window.cancelAnimationFrame(this.scrollRafId);
+      this.scrollRafId = null;
+    }
+
     this.setBodyScrollLock(false);
   }
 
@@ -88,7 +98,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    this.scrollHandler = () => this.handleScroll();
+    // Perf: rAF throttle — batch all DOM reads/writes into one frame instead
+    // of firing synchronously on every scroll event (which thrashes layout on mobile).
+    this.scrollHandler = () => {
+      if (this.scrollRafId !== null) {
+        return;
+      }
+      this.scrollRafId = window.requestAnimationFrame(() => {
+        this.scrollRafId = null;
+        this.handleScroll();
+      });
+    };
     window.addEventListener('scroll', this.scrollHandler, { passive: true });
   }
 
@@ -97,8 +117,33 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    this.resizeHandler = () => this.updateHeaderOffset();
+    this.resizeHandler = () => {
+      this.updateHeaderOffset();
+      // Section offsets change with viewport size — recache.
+      this.cacheSectionOffsets();
+    };
     window.addEventListener('resize', this.resizeHandler);
+  }
+
+  /**
+   * Perf: cache section offsetTop values instead of calling getElementById +
+   * offsetTop on 5 sections every scroll frame. Called once on init and on resize.
+   */
+  private cacheSectionOffsets(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const sectionIds = ['hero', 'services', 'projects', 'about', 'contact'];
+    this.sectionOffsets = sectionIds
+      .map(id => {
+        const el = document.getElementById(id);
+        return el ? { id, top: el.offsetTop } : null;
+      })
+      .filter((x): x is { id: string; top: number } => x !== null);
+    this.cachedScrollableHeight = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight
+    );
   }
 
   handleScroll(): void {
@@ -106,20 +151,24 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    this.updateNavbarState(window.scrollY);
-    const progress = this.updateScrollProgress();
+    const scrollY = window.scrollY;
+    this.updateNavbarState(scrollY);
+    const progress = this.updateScrollProgress(scrollY);
     this.updateInspirationWord(progress);
 
-    const sections = ['hero', 'services', 'projects', 'about', 'contact'];
-    const offset = (this.navbarEl?.offsetHeight ?? 70) + 30;
-    const scrollPosition = window.scrollY + offset;
+    // Lazy-init section cache on first scroll (after hydration) if not yet populated.
+    if (this.sectionOffsets.length === 0) {
+      this.cacheSectionOffsets();
+    }
 
-    for (let i = sections.length - 1; i >= 0; i--) {
-      const element = document.getElementById(sections[i]);
-      if (element && scrollPosition >= element.offsetTop) {
-        if (this.currentSection !== sections[i]) {
-          this.currentSection = sections[i];
-          // Background switching disabled to prevent flickering
+    const offset = (this.navbarEl?.offsetHeight ?? 70) + 30;
+    const scrollPosition = scrollY + offset;
+
+    for (let i = this.sectionOffsets.length - 1; i >= 0; i--) {
+      const section = this.sectionOffsets[i];
+      if (scrollPosition >= section.top) {
+        if (this.currentSection !== section.id) {
+          this.currentSection = section.id;
         }
         return;
       }
@@ -127,7 +176,6 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     if (this.currentSection !== 'hero') {
       this.currentSection = 'hero';
-      // Background switching disabled to prevent flickering
     }
   }
 
@@ -150,14 +198,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     }
   }
 
-  private updateScrollProgress(): number {
+  private updateScrollProgress(scrollY: number): number {
     if (!this.navbarEl || typeof window === 'undefined') {
       return 0;
     }
 
-    const doc = document.documentElement;
-    const scrollable = doc.scrollHeight - window.innerHeight;
-    const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+    // Perf: use cached scrollable height. scrollHeight reads are forced layout
+    // calculations and are expensive on mobile. Recomputed only on resize.
+    const scrollable = this.cachedScrollableHeight > 0
+      ? this.cachedScrollableHeight
+      : Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const progress = scrollable > 0 ? (scrollY / scrollable) * 100 : 0;
 
     this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
     return progress;

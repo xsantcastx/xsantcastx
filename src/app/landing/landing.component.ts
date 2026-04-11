@@ -96,6 +96,25 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.changelogSub?.unsubscribe();
   }
 
+  // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
+  // on change detection. Critical for the tool grid + changelog where the
+  // arrays are stable but the parent component re-renders frequently.
+  trackToolById(_index: number, tool: Tool): string {
+    return tool.id;
+  }
+
+  trackChangelogDay(_index: number, day: ChangelogDay): string {
+    return day.dateLabel;
+  }
+
+  trackChangelogEntry(index: number, entry: { title: string }): string {
+    return `${index}-${entry.title}`;
+  }
+
+  trackFeature(index: number, feature: string): string {
+    return `${index}-${feature}`;
+  }
+
   toggleChangelogDay(day: ChangelogDay): void {
     day.expanded = !day.expanded;
   }

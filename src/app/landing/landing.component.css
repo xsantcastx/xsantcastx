@@ -1613,6 +1613,126 @@
   .hp-lf-line { opacity: 1; }
 }
 
+/* ════════════════════════════════════════════════════════════════
+   MOBILE PERFORMANCE GATES (<= 768px)
+   ────────────────────────────────────────────────────────────────
+   The homepage was laggy on mobile because:
+   1. filter: blur(80px) on two 500-600px hero glow divs = massive
+      GPU cost on mobile GPUs (Adreno/Mali are fillrate-bound)
+   2. backdrop-filter: blur(18px) on glass cards = expensive per
+      composited layer
+   3. 10+ infinite CSS animations running simultaneously, always
+      holding will-change layers alive
+   4. 3D transforms on 5 hero carousel cards cycling forever
+
+   On mobile we drop the heavy effects entirely and keep only
+   essential motion. The site still looks "alive" via solid
+   gradients and subtle transitions — the cinematic stuff is
+   reserved for desktop where GPUs can handle it.
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* --- Hero background glows: kill the 80px blur, shrink elements --- */
+  .hp-hero__bg-glow,
+  .hp-hero__bg-glow--cyan,
+  .hp-hero__bg-glow--purple {
+    filter: none !important;
+    animation: none !important;
+    opacity: 0.12;
+    will-change: auto;
+  }
+
+  .hp-hero__bg-glow--cyan {
+    width: 320px;
+    height: 320px;
+  }
+
+  .hp-hero__bg-glow--purple {
+    width: 280px;
+    height: 280px;
+  }
+
+  /* --- Glass cards: drop backdrop-filter which is a compositor killer --- */
+  .hc-card,
+  .hp-spotlight__card,
+  .hp-live__card,
+  .hp-tool-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* --- Hero carousel: kill the expensive 3D cycling animation on mobile.
+         Cards are shown statically; only the first is fully visible. This
+         eliminates continuous GPU work for a tiny element on a phone. --- */
+  .hc-card {
+    animation: none !important;
+    will-change: auto;
+    opacity: 0;
+    transform: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .hc-card:nth-child(1) {
+    opacity: 1;
+    position: relative;
+  }
+
+  /* Hide stacked siblings — they overlap and aren't visible anyway */
+  .hc-card:not(:nth-child(1)) {
+    display: none;
+  }
+
+  /* --- Pause non-essential infinite animations on mobile --- */
+  .hp-sp__icon-big,            /* iconFloat */
+  .hp-lf-line,                 /* lfLineIn */
+  .hp-live__progress-fill,     /* progressFill */
+  .hp-sp__blink,               /* blink cursor */
+  .hp-live__blink {            /* live feed blink */
+    animation: none !important;
+    will-change: auto;
+  }
+
+  .hp-lf-line {
+    opacity: 1;
+  }
+
+  /* --- Skeleton shimmer: slow it down so it costs less CPU --- */
+  .hp-cl-loading__bar {
+    animation-duration: 2.4s;
+  }
+
+  /* --- Grid background: simpler pattern = less composite work --- */
+  .hp-hero__grid-lines {
+    background-size: 80px 80px;
+    opacity: 0.5;
+  }
+
+  /* --- Drop expensive box-shadow transitions (no hover on mobile) --- */
+  .hp-tool-card,
+  .cta-button {
+    transition: transform 0.2s ease !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONTENT VISIBILITY — defer below-fold sections until scrolled
+   into view. Saves layout + paint cost on initial load which is
+   especially impactful on mobile where TBT (Total Blocking Time)
+   on first paint is the #1 Lighthouse perf penalty.
+   ════════════════════════════════════════════════════════════════ */
+.hp-spotlight,
+.hp-live,
+.hp-changelog,
+.hp-footer-cta {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 800px;
+}
+
+/* Paint containment isolates card repaints from their siblings. */
+.hp-tool-card,
+.hc-card {
+  contain: layout paint;
+}
+
 /* ─── Ad banner (between tool grid & spotlight) ─────────────────── */
 .hp-ad-banner {
   padding: 0 var(--page-gutter);

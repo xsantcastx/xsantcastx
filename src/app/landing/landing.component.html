@@ -42,7 +42,7 @@
         <div class="hero-carousel">
           <div
             class="hc-card"
-            *ngFor="let tool of heroCarouselTools; let i = index"
+            *ngFor="let tool of heroCarouselTools; let i = index; trackBy: trackToolById"
             [style.--ci]="i"
           >
             <div class="hc-card__top">
@@ -121,7 +121,7 @@
       <div class="hp-tools__grid">
         <a
           class="hp-tool-card glass-card"
-          *ngFor="let tool of latestTools"
+          *ngFor="let tool of latestTools; trackBy: trackToolById"
           [routerLink]="tool.route"
         >
           <div class="hp-tool-card__icon-wrap">
@@ -170,7 +170,7 @@
           <h2 class="hp-spotlight__name">{{ spotlightTool.name }}</h2>
           <p class="hp-spotlight__desc">{{ spotlightTool.desc }}</p>
           <ul class="hp-spotlight__features">
-            <li *ngFor="let f of spotlightTool.features">
+            <li *ngFor="let f of spotlightTool.features; trackBy: trackFeature">
               <span class="hp-spotlight__check">✓</span>
               {{ f }}
             </li>
@@ -301,7 +301,7 @@
           No updates yet — check back soon.
         </div>
 
-        <div class="hp-cl-day" *ngFor="let day of changelogDays; let di = index">
+        <div class="hp-cl-day" *ngFor="let day of changelogDays; let di = index; trackBy: trackChangelogDay">
 
           <!-- Day header (clickable to expand/collapse) -->
           <button class="hp-cl-day__header" (click)="toggleChangelogDay(day)" [attr.aria-expanded]="day.expanded">
@@ -314,7 +314,7 @@
 
           <!-- Entries (expanded view) -->
           <div class="hp-cl-entries" [class.hp-cl-entries--open]="day.expanded">
-            <div class="hp-cl-entry" *ngFor="let entry of day.entries">
+            <div class="hp-cl-entry" *ngFor="let entry of day.entries; trackBy: trackChangelogEntry">
               <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
               <div class="hp-cl-entry__body">
                 <p class="hp-cl-entry__title">{{ entry.title }}</p>
