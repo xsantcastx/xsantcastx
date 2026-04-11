@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { PaymentService, DonationAmount, PaymentResult } from '../payment.service';
 import { environment } from '../../environments/environment';
@@ -16,8 +17,18 @@ interface CryptoAddress {
     styleUrls: ['./footer.component.css'],
     standalone: false
 })
-export class FooterComponent implements OnInit {
+export class FooterComponent implements OnInit, OnDestroy {
   readonly appVersion: string = version;
+  /**
+   * Subscription to TranslationService.currentLanguage$. Stored so we can
+   * tear it down in ngOnDestroy. Mirrors the leak fix in HeaderComponent
+   * (see langSub). FooterComponent is currently app-shell mounted so under
+   * normal routing it only instantiates once — but if a future refactor
+   * ever lazy-mounts the footer behind an *ngIf, the previous naked
+   * `.subscribe(...)` would stack listeners on every remount. This is a
+   * defence-in-depth fix so that failure mode can never regress silently.
+   */
+  private langSub?: Subscription;
   currentLang: string = 'en';
   showCryptoModal: boolean = false;
   showPayPalModal: boolean = false;
@@ -57,9 +68,14 @@ export class FooterComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.translationService.currentLanguage$.subscribe((lang: string) => {
+    this.langSub = this.translationService.currentLanguage$.subscribe((lang: string) => {
       this.currentLang = lang;
     });
+  }
+
+  ngOnDestroy(): void {
+    this.langSub?.unsubscribe();
+    this.langSub = undefined;
   }
 
   translate(key: string): string {
