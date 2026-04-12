@@ -172,6 +172,9 @@ import { TransformPlaygroundComponent } from './tools/transform-playground/trans
 import { TransitionGeneratorComponent } from './tools/transition-generator/transition-generator.component';
 import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
 import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
+import { GradientTextComponent } from './tools/gradient-text/gradient-text.component';
+import { HexEditorComponent } from './tools/hex-editor/hex-editor.component';
+import { SitemapGeneratorComponent } from './tools/sitemap-generator/sitemap-generator.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -327,6 +330,9 @@ import { McpComponent } from './mcp/mcp.component';
     TransitionGeneratorComponent,
     UaParserComponent,
     WebhookTesterComponent,
+    GradientTextComponent,
+    HexEditorComponent,
+    SitemapGeneratorComponent,
     GamesComponent,
     McpComponent
   ],
