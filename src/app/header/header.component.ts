@@ -7,8 +7,10 @@
   OnInit,
   OnDestroy,
   NgZone,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  PLATFORM_ID
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
@@ -24,6 +26,14 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private router = inject(Router);
   private ngZone = inject(NgZone);
   private cdr = inject(ChangeDetectorRef);
+  private platformId = inject(PLATFORM_ID);
+  /**
+   * SSR fix: Angular's server-side DOM provides `window` and `document` stubs that
+   * pass `typeof window === 'undefined'` guards, but do NOT implement
+   * `CSSStyleDeclaration.setProperty()`, triggering 135× NotYetImplemented errors
+   * during prerender. `isPlatformBrowser` is the canonical Angular SSR guard.
+   */
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
@@ -81,7 +91,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (typeof window === 'undefined') return;
+    if (!this.isBrowser) return;
 
     this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
     // Run one-shot measurements outside the zone so SSR hydration + initial paint
@@ -94,17 +104,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (typeof window !== 'undefined' && this.scrollHandler) {
+    if (this.isBrowser && this.scrollHandler) {
       window.removeEventListener('scroll', this.scrollHandler);
       this.scrollHandler = undefined;
     }
 
-    if (typeof window !== 'undefined' && this.resizeHandler) {
+    if (this.isBrowser && this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
       this.resizeHandler = undefined;
     }
 
-    if (this.scrollRafId !== null && typeof window !== 'undefined') {
+    if (this.scrollRafId !== null && this.isBrowser) {
       window.cancelAnimationFrame(this.scrollRafId);
       this.scrollRafId = null;
     }
@@ -114,7 +124,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   setupScrollListener(): void {
-    if (typeof window === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
 
@@ -145,7 +155,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private setupResizeListener(): void {
-    if (typeof window === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
 
@@ -166,7 +176,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * offsetTop on 5 sections every scroll frame. Called once on init and on resize.
    */
   private cacheSectionOffsets(): void {
-    if (typeof document === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
     const sectionIds = ['hero', 'services', 'projects', 'about', 'contact'];
@@ -183,7 +193,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   handleScroll(): void {
-    if (typeof window === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
 
@@ -249,7 +259,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private updateScrollProgress(scrollY: number): number {
-    if (!this.navbarEl || typeof window === 'undefined') {
+    if (!this.navbarEl || !this.isBrowser) {
       return 0;
     }
 
@@ -265,7 +275,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private updateHeaderOffset(): void {
-    if (!this.navbarEl || typeof document === 'undefined') {
+    if (!this.navbarEl || !this.isBrowser) {
       return;
     }
 
@@ -335,7 +345,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   scrollToSection(sectionId: string): void {
-    if (typeof window === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
 
@@ -371,7 +381,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private setBodyScrollLock(lock: boolean): void {
-    if (typeof document === 'undefined') {
+    if (!this.isBrowser) {
       return;
     }
 
