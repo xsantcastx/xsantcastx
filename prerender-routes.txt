@@ -188,3 +188,9 @@
 /embed/seo-checker
 /tools/encoding-converter
 /embed/encoding-converter
+/tools/crontab-ref
+/embed/crontab-ref
+/tools/css-variables
+/embed/css-variables
+/tools/docker-ref
+/embed/docker-ref
