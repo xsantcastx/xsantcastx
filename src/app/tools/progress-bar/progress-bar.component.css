@@ -1,0 +1,193 @@
+/* ══════════════════════════════════════════════════════════════
+   Progress Bar Generator — Component Styles
+   xsantcastx design system: dark navy, cyan #00ffcc, glassmorphism
+   ══════════════════════════════════════════════════════════════ */
+
+.pb-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.82rem; font-family: var(--font-body);
+  cursor: pointer; padding: 0; margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: #00ffcc; }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #00ffcc; margin-bottom: 0.4rem; }
+.tool-header__title { font-family: var(--font-heading); font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 700; color: var(--text-color); letter-spacing: -0.02em; margin-bottom: 0.5rem; line-height: 1.15; }
+.tool-header__amp { color: var(--info-color); }
+.tool-header__subtitle { font-size: 0.95rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; }
+
+/* ── Layout ────────────────────────────────────────────────── */
+.pb-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.pb-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(12px);
+}
+.pb-card__title {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-heading); font-size: 0.95rem; font-weight: 600;
+  color: var(--text-color); margin-bottom: 1rem;
+}
+.pb-card__title svg { color: #00ffcc; flex-shrink: 0; }
+.pb-card--preview { border-color: rgba(0, 255, 204, 0.12); }
+
+/* ── Presets ────────────────────────────────────────────────── */
+.pb-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.pb-preset-btn {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  padding: 0.55rem 0.7rem; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02); cursor: pointer;
+  text-align: left; transition: all 0.2s ease;
+}
+.pb-preset-btn:hover { border-color: rgba(0, 255, 204, 0.25); background: rgba(0, 255, 204, 0.03); }
+.pb-preset-btn__name { font-size: 0.75rem; font-weight: 600; color: var(--text-color); }
+.pb-preset-btn__preview { width: 100%; overflow: hidden; }
+
+/* ── Fields ─────────────────────────────────────────────────── */
+.pb-field { margin-bottom: 0.85rem; }
+.pb-field:last-child { margin-bottom: 0; }
+.pb-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.35rem;
+}
+.pb-label__val { font-family: 'SF Mono', 'Fira Code', monospace; color: #00ffcc; }
+.pb-slider {
+  width: 100%; height: 4px; appearance: none; -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none;
+  cursor: pointer;
+}
+.pb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: #00ffcc; border-radius: 50%; cursor: pointer;
+  border: 2px solid #0a0f1e;
+}
+.pb-slider::-moz-range-thumb {
+  width: 14px; height: 14px; background: #00ffcc;
+  border-radius: 50%; cursor: pointer; border: 2px solid #0a0f1e;
+}
+
+/* ── Color inputs ──────────────────────────────────────────── */
+.pb-color-row {
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem;
+}
+.pb-color-row:last-child { margin-bottom: 0; }
+.pb-color-row .pb-label { margin-bottom: 0; min-width: 80px; }
+.pb-color-input {
+  width: 32px; height: 32px; border: none; border-radius: 6px;
+  cursor: pointer; background: none; padding: 0;
+}
+.pb-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.pb-color-input::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; }
+.pb-text-input {
+  padding: 0.35rem 0.5rem; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04); color: var(--text-color);
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem;
+  outline: none; transition: border-color 0.2s ease;
+}
+.pb-text-input:focus { border-color: rgba(0, 255, 204, 0.5); }
+.pb-text-input--color { width: 90px; }
+
+/* ── Toggles ───────────────────────────────────────────────── */
+.pb-toggle-row { margin-bottom: 0.65rem; }
+.pb-toggle-row:last-child { margin-bottom: 0; }
+.pb-toggle {
+  display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+}
+.pb-toggle input[type="checkbox"] { accent-color: #00ffcc; width: 14px; height: 14px; cursor: pointer; }
+.pb-toggle__label { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ── Type buttons ──────────────────────────────────────────── */
+.pb-type-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pb-type-btn {
+  padding: 0.4rem 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px; background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted); font-size: 0.78rem; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pb-type-btn:hover { border-color: rgba(0, 255, 204, 0.3); color: var(--text-color); }
+.pb-type-btn--active { background: rgba(0, 255, 204, 0.1); border-color: #00ffcc; color: #00ffcc; }
+
+/* ── Reset button ──────────────────────────────────────────── */
+.pb-reset-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.9rem; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+  font-size: 0.78rem; cursor: pointer; transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+.pb-reset-btn:hover { border-color: rgba(255, 68, 68, 0.3); color: #ff4444; }
+
+/* ── Preview ───────────────────────────────────────────────── */
+.pb-preview-area {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.5rem; padding: 2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2); border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.pb-preview-label {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-weight: 700;
+}
+.pb-preview-label--inside {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.7); font-size: 11px;
+}
+.pb-preview-label--outside {
+  color: var(--text-muted); font-size: 0.82rem; margin-top: 0.25rem;
+}
+
+/* ── Code output ───────────────────────────────────────────── */
+.pb-code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.pb-code-header .pb-card__title { margin-bottom: 0; }
+.pb-copy-btn {
+  padding: 0.3rem 0.7rem; border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px; background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease;
+}
+.pb-copy-btn:hover { border-color: rgba(0, 255, 204, 0.4); color: var(--text-color); }
+.pb-copy-btn--done { color: #00ffcc; border-color: #00ffcc; }
+.pb-code {
+  display: block; padding: 1rem 1.2rem;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.78rem; color: #e0e0e0; line-height: 1.6;
+  overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;
+}
+.pb-code--html { color: #00ffcc; }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .pb-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .pb-page { padding-left: 1rem; padding-right: 1rem; }
+  .pb-card { padding: 1rem; }
+  .pb-preset-grid { grid-template-columns: 1fr; }
+}

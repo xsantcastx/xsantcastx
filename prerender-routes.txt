@@ -194,3 +194,9 @@
 /embed/css-variables
 /tools/docker-ref
 /embed/docker-ref
+/tools/media-query
+/embed/media-query
+/tools/progress-bar
+/embed/progress-bar
+/tools/clip-path
+/embed/clip-path

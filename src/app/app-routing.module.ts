@@ -127,6 +127,9 @@ import { EncodingConverterComponent } from './tools/encoding-converter/encoding-
 import { CrontabRefComponent } from './tools/crontab-ref/crontab-ref.component';
 import { CssVariablesComponent } from './tools/css-variables/css-variables.component';
 import { DockerRefComponent } from './tools/docker-ref/docker-ref.component';
+import { MediaQueryComponent } from './tools/media-query/media-query.component';
+import { ProgressBarComponent } from './tools/progress-bar/progress-bar.component';
+import { ClipPathComponent } from './tools/clip-path/clip-path.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { GamesComponent } from './games/games.component';
@@ -1280,6 +1283,18 @@ const routes: Routes = [
   { path: 'embed/crontab-ref', component: CrontabRefComponent, data: { embed: true } },
   { path: 'embed/css-variables', component: CssVariablesComponent, data: { embed: true } },
   { path: 'embed/docker-ref', component: DockerRefComponent, data: { embed: true } },
+
+  // ── Media Query Builder ──
+  { path: 'tools/media-query', component: MediaQueryComponent, title: 'Free CSS Media Query Builder — Framework Presets, Live Detection & Copy | xsantcastx', data: { description: 'Visual media query generator with Bootstrap, Tailwind & common presets, live breakpoint detection, and one-click copy. No sign-up required.', keywords: 'media query builder, css media queries, responsive breakpoints, bootstrap breakpoints, tailwind breakpoints, media query generator', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'CSS Media Query Builder', url: `${SITE_URL}/tools/media-query`, description: 'Visual media query generator with framework presets, live breakpoint detection, and one-click copy.', applicationCategory: 'UtilityApplication', operatingSystem: 'Any Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, featureList: ['Visual query builder', 'Bootstrap presets', 'Tailwind presets', 'Live breakpoint detection', 'One-click copy'], breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'Media Query Builder', item: `${SITE_URL}/tools/media-query` }] } } } },
+  { path: 'embed/media-query', component: MediaQueryComponent, data: { embed: true } },
+
+  // ── Progress Bar Generator ──
+  { path: 'tools/progress-bar', component: ProgressBarComponent, title: 'Free CSS Progress Bar Generator — Live Preview, Stripes & Gradients | xsantcastx', data: { description: 'Design custom CSS progress bars with animated stripes, gradient fills, presets, and live preview. Copy-paste ready code.', keywords: 'progress bar generator, css progress bar, animated progress bar, striped progress bar, gradient progress bar, css generator', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'CSS Progress Bar Generator', url: `${SITE_URL}/tools/progress-bar`, description: 'Design custom CSS progress bars with animated stripes, gradient fills, and live preview.', applicationCategory: 'UtilityApplication', operatingSystem: 'Any Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, featureList: ['Live preview', 'Animated stripes', 'Gradient fills', 'Presets', 'Copy-paste code'], breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'Progress Bar Generator', item: `${SITE_URL}/tools/progress-bar` }] } } } },
+  { path: 'embed/progress-bar', component: ProgressBarComponent, data: { embed: true } },
+
+  // ── Clip-Path Generator ──
+  { path: 'tools/clip-path', component: ClipPathComponent, title: 'Free CSS Clip-Path Generator — Visual Editor with Drag Handles | xsantcastx', data: { description: 'Visually design CSS clip-path shapes with drag handles, shape presets, and one-click code copy. Supports polygon, circle, ellipse, inset.', keywords: 'clip-path generator, css clip-path, polygon clip-path, css shapes, clip-path editor, clip-path presets', ogImage: `${SITE_URL}/assets/og/og-default.jpg`, jsonLd: { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'CSS Clip-Path Generator', url: `${SITE_URL}/tools/clip-path`, description: 'Visually design CSS clip-path shapes with drag handles, presets, and one-click code copy.', applicationCategory: 'UtilityApplication', operatingSystem: 'Any Web Browser', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, featureList: ['Visual editor', 'Drag handles', 'Shape presets', 'Polygon, circle, ellipse, inset', 'One-click copy'], breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Tools', item: `${SITE_URL}/tools` }, { '@type': 'ListItem', position: 2, name: 'Clip-Path Generator', item: `${SITE_URL}/tools/clip-path` }] } } } },
+  { path: 'embed/clip-path', component: ClipPathComponent, data: { embed: true } },
 
   {
     path: 'mcp',

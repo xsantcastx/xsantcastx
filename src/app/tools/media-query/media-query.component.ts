@@ -301,6 +301,10 @@ export class MediaQueryComponent implements OnInit, OnDestroy {
     }
   }
 
+  trackRule(index: number, rule: QueryRule): number {
+    return rule.id;
+  }
+
   private fallbackCopy(text: string, type: 'query' | 'css') {
     if (!this.isBrowser) return;
     const ta = document.createElement('textarea');
