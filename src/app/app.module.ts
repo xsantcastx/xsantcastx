@@ -175,6 +175,8 @@ import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.co
 import { GradientTextComponent } from './tools/gradient-text/gradient-text.component';
 import { HexEditorComponent } from './tools/hex-editor/hex-editor.component';
 import { SitemapGeneratorComponent } from './tools/sitemap-generator/sitemap-generator.component';
+import { SeoCheckerComponent } from './tools/seo-checker/seo-checker.component';
+import { EncodingConverterComponent } from './tools/encoding-converter/encoding-converter.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -333,6 +335,8 @@ import { McpComponent } from './mcp/mcp.component';
     GradientTextComponent,
     HexEditorComponent,
     SitemapGeneratorComponent,
+    SeoCheckerComponent,
+    EncodingConverterComponent,
     GamesComponent,
     McpComponent
   ],

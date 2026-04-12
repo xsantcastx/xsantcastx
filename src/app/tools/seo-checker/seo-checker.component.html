@@ -1,0 +1,232 @@
+<div class="sc-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">SEO Tool</p>
+    <h1 class="tool-header__title">SEO Checker</h1>
+    <p class="tool-header__subtitle">Analyze your page title, meta description, and keywords with a live Google SERP preview. Get instant SEO suggestions — 100% client-side.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--twitter" aria-label="Share on X">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'seo-checker'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main workspace -->
+  <div class="sc-workspace">
+
+    <!-- LEFT COLUMN: Inputs -->
+    <div class="sc-left">
+
+      <!-- Page Title Input -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Page Title</span>
+          <span class="sc-card__counter" [class.sc-card__counter--green]="titleStatus === 'green'"
+                [class.sc-card__counter--yellow]="titleStatus === 'yellow'"
+                [class.sc-card__counter--red]="titleStatus === 'red'">
+            {{ titleLength }}/70 &middot; {{ titleStatusLabel }}
+          </span>
+        </div>
+        <div class="sc-card__body">
+          <input
+            type="text"
+            class="sc-input"
+            placeholder="Enter your page title..."
+            [value]="pageTitle"
+            (input)="onTitleInput($any($event.target).value)"
+          />
+          <div class="sc-progress">
+            <div class="sc-progress__bar"
+                 [style.width.%]="titlePercent"
+                 [class.sc-progress__bar--green]="titleStatus === 'green'"
+                 [class.sc-progress__bar--yellow]="titleStatus === 'yellow'"
+                 [class.sc-progress__bar--red]="titleStatus === 'red'"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Description Input -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Meta Description</span>
+          <span class="sc-card__counter" [class.sc-card__counter--green]="descStatus === 'green'"
+                [class.sc-card__counter--yellow]="descStatus === 'yellow'"
+                [class.sc-card__counter--red]="descStatus === 'red'">
+            {{ descLength }}/200 &middot; {{ descStatusLabel }}
+          </span>
+        </div>
+        <div class="sc-card__body">
+          <textarea
+            class="sc-textarea"
+            placeholder="Enter your meta description..."
+            rows="4"
+            [value]="metaDescription"
+            (input)="onDescInput($any($event.target).value)"
+          ></textarea>
+          <div class="sc-progress">
+            <div class="sc-progress__bar"
+                 [style.width.%]="descPercent"
+                 [class.sc-progress__bar--green]="descStatus === 'green'"
+                 [class.sc-progress__bar--yellow]="descStatus === 'yellow'"
+                 [class.sc-progress__bar--red]="descStatus === 'red'"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page URL + Focus Keyword -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Page URL &amp; Focus Keyword</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-field">
+            <label class="sc-field__label">Page URL</label>
+            <input
+              type="url"
+              class="sc-input"
+              placeholder="https://example.com/my-page"
+              [value]="pageUrl"
+              (input)="onUrlInput($any($event.target).value)"
+            />
+          </div>
+          <div class="sc-field" style="margin-top: 1rem">
+            <label class="sc-field__label">Focus Keyword</label>
+            <input
+              type="text"
+              class="sc-input"
+              placeholder="e.g. seo checker"
+              [value]="focusKeyword"
+              (input)="onKeywordInput($any($event.target).value)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyword Density -->
+      <div class="sc-card" *ngIf="keywords.length > 0">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Keyword Density</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-kw-table">
+            <div class="sc-kw-row sc-kw-row--header">
+              <span class="sc-kw-col sc-kw-col--word">Keyword</span>
+              <span class="sc-kw-col sc-kw-col--count">Count</span>
+              <span class="sc-kw-col sc-kw-col--density">Density</span>
+            </div>
+            <div class="sc-kw-row" *ngFor="let kw of keywords">
+              <span class="sc-kw-col sc-kw-col--word">{{ kw.word }}</span>
+              <span class="sc-kw-col sc-kw-col--count">{{ kw.count }}</span>
+              <span class="sc-kw-col sc-kw-col--density">{{ kw.density | number:'1.1-1' }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Previews -->
+    <div class="sc-right">
+
+      <!-- Google SERP Preview -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Google SERP Preview</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-serp">
+            <div class="sc-serp__breadcrumbs">{{ serpBreadcrumbs }}</div>
+            <div class="sc-serp__title">{{ serpTitle }}</div>
+            <div class="sc-serp__description">{{ serpDescription }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Open Graph Preview -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Open Graph Preview</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-og">
+            <div class="sc-og__image">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <div class="sc-og__content">
+              <div class="sc-og__site">{{ ogSiteName }}</div>
+              <div class="sc-og__title">{{ ogTitle }}</div>
+              <div class="sc-og__desc">{{ ogDescription }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEO Suggestions -->
+      <div class="sc-card" *ngIf="suggestions.length > 0">
+        <div class="sc-card__header">
+          <span class="sc-card__label">SEO Suggestions</span>
+          <span class="sc-card__badge">{{ suggestions.length }}</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-suggestion" *ngFor="let s of suggestions"
+               [class.sc-suggestion--success]="s.type === 'success'"
+               [class.sc-suggestion--warning]="s.type === 'warning'"
+               [class.sc-suggestion--error]="s.type === 'error'">
+            <span class="sc-suggestion__icon" *ngIf="s.type === 'success'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="sc-suggestion__icon" *ngIf="s.type === 'warning'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span class="sc-suggestion__icon" *ngIf="s.type === 'error'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </span>
+            <span class="sc-suggestion__text">{{ s.message }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Focus Keyword Status -->
+      <div class="sc-card" *ngIf="focusKeyword">
+        <div class="sc-card__header">
+          <span class="sc-card__label">Focus Keyword: "{{ focusKeyword }}"</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-kw-check">
+            <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInTitle" [class.sc-kw-check__item--fail]="!focusKeywordInTitle">
+              <span class="sc-kw-check__dot"></span>
+              <span>In title</span>
+            </div>
+            <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInDesc" [class.sc-kw-check__item--fail]="!focusKeywordInDesc">
+              <span class="sc-kw-check__dot"></span>
+              <span>In description</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
