@@ -178,3 +178,9 @@
 /tools/image-resizer
 /embed/image-resizer
 /mcp
+/tools/gradient-text
+/embed/gradient-text
+/tools/hex-editor
+/embed/hex-editor
+/tools/sitemap-generator
+/embed/sitemap-generator
