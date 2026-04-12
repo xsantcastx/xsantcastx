@@ -317,5 +317,8 @@
   <url><loc>https://xsantcastx.com/tools/sitemap-generator</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://xsantcastx.com/tools/seo-checker</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://xsantcastx.com/tools/encoding-converter</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://xsantcastx.com/tools/crontab-ref</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://xsantcastx.com/tools/css-variables</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://xsantcastx.com/tools/docker-ref</loc><lastmod>2026-04-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
 
 </urlset>

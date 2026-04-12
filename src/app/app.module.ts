@@ -177,6 +177,9 @@ import { HexEditorComponent } from './tools/hex-editor/hex-editor.component';
 import { SitemapGeneratorComponent } from './tools/sitemap-generator/sitemap-generator.component';
 import { SeoCheckerComponent } from './tools/seo-checker/seo-checker.component';
 import { EncodingConverterComponent } from './tools/encoding-converter/encoding-converter.component';
+import { CrontabRefComponent } from './tools/crontab-ref/crontab-ref.component';
+import { CssVariablesComponent } from './tools/css-variables/css-variables.component';
+import { DockerRefComponent } from './tools/docker-ref/docker-ref.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -337,6 +340,9 @@ import { McpComponent } from './mcp/mcp.component';
     SitemapGeneratorComponent,
     SeoCheckerComponent,
     EncodingConverterComponent,
+    CrontabRefComponent,
+    CssVariablesComponent,
+    DockerRefComponent,
     GamesComponent,
     McpComponent
   ],
