@@ -1,0 +1,182 @@
+<div class="pb-page">
+
+  <\!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <\!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">CSS Generators</p>
+    <h1 class="tool-header__title">Progress Bar <span class="tool-header__amp">Generator</span></h1>
+    <p class="tool-header__subtitle">Design custom CSS progress bars with live preview, animated stripes, gradients, and presets. Copy-paste ready code.</p>
+  </header>
+
+  <\!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <div class="pb-layout">
+
+    <\!-- ═══ Controls ═══ -->
+    <section class="pb-controls">
+
+      <\!-- Presets -->
+      <div class="pb-card">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Presets
+        </h2>
+        <div class="pb-preset-grid">
+          <button class="pb-preset-btn" *ngFor="let preset of presets; trackBy: trackByPresetName" (click)="applyPreset(preset)">
+            <span class="pb-preset-btn__name">{{ preset.name }}</span>
+            <div class="pb-preset-btn__preview" [style.background]="preset.bgColor" [style.border-radius.px]="3" [style.height.px]="8">
+              <div [ngStyle]="getPresetPreviewFillStyle(preset)"></div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <\!-- Dimensions -->
+      <div class="pb-card">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Dimensions
+        </h2>
+        <div class="pb-field">
+          <label class="pb-label">Width <span class="pb-label__val">{{ width }}px</span></label>
+          <input type="range" class="pb-slider" min="100" max="800" [(ngModel)]="width">
+        </div>
+        <div class="pb-field">
+          <label class="pb-label">Height <span class="pb-label__val">{{ height }}px</span></label>
+          <input type="range" class="pb-slider" min="4" max="60" [(ngModel)]="height">
+        </div>
+        <div class="pb-field">
+          <label class="pb-label">Border Radius <span class="pb-label__val">{{ borderRadius }}px</span></label>
+          <input type="range" class="pb-slider" min="0" max="30" [(ngModel)]="borderRadius">
+        </div>
+      </div>
+
+      <\!-- Colors -->
+      <div class="pb-card">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5C5.127 20.17 8.372 22 12 22z"/></svg>
+          Colors
+        </h2>
+        <div class="pb-color-row">
+          <label class="pb-label">Background</label>
+          <input type="color" class="pb-color-input" [(ngModel)]="bgColor">
+          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="bgColor">
+        </div>
+        <div class="pb-color-row">
+          <label class="pb-label">Fill</label>
+          <input type="color" class="pb-color-input" [(ngModel)]="fillColor">
+          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="fillColor">
+        </div>
+        <div class="pb-color-row" *ngIf="gradientFill">
+          <label class="pb-label">Gradient End</label>
+          <input type="color" class="pb-color-input" [(ngModel)]="gradientColor">
+          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="gradientColor">
+        </div>
+      </div>
+
+      <\!-- Fill -->
+      <div class="pb-card">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Fill &amp; Animation
+        </h2>
+        <div class="pb-field">
+          <label class="pb-label">Percentage <span class="pb-label__val">{{ fillPercentage }}%</span></label>
+          <input type="range" class="pb-slider" min="0" max="100" [(ngModel)]="fillPercentage">
+        </div>
+        <div class="pb-toggle-row">
+          <label class="pb-toggle">
+            <input type="checkbox" [(ngModel)]="animatedStripes">
+            <span class="pb-toggle__label">Animated Stripes</span>
+          </label>
+        </div>
+        <div class="pb-toggle-row">
+          <label class="pb-toggle">
+            <input type="checkbox" [(ngModel)]="gradientFill">
+            <span class="pb-toggle__label">Gradient Fill</span>
+          </label>
+        </div>
+        <div class="pb-field" *ngIf="animatedStripes">
+          <label class="pb-label">Animation Speed <span class="pb-label__val">{{ animationSpeed }}s</span></label>
+          <input type="range" class="pb-slider" min="0.2" max="5" step="0.1" [(ngModel)]="animationSpeed">
+        </div>
+      </div>
+
+      <\!-- Label -->
+      <div class="pb-card">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+          Label
+        </h2>
+        <div class="pb-type-group">
+          <button class="pb-type-btn" [class.pb-type-btn--active]="labelPosition === 'inside'" (click)="labelPosition = 'inside'">Inside</button>
+          <button class="pb-type-btn" [class.pb-type-btn--active]="labelPosition === 'outside'" (click)="labelPosition = 'outside'">Outside</button>
+          <button class="pb-type-btn" [class.pb-type-btn--active]="labelPosition === 'none'" (click)="labelPosition = 'none'">None</button>
+        </div>
+      </div>
+
+      <\!-- Reset -->
+      <button class="pb-reset-btn" (click)="resetAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Reset All
+      </button>
+    </section>
+
+    <\!-- ═══ Preview & Code ═══ -->
+    <section class="pb-output">
+
+      <\!-- Live Preview -->
+      <div class="pb-card pb-card--preview">
+        <h2 class="pb-card__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Live Preview
+        </h2>
+        <div class="pb-preview-area">
+          <div [ngStyle]="previewContainerStyle">
+            <div [ngStyle]="previewFillStyle">
+              <span *ngIf="labelPosition === 'inside'" class="pb-preview-label pb-preview-label--inside" [style.font-size.px]="height * 0.55 > 10 ? height * 0.55 : 10">{{ fillPercentage }}%</span>
+            </div>
+          </div>
+          <span *ngIf="labelPosition === 'outside'" class="pb-preview-label pb-preview-label--outside">{{ fillPercentage }}%</span>
+        </div>
+      </div>
+
+      <\!-- CSS Code -->
+      <div class="pb-card">
+        <div class="pb-code-header">
+          <h2 class="pb-card__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            CSS Code
+          </h2>
+          <button class="pb-copy-btn" (click)="copyCSS()" [class.pb-copy-btn--done]="codeCopied">
+            {{ codeCopied ? 'Copied\!' : 'Copy CSS' }}
+          </button>
+        </div>
+        <pre class="pb-code">{{ cssCode }}</pre>
+      </div>
+
+      <\!-- HTML Code -->
+      <div class="pb-card">
+        <div class="pb-code-header">
+          <h2 class="pb-card__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            HTML Code
+          </h2>
+          <button class="pb-copy-btn" (click)="copyHTML()" [class.pb-copy-btn--done]="htmlCopied">
+            {{ htmlCopied ? 'Copied\!' : 'Copy HTML' }}
+          </button>
+        </div>
+        <pre class="pb-code pb-code--html">{{ htmlCode }}</pre>
+      </div>
+    </section>
+  </div>
+
+  <\!-- Related Tools -->
+  <app-related-tools [currentSlug]="'progress-bar'"></app-related-tools>
+</div>

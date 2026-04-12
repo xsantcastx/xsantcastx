@@ -180,6 +180,9 @@ import { EncodingConverterComponent } from './tools/encoding-converter/encoding-
 import { CrontabRefComponent } from './tools/crontab-ref/crontab-ref.component';
 import { CssVariablesComponent } from './tools/css-variables/css-variables.component';
 import { DockerRefComponent } from './tools/docker-ref/docker-ref.component';
+import { MediaQueryComponent } from './tools/media-query/media-query.component';
+import { ProgressBarComponent } from './tools/progress-bar/progress-bar.component';
+import { ClipPathComponent } from './tools/clip-path/clip-path.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -343,6 +346,9 @@ import { McpComponent } from './mcp/mcp.component';
     CrontabRefComponent,
     CssVariablesComponent,
     DockerRefComponent,
+    MediaQueryComponent,
+    ProgressBarComponent,
+    ClipPathComponent,
     GamesComponent,
     McpComponent
   ],

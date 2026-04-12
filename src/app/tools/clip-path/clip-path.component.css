@@ -1,0 +1,248 @@
+/* ══════════════════════════════════════════════════════════════
+   Clip-Path Generator — Component Styles
+   xsantcastx design system: dark navy, cyan #00ffcc, glassmorphism
+   ══════════════════════════════════════════════════════════════ */
+
+.cp-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.82rem; font-family: var(--font-body);
+  cursor: pointer; padding: 0; margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: #00ffcc; }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #00ffcc; margin-bottom: 0.4rem; }
+.tool-header__title { font-family: var(--font-heading); font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 700; color: var(--text-color); letter-spacing: -0.02em; margin-bottom: 0.5rem; line-height: 1.15; }
+.tool-header__amp { color: var(--info-color); }
+.tool-header__subtitle { font-size: 0.95rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; margin-bottom: 1rem; }
+.tool-header__share { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.share-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.35rem 0.75rem; border-radius: 5px;
+  font-size: 0.72rem; font-weight: 600; text-decoration: none;
+  transition: all 0.2s ease;
+}
+.share-btn--x { background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); }
+.share-btn--x:hover { background: rgba(255,255,255,0.1); color: var(--text-color); }
+.share-btn--li { background: rgba(0,119,181,0.12); color: #0077b5; border: 1px solid rgba(0,119,181,0.25); }
+.share-btn--li:hover { background: rgba(0,119,181,0.2); }
+
+/* ── Layout ────────────────────────────────────────────────── */
+.cp-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.cp-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(12px);
+}
+.cp-card__title {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-heading); font-size: 0.95rem; font-weight: 600;
+  color: var(--text-color); margin-bottom: 1rem;
+}
+.cp-card__title svg { color: #00ffcc; flex-shrink: 0; }
+.cp-card__hint { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; font-family: var(--font-body); }
+.cp-card__header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+}
+.cp-card__header .cp-card__title { margin-bottom: 0; }
+.cp-card--preview { border-color: rgba(0, 255, 204, 0.12); }
+
+/* ── Type toggle ───────────────────────────────────────────── */
+.cp-type-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.cp-type-btn {
+  padding: 0.4rem 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px; background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted); font-size: 0.78rem; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cp-type-btn:hover { border-color: rgba(0, 255, 204, 0.3); color: var(--text-color); }
+.cp-type-btn--active { background: rgba(0, 255, 204, 0.1); border-color: #00ffcc; color: #00ffcc; }
+
+/* ── Presets ────────────────────────────────────────────────── */
+.cp-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.cp-preset-btn {
+  padding: 0.45rem 0.6rem; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02); color: var(--text-muted);
+  font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease;
+  text-align: center;
+}
+.cp-preset-btn:hover { border-color: rgba(0, 255, 204, 0.25); color: var(--text-color); background: rgba(0, 255, 204, 0.03); }
+
+/* ── Add button ────────────────────────────────────────────── */
+.cp-add-btn {
+  padding: 0.35rem 0.7rem; border-radius: 6px;
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(0, 255, 204, 0.06); color: #00ffcc;
+  font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cp-add-btn:hover { background: rgba(0, 255, 204, 0.12); border-color: #00ffcc; }
+
+/* ── Points list ───────────────────────────────────────────── */
+.cp-points-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto; }
+.cp-point-row {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.35rem 0.5rem; background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 6px;
+}
+.cp-point-row__idx {
+  font-size: 0.65rem; font-weight: 700; color: #00ffcc;
+  min-width: 16px; text-align: center;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.cp-point-row__lbl { font-size: 0.65rem; color: var(--text-muted); }
+.cp-point-row__val {
+  font-size: 0.65rem; font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text-muted); min-width: 28px; text-align: right;
+}
+.cp-point-row__rm {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; padding: 2px; border-radius: 3px;
+  transition: all 0.2s ease; margin-left: auto;
+}
+.cp-point-row__rm:hover { color: #ff4444; background: rgba(255, 68, 68, 0.1); }
+
+/* ── Fields ─────────────────────────────────────────────────── */
+.cp-field { margin-bottom: 0.85rem; }
+.cp-field:last-child { margin-bottom: 0; }
+.cp-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.35rem;
+}
+.cp-label__val { font-family: 'SF Mono', 'Fira Code', monospace; color: #00ffcc; }
+.cp-slider {
+  width: 100%; height: 4px; appearance: none; -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none; cursor: pointer;
+}
+.cp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: #00ffcc; border-radius: 50%; cursor: pointer; border: 2px solid #0a0f1e;
+}
+.cp-slider::-moz-range-thumb {
+  width: 14px; height: 14px; background: #00ffcc;
+  border-radius: 50%; cursor: pointer; border: 2px solid #0a0f1e;
+}
+.cp-slider--sm { flex: 1; }
+
+/* ── Color inputs ──────────────────────────────────────────── */
+.cp-color-row {
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem;
+}
+.cp-color-row:last-child { margin-bottom: 0; }
+.cp-color-row .cp-label { margin-bottom: 0; min-width: 80px; }
+.cp-color-input {
+  width: 32px; height: 32px; border: none; border-radius: 6px;
+  cursor: pointer; background: none; padding: 0;
+}
+.cp-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.cp-color-input::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; }
+
+/* ── Reset button ──────────────────────────────────────────── */
+.cp-reset-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.9rem; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+  font-size: 0.78rem; cursor: pointer; transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+.cp-reset-btn:hover { border-color: rgba(255, 68, 68, 0.3); color: #ff4444; }
+
+/* ── Preview Canvas ────────────────────────────────────────── */
+.cp-canvas-wrap {
+  display: flex; justify-content: center; align-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2); border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.cp-canvas {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  touch-action: none;
+  max-width: 100%;
+}
+.cp-shape { position: absolute; top: 0; left: 0; transition: clip-path 0.05s ease; }
+.cp-svg-overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+
+/* ── Drag handles ──────────────────────────────────────────── */
+.cp-handle {
+  position: absolute;
+  width: 16px; height: 16px;
+  background: #00ffcc;
+  border: 2px solid #0a0f1e;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  z-index: 10;
+  transition: box-shadow 0.15s ease;
+}
+.cp-handle:hover { box-shadow: 0 0 8px rgba(0, 255, 204, 0.5); }
+.cp-handle:active { cursor: grabbing; }
+.cp-handle__label {
+  position: absolute;
+  top: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 0.6rem; font-weight: 700; color: #00ffcc;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  pointer-events: none;
+}
+
+/* ── Code output ───────────────────────────────────────────── */
+.cp-code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.cp-code-header .cp-card__title { margin-bottom: 0; }
+.cp-copy-btn {
+  padding: 0.3rem 0.7rem; border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px; background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease;
+}
+.cp-copy-btn:hover { border-color: rgba(0, 255, 204, 0.4); color: var(--text-color); }
+.cp-copy-btn--done { color: #00ffcc; border-color: #00ffcc; }
+.cp-code {
+  display: block; padding: 1rem 1.2rem;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.82rem; color: #00ffcc; line-height: 1.6;
+  overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cp-layout { grid-template-columns: 1fr; }
+  .cp-canvas-wrap { padding: 1rem; }
+}
+@media (max-width: 768px) {
+  .cp-page { padding-left: 1rem; padding-right: 1rem; }
+  .cp-card { padding: 1rem; }
+  .cp-preset-grid { grid-template-columns: 1fr 1fr; }
+  .cp-point-row { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .cp-preset-grid { grid-template-columns: 1fr; }
+}
