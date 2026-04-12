@@ -1,0 +1,125 @@
+<div class="ec-page">
+
+  <!-- Back link -->
+  <button type="button" class="back-link" (click)="goBack()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Tools
+  </button>
+
+  <!-- Tool header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Text &amp; Data Tool</p>
+    <h1 class="tool-header__title">Encoding Converter</h1>
+    <p class="tool-header__subtitle">Convert text between UTF-8, ASCII, Latin-1, URL encoding, HTML entities, Unicode escapes, and more. Includes hex dump view and per-character breakdown — 100% client-side.</p>
+    <app-tool-usage-counter [toolSlug]="'encoding-converter'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Input section -->
+  <div class="ec-card">
+    <div class="ec-card__header">
+      <span class="ec-card__label">Input Text</span>
+      <div class="ec-card__actions">
+        <span class="ec-card__stat" *ngIf="inputCharCount > 0">
+          {{ inputCharCount }} char{{ inputCharCount !== 1 ? 's' : '' }} &middot; {{ totalBytes }} byte{{ totalBytes !== 1 ? 's' : '' }}
+        </span>
+        <button type="button" class="ec-btn ec-btn--ghost" (click)="loadSample()">Sample</button>
+        <button type="button" class="ec-btn ec-btn--ghost ec-btn--danger" (click)="clearAll()" *ngIf="textInput">Clear</button>
+      </div>
+    </div>
+    <div class="ec-card__body">
+      <textarea
+        class="ec-textarea"
+        placeholder="Type or paste text to convert..."
+        rows="4"
+        [(ngModel)]="textInput"
+        (input)="onInput()"
+      ></textarea>
+    </div>
+  </div>
+
+  <!-- Encoding results -->
+  <div class="ec-grid" *ngIf="encodings.length > 0">
+    <div class="ec-card" *ngFor="let enc of encodings">
+      <div class="ec-card__header">
+        <span class="ec-card__label">{{ enc.label }}</span>
+        <button type="button" class="ec-btn ec-btn--copy" (click)="copyEncoding(enc)">
+          <span *ngIf="!enc.copied">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+          </span>
+          <span *ngIf="enc.copied" class="ec-btn--copied">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Copied
+          </span>
+        </button>
+      </div>
+      <div class="ec-card__body">
+        <div class="ec-output">{{ enc.value }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hex dump view -->
+  <div class="ec-card" *ngIf="byteView">
+    <div class="ec-card__header">
+      <span class="ec-card__label">Hex Dump (xxd-style)</span>
+      <button type="button" class="ec-btn ec-btn--copy" (click)="copyByteView()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy
+      </button>
+    </div>
+    <div class="ec-card__body">
+      <pre class="ec-hex-dump">{{ byteView }}</pre>
+    </div>
+  </div>
+
+  <!-- Character breakdown table -->
+  <div class="ec-card" *ngIf="charTable.length > 0">
+    <div class="ec-card__header">
+      <span class="ec-card__label">Character Breakdown</span>
+      <button type="button" class="ec-btn ec-btn--ghost" (click)="toggleCharTable()">
+        {{ showCharTable ? 'Hide' : 'Show' }} Table
+      </button>
+    </div>
+    <div class="ec-card__body" *ngIf="showCharTable">
+      <div class="ec-char-table-wrap">
+        <table class="ec-char-table">
+          <thead>
+            <tr>
+              <th>Char</th>
+              <th>Code Point</th>
+              <th>UTF-8 Hex</th>
+              <th>ASCII</th>
+              <th>URL</th>
+              <th>HTML</th>
+              <th>Unicode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of charTable">
+              <td class="ec-char-table__char">{{ c.char }}</td>
+              <td>U+{{ c.codePoint.toString(16).toUpperCase().padStart(4, '0') }}</td>
+              <td>{{ c.utf8Hex }}</td>
+              <td>{{ c.ascii }}</td>
+              <td>{{ c.urlEncoded }}</td>
+              <td>{{ c.htmlEntity }}</td>
+              <td>{{ c.unicodeEscape }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

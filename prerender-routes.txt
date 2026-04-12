@@ -184,3 +184,7 @@
 /embed/hex-editor
 /tools/sitemap-generator
 /embed/sitemap-generator
+/tools/seo-checker
+/embed/seo-checker
+/tools/encoding-converter
+/embed/encoding-converter
