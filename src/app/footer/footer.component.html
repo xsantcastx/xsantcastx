@@ -53,19 +53,21 @@
     </div>
 
     <!-- Crypto Donation Modal -->
-    <div class="donation-modal" id="cryptoModal" [class.show]="showCryptoModal">
+    <div class="donation-modal" id="cryptoModal" [class.show]="showCryptoModal"
+         role="dialog" aria-modal="true" aria-labelledby="crypto-modal-title">
         <div class="modal-content">
             <div class="modal-header">
-                <h4>Crypto Donations</h4>
-                <button class="close-btn" (click)="closeModals()">&times;</button>
+                <h4 id="crypto-modal-title">Crypto Donations</h4>
+                <button class="close-btn" aria-label="Close crypto donations modal" (click)="closeModals()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="crypto-option" *ngFor="let crypto of cryptoAddresses">
                     <div class="crypto-info">
                         <strong>{{ crypto.name }} ({{ crypto.symbol }})</strong>
                         <div class="address-container">
-                            <input type="text" [value]="crypto.address" readonly class="crypto-address">
-                            <button class="copy-btn" (click)="copyToClipboard(crypto.address)">
+                            <input type="text" [value]="crypto.address" readonly class="crypto-address"
+                              [attr.aria-label]="'Copy ' + crypto.name + ' address: ' + crypto.address">
+                            <button class="copy-btn" [attr.aria-label]="'Copy ' + crypto.name + ' address'" (click)="copyToClipboard(crypto.address)">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -76,11 +78,12 @@
     </div>
 
     <!-- PayPal Donation Modal -->
-    <div class="donation-modal" id="paypalModal" [class.show]="showPayPalModal">
+    <div class="donation-modal" id="paypalModal" [class.show]="showPayPalModal"
+         role="dialog" aria-modal="true" aria-labelledby="paypal-modal-title">
         <div class="modal-content">
             <div class="modal-header">
-                <h4>{{ translate('footer.paypal.title') }}</h4>
-                <button class="close-btn" (click)="closeModals()">&times;</button>
+                <h4 id="paypal-modal-title">{{ translate('footer.paypal.title') }}</h4>
+                <button class="close-btn" aria-label="Close PayPal donations modal" (click)="closeModals()">&times;</button>
             </div>
             <div class="modal-body">
                 <p>{{ translate('footer.paypal.desc') }}</p>
@@ -149,11 +152,12 @@
     </div>
 
     <!-- Stripe Donation Modal -->
-    <div class="donation-modal" id="stripeModal" [class.show]="showStripeModal">
+    <div class="donation-modal" id="stripeModal" [class.show]="showStripeModal"
+         role="dialog" aria-modal="true" aria-labelledby="stripe-modal-title">
         <div class="modal-content">
             <div class="modal-header">
-                <h4>{{ translate('footer.stripe.title') }}</h4>
-                <button class="close-btn" (click)="closeModals()">&times;</button>
+                <h4 id="stripe-modal-title">{{ translate('footer.stripe.title') }}</h4>
+                <button class="close-btn" aria-label="Close Stripe donations modal" (click)="closeModals()">&times;</button>
             </div>
             <div class="modal-body">
                 <p>{{ translate('footer.stripe.desc') }}</p>
