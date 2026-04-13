@@ -1,9 +1,10 @@
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
 <div class="particle-layer" *ngIf="!isEmbedMode"></div>
 <app-header *ngIf="!isEmbedMode"></app-header>
 
-<div [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
+<main id="main-content" [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
   <router-outlet></router-outlet>
-</div>
+</main>
 
 <app-embed-bar *ngIf="isEmbedMode && showEmbedBranding"></app-embed-bar>
 <app-footer *ngIf="!isEmbedMode"></app-footer>

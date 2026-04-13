@@ -1,3 +1,23 @@
+/* ===== Skip-to-Main Link (a11y) ===== */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary-color);
+  color: #07111f;
+  padding: 8px 16px;
+  z-index: 10000;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip-to-main:focus {
+  top: 0;
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 /* ===== Theme Tokens ===== */
 :root {
   --primary-color: #00ffcc;
