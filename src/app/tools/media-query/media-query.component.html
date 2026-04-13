@@ -1,0 +1,232 @@
+<div class="mq-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Development Tools</p>
+    <h1 class="tool-header__title">CSS Media Query <span class="tool-header__amp">Builder</span></h1>
+    <p class="tool-header__subtitle">Generate media queries visually with support for multiple features, combinators, and preset breakpoints. Copy ready-to-use CSS instantly.</p>
+    <app-tool-usage-counter [toolSlug]="'media-query'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Main Content -->
+  <div class="mq-container">
+
+    <!-- Left Column: Builder -->
+    <div class="mq-builder">
+
+      <!-- Media Type Selector -->
+      <div class="mq-section">
+        <label class="mq-label">Media Type</label>
+        <div class="mq-button-group">
+          <button
+            class="mq-button"
+            [class.mq-button--active]="mediaType === 'all'"
+            (click)="mediaType = 'all'; onRuleChange()">
+            all
+          </button>
+          <button
+            class="mq-button"
+            [class.mq-button--active]="mediaType === 'screen'"
+            (click)="mediaType = 'screen'; onRuleChange()">
+            screen
+          </button>
+          <button
+            class="mq-button"
+            [class.mq-button--active]="mediaType === 'print'"
+            (click)="mediaType = 'print'; onRuleChange()">
+            print
+          </button>
+        </div>
+      </div>
+
+      <!-- Combinator Selector -->
+      <div class="mq-section">
+        <label class="mq-label">Combinator</label>
+        <div class="mq-button-group">
+          <button
+            class="mq-button"
+            [class.mq-button--active]="combinator === 'and'"
+            (click)="combinator = 'and'; onRuleChange()">
+            and
+          </button>
+          <button
+            class="mq-button"
+            [class.mq-button--active]="combinator === 'or'"
+            (click)="combinator = 'or'; onRuleChange()">
+            or
+          </button>
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="mq-section">
+        <div class="mq-section__header">
+          <label class="mq-label">Query Rules</label>
+          <button class="mq-add-btn" (click)="addRule()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Rule
+          </button>
+        </div>
+
+        <div class="mq-rules">
+          <div class="mq-rule" *ngFor="let rule of rules">
+
+            <!-- Feature Select -->
+            <div class="mq-rule__col">
+              <select
+                class="mq-rule__select"
+                [(ngModel)]="rule.feature"
+                (change)="onFeatureChange(rule)">
+                <option *ngFor="let feat of features" [value]="feat.feature">{{ feat.label }}</option>
+              </select>
+            </div>
+
+            <!-- Min/Max/Value Inputs -->
+            <div class="mq-rule__inputs" *ngIf="getFeatureDef(rule.feature).type === 'range'">
+
+              <!-- Min Checkbox + Input -->
+              <div class="mq-rule__input-group">
+                <label class="mq-rule__checkbox">
+                  <input type="checkbox" [(ngModel)]="rule.useMin" (change)="onRuleChange()">
+                  <span>min</span>
+                </label>
+                <input
+                  class="mq-rule__input"
+                  type="text"
+                  placeholder="value"
+                  [(ngModel)]="rule.minValue"
+                  (input)="onRuleChange()"
+                  [disabled]="!rule.useMin">
+                <span class="mq-rule__unit">{{ getFeatureDef(rule.feature).unit }}</span>
+              </div>
+
+              <!-- Max Checkbox + Input -->
+              <div class="mq-rule__input-group">
+                <label class="mq-rule__checkbox">
+                  <input type="checkbox" [(ngModel)]="rule.useMax" (change)="onRuleChange()">
+                  <span>max</span>
+                </label>
+                <input
+                  class="mq-rule__input"
+                  type="text"
+                  placeholder="value"
+                  [(ngModel)]="rule.maxValue"
+                  (input)="onRuleChange()"
+                  [disabled]="!rule.useMax">
+                <span class="mq-rule__unit">{{ getFeatureDef(rule.feature).unit }}</span>
+              </div>
+
+              <!-- Single Value (when neither min nor max) -->
+              <div class="mq-rule__input-group" *ngIf="!rule.useMin && !rule.useMax">
+                <input
+                  class="mq-rule__input"
+                  type="text"
+                  placeholder="value"
+                  [(ngModel)]="rule.value"
+                  (input)="onRuleChange()">
+                <span class="mq-rule__unit">{{ getFeatureDef(rule.feature).unit }}</span>
+              </div>
+
+            </div>
+
+            <!-- Enum Inputs -->
+            <div class="mq-rule__inputs" *ngIf="getFeatureDef(rule.feature).type === 'enum'">
+              <select
+                class="mq-rule__select"
+                [(ngModel)]="rule.value"
+                (change)="onRuleChange()">
+                <option value="">-- Select --</option>
+                <option *ngFor="let opt of getFeatureDef(rule.feature).options" [value]="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <!-- Remove Button -->
+            <button
+              class="mq-rule__remove"
+              (click)="removeRule(rule.id)"
+              [disabled]="rules.length === 1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 4 21 4"/><path d="M19 4v20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4m3 0V2h8v2M10 11v6M14 11v6"/></svg>
+            </button>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Output -->
+    <div class="mq-output">
+
+      <!-- Generated Query -->
+      <div class="mq-output-card">
+        <div class="mq-output-card__header">
+          <h3 class="mq-output-card__title">Media Query</h3>
+          <button class="mq-copy-btn" (click)="copyQuery()" [class.mq-copy-btn--copied]="copied">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+        <code class="mq-output-code">{{ generatedQuery }}</code>
+      </div>
+
+      <!-- Generated CSS -->
+      <div class="mq-output-card">
+        <div class="mq-output-card__header">
+          <h3 class="mq-output-card__title">CSS Block</h3>
+          <button class="mq-copy-btn" (click)="copyCSS()" [class.mq-copy-btn--copied]="copiedCSS">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            {{ copiedCSS ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+        <pre class="mq-output-code"><code>{{ generatedCSS }}</code></pre>
+      </div>
+
+      <!-- Active Presets -->
+      <div class="mq-active-presets" *ngIf="activePresets.size > 0">
+        <div class="mq-active-presets__header">
+          <h4 class="mq-active-presets__title">Active Breakpoints</h4>
+          <span class="mq-active-presets__badge">{{ activePresets.size }}</span>
+        </div>
+        <div class="mq-active-presets__list">
+          <span class="mq-active-preset" *ngFor="let preset of activePresets">{{ preset }}</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Presets Section -->
+  <section class="mq-presets-section">
+    <h2 class="mq-section-title">Preset Breakpoints</h2>
+    <p class="mq-section-subtitle">Click to load a preset media query template.</p>
+
+    <div class="mq-preset-groups">
+      <div class="mq-preset-group" *ngFor="let group of presetGroups">
+        <h3 class="mq-preset-group__title">{{ group.name }}</h3>
+        <div class="mq-preset-buttons">
+          <button
+            class="mq-preset-btn"
+            *ngFor="let preset of group.presets"
+            (click)="applyPreset(preset)"
+            [class.mq-preset-btn--active]="isPresetActive(preset.name)">
+            {{ preset.name }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related tools -->
+  <app-related-tools [currentToolId]="'media-query'"></app-related-tools>
+
+</div>

@@ -1,0 +1,485 @@
+/* ══════════════════════════════════════════════════════════════
+   Progress Bar Generator — Component Styles
+   xsantcastx design system: dark theme, cyan #00ffcc, glassmorphism
+   ══════════════════════════════════════════════════════════════ */
+
+.pb-page {
+  min-height: 100vh;
+  padding: calc(var(--header-offset) + 2.5rem) var(--page-gutter) 5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.75rem;
+  transition: color 0.2s ease;
+}
+.back-link:hover { color: #00ffcc; }
+
+/* ── Tool header ───────────────────────────────────────────── */
+.tool-header { margin-bottom: 2rem; }
+
+.tool-header__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #00ffcc;
+  margin-bottom: 0.4rem;
+}
+
+.tool-header__title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+.tool-header__amp { color: var(--info-color); }
+
+.tool-header__subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.tool-header__share { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+}
+.share-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* ── Main Container ────────────────────────────────────────── */
+.pb-container {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* ── Section ───────────────────────────────────────────────── */
+.pb-section {
+  padding: 1.5rem;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-strong);
+  margin-bottom: 1rem;
+}
+
+.pb-section--full {
+  grid-column: 1 / -1;
+}
+
+.pb-section__title {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem 0;
+}
+
+/* ── Presets ───────────────────────────────────────────────── */
+.pb-presets {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.pb-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.pb-preset-btn:hover {
+  border-color: #00ffcc;
+  background: rgba(0, 255, 204, 0.06);
+}
+
+.pb-preset-mini {
+  flex-shrink: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+}
+
+.pb-preset-mini-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* ── Control ───────────────────────────────────────────────── */
+.pb-control {
+  margin-bottom: 1.25rem;
+}
+.pb-control:last-child { margin-bottom: 0; }
+
+.pb-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.pb-value {
+  color: #00ffcc;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  margin-left: 0.4rem;
+}
+
+.pb-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #00ffcc, #7b00ff);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.pb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #00ffcc;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 255, 204, 0.3);
+  transition: box-shadow 0.2s ease;
+}
+
+.pb-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #00ffcc;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 255, 204, 0.3);
+  transition: box-shadow 0.2s ease;
+}
+
+.pb-slider:hover::-webkit-slider-thumb { box-shadow: 0 4px 12px rgba(0, 255, 204, 0.5); }
+.pb-slider:hover::-moz-range-thumb { box-shadow: 0 4px 12px rgba(0, 255, 204, 0.5); }
+
+/* ── Color Input ───────────────────────────────────────────── */
+.pb-color-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pb-color-picker {
+  width: 50px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.pb-color-value {
+  flex: 1;
+  font-size: 0.82rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+/* ── Toggle Button ─────────────────────────────────────────── */
+.pb-toggle {
+  margin-bottom: 0.75rem;
+}
+.pb-toggle:last-child { margin-bottom: 0; }
+
+.pb-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.pb-toggle-btn:hover {
+  border-color: rgba(0, 255, 204, 0.3);
+  color: var(--text-color);
+}
+
+.pb-toggle-btn--active {
+  border-color: #00ffcc;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.08);
+}
+
+.pb-toggle-btn svg {
+  flex-shrink: 0;
+}
+
+/* ── Label Position Buttons ────────────────────────────────── */
+.pb-label-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.pb-label-btn {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pb-label-btn:hover {
+  border-color: rgba(0, 255, 204, 0.3);
+  color: var(--text-color);
+}
+
+.pb-label-btn--active {
+  border-color: #00ffcc;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.08);
+}
+
+/* ── Reset Button ──────────────────────────────────────────── */
+.pb-reset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 0, 64, 0.08);
+  color: #ff0040;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pb-reset-btn:hover {
+  border-color: #ff0040;
+  background: rgba(255, 0, 64, 0.12);
+}
+
+/* ── Preview Section ───────────────────────────────────────── */
+.pb-preview-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  padding: 2rem;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.pb-preview-bg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ── Code Output ───────────────────────────────────────────── */
+.pb-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pb-code-header .pb-section__title {
+  margin: 0;
+}
+
+.pb-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pb-copy-btn:hover {
+  border-color: #00ffcc;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.06);
+}
+
+.pb-copy-btn--copied {
+  border-color: #00ffcc;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.08);
+}
+
+.pb-code {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 0;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #00ffcc;
+}
+
+.pb-code code {
+  display: block;
+  white-space: pre;
+  word-break: break-word;
+}
+
+/* ── Preview Styles (Live) ─────────────────────────────────── */
+/* These are applied dynamically via [ngStyle] in the template
+   This CSS rule is for reference only */
+
+/* Stripe animation */
+@keyframes pb-stripe-slide {
+  from { background-position: 0 0; }
+  to { background-position: 64px 0; }
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .pb-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .pb-page {
+    padding: calc(var(--header-offset) + 1.5rem) var(--page-gutter) 3rem;
+  }
+
+  .pb-section {
+    padding: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .pb-presets {
+    grid-template-columns: 1fr;
+  }
+
+  .pb-label-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .pb-preview-wrapper {
+    min-height: 200px;
+    padding: 1.5rem;
+  }
+
+  .pb-code {
+    font-size: 0.75rem;
+    padding: 1rem;
+  }
+
+  .tool-header__title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pb-page {
+    padding: calc(var(--header-offset) + 1rem) 1rem 2rem;
+  }
+
+  .tool-header__subtitle {
+    font-size: 0.88rem;
+  }
+
+  .pb-section {
+    padding: 1rem;
+  }
+
+  .pb-preset-btn {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .pb-preset-mini {
+    width: 60px;
+    height: 16px;
+  }
+
+  .pb-preview-wrapper {
+    min-height: 160px;
+    padding: 1rem;
+  }
+}
