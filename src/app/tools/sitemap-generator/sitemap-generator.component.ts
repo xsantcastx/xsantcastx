@@ -251,4 +251,8 @@ export class SitemapGeneratorComponent {
   private isValidUrl(url: string): boolean {
     return /^https?:\/\/.+/i.test(url.trim());
   }
+
+  trackByIndex(index: number): number {
+    return index;
+  }
 }
