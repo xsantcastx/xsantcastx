@@ -213,7 +213,7 @@
             *ngFor="let fmt of ['css', 'scss', 'json', 'tailwind']"
             [class.is-active]="fmt === exportFormat"
             class="csv-format-tab"
-            (click)="setExportFormat(fmt as ExportFormat)"
+            (click)="castExportFormat(fmt)"
           >
             {{ fmt.toUpperCase() }}
           </button>
@@ -251,11 +251,11 @@
 
         <div class="csv-preview" [style]="getPreviewStyles()">
           <!-- Color swatches -->
-          <div class="csv-preview-swatches" *ngIf="variables.filter(v => v.category === 'colors').length > 0">
+          <div class="csv-preview-swatches" *ngIf="hasVariablesInCategory('colors')">
             <div class="csv-preview-label">Colors</div>
             <div class="csv-preview-grid">
               <div
-                *ngFor="let v of variables.filter(v => v.category === 'colors')"
+                *ngFor="let v of getVariablesByCategory('colors')"
                 class="csv-preview-swatch"
                 [style.backgroundColor]="v.value"
                 [title]="v.name + ': ' + v.value"
@@ -264,7 +264,7 @@
           </div>
 
           <!-- Typography preview -->
-          <div class="csv-preview-typography" *ngIf="variables.filter(v => v.category === 'typography').length > 0">
+          <div class="csv-preview-typography" *ngIf="hasVariablesInCategory('typography')">
             <div class="csv-preview-label">Typography</div>
             <div class="csv-preview-text" [style.fontFamily]="previewFont">
               The quick brown fox
@@ -272,11 +272,11 @@
           </div>
 
           <!-- Spacing preview -->
-          <div class="csv-preview-spacing" *ngIf="variables.filter(v => v.category === 'spacing').length > 0">
+          <div class="csv-preview-spacing" *ngIf="hasVariablesInCategory('spacing')">
             <div class="csv-preview-label">Spacing</div>
             <div class="csv-preview-boxes">
               <div
-                *ngFor="let v of variables.filter(v => v.category === 'spacing').slice(0, 3)"
+                *ngFor="let v of getVariablesByCategory('spacing') | slice:0:3"
                 class="csv-preview-box"
                 [style.width]="v.value"
                 [style.height]="v.value"
@@ -317,7 +317,7 @@
       </div>
 
       <!-- Tool usage counter -->
-      <app-tool-usage-counter [toolName]="'CSS Variables Generator'"></app-tool-usage-counter>
+      <app-tool-usage-counter [toolSlug]="'css-variables'"></app-tool-usage-counter>
     </aside>
   </div>
 
@@ -326,7 +326,7 @@
 
   <!-- Related tools -->
   <app-related-tools
-    [currentTool]="'css-variables'"
+    [currentToolId]="'css-variables'"
     [relatedTools]="['cron-builder', 'color-palette']"
   ></app-related-tools>
 </div>

@@ -116,6 +116,18 @@ export class CssVariablesComponent implements OnDestroy {
     return this.variables.filter(v => v.category === cat).length;
   }
 
+  getVariablesByCategory(category: VariableCategory): CssVariable[] {
+    return this.variables.filter(v => v.category === category);
+  }
+
+  hasVariablesInCategory(category: VariableCategory): boolean {
+    return this.variables.some(v => v.category === category);
+  }
+
+  castExportFormat(fmt: string): void {
+    this.setExportFormat(fmt as ExportFormat);
+  }
+
   setActiveCategory(cat: VariableCategory) {
     this.activeCategory = cat;
     this.newCategory = cat;
