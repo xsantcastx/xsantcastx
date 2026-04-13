@@ -21,7 +21,10 @@
     </div>
 
     <!-- Hamburger Menu -->
-    <button class="hamburger" [class.active]="mobileMenuOpen" (click)="toggleMobileMenu()">
+    <button class="hamburger" [class.active]="mobileMenuOpen" (click)="toggleMobileMenu()"
+      aria-label="Toggle navigation menu"
+      [attr.aria-expanded]="mobileMenuOpen"
+      aria-haspopup="menu">
       <span></span>
       <span></span>
       <span></span>
