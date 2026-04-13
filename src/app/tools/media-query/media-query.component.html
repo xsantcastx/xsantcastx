@@ -1,25 +1,25 @@
 <div class="mq-page">
 
-  <\!-- Back -->
+  <!-- Back -->
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     Back to Tools
   </button>
 
-  <\!-- Header -->
+  <!-- Header -->
   <header class="tool-header">
     <p class="tool-header__eyebrow">CSS Tools</p>
     <h1 class="tool-header__title">Media Query <span class="tool-header__amp">Builder</span></h1>
     <p class="tool-header__subtitle">Visual media query generator with framework presets, live breakpoint detection, and one-click copy. 100% client-side.</p>
   </header>
 
-  <\!-- Sponsored: Carbon Ads -->
+  <!-- Sponsored: Carbon Ads -->
   <app-carbon-ad></app-carbon-ad>
 
-  <\!-- ═══ Builder Section ═══ -->
+  <!-- ═══ Builder Section ═══ -->
   <section class="mq-builder">
 
-    <\!-- Media Type -->
+    <!-- Media Type -->
     <div class="mq-card">
       <h2 class="mq-card__title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <\!-- Combinator -->
+    <!-- Combinator -->
     <div class="mq-card">
       <h2 class="mq-card__title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
@@ -44,7 +44,7 @@
       </div>
     </div>
 
-    <\!-- Rules -->
+    <!-- Rules -->
     <div class="mq-card mq-card--rules">
       <div class="mq-card__header">
         <h2 class="mq-card__title">
@@ -59,12 +59,12 @@
 
       <div class="mq-rules-list" *ngIf="rules.length > 0">
         <div class="mq-rule" *ngFor="let rule of rules; trackBy: trackRule">
-          <\!-- Feature select -->
+          <!-- Feature select -->
           <select class="mq-select" [(ngModel)]="rule.feature" (ngModelChange)="onFeatureChange(rule)">
             <option *ngFor="let f of features" [value]="f.feature">{{ f.label }}</option>
           </select>
 
-          <\!-- Range type: min/max checkboxes + inputs -->
+          <!-- Range type: min/max checkboxes + inputs -->
           <ng-container *ngIf="getFeatureDef(rule.feature).type === 'range'">
             <label class="mq-check" *ngIf="getFeatureDef(rule.feature).supportsMinMax">
               <input type="checkbox" [(ngModel)]="rule.useMin" (ngModelChange)="onRuleChange()">
@@ -78,18 +78,18 @@
             </label>
             <input *ngIf="rule.useMax" type="number" class="mq-input mq-input--num" placeholder="0" [(ngModel)]="rule.maxValue" (ngModelChange)="onRuleChange()">
 
-            <input *ngIf="\!rule.useMin && \!rule.useMax" type="number" class="mq-input mq-input--num" placeholder="exact" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
+            <input *ngIf="!rule.useMin && !rule.useMax" type="number" class="mq-input mq-input--num" placeholder="exact" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
             <span class="mq-unit" *ngIf="getFeatureDef(rule.feature).unit">{{ getFeatureDef(rule.feature).unit }}</span>
           </ng-container>
 
-          <\!-- Enum type: dropdown -->
+          <!-- Enum type: dropdown -->
           <ng-container *ngIf="getFeatureDef(rule.feature).type === 'enum'">
             <select class="mq-select mq-select--val" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
               <option *ngFor="let opt of getFeatureDef(rule.feature).options" [value]="opt">{{ opt }}</option>
             </select>
           </ng-container>
 
-          <\!-- Remove -->
+          <!-- Remove -->
           <button class="mq-rule__remove" (click)="removeRule(rule.id)" title="Remove condition">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -99,7 +99,7 @@
       <p class="mq-empty" *ngIf="rules.length === 0">No conditions added. Click "Add Condition" to start building your query.</p>
     </div>
 
-    <\!-- Output -->
+    <!-- Output -->
     <div class="mq-card mq-card--output">
       <h2 class="mq-card__title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
@@ -108,19 +108,19 @@
       <div class="mq-output-block">
         <pre class="mq-code">{{ generatedQuery }}</pre>
         <button class="mq-copy-btn" (click)="copyQuery()" [class.mq-copy-btn--done]="copied">
-          {{ copied ? 'Copied\!' : 'Copy' }}
+          {{ copied ? 'Copied!' : 'Copy' }}
         </button>
       </div>
       <div class="mq-output-block">
         <pre class="mq-code mq-code--css">{{ generatedCSS }}</pre>
         <button class="mq-copy-btn" (click)="copyCSS()" [class.mq-copy-btn--done]="copiedCSS">
-          {{ copiedCSS ? 'Copied\!' : 'Copy CSS' }}
+          {{ copiedCSS ? 'Copied!' : 'Copy CSS' }}
         </button>
       </div>
     </div>
   </section>
 
-  <\!-- ═══ Presets Section ═══ -->
+  <!-- ═══ Presets Section ═══ -->
   <section class="mq-presets">
     <h2 class="mq-section-title">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -138,6 +138,6 @@
     </div>
   </section>
 
-  <\!-- Related Tools -->
-  <app-related-tools [currentSlug]="'media-query'"></app-related-tools>
+  <!-- Related Tools -->
+  <app-related-tools [currentToolId]="'media-query'"></app-related-tools>
 </div>
