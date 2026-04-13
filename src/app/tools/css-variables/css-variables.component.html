@@ -178,13 +178,10 @@
         </button>
 
         <div *ngIf="showImport" class="csv-import-content">
-          <p class="csv-import-help">Paste CSS with custom properties (e.g., :root { --name: value; })</p>
+          <p class="csv-import-help">Paste CSS with custom properties (e.g., :root {{ '{' }} --name: value; {{ '}' }})</p>
           <textarea
             [(ngModel)]="importText"
-            placeholder=":root {
-  --primary: #00ffcc;
-  --spacing-md: 1rem;
-}"
+            [placeholder]="':root {\n  --primary: #00ffcc;\n  --spacing-md: 1rem;\n}'"
             class="csv-textarea"
           ></textarea>
           <div class="csv-import-actions">
@@ -325,8 +322,5 @@
   <app-carbon-ad></app-carbon-ad>
 
   <!-- Related tools -->
-  <app-related-tools
-    [currentToolId]="'css-variables'"
-    [relatedTools]="['cron-builder', 'color-palette']"
-  ></app-related-tools>
+  <app-related-tools [currentToolId]="'css-variables'"></app-related-tools>
 </div>
