@@ -9,7 +9,7 @@ import { AffiliateService, AffiliatePartner } from './affiliate.service';
     <aside
       class="aff-cta"
       *ngIf="partner && !dismissed"
-      [style.--aff-accent]="partner.accentColor"
+      [attr.style]="'--aff-accent: ' + partner.accentColor"
       aria-label="Sponsored recommendation"
     >
       <div class="aff-cta__inner">

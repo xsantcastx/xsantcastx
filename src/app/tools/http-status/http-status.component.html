@@ -52,7 +52,7 @@
         *ngFor="let cat of categories"
         class="hs-tab"
         [class.hs-tab--active]="activeCategory === cat.key"
-        [style.--tab-color]="cat.color"
+        [attr.style]="'--tab-color: ' + cat.color"
         (click)="setCategory(cat.key)"
       >
         {{ cat.label }}
@@ -83,7 +83,7 @@
           *ngFor="let entry of filteredCodes"
           class="hs-entry"
           [class.hs-entry--selected]="selectedStatus?.code === entry.code"
-          [style.--entry-color]="getCategoryColor(entry.category)"
+          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
           (click)="selectStatus(entry)"
         >
           <span class="hs-entry__code">{{ entry.code }}</span>
