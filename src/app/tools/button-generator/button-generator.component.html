@@ -35,19 +35,19 @@
             <div class="btn-field"><label>Text Color</label><input type="color" [(ngModel)]="textColor" /></div>
           </div>
           <div class="btn-field">
-            <label>Border Radius: {{ borderRadius }}px</label>
-            <input type="range" min="0" max="50" [(ngModel)]="borderRadius" />
+            <label for="btn-border-radius">Border Radius: {{ borderRadius }}px</label>
+            <input id="btn-border-radius" type="range" min="0" max="50" [(ngModel)]="borderRadius" />
           </div>
           <div class="btn-field-row">
-            <div class="btn-field"><label>Padding X: {{ paddingX }}px</label><input type="range" min="4" max="60" [(ngModel)]="paddingX" /></div>
-            <div class="btn-field"><label>Padding Y: {{ paddingY }}px</label><input type="range" min="4" max="40" [(ngModel)]="paddingY" /></div>
+            <div class="btn-field"><label for="btn-padding-x">Padding X: {{ paddingX }}px</label><input id="btn-padding-x" type="range" min="4" max="60" [(ngModel)]="paddingX" /></div>
+            <div class="btn-field"><label for="btn-padding-y">Padding Y: {{ paddingY }}px</label><input id="btn-padding-y" type="range" min="4" max="40" [(ngModel)]="paddingY" /></div>
           </div>
           <div class="btn-field">
-            <label>Font Size: {{ fontSize }}px</label>
-            <input type="range" min="10" max="32" [(ngModel)]="fontSize" />
+            <label for="btn-font-size">Font Size: {{ fontSize }}px</label>
+            <input id="btn-font-size" type="range" min="10" max="32" [(ngModel)]="fontSize" />
           </div>
           <div class="btn-field-row">
-            <div class="btn-field"><label>Border Width: {{ borderWidth }}px</label><input type="range" min="0" max="6" [(ngModel)]="borderWidth" /></div>
+            <div class="btn-field"><label for="btn-border-width">Border Width: {{ borderWidth }}px</label><input id="btn-border-width" type="range" min="0" max="6" [(ngModel)]="borderWidth" /></div>
             <div class="btn-field"><label>Border Color</label><input type="color" [(ngModel)]="borderColor" /></div>
           </div>
           <div class="btn-field-row">

@@ -29,18 +29,18 @@
         <div class="cpk-panel__header"><span class="cpk-panel__title">RGB</span></div>
         <div class="cpk-panel__body cpk-sliders">
           <div class="cpk-slider-row">
-            <label>R</label>
-            <input type="range" min="0" max="255" [(ngModel)]="r" (ngModelChange)="onRgbChange()" />
+            <label for="cpk-r">R</label>
+            <input id="cpk-r" type="range" min="0" max="255" [(ngModel)]="r" (ngModelChange)="onRgbChange()" />
             <span class="cpk-slider-val">{{ r }}</span>
           </div>
           <div class="cpk-slider-row">
-            <label>G</label>
-            <input type="range" min="0" max="255" [(ngModel)]="g" (ngModelChange)="onRgbChange()" />
+            <label for="cpk-g">G</label>
+            <input id="cpk-g" type="range" min="0" max="255" [(ngModel)]="g" (ngModelChange)="onRgbChange()" />
             <span class="cpk-slider-val">{{ g }}</span>
           </div>
           <div class="cpk-slider-row">
-            <label>B</label>
-            <input type="range" min="0" max="255" [(ngModel)]="b" (ngModelChange)="onRgbChange()" />
+            <label for="cpk-b">B</label>
+            <input id="cpk-b" type="range" min="0" max="255" [(ngModel)]="b" (ngModelChange)="onRgbChange()" />
             <span class="cpk-slider-val">{{ b }}</span>
           </div>
         </div>
@@ -50,18 +50,18 @@
         <div class="cpk-panel__header"><span class="cpk-panel__title">HSL</span></div>
         <div class="cpk-panel__body cpk-sliders">
           <div class="cpk-slider-row">
-            <label>H</label>
-            <input type="range" min="0" max="360" [(ngModel)]="h" (ngModelChange)="onHslChange()" />
+            <label for="cpk-h">H</label>
+            <input id="cpk-h" type="range" min="0" max="360" [(ngModel)]="h" (ngModelChange)="onHslChange()" />
             <span class="cpk-slider-val">{{ h }}</span>
           </div>
           <div class="cpk-slider-row">
-            <label>S</label>
-            <input type="range" min="0" max="100" [(ngModel)]="s" (ngModelChange)="onHslChange()" />
+            <label for="cpk-s">S</label>
+            <input id="cpk-s" type="range" min="0" max="100" [(ngModel)]="s" (ngModelChange)="onHslChange()" />
             <span class="cpk-slider-val">{{ s }}%</span>
           </div>
           <div class="cpk-slider-row">
-            <label>L</label>
-            <input type="range" min="0" max="100" [(ngModel)]="l" (ngModelChange)="onHslChange()" />
+            <label for="cpk-l">L</label>
+            <input id="cpk-l" type="range" min="0" max="100" [(ngModel)]="l" (ngModelChange)="onHslChange()" />
             <span class="cpk-slider-val">{{ l }}%</span>
           </div>
         </div>
@@ -94,6 +94,7 @@
             class="cpk-history-swatch"
             [style.background]="color"
             [title]="color"
+            [attr.aria-label]="'Select ' + color + ' from history'"
             (click)="selectFromHistory(color)">
           </button>
         </div>
