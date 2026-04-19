@@ -46,7 +46,7 @@
           <div
             class="hc-card"
             *ngFor="let card of heroCarouselCards; trackBy: trackHeroCard"
-            [style.--ci]="card.ci"
+            [attr.style]="'--ci: ' + card.ci"
           >
             <div class="hc-card__top">
               <span class="hc-card__icon">{{ card.tool.icon }}</span>

@@ -10,9 +10,7 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     <div class="ms-overlay" *ngIf="event" [class.ms-overlay--visible]="visible" (click)="dismiss()">
       <div class="ms-particles" *ngIf="visible">
         <span *ngFor="let p of particles" class="ms-particle"
-          [style.--x]="p.x" [style.--y]="p.y" [style.--size]="p.size + 'px'"
-          [style.--delay]="p.delay + 's'" [style.--duration]="p.duration + 's'"
-          [style.--color]="p.color" [style.--angle]="p.angle + 'deg'">
+          [attr.style]="particleStyle(p)">
         </span>
       </div>
 
@@ -288,6 +286,15 @@ export class MilestoneEffectComponent implements OnInit, OnDestroy {
   get formattedCount(): string {
     if (!this.event) return '';
     return this.event.count.toLocaleString();
+  }
+
+  /**
+   * Returns the inline `style` attribute string for a particle. Using `[attr.style]`
+   * (setAttribute) instead of `[style.--xxx]` (renderer.setProperty) avoids
+   * Angular SSR's `NotYetImplemented` crash when serializing CSS custom properties.
+   */
+  particleStyle(p: { x: string; y: string; size: number; delay: number; duration: number; color: string; angle: number }): string {
+    return `--x: ${p.x}; --y: ${p.y}; --size: ${p.size}px; --delay: ${p.delay}s; --duration: ${p.duration}s; --color: ${p.color}; --angle: ${p.angle}deg;`;
   }
 
   ngOnInit(): void {

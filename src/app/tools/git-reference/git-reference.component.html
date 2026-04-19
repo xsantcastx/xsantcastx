@@ -53,7 +53,7 @@
           *ngFor="let cat of categories"
           class="gr-tab"
           [class.gr-tab--active]="activeCategory === cat.key"
-          [style.--tab-color]="cat.color"
+          [attr.style]="'--tab-color: ' + cat.color"
           (click)="setCategory(cat.key)"
         >
           {{ cat.label }}
@@ -75,7 +75,7 @@
 
   <!-- ── Cheatsheet Mode ── -->
   <div class="gr-cheatsheet" *ngIf="cheatsheetMode">
-    <div class="gr-cheat-card" *ngFor="let entry of filteredCommands" [style.--entry-color]="getCategoryColor(entry.category)">
+    <div class="gr-cheat-card" *ngFor="let entry of filteredCommands" [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)">
       <div class="gr-cheat-card__header">
         <code class="gr-cheat-card__cmd">{{ entry.command }}</code>
         <button class="gr-cheat-card__copy" (click)="copyCommand(entry.command, $event)" [class.gr-cheat-card__copy--success]="isCopied(entry.command)" title="Copy command">
@@ -111,7 +111,7 @@
           *ngFor="let entry of filteredCommands"
           class="gr-entry"
           [class.gr-entry--selected]="selectedCommand?.command === entry.command"
-          [style.--entry-color]="getCategoryColor(entry.category)"
+          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
           (click)="selectCommand(entry)"
         >
           <code class="gr-entry__cmd">{{ entry.command }}</code>

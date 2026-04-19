@@ -91,7 +91,7 @@
             *ngFor="let rt of recordTypes"
             class="dl-type-chip"
             [class.dl-type-chip--active]="rt.selected"
-            [style.--chip-color]="getTypeColor(rt.type)"
+            [attr.style]="'--chip-color: ' + getTypeColor(rt.type)"
             (click)="toggleRecordType(rt)"
             [title]="rt.description"
           >
@@ -157,7 +157,7 @@
           <div class="dl-record-groups" *ngIf="hasResults">
             <div class="dl-record-group" *ngFor="let group of recordsByType">
               <div class="dl-group-header">
-                <span class="dl-group-badge" [style.--badge-color]="getTypeColor(group.type)">{{ group.type }}</span>
+                <span class="dl-group-badge" [attr.style]="'--badge-color: ' + getTypeColor(group.type)">{{ group.type }}</span>
                 <span class="dl-group-count">{{ group.records.length }} record{{ group.records.length !== 1 ? 's' : '' }}</span>
               </div>
               <div class="dl-table-wrap">
@@ -239,7 +239,7 @@
       <div class="dl-ref-list">
         <div class="dl-ref-item" *ngFor="let item of dnsExplanations">
           <div class="dl-ref-item__header">
-            <span class="dl-group-badge" [style.--badge-color]="getTypeColor(item.type)">{{ item.type }}</span>
+            <span class="dl-group-badge" [attr.style]="'--badge-color: ' + getTypeColor(item.type)">{{ item.type }}</span>
             <span class="dl-ref-item__name">{{ item.name }}</span>
           </div>
           <p class="dl-ref-item__desc">{{ item.description }}</p>
@@ -258,7 +258,7 @@
       <div class="dl-ref-list">
         <div class="dl-ref-item" *ngFor="let item of commonTxtRecords">
           <div class="dl-ref-item__header">
-            <span class="dl-group-badge" [style.--badge-color]="'#ffd93d'">{{ item.name }}</span>
+            <span class="dl-group-badge" [attr.style]="'--badge-color: #ffd93d'">{{ item.name }}</span>
           </div>
           <p class="dl-ref-item__desc">{{ item.description }}</p>
           <code class="dl-ref-item__example">{{ item.example }}</code>

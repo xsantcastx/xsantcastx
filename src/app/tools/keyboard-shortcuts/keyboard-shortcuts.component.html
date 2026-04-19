@@ -59,7 +59,7 @@
         *ngFor="let cat of categories"
         class="ks-tab"
         [class.ks-tab--active]="activeCategory === cat.key"
-        [style.--tab-color]="cat.color"
+        [attr.style]="'--tab-color: ' + cat.color"
         (click)="setCategory(cat.key)"
       >
         {{ cat.label }}
@@ -90,7 +90,7 @@
           *ngFor="let entry of filteredShortcuts"
           class="ks-entry"
           [class.ks-entry--selected]="selectedShortcut === entry"
-          [style.--entry-color]="getCategoryColor(entry.category)"
+          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
           (click)="selectShortcut(entry)"
         >
           <!-- Keys rendering -->

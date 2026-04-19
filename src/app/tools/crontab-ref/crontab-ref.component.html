@@ -69,7 +69,7 @@
           *ngFor="let cat of categories"
           class="cr-cat-btn"
           [class.cr-cat-btn--active]="activeCategory === cat.key"
-          [style.--cat-color]="cat.color"
+          [attr.style]="'--cat-color: ' + cat.color"
           (click)="setCategory(cat.key)">
           {{ cat.label }}
         </button>
@@ -116,7 +116,7 @@
     <!-- Visual diagram -->
     <div class="cr-diagram">
       <div class="cr-diagram__row">
-        <div class="cr-diagram__field" *ngFor="let f of syntaxFields" [style.--field-color]="f.color">
+        <div class="cr-diagram__field" *ngFor="let f of syntaxFields" [attr.style]="'--field-color: ' + f.color">
           <span class="cr-diagram__value">{{ f.value }}</span>
           <span class="cr-diagram__connector"></span>
           <span class="cr-diagram__label">{{ f.label }}</span>
