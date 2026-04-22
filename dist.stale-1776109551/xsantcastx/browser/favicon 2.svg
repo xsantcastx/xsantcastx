@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">xsantcastx Favicon</title>
+  <desc id="desc">Monogram of overlapping S and C letters inside an X frame.</desc>
+  <defs>
+    <linearGradient id="favGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FFD1" />
+      <stop offset="55%" stop-color="#32D5FF" />
+      <stop offset="100%" stop-color="#7B5DFF" />
+    </linearGradient>
+  </defs>
+  <rect x="7" y="7" width="50" height="50" rx="14" fill="#0B1222" />
+  <path d="M18 14 L14 18 L28 32 L14 46 L18 50 L32 36 L46 50 L50 46 L36 32 L50 18 L46 14 L32 28 Z" fill="url(#favGradient)" opacity="0.92" />
+  <text x="32" y="36" font-size="20" text-anchor="middle" fill="#F3FEFF" font-family="'Orbitron','Rajdhani','Segoe UI',sans-serif" letter-spacing="4">SC</text>
+</svg>
