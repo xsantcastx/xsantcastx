@@ -20,7 +20,7 @@ interface WhyCard {
   standalone: false,
   template: `
     <div class="mcp-page">
-
+    
       <!-- Hero -->
       <section class="hero-section">
         <div class="hero-content">
@@ -61,7 +61,7 @@ interface WhyCard {
           </div>
         </div>
       </section>
-
+    
       <!-- Install -->
       <section class="section install-section">
         <div class="section-inner">
@@ -73,20 +73,24 @@ interface WhyCard {
               [class.copied]="installCopied"
               (click)="copy('npm install -g xsantcastx-mcp-server', 'install')"
               aria-label="Copy install command"
-            >
-              <svg *ngIf="!installCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <svg *ngIf="installCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+              >
+              @if (!installCopied) {
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              }
+              @if (installCopied) {
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              }
               {{ installCopied ? 'Copied!' : 'Copy' }}
             </button>
           </div>
         </div>
       </section>
-
+    
       <!-- Claude Desktop -->
       <section class="section config-section">
         <div class="section-inner two-col">
@@ -101,20 +105,24 @@ interface WhyCard {
                 [class.copied]="desktopCopied"
                 (click)="copy(desktopConfig, 'desktop')"
                 aria-label="Copy Claude Desktop config"
-              >
-                <svg *ngIf="!desktopCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <svg *ngIf="desktopCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+                >
+                @if (!desktopCopied) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                }
+                @if (desktopCopied) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                }
                 {{ desktopCopied ? 'Copied!' : 'Copy' }}
               </button>
               <pre class="pre-code">{{ desktopConfig }}</pre>
             </div>
           </div>
-
+    
           <!-- Claude Code -->
           <div class="config-block">
             <h2 class="section-title">Use with Claude Code</h2>
@@ -126,52 +134,60 @@ interface WhyCard {
                 [class.copied]="codeCopied"
                 (click)="copy('claude mcp add xsantcastx-mcp-server -- xsantcastx-mcp-server', 'code')"
                 aria-label="Copy Claude Code command"
-              >
-                <svg *ngIf="!codeCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <svg *ngIf="codeCopied" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+                >
+                @if (!codeCopied) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                }
+                @if (codeCopied) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                }
                 {{ codeCopied ? 'Copied!' : 'Copy' }}
               </button>
             </div>
           </div>
         </div>
       </section>
-
+    
       <!-- Tools Grid -->
       <section class="section tools-section">
         <div class="section-inner">
           <h2 class="section-title centered">14 Built-in Tools</h2>
           <p class="section-sub centered">Every tool runs locally — no network, no latency, no keys required.</p>
           <div class="tools-grid">
-            <div class="tool-card glass" *ngFor="let tool of tools">
-              <div class="tool-name">{{ tool.name }}</div>
-              <div class="tool-desc">{{ tool.description }}</div>
-              <div class="tool-example">
-                <code>{{ tool.example }}</code>
+            @for (tool of tools; track tool) {
+              <div class="tool-card glass">
+                <div class="tool-name">{{ tool.name }}</div>
+                <div class="tool-desc">{{ tool.description }}</div>
+                <div class="tool-example">
+                  <code>{{ tool.example }}</code>
+                </div>
               </div>
-            </div>
+            }
           </div>
         </div>
       </section>
-
+    
       <!-- Why section -->
       <section class="section why-section">
         <div class="section-inner">
           <h2 class="section-title centered">Why xsantcastx MCP Server?</h2>
           <div class="why-grid">
-            <div class="why-card glass" *ngFor="let card of whyCards">
-              <div class="why-icon" [innerHTML]="card.icon"></div>
-              <h3 class="why-title">{{ card.title }}</h3>
-              <p class="why-body">{{ card.body }}</p>
-            </div>
+            @for (card of whyCards; track card) {
+              <div class="why-card glass">
+                <div class="why-icon" [innerHTML]="card.icon"></div>
+                <h3 class="why-title">{{ card.title }}</h3>
+                <p class="why-body">{{ card.body }}</p>
+              </div>
+            }
           </div>
         </div>
       </section>
-
+    
       <!-- Links section -->
       <section class="section links-section">
         <div class="section-inner links-inner">
@@ -195,9 +211,9 @@ interface WhyCard {
           </a>
         </div>
       </section>
-
+    
     </div>
-  `,
+    `,
   styles: [`
     :host {
       display: block;

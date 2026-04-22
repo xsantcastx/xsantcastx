@@ -100,7 +100,7 @@
                 min="5"
                 max="40"
                 step="1"
-              />
+                />
               <span class="mc-speed-value">{{ formatWpm() }}</span>
             </div>
             <p class="mc-option-hint">Standard speed: 20 WPM. Slower is easier to follow.</p>
@@ -109,14 +109,18 @@
           <!-- Audio controls -->
           <div class="mc-option-row">
             <div class="mc-audio-controls">
-              <button class="mc-btn mc-btn--play" (click)="playAudio()" [disabled]="!output || playing" *ngIf="!playing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Play Morse Audio
-              </button>
-              <button class="mc-btn mc-btn--stop" (click)="stopAudio()" *ngIf="playing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                Stop
-              </button>
+              @if (!playing) {
+                <button class="mc-btn mc-btn--play" (click)="playAudio()" [disabled]="!output || playing">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Play Morse Audio
+                </button>
+              }
+              @if (playing) {
+                <button class="mc-btn mc-btn--stop" (click)="stopAudio()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  Stop
+                </button>
+              }
               <button class="mc-btn-ghost mc-btn-sm" (click)="swapInputOutput()" [disabled]="!output" title="Swap input/output and toggle mode">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
                 Swap
@@ -138,53 +142,61 @@
         [class.mc-status-bar--warning]="output && errorMessage"
         [class.mc-status-bar--invalid]="!!errorMessage && !output"
         [class.mc-status-bar--idle]="!output && !errorMessage">
-        <ng-container *ngIf="!output && !errorMessage">
+        @if (!output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="output && !errorMessage">
+        }
+        @if (output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ mode === 'encode' ? 'Encoded' : 'Decoded' }} successfully</span>
-        </ng-container>
-        <ng-container *ngIf="output && errorMessage">
+        }
+        @if (output && errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span class="mc-status-warning">{{ errorMessage }}</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage && !output">
+        }
+        @if (errorMessage && !output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="mc-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Visual display -->
-      <div class="mc-visual" *ngIf="visualSymbols.length > 0">
-        <div class="mc-visual__header">
-          <span class="mc-visual__title">Visual Signal</span>
-          <span class="mc-visual__hint" *ngIf="playing">Playing...</span>
+      @if (visualSymbols.length > 0) {
+        <div class="mc-visual">
+          <div class="mc-visual__header">
+            <span class="mc-visual__title">Visual Signal</span>
+            @if (playing) {
+              <span class="mc-visual__hint">Playing...</span>
+            }
+          </div>
+          <div class="mc-visual__symbols">
+            @for (sym of visualSymbols; track sym; let i = $index) {
+              @if (sym.type === 'dot') {
+                <span
+                  class="mc-sym mc-sym--dot"
+                  [class.mc-sym--active]="sym.active"
+                ></span>
+              }
+              @if (sym.type === 'dash') {
+                <span
+                  class="mc-sym mc-sym--dash"
+                  [class.mc-sym--active]="sym.active"
+                ></span>
+              }
+              @if (sym.type === 'space') {
+                <span
+                  class="mc-sym mc-sym--space"
+                ></span>
+              }
+              @if (sym.type === 'word-space') {
+                <span
+                  class="mc-sym mc-sym--word-space"
+                ></span>
+              }
+            }
+          </div>
         </div>
-        <div class="mc-visual__symbols">
-          <ng-container *ngFor="let sym of visualSymbols; let i = index">
-            <span
-              *ngIf="sym.type === 'dot'"
-              class="mc-sym mc-sym--dot"
-              [class.mc-sym--active]="sym.active"
-            ></span>
-            <span
-              *ngIf="sym.type === 'dash'"
-              class="mc-sym mc-sym--dash"
-              [class.mc-sym--active]="sym.active"
-            ></span>
-            <span
-              *ngIf="sym.type === 'space'"
-              class="mc-sym mc-sym--space"
-            ></span>
-            <span
-              *ngIf="sym.type === 'word-space'"
-              class="mc-sym mc-sym--word-space"
-            ></span>
-          </ng-container>
-        </div>
-      </div>
+      }
 
       <!-- Output Panel -->
       <div class="mc-panel mc-panel--output">
@@ -194,55 +206,65 @@
             Output
           </span>
           <div class="mc-panel__actions">
-            <span class="mc-char-count" *ngIf="output">{{ outputCharCount | number }} chars</span>
+            @if (output) {
+              <span class="mc-char-count">{{ outputCharCount | number }} chars</span>
+            }
             <button class="mc-btn-ghost mc-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.mc-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <div class="mc-output-body">
-          <pre class="mc-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="mc-output-empty" *ngIf="!output && !errorMessage">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>{{ mode === 'encode' ? 'Morse code will appear here' : 'Decoded text will appear here' }}</span>
-          </div>
-          <div class="mc-output-error" *ngIf="errorMessage && !output">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <span>{{ errorMessage }}</span>
-          </div>
+          @if (output) {
+            <pre class="mc-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output && !errorMessage) {
+            <div class="mc-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>{{ mode === 'encode' ? 'Morse code will appear here' : 'Decoded text will appear here' }}</span>
+            </div>
+          }
+          @if (errorMessage && !output) {
+            <div class="mc-output-error">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span>{{ errorMessage }}</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="mc-stats" *ngIf="output">
-        <div class="mc-stat">
-          <span class="mc-stat__label">Input</span>
-          <span class="mc-stat__value">{{ inputCharCount | number }} <span class="mc-stat__unit">ch</span></span>
+      @if (output) {
+        <div class="mc-stats">
+          <div class="mc-stat">
+            <span class="mc-stat__label">Input</span>
+            <span class="mc-stat__value">{{ inputCharCount | number }} <span class="mc-stat__unit">ch</span></span>
+          </div>
+          <div class="mc-stat-divider"></div>
+          <div class="mc-stat">
+            <span class="mc-stat__label">Output</span>
+            <span class="mc-stat__value">{{ outputCharCount | number }} <span class="mc-stat__unit">ch</span></span>
+          </div>
+          <div class="mc-stat-divider"></div>
+          <div class="mc-stat">
+            <span class="mc-stat__label">Speed</span>
+            <span class="mc-stat__value mc-stat__value--cyan">{{ wpm }} <span class="mc-stat__unit">WPM</span></span>
+          </div>
+          <div class="mc-stat-divider"></div>
+          <div class="mc-stat">
+            <span class="mc-stat__label">Mode</span>
+            <span class="mc-stat__value mc-stat__value--cyan">{{ mode === 'encode' ? 'Encode' : 'Decode' }}</span>
+          </div>
         </div>
-        <div class="mc-stat-divider"></div>
-        <div class="mc-stat">
-          <span class="mc-stat__label">Output</span>
-          <span class="mc-stat__value">{{ outputCharCount | number }} <span class="mc-stat__unit">ch</span></span>
-        </div>
-        <div class="mc-stat-divider"></div>
-        <div class="mc-stat">
-          <span class="mc-stat__label">Speed</span>
-          <span class="mc-stat__value mc-stat__value--cyan">{{ wpm }} <span class="mc-stat__unit">WPM</span></span>
-        </div>
-        <div class="mc-stat-divider"></div>
-        <div class="mc-stat">
-          <span class="mc-stat__label">Mode</span>
-          <span class="mc-stat__value mc-stat__value--cyan">{{ mode === 'encode' ? 'Encode' : 'Decode' }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>
@@ -256,30 +278,38 @@
       </span>
       <svg class="mc-chevron" [class.mc-chevron--open]="showReference" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div class="mc-reference-body" *ngIf="showReference">
-      <div class="mc-reference-filter">
-        <input
-          type="text"
-          class="mc-filter-input"
-          [(ngModel)]="refFilter"
-          placeholder="Filter by character or code..."
-          spellcheck="false"
-          autocomplete="off"
-        />
-      </div>
-      <div class="mc-reference-grid">
-        <div class="mc-ref-item" *ngFor="let ref of filteredReference">
-          <span class="mc-ref-char">{{ ref.char }}</span>
-          <span class="mc-ref-morse">{{ ref.morse }}</span>
-          <span class="mc-ref-dots">
-            <ng-container *ngFor="let s of ref.morse">
-              <span *ngIf="s === '.'" class="mc-ref-dot"></span>
-              <span *ngIf="s === '-'" class="mc-ref-dash"></span>
-            </ng-container>
-          </span>
+    @if (showReference) {
+      <div class="mc-reference-body">
+        <div class="mc-reference-filter">
+          <input
+            type="text"
+            class="mc-filter-input"
+            [(ngModel)]="refFilter"
+            placeholder="Filter by character or code..."
+            spellcheck="false"
+            autocomplete="off"
+            />
+        </div>
+        <div class="mc-reference-grid">
+          @for (ref of filteredReference; track ref) {
+            <div class="mc-ref-item">
+              <span class="mc-ref-char">{{ ref.char }}</span>
+              <span class="mc-ref-morse">{{ ref.morse }}</span>
+              <span class="mc-ref-dots">
+                @for (s of ref.morse; track s) {
+                  @if (s === '.') {
+                    <span class="mc-ref-dot"></span>
+                  }
+                  @if (s === '-') {
+                    <span class="mc-ref-dash"></span>
+                  }
+                }
+              </span>
+            </div>
+          }
         </div>
       </div>
-    </div>
+    }
   </div>
 
   <app-embed-code-generator toolSlug="morse-code" toolName="Morse Code Translator"></app-embed-code-generator>

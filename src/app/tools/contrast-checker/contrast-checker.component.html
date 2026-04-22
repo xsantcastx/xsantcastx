@@ -41,7 +41,9 @@
             </div>
             <input type="text" class="cc-hex-input" [class.cc-hex-input--error]="fgError" [value]="fgInput" (input)="onFgText($any($event.target).value)" maxlength="7" placeholder="#ffffff" aria-label="Foreground hex value" spellcheck="false" />
           </div>
-          <span *ngIf="fgError" class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
+          @if (fgError) {
+            <span class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
+          }
         </div>
 
         <!-- Swap -->
@@ -62,7 +64,9 @@
             </div>
             <input type="text" class="cc-hex-input" [class.cc-hex-input--error]="bgError" [value]="bgInput" (input)="onBgText($any($event.target).value)" maxlength="7" placeholder="#000000" aria-label="Background hex value" spellcheck="false" />
           </div>
-          <span *ngIf="bgError" class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
+          @if (bgError) {
+            <span class="cc-hex-error">{{ translate('tools.contrast.invalidHex') }}</span>
+          }
         </div>
       </div>
 
@@ -76,37 +80,48 @@
           </span>
         </div>
         <button class="cc-copy-ratio" (click)="copyRatio()" type="button">
-          <svg *ngIf="!copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <svg *ngIf="copied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          @if (!copied) {
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          }
+          @if (copied) {
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          }
           {{ copied ? translate('tools.contrast.copied') : translate('tools.contrast.copy') }}
         </button>
       </div>
 
       <!-- WCAG results -->
       <ul class="cc-results">
-        <li *ngFor="let r of results" class="cc-result-row" [class.cc-result--pass]="r.passes" [class.cc-result--fail]="!r.passes">
-          <span class="cc-result-badge" [class.cc-result-badge--aa]="r.level === 'AA'" [class.cc-result-badge--aaa]="r.level === 'AAA'">{{ r.level }}</span>
-          <span class="cc-result-context">{{ r.context }}</span>
-          <span class="cc-result-req">≥ {{ r.required }}:1</span>
-          <span class="cc-result-icon" aria-hidden="true">
-            <svg *ngIf="r.passes"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
-            <svg *ngIf="!r.passes" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          </span>
-        </li>
+        @for (r of results; track r) {
+          <li class="cc-result-row" [class.cc-result--pass]="r.passes" [class.cc-result--fail]="!r.passes">
+            <span class="cc-result-badge" [class.cc-result-badge--aa]="r.level === 'AA'" [class.cc-result-badge--aaa]="r.level === 'AAA'">{{ r.level }}</span>
+            <span class="cc-result-context">{{ r.context }}</span>
+            <span class="cc-result-req">≥ {{ r.required }}:1</span>
+            <span class="cc-result-icon" aria-hidden="true">
+              @if (r.passes) {
+                <svg  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+              }
+              @if (!r.passes) {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              }
+            </span>
+          </li>
+        }
       </ul>
 
       <!-- Presets -->
       <div class="cc-presets">
         <p class="cc-presets__label">{{ translate('tools.contrast.presets') }}</p>
         <div class="cc-presets__grid">
-          <button
-            *ngFor="let p of presets"
-            class="cc-preset-btn"
-            [style.background]="p.bg"
-            [style.color]="p.fg"
-            (click)="applyPreset(p)"
-            type="button"
-          >{{ p.label }}</button>
+          @for (p of presets; track p) {
+            <button
+              class="cc-preset-btn"
+              [style.background]="p.bg"
+              [style.color]="p.fg"
+              (click)="applyPreset(p)"
+              type="button"
+            >{{ p.label }}</button>
+          }
         </div>
       </div>
 

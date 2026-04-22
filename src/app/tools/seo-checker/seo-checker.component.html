@@ -40,8 +40,8 @@
         <div class="sc-card__header">
           <span class="sc-card__label">Page Title</span>
           <span class="sc-card__counter" [class.sc-card__counter--green]="titleStatus === 'green'"
-                [class.sc-card__counter--yellow]="titleStatus === 'yellow'"
-                [class.sc-card__counter--red]="titleStatus === 'red'">
+            [class.sc-card__counter--yellow]="titleStatus === 'yellow'"
+            [class.sc-card__counter--red]="titleStatus === 'red'">
             {{ titleLength }}/70 &middot; {{ titleStatusLabel }}
           </span>
         </div>
@@ -52,13 +52,13 @@
             placeholder="Enter your page title..."
             [value]="pageTitle"
             (input)="onTitleInput($any($event.target).value)"
-          />
+            />
           <div class="sc-progress">
             <div class="sc-progress__bar"
-                 [style.width.%]="titlePercent"
-                 [class.sc-progress__bar--green]="titleStatus === 'green'"
-                 [class.sc-progress__bar--yellow]="titleStatus === 'yellow'"
-                 [class.sc-progress__bar--red]="titleStatus === 'red'"></div>
+              [style.width.%]="titlePercent"
+              [class.sc-progress__bar--green]="titleStatus === 'green'"
+              [class.sc-progress__bar--yellow]="titleStatus === 'yellow'"
+            [class.sc-progress__bar--red]="titleStatus === 'red'"></div>
           </div>
         </div>
       </div>
@@ -68,8 +68,8 @@
         <div class="sc-card__header">
           <span class="sc-card__label">Meta Description</span>
           <span class="sc-card__counter" [class.sc-card__counter--green]="descStatus === 'green'"
-                [class.sc-card__counter--yellow]="descStatus === 'yellow'"
-                [class.sc-card__counter--red]="descStatus === 'red'">
+            [class.sc-card__counter--yellow]="descStatus === 'yellow'"
+            [class.sc-card__counter--red]="descStatus === 'red'">
             {{ descLength }}/200 &middot; {{ descStatusLabel }}
           </span>
         </div>
@@ -83,10 +83,10 @@
           ></textarea>
           <div class="sc-progress">
             <div class="sc-progress__bar"
-                 [style.width.%]="descPercent"
-                 [class.sc-progress__bar--green]="descStatus === 'green'"
-                 [class.sc-progress__bar--yellow]="descStatus === 'yellow'"
-                 [class.sc-progress__bar--red]="descStatus === 'red'"></div>
+              [style.width.%]="descPercent"
+              [class.sc-progress__bar--green]="descStatus === 'green'"
+              [class.sc-progress__bar--yellow]="descStatus === 'yellow'"
+            [class.sc-progress__bar--red]="descStatus === 'red'"></div>
           </div>
         </div>
       </div>
@@ -105,7 +105,7 @@
               placeholder="https://example.com/my-page"
               [value]="pageUrl"
               (input)="onUrlInput($any($event.target).value)"
-            />
+              />
           </div>
           <div class="sc-field" style="margin-top: 1rem">
             <label class="sc-field__label">Focus Keyword</label>
@@ -115,31 +115,35 @@
               placeholder="e.g. seo checker"
               [value]="focusKeyword"
               (input)="onKeywordInput($any($event.target).value)"
-            />
+              />
           </div>
         </div>
       </div>
 
       <!-- Keyword Density -->
-      <div class="sc-card" *ngIf="keywords.length > 0">
-        <div class="sc-card__header">
-          <span class="sc-card__label">Keyword Density</span>
-        </div>
-        <div class="sc-card__body">
-          <div class="sc-kw-table">
-            <div class="sc-kw-row sc-kw-row--header">
-              <span class="sc-kw-col sc-kw-col--word">Keyword</span>
-              <span class="sc-kw-col sc-kw-col--count">Count</span>
-              <span class="sc-kw-col sc-kw-col--density">Density</span>
-            </div>
-            <div class="sc-kw-row" *ngFor="let kw of keywords">
-              <span class="sc-kw-col sc-kw-col--word">{{ kw.word }}</span>
-              <span class="sc-kw-col sc-kw-col--count">{{ kw.count }}</span>
-              <span class="sc-kw-col sc-kw-col--density">{{ kw.density | number:'1.1-1' }}%</span>
+      @if (keywords.length > 0) {
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <span class="sc-card__label">Keyword Density</span>
+          </div>
+          <div class="sc-card__body">
+            <div class="sc-kw-table">
+              <div class="sc-kw-row sc-kw-row--header">
+                <span class="sc-kw-col sc-kw-col--word">Keyword</span>
+                <span class="sc-kw-col sc-kw-col--count">Count</span>
+                <span class="sc-kw-col sc-kw-col--density">Density</span>
+              </div>
+              @for (kw of keywords; track kw) {
+                <div class="sc-kw-row">
+                  <span class="sc-kw-col sc-kw-col--word">{{ kw.word }}</span>
+                  <span class="sc-kw-col sc-kw-col--count">{{ kw.count }}</span>
+                  <span class="sc-kw-col sc-kw-col--density">{{ kw.density | number:'1.1-1' }}%</span>
+                </div>
+              }
             </div>
           </div>
         </div>
-      </div>
+      }
 
     </div>
 
@@ -184,48 +188,60 @@
       </div>
 
       <!-- SEO Suggestions -->
-      <div class="sc-card" *ngIf="suggestions.length > 0">
-        <div class="sc-card__header">
-          <span class="sc-card__label">SEO Suggestions</span>
-          <span class="sc-card__badge">{{ suggestions.length }}</span>
-        </div>
-        <div class="sc-card__body">
-          <div class="sc-suggestion" *ngFor="let s of suggestions"
-               [class.sc-suggestion--success]="s.type === 'success'"
-               [class.sc-suggestion--warning]="s.type === 'warning'"
-               [class.sc-suggestion--error]="s.type === 'error'">
-            <span class="sc-suggestion__icon" *ngIf="s.type === 'success'">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>
-            <span class="sc-suggestion__icon" *ngIf="s.type === 'warning'">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </span>
-            <span class="sc-suggestion__icon" *ngIf="s.type === 'error'">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            </span>
-            <span class="sc-suggestion__text">{{ s.message }}</span>
+      @if (suggestions.length > 0) {
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <span class="sc-card__label">SEO Suggestions</span>
+            <span class="sc-card__badge">{{ suggestions.length }}</span>
+          </div>
+          <div class="sc-card__body">
+            @for (s of suggestions; track s) {
+              <div class="sc-suggestion"
+                [class.sc-suggestion--success]="s.type === 'success'"
+                [class.sc-suggestion--warning]="s.type === 'warning'"
+                [class.sc-suggestion--error]="s.type === 'error'">
+                @if (s.type === 'success') {
+                  <span class="sc-suggestion__icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                }
+                @if (s.type === 'warning') {
+                  <span class="sc-suggestion__icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  </span>
+                }
+                @if (s.type === 'error') {
+                  <span class="sc-suggestion__icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  </span>
+                }
+                <span class="sc-suggestion__text">{{ s.message }}</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Focus Keyword Status -->
-      <div class="sc-card" *ngIf="focusKeyword">
-        <div class="sc-card__header">
-          <span class="sc-card__label">Focus Keyword: "{{ focusKeyword }}"</span>
-        </div>
-        <div class="sc-card__body">
-          <div class="sc-kw-check">
-            <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInTitle" [class.sc-kw-check__item--fail]="!focusKeywordInTitle">
-              <span class="sc-kw-check__dot"></span>
-              <span>In title</span>
-            </div>
-            <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInDesc" [class.sc-kw-check__item--fail]="!focusKeywordInDesc">
-              <span class="sc-kw-check__dot"></span>
-              <span>In description</span>
+      @if (focusKeyword) {
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <span class="sc-card__label">Focus Keyword: "{{ focusKeyword }}"</span>
+          </div>
+          <div class="sc-card__body">
+            <div class="sc-kw-check">
+              <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInTitle" [class.sc-kw-check__item--fail]="!focusKeywordInTitle">
+                <span class="sc-kw-check__dot"></span>
+                <span>In title</span>
+              </div>
+              <div class="sc-kw-check__item" [class.sc-kw-check__item--pass]="focusKeywordInDesc" [class.sc-kw-check__item--fail]="!focusKeywordInDesc">
+                <span class="sc-kw-check__dot"></span>
+                <span>In description</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      }
 
     </div>
   </div>

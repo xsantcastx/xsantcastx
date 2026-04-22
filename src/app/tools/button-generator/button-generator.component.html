@@ -19,7 +19,9 @@
       <div class="btn-panel">
         <div class="btn-panel__header"><span class="btn-panel__title">Presets</span></div>
         <div class="btn-panel__body btn-presets">
-          <button *ngFor="let preset of presets" class="btn-preset-chip" (click)="applyPreset(preset)">{{ preset.name }}</button>
+          @for (preset of presets; track preset) {
+            <button class="btn-preset-chip" (click)="applyPreset(preset)">{{ preset.name }}</button>
+          }
         </div>
       </div>
 

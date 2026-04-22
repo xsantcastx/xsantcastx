@@ -8,15 +8,23 @@ import { TranslationService } from '../translation.service';
     template: `
     <section class="skills">
       <h2>{{ translate('skills.title') }}</h2>
-      <div *ngIf="isLoading" class="loading">{{ translate('skills.loading') }}</div>
-      <div *ngIf="error" class="error">{{ translate('skills.error') }}</div>
-      <div class="skills-grid" *ngIf="!isLoading && !error">
-        <div class="skill-card" *ngFor="let skill of skills">
-          {{ skill.name }}
+      @if (isLoading) {
+        <div class="loading">{{ translate('skills.loading') }}</div>
+      }
+      @if (error) {
+        <div class="error">{{ translate('skills.error') }}</div>
+      }
+      @if (!isLoading && !error) {
+        <div class="skills-grid">
+          @for (skill of skills; track skill) {
+            <div class="skill-card">
+              {{ skill.name }}
+            </div>
+          }
         </div>
-      </div>
+      }
     </section>
-  `,
+    `,
     styleUrls: ['./skills.component.css'],
     standalone: false
 })

@@ -121,35 +121,39 @@
           </span>
           <div class="mde-panel__actions">
             <button class="mde-btn-ghost mde-btn-sm" (click)="copyHtml()" [disabled]="!rawHtml" [class.mde-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy HTML
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
             <button class="mde-btn-ghost mde-btn-sm" (click)="downloadMarkdown()" [disabled]="!markdownInput" [class.mde-btn-ghost--success]="downloaded">
-              <ng-container *ngIf="!downloaded">
+              @if (!downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 .md
-              </ng-container>
-              <ng-container *ngIf="downloaded">
+              }
+              @if (downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Saved!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Preview display -->
         <div class="mde-preview-body">
-          <div class="mde-preview-content" *ngIf="rawHtml" [innerHTML]="renderedHtml"></div>
-          <div class="mde-preview-empty" *ngIf="!rawHtml">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>Live preview will appear here</span>
-          </div>
+          @if (rawHtml) {
+            <div class="mde-preview-content" [innerHTML]="renderedHtml"></div>
+          }
+          @if (!rawHtml) {
+            <div class="mde-preview-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Live preview will appear here</span>
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -157,22 +161,24 @@
   </div>
 
   <!-- Stats bar -->
-  <div class="mde-stats" *ngIf="markdownInput">
-    <div class="mde-stat">
-      <span class="mde-stat__label">Words</span>
-      <span class="mde-stat__value">{{ wordCount | number }}</span>
+  @if (markdownInput) {
+    <div class="mde-stats">
+      <div class="mde-stat">
+        <span class="mde-stat__label">Words</span>
+        <span class="mde-stat__value">{{ wordCount | number }}</span>
+      </div>
+      <div class="mde-stat-divider"></div>
+      <div class="mde-stat">
+        <span class="mde-stat__label">Characters</span>
+        <span class="mde-stat__value">{{ charCount | number }}</span>
+      </div>
+      <div class="mde-stat-divider"></div>
+      <div class="mde-stat">
+        <span class="mde-stat__label">Lines</span>
+        <span class="mde-stat__value">{{ markdownInput.split('\n').length | number }}</span>
+      </div>
     </div>
-    <div class="mde-stat-divider"></div>
-    <div class="mde-stat">
-      <span class="mde-stat__label">Characters</span>
-      <span class="mde-stat__value">{{ charCount | number }}</span>
-    </div>
-    <div class="mde-stat-divider"></div>
-    <div class="mde-stat">
-      <span class="mde-stat__label">Lines</span>
-      <span class="mde-stat__value">{{ markdownInput.split('\n').length | number }}</span>
-    </div>
-  </div>
+  }
 
   <app-embed-code-generator toolSlug="markdown-editor" toolName="Markdown Preview & Editor"></app-embed-code-generator>
 

@@ -102,7 +102,9 @@
               <span class="jf-toggle__track"><span class="jf-toggle__thumb"></span></span>
               <span class="jf-toggle__label">Repair mode <span class="jf-badge">auto-fix</span></span>
             </label>
-            <p class="jf-option-hint" *ngIf="repairMode">Fixes trailing commas, single quotes, unquoted keys &amp; JS comments.</p>
+            @if (repairMode) {
+              <p class="jf-option-hint">Fixes trailing commas, single quotes, unquoted keys &amp; JS comments.</p>
+            }
           </div>
 
         </div>
@@ -130,19 +132,23 @@
         [class.jf-status-bar--valid]="validationStatus === 'valid'"
         [class.jf-status-bar--invalid]="validationStatus === 'invalid'"
         [class.jf-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input…</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Valid JSON</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="jf-status-error">{{ errorMessage }}</span>
-          <span class="jf-status-loc" *ngIf="errorLine">Line {{ errorLine }}<ng-container *ngIf="errorColumn">, Col {{ errorColumn }}</ng-container></span>
-        </ng-container>
+          @if (errorLine) {
+            <span class="jf-status-loc">Line {{ errorLine }}@if (errorColumn) {
+              , Col {{ errorColumn }}
+            }</span>
+          }
+        }
       </div>
 
       <!-- Output Panel -->
@@ -154,64 +160,76 @@
           </span>
           <div class="jf-panel__actions">
             <button class="jf-btn-ghost jf-btn-sm" (click)="copyOutput()" [disabled]="!formattedOutput" [class.jf-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
             <button class="jf-btn-ghost jf-btn-sm" (click)="downloadOutput()" [disabled]="!formattedOutput" [class.jf-btn-ghost--success]="downloaded">
-              <ng-container *ngIf="!downloaded">
+              @if (!downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 .json
-              </ng-container>
-              <ng-container *ngIf="downloaded">
+              }
+              @if (downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Saved!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="jf-output-body">
-          <pre class="jf-code-pre" *ngIf="formattedOutput"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="jf-output-empty" *ngIf="!formattedOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>Formatted output will appear here</span>
-          </div>
+          @if (formattedOutput) {
+            <pre class="jf-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!formattedOutput) {
+            <div class="jf-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Formatted output will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="jf-stats" *ngIf="formattedOutput">
-        <div class="jf-stat">
-          <span class="jf-stat__label">Lines</span>
-          <span class="jf-stat__value">{{ lineCount | number }}</span>
+      @if (formattedOutput) {
+        <div class="jf-stats">
+          <div class="jf-stat">
+            <span class="jf-stat__label">Lines</span>
+            <span class="jf-stat__value">{{ lineCount | number }}</span>
+          </div>
+          <div class="jf-stat-divider"></div>
+          <div class="jf-stat">
+            <span class="jf-stat__label">Input</span>
+            <span class="jf-stat__value">{{ formatBytes(inputBytes) }}</span>
+          </div>
+          <div class="jf-stat-divider"></div>
+          <div class="jf-stat">
+            <span class="jf-stat__label">Output</span>
+            <span class="jf-stat__value">{{ formatBytes(outputBytes) }}</span>
+          </div>
+          @if (savingsPercent !== 0) {
+            <div class="jf-stat-divider"></div>
+          }
+          @if (savingsPercent > 0) {
+            <div class="jf-stat jf-stat--savings">
+              <span class="jf-stat__label">Saved</span>
+              <span class="jf-stat__value jf-stat__value--green">{{ savingsPercent }}%</span>
+            </div>
+          }
+          @if (savingsPercent < 0) {
+            <div class="jf-stat jf-stat--savings">
+              <span class="jf-stat__label">Expanded</span>
+              <span class="jf-stat__value jf-stat__value--muted">{{ -savingsPercent }}%</span>
+            </div>
+          }
         </div>
-        <div class="jf-stat-divider"></div>
-        <div class="jf-stat">
-          <span class="jf-stat__label">Input</span>
-          <span class="jf-stat__value">{{ formatBytes(inputBytes) }}</span>
-        </div>
-        <div class="jf-stat-divider"></div>
-        <div class="jf-stat">
-          <span class="jf-stat__label">Output</span>
-          <span class="jf-stat__value">{{ formatBytes(outputBytes) }}</span>
-        </div>
-        <div class="jf-stat-divider" *ngIf="savingsPercent !== 0"></div>
-        <div class="jf-stat jf-stat--savings" *ngIf="savingsPercent > 0">
-          <span class="jf-stat__label">Saved</span>
-          <span class="jf-stat__value jf-stat__value--green">{{ savingsPercent }}%</span>
-        </div>
-        <div class="jf-stat jf-stat--savings" *ngIf="savingsPercent < 0">
-          <span class="jf-stat__label">Expanded</span>
-          <span class="jf-stat__value jf-stat__value--muted">{{ -savingsPercent }}%</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

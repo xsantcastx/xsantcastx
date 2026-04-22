@@ -43,11 +43,13 @@
           </div>
         </div>
         <div class="md-panel__body md-fields-grid">
-          <label class="md-field-toggle" *ngFor="let field of fields">
-            <input type="checkbox" [(ngModel)]="field.enabled" />
-            <span class="md-field-toggle__track"><span class="md-field-toggle__thumb"></span></span>
-            <span class="md-field-toggle__label">{{ field.label }}</span>
-          </label>
+          @for (field of fields; track field) {
+            <label class="md-field-toggle">
+              <input type="checkbox" [(ngModel)]="field.enabled" />
+              <span class="md-field-toggle__track"><span class="md-field-toggle__thumb"></span></span>
+              <span class="md-field-toggle__label">{{ field.label }}</span>
+            </label>
+          }
         </div>
       </div>
 
@@ -72,14 +74,14 @@
                 min="1"
                 max="100"
                 step="1"
-              />
+                />
               <input
                 type="number"
                 class="md-quantity-input"
                 [(ngModel)]="quantity"
                 min="1"
                 max="100"
-              />
+                />
             </div>
           </div>
 
@@ -94,17 +96,19 @@
           </div>
 
           <!-- Table name (SQL only) -->
-          <div class="md-option-row" *ngIf="outputFormat === 'sql'">
-            <span class="md-option-label">Table Name</span>
-            <input
-              type="text"
-              class="md-text-input"
-              [(ngModel)]="tableName"
-              placeholder="users"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
+          @if (outputFormat === 'sql') {
+            <div class="md-option-row">
+              <span class="md-option-label">Table Name</span>
+              <input
+                type="text"
+                class="md-text-input"
+                [(ngModel)]="tableName"
+                placeholder="users"
+                spellcheck="false"
+                autocomplete="off"
+                />
+            </div>
+          }
 
         </div>
       </div>
@@ -124,14 +128,14 @@
       <div class="md-status-bar"
         [class.md-status-bar--valid]="generated && output"
         [class.md-status-bar--idle]="!generated">
-        <ng-container *ngIf="!generated">
+        @if (!generated) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Configure fields and click Generate</span>
-        </ng-container>
-        <ng-container *ngIf="generated && output">
+        }
+        @if (generated && output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Generated {{ recordCount }} records as {{ outputFormat | uppercase }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -142,16 +146,18 @@
             Output
           </span>
           <div class="md-panel__actions">
-            <span class="md-char-count" *ngIf="output">{{ outputLineCount }} lines</span>
+            @if (output) {
+              <span class="md-char-count">{{ outputLineCount }} lines</span>
+            }
             <button class="md-btn-ghost md-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.md-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
             <button class="md-btn-ghost md-btn-sm" (click)="downloadOutput()" [disabled]="!output">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -162,36 +168,42 @@
 
         <!-- Output body -->
         <div class="md-output-body">
-          <pre class="md-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="md-output-empty" *ngIf="!output">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
-            <span>Generated mock data will appear here</span>
-          </div>
+          @if (output) {
+            <pre class="md-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output) {
+            <div class="md-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+              <span>Generated mock data will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="md-stats" *ngIf="output">
-        <div class="md-stat">
-          <span class="md-stat__label">Records</span>
-          <span class="md-stat__value">{{ recordCount }}</span>
+      @if (output) {
+        <div class="md-stats">
+          <div class="md-stat">
+            <span class="md-stat__label">Records</span>
+            <span class="md-stat__value">{{ recordCount }}</span>
+          </div>
+          <div class="md-stat-divider"></div>
+          <div class="md-stat">
+            <span class="md-stat__label">Columns</span>
+            <span class="md-stat__value">{{ enabledFields.length }}</span>
+          </div>
+          <div class="md-stat-divider"></div>
+          <div class="md-stat">
+            <span class="md-stat__label">Lines</span>
+            <span class="md-stat__value">{{ outputLineCount }}</span>
+          </div>
+          <div class="md-stat-divider"></div>
+          <div class="md-stat">
+            <span class="md-stat__label">Format</span>
+            <span class="md-stat__value md-stat__value--cyan">{{ outputFormat | uppercase }}</span>
+          </div>
         </div>
-        <div class="md-stat-divider"></div>
-        <div class="md-stat">
-          <span class="md-stat__label">Columns</span>
-          <span class="md-stat__value">{{ enabledFields.length }}</span>
-        </div>
-        <div class="md-stat-divider"></div>
-        <div class="md-stat">
-          <span class="md-stat__label">Lines</span>
-          <span class="md-stat__value">{{ outputLineCount }}</span>
-        </div>
-        <div class="md-stat-divider"></div>
-        <div class="md-stat">
-          <span class="md-stat__label">Format</span>
-          <span class="md-stat__value md-stat__value--cyan">{{ outputFormat | uppercase }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

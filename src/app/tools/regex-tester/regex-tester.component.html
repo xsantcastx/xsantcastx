@@ -41,15 +41,17 @@
           autocorrect="off"
           autocapitalize="off"
           aria-label="Regex pattern"
-        />
+          />
         <span class="rt-slash rt-slash--flags">/{{ flags }}</span>
       </div>
 
       <!-- Match count badge -->
-      <span class="rt-count-badge" *ngIf="pattern && !errorMessage && hasRun"
-        [class.rt-count-badge--zero]="matches.length === 0">
-        {{ matches.length }} match{{ matches.length !== 1 ? 'es' : '' }}
-      </span>
+      @if (pattern && !errorMessage && hasRun) {
+        <span class="rt-count-badge"
+          [class.rt-count-badge--zero]="matches.length === 0">
+          {{ matches.length }} match{{ matches.length !== 1 ? 'es' : '' }}
+        </span>
+      }
     </div>
 
     <!-- Flags + actions row -->
@@ -84,14 +86,14 @@
 
       <div class="rt-pattern-actions">
         <button class="rt-btn-ghost rt-btn-sm" (click)="copyPattern()" [disabled]="!pattern" [class.rt-btn-ghost--success]="copiedPattern">
-          <ng-container *ngIf="!copiedPattern">
+          @if (!copiedPattern) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             Copy pattern
-          </ng-container>
-          <ng-container *ngIf="copiedPattern">
+          }
+          @if (copiedPattern) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Copied!
-          </ng-container>
+          }
         </button>
         <button class="rt-btn-ghost rt-btn-sm" (click)="clearAll()" [disabled]="!pattern && !testString">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -101,10 +103,12 @@
     </div>
 
     <!-- Error bar -->
-    <div class="rt-error-bar" *ngIf="errorMessage">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-      <span class="rt-error-bar__msg">{{ errorMessage }}</span>
-    </div>
+    @if (errorMessage) {
+      <div class="rt-error-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span class="rt-error-bar__msg">{{ errorMessage }}</span>
+      </div>
+    }
 
   </div><!-- /pattern-bar -->
 
@@ -112,15 +116,16 @@
   <div class="rt-patterns-lib">
     <span class="rt-patterns-lib__label">Quick patterns:</span>
     <div class="rt-patterns-lib__scroll">
-      <button
-        *ngFor="let p of commonPatterns"
-        class="rt-chip"
-        (click)="insertPattern(p)"
-        [title]="p.hint"
-        [class.rt-chip--active]="pattern === p.pattern">
-        <span class="rt-chip__icon">{{ p.icon }}</span>
-        {{ p.label }}
-      </button>
+      @for (p of commonPatterns; track p) {
+        <button
+          class="rt-chip"
+          (click)="insertPattern(p)"
+          [title]="p.hint"
+          [class.rt-chip--active]="pattern === p.pattern">
+          <span class="rt-chip__icon">{{ p.icon }}</span>
+          {{ p.label }}
+        </button>
+      }
     </div>
   </div>
 
@@ -162,67 +167,87 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             Live Preview
           </span>
-          <span class="rt-count-badge rt-count-badge--sm" *ngIf="matches.length > 0"
-            [attr.aria-label]="matches.length + ' matches'">
-            {{ matches.length }}
-          </span>
+          @if (matches.length > 0) {
+            <span class="rt-count-badge rt-count-badge--sm"
+              [attr.aria-label]="matches.length + ' matches'">
+              {{ matches.length }}
+            </span>
+          }
         </div>
         <div class="rt-preview-body">
-          <pre class="rt-preview" *ngIf="testString" [innerHTML]="highlightedHtml" aria-live="polite"></pre>
-          <div class="rt-preview-empty" *ngIf="!testString">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <span>Matches will be highlighted here as you type</span>
-          </div>
+          @if (testString) {
+            <pre class="rt-preview" [innerHTML]="highlightedHtml" aria-live="polite"></pre>
+          }
+          @if (!testString) {
+            <div class="rt-preview-empty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span>Matches will be highlighted here as you type</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- No matches notice -->
-      <div class="rt-no-matches" *ngIf="hasRun && pattern && testString && matches.length === 0 && !errorMessage">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        No matches found in the test string
-      </div>
+      @if (hasRun && pattern && testString && matches.length === 0 && !errorMessage) {
+        <div class="rt-no-matches">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          No matches found in the test string
+        </div>
+      }
 
       <!-- Match Results -->
-      <div class="rt-panel rt-panel--matches" *ngIf="matches.length > 0">
-        <div class="rt-panel__header">
-          <span class="rt-panel__title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Matches
-          </span>
-          <span class="rt-panel__title-badge">{{ matches.length }} found</span>
-        </div>
-        <div class="rt-matches-body">
-          <div *ngFor="let m of matches; let idx = index" class="rt-match-item">
-            <div class="rt-match-header">
-              <span class="rt-match-idx">#{{ idx }}</span>
-              <code class="rt-match-value">{{ m.value || '(empty match)' }}</code>
-              <span class="rt-match-pos">{{ m.start }}–{{ m.end }}</span>
-            </div>
-            <div class="rt-match-groups" *ngIf="m.groups.length > 0">
-              <div *ngFor="let g of m.groups" class="rt-group-item">
-                <span class="rt-group-name">{{ g.name }}</span>
-                <code class="rt-group-value">{{ g.value !== undefined ? g.value : 'undefined' }}</code>
+      @if (matches.length > 0) {
+        <div class="rt-panel rt-panel--matches">
+          <div class="rt-panel__header">
+            <span class="rt-panel__title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Matches
+            </span>
+            <span class="rt-panel__title-badge">{{ matches.length }} found</span>
+          </div>
+          <div class="rt-matches-body">
+            @for (m of matches; track m; let idx = $index) {
+              <div class="rt-match-item">
+                <div class="rt-match-header">
+                  <span class="rt-match-idx">#{{ idx }}</span>
+                  <code class="rt-match-value">{{ m.value || '(empty match)' }}</code>
+                  <span class="rt-match-pos">{{ m.start }}–{{ m.end }}</span>
+                </div>
+                @if (m.groups.length > 0) {
+                  <div class="rt-match-groups">
+                    @for (g of m.groups; track g) {
+                      <div class="rt-group-item">
+                        <span class="rt-group-name">{{ g.name }}</span>
+                        <code class="rt-group-value">{{ g.value !== undefined ? g.value : 'undefined' }}</code>
+                      </div>
+                    }
+                  </div>
+                }
               </div>
-            </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Regex Explanation -->
-      <div class="rt-panel rt-panel--explain" *ngIf="explainTokens.length > 0">
-        <div class="rt-panel__header">
-          <span class="rt-panel__title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Explanation
-          </span>
-        </div>
-        <div class="rt-explain-body">
-          <div *ngFor="let t of explainTokens" class="rt-explain-item">
-            <code class="rt-explain-token">{{ t.token }}</code>
-            <span class="rt-explain-desc">{{ t.description }}</span>
+      @if (explainTokens.length > 0) {
+        <div class="rt-panel rt-panel--explain">
+          <div class="rt-panel__header">
+            <span class="rt-panel__title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Explanation
+            </span>
+          </div>
+          <div class="rt-explain-body">
+            @for (t of explainTokens; track t) {
+              <div class="rt-explain-item">
+                <code class="rt-explain-token">{{ t.token }}</code>
+                <span class="rt-explain-desc">{{ t.description }}</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /workspace -->

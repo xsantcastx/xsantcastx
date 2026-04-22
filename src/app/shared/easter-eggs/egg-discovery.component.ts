@@ -7,31 +7,33 @@ import { EasterEggService, EggDiscovery } from './easter-egg.service';
   selector: 'app-egg-discovery',
   standalone: false,
   template: `
-    <div class="egg-toast" *ngIf="discovery" [class.egg-toast--visible]="visible"
-         [attr.data-rarity]="discovery.egg.rarity" (click)="dismiss()">
-      <div class="egg-toast__icon-wrap" [attr.data-rarity]="discovery.egg.rarity">
-        <span class="egg-toast__emoji">{{ discovery.egg.icon }}</span>
-      </div>
-      <div class="egg-toast__body">
-        <div class="egg-toast__header">
-          <span class="egg-toast__badge" [attr.data-rarity]="discovery.egg.rarity">
-            {{ discovery.isNew ? 'NEW DISCOVERY' : 'REDISCOVERED' }}
-          </span>
-          <span class="egg-toast__rarity" [attr.data-rarity]="discovery.egg.rarity">
-            {{ discovery.egg.rarity | uppercase }}
-          </span>
+    @if (discovery) {
+      <div class="egg-toast" [class.egg-toast--visible]="visible"
+        [attr.data-rarity]="discovery.egg.rarity" (click)="dismiss()">
+        <div class="egg-toast__icon-wrap" [attr.data-rarity]="discovery.egg.rarity">
+          <span class="egg-toast__emoji">{{ discovery.egg.icon }}</span>
         </div>
-        <p class="egg-toast__name">{{ discovery.egg.name }}</p>
-        <p class="egg-toast__desc">{{ discovery.egg.description }}</p>
-        <div class="egg-toast__progress">
-          <div class="egg-toast__progress-bar">
-            <div class="egg-toast__progress-fill" [style.width.%]="progressPercent"></div>
+        <div class="egg-toast__body">
+          <div class="egg-toast__header">
+            <span class="egg-toast__badge" [attr.data-rarity]="discovery.egg.rarity">
+              {{ discovery.isNew ? 'NEW DISCOVERY' : 'REDISCOVERED' }}
+            </span>
+            <span class="egg-toast__rarity" [attr.data-rarity]="discovery.egg.rarity">
+              {{ discovery.egg.rarity | uppercase }}
+            </span>
           </div>
-          <span class="egg-toast__progress-text">{{ discovery.totalFound }}/{{ discovery.totalEggs }} found</span>
+          <p class="egg-toast__name">{{ discovery.egg.name }}</p>
+          <p class="egg-toast__desc">{{ discovery.egg.description }}</p>
+          <div class="egg-toast__progress">
+            <div class="egg-toast__progress-bar">
+              <div class="egg-toast__progress-fill" [style.width.%]="progressPercent"></div>
+            </div>
+            <span class="egg-toast__progress-text">{{ discovery.totalFound }}/{{ discovery.totalEggs }} found</span>
+          </div>
         </div>
       </div>
-    </div>
-  `,
+    }
+    `,
   styles: [`
     .egg-toast {
       position: fixed;

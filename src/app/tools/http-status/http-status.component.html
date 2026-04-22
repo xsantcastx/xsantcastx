@@ -40,23 +40,26 @@
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
-      />
-      <button class="hs-search__clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchInput()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+        />
+      @if (searchQuery) {
+        <button class="hs-search__clear" (click)="searchQuery = ''; onSearchInput()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
     </div>
 
     <!-- Category tabs -->
     <div class="hs-tabs">
-      <button
-        *ngFor="let cat of categories"
-        class="hs-tab"
-        [class.hs-tab--active]="activeCategory === cat.key"
-        [attr.style]="'--tab-color: ' + cat.color"
-        (click)="setCategory(cat.key)"
-      >
-        {{ cat.label }}
-      </button>
+      @for (cat of categories; track cat) {
+        <button
+          class="hs-tab"
+          [class.hs-tab--active]="activeCategory === cat.key"
+          [attr.style]="'--tab-color: ' + cat.color"
+          (click)="setCategory(cat.key)"
+          >
+          {{ cat.label }}
+        </button>
+      }
     </div>
 
     <!-- Result count -->
@@ -73,82 +76,79 @@
       <div class="hs-list">
 
         <!-- Empty state -->
-        <div class="hs-empty" *ngIf="filteredCodes.length === 0">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span>No status codes found matching "{{ searchQuery }}"</span>
-        </div>
+        @if (filteredCodes.length === 0) {
+          <div class="hs-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>No status codes found matching "{{ searchQuery }}"</span>
+          </div>
+        }
 
         <!-- Status entries -->
-        <button
-          *ngFor="let entry of filteredCodes"
-          class="hs-entry"
-          [class.hs-entry--selected]="selectedStatus?.code === entry.code"
-          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
-          (click)="selectStatus(entry)"
-        >
-          <span class="hs-entry__code">{{ entry.code }}</span>
-          <div class="hs-entry__info">
-            <span class="hs-entry__name">{{ entry.name }}</span>
-            <span class="hs-entry__desc">{{ entry.description }}</span>
-          </div>
-          <span class="hs-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ entry.category }}</span>
-          <svg class="hs-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+        @for (entry of filteredCodes; track entry) {
+          <button
+            class="hs-entry"
+            [class.hs-entry--selected]="selectedStatus?.code === entry.code"
+            [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
+            (click)="selectStatus(entry)"
+            >
+            <span class="hs-entry__code">{{ entry.code }}</span>
+            <div class="hs-entry__info">
+              <span class="hs-entry__name">{{ entry.name }}</span>
+              <span class="hs-entry__desc">{{ entry.description }}</span>
+            </div>
+            <span class="hs-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ entry.category }}</span>
+            <svg class="hs-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        }
 
       </div>
     </div>
 
     <!-- Detail panel -->
-    <div class="hs-detail-col" *ngIf="selectedStatus">
-      <div class="hs-detail">
-
-        <div class="hs-detail__header">
-          <div class="hs-detail__title-row">
-            <span class="hs-detail__code" [style.color]="getCategoryColor(selectedStatus.category)">{{ selectedStatus.code }}</span>
-            <div>
-              <h2 class="hs-detail__name">{{ selectedStatus.name }}</h2>
-              <span class="hs-detail__category" [style.color]="getCategoryColor(selectedStatus.category)">{{ getCategoryLabel(selectedStatus.category) }}</span>
+    @if (selectedStatus) {
+      <div class="hs-detail-col">
+        <div class="hs-detail">
+          <div class="hs-detail__header">
+            <div class="hs-detail__title-row">
+              <span class="hs-detail__code" [style.color]="getCategoryColor(selectedStatus.category)">{{ selectedStatus.code }}</span>
+              <div>
+                <h2 class="hs-detail__name">{{ selectedStatus.name }}</h2>
+                <span class="hs-detail__category" [style.color]="getCategoryColor(selectedStatus.category)">{{ getCategoryLabel(selectedStatus.category) }}</span>
+              </div>
+            </div>
+            <button class="hs-detail__close" (click)="closeDetail()" title="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="hs-detail__body">
+            <div class="hs-detail__section">
+              <h3 class="hs-detail__label">Description</h3>
+              <p class="hs-detail__text">{{ selectedStatus.description }}</p>
+            </div>
+            <div class="hs-detail__section">
+              <h3 class="hs-detail__label">Common Use Case</h3>
+              <p class="hs-detail__text">{{ selectedStatus.useCase }}</p>
+            </div>
+            <div class="hs-detail__section">
+              <h3 class="hs-detail__label">Detailed Explanation</h3>
+              <p class="hs-detail__text hs-detail__text--detail">{{ selectedStatus.detail }}</p>
             </div>
           </div>
-          <button class="hs-detail__close" (click)="closeDetail()" title="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div class="hs-detail__body">
-
-          <div class="hs-detail__section">
-            <h3 class="hs-detail__label">Description</h3>
-            <p class="hs-detail__text">{{ selectedStatus.description }}</p>
+          <div class="hs-detail__footer">
+            <button class="hs-btn-copy" (click)="copyStatus(selectedStatus)" [class.hs-btn-copy--success]="copied">
+              @if (!copied) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy Code + Description
+              }
+              @if (copied) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              }
+            </button>
           </div>
-
-          <div class="hs-detail__section">
-            <h3 class="hs-detail__label">Common Use Case</h3>
-            <p class="hs-detail__text">{{ selectedStatus.useCase }}</p>
-          </div>
-
-          <div class="hs-detail__section">
-            <h3 class="hs-detail__label">Detailed Explanation</h3>
-            <p class="hs-detail__text hs-detail__text--detail">{{ selectedStatus.detail }}</p>
-          </div>
-
         </div>
-
-        <div class="hs-detail__footer">
-          <button class="hs-btn-copy" (click)="copyStatus(selectedStatus)" [class.hs-btn-copy--success]="copied">
-            <ng-container *ngIf="!copied">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy Code + Description
-            </ng-container>
-            <ng-container *ngIf="copied">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Copied!
-            </ng-container>
-          </button>
-        </div>
-
       </div>
-    </div>
+    }
 
   </div><!-- /layout -->
 

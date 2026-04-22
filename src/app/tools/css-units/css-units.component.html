@@ -51,7 +51,7 @@
               (ngModelChange)="onInputChange()"
               placeholder="e.g. 16"
               autocomplete="off"
-            />
+              />
           </div>
 
           <!-- Unit -->
@@ -62,8 +62,10 @@
               class="cu-select"
               [(ngModel)]="inputUnit"
               (ngModelChange)="onInputChange()"
-            >
-              <option *ngFor="let u of units" [value]="u.value">{{ u.label }}</option>
+              >
+              @for (u of units; track u) {
+                <option [value]="u.value">{{ u.label }}</option>
+              }
             </select>
           </div>
 
@@ -91,7 +93,7 @@
               min="1"
               placeholder="16"
               autocomplete="off"
-            />
+              />
             <span class="cu-field__hint">Used for rem, em, and % calculations</span>
           </div>
 
@@ -106,7 +108,7 @@
               min="1"
               placeholder="1920"
               autocomplete="off"
-            />
+              />
             <span class="cu-field__hint">Used for vw calculations</span>
           </div>
 
@@ -121,7 +123,7 @@
               min="1"
               placeholder="1080"
               autocomplete="off"
-            />
+              />
             <span class="cu-field__hint">Used for vh calculations</span>
           </div>
 
@@ -137,13 +139,15 @@
           </span>
         </div>
         <div class="cu-panel__body cu-spacing-body">
-          <div class="cu-spacing-row" *ngFor="let s of spacingScale" (click)="copySpacing(s.px, s.rem)" title="Click to copy">
-            <span class="cu-spacing-bar" [style.width.px]="s.px"></span>
-            <span class="cu-spacing-label">
-              <strong>{{ s.px }}px</strong>
-              <span class="cu-spacing-rem">{{ s.rem }}rem</span>
-            </span>
-          </div>
+          @for (s of spacingScale; track s) {
+            <div class="cu-spacing-row" (click)="copySpacing(s.px, s.rem)" title="Click to copy">
+              <span class="cu-spacing-bar" [style.width.px]="s.px"></span>
+              <span class="cu-spacing-label">
+                <strong>{{ s.px }}px</strong>
+                <span class="cu-spacing-rem">{{ s.rem }}rem</span>
+              </span>
+            </div>
+          }
         </div>
       </div>
 
@@ -159,39 +163,46 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             All Conversions
           </span>
-          <span class="cu-result-hint" *ngIf="inputValue !== null && inputValue !== undefined">{{ inputValue }}{{ inputUnit }} =</span>
+          @if (inputValue !== null && inputValue !== undefined) {
+            <span class="cu-result-hint">{{ inputValue }}{{ inputUnit }} =</span>
+          }
         </div>
 
-        <div class="cu-results-body" *ngIf="results.length > 0">
-          <div
-            class="cu-result-row"
-            *ngFor="let r of results"
-            [class.cu-result-row--active]="r.unit === inputUnit"
-          >
-            <div class="cu-result-value">
-              <code>{{ formatValue(r.value) }}</code>
-              <span class="cu-result-unit">{{ r.unit }}</span>
-            </div>
-            <button
-              class="cu-btn-copy"
-              (click)="copyResult(r)"
-              [class.cu-btn-copy--success]="r.copied"
-              title="Copy value"
-            >
-              <ng-container *ngIf="!r.copied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              </ng-container>
-              <ng-container *ngIf="r.copied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </ng-container>
-            </button>
+        @if (results.length > 0) {
+          <div class="cu-results-body">
+            @for (r of results; track r) {
+              <div
+                class="cu-result-row"
+                [class.cu-result-row--active]="r.unit === inputUnit"
+                >
+                <div class="cu-result-value">
+                  <code>{{ formatValue(r.value) }}</code>
+                  <span class="cu-result-unit">{{ r.unit }}</span>
+                </div>
+                <button
+                  class="cu-btn-copy"
+                  (click)="copyResult(r)"
+                  [class.cu-btn-copy--success]="r.copied"
+                  title="Copy value"
+                  >
+                  @if (!r.copied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  }
+                  @if (r.copied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  }
+                </button>
+              </div>
+            }
           </div>
-        </div>
+        }
 
-        <div class="cu-results-empty" *ngIf="results.length === 0">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          <span>Enter a value to see all conversions</span>
-        </div>
+        @if (results.length === 0) {
+          <div class="cu-results-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span>Enter a value to see all conversions</span>
+          </div>
+        }
       </div>
 
       <!-- Reference Table Panel -->
@@ -211,10 +222,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let row of referenceTable">
-                <td><code>{{ row.unit }}</code></td>
-                <td>{{ row.equiv }}</td>
-              </tr>
+              @for (row of referenceTable; track row) {
+                <tr>
+                  <td><code>{{ row.unit }}</code></td>
+                  <td>{{ row.equiv }}</td>
+                </tr>
+              }
             </tbody>
           </table>
         </div>

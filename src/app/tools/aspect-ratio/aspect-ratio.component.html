@@ -43,8 +43,12 @@
               Swap
             </button>
             <button class="ar-btn-ghost ar-btn-sm" [class.ar-btn-ghost--success]="lockRatio" (click)="toggleLock()" title="Lock aspect ratio">
-              <svg *ngIf="!lockRatio" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-              <svg *ngIf="lockRatio" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg>
+              @if (!lockRatio) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              }
+              @if (lockRatio) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg>
+              }
               {{ lockRatio ? 'Locked' : 'Lock' }}
             </button>
           </div>
@@ -62,7 +66,7 @@
               placeholder="e.g. 1920"
               min="1"
               autocomplete="off"
-            />
+              />
             <span class="ar-input-unit">px</span>
           </div>
 
@@ -81,15 +85,17 @@
               placeholder="e.g. 1080"
               min="1"
               autocomplete="off"
-            />
+              />
             <span class="ar-input-unit">px</span>
           </div>
         </div>
 
-        <div class="ar-lock-hint" *ngIf="lockRatio">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Ratio locked at {{ ratioDisplay }}. Change one dimension to auto-calculate the other.
-        </div>
+        @if (lockRatio) {
+          <div class="ar-lock-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Ratio locked at {{ ratioDisplay }}. Change one dimension to auto-calculate the other.
+          </div>
+        }
       </div>
 
       <!-- Presets Panel -->
@@ -105,40 +111,43 @@
           <div class="ar-preset-section">
             <span class="ar-preset-label">Standard Ratios</span>
             <div class="ar-preset-grid">
-              <button
-                *ngFor="let p of standardPresets"
-                class="ar-preset-btn"
-                [class.ar-preset-btn--active]="ratioDisplay === p.label"
-                (click)="applyPreset(p)"
-              >{{ p.label }}</button>
+              @for (p of standardPresets; track p) {
+                <button
+                  class="ar-preset-btn"
+                  [class.ar-preset-btn--active]="ratioDisplay === p.label"
+                  (click)="applyPreset(p)"
+                >{{ p.label }}</button>
+              }
             </div>
           </div>
 
           <div class="ar-preset-section">
             <span class="ar-preset-label">Social Media</span>
             <div class="ar-preset-grid ar-preset-grid--social">
-              <button
-                *ngFor="let p of socialPresets"
-                class="ar-preset-btn ar-preset-btn--social"
-                (click)="applyPreset(p)"
-              >
-                <span class="ar-preset-btn__name">{{ p.label }}</span>
-                <span class="ar-preset-btn__size">{{ p.w }} x {{ p.h }}</span>
-              </button>
+              @for (p of socialPresets; track p) {
+                <button
+                  class="ar-preset-btn ar-preset-btn--social"
+                  (click)="applyPreset(p)"
+                  >
+                  <span class="ar-preset-btn__name">{{ p.label }}</span>
+                  <span class="ar-preset-btn__size">{{ p.w }} x {{ p.h }}</span>
+                </button>
+              }
             </div>
           </div>
 
           <div class="ar-preset-section">
             <span class="ar-preset-label">Common Resolutions</span>
             <div class="ar-preset-grid ar-preset-grid--res">
-              <button
-                *ngFor="let r of resolutions"
-                class="ar-preset-btn ar-preset-btn--res"
-                (click)="applyResolution(r)"
-              >
-                <span class="ar-preset-btn__name">{{ r.label }}</span>
-                <span class="ar-preset-btn__size">{{ r.w }} x {{ r.h }}</span>
-              </button>
+              @for (r of resolutions; track r) {
+                <button
+                  class="ar-preset-btn ar-preset-btn--res"
+                  (click)="applyResolution(r)"
+                  >
+                  <span class="ar-preset-btn__name">{{ r.label }}</span>
+                  <span class="ar-preset-btn__size">{{ r.w }} x {{ r.h }}</span>
+                </button>
+              }
             </div>
           </div>
 
@@ -171,7 +180,7 @@
                 placeholder="16"
                 min="1"
                 autocomplete="off"
-              />
+                />
             </div>
             <span class="ar-res-calc-colon">:</span>
             <div class="ar-input-group ar-input-group--sm">
@@ -184,7 +193,7 @@
                 placeholder="9"
                 min="1"
                 autocomplete="off"
-              />
+                />
             </div>
           </div>
           <p class="ar-res-calc-hint">Enter a width OR height to calculate the other dimension:</p>
@@ -199,7 +208,7 @@
                 placeholder="e.g. 1920"
                 min="1"
                 autocomplete="off"
-              />
+                />
             </div>
             <span class="ar-res-calc-or">or</span>
             <div class="ar-input-group">
@@ -212,16 +221,18 @@
                 placeholder="e.g. 1080"
                 min="1"
                 autocomplete="off"
-              />
+                />
             </div>
           </div>
-          <div class="ar-res-calc-result" *ngIf="calculatedWidth && calculatedHeight">
-            <span class="ar-res-calc-result__label">Result:</span>
-            <span class="ar-res-calc-result__value">{{ calculatedWidth }} x {{ calculatedHeight }} px</span>
-            <button class="ar-btn-ghost ar-btn-sm" (click)="copyText(calculatedWidth + ' x ' + calculatedHeight, 'resolution')" [class.ar-btn-ghost--success]="copied && copiedField === 'resolution'">
-              {{ copied && copiedField === 'resolution' ? 'Copied!' : 'Copy' }}
-            </button>
-          </div>
+          @if (calculatedWidth && calculatedHeight) {
+            <div class="ar-res-calc-result">
+              <span class="ar-res-calc-result__label">Result:</span>
+              <span class="ar-res-calc-result__value">{{ calculatedWidth }} x {{ calculatedHeight }} px</span>
+              <button class="ar-btn-ghost ar-btn-sm" (click)="copyText(calculatedWidth + ' x ' + calculatedHeight, 'resolution')" [class.ar-btn-ghost--success]="copied && copiedField === 'resolution'">
+                {{ copied && copiedField === 'resolution' ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+          }
         </div>
       </div>
 
@@ -239,14 +250,14 @@
           </span>
           <div class="ar-panel__actions">
             <button class="ar-btn-ghost ar-btn-sm" (click)="copyAll()" [disabled]="ratioDisplay === '--'" [class.ar-btn-ghost--success]="copied && copiedField === 'all'">
-              <ng-container *ngIf="!(copied && copiedField === 'all')">
+              @if (!(copied && copiedField === 'all')) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy All
-              </ng-container>
-              <ng-container *ngIf="copied && copiedField === 'all'">
+              }
+              @if (copied && copiedField === 'all') {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
@@ -257,7 +268,9 @@
             <div class="ar-preview-box" [ngStyle]="previewStyle">
               <span class="ar-preview-label">{{ ratioDisplay }}</span>
             </div>
-            <span class="ar-preview-dimensions" *ngIf="width && height">{{ width }} x {{ height }}</span>
+            @if (width && height) {
+              <span class="ar-preview-dimensions">{{ width }} x {{ height }}</span>
+            }
           </div>
 
           <!-- Ratio Details -->
@@ -265,16 +278,20 @@
             <div class="ar-result-row" (click)="copyText(ratioDisplay, 'ratio')">
               <span class="ar-result-row__label">Aspect Ratio</span>
               <span class="ar-result-row__value ar-result-row__value--primary">{{ ratioDisplay }}</span>
-              <span class="ar-result-row__copy" *ngIf="ratioDisplay !== '--'">
-                {{ copied && copiedField === 'ratio' ? 'Copied!' : 'Click to copy' }}
-              </span>
+              @if (ratioDisplay !== '--') {
+                <span class="ar-result-row__copy">
+                  {{ copied && copiedField === 'ratio' ? 'Copied!' : 'Click to copy' }}
+                </span>
+              }
             </div>
             <div class="ar-result-row" (click)="copyText(decimalRatio, 'decimal')">
               <span class="ar-result-row__label">Decimal Ratio</span>
               <span class="ar-result-row__value">{{ decimalRatio }}</span>
-              <span class="ar-result-row__copy" *ngIf="decimalRatio !== '--'">
-                {{ copied && copiedField === 'decimal' ? 'Copied!' : 'Click to copy' }}
-              </span>
+              @if (decimalRatio !== '--') {
+                <span class="ar-result-row__copy">
+                  {{ copied && copiedField === 'decimal' ? 'Copied!' : 'Click to copy' }}
+                </span>
+              }
             </div>
             <div class="ar-result-row">
               <span class="ar-result-row__label">Total Pixels</span>
@@ -285,58 +302,58 @@
       </div>
 
       <!-- CSS Output Panel -->
-      <div class="ar-panel" *ngIf="cssAspectRatio">
-        <div class="ar-panel__header">
-          <span class="ar-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            CSS Output
-          </span>
+      @if (cssAspectRatio) {
+        <div class="ar-panel">
+          <div class="ar-panel__header">
+            <span class="ar-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              CSS Output
+            </span>
+          </div>
+          <div class="ar-panel__body ar-css-body">
+            <div class="ar-css-row" (click)="copyText(cssAspectRatio, 'css-ar')">
+              <span class="ar-css-label">aspect-ratio <span class="ar-badge">Modern</span></span>
+              <code class="ar-css-code">{{ cssAspectRatio }}</code>
+              <span class="ar-css-copy">{{ copied && copiedField === 'css-ar' ? 'Copied!' : 'Click to copy' }}</span>
+            </div>
+            <div class="ar-css-row" (click)="copyText(cssCustomProperty, 'css-var')">
+              <span class="ar-css-label">Custom Property</span>
+              <code class="ar-css-code">{{ cssCustomProperty }}</code>
+              <span class="ar-css-copy">{{ copied && copiedField === 'css-var' ? 'Copied!' : 'Click to copy' }}</span>
+            </div>
+            <div class="ar-css-row" (click)="copyText(cssPaddingHack, 'css-pad')">
+              <span class="ar-css-label">Padding Hack <span class="ar-badge">Legacy</span></span>
+              <code class="ar-css-code">{{ cssPaddingHack }}</code>
+              <span class="ar-css-copy">{{ copied && copiedField === 'css-pad' ? 'Copied!' : 'Click to copy' }}</span>
+            </div>
+          </div>
         </div>
-        <div class="ar-panel__body ar-css-body">
-
-          <div class="ar-css-row" (click)="copyText(cssAspectRatio, 'css-ar')">
-            <span class="ar-css-label">aspect-ratio <span class="ar-badge">Modern</span></span>
-            <code class="ar-css-code">{{ cssAspectRatio }}</code>
-            <span class="ar-css-copy">{{ copied && copiedField === 'css-ar' ? 'Copied!' : 'Click to copy' }}</span>
-          </div>
-
-          <div class="ar-css-row" (click)="copyText(cssCustomProperty, 'css-var')">
-            <span class="ar-css-label">Custom Property</span>
-            <code class="ar-css-code">{{ cssCustomProperty }}</code>
-            <span class="ar-css-copy">{{ copied && copiedField === 'css-var' ? 'Copied!' : 'Click to copy' }}</span>
-          </div>
-
-          <div class="ar-css-row" (click)="copyText(cssPaddingHack, 'css-pad')">
-            <span class="ar-css-label">Padding Hack <span class="ar-badge">Legacy</span></span>
-            <code class="ar-css-code">{{ cssPaddingHack }}</code>
-            <span class="ar-css-copy">{{ copied && copiedField === 'css-pad' ? 'Copied!' : 'Click to copy' }}</span>
-          </div>
-
-        </div>
-      </div>
+      }
 
       <!-- Stats bar -->
-      <div class="ar-stats" *ngIf="width && height && ratioDisplay !== '--'">
-        <div class="ar-stat">
-          <span class="ar-stat__label">Width</span>
-          <span class="ar-stat__value">{{ width | number }} <span class="ar-stat__unit">px</span></span>
+      @if (width && height && ratioDisplay !== '--') {
+        <div class="ar-stats">
+          <div class="ar-stat">
+            <span class="ar-stat__label">Width</span>
+            <span class="ar-stat__value">{{ width | number }} <span class="ar-stat__unit">px</span></span>
+          </div>
+          <div class="ar-stat-divider"></div>
+          <div class="ar-stat">
+            <span class="ar-stat__label">Height</span>
+            <span class="ar-stat__value">{{ height | number }} <span class="ar-stat__unit">px</span></span>
+          </div>
+          <div class="ar-stat-divider"></div>
+          <div class="ar-stat">
+            <span class="ar-stat__label">Ratio</span>
+            <span class="ar-stat__value ar-stat__value--cyan">{{ ratioDisplay }}</span>
+          </div>
+          <div class="ar-stat-divider"></div>
+          <div class="ar-stat">
+            <span class="ar-stat__label">Megapixels</span>
+            <span class="ar-stat__value ar-stat__value--muted">{{ totalPixels }}</span>
+          </div>
         </div>
-        <div class="ar-stat-divider"></div>
-        <div class="ar-stat">
-          <span class="ar-stat__label">Height</span>
-          <span class="ar-stat__value">{{ height | number }} <span class="ar-stat__unit">px</span></span>
-        </div>
-        <div class="ar-stat-divider"></div>
-        <div class="ar-stat">
-          <span class="ar-stat__label">Ratio</span>
-          <span class="ar-stat__value ar-stat__value--cyan">{{ ratioDisplay }}</span>
-        </div>
-        <div class="ar-stat-divider"></div>
-        <div class="ar-stat">
-          <span class="ar-stat__label">Megapixels</span>
-          <span class="ar-stat__value ar-stat__value--muted">{{ totalPixels }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

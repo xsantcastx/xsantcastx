@@ -102,12 +102,14 @@
               [(ngModel)]="shift"
               (ngModelChange)="onShiftChange()"
               class="cc2-slider"
-            />
+              />
             <div class="cc2-shift-actions">
               <button class="cc2-btn-ghost cc2-btn-sm" [class.cc2-btn-ghost--active]="shift === 13" (click)="setROT13()">
                 ROT13
               </button>
-              <span class="cc2-option-hint" *ngIf="shift === 13">ROT13 is its own inverse — encoding and decoding are the same operation.</span>
+              @if (shift === 13) {
+                <span class="cc2-option-hint">ROT13 is its own inverse — encoding and decoding are the same operation.</span>
+              }
             </div>
           </div>
 
@@ -118,7 +120,9 @@
               <span class="cc2-toggle__track"><span class="cc2-toggle__thumb"></span></span>
               <span class="cc2-toggle__label">Brute-force view <span class="cc2-badge">all 25 shifts</span></span>
             </label>
-            <p class="cc2-option-hint" *ngIf="showBruteForce">Shows all possible Caesar shifts at once — useful for cracking unknown ciphertexts.</p>
+            @if (showBruteForce) {
+              <p class="cc2-option-hint">Shows all possible Caesar shifts at once — useful for cracking unknown ciphertexts.</p>
+            }
           </div>
 
         </div>
@@ -133,14 +137,14 @@
       <div class="cc2-status-bar"
         [class.cc2-status-bar--valid]="output"
         [class.cc2-status-bar--idle]="!output">
-        <ng-container *ngIf="!output">
+        @if (!output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="output">
+        }
+        @if (output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ mode === 'encode' ? 'Encrypted' : 'Decrypted' }} with shift {{ shift }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -151,86 +155,97 @@
             Output
           </span>
           <div class="cc2-panel__actions">
-            <span class="cc2-char-count" *ngIf="output">{{ outputCharCount | number }} chars</span>
+            @if (output) {
+              <span class="cc2-char-count">{{ outputCharCount | number }} chars</span>
+            }
             <button class="cc2-btn-ghost cc2-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.cc2-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Output body -->
         <div class="cc2-output-body">
-          <pre class="cc2-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="cc2-output-empty" *ngIf="!output">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            <span>{{ mode === 'encode' ? 'Encrypted text will appear here' : 'Decrypted text will appear here' }}</span>
-          </div>
+          @if (output) {
+            <pre class="cc2-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output) {
+            <div class="cc2-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              <span>{{ mode === 'encode' ? 'Encrypted text will appear here' : 'Decrypted text will appear here' }}</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="cc2-stats" *ngIf="output">
-        <div class="cc2-stat">
-          <span class="cc2-stat__label">Input</span>
-          <span class="cc2-stat__value">{{ inputCharCount | number }} <span class="cc2-stat__unit">ch</span></span>
-        </div>
-        <div class="cc2-stat-divider"></div>
-        <div class="cc2-stat">
-          <span class="cc2-stat__label">Output</span>
-          <span class="cc2-stat__value">{{ outputCharCount | number }} <span class="cc2-stat__unit">ch</span></span>
-        </div>
-        <div class="cc2-stat-divider"></div>
-        <div class="cc2-stat">
-          <span class="cc2-stat__label">Shift</span>
-          <span class="cc2-stat__value cc2-stat__value--cyan">{{ shift }}</span>
-        </div>
-        <div class="cc2-stat-divider"></div>
-        <div class="cc2-stat">
-          <span class="cc2-stat__label">Type</span>
-          <span class="cc2-stat__value cc2-stat__value--cyan">{{ shift === 13 ? 'ROT13' : 'Caesar' }}</span>
-        </div>
-      </div>
-
-      <!-- Brute Force Panel -->
-      <div class="cc2-panel cc2-panel--brute" *ngIf="showBruteForce && textInput">
-        <div class="cc2-panel__header">
-          <span class="cc2-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 10-4-4L2 18z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>
-            Brute Force — All 25 Shifts
-          </span>
-        </div>
-        <div class="cc2-brute-list">
-          <div
-            class="cc2-brute-item"
-            *ngFor="let r of bruteForceResults; let i = index"
-            [class.cc2-brute-item--active]="r.shift === shift"
-          >
-            <span class="cc2-brute-shift" [class.cc2-brute-shift--rot13]="r.shift === 13">
-              {{ r.shift === 13 ? 'ROT13' : 'Shift ' + r.shift }}
-            </span>
-            <code class="cc2-brute-text">{{ r.text }}</code>
-            <button
-              class="cc2-btn-ghost cc2-btn-xs"
-              (click)="copyBruteForceItem(i)"
-              title="Copy this rotation"
-            >
-              <ng-container *ngIf="copiedIndex !== i">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              </ng-container>
-              <ng-container *ngIf="copiedIndex === i">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </ng-container>
-            </button>
+      @if (output) {
+        <div class="cc2-stats">
+          <div class="cc2-stat">
+            <span class="cc2-stat__label">Input</span>
+            <span class="cc2-stat__value">{{ inputCharCount | number }} <span class="cc2-stat__unit">ch</span></span>
+          </div>
+          <div class="cc2-stat-divider"></div>
+          <div class="cc2-stat">
+            <span class="cc2-stat__label">Output</span>
+            <span class="cc2-stat__value">{{ outputCharCount | number }} <span class="cc2-stat__unit">ch</span></span>
+          </div>
+          <div class="cc2-stat-divider"></div>
+          <div class="cc2-stat">
+            <span class="cc2-stat__label">Shift</span>
+            <span class="cc2-stat__value cc2-stat__value--cyan">{{ shift }}</span>
+          </div>
+          <div class="cc2-stat-divider"></div>
+          <div class="cc2-stat">
+            <span class="cc2-stat__label">Type</span>
+            <span class="cc2-stat__value cc2-stat__value--cyan">{{ shift === 13 ? 'ROT13' : 'Caesar' }}</span>
           </div>
         </div>
-      </div>
+      }
+
+      <!-- Brute Force Panel -->
+      @if (showBruteForce && textInput) {
+        <div class="cc2-panel cc2-panel--brute">
+          <div class="cc2-panel__header">
+            <span class="cc2-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 10-4-4L2 18z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>
+              Brute Force — All 25 Shifts
+            </span>
+          </div>
+          <div class="cc2-brute-list">
+            @for (r of bruteForceResults; track r; let i = $index) {
+              <div
+                class="cc2-brute-item"
+                [class.cc2-brute-item--active]="r.shift === shift"
+                >
+                <span class="cc2-brute-shift" [class.cc2-brute-shift--rot13]="r.shift === 13">
+                  {{ r.shift === 13 ? 'ROT13' : 'Shift ' + r.shift }}
+                </span>
+                <code class="cc2-brute-text">{{ r.text }}</code>
+                <button
+                  class="cc2-btn-ghost cc2-btn-xs"
+                  (click)="copyBruteForceItem(i)"
+                  title="Copy this rotation"
+                  >
+                  @if (copiedIndex !== i) {
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  }
+                  @if (copiedIndex === i) {
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  }
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
     </div>
   </div>

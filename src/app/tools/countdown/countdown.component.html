@@ -56,8 +56,12 @@
           <span class="cd2-unit__label">Seconds</span>
         </div>
       </div>
-      <p class="cd2-expired-msg" *ngIf="expired">Countdown complete!</p>
-      <button class="cd2-btn-ghost cd2-copy-btn" (click)="copyDisplay()" *ngIf="running || expired" [class.cd2-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      @if (expired) {
+        <p class="cd2-expired-msg">Countdown complete!</p>
+      }
+      @if (running || expired) {
+        <button class="cd2-btn-ghost cd2-copy-btn" (click)="copyDisplay()" [class.cd2-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      }
     </div>
   </div>
 </div>

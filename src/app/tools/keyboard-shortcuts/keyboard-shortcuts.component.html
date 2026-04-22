@@ -26,8 +26,12 @@
 
   <!-- OS Indicator -->
   <div class="ks-os-badge">
-    <span class="ks-os-badge__icon" *ngIf="isMac">&#63743;</span>
-    <span class="ks-os-badge__icon" *ngIf="!isMac">&#8862;</span>
+    @if (isMac) {
+      <span class="ks-os-badge__icon">&#63743;</span>
+    }
+    @if (!isMac) {
+      <span class="ks-os-badge__icon">&#8862;</span>
+    }
     <span class="ks-os-badge__text">Showing {{ isMac ? 'macOS (Cmd)' : 'Windows/Linux (Ctrl)' }} key combos</span>
   </div>
 
@@ -47,23 +51,26 @@
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
-      />
-      <button class="ks-search__clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchInput()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+        />
+      @if (searchQuery) {
+        <button class="ks-search__clear" (click)="searchQuery = ''; onSearchInput()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
     </div>
 
     <!-- Category tabs -->
     <div class="ks-tabs">
-      <button
-        *ngFor="let cat of categories"
-        class="ks-tab"
-        [class.ks-tab--active]="activeCategory === cat.key"
-        [attr.style]="'--tab-color: ' + cat.color"
-        (click)="setCategory(cat.key)"
-      >
-        {{ cat.label }}
-      </button>
+      @for (cat of categories; track cat) {
+        <button
+          class="ks-tab"
+          [class.ks-tab--active]="activeCategory === cat.key"
+          [attr.style]="'--tab-color: ' + cat.color"
+          (click)="setCategory(cat.key)"
+          >
+          {{ cat.label }}
+        </button>
+      }
     </div>
 
     <!-- Result count -->
@@ -80,114 +87,118 @@
       <div class="ks-list">
 
         <!-- Empty state -->
-        <div class="ks-empty" *ngIf="filteredShortcuts.length === 0">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span>No shortcuts found matching "{{ searchQuery }}"</span>
-        </div>
+        @if (filteredShortcuts.length === 0) {
+          <div class="ks-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>No shortcuts found matching "{{ searchQuery }}"</span>
+          </div>
+        }
 
         <!-- Shortcut entries -->
-        <button
-          *ngFor="let entry of filteredShortcuts"
-          class="ks-entry"
-          [class.ks-entry--selected]="selectedShortcut === entry"
-          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
-          (click)="selectShortcut(entry)"
-        >
-          <!-- Keys rendering -->
-          <div class="ks-entry__keys">
-            <ng-container *ngIf="!isGitCommand(entry)">
-              <ng-container *ngFor="let key of getDisplayKeys(entry); let last = last">
-                <kbd class="ks-kbd">{{ key }}</kbd>
-                <span class="ks-kbd-sep" *ngIf="!last">+</span>
-              </ng-container>
-            </ng-container>
-            <ng-container *ngIf="isGitCommand(entry)">
-              <code class="ks-git-cmd">{{ getGitCommand(entry) }}</code>
-            </ng-container>
-          </div>
-          <div class="ks-entry__info">
-            <span class="ks-entry__desc">{{ entry.description }}</span>
-          </div>
-          <span class="ks-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ getCategoryLabel(entry.category) }}</span>
-          <svg class="ks-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+        @for (entry of filteredShortcuts; track entry) {
+          <button
+            class="ks-entry"
+            [class.ks-entry--selected]="selectedShortcut === entry"
+            [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
+            (click)="selectShortcut(entry)"
+            >
+            <!-- Keys rendering -->
+            <div class="ks-entry__keys">
+              @if (!isGitCommand(entry)) {
+                @for (key of getDisplayKeys(entry); track key; let last = $last) {
+                  <kbd class="ks-kbd">{{ key }}</kbd>
+                  @if (!last) {
+                    <span class="ks-kbd-sep">+</span>
+                  }
+                }
+              }
+              @if (isGitCommand(entry)) {
+                <code class="ks-git-cmd">{{ getGitCommand(entry) }}</code>
+              }
+            </div>
+            <div class="ks-entry__info">
+              <span class="ks-entry__desc">{{ entry.description }}</span>
+            </div>
+            <span class="ks-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ getCategoryLabel(entry.category) }}</span>
+            <svg class="ks-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        }
 
       </div>
     </div>
 
     <!-- Detail panel -->
-    <div class="ks-detail-col" *ngIf="selectedShortcut">
-      <div class="ks-detail">
-
-        <div class="ks-detail__header">
-          <div class="ks-detail__title-row">
-            <span class="ks-detail__category-dot" [style.background]="getCategoryColor(selectedShortcut.category)"></span>
-            <div>
-              <h2 class="ks-detail__name">{{ selectedShortcut.description }}</h2>
-              <span class="ks-detail__category" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</span>
+    @if (selectedShortcut) {
+      <div class="ks-detail-col">
+        <div class="ks-detail">
+          <div class="ks-detail__header">
+            <div class="ks-detail__title-row">
+              <span class="ks-detail__category-dot" [style.background]="getCategoryColor(selectedShortcut.category)"></span>
+              <div>
+                <h2 class="ks-detail__name">{{ selectedShortcut.description }}</h2>
+                <span class="ks-detail__category" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</span>
+              </div>
+            </div>
+            <button class="ks-detail__close" (click)="closeDetail()" title="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="ks-detail__body">
+            <!-- Visual key rendering -->
+            <div class="ks-detail__section">
+              <h3 class="ks-detail__label">Shortcut</h3>
+              <div class="ks-detail__keys-large">
+                @if (!isGitCommand(selectedShortcut)) {
+                  @for (key of getDisplayKeys(selectedShortcut); track key; let last = $last) {
+                    <kbd class="ks-kbd ks-kbd--lg">{{ key }}</kbd>
+                    @if (!last) {
+                      <span class="ks-kbd-sep ks-kbd-sep--lg">+</span>
+                    }
+                  }
+                }
+                @if (isGitCommand(selectedShortcut)) {
+                  <code class="ks-git-cmd ks-git-cmd--lg">{{ getGitCommand(selectedShortcut) }}</code>
+                }
+              </div>
+            </div>
+            <!-- Alt OS keys (if available) -->
+            @if (!isGitCommand(selectedShortcut) && selectedShortcut.keysMac) {
+              <div class="ks-detail__section">
+                <h3 class="ks-detail__label">{{ isMac ? 'Windows / Linux' : 'macOS' }}</h3>
+                <div class="ks-detail__keys-alt">
+                  @for (key of (isMac ? selectedShortcut.keys : selectedShortcut.keysMac!); track key; let last = $last) {
+                    <kbd class="ks-kbd ks-kbd--alt">{{ key }}</kbd>
+                    @if (!last) {
+                      <span class="ks-kbd-sep ks-kbd-sep--alt">+</span>
+                    }
+                  }
+                </div>
+              </div>
+            }
+            <div class="ks-detail__section">
+              <h3 class="ks-detail__label">Action</h3>
+              <p class="ks-detail__text">{{ selectedShortcut.description }}</p>
+            </div>
+            <div class="ks-detail__section">
+              <h3 class="ks-detail__label">Category</h3>
+              <p class="ks-detail__text" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</p>
             </div>
           </div>
-          <button class="ks-detail__close" (click)="closeDetail()" title="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div class="ks-detail__footer">
+            <button class="ks-btn-copy" (click)="copyShortcut(selectedShortcut)" [class.ks-btn-copy--success]="copied">
+              @if (!copied) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy Shortcut
+              }
+              @if (copied) {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Copied!
+              }
+            </button>
+          </div>
         </div>
-
-        <div class="ks-detail__body">
-
-          <!-- Visual key rendering -->
-          <div class="ks-detail__section">
-            <h3 class="ks-detail__label">Shortcut</h3>
-            <div class="ks-detail__keys-large">
-              <ng-container *ngIf="!isGitCommand(selectedShortcut)">
-                <ng-container *ngFor="let key of getDisplayKeys(selectedShortcut); let last = last">
-                  <kbd class="ks-kbd ks-kbd--lg">{{ key }}</kbd>
-                  <span class="ks-kbd-sep ks-kbd-sep--lg" *ngIf="!last">+</span>
-                </ng-container>
-              </ng-container>
-              <ng-container *ngIf="isGitCommand(selectedShortcut)">
-                <code class="ks-git-cmd ks-git-cmd--lg">{{ getGitCommand(selectedShortcut) }}</code>
-              </ng-container>
-            </div>
-          </div>
-
-          <!-- Alt OS keys (if available) -->
-          <div class="ks-detail__section" *ngIf="!isGitCommand(selectedShortcut) && selectedShortcut.keysMac">
-            <h3 class="ks-detail__label">{{ isMac ? 'Windows / Linux' : 'macOS' }}</h3>
-            <div class="ks-detail__keys-alt">
-              <ng-container *ngFor="let key of (isMac ? selectedShortcut.keys : selectedShortcut.keysMac!); let last = last">
-                <kbd class="ks-kbd ks-kbd--alt">{{ key }}</kbd>
-                <span class="ks-kbd-sep ks-kbd-sep--alt" *ngIf="!last">+</span>
-              </ng-container>
-            </div>
-          </div>
-
-          <div class="ks-detail__section">
-            <h3 class="ks-detail__label">Action</h3>
-            <p class="ks-detail__text">{{ selectedShortcut.description }}</p>
-          </div>
-
-          <div class="ks-detail__section">
-            <h3 class="ks-detail__label">Category</h3>
-            <p class="ks-detail__text" [style.color]="getCategoryColor(selectedShortcut.category)">{{ getCategoryLabel(selectedShortcut.category) }}</p>
-          </div>
-
-        </div>
-
-        <div class="ks-detail__footer">
-          <button class="ks-btn-copy" (click)="copyShortcut(selectedShortcut)" [class.ks-btn-copy--success]="copied">
-            <ng-container *ngIf="!copied">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy Shortcut
-            </ng-container>
-            <ng-container *ngIf="copied">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Copied!
-            </ng-container>
-          </button>
-        </div>
-
       </div>
-    </div>
+    }
 
   </div><!-- /layout -->
 

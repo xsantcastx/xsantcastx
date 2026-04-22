@@ -21,7 +21,9 @@
         <div class="wt-form">
           <div class="wt-url-row">
             <select class="wt-select" [(ngModel)]="method">
-              <option *ngFor="let m of methods" [value]="m">{{ m }}</option>
+              @for (m of methods; track m) {
+                <option [value]="m">{{ m }}</option>
+              }
             </select>
             <input class="wt-input wt-input--url" [(ngModel)]="url" placeholder="https://example.com/webhook" />
           </div>
@@ -31,18 +33,22 @@
               <span class="wt-section-title">Headers</span>
               <button class="wt-btn-ghost" (click)="addHeader()">+ Add</button>
             </div>
-            <div class="wt-header-row" *ngFor="let h of headers; let i = index">
-              <input class="wt-input" [(ngModel)]="h.key" placeholder="Key" />
-              <input class="wt-input" [(ngModel)]="h.value" placeholder="Value" />
-              <button class="wt-remove" (click)="removeHeader(i)">&times;</button>
-            </div>
+            @for (h of headers; track h; let i = $index) {
+              <div class="wt-header-row">
+                <input class="wt-input" [(ngModel)]="h.key" placeholder="Key" />
+                <input class="wt-input" [(ngModel)]="h.value" placeholder="Value" />
+                <button class="wt-remove" (click)="removeHeader(i)">&times;</button>
+              </div>
+            }
           </div>
 
           <div class="wt-section">
             <div class="wt-section-header">
               <span class="wt-section-title">Body</span>
               <div class="wt-template-btns">
-                <button class="wt-btn-ghost" *ngFor="let t of ['GitHub Push','Stripe Payment','Slack Message']" (click)="loadTemplate(t)">{{ t }}</button>
+                @for (t of ['GitHub Push','Stripe Payment','Slack Message']; track t) {
+                  <button class="wt-btn-ghost" (click)="loadTemplate(t)">{{ t }}</button>
+                }
               </div>
             </div>
             <textarea class="wt-textarea" [(ngModel)]="body" (ngModelChange)="onBodyChange()" placeholder='{"key": "value"}' spellcheck="false"></textarea>

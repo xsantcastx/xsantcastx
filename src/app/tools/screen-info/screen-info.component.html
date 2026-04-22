@@ -132,20 +132,30 @@
                 min="1"
                 max="100"
                 step="0.1"
-              />
+                />
               <span class="si-ppi-unit">inches</span>
             </div>
           </div>
-          <div class="si-ppi-result" *ngIf="calculatedPPI > 0">
-            <div class="si-ppi-result__value">{{ calculatedPPI }}</div>
-            <div class="si-ppi-result__label">PPI (Pixels Per Inch)</div>
-            <div class="si-ppi-result__hint">
-              <span *ngIf="calculatedPPI >= 300">Retina-class density</span>
-              <span *ngIf="calculatedPPI >= 200 && calculatedPPI < 300">High density display</span>
-              <span *ngIf="calculatedPPI >= 100 && calculatedPPI < 200">Standard density display</span>
-              <span *ngIf="calculatedPPI < 100">Low density display</span>
+          @if (calculatedPPI > 0) {
+            <div class="si-ppi-result">
+              <div class="si-ppi-result__value">{{ calculatedPPI }}</div>
+              <div class="si-ppi-result__label">PPI (Pixels Per Inch)</div>
+              <div class="si-ppi-result__hint">
+                @if (calculatedPPI >= 300) {
+                  <span>Retina-class density</span>
+                }
+                @if (calculatedPPI >= 200 && calculatedPPI < 300) {
+                  <span>High density display</span>
+                }
+                @if (calculatedPPI >= 100 && calculatedPPI < 200) {
+                  <span>Standard density display</span>
+                }
+                @if (calculatedPPI < 100) {
+                  <span>Low density display</span>
+                }
+              </div>
             </div>
-          </div>
+          }
         </div>
       </div>
 
@@ -165,14 +175,15 @@
         </div>
         <div class="si-panel__body si-breakpoint-body">
           <div class="si-breakpoint-bar">
-            <div
-              *ngFor="let bp of breakpoints"
-              class="si-bp-segment"
-              [class.si-bp-segment--active]="bp.label === activeBreakpoint"
-            >
-              <span class="si-bp-segment__label">{{ bp.label }}</span>
-              <span class="si-bp-segment__range">{{ bp.min }}{{ bp.max ? '-' + bp.max : '+' }}px</span>
-            </div>
+            @for (bp of breakpoints; track bp) {
+              <div
+                class="si-bp-segment"
+                [class.si-bp-segment--active]="bp.label === activeBreakpoint"
+                >
+                <span class="si-bp-segment__label">{{ bp.label }}</span>
+                <span class="si-bp-segment__range">{{ bp.min }}{{ bp.max ? '-' + bp.max : '+' }}px</span>
+              </div>
+            }
           </div>
           <div class="si-breakpoint-current">
             <span class="si-breakpoint-current__label">Current viewport width:</span>
@@ -184,14 +195,14 @@
       <!-- Actions -->
       <div class="si-actions-row">
         <button class="si-btn si-btn--primary" (click)="copyAllInfo()" [class.si-btn--success]="copied">
-          <ng-container *ngIf="!copied">
+          @if (!copied) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             Copy All Info
-          </ng-container>
-          <ng-container *ngIf="copied">
+          }
+          @if (copied) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Copied!
-          </ng-container>
+          }
         </button>
         <button class="si-btn si-btn--ghost" (click)="detectAll()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -208,25 +219,28 @@
           </span>
         </div>
         <div class="si-panel__body si-table-body">
-          <div *ngFor="let category of deviceCategories" class="si-table-section">
-            <span class="si-table-section__title">{{ category }}</span>
-            <div class="si-table-grid">
-              <div class="si-table-row si-table-row--header">
-                <span>Device</span>
-                <span>Resolution</span>
-                <span>DPR</span>
-              </div>
-              <div
-                *ngFor="let device of getDevicesByCategory(category)"
-                class="si-table-row"
-                [class.si-table-row--match]="isCurrentMatch(device)"
-              >
-                <span class="si-table-row__name">{{ device.name }}</span>
-                <span class="si-table-row__res">{{ device.width }} x {{ device.height }}</span>
-                <span class="si-table-row__dpr">{{ device.dpr }}x</span>
+          @for (category of deviceCategories; track category) {
+            <div class="si-table-section">
+              <span class="si-table-section__title">{{ category }}</span>
+              <div class="si-table-grid">
+                <div class="si-table-row si-table-row--header">
+                  <span>Device</span>
+                  <span>Resolution</span>
+                  <span>DPR</span>
+                </div>
+                @for (device of getDevicesByCategory(category); track device) {
+                  <div
+                    class="si-table-row"
+                    [class.si-table-row--match]="isCurrentMatch(device)"
+                    >
+                    <span class="si-table-row__name">{{ device.name }}</span>
+                    <span class="si-table-row__res">{{ device.width }} x {{ device.height }}</span>
+                    <span class="si-table-row__dpr">{{ device.dpr }}x</span>
+                  </div>
+                }
               </div>
             </div>
-          </div>
+          }
         </div>
       </div>
 

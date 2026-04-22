@@ -60,59 +60,65 @@
           </div>
 
           <!-- Text input -->
-          <div class="fg-option-row" *ngIf="inputMode === 'text'">
-            <span class="fg-option-label">Text (1-2 characters)</span>
-            <input
-              type="text"
-              class="fg-input"
-              [(ngModel)]="faviconText"
-              (ngModelChange)="onTextChange()"
-              maxlength="2"
-              placeholder="Xs"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
+          @if (inputMode === 'text') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Text (1-2 characters)</span>
+              <input
+                type="text"
+                class="fg-input"
+                [(ngModel)]="faviconText"
+                (ngModelChange)="onTextChange()"
+                maxlength="2"
+                placeholder="Xs"
+                spellcheck="false"
+                autocomplete="off"
+                />
+            </div>
+          }
 
           <!-- Emoji input -->
-          <div class="fg-option-row" *ngIf="inputMode === 'emoji'">
-            <span class="fg-option-label">Emoji</span>
-            <input
-              type="text"
-              class="fg-input fg-input--emoji"
-              [(ngModel)]="faviconEmoji"
-              (ngModelChange)="onEmojiChange()"
-              maxlength="2"
-              placeholder="Paste an emoji here..."
-              autocomplete="off"
-            />
-          </div>
+          @if (inputMode === 'emoji') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Emoji</span>
+              <input
+                type="text"
+                class="fg-input fg-input--emoji"
+                [(ngModel)]="faviconEmoji"
+                (ngModelChange)="onEmojiChange()"
+                maxlength="2"
+                placeholder="Paste an emoji here..."
+                autocomplete="off"
+                />
+            </div>
+          }
 
           <!-- Image upload -->
-          <div class="fg-option-row" *ngIf="inputMode === 'image'">
-            <span class="fg-option-label">Upload Image</span>
-            <div
-              class="fg-dropzone"
-              [class.fg-dropzone--over]="isDragOver"
-              [class.fg-dropzone--has-file]="!!uploadedFileName"
-              (dragover)="onDragOver($event)"
-              (dragleave)="onDragLeave()"
-              (drop)="onDrop($event)"
-              (click)="fileInput.click()"
-            >
-              <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileSelect($event)" />
-              <ng-container *ngIf="!uploadedFileName">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="fg-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span class="fg-dropzone__label">Drop image here</span>
-                <span class="fg-dropzone__hint">or click to browse</span>
-              </ng-container>
-              <ng-container *ngIf="uploadedFileName">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="fg-dropzone__icon fg-dropzone__icon--file"><polyline points="20 6 9 17 4 12"/></svg>
-                <span class="fg-dropzone__label">{{ uploadedFileName }}</span>
-                <span class="fg-dropzone__hint">Click to replace</span>
-              </ng-container>
+          @if (inputMode === 'image') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Upload Image</span>
+              <div
+                class="fg-dropzone"
+                [class.fg-dropzone--over]="isDragOver"
+                [class.fg-dropzone--has-file]="!!uploadedFileName"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave()"
+                (drop)="onDrop($event)"
+                (click)="fileInput.click()"
+                >
+                <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileSelect($event)" />
+                @if (!uploadedFileName) {
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="fg-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span class="fg-dropzone__label">Drop image here</span>
+                  <span class="fg-dropzone__hint">or click to browse</span>
+                }
+                @if (uploadedFileName) {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="fg-dropzone__icon fg-dropzone__icon--file"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span class="fg-dropzone__label">{{ uploadedFileName }}</span>
+                  <span class="fg-dropzone__hint">Click to replace</span>
+                }
+              </div>
             </div>
-          </div>
+          }
 
         </div>
       </div>
@@ -137,27 +143,35 @@
           </div>
 
           <!-- Text color (only for text mode) -->
-          <div class="fg-option-row" *ngIf="inputMode === 'text'">
-            <span class="fg-option-label">Text Color</span>
-            <div class="fg-color-row">
-              <input type="color" class="fg-color-input" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" />
-              <input type="text" class="fg-input fg-input--sm" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" spellcheck="false" />
+          @if (inputMode === 'text') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Text Color</span>
+              <div class="fg-color-row">
+                <input type="color" class="fg-color-input" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" />
+                <input type="text" class="fg-input fg-input--sm" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" spellcheck="false" />
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Font size (text mode) -->
-          <div class="fg-option-row" *ngIf="inputMode === 'text'">
-            <span class="fg-option-label">Font Size <span class="fg-badge">{{ fontSize }}%</span></span>
-            <input type="range" class="fg-range" [(ngModel)]="fontSize" (ngModelChange)="onSettingChange()" min="20" max="100" step="1" />
-          </div>
+          @if (inputMode === 'text') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Font Size <span class="fg-badge">{{ fontSize }}%</span></span>
+              <input type="range" class="fg-range" [(ngModel)]="fontSize" (ngModelChange)="onSettingChange()" min="20" max="100" step="1" />
+            </div>
+          }
 
           <!-- Font family (text mode) -->
-          <div class="fg-option-row" *ngIf="inputMode === 'text'">
-            <span class="fg-option-label">Font Family</span>
-            <select class="fg-select" [(ngModel)]="fontFamily" (ngModelChange)="onSettingChange()">
-              <option *ngFor="let f of fontFamilies" [value]="f">{{ f }}</option>
-            </select>
-          </div>
+          @if (inputMode === 'text') {
+            <div class="fg-option-row">
+              <span class="fg-option-label">Font Family</span>
+              <select class="fg-select" [(ngModel)]="fontFamily" (ngModelChange)="onSettingChange()">
+                @for (f of fontFamilies; track f) {
+                  <option [value]="f">{{ f }}</option>
+                }
+              </select>
+            </div>
+          }
 
           <!-- Border radius -->
           <div class="fg-option-row">
@@ -181,16 +195,20 @@
             Live Preview
           </span>
           <div class="fg-panel__actions">
-            <span class="fg-char-count" *ngIf="generatedAt">Updated {{ generatedAt }}</span>
+            @if (generatedAt) {
+              <span class="fg-char-count">Updated {{ generatedAt }}</span>
+            }
           </div>
         </div>
         <div class="fg-panel__body fg-preview-body">
 
           <!-- Large preview -->
           <div class="fg-main-preview">
-            <div class="fg-main-preview__canvas" *ngIf="getPreview(192)">
-              <img [src]="getPreview(192)" alt="Favicon preview 192x192" width="192" height="192" class="fg-main-preview__img" />
-            </div>
+            @if (getPreview(192)) {
+              <div class="fg-main-preview__canvas">
+                <img [src]="getPreview(192)" alt="Favicon preview 192x192" width="192" height="192" class="fg-main-preview__img" />
+              </div>
+            }
             <div class="fg-main-preview__browser-mock">
               <div class="fg-browser-bar">
                 <div class="fg-browser-dots">
@@ -199,7 +217,9 @@
                   <span class="fg-dot fg-dot--green"></span>
                 </div>
                 <div class="fg-browser-tab">
-                  <img *ngIf="getPreview(16)" [src]="getPreview(16)" alt="" width="14" height="14" class="fg-browser-tab__icon" />
+                  @if (getPreview(16)) {
+                    <img [src]="getPreview(16)" alt="" width="14" height="14" class="fg-browser-tab__icon" />
+                  }
                   <span class="fg-browser-tab__label">My Website</span>
                 </div>
                 <div class="fg-browser-address">
@@ -212,18 +232,22 @@
 
           <!-- Size grid -->
           <div class="fg-size-grid">
-            <div class="fg-size-card" *ngFor="let s of sizes">
-              <div class="fg-size-card__preview">
-                <img *ngIf="getPreview(s.size)" [src]="getPreview(s.size)" [alt]="'Favicon ' + s.label" [width]="s.size > 64 ? 48 : s.size" [height]="s.size > 64 ? 48 : s.size" />
+            @for (s of sizes; track s) {
+              <div class="fg-size-card">
+                <div class="fg-size-card__preview">
+                  @if (getPreview(s.size)) {
+                    <img [src]="getPreview(s.size)" [alt]="'Favicon ' + s.label" [width]="s.size > 64 ? 48 : s.size" [height]="s.size > 64 ? 48 : s.size" />
+                  }
+                </div>
+                <div class="fg-size-card__info">
+                  <span class="fg-size-card__label">{{ s.label }}</span>
+                  <span class="fg-size-card__purpose">{{ s.purpose }}</span>
+                </div>
+                <button class="fg-btn-ghost fg-btn-sm" (click)="downloadPng(s.size)" title="Download PNG">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
               </div>
-              <div class="fg-size-card__info">
-                <span class="fg-size-card__label">{{ s.label }}</span>
-                <span class="fg-size-card__purpose">{{ s.purpose }}</span>
-              </div>
-              <button class="fg-btn-ghost fg-btn-sm" (click)="downloadPng(s.size)" title="Download PNG">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
-            </div>
+            }
           </div>
         </div>
       </div>
@@ -257,14 +281,14 @@
           </span>
           <div class="fg-panel__actions">
             <button class="fg-btn-ghost fg-btn-sm" (click)="copySnippet(htmlSnippet, 'html')" [class.fg-btn-ghost--success]="copied && copiedField === 'html'">
-              <ng-container *ngIf="!(copied && copiedField === 'html')">
+              @if (!(copied && copiedField === 'html')) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied && copiedField === 'html'">
+              }
+              @if (copied && copiedField === 'html') {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
@@ -282,14 +306,14 @@
           </span>
           <div class="fg-panel__actions">
             <button class="fg-btn-ghost fg-btn-sm" (click)="copySnippet(manifestSnippet, 'manifest')" [class.fg-btn-ghost--success]="copied && copiedField === 'manifest'">
-              <ng-container *ngIf="!(copied && copiedField === 'manifest')">
+              @if (!(copied && copiedField === 'manifest')) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied && copiedField === 'manifest'">
+              }
+              @if (copied && copiedField === 'manifest') {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>

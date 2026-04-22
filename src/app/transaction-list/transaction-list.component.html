@@ -1,26 +1,29 @@
 <div class="transaction-list-container">
   <h3>Recent Transactions</h3>
-  <div *ngIf="transactions.length > 0; else noTransactions">
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Description</th>
-          <th>Amount</th>
-          <th>Token</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let tx of transactions">
-          <td>{{ tx.date.toDate() | date:'short' }}</td>
-          <td>{{ tx.description }}</td>
-          <td>{{ tx.amount | number }}</td>
-          <td>{{ tx.token }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <ng-template #noTransactions>
+  @if (transactions.length > 0) {
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Token</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (tx of transactions; track tx) {
+            <tr>
+              <td>{{ tx.date.toDate() | date:'short' }}</td>
+              <td>{{ tx.description }}</td>
+              <td>{{ tx.amount | number }}</td>
+              <td>{{ tx.token }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
     <p>No transactions available.</p>
-  </ng-template>
+  }
 </div>

@@ -17,7 +17,7 @@ export class ScrollTrackingDirective implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.scrollHandler) {
+    if (this.isBrowser && this.scrollHandler) {
       window.removeEventListener('scroll', this.scrollHandler);
     }
   }

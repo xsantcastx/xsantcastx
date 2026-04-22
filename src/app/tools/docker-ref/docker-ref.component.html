@@ -54,186 +54,186 @@
       </div>
 
       <!-- ════════════════════════════════════════════════════════════
-           Directives Tab
-           ════════════════════════════════════════════════════════════ -->
-      <div class="docker-panel" *ngIf="activeTab === 'directives'">
-
-        <!-- Search & Filter -->
-        <div class="docker-search-section">
-          <div class="docker-search-box">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              type="text"
-              class="docker-search-input"
-              placeholder="Search directives (e.g. image, volumes, depends_on)..."
-              [(ngModel)]="searchQuery"
-              (input)="onSearchInput()">
-          </div>
-
-          <div class="docker-filters">
-            <span class="docker-filter-label">Filter by:</span>
-            <div class="docker-filter-buttons">
-              <button
-                *ngFor="let cat of categories"
-                class="docker-filter-btn"
-                [class.docker-filter-btn--active]="activeCategory === cat.key"
-                (click)="setCategory(cat.key)">
-                {{ cat.label }}
-              </button>
+      Directives Tab
+      ════════════════════════════════════════════════════════════ -->
+      @if (activeTab === 'directives') {
+        <div class="docker-panel">
+          <!-- Search & Filter -->
+          <div class="docker-search-section">
+            <div class="docker-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="text"
+                class="docker-search-input"
+                placeholder="Search directives (e.g. image, volumes, depends_on)..."
+                [(ngModel)]="searchQuery"
+                (input)="onSearchInput()">
             </div>
-          </div>
-
-          <!-- Result Count -->
-          <div class="docker-result-meta">
-            Showing {{ resultCount }} of {{ directives.length }} directives
-            <span *ngIf="searchQuery" class="docker-result-meta__clear">
-              <button (click)="searchQuery = ''">Clear search</button>
-            </span>
-          </div>
-        </div>
-
-        <!-- Directives List -->
-        <div class="docker-directives-list">
-          <div
-            *ngIf="filteredDirectives.length === 0"
-            class="docker-empty-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <p class="docker-empty-state__text">No directives found</p>
-            <p class="docker-empty-state__hint">Try adjusting your search or filters</p>
-          </div>
-
-          <div
-            *ngFor="let directive of filteredDirectives"
-            class="docker-directive-card"
-            [class.docker-directive-card--selected]="selectedDirective?.name === directive.name">
-
-            <div class="docker-directive-header">
-              <div class="docker-directive-title-group">
-                <h3 class="docker-directive-name" (click)="selectDirective(directive)">
-                  {{ directive.name }}
-                </h3>
-                <span class="docker-directive-badge" [style.backgroundColor]="getCategoryColor(directive.category)">
-                  {{ getCategoryLabel(directive.category) }}
+            <div class="docker-filters">
+              <span class="docker-filter-label">Filter by:</span>
+              <div class="docker-filter-buttons">
+                @for (cat of categories; track cat) {
+                  <button
+                    class="docker-filter-btn"
+                    [class.docker-filter-btn--active]="activeCategory === cat.key"
+                    (click)="setCategory(cat.key)">
+                    {{ cat.label }}
+                  </button>
+                }
+              </div>
+            </div>
+            <!-- Result Count -->
+            <div class="docker-result-meta">
+              Showing {{ resultCount }} of {{ directives.length }} directives
+              @if (searchQuery) {
+                <span class="docker-result-meta__clear">
+                  <button (click)="searchQuery = ''">Clear search</button>
                 </span>
-              </div>
-              <button
-                class="docker-copy-btn"
-                [class.docker-copy-btn--copied]="copied"
-                (click)="copyDirective(directive)"
-                [title]="copied ? 'Copied!' : 'Copy to clipboard'">
-                <svg *ngIf="!copied" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-                <svg *ngIf="copied" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </button>
-            </div>
-
-            <p class="docker-directive-description">{{ directive.description }}</p>
-
-            <!-- Expandable Detail -->
-            <div
-              class="docker-directive-detail"
-              [class.docker-directive-detail--expanded]="selectedDirective?.name === directive.name">
-
-              <!-- Example YAML -->
-              <div class="docker-detail-section">
-                <h4 class="docker-detail-label">Example:</h4>
-                <pre class="docker-code-block"><code>{{ directive.example }}</code></pre>
-              </div>
-
-              <!-- Valid Values -->
-              <div class="docker-detail-section">
-                <h4 class="docker-detail-label">Valid Values:</h4>
-                <p class="docker-detail-text">{{ directive.validValues }}</p>
-              </div>
+              }
             </div>
           </div>
+          <!-- Directives List -->
+          <div class="docker-directives-list">
+            @if (filteredDirectives.length === 0) {
+              <div
+                class="docker-empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <p class="docker-empty-state__text">No directives found</p>
+                <p class="docker-empty-state__hint">Try adjusting your search or filters</p>
+              </div>
+            }
+            @for (directive of filteredDirectives; track directive) {
+              <div
+                class="docker-directive-card"
+                [class.docker-directive-card--selected]="selectedDirective?.name === directive.name">
+                <div class="docker-directive-header">
+                  <div class="docker-directive-title-group">
+                    <h3 class="docker-directive-name" (click)="selectDirective(directive)">
+                      {{ directive.name }}
+                    </h3>
+                    <span class="docker-directive-badge" [style.backgroundColor]="getCategoryColor(directive.category)">
+                      {{ getCategoryLabel(directive.category) }}
+                    </span>
+                  </div>
+                  <button
+                    class="docker-copy-btn"
+                    [class.docker-copy-btn--copied]="copied"
+                    (click)="copyDirective(directive)"
+                    [title]="copied ? 'Copied!' : 'Copy to clipboard'">
+                    @if (!copied) {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    }
+                    @if (copied) {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    }
+                  </button>
+                </div>
+                <p class="docker-directive-description">{{ directive.description }}</p>
+                <!-- Expandable Detail -->
+                <div
+                  class="docker-directive-detail"
+                  [class.docker-directive-detail--expanded]="selectedDirective?.name === directive.name">
+                  <!-- Example YAML -->
+                  <div class="docker-detail-section">
+                    <h4 class="docker-detail-label">Example:</h4>
+                    <pre class="docker-code-block"><code>{{ directive.example }}</code></pre>
+                  </div>
+                  <!-- Valid Values -->
+                  <div class="docker-detail-section">
+                    <h4 class="docker-detail-label">Valid Values:</h4>
+                    <p class="docker-detail-text">{{ directive.validValues }}</p>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
         </div>
-      </div>
+      }
 
       <!-- ════════════════════════════════════════════════════════════
-           Templates Tab
-           ════════════════════════════════════════════════════════════ -->
-      <div class="docker-panel" *ngIf="activeTab === 'templates'">
-
-        <div class="docker-templates-intro">
-          <p>Ready-to-use Docker Compose templates for common stacks. Click a template card to view and copy its YAML configuration.</p>
-        </div>
-
-        <div class="docker-templates-grid">
-          <div
-            *ngFor="let template of templates"
-            class="docker-template-card"
-            [class.docker-template-card--expanded]="selectedDirective?.name === template.name">
-
-            <div class="docker-template-header">
-              <h3 class="docker-template-name" (click)="selectDirective({name: template.name, description: template.description, example: template.yaml, validValues: '', category: 'services'})">
-                {{ template.name }}
-              </h3>
-              <button
-                class="docker-copy-btn"
-                [class.docker-copy-btn--copied]="copiedTemplate"
-                (click)="copyTemplate(template)"
-                [title]="copiedTemplate ? 'Copied!' : 'Copy to clipboard'">
-                <svg *ngIf="!copiedTemplate" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-                <svg *ngIf="copiedTemplate" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </button>
-            </div>
-
-            <p class="docker-template-description">{{ template.description }}</p>
-
-            <!-- Expandable YAML -->
-            <div
-              class="docker-template-detail"
-              [class.docker-template-detail--expanded]="selectedDirective?.name === template.name">
-              <pre class="docker-code-block"><code>{{ template.yaml }}</code></pre>
-            </div>
+      Templates Tab
+      ════════════════════════════════════════════════════════════ -->
+      @if (activeTab === 'templates') {
+        <div class="docker-panel">
+          <div class="docker-templates-intro">
+            <p>Ready-to-use Docker Compose templates for common stacks. Click a template card to view and copy its YAML configuration.</p>
+          </div>
+          <div class="docker-templates-grid">
+            @for (template of templates; track template) {
+              <div
+                class="docker-template-card"
+                [class.docker-template-card--expanded]="selectedDirective?.name === template.name">
+                <div class="docker-template-header">
+                  <h3 class="docker-template-name" (click)="selectDirective({name: template.name, description: template.description, example: template.yaml, validValues: '', category: 'services'})">
+                    {{ template.name }}
+                  </h3>
+                  <button
+                    class="docker-copy-btn"
+                    [class.docker-copy-btn--copied]="copiedTemplate"
+                    (click)="copyTemplate(template)"
+                    [title]="copiedTemplate ? 'Copied!' : 'Copy to clipboard'">
+                    @if (!copiedTemplate) {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    }
+                    @if (copiedTemplate) {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    }
+                  </button>
+                </div>
+                <p class="docker-template-description">{{ template.description }}</p>
+                <!-- Expandable YAML -->
+                <div
+                  class="docker-template-detail"
+                  [class.docker-template-detail--expanded]="selectedDirective?.name === template.name">
+                  <pre class="docker-code-block"><code>{{ template.yaml }}</code></pre>
+                </div>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
     </div>
 
     <!-- Right Sidebar (when directive selected) -->
-    <div
-      class="docker-col docker-col--sidebar"
-      *ngIf="selectedDirective && activeTab === 'directives'">
-
-      <div class="docker-detail-panel">
-        <div class="docker-detail-panel__header">
-          <h2>{{ selectedDirective.name }}</h2>
-          <button
-            class="docker-detail-close"
-            (click)="closeDetail()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div class="docker-detail-content">
-          <div class="docker-detail-item">
-            <span class="docker-detail-item__label">Category:</span>
-            <span class="docker-detail-item__value">
-              <span class="docker-directive-badge" [style.backgroundColor]="getCategoryColor(selectedDirective.category)">
-                {{ getCategoryLabel(selectedDirective.category) }}
+    @if (selectedDirective && activeTab === 'directives') {
+      <div
+        class="docker-col docker-col--sidebar"
+        >
+        <div class="docker-detail-panel">
+          <div class="docker-detail-panel__header">
+            <h2>{{ selectedDirective.name }}</h2>
+            <button
+              class="docker-detail-close"
+              (click)="closeDetail()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="docker-detail-content">
+            <div class="docker-detail-item">
+              <span class="docker-detail-item__label">Category:</span>
+              <span class="docker-detail-item__value">
+                <span class="docker-directive-badge" [style.backgroundColor]="getCategoryColor(selectedDirective.category)">
+                  {{ getCategoryLabel(selectedDirective.category) }}
+                </span>
               </span>
-            </span>
-          </div>
-
-          <div class="docker-detail-item">
-            <span class="docker-detail-item__label">Description:</span>
-            <p class="docker-detail-item__text">{{ selectedDirective.description }}</p>
-          </div>
-
-          <div class="docker-detail-item">
-            <span class="docker-detail-item__label">Example:</span>
-            <pre class="docker-code-block"><code>{{ selectedDirective.example }}</code></pre>
-          </div>
-
-          <div class="docker-detail-item">
-            <span class="docker-detail-item__label">Valid Values:</span>
-            <p class="docker-detail-item__text">{{ selectedDirective.validValues }}</p>
+            </div>
+            <div class="docker-detail-item">
+              <span class="docker-detail-item__label">Description:</span>
+              <p class="docker-detail-item__text">{{ selectedDirective.description }}</p>
+            </div>
+            <div class="docker-detail-item">
+              <span class="docker-detail-item__label">Example:</span>
+              <pre class="docker-code-block"><code>{{ selectedDirective.example }}</code></pre>
+            </div>
+            <div class="docker-detail-item">
+              <span class="docker-detail-item__label">Valid Values:</span>
+              <p class="docker-detail-item__text">{{ selectedDirective.validValues }}</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    }
 
   </div>
 

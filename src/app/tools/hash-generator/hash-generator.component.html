@@ -55,145 +55,154 @@
       </div>
 
       <!-- GENERATE MODE: Input Panel -->
-      <div class="hg-panel" *ngIf="tabMode === 'generate'">
-        <div class="hg-panel__header">
-          <span class="hg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Input
-          </span>
-          <div class="hg-panel__actions">
-            <span class="hg-char-count" *ngIf="inputMode === 'text'">{{ inputCharCount | number }} chars</span>
-            <button class="hg-btn-ghost hg-btn-sm" (click)="loadSample()" title="Load sample">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              Sample
-            </button>
-            <button class="hg-btn-ghost hg-btn-sm" (click)="clearAll()" [disabled]="!textInput && !fileName" title="Clear">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-              Clear
-            </button>
-          </div>
-        </div>
-
-        <!-- Text input -->
-        <div class="hg-panel__body hg-panel__body--input" *ngIf="inputMode === 'text'">
-          <textarea
-            class="hg-textarea"
-            [(ngModel)]="textInput"
-            (ngModelChange)="onInput()"
-            placeholder="Paste or type text to hash&#10;&#10;e.g. Hello, World!"
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-        </div>
-
-        <!-- File drop zone -->
-        <div class="hg-panel__body" *ngIf="inputMode === 'file'">
-          <div
-            class="hg-dropzone"
-            [class.hg-dropzone--over]="isDragOver"
-            [class.hg-dropzone--has-file]="!!fileName"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave()"
-            (drop)="onDrop($event)"
-            (click)="fileInput.click()"
-          >
-            <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
-            <ng-container *ngIf="!fileName">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hg-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="hg-dropzone__label">Drop any file here</span>
-              <span class="hg-dropzone__hint">or click to browse — generates hashes from file content</span>
-            </ng-container>
-            <ng-container *ngIf="fileName">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hg-dropzone__icon hg-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="hg-dropzone__label">{{ fileName }}</span>
-              <span class="hg-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
-            </ng-container>
-          </div>
-        </div>
-      </div>
-
-      <!-- Options Panel (generate mode) -->
-      <div class="hg-panel" *ngIf="tabMode === 'generate'">
-        <div class="hg-panel__header">
-          <span class="hg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
-            Options
-          </span>
-        </div>
-        <div class="hg-panel__body hg-options-grid">
-
-          <!-- Input mode toggle -->
-          <div class="hg-option-row">
-            <span class="hg-option-label">Input Source</span>
-            <div class="hg-seg-ctrl">
-              <button class="hg-seg-btn" [class.hg-seg-btn--active]="inputMode === 'text'" (click)="inputMode = 'text'; onInputModeChange()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Text
+      @if (tabMode === 'generate') {
+        <div class="hg-panel">
+          <div class="hg-panel__header">
+            <span class="hg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Input
+            </span>
+            <div class="hg-panel__actions">
+              @if (inputMode === 'text') {
+                <span class="hg-char-count">{{ inputCharCount | number }} chars</span>
+              }
+              <button class="hg-btn-ghost hg-btn-sm" (click)="loadSample()" title="Load sample">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Sample
               </button>
-              <button class="hg-seg-btn" [class.hg-seg-btn--active]="inputMode === 'file'" (click)="inputMode = 'file'; onInputModeChange()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                File
+              <button class="hg-btn-ghost hg-btn-sm" (click)="clearAll()" [disabled]="!textInput && !fileName" title="Clear">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                Clear
               </button>
             </div>
           </div>
-
-          <!-- Uppercase toggle -->
-          <div class="hg-option-row">
-            <label class="hg-toggle" for="uppercase">
-              <input type="checkbox" id="uppercase" [(ngModel)]="uppercase" (ngModelChange)="onUppercaseChange()" />
-              <span class="hg-toggle__track"><span class="hg-toggle__thumb"></span></span>
-              <span class="hg-toggle__label">Uppercase output <span class="hg-badge">HEX</span></span>
-            </label>
-            <p class="hg-option-hint" *ngIf="uppercase">Hash output displayed in uppercase hexadecimal characters.</p>
-          </div>
-
+          <!-- Text input -->
+          @if (inputMode === 'text') {
+            <div class="hg-panel__body hg-panel__body--input">
+              <textarea
+                class="hg-textarea"
+                [(ngModel)]="textInput"
+                (ngModelChange)="onInput()"
+                placeholder="Paste or type text to hash&#10;&#10;e.g. Hello, World!"
+                spellcheck="false"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+              ></textarea>
+            </div>
+          }
+          <!-- File drop zone -->
+          @if (inputMode === 'file') {
+            <div class="hg-panel__body">
+              <div
+                class="hg-dropzone"
+                [class.hg-dropzone--over]="isDragOver"
+                [class.hg-dropzone--has-file]="!!fileName"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave()"
+                (drop)="onDrop($event)"
+                (click)="fileInput.click()"
+                >
+                <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
+                @if (!fileName) {
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hg-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span class="hg-dropzone__label">Drop any file here</span>
+                  <span class="hg-dropzone__hint">or click to browse — generates hashes from file content</span>
+                }
+                @if (fileName) {
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hg-dropzone__icon hg-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span class="hg-dropzone__label">{{ fileName }}</span>
+                  <span class="hg-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
+                }
+              </div>
+            </div>
+          }
         </div>
-      </div>
+      }
+
+      <!-- Options Panel (generate mode) -->
+      @if (tabMode === 'generate') {
+        <div class="hg-panel">
+          <div class="hg-panel__header">
+            <span class="hg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+              Options
+            </span>
+          </div>
+          <div class="hg-panel__body hg-options-grid">
+            <!-- Input mode toggle -->
+            <div class="hg-option-row">
+              <span class="hg-option-label">Input Source</span>
+              <div class="hg-seg-ctrl">
+                <button class="hg-seg-btn" [class.hg-seg-btn--active]="inputMode === 'text'" (click)="inputMode = 'text'; onInputModeChange()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Text
+                </button>
+                <button class="hg-seg-btn" [class.hg-seg-btn--active]="inputMode === 'file'" (click)="inputMode = 'file'; onInputModeChange()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  File
+                </button>
+              </div>
+            </div>
+            <!-- Uppercase toggle -->
+            <div class="hg-option-row">
+              <label class="hg-toggle" for="uppercase">
+                <input type="checkbox" id="uppercase" [(ngModel)]="uppercase" (ngModelChange)="onUppercaseChange()" />
+                <span class="hg-toggle__track"><span class="hg-toggle__thumb"></span></span>
+                <span class="hg-toggle__label">Uppercase output <span class="hg-badge">HEX</span></span>
+              </label>
+              @if (uppercase) {
+                <p class="hg-option-hint">Hash output displayed in uppercase hexadecimal characters.</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- COMPARE MODE: Input Panel -->
-      <div class="hg-panel" *ngIf="tabMode === 'compare'">
-        <div class="hg-panel__header">
-          <span class="hg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-7 7"/><path d="M3 3l7 7"/></svg>
-            Compare Hashes
-          </span>
-          <div class="hg-panel__actions">
-            <button class="hg-btn-ghost hg-btn-sm" (click)="clearAll()" [disabled]="!compareHash1 && !compareHash2" title="Clear">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-              Clear
-            </button>
+      @if (tabMode === 'compare') {
+        <div class="hg-panel">
+          <div class="hg-panel__header">
+            <span class="hg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-7 7"/><path d="M3 3l7 7"/></svg>
+              Compare Hashes
+            </span>
+            <div class="hg-panel__actions">
+              <button class="hg-btn-ghost hg-btn-sm" (click)="clearAll()" [disabled]="!compareHash1 && !compareHash2" title="Clear">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                Clear
+              </button>
+            </div>
+          </div>
+          <div class="hg-panel__body hg-compare-body">
+            <div class="hg-compare-field">
+              <label class="hg-compare-label">Hash 1</label>
+              <textarea
+                class="hg-textarea hg-textarea--compact"
+                [(ngModel)]="compareHash1"
+                (ngModelChange)="onCompareInput()"
+                placeholder="Paste first hash here..."
+                spellcheck="false"
+                autocomplete="off"
+              ></textarea>
+            </div>
+            <div class="hg-compare-divider">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            </div>
+            <div class="hg-compare-field">
+              <label class="hg-compare-label">Hash 2</label>
+              <textarea
+                class="hg-textarea hg-textarea--compact"
+                [(ngModel)]="compareHash2"
+                (ngModelChange)="onCompareInput()"
+                placeholder="Paste second hash here..."
+                spellcheck="false"
+                autocomplete="off"
+              ></textarea>
+            </div>
           </div>
         </div>
-        <div class="hg-panel__body hg-compare-body">
-          <div class="hg-compare-field">
-            <label class="hg-compare-label">Hash 1</label>
-            <textarea
-              class="hg-textarea hg-textarea--compact"
-              [(ngModel)]="compareHash1"
-              (ngModelChange)="onCompareInput()"
-              placeholder="Paste first hash here..."
-              spellcheck="false"
-              autocomplete="off"
-            ></textarea>
-          </div>
-          <div class="hg-compare-divider">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-          </div>
-          <div class="hg-compare-field">
-            <label class="hg-compare-label">Hash 2</label>
-            <textarea
-              class="hg-textarea hg-textarea--compact"
-              [(ngModel)]="compareHash2"
-              (ngModelChange)="onCompareInput()"
-              placeholder="Paste second hash here..."
-              spellcheck="false"
-              autocomplete="off"
-            ></textarea>
-          </div>
-        </div>
-      </div>
+      }
 
     </div>
 
@@ -201,143 +210,164 @@
     <div class="hg-col hg-col--right">
 
       <!-- Status bar (generate mode) -->
-      <div class="hg-status-bar"
-        *ngIf="tabMode === 'generate'"
-        [class.hg-status-bar--valid]="hasResults && !errorMessage"
-        [class.hg-status-bar--invalid]="!!errorMessage"
-        [class.hg-status-bar--idle]="!hasResults && !errorMessage && !isHashing"
-        [class.hg-status-bar--hashing]="isHashing">
-        <ng-container *ngIf="!hasResults && !errorMessage && !isHashing">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="isHashing">
-          <svg class="hg-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="50" stroke-dashoffset="20"/></svg>
-          <span>Hashing...</span>
-        </ng-container>
-        <ng-container *ngIf="hasResults && !errorMessage && !isHashing">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>{{ hashResults.length }} hashes generated</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          <span class="hg-status-error">{{ errorMessage }}</span>
-        </ng-container>
-      </div>
+      @if (tabMode === 'generate') {
+        <div class="hg-status-bar"
+          [class.hg-status-bar--valid]="hasResults && !errorMessage"
+          [class.hg-status-bar--invalid]="!!errorMessage"
+          [class.hg-status-bar--idle]="!hasResults && !errorMessage && !isHashing"
+          [class.hg-status-bar--hashing]="isHashing">
+          @if (!hasResults && !errorMessage && !isHashing) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Waiting for input...</span>
+          }
+          @if (isHashing) {
+            <svg class="hg-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="50" stroke-dashoffset="20"/></svg>
+            <span>Hashing...</span>
+          }
+          @if (hasResults && !errorMessage && !isHashing) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>{{ hashResults.length }} hashes generated</span>
+          }
+          @if (errorMessage) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span class="hg-status-error">{{ errorMessage }}</span>
+          }
+        </div>
+      }
 
       <!-- Compare result status -->
-      <div class="hg-status-bar"
-        *ngIf="tabMode === 'compare'"
-        [class.hg-status-bar--valid]="compareResult === 'match'"
-        [class.hg-status-bar--invalid]="compareResult === 'mismatch'"
-        [class.hg-status-bar--idle]="compareResult === null">
-        <ng-container *ngIf="compareResult === null">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>Paste two hashes to compare...</span>
-        </ng-container>
-        <ng-container *ngIf="compareResult === 'match'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>Hashes match!</span>
-        </ng-container>
-        <ng-container *ngIf="compareResult === 'mismatch'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          <span>Hashes do NOT match</span>
-        </ng-container>
-      </div>
+      @if (tabMode === 'compare') {
+        <div class="hg-status-bar"
+          [class.hg-status-bar--valid]="compareResult === 'match'"
+          [class.hg-status-bar--invalid]="compareResult === 'mismatch'"
+          [class.hg-status-bar--idle]="compareResult === null">
+          @if (compareResult === null) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Paste two hashes to compare...</span>
+          }
+          @if (compareResult === 'match') {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Hashes match!</span>
+          }
+          @if (compareResult === 'mismatch') {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Hashes do NOT match</span>
+          }
+        </div>
+      }
 
       <!-- Hash Results Panel (generate mode) -->
-      <div class="hg-panel hg-panel--output" *ngIf="tabMode === 'generate'">
-        <div class="hg-panel__header">
-          <span class="hg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Hash Results
-          </span>
-        </div>
-
-        <div class="hg-output-body">
-          <!-- Hash result rows -->
-          <div class="hg-hash-list" *ngIf="hasResults">
-            <div class="hg-hash-row" *ngFor="let result of hashResults">
-              <div class="hg-hash-row__header">
-                <span class="hg-hash-row__algo">{{ result.algorithm }}</span>
-                <span class="hg-hash-row__length">{{ result.hash.length }} chars</span>
-                <button class="hg-btn-ghost hg-btn-sm" (click)="copyHash(result)" [class.hg-btn-ghost--success]="result.copied">
-                  <ng-container *ngIf="!result.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Copy
-                  </ng-container>
-                  <ng-container *ngIf="result.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Copied!
-                  </ng-container>
-                </button>
+      @if (tabMode === 'generate') {
+        <div class="hg-panel hg-panel--output">
+          <div class="hg-panel__header">
+            <span class="hg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Hash Results
+            </span>
+          </div>
+          <div class="hg-output-body">
+            <!-- Hash result rows -->
+            @if (hasResults) {
+              <div class="hg-hash-list">
+                @for (result of hashResults; track result) {
+                  <div class="hg-hash-row">
+                    <div class="hg-hash-row__header">
+                      <span class="hg-hash-row__algo">{{ result.algorithm }}</span>
+                      <span class="hg-hash-row__length">{{ result.hash.length }} chars</span>
+                      <button class="hg-btn-ghost hg-btn-sm" (click)="copyHash(result)" [class.hg-btn-ghost--success]="result.copied">
+                        @if (!result.copied) {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                          Copy
+                        }
+                        @if (result.copied) {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          Copied!
+                        }
+                      </button>
+                    </div>
+                    <code class="hg-hash-row__value">{{ result.hash }}</code>
+                  </div>
+                }
               </div>
-              <code class="hg-hash-row__value">{{ result.hash }}</code>
-            </div>
-          </div>
-
-          <!-- Empty state -->
-          <div class="hg-output-empty" *ngIf="!hasResults && !errorMessage">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            <span>Hash results will appear here</span>
-          </div>
-
-          <!-- Error state -->
-          <div class="hg-output-error" *ngIf="errorMessage && !hasResults">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <span>{{ errorMessage }}</span>
+            }
+            <!-- Empty state -->
+            @if (!hasResults && !errorMessage) {
+              <div class="hg-output-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <span>Hash results will appear here</span>
+              </div>
+            }
+            <!-- Error state -->
+            @if (errorMessage && !hasResults) {
+              <div class="hg-output-error">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span>{{ errorMessage }}</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Compare visual result panel -->
-      <div class="hg-panel hg-panel--output" *ngIf="tabMode === 'compare'">
-        <div class="hg-panel__header">
-          <span class="hg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Result
-          </span>
-        </div>
-        <div class="hg-output-body">
-          <div class="hg-compare-result" *ngIf="compareResult !== null">
-            <div class="hg-compare-icon" [class.hg-compare-icon--match]="compareResult === 'match'" [class.hg-compare-icon--mismatch]="compareResult === 'mismatch'">
-              <svg *ngIf="compareResult === 'match'" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <svg *ngIf="compareResult === 'mismatch'" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </div>
-            <p class="hg-compare-text" [class.hg-compare-text--match]="compareResult === 'match'" [class.hg-compare-text--mismatch]="compareResult === 'mismatch'">
-              {{ compareResult === 'match' ? 'The two hashes are identical.' : 'The hashes are different.' }}
-            </p>
-            <p class="hg-compare-hint">Comparison is case-insensitive.</p>
+      @if (tabMode === 'compare') {
+        <div class="hg-panel hg-panel--output">
+          <div class="hg-panel__header">
+            <span class="hg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Result
+            </span>
           </div>
-          <div class="hg-output-empty" *ngIf="compareResult === null">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-7 7"/><path d="M3 3l7 7"/></svg>
-            <span>Paste two hashes to compare them</span>
+          <div class="hg-output-body">
+            @if (compareResult !== null) {
+              <div class="hg-compare-result">
+                <div class="hg-compare-icon" [class.hg-compare-icon--match]="compareResult === 'match'" [class.hg-compare-icon--mismatch]="compareResult === 'mismatch'">
+                  @if (compareResult === 'match') {
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  }
+                  @if (compareResult === 'mismatch') {
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  }
+                </div>
+                <p class="hg-compare-text" [class.hg-compare-text--match]="compareResult === 'match'" [class.hg-compare-text--mismatch]="compareResult === 'mismatch'">
+                  {{ compareResult === 'match' ? 'The two hashes are identical.' : 'The hashes are different.' }}
+                </p>
+                <p class="hg-compare-hint">Comparison is case-insensitive.</p>
+              </div>
+            }
+            @if (compareResult === null) {
+              <div class="hg-output-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-7 7"/><path d="M3 3l7 7"/></svg>
+                <span>Paste two hashes to compare them</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Stats bar -->
-      <div class="hg-stats" *ngIf="hasResults && tabMode === 'generate'">
-        <div class="hg-stat">
-          <span class="hg-stat__label">Input</span>
-          <span class="hg-stat__value">{{ inputCharCount | number }} <span class="hg-stat__unit">{{ inputMode === 'file' ? 'B' : 'ch' }}</span></span>
+      @if (hasResults && tabMode === 'generate') {
+        <div class="hg-stats">
+          <div class="hg-stat">
+            <span class="hg-stat__label">Input</span>
+            <span class="hg-stat__value">{{ inputCharCount | number }} <span class="hg-stat__unit">{{ inputMode === 'file' ? 'B' : 'ch' }}</span></span>
+          </div>
+          <div class="hg-stat-divider"></div>
+          <div class="hg-stat">
+            <span class="hg-stat__label">Algorithms</span>
+            <span class="hg-stat__value">{{ hashResults.length }}</span>
+          </div>
+          <div class="hg-stat-divider"></div>
+          <div class="hg-stat">
+            <span class="hg-stat__label">Format</span>
+            <span class="hg-stat__value hg-stat__value--cyan">{{ uppercase ? 'UPPER' : 'lower' }}</span>
+          </div>
+          <div class="hg-stat-divider"></div>
+          <div class="hg-stat">
+            <span class="hg-stat__label">Source</span>
+            <span class="hg-stat__value hg-stat__value--cyan">{{ inputMode === 'file' ? 'File' : 'Text' }}</span>
+          </div>
         </div>
-        <div class="hg-stat-divider"></div>
-        <div class="hg-stat">
-          <span class="hg-stat__label">Algorithms</span>
-          <span class="hg-stat__value">{{ hashResults.length }}</span>
-        </div>
-        <div class="hg-stat-divider"></div>
-        <div class="hg-stat">
-          <span class="hg-stat__label">Format</span>
-          <span class="hg-stat__value hg-stat__value--cyan">{{ uppercase ? 'UPPER' : 'lower' }}</span>
-        </div>
-        <div class="hg-stat-divider"></div>
-        <div class="hg-stat">
-          <span class="hg-stat__label">Source</span>
-          <span class="hg-stat__value hg-stat__value--cyan">{{ inputMode === 'file' ? 'File' : 'Text' }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

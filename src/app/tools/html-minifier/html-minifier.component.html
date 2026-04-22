@@ -20,7 +20,9 @@
         <div class="hm-panel__header">
           <span class="hm-panel__title">Input</span>
           <div class="hm-panel__actions">
-            <span class="hm-char-count" *ngIf="inputSize">{{ formatBytes(inputSize) }}</span>
+            @if (inputSize) {
+              <span class="hm-char-count">{{ formatBytes(inputSize) }}</span>
+            }
             <button class="hm-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
           </div>
         </div>
@@ -51,21 +53,29 @@
         <div class="hm-panel__header">
           <span class="hm-panel__title">Output</span>
           <div class="hm-panel__actions">
-            <span class="hm-char-count" *ngIf="outputSize">{{ formatBytes(outputSize) }}</span>
+            @if (outputSize) {
+              <span class="hm-char-count">{{ formatBytes(outputSize) }}</span>
+            }
             <button class="hm-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.hm-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
           </div>
         </div>
-        <pre class="hm-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-        <div class="hm-empty" *ngIf="!output"><span>{{ mode === 'minify' ? 'Minified' : 'Beautified' }} HTML will appear here</span></div>
+        @if (output) {
+          <pre class="hm-code-pre"><code>{{ output }}</code></pre>
+        }
+        @if (!output) {
+          <div class="hm-empty"><span>{{ mode === 'minify' ? 'Minified' : 'Beautified' }} HTML will appear here</span></div>
+        }
       </div>
 
-      <div class="hm-stats" *ngIf="output && mode === 'minify'">
-        <div class="hm-stat"><span class="hm-stat__label">Original</span><span class="hm-stat__value">{{ formatBytes(inputSize) }}</span></div>
-        <div class="hm-stat-divider"></div>
-        <div class="hm-stat"><span class="hm-stat__label">Minified</span><span class="hm-stat__value">{{ formatBytes(outputSize) }}</span></div>
-        <div class="hm-stat-divider"></div>
-        <div class="hm-stat"><span class="hm-stat__label">Saved</span><span class="hm-stat__value hm-stat__value--cyan">{{ savings }}%</span></div>
-      </div>
+      @if (output && mode === 'minify') {
+        <div class="hm-stats">
+          <div class="hm-stat"><span class="hm-stat__label">Original</span><span class="hm-stat__value">{{ formatBytes(inputSize) }}</span></div>
+          <div class="hm-stat-divider"></div>
+          <div class="hm-stat"><span class="hm-stat__label">Minified</span><span class="hm-stat__value">{{ formatBytes(outputSize) }}</span></div>
+          <div class="hm-stat-divider"></div>
+          <div class="hm-stat"><span class="hm-stat__label">Saved</span><span class="hm-stat__value hm-stat__value--cyan">{{ savings }}%</span></div>
+        </div>
+      }
     </div>
   </div>
 </div>

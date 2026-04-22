@@ -1,12 +1,15 @@
 <div class="donation-feed-container">
   <h3>Latest Donations</h3>
-  <div class="feed" *ngIf="donations.length > 0; else noDonations">
-    <div class="feed-item" *ngFor="let donation of donations">
-      <p class="message">"{{ donation.message }}"</p>
-      <p class="timestamp">{{ donation.createdAt.toDate() | date:'short' }}</p>
+  @if (donations.length > 0) {
+    <div class="feed">
+      @for (donation of donations; track donation) {
+        <div class="feed-item">
+          <p class="message">"{{ donation.message }}"</p>
+          <p class="timestamp">{{ donation.createdAt.toDate() | date:'short' }}</p>
+        </div>
+      }
     </div>
-  </div>
-  <ng-template #noDonations>
+  } @else {
     <p>No donations yet. Be the first!</p>
-  </ng-template>
+  }
 </div>

@@ -6,60 +6,64 @@
     </div>
 
     <div class="projects-grid">
-      <article class="project-card" *ngFor="let project of projects">
-        <div class="project-image">
-          <div class="project-preview-window">
-            <div class="preview-chrome">
-              <span></span>
-              <span></span>
-              <span></span>
+      @for (project of projects; track project) {
+        <article class="project-card">
+          <div class="project-image">
+            <div class="project-preview-window">
+              <div class="preview-chrome">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="preview-viewport">
+                <img
+                  [src]="project.previewImage || project.image"
+                  [alt]="translate(project.titleKey)"
+                  loading="lazy"
+                  >
+              </div>
             </div>
-            <div class="preview-viewport">
-              <img
-                [src]="project.previewImage || project.image"
-                [alt]="translate(project.titleKey)"
-                loading="lazy"
-              >
+            <div class="project-overlay">
+              <div class="project-links">
+                <a [href]="project.liveUrl" target="_blank" rel="noopener" class="project-link live">
+                  <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                  <span>{{ translate('projects.live') }}</span>
+                </a>
+                @if (project.githubUrl) {
+                  <a
+                    [href]="project.githubUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="project-link github"
+                    >
+                    <i class="fab fa-github" aria-hidden="true"></i>
+                    <span>{{ translate('projects.code') }}</span>
+                  </a>
+                }
+              </div>
             </div>
           </div>
-          <div class="project-overlay">
-            <div class="project-links">
-              <a [href]="project.liveUrl" target="_blank" rel="noopener" class="project-link live">
-                <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                <span>{{ translate('projects.live') }}</span>
-              </a>
-              <a
-                *ngIf="project.githubUrl"
-                [href]="project.githubUrl"
-                target="_blank"
-                rel="noopener"
-                class="project-link github"
-              >
-                <i class="fab fa-github" aria-hidden="true"></i>
-                <span>{{ translate('projects.code') }}</span>
-              </a>
+          <div class="project-content">
+            <h3 class="project-title">{{ translate(project.titleKey) }}</h3>
+            <p class="project-description">{{ translate(project.descriptionKey) }}</p>
+            <div class="project-features">
+              <h4>{{ translate('projects.features') }}</h4>
+              <ul>
+                @for (featureKey of project.featureKeys; track featureKey) {
+                  <li>
+                    {{ translate(featureKey) }}
+                  </li>
+                }
+              </ul>
+            </div>
+            <div class="project-tech">
+              @for (tech of project.technologies; track tech) {
+                <span class="tech-tag">{{ tech }}</span>
+              }
             </div>
           </div>
-        </div>
-
-        <div class="project-content">
-          <h3 class="project-title">{{ translate(project.titleKey) }}</h3>
-          <p class="project-description">{{ translate(project.descriptionKey) }}</p>
-
-          <div class="project-features">
-            <h4>{{ translate('projects.features') }}</h4>
-            <ul>
-              <li *ngFor="let featureKey of project.featureKeys">
-                {{ translate(featureKey) }}
-              </li>
-            </ul>
-          </div>
-
-          <div class="project-tech">
-            <span class="tech-tag" *ngFor="let tech of project.technologies">{{ tech }}</span>
-          </div>
-        </div>
-      </article>
+        </article>
+      }
     </div>
 
     <div class="cta-section">

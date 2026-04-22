@@ -38,7 +38,9 @@
             Input
           </span>
           <div class="tc-panel__actions">
-            <span class="tc-char-count" *ngIf="charCount > 0">{{ charCount | number }} chars</span>
+            @if (charCount > 0) {
+              <span class="tc-char-count">{{ charCount | number }} chars</span>
+            }
             <button class="tc-btn-ghost tc-btn-sm" (click)="loadSample()" title="Load sample">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Sample
@@ -86,27 +88,29 @@
       </div><!-- /actions panel -->
 
       <!-- Stats Panel -->
-      <div class="tc-stats" *ngIf="results.length > 0">
-        <div class="tc-stat">
-          <span class="tc-stat__label">Words</span>
-          <span class="tc-stat__value">{{ wordCount | number }}</span>
+      @if (results.length > 0) {
+        <div class="tc-stats">
+          <div class="tc-stat">
+            <span class="tc-stat__label">Words</span>
+            <span class="tc-stat__value">{{ wordCount | number }}</span>
+          </div>
+          <div class="tc-stat-divider"></div>
+          <div class="tc-stat">
+            <span class="tc-stat__label">Characters</span>
+            <span class="tc-stat__value">{{ charCount | number }}</span>
+          </div>
+          <div class="tc-stat-divider"></div>
+          <div class="tc-stat">
+            <span class="tc-stat__label">Sentences</span>
+            <span class="tc-stat__value">{{ sentenceCount | number }}</span>
+          </div>
+          <div class="tc-stat-divider"></div>
+          <div class="tc-stat">
+            <span class="tc-stat__label">Lines</span>
+            <span class="tc-stat__value">{{ lineCount | number }}</span>
+          </div>
         </div>
-        <div class="tc-stat-divider"></div>
-        <div class="tc-stat">
-          <span class="tc-stat__label">Characters</span>
-          <span class="tc-stat__value">{{ charCount | number }}</span>
-        </div>
-        <div class="tc-stat-divider"></div>
-        <div class="tc-stat">
-          <span class="tc-stat__label">Sentences</span>
-          <span class="tc-stat__value">{{ sentenceCount | number }}</span>
-        </div>
-        <div class="tc-stat-divider"></div>
-        <div class="tc-stat">
-          <span class="tc-stat__label">Lines</span>
-          <span class="tc-stat__value">{{ lineCount | number }}</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /left col -->
 
@@ -117,43 +121,49 @@
       <div class="tc-status-bar"
         [class.tc-status-bar--valid]="results.length > 0"
         [class.tc-status-bar--idle]="results.length === 0">
-        <ng-container *ngIf="results.length === 0">
+        @if (results.length === 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="results.length > 0">
+        }
+        @if (results.length > 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ results.length }} conversions ready</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Results Grid -->
-      <div class="tc-results-grid" *ngIf="results.length > 0">
-        <div class="tc-result-card" *ngFor="let result of results">
-          <div class="tc-result-card__header">
-            <span class="tc-result-card__label">{{ result.label }}</span>
-            <button class="tc-btn-ghost tc-btn-sm" (click)="copyResult(result)" [class.tc-btn-ghost--success]="result.copied">
-              <ng-container *ngIf="!result.copied">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="result.copied">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
-          </div>
-          <pre class="tc-result-card__value"><code>{{ result.value }}</code></pre>
+      @if (results.length > 0) {
+        <div class="tc-results-grid">
+          @for (result of results; track result) {
+            <div class="tc-result-card">
+              <div class="tc-result-card__header">
+                <span class="tc-result-card__label">{{ result.label }}</span>
+                <button class="tc-btn-ghost tc-btn-sm" (click)="copyResult(result)" [class.tc-btn-ghost--success]="result.copied">
+                  @if (!result.copied) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy
+                  }
+                  @if (result.copied) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
+              </div>
+              <pre class="tc-result-card__value"><code>{{ result.value }}</code></pre>
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <!-- Empty state -->
-      <div class="tc-panel tc-panel--output" *ngIf="results.length === 0">
-        <div class="tc-output-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          <span>All case conversions will appear here</span>
+      @if (results.length === 0) {
+        <div class="tc-panel tc-panel--output">
+          <div class="tc-output-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>All case conversions will appear here</span>
+          </div>
         </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

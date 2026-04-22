@@ -8,45 +8,46 @@ import { SITE_URL } from '../../seo.service';
     <div class="ecg">
       <button class="ecg__toggle" (click)="open = !open" type="button">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="16 18 22 12 16 6"/>
           <polyline points="8 6 2 12 8 18"/>
         </svg>
         Embed this tool
       </button>
-
-      <div class="ecg__panel" *ngIf="open">
-        <p class="ecg__desc">Copy the code below to embed this tool on your site.</p>
-
-        <div class="ecg__options">
-          <label class="ecg__label">
-            Width
-            <input type="text" [(ngModel)]="width" class="ecg__input" placeholder="100%">
-          </label>
-          <label class="ecg__label">
-            Height
-            <input type="text" [(ngModel)]="height" class="ecg__input" placeholder="600">
-          </label>
-          <label class="ecg__label ecg__label--check">
-            <input type="checkbox" [(ngModel)]="hideBranding">
-            Hide branding (Pro)
-          </label>
+    
+      @if (open) {
+        <div class="ecg__panel">
+          <p class="ecg__desc">Copy the code below to embed this tool on your site.</p>
+          <div class="ecg__options">
+            <label class="ecg__label">
+              Width
+              <input type="text" [(ngModel)]="width" class="ecg__input" placeholder="100%">
+            </label>
+            <label class="ecg__label">
+              Height
+              <input type="text" [(ngModel)]="height" class="ecg__input" placeholder="600">
+            </label>
+            <label class="ecg__label ecg__label--check">
+              <input type="checkbox" [(ngModel)]="hideBranding">
+              Hide branding (Pro)
+            </label>
+          </div>
+          <div class="ecg__code-wrap">
+            <pre class="ecg__code"><code>{{ embedCode }}</code></pre>
+            <button class="ecg__copy" (click)="copyCode()" type="button">
+              {{ copied ? 'Copied!' : 'Copy' }}
+            </button>
+          </div>
+          @if (hideBranding) {
+            <p class="ecg__note">
+              Branding removal requires a Pro subscription.
+              <a [href]="siteUrl + '/pro'" target="_blank" rel="noopener">Learn more</a>
+            </p>
+          }
         </div>
-
-        <div class="ecg__code-wrap">
-          <pre class="ecg__code"><code>{{ embedCode }}</code></pre>
-          <button class="ecg__copy" (click)="copyCode()" type="button">
-            {{ copied ? 'Copied!' : 'Copy' }}
-          </button>
-        </div>
-
-        <p class="ecg__note" *ngIf="hideBranding">
-          Branding removal requires a Pro subscription.
-          <a [href]="siteUrl + '/pro'" target="_blank" rel="noopener">Learn more</a>
-        </p>
-      </div>
+      }
     </div>
-  `,
+    `,
   styles: [`
     .ecg {
       margin-top: 16px;

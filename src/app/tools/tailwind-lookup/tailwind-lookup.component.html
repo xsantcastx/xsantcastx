@@ -35,10 +35,12 @@
         placeholder="Search by class name or CSS property... e.g. flex, padding, 1rem"
         spellcheck="false"
         autocomplete="off"
-      />
-      <button class="tw-search-clear" *ngIf="searchQuery" (click)="clearSearch()" title="Clear search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+        />
+      @if (searchQuery) {
+        <button class="tw-search-clear" (click)="clearSearch()" title="Clear search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
     </div>
     <div class="tw-result-count">
       <span class="tw-result-count__number">{{ resultCount }}</span>
@@ -48,77 +50,89 @@
 
   <!-- Category Filters -->
   <div class="tw-categories">
-    <button
-      *ngFor="let cat of categories"
-      class="tw-cat-btn"
-      [class.tw-cat-btn--active]="activeCategory === cat.key"
-      (click)="setCategory(cat.key)"
-    >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="cat.icon"/></svg>
-      <span class="tw-cat-btn__label">{{ cat.label }}</span>
-      <span class="tw-cat-btn__count">{{ getCategoryCount(cat.key) }}</span>
-    </button>
+    @for (cat of categories; track cat) {
+      <button
+        class="tw-cat-btn"
+        [class.tw-cat-btn--active]="activeCategory === cat.key"
+        (click)="setCategory(cat.key)"
+        >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="cat.icon"/></svg>
+        <span class="tw-cat-btn__label">{{ cat.label }}</span>
+        <span class="tw-cat-btn__count">{{ getCategoryCount(cat.key) }}</span>
+      </button>
+    }
   </div>
 
   <!-- CSS Preview Panel -->
-  <div class="tw-preview" *ngIf="previewEntry">
-    <div class="tw-preview__header">
-      <span class="tw-preview__title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        CSS Output Preview
-      </span>
-      <button class="tw-preview__close" (click)="hidePreview()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="tw-preview__body">
-      <pre class="tw-preview__code"><code><span class="tw-preview__selector">.{{ previewEntry.className }}</span> {{ '{' }}
-  <span class="tw-preview__prop">{{ previewEntry.css }}</span>
-{{ '}' }}</code></pre>
+  @if (previewEntry) {
+    <div class="tw-preview">
+      <div class="tw-preview__header">
+        <span class="tw-preview__title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          CSS Output Preview
+        </span>
+        <button class="tw-preview__close" (click)="hidePreview()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="tw-preview__body">
+        <pre class="tw-preview__code"><code><span class="tw-preview__selector">.{{ previewEntry.className }}</span> {{ '{' }}
+        <span class="tw-preview__prop">{{ previewEntry.css }}</span>
+      {{ '}' }}</code></pre>
     </div>
   </div>
+}
 
-  <!-- Class Grid -->
-  <div class="tw-grid" *ngIf="filteredEntries.length > 0">
-    <div
-      *ngFor="let entry of filteredEntries"
-      class="tw-card"
-      [class.tw-card--copied]="copied && copiedClass === entry.className"
-      (click)="copyClass(entry)"
-      (mouseenter)="showPreview(entry)"
-      (mouseleave)="hidePreview()"
-    >
-      <div class="tw-card__header">
-        <code class="tw-card__class">.{{ entry.className }}</code>
-        <span class="tw-card__badge">{{ entry.category }}</span>
+<!-- Class Grid -->
+@if (filteredEntries.length > 0) {
+  <div class="tw-grid">
+    @for (entry of filteredEntries; track entry) {
+      <div
+        class="tw-card"
+        [class.tw-card--copied]="copied && copiedClass === entry.className"
+        (click)="copyClass(entry)"
+        (mouseenter)="showPreview(entry)"
+        (mouseleave)="hidePreview()"
+        >
+        <div class="tw-card__header">
+          <code class="tw-card__class">.{{ entry.className }}</code>
+          <span class="tw-card__badge">{{ entry.category }}</span>
+        </div>
+        <div class="tw-card__css">{{ entry.css }}</div>
+        <div class="tw-card__actions">
+          @if (!(copied && copiedClass === entry.className)) {
+            <span class="tw-card__copy-hint">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Click to copy
+            </span>
+          }
+          @if (copied && copiedClass === entry.className) {
+            <span class="tw-card__copied">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Copied!
+            </span>
+          }
+        </div>
       </div>
-      <div class="tw-card__css">{{ entry.css }}</div>
-      <div class="tw-card__actions">
-        <span class="tw-card__copy-hint" *ngIf="!(copied && copiedClass === entry.className)">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Click to copy
-        </span>
-        <span class="tw-card__copied" *ngIf="copied && copiedClass === entry.className">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Copied!
-        </span>
-      </div>
-    </div>
+    }
   </div>
+}
 
-  <!-- Empty state -->
-  <div class="tw-empty" *ngIf="filteredEntries.length === 0">
+<!-- Empty state -->
+@if (filteredEntries.length === 0) {
+  <div class="tw-empty">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <span class="tw-empty__text">No classes found matching "{{ searchQuery }}"</span>
     <button class="tw-empty__btn" (click)="clearSearch()">Clear search</button>
   </div>
+}
 
-  <app-embed-code-generator toolSlug="tailwind-lookup" toolName="Tailwind CSS Class Lookup"></app-embed-code-generator>
+<app-embed-code-generator toolSlug="tailwind-lookup" toolName="Tailwind CSS Class Lookup"></app-embed-code-generator>
 
-  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'tailwind-lookup'"></app-newsletter-capture>
+<app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'tailwind-lookup'"></app-newsletter-capture>
 
-  <app-affiliate-cta [category]="'CSS Utilities'" [toolSlug]="'tailwind-lookup'"></app-affiliate-cta>
+<app-affiliate-cta [category]="'CSS Utilities'" [toolSlug]="'tailwind-lookup'"></app-affiliate-cta>
 
-  <app-related-tools [currentToolId]="'tailwind-lookup'"></app-related-tools>
+<app-related-tools [currentToolId]="'tailwind-lookup'"></app-related-tools>
 
 </div>

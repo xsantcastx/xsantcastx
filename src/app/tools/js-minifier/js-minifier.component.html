@@ -39,18 +39,30 @@
         <button class="jsm-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.jsm-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
       </div>
       <div class="jsm-panel__body--code">
-        <pre class="jsm-code" *ngIf="output"><code>{{ output }}</code></pre>
-        <div class="jsm-empty" *ngIf="!output && !errorMessage">Output will appear here</div>
-        <div class="jsm-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        @if (output) {
+          <pre class="jsm-code"><code>{{ output }}</code></pre>
+        }
+        @if (!output && !errorMessage) {
+          <div class="jsm-empty">Output will appear here</div>
+        }
+        @if (errorMessage) {
+          <div class="jsm-error">{{ errorMessage }}</div>
+        }
       </div>
     </div>
   </div>
 
-  <div class="jsm-stats" *ngIf="output">
-    <div class="jsm-stat"><span class="jsm-stat__label">Input</span><span class="jsm-stat__value">{{ inputSize }} B</span></div>
-    <div class="jsm-stat-divider"></div>
-    <div class="jsm-stat"><span class="jsm-stat__label">Output</span><span class="jsm-stat__value">{{ outputSize }} B</span></div>
-    <div class="jsm-stat-divider" *ngIf="mode === 'minify' && savings > 0"></div>
-    <div class="jsm-stat" *ngIf="mode === 'minify' && savings > 0"><span class="jsm-stat__label">Saved</span><span class="jsm-stat__value jsm-stat__value--cyan">{{ savings }}%</span></div>
-  </div>
+  @if (output) {
+    <div class="jsm-stats">
+      <div class="jsm-stat"><span class="jsm-stat__label">Input</span><span class="jsm-stat__value">{{ inputSize }} B</span></div>
+      <div class="jsm-stat-divider"></div>
+      <div class="jsm-stat"><span class="jsm-stat__label">Output</span><span class="jsm-stat__value">{{ outputSize }} B</span></div>
+      @if (mode === 'minify' && savings > 0) {
+        <div class="jsm-stat-divider"></div>
+      }
+      @if (mode === 'minify' && savings > 0) {
+        <div class="jsm-stat"><span class="jsm-stat__label">Saved</span><span class="jsm-stat__value jsm-stat__value--cyan">{{ savings }}%</span></div>
+      }
+    </div>
+  }
 </div>

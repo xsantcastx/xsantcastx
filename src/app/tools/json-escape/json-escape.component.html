@@ -93,12 +93,16 @@
 
           <!-- Info hint -->
           <div class="je-option-row">
-            <p class="je-option-hint" *ngIf="mode === 'escape'">
-              Converts special characters to their JSON escape sequences: <code>\"</code> <code>\\</code> <code>\n</code> <code>\t</code> <code>\r</code> and unicode <code>\uXXXX</code>. Useful for embedding strings inside JSON values.
-            </p>
-            <p class="je-option-hint" *ngIf="mode === 'unescape'">
-              Reverses JSON escape sequences back to their original characters. Useful for extracting readable text from JSON string values.
-            </p>
+            @if (mode === 'escape') {
+              <p class="je-option-hint">
+                Converts special characters to their JSON escape sequences: <code>\"</code> <code>\\</code> <code>\n</code> <code>\t</code> <code>\r</code> and unicode <code>\uXXXX</code>. Useful for embedding strings inside JSON values.
+              </p>
+            }
+            @if (mode === 'unescape') {
+              <p class="je-option-hint">
+                Reverses JSON escape sequences back to their original characters. Useful for extracting readable text from JSON string values.
+              </p>
+            }
           </div>
 
         </div>
@@ -114,18 +118,18 @@
         [class.je-status-bar--valid]="output && !errorMessage"
         [class.je-status-bar--invalid]="!!errorMessage"
         [class.je-status-bar--idle]="!output && !errorMessage">
-        <ng-container *ngIf="!output && !errorMessage">
+        @if (!output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="output && !errorMessage">
+        }
+        @if (output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ mode === 'escape' ? 'Escaped' : 'Unescaped' }} successfully</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage">
+        }
+        @if (errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="je-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -136,55 +140,69 @@
             Output
           </span>
           <div class="je-panel__actions">
-            <span class="je-char-count" *ngIf="output">{{ outputCharCount | number }} chars</span>
+            @if (output) {
+              <span class="je-char-count">{{ outputCharCount | number }} chars</span>
+            }
             <button class="je-btn-ghost je-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.je-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <div class="je-output-body">
-          <pre class="je-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="je-output-empty" *ngIf="!output && !errorMessage">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>{{ mode === 'escape' ? 'Escaped string will appear here' : 'Unescaped text will appear here' }}</span>
-          </div>
-          <div class="je-output-error" *ngIf="errorMessage && !output">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <span>{{ errorMessage }}</span>
-          </div>
+          @if (output) {
+            <pre class="je-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output && !errorMessage) {
+            <div class="je-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>{{ mode === 'escape' ? 'Escaped string will appear here' : 'Unescaped text will appear here' }}</span>
+            </div>
+          }
+          @if (errorMessage && !output) {
+            <div class="je-output-error">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span>{{ errorMessage }}</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="je-stats" *ngIf="output">
-        <div class="je-stat">
-          <span class="je-stat__label">Input</span>
-          <span class="je-stat__value">{{ inputCharCount | number }} <span class="je-stat__unit">ch</span></span>
+      @if (output) {
+        <div class="je-stats">
+          <div class="je-stat">
+            <span class="je-stat__label">Input</span>
+            <span class="je-stat__value">{{ inputCharCount | number }} <span class="je-stat__unit">ch</span></span>
+          </div>
+          <div class="je-stat-divider"></div>
+          <div class="je-stat">
+            <span class="je-stat__label">Output</span>
+            <span class="je-stat__value">{{ outputCharCount | number }} <span class="je-stat__unit">ch</span></span>
+          </div>
+          <div class="je-stat-divider"></div>
+          <div class="je-stat">
+            <span class="je-stat__label">Escaped Chars</span>
+            <span class="je-stat__value je-stat__value--cyan">{{ escapedCharCount | number }}</span>
+          </div>
+          @if (sizeChange !== 0) {
+            <div class="je-stat-divider"></div>
+          }
+          @if (sizeChange !== 0) {
+            <div class="je-stat">
+              <span class="je-stat__label">Size Change</span>
+              <span class="je-stat__value je-stat__value--muted">{{ sizeChange > 0 ? '+' : '' }}{{ sizeChange }}%</span>
+            </div>
+          }
         </div>
-        <div class="je-stat-divider"></div>
-        <div class="je-stat">
-          <span class="je-stat__label">Output</span>
-          <span class="je-stat__value">{{ outputCharCount | number }} <span class="je-stat__unit">ch</span></span>
-        </div>
-        <div class="je-stat-divider"></div>
-        <div class="je-stat">
-          <span class="je-stat__label">Escaped Chars</span>
-          <span class="je-stat__value je-stat__value--cyan">{{ escapedCharCount | number }}</span>
-        </div>
-        <div class="je-stat-divider" *ngIf="sizeChange !== 0"></div>
-        <div class="je-stat" *ngIf="sizeChange !== 0">
-          <span class="je-stat__label">Size Change</span>
-          <span class="je-stat__value je-stat__value--muted">{{ sizeChange > 0 ? '+' : '' }}{{ sizeChange }}%</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

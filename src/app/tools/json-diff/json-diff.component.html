@@ -30,25 +30,41 @@
     <button class="jd-btn-ghost" (click)="clearAll()">Clear</button>
   </div>
 
-  <div class="jd-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  @if (errorMessage) {
+    <div class="jd-error">{{ errorMessage }}</div>
+  }
 
-  <div class="jd-stats" *ngIf="diffs.length">
-    <span class="jd-stat jd-stat--added">+{{ addedCount }} added</span>
-    <span class="jd-stat jd-stat--removed">-{{ removedCount }} removed</span>
-    <span class="jd-stat jd-stat--changed">~{{ changedCount }} changed</span>
-  </div>
-
-  <div class="jd-results" *ngIf="diffs.length">
-    <div *ngFor="let d of diffs" class="jd-diff-row" [ngClass]="'jd-diff-row--' + d.type">
-      <span class="jd-diff-key">{{ d.key }}</span>
-      <span class="jd-diff-badge">{{ d.type }}</span>
-      <span class="jd-diff-old" *ngIf="d.oldValue !== undefined">{{ formatValue(d.oldValue) }}</span>
-      <span class="jd-diff-arrow" *ngIf="d.type === 'changed'">&rarr;</span>
-      <span class="jd-diff-new" *ngIf="d.newValue !== undefined">{{ formatValue(d.newValue) }}</span>
+  @if (diffs.length) {
+    <div class="jd-stats">
+      <span class="jd-stat jd-stat--added">+{{ addedCount }} added</span>
+      <span class="jd-stat jd-stat--removed">-{{ removedCount }} removed</span>
+      <span class="jd-stat jd-stat--changed">~{{ changedCount }} changed</span>
     </div>
-  </div>
+  }
 
-  <div class="jd-empty" *ngIf="!diffs.length && !errorMessage && (leftInput || rightInput)">
-    <span>No differences found or press Compare to start.</span>
-  </div>
+  @if (diffs.length) {
+    <div class="jd-results">
+      @for (d of diffs; track d) {
+        <div class="jd-diff-row" [ngClass]="'jd-diff-row--' + d.type">
+          <span class="jd-diff-key">{{ d.key }}</span>
+          <span class="jd-diff-badge">{{ d.type }}</span>
+          @if (d.oldValue !== undefined) {
+            <span class="jd-diff-old">{{ formatValue(d.oldValue) }}</span>
+          }
+          @if (d.type === 'changed') {
+            <span class="jd-diff-arrow">&rarr;</span>
+          }
+          @if (d.newValue !== undefined) {
+            <span class="jd-diff-new">{{ formatValue(d.newValue) }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (!diffs.length && !errorMessage && (leftInput || rightInput)) {
+    <div class="jd-empty">
+      <span>No differences found or press Compare to start.</span>
+    </div>
+  }
 </div>

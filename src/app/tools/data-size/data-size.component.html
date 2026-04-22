@@ -54,7 +54,7 @@
               placeholder="e.g. 1024"
               autocomplete="off"
               min="0"
-            />
+              />
           </div>
           <div class="ds-field">
             <label class="ds-field__label" for="dsUnit">Unit</label>
@@ -63,8 +63,10 @@
               class="ds-select"
               [(ngModel)]="inputUnit"
               (ngModelChange)="onInputChange()"
-            >
-              <option *ngFor="let u of units" [value]="u.value">{{ u.label }}</option>
+              >
+              @for (u of units; track u) {
+                <option [value]="u.value">{{ u.label }}</option>
+              }
             </select>
           </div>
           <div class="ds-field ds-field--full">
@@ -90,33 +92,42 @@
         <div class="ds-panel__header">
           <span class="ds-panel__title">All Conversions</span>
         </div>
-        <div class="ds-results-body" *ngIf="conversionResults.length > 0">
-          <div
-            class="ds-result-row"
-            *ngFor="let r of conversionResults"
-          >
-            <div class="ds-result-info">
-              <span class="ds-result-label">{{ r.label }}</span>
-              <div class="ds-result-value">
-                <code>{{ r.value }}</code>
-                <span class="ds-result-unit">{{ r.unit }}</span>
+        @if (conversionResults.length > 0) {
+          <div class="ds-results-body">
+            @for (r of conversionResults; track r) {
+              <div
+                class="ds-result-row"
+                >
+                <div class="ds-result-info">
+                  <span class="ds-result-label">{{ r.label }}</span>
+                  <div class="ds-result-value">
+                    <code>{{ r.value }}</code>
+                    <span class="ds-result-unit">{{ r.unit }}</span>
+                  </div>
+                </div>
+                <button
+                  class="ds-btn-copy"
+                  [class.ds-btn-copy--success]="r.copied"
+                  (click)="copyResult(r)"
+                  [attr.aria-label]="'Copy ' + r.label"
+                  >
+                  @if (!r.copied) {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  }
+                  @if (r.copied) {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  }
+                </button>
               </div>
-            </div>
-            <button
-              class="ds-btn-copy"
-              [class.ds-btn-copy--success]="r.copied"
-              (click)="copyResult(r)"
-              [attr.aria-label]="'Copy ' + r.label"
-            >
-              <svg *ngIf="!r.copied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              <svg *ngIf="r.copied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </button>
+            }
           </div>
-        </div>
-        <div class="ds-results-empty" *ngIf="conversionResults.length === 0">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="2" y="2" width="20" height="20" rx="5"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
-          <span>Enter a value to see all conversions</span>
-        </div>
+        }
+        @if (conversionResults.length === 0) {
+          <div class="ds-results-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="2" y="2" width="20" height="20" rx="5"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+            <span>Enter a value to see all conversions</span>
+          </div>
+        }
       </div>
 
     </div>
@@ -147,13 +158,15 @@
                 placeholder="e.g. 700"
                 min="0"
                 autocomplete="off"
-              />
+                />
               <select
                 class="ds-select ds-select--compact"
                 [(ngModel)]="bandwidthFileSizeUnit"
                 (ngModelChange)="onBandwidthChange()"
-              >
-                <option *ngFor="let u of fileSizeUnits" [value]="u.value">{{ u.label }}</option>
+                >
+                @for (u of fileSizeUnits; track u) {
+                  <option [value]="u.value">{{ u.label }}</option>
+                }
               </select>
             </div>
           </div>
@@ -169,22 +182,26 @@
                 placeholder="e.g. 100"
                 min="0"
                 autocomplete="off"
-              />
+                />
               <select
                 class="ds-select ds-select--compact"
                 [(ngModel)]="bandwidthSpeedUnit"
                 (ngModelChange)="onBandwidthChange()"
-              >
-                <option *ngFor="let u of speedUnits" [value]="u.value">{{ u.label }}</option>
+                >
+                @for (u of speedUnits; track u) {
+                  <option [value]="u.value">{{ u.label }}</option>
+                }
               </select>
             </div>
           </div>
         </div>
 
-        <div class="ds-transfer-result" *ngIf="transferTime">
-          <div class="ds-transfer-label">Estimated Transfer Time</div>
-          <div class="ds-transfer-value">{{ transferTime }}</div>
-        </div>
+        @if (transferTime) {
+          <div class="ds-transfer-result">
+            <div class="ds-transfer-label">Estimated Transfer Time</div>
+            <div class="ds-transfer-value">{{ transferTime }}</div>
+          </div>
+        }
       </div>
     </div>
   </section>
@@ -214,38 +231,56 @@
               placeholder="e.g. 256"
               min="0"
               autocomplete="off"
-            />
+              />
             <select
               class="ds-select ds-select--compact"
               [(ngModel)]="storageSizeUnit"
               (ngModelChange)="onStoragePlanChange()"
-            >
-              <option *ngFor="let u of storagePlanUnits" [value]="u.value">{{ u.label }}</option>
+              >
+              @for (u of storagePlanUnits; track u) {
+                <option [value]="u.value">{{ u.label }}</option>
+              }
             </select>
           </div>
         </div>
 
-        <div class="ds-storage-grid" *ngIf="storagePlanResults.length > 0">
-          <div class="ds-storage-card" *ngFor="let r of storagePlanResults">
-            <div class="ds-storage-icon">
-              <svg *ngIf="r.item.icon === 'camera'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              <svg *ngIf="r.item.icon === 'music'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-              <svg *ngIf="r.item.icon === 'video'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-              <svg *ngIf="r.item.icon === 'file'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <svg *ngIf="r.item.icon === 'email'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            </div>
-            <div class="ds-storage-info">
-              <span class="ds-storage-count">{{ formatCount(r.count) }}</span>
-              <span class="ds-storage-label">{{ r.item.label }}</span>
-              <span class="ds-storage-desc">{{ r.item.description }}</span>
-            </div>
+        @if (storagePlanResults.length > 0) {
+          <div class="ds-storage-grid">
+            @for (r of storagePlanResults; track r) {
+              <div class="ds-storage-card">
+                <div class="ds-storage-icon">
+                  @if (r.item.icon === 'camera') {
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  }
+                  @if (r.item.icon === 'music') {
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  }
+                  @if (r.item.icon === 'video') {
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  }
+                  @if (r.item.icon === 'file') {
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  }
+                  @if (r.item.icon === 'email') {
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  }
+                </div>
+                <div class="ds-storage-info">
+                  <span class="ds-storage-count">{{ formatCount(r.count) }}</span>
+                  <span class="ds-storage-label">{{ r.item.label }}</span>
+                  <span class="ds-storage-desc">{{ r.item.description }}</span>
+                </div>
+              </div>
+            }
           </div>
-        </div>
+        }
 
-        <div class="ds-results-empty" *ngIf="storagePlanResults.length === 0">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          <span>Enter your available storage to see what fits</span>
-        </div>
+        @if (storagePlanResults.length === 0) {
+          <div class="ds-results-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            <span>Enter your available storage to see what fits</span>
+          </div>
+        }
 
       </div>
     </div>

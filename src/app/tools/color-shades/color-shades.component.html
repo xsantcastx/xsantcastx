@@ -34,7 +34,7 @@
           class="csh-color-picker"
           [(ngModel)]="colorInput"
           (ngModelChange)="generate()"
-        />
+          />
         <input
           id="colorHex"
           type="text"
@@ -45,7 +45,7 @@
           spellcheck="false"
           autocomplete="off"
           maxlength="7"
-        />
+          />
         <button class="csh-btn csh-btn--primary" (click)="generate()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Generate
@@ -61,148 +61,163 @@
         <button class="csh-seg-btn" [class.csh-seg-btn--active]="exportFormat === 'tailwind'" (click)="exportFormat = 'tailwind'">Tailwind</button>
         <button class="csh-seg-btn" [class.csh-seg-btn--active]="exportFormat === 'scss'" (click)="exportFormat = 'scss'">SCSS</button>
       </div>
-      <button class="csh-btn csh-btn--ghost" (click)="copyAllPalettes()" *ngIf="generated" [class.csh-btn--copied]="copiedId === 'all'">
-        <ng-container *ngIf="copiedId !== 'all'">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Copy All
-        </ng-container>
-        <ng-container *ngIf="copiedId === 'all'">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Copied!
-        </ng-container>
-      </button>
+      @if (generated) {
+        <button class="csh-btn csh-btn--ghost" (click)="copyAllPalettes()" [class.csh-btn--copied]="copiedId === 'all'">
+          @if (copiedId !== 'all') {
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy All
+          }
+          @if (copiedId === 'all') {
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Copied!
+          }
+        </button>
+      }
     </div>
   </div>
 
   <!-- Color Preview -->
-  <div class="csh-preview" *ngIf="generated">
-    <div class="csh-preview__swatch" [style.background]="colorInput"></div>
-    <div class="csh-preview__info">
-      <span class="csh-preview__hex">{{ colorInput }}</span>
-      <span class="csh-preview__label">Base Color</span>
+  @if (generated) {
+    <div class="csh-preview">
+      <div class="csh-preview__swatch" [style.background]="colorInput"></div>
+      <div class="csh-preview__info">
+        <span class="csh-preview__hex">{{ colorInput }}</span>
+        <span class="csh-preview__label">Base Color</span>
+      </div>
     </div>
-  </div>
+  }
 
   <!-- Palettes -->
-  <div class="csh-palettes" *ngIf="generated">
-
-    <!-- Tints -->
-    <section class="csh-section">
-      <div class="csh-section__header">
-        <h2 class="csh-section__title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          Tints
-          <span class="csh-section__badge">lighter</span>
-        </h2>
-        <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('tints', tints)" [class.csh-btn--copied]="copiedId === 'palette-tints'">
-          {{ copiedId === 'palette-tints' ? 'Copied!' : 'Copy' }}
-        </button>
-      </div>
-      <div class="csh-swatch-grid">
-        <div
-          class="csh-swatch"
-          *ngFor="let swatch of tints; let i = index"
-          [style.background]="swatch.hex"
-          [style.color]="textColor(swatch.hex)"
-          (click)="copySwatch(swatch, 'tint-' + i)"
-          [title]="'Click to copy ' + swatch.hex"
-        >
-          <span class="csh-swatch__hex">{{ swatch.hex }}</span>
-          <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
-          <span class="csh-swatch__label">{{ swatch.label }}</span>
-          <span class="csh-swatch__copied" *ngIf="copiedId === 'tint-' + i">Copied!</span>
+  @if (generated) {
+    <div class="csh-palettes">
+      <!-- Tints -->
+      <section class="csh-section">
+        <div class="csh-section__header">
+          <h2 class="csh-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Tints
+            <span class="csh-section__badge">lighter</span>
+          </h2>
+          <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('tints', tints)" [class.csh-btn--copied]="copiedId === 'palette-tints'">
+            {{ copiedId === 'palette-tints' ? 'Copied!' : 'Copy' }}
+          </button>
         </div>
-      </div>
-    </section>
-
-    <!-- Shades -->
-    <section class="csh-section">
-      <div class="csh-section__header">
-        <h2 class="csh-section__title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          Shades
-          <span class="csh-section__badge">darker</span>
-        </h2>
-        <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('shades', shades)" [class.csh-btn--copied]="copiedId === 'palette-shades'">
-          {{ copiedId === 'palette-shades' ? 'Copied!' : 'Copy' }}
-        </button>
-      </div>
-      <div class="csh-swatch-grid">
-        <div
-          class="csh-swatch"
-          *ngFor="let swatch of shades; let i = index"
-          [style.background]="swatch.hex"
-          [style.color]="textColor(swatch.hex)"
-          (click)="copySwatch(swatch, 'shade-' + i)"
-          [title]="'Click to copy ' + swatch.hex"
-        >
-          <span class="csh-swatch__hex">{{ swatch.hex }}</span>
-          <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
-          <span class="csh-swatch__label">{{ swatch.label }}</span>
-          <span class="csh-swatch__copied" *ngIf="copiedId === 'shade-' + i">Copied!</span>
+        <div class="csh-swatch-grid">
+          @for (swatch of tints; track swatch; let i = $index) {
+            <div
+              class="csh-swatch"
+              [style.background]="swatch.hex"
+              [style.color]="textColor(swatch.hex)"
+              (click)="copySwatch(swatch, 'tint-' + i)"
+              [title]="'Click to copy ' + swatch.hex"
+              >
+              <span class="csh-swatch__hex">{{ swatch.hex }}</span>
+              <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
+              <span class="csh-swatch__label">{{ swatch.label }}</span>
+              @if (copiedId === 'tint-' + i) {
+                <span class="csh-swatch__copied">Copied!</span>
+              }
+            </div>
+          }
         </div>
-      </div>
-    </section>
-
-    <!-- Tones -->
-    <section class="csh-section">
-      <div class="csh-section__header">
-        <h2 class="csh-section__title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          Tones
-          <span class="csh-section__badge">grayer</span>
-        </h2>
-        <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('tones', tones)" [class.csh-btn--copied]="copiedId === 'palette-tones'">
-          {{ copiedId === 'palette-tones' ? 'Copied!' : 'Copy' }}
-        </button>
-      </div>
-      <div class="csh-swatch-grid">
-        <div
-          class="csh-swatch"
-          *ngFor="let swatch of tones; let i = index"
-          [style.background]="swatch.hex"
-          [style.color]="textColor(swatch.hex)"
-          (click)="copySwatch(swatch, 'tone-' + i)"
-          [title]="'Click to copy ' + swatch.hex"
-        >
-          <span class="csh-swatch__hex">{{ swatch.hex }}</span>
-          <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
-          <span class="csh-swatch__label">{{ swatch.label }}</span>
-          <span class="csh-swatch__copied" *ngIf="copiedId === 'tone-' + i">Copied!</span>
+      </section>
+      <!-- Shades -->
+      <section class="csh-section">
+        <div class="csh-section__header">
+          <h2 class="csh-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            Shades
+            <span class="csh-section__badge">darker</span>
+          </h2>
+          <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('shades', shades)" [class.csh-btn--copied]="copiedId === 'palette-shades'">
+            {{ copiedId === 'palette-shades' ? 'Copied!' : 'Copy' }}
+          </button>
         </div>
-      </div>
-    </section>
-
-    <!-- Harmonies -->
-    <section class="csh-section" *ngFor="let harmony of harmonies">
-      <div class="csh-section__header">
-        <h2 class="csh-section__title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          {{ harmony.label }}
-          <span class="csh-section__badge">harmony</span>
-        </h2>
-        <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette(harmony.type, harmony.colors)" [class.csh-btn--copied]="copiedId === 'palette-' + harmony.type">
-          {{ copiedId === 'palette-' + harmony.type ? 'Copied!' : 'Copy' }}
-        </button>
-      </div>
-      <div class="csh-swatch-grid csh-swatch-grid--harmony">
-        <div
-          class="csh-swatch csh-swatch--harmony"
-          *ngFor="let swatch of harmony.colors; let i = index"
-          [style.background]="swatch.hex"
-          [style.color]="textColor(swatch.hex)"
-          (click)="copySwatch(swatch, harmony.type + '-' + i)"
-          [title]="'Click to copy ' + swatch.hex"
-        >
-          <span class="csh-swatch__hex">{{ swatch.hex }}</span>
-          <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
-          <span class="csh-swatch__label">{{ swatch.label }}</span>
-          <span class="csh-swatch__copied" *ngIf="copiedId === harmony.type + '-' + i">Copied!</span>
+        <div class="csh-swatch-grid">
+          @for (swatch of shades; track swatch; let i = $index) {
+            <div
+              class="csh-swatch"
+              [style.background]="swatch.hex"
+              [style.color]="textColor(swatch.hex)"
+              (click)="copySwatch(swatch, 'shade-' + i)"
+              [title]="'Click to copy ' + swatch.hex"
+              >
+              <span class="csh-swatch__hex">{{ swatch.hex }}</span>
+              <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
+              <span class="csh-swatch__label">{{ swatch.label }}</span>
+              @if (copiedId === 'shade-' + i) {
+                <span class="csh-swatch__copied">Copied!</span>
+              }
+            </div>
+          }
         </div>
-      </div>
-    </section>
-
-  </div>
+      </section>
+      <!-- Tones -->
+      <section class="csh-section">
+        <div class="csh-section__header">
+          <h2 class="csh-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            Tones
+            <span class="csh-section__badge">grayer</span>
+          </h2>
+          <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette('tones', tones)" [class.csh-btn--copied]="copiedId === 'palette-tones'">
+            {{ copiedId === 'palette-tones' ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+        <div class="csh-swatch-grid">
+          @for (swatch of tones; track swatch; let i = $index) {
+            <div
+              class="csh-swatch"
+              [style.background]="swatch.hex"
+              [style.color]="textColor(swatch.hex)"
+              (click)="copySwatch(swatch, 'tone-' + i)"
+              [title]="'Click to copy ' + swatch.hex"
+              >
+              <span class="csh-swatch__hex">{{ swatch.hex }}</span>
+              <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
+              <span class="csh-swatch__label">{{ swatch.label }}</span>
+              @if (copiedId === 'tone-' + i) {
+                <span class="csh-swatch__copied">Copied!</span>
+              }
+            </div>
+          }
+        </div>
+      </section>
+      <!-- Harmonies -->
+      @for (harmony of harmonies; track harmony) {
+        <section class="csh-section">
+          <div class="csh-section__header">
+            <h2 class="csh-section__title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {{ harmony.label }}
+              <span class="csh-section__badge">harmony</span>
+            </h2>
+            <button class="csh-btn csh-btn--ghost csh-btn--sm" (click)="copyPalette(harmony.type, harmony.colors)" [class.csh-btn--copied]="copiedId === 'palette-' + harmony.type">
+              {{ copiedId === 'palette-' + harmony.type ? 'Copied!' : 'Copy' }}
+            </button>
+          </div>
+          <div class="csh-swatch-grid csh-swatch-grid--harmony">
+            @for (swatch of harmony.colors; track swatch; let i = $index) {
+              <div
+                class="csh-swatch csh-swatch--harmony"
+                [style.background]="swatch.hex"
+                [style.color]="textColor(swatch.hex)"
+                (click)="copySwatch(swatch, harmony.type + '-' + i)"
+                [title]="'Click to copy ' + swatch.hex"
+                >
+                <span class="csh-swatch__hex">{{ swatch.hex }}</span>
+                <span class="csh-swatch__rgb">{{ swatch.rgb }}</span>
+                <span class="csh-swatch__label">{{ swatch.label }}</span>
+                @if (copiedId === harmony.type + '-' + i) {
+                  <span class="csh-swatch__copied">Copied!</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
 
   <app-embed-code-generator toolSlug="color-shades" toolName="Color Shades & Tones Generator"></app-embed-code-generator>
 

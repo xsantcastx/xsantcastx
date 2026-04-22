@@ -66,51 +66,53 @@
       </div>
 
       <!-- Path Display Panel -->
-      <div class="jp-panel jp-panel--path" *ngIf="selectedNode">
-        <div class="jp-panel__header">
-          <span class="jp-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            Selected Path
-          </span>
-          <span class="jp-type-badge" [ngClass]="getTypeBadgeClass(selectedNode.type)">{{ selectedNode.type }}</span>
-        </div>
-        <div class="jp-panel__body jp-path-display">
-          <!-- Dot notation -->
-          <div class="jp-path-row">
-            <span class="jp-path-label">Dot notation</span>
-            <div class="jp-path-value-row">
-              <code class="jp-path-code">{{ selectedDotPath }}</code>
-              <button class="jp-btn-ghost jp-btn-sm" (click)="copyDotPath()" [class.jp-btn-ghost--success]="copiedDot">
-                <ng-container *ngIf="!copiedDot">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                  Copy
-                </ng-container>
-                <ng-container *ngIf="copiedDot">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Copied!
-                </ng-container>
-              </button>
+      @if (selectedNode) {
+        <div class="jp-panel jp-panel--path">
+          <div class="jp-panel__header">
+            <span class="jp-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Selected Path
+            </span>
+            <span class="jp-type-badge" [ngClass]="getTypeBadgeClass(selectedNode.type)">{{ selectedNode.type }}</span>
+          </div>
+          <div class="jp-panel__body jp-path-display">
+            <!-- Dot notation -->
+            <div class="jp-path-row">
+              <span class="jp-path-label">Dot notation</span>
+              <div class="jp-path-value-row">
+                <code class="jp-path-code">{{ selectedDotPath }}</code>
+                <button class="jp-btn-ghost jp-btn-sm" (click)="copyDotPath()" [class.jp-btn-ghost--success]="copiedDot">
+                  @if (!copiedDot) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy
+                  }
+                  @if (copiedDot) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
+              </div>
+            </div>
+            <!-- Bracket notation -->
+            <div class="jp-path-row">
+              <span class="jp-path-label">Bracket notation</span>
+              <div class="jp-path-value-row">
+                <code class="jp-path-code">{{ selectedBracketPath }}</code>
+                <button class="jp-btn-ghost jp-btn-sm" (click)="copyBracketPath()" [class.jp-btn-ghost--success]="copiedBracket">
+                  @if (!copiedBracket) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy
+                  }
+                  @if (copiedBracket) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
+              </div>
             </div>
           </div>
-          <!-- Bracket notation -->
-          <div class="jp-path-row">
-            <span class="jp-path-label">Bracket notation</span>
-            <div class="jp-path-value-row">
-              <code class="jp-path-code">{{ selectedBracketPath }}</code>
-              <button class="jp-btn-ghost jp-btn-sm" (click)="copyBracketPath()" [class.jp-btn-ghost--success]="copiedBracket">
-                <ng-container *ngIf="!copiedBracket">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                  Copy
-                </ng-container>
-                <ng-container *ngIf="copiedBracket">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Copied!
-                </ng-container>
-              </button>
-            </div>
-          </div>
         </div>
-      </div>
+      }
 
     </div><!-- /left col -->
 
@@ -122,18 +124,18 @@
         [class.jp-status-bar--valid]="validationStatus === 'valid'"
         [class.jp-status-bar--invalid]="validationStatus === 'invalid'"
         [class.jp-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Valid JSON</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="jp-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Tree Panel -->
@@ -156,90 +158,105 @@
         </div>
 
         <!-- Search bar -->
-        <div class="jp-search-bar" *ngIf="tree.length">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input
-            type="text"
-            class="jp-search-input"
-            [(ngModel)]="searchQuery"
-            (ngModelChange)="onSearchChange()"
-            placeholder="Search keys, values, or paths..."
-            spellcheck="false"
-            autocomplete="off"
-          />
-          <button class="jp-search-clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
+        @if (tree.length) {
+          <div class="jp-search-bar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              type="text"
+              class="jp-search-input"
+              [(ngModel)]="searchQuery"
+              (ngModelChange)="onSearchChange()"
+              placeholder="Search keys, values, or paths..."
+              spellcheck="false"
+              autocomplete="off"
+              />
+            @if (searchQuery) {
+              <button class="jp-search-clear" (click)="searchQuery = ''; onSearchChange()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            }
+          </div>
+        }
 
         <!-- Tree body -->
         <div class="jp-tree-body">
-          <div class="jp-tree" *ngIf="tree.length">
-            <ng-container *ngFor="let node of tree">
-              <ng-container *ngTemplateOutlet="treeNodeTpl; context: { $implicit: node }"></ng-container>
-            </ng-container>
-          </div>
-          <div class="jp-tree-empty" *ngIf="!tree.length">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <span>Paste JSON to explore its tree structure</span>
-          </div>
+          @if (tree.length) {
+            <div class="jp-tree">
+              @for (node of tree; track node) {
+                <ng-container *ngTemplateOutlet="treeNodeTpl; context: { $implicit: node }"></ng-container>
+              }
+            </div>
+          }
+          @if (!tree.length) {
+            <div class="jp-tree-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span>Paste JSON to explore its tree structure</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="jp-stats" *ngIf="tree.length">
-        <div class="jp-stat">
-          <span class="jp-stat__label">Nodes</span>
-          <span class="jp-stat__value">{{ nodeCount | number }}</span>
+      @if (tree.length) {
+        <div class="jp-stats">
+          <div class="jp-stat">
+            <span class="jp-stat__label">Nodes</span>
+            <span class="jp-stat__value">{{ nodeCount | number }}</span>
+          </div>
+          <div class="jp-stat-divider"></div>
+          <div class="jp-stat">
+            <span class="jp-stat__label">Max Depth</span>
+            <span class="jp-stat__value">{{ maxDepth }}</span>
+          </div>
         </div>
-        <div class="jp-stat-divider"></div>
-        <div class="jp-stat">
-          <span class="jp-stat__label">Max Depth</span>
-          <span class="jp-stat__value">{{ maxDepth }}</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->
 
   <!-- Recursive tree node template -->
   <ng-template #treeNodeTpl let-node>
-    <div
-      class="jp-tree-node"
-      *ngIf="node.matchesSearch"
-      [class.jp-tree-node--selected]="selectedNode === node"
-      [class.jp-tree-node--highlight]="searchQuery && node.matchesSearch"
-      [style.padding-left.px]="node.depth * 20 + 8"
-      (click)="selectNode(node)"
-    >
-      <!-- Expand/collapse toggle -->
-      <button
-        class="jp-tree-toggle"
-        *ngIf="isExpandable(node)"
-        (click)="toggleNode(node, $event)"
-        [class.jp-tree-toggle--expanded]="node.expanded"
-      >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <span class="jp-tree-toggle-placeholder" *ngIf="!isExpandable(node)"></span>
-
-      <!-- Key -->
-      <span class="jp-tree-key" *ngIf="node.key !== '$'">{{ node.key }}:</span>
-      <span class="jp-tree-key jp-tree-key--root" *ngIf="node.key === '$'">$</span>
-
-      <!-- Value -->
-      <span class="jp-tree-value" [ngClass]="'jp-tree-value--' + node.type">{{ getDisplayValue(node) }}</span>
-
-      <!-- Type badge -->
-      <span [ngClass]="getTypeBadgeClass(node.type)">{{ node.type }}</span>
-    </div>
+    @if (node.matchesSearch) {
+      <div
+        class="jp-tree-node"
+        [class.jp-tree-node--selected]="selectedNode === node"
+        [class.jp-tree-node--highlight]="searchQuery && node.matchesSearch"
+        [style.padding-left.px]="node.depth * 20 + 8"
+        (click)="selectNode(node)"
+        >
+        <!-- Expand/collapse toggle -->
+        @if (isExpandable(node)) {
+          <button
+            class="jp-tree-toggle"
+            (click)="toggleNode(node, $event)"
+            [class.jp-tree-toggle--expanded]="node.expanded"
+            >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        }
+        @if (!isExpandable(node)) {
+          <span class="jp-tree-toggle-placeholder"></span>
+        }
+        <!-- Key -->
+        @if (node.key !== '$') {
+          <span class="jp-tree-key">{{ node.key }}:</span>
+        }
+        @if (node.key === '$') {
+          <span class="jp-tree-key jp-tree-key--root">$</span>
+        }
+        <!-- Value -->
+        <span class="jp-tree-value" [ngClass]="'jp-tree-value--' + node.type">{{ getDisplayValue(node) }}</span>
+        <!-- Type badge -->
+        <span [ngClass]="getTypeBadgeClass(node.type)">{{ node.type }}</span>
+      </div>
+    }
 
     <!-- Children -->
-    <ng-container *ngIf="node.expanded && isExpandable(node)">
-      <ng-container *ngFor="let child of node.children">
+    @if (node.expanded && isExpandable(node)) {
+      @for (child of node.children; track child) {
         <ng-container *ngTemplateOutlet="treeNodeTpl; context: { $implicit: child }"></ng-container>
-      </ng-container>
-    </ng-container>
+      }
+    }
   </ng-template>
 
   <app-embed-code-generator toolSlug="json-path" toolName="JSON Path Finder"></app-embed-code-generator>

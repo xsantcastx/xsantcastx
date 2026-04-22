@@ -67,12 +67,16 @@
 
         <div class="gg-code-actions">
           <button type="button" class="gg-btn gg-btn--primary" (click)="copyDisplayedCode()">
-            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ codeCopied ? 'Copied!' : 'Copy Code' }}
           </button>
         </div>
@@ -113,57 +117,73 @@
       <div class="gg-card">
         <div class="gg-card__header">
           <span class="gg-card__label">
-            <span *ngIf="gradientType === 'linear'">Direction</span>
-            <span *ngIf="gradientType === 'radial'">Shape &amp; Position</span>
-            <span *ngIf="gradientType === 'conic'">Angle &amp; Position</span>
+            @if (gradientType === 'linear') {
+              <span>Direction</span>
+            }
+            @if (gradientType === 'radial') {
+              <span>Shape &amp; Position</span>
+            }
+            @if (gradientType === 'conic') {
+              <span>Angle &amp; Position</span>
+            }
           </span>
         </div>
 
         <div class="gg-controls-grid">
           <!-- Linear: Angle -->
-          <div class="gg-control-group" *ngIf="gradientType === 'linear'">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">Angle</label>
-              <span class="gg-control-group__value">{{ angle }}&deg;</span>
+          @if (gradientType === 'linear') {
+            <div class="gg-control-group">
+              <div class="gg-control-group__top">
+                <label class="gg-control-group__label">Angle</label>
+                <span class="gg-control-group__value">{{ angle }}&deg;</span>
+              </div>
+              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="updateAngle($event)" class="gg-slider" />
             </div>
-            <input type="range" min="0" max="360" step="1" [value]="angle" (input)="updateAngle($event)" class="gg-slider" />
-          </div>
+          }
 
           <!-- Radial: Shape -->
-          <div class="gg-control-group gg-control-group--inline" *ngIf="gradientType === 'radial'">
-            <label class="gg-control-group__label">Shape</label>
-            <div class="gg-format-btns">
-              <button type="button" class="gg-toggle-btn" [class.is-active]="radialShape === 'circle'" (click)="setRadialShape('circle')">Circle</button>
-              <button type="button" class="gg-toggle-btn" [class.is-active]="radialShape === 'ellipse'" (click)="setRadialShape('ellipse')">Ellipse</button>
+          @if (gradientType === 'radial') {
+            <div class="gg-control-group gg-control-group--inline">
+              <label class="gg-control-group__label">Shape</label>
+              <div class="gg-format-btns">
+                <button type="button" class="gg-toggle-btn" [class.is-active]="radialShape === 'circle'" (click)="setRadialShape('circle')">Circle</button>
+                <button type="button" class="gg-toggle-btn" [class.is-active]="radialShape === 'ellipse'" (click)="setRadialShape('ellipse')">Ellipse</button>
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Radial / Conic: Position X -->
-          <div class="gg-control-group" *ngIf="gradientType === 'radial' || gradientType === 'conic'">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">Position X</label>
-              <span class="gg-control-group__value">{{ radialPosX }}%</span>
+          @if (gradientType === 'radial' || gradientType === 'conic') {
+            <div class="gg-control-group">
+              <div class="gg-control-group__top">
+                <label class="gg-control-group__label">Position X</label>
+                <span class="gg-control-group__value">{{ radialPosX }}%</span>
+              </div>
+              <input type="range" min="0" max="100" step="1" [value]="radialPosX" (input)="updateRadialPosX($event)" class="gg-slider" />
             </div>
-            <input type="range" min="0" max="100" step="1" [value]="radialPosX" (input)="updateRadialPosX($event)" class="gg-slider" />
-          </div>
+          }
 
           <!-- Radial / Conic: Position Y -->
-          <div class="gg-control-group" *ngIf="gradientType === 'radial' || gradientType === 'conic'">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">Position Y</label>
-              <span class="gg-control-group__value">{{ radialPosY }}%</span>
+          @if (gradientType === 'radial' || gradientType === 'conic') {
+            <div class="gg-control-group">
+              <div class="gg-control-group__top">
+                <label class="gg-control-group__label">Position Y</label>
+                <span class="gg-control-group__value">{{ radialPosY }}%</span>
+              </div>
+              <input type="range" min="0" max="100" step="1" [value]="radialPosY" (input)="updateRadialPosY($event)" class="gg-slider" />
             </div>
-            <input type="range" min="0" max="100" step="1" [value]="radialPosY" (input)="updateRadialPosY($event)" class="gg-slider" />
-          </div>
+          }
 
           <!-- Conic: Start Angle -->
-          <div class="gg-control-group" *ngIf="gradientType === 'conic'">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">Start Angle</label>
-              <span class="gg-control-group__value">{{ conicAngle }}&deg;</span>
+          @if (gradientType === 'conic') {
+            <div class="gg-control-group">
+              <div class="gg-control-group__top">
+                <label class="gg-control-group__label">Start Angle</label>
+                <span class="gg-control-group__value">{{ conicAngle }}&deg;</span>
+              </div>
+              <input type="range" min="0" max="360" step="1" [value]="conicAngle" (input)="updateConicAngle($event)" class="gg-slider" />
             </div>
-            <input type="range" min="0" max="360" step="1" [value]="conicAngle" (input)="updateConicAngle($event)" class="gg-slider" />
-          </div>
+          }
         </div>
       </div>
 
@@ -183,59 +203,63 @@
         <div class="gg-stop-bar-wrap">
           <div class="gg-stop-bar" [style.background]="stopBarGradient"></div>
           <div class="gg-stop-markers">
-            <div
-              *ngFor="let stop of stops; let i = index; trackBy: trackByStopId"
-              class="gg-stop-marker"
-              [class.is-active]="activeStopIndex === i"
-              [style.left.%]="stop.position"
-              [style.borderColor]="stop.color"
-              (click)="selectStop(i)"
-            >
-              <div class="gg-stop-marker__dot" [style.background]="stop.color"></div>
-            </div>
+            @for (stop of stops; track trackByStopId(i, stop); let i = $index) {
+              <div
+                class="gg-stop-marker"
+                [class.is-active]="activeStopIndex === i"
+                [style.left.%]="stop.position"
+                [style.borderColor]="stop.color"
+                (click)="selectStop(i)"
+                >
+                <div class="gg-stop-marker__dot" [style.background]="stop.color"></div>
+              </div>
+            }
           </div>
         </div>
 
         <!-- Stop list -->
         <div class="gg-stop-list">
-          <div
-            class="gg-stop-item"
-            *ngFor="let stop of stops; let i = index; trackBy: trackByStopId"
-            [class.is-active]="activeStopIndex === i"
-            (click)="selectStop(i)"
-          >
-            <div class="gg-stop-item__swatch" [style.background]="stop.color"></div>
-            <div class="gg-stop-item__info">
-              <span class="gg-stop-item__hex">{{ stop.color }}</span>
-              <span class="gg-stop-item__pos">{{ stop.position }}%</span>
+          @for (stop of stops; track trackByStopId(i, stop); let i = $index) {
+            <div
+              class="gg-stop-item"
+              [class.is-active]="activeStopIndex === i"
+              (click)="selectStop(i)"
+              >
+              <div class="gg-stop-item__swatch" [style.background]="stop.color"></div>
+              <div class="gg-stop-item__info">
+                <span class="gg-stop-item__hex">{{ stop.color }}</span>
+                <span class="gg-stop-item__pos">{{ stop.position }}%</span>
+              </div>
+              <div class="gg-stop-item__actions" (click)="$event.stopPropagation()">
+                <button type="button" class="gg-icon-btn gg-icon-btn--xs gg-icon-btn--danger" [disabled]="stops.length <= 2" (click)="removeStop(i)" title="Delete stop">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div class="gg-stop-item__actions" (click)="$event.stopPropagation()">
-              <button type="button" class="gg-icon-btn gg-icon-btn--xs gg-icon-btn--danger" [disabled]="stops.length <= 2" (click)="removeStop(i)" title="Delete stop">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+          }
         </div>
 
         <!-- Active stop controls -->
-        <div class="gg-stop-controls" *ngIf="activeStop">
-          <div class="gg-control-group">
-            <label class="gg-control-group__label">Color</label>
-            <div class="gg-color-row">
-              <input type="color" [value]="activeStop.color" (input)="updateStopColor($event)" class="gg-color-input" />
-              <span class="gg-color-hex">{{ activeStop.color }}</span>
+        @if (activeStop) {
+          <div class="gg-stop-controls">
+            <div class="gg-control-group">
+              <label class="gg-control-group__label">Color</label>
+              <div class="gg-color-row">
+                <input type="color" [value]="activeStop.color" (input)="updateStopColor($event)" class="gg-color-input" />
+                <span class="gg-color-hex">{{ activeStop.color }}</span>
+              </div>
+            </div>
+            <div class="gg-control-group">
+              <div class="gg-control-group__top">
+                <label class="gg-control-group__label">Position</label>
+                <span class="gg-control-group__value">{{ activeStop.position }}%</span>
+              </div>
+              <input type="range" min="0" max="100" step="1" [value]="activeStop.position" (input)="updateStopPosition($event)" class="gg-slider" />
             </div>
           </div>
-          <div class="gg-control-group">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">Position</label>
-              <span class="gg-control-group__value">{{ activeStop.position }}%</span>
-            </div>
-            <input type="range" min="0" max="100" step="1" [value]="activeStop.position" (input)="updateStopPosition($event)" class="gg-slider" />
-          </div>
-        </div>
+        }
       </div>
 
       <!-- Presets -->
@@ -244,15 +268,16 @@
           <span class="gg-card__label">Presets</span>
         </div>
         <div class="gg-preset-grid">
-          <button
-            type="button"
-            class="gg-preset-btn"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <div class="gg-preset-preview" [ngStyle]="getPresetPreviewStyle(preset)"></div>
-            <span class="gg-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="gg-preset-btn"
+              (click)="applyPreset(preset)"
+              >
+              <div class="gg-preset-preview" [ngStyle]="getPresetPreviewStyle(preset)"></div>
+              <span class="gg-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
 

@@ -95,25 +95,31 @@
       </div>
 
       <!-- Token Preview -->
-      <div class="dt-panel dt-panel--preview" *ngIf="flatTokens.length > 0">
-        <div class="dt-panel__header">
-          <span class="dt-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            Token Preview
-          </span>
-          <span class="dt-token-count">{{ tokenCount }} tokens</span>
-        </div>
-        <div class="dt-panel__body dt-preview-list">
-          <div class="dt-preview-item" *ngFor="let token of flatTokens; let i = index" [class.dt-preview-item--color]="token.type === 'color'">
-            <span class="dt-preview-type" [attr.title]="token.type">{{ getTypeIcon(token.type) }}</span>
-            <span class="dt-preview-path">{{ token.path }}</span>
-            <span class="dt-preview-value">
-              <span class="dt-color-swatch" *ngIf="token.type === 'color'" [style.background]="token.value"></span>
-              {{ token.value }}
+      @if (flatTokens.length > 0) {
+        <div class="dt-panel dt-panel--preview">
+          <div class="dt-panel__header">
+            <span class="dt-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              Token Preview
             </span>
+            <span class="dt-token-count">{{ tokenCount }} tokens</span>
+          </div>
+          <div class="dt-panel__body dt-preview-list">
+            @for (token of flatTokens; track token; let i = $index) {
+              <div class="dt-preview-item" [class.dt-preview-item--color]="token.type === 'color'">
+                <span class="dt-preview-type" [attr.title]="token.type">{{ getTypeIcon(token.type) }}</span>
+                <span class="dt-preview-path">{{ token.path }}</span>
+                <span class="dt-preview-value">
+                  @if (token.type === 'color') {
+                    <span class="dt-color-swatch" [style.background]="token.value"></span>
+                  }
+                  {{ token.value }}
+                </span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
     </div>
 
@@ -125,18 +131,18 @@
         [class.dt-status-bar--valid]="validationStatus === 'valid'"
         [class.dt-status-bar--invalid]="validationStatus === 'invalid'"
         [class.dt-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ tokenCount }} tokens found in {{ groupCount }} groups</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="dt-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -149,50 +155,56 @@
           </span>
           <div class="dt-panel__actions">
             <button class="dt-btn-ghost dt-btn-sm" (click)="copyOutput()" [disabled]="!convertedOutput" [class.dt-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="dt-output-body">
-          <pre class="dt-code-pre" *ngIf="convertedOutput"><code>{{ convertedOutput }}</code></pre>
-          <div class="dt-output-empty" *ngIf="!convertedOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            <span>Converted output will appear here</span>
-          </div>
+          @if (convertedOutput) {
+            <pre class="dt-code-pre"><code>{{ convertedOutput }}</code></pre>
+          }
+          @if (!convertedOutput) {
+            <div class="dt-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span>Converted output will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="dt-stats" *ngIf="convertedOutput">
-        <div class="dt-stat">
-          <span class="dt-stat__label">Tokens</span>
-          <span class="dt-stat__value">{{ tokenCount }}</span>
+      @if (convertedOutput) {
+        <div class="dt-stats">
+          <div class="dt-stat">
+            <span class="dt-stat__label">Tokens</span>
+            <span class="dt-stat__value">{{ tokenCount }}</span>
+          </div>
+          <div class="dt-stat-divider"></div>
+          <div class="dt-stat">
+            <span class="dt-stat__label">Groups</span>
+            <span class="dt-stat__value">{{ groupCount }}</span>
+          </div>
+          <div class="dt-stat-divider"></div>
+          <div class="dt-stat">
+            <span class="dt-stat__label">Format</span>
+            <span class="dt-stat__value dt-stat__value--accent">{{ outputFormat === 'json-flat' ? 'JSON' : outputFormat.toUpperCase() }}</span>
+          </div>
+          <div class="dt-stat-divider"></div>
+          <div class="dt-stat">
+            <span class="dt-stat__label">Output</span>
+            <span class="dt-stat__value">{{ convertedOutput.length | number }} chars</span>
+          </div>
         </div>
-        <div class="dt-stat-divider"></div>
-        <div class="dt-stat">
-          <span class="dt-stat__label">Groups</span>
-          <span class="dt-stat__value">{{ groupCount }}</span>
-        </div>
-        <div class="dt-stat-divider"></div>
-        <div class="dt-stat">
-          <span class="dt-stat__label">Format</span>
-          <span class="dt-stat__value dt-stat__value--accent">{{ outputFormat === 'json-flat' ? 'JSON' : outputFormat.toUpperCase() }}</span>
-        </div>
-        <div class="dt-stat-divider"></div>
-        <div class="dt-stat">
-          <span class="dt-stat__label">Output</span>
-          <span class="dt-stat__value">{{ convertedOutput.length | number }} chars</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

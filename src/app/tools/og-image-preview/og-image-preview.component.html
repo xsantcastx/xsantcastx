@@ -52,47 +52,71 @@
         </div>
 
         <!-- Facebook Preview -->
-        <div class="ogp-preview ogp-preview--fb" *ngIf="activePreview==='facebook'">
-          <div class="ogp-preview-image" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
-          <div class="ogp-preview-image ogp-preview-image--empty" *ngIf="!ogImage"></div>
-          <div class="ogp-preview-body">
-            <span class="ogp-preview-domain">{{ displayUrl | uppercase }}</span>
-            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
-            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+        @if (activePreview==='facebook') {
+          <div class="ogp-preview ogp-preview--fb">
+            @if (ogImage) {
+              <div class="ogp-preview-image" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+            }
+            @if (!ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--empty"></div>
+            }
+            <div class="ogp-preview-body">
+              <span class="ogp-preview-domain">{{ displayUrl | uppercase }}</span>
+              <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+              <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+            </div>
           </div>
-        </div>
+        }
 
         <!-- Twitter Preview -->
-        <div class="ogp-preview ogp-preview--tw" *ngIf="activePreview==='twitter'">
-          <div class="ogp-preview-image ogp-preview-image--tw" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
-          <div class="ogp-preview-image ogp-preview-image--tw ogp-preview-image--empty" *ngIf="!ogImage"></div>
-          <div class="ogp-preview-body">
-            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
-            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
-            <span class="ogp-preview-domain">{{ displayUrl }}</span>
+        @if (activePreview==='twitter') {
+          <div class="ogp-preview ogp-preview--tw">
+            @if (ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--tw" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+            }
+            @if (!ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--tw ogp-preview-image--empty"></div>
+            }
+            <div class="ogp-preview-body">
+              <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+              <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+              <span class="ogp-preview-domain">{{ displayUrl }}</span>
+            </div>
           </div>
-        </div>
+        }
 
         <!-- LinkedIn Preview -->
-        <div class="ogp-preview ogp-preview--li" *ngIf="activePreview==='linkedin'">
-          <div class="ogp-preview-image" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
-          <div class="ogp-preview-image ogp-preview-image--empty" *ngIf="!ogImage"></div>
-          <div class="ogp-preview-body">
-            <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
-            <span class="ogp-preview-domain">{{ displayUrl }}</span>
+        @if (activePreview==='linkedin') {
+          <div class="ogp-preview ogp-preview--li">
+            @if (ogImage) {
+              <div class="ogp-preview-image" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+            }
+            @if (!ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--empty"></div>
+            }
+            <div class="ogp-preview-body">
+              <span class="ogp-preview-title">{{ ogTitle || 'Page Title' }}</span>
+              <span class="ogp-preview-domain">{{ displayUrl }}</span>
+            </div>
           </div>
-        </div>
+        }
 
         <!-- Discord Preview -->
-        <div class="ogp-preview ogp-preview--dc" *ngIf="activePreview==='discord'">
-          <div class="ogp-preview-body">
-            <span class="ogp-preview-site">{{ ogSiteName || 'Website' }}</span>
-            <span class="ogp-preview-title ogp-preview-title--dc">{{ ogTitle || 'Page Title' }}</span>
-            <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+        @if (activePreview==='discord') {
+          <div class="ogp-preview ogp-preview--dc">
+            <div class="ogp-preview-body">
+              <span class="ogp-preview-site">{{ ogSiteName || 'Website' }}</span>
+              <span class="ogp-preview-title ogp-preview-title--dc">{{ ogTitle || 'Page Title' }}</span>
+              <span class="ogp-preview-desc">{{ truncatedDesc }}</span>
+            </div>
+            @if (ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--dc" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
+            }
+            @if (!ogImage) {
+              <div class="ogp-preview-image ogp-preview-image--dc ogp-preview-image--empty"></div>
+            }
           </div>
-          <div class="ogp-preview-image ogp-preview-image--dc" *ngIf="ogImage" [style.backgroundImage]="'url(' + ogImage + ')'"></div>
-          <div class="ogp-preview-image ogp-preview-image--dc ogp-preview-image--empty" *ngIf="!ogImage"></div>
-        </div>
+        }
       </div>
     </div>
   </div>

@@ -57,46 +57,63 @@
         </button>
       </div>
 
-      <div class="mq-rules-list" *ngIf="rules.length > 0">
-        <div class="mq-rule" *ngFor="let rule of rules; trackBy: trackRule">
-          <!-- Feature select -->
-          <select class="mq-select" [(ngModel)]="rule.feature" (ngModelChange)="onFeatureChange(rule)">
-            <option *ngFor="let f of features" [value]="f.feature">{{ f.label }}</option>
-          </select>
-
-          <!-- Range type: min/max checkboxes + inputs -->
-          <ng-container *ngIf="getFeatureDef(rule.feature).type === 'range'">
-            <label class="mq-check" *ngIf="getFeatureDef(rule.feature).supportsMinMax">
-              <input type="checkbox" [(ngModel)]="rule.useMin" (ngModelChange)="onRuleChange()">
-              <span class="mq-check__label">min</span>
-            </label>
-            <input *ngIf="rule.useMin" type="number" class="mq-input mq-input--num" placeholder="0" [(ngModel)]="rule.minValue" (ngModelChange)="onRuleChange()">
-
-            <label class="mq-check" *ngIf="getFeatureDef(rule.feature).supportsMinMax">
-              <input type="checkbox" [(ngModel)]="rule.useMax" (ngModelChange)="onRuleChange()">
-              <span class="mq-check__label">max</span>
-            </label>
-            <input *ngIf="rule.useMax" type="number" class="mq-input mq-input--num" placeholder="0" [(ngModel)]="rule.maxValue" (ngModelChange)="onRuleChange()">
-
-            <input *ngIf="!rule.useMin && !rule.useMax" type="number" class="mq-input mq-input--num" placeholder="exact" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
-            <span class="mq-unit" *ngIf="getFeatureDef(rule.feature).unit">{{ getFeatureDef(rule.feature).unit }}</span>
-          </ng-container>
-
-          <!-- Enum type: dropdown -->
-          <ng-container *ngIf="getFeatureDef(rule.feature).type === 'enum'">
-            <select class="mq-select mq-select--val" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
-              <option *ngFor="let opt of getFeatureDef(rule.feature).options" [value]="opt">{{ opt }}</option>
-            </select>
-          </ng-container>
-
-          <!-- Remove -->
-          <button class="mq-rule__remove" (click)="removeRule(rule.id)" title="Remove condition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+      @if (rules.length > 0) {
+        <div class="mq-rules-list">
+          @for (rule of rules; track trackRule($index, rule)) {
+            <div class="mq-rule">
+              <!-- Feature select -->
+              <select class="mq-select" [(ngModel)]="rule.feature" (ngModelChange)="onFeatureChange(rule)">
+                @for (f of features; track f) {
+                  <option [value]="f.feature">{{ f.label }}</option>
+                }
+              </select>
+              <!-- Range type: min/max checkboxes + inputs -->
+              @if (getFeatureDef(rule.feature).type === 'range') {
+                @if (getFeatureDef(rule.feature).supportsMinMax) {
+                  <label class="mq-check">
+                    <input type="checkbox" [(ngModel)]="rule.useMin" (ngModelChange)="onRuleChange()">
+                    <span class="mq-check__label">min</span>
+                  </label>
+                }
+                @if (rule.useMin) {
+                  <input type="number" class="mq-input mq-input--num" placeholder="0" [(ngModel)]="rule.minValue" (ngModelChange)="onRuleChange()">
+                }
+                @if (getFeatureDef(rule.feature).supportsMinMax) {
+                  <label class="mq-check">
+                    <input type="checkbox" [(ngModel)]="rule.useMax" (ngModelChange)="onRuleChange()">
+                    <span class="mq-check__label">max</span>
+                  </label>
+                }
+                @if (rule.useMax) {
+                  <input type="number" class="mq-input mq-input--num" placeholder="0" [(ngModel)]="rule.maxValue" (ngModelChange)="onRuleChange()">
+                }
+                @if (!rule.useMin && !rule.useMax) {
+                  <input type="number" class="mq-input mq-input--num" placeholder="exact" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
+                }
+                @if (getFeatureDef(rule.feature).unit) {
+                  <span class="mq-unit">{{ getFeatureDef(rule.feature).unit }}</span>
+                }
+              }
+              <!-- Enum type: dropdown -->
+              @if (getFeatureDef(rule.feature).type === 'enum') {
+                <select class="mq-select mq-select--val" [(ngModel)]="rule.value" (ngModelChange)="onRuleChange()">
+                  @for (opt of getFeatureDef(rule.feature).options; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              }
+              <!-- Remove -->
+              <button class="mq-rule__remove" (click)="removeRule(rule.id)" title="Remove condition">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          }
         </div>
-      </div>
+      }
 
-      <p class="mq-empty" *ngIf="rules.length === 0">No conditions added. Click "Add Condition" to start building your query.</p>
+      @if (rules.length === 0) {
+        <p class="mq-empty">No conditions added. Click "Add Condition" to start building your query.</p>
+      }
     </div>
 
     <!-- Output -->
@@ -126,16 +143,22 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       Framework Presets
     </h2>
-    <div class="mq-preset-group" *ngFor="let group of presetGroups">
-      <h3 class="mq-preset-group__name">{{ group.name }}</h3>
-      <div class="mq-preset-grid">
-        <button class="mq-preset-card" *ngFor="let preset of group.presets" (click)="applyPreset(preset)" [class.mq-preset-card--active]="isPresetActive(preset.name)">
-          <span class="mq-preset-card__name">{{ preset.name }}</span>
-          <code class="mq-preset-card__query">{{ preset.query }}</code>
-          <span class="mq-preset-card__badge" *ngIf="isPresetActive(preset.name)">ACTIVE</span>
-        </button>
+    @for (group of presetGroups; track group) {
+      <div class="mq-preset-group">
+        <h3 class="mq-preset-group__name">{{ group.name }}</h3>
+        <div class="mq-preset-grid">
+          @for (preset of group.presets; track preset) {
+            <button class="mq-preset-card" (click)="applyPreset(preset)" [class.mq-preset-card--active]="isPresetActive(preset.name)">
+              <span class="mq-preset-card__name">{{ preset.name }}</span>
+              <code class="mq-preset-card__query">{{ preset.query }}</code>
+              @if (isPresetActive(preset.name)) {
+                <span class="mq-preset-card__badge">ACTIVE</span>
+              }
+            </button>
+          }
+        </div>
       </div>
-    </div>
+    }
   </section>
 
   <!-- Related Tools -->

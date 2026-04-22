@@ -86,7 +86,7 @@
               placeholder="Root"
               spellcheck="false"
               autocomplete="off"
-            />
+              />
           </div>
 
           <!-- All optional -->
@@ -96,7 +96,9 @@
               <span class="jts-toggle__track"><span class="jts-toggle__thumb"></span></span>
               <span class="jts-toggle__label">All properties optional <span class="jts-badge">?:</span></span>
             </label>
-            <p class="jts-option-hint" *ngIf="allOptional">Every property will be marked as optional with <code>?:</code></p>
+            @if (allOptional) {
+              <p class="jts-option-hint">Every property will be marked as optional with <code>?:</code></p>
+            }
           </div>
 
         </div>
@@ -120,18 +122,18 @@
         [class.jts-status-bar--valid]="validationStatus === 'valid'"
         [class.jts-status-bar--invalid]="validationStatus === 'invalid'"
         [class.jts-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for JSON input...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ interfaceCount }} interface{{ interfaceCount !== 1 ? 's' : '' }} generated</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="jts-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -143,45 +145,51 @@
           </span>
           <div class="jts-panel__actions">
             <button class="jts-btn-ghost jts-btn-sm" (click)="copyOutput()" [disabled]="!tsOutput" [class.jts-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="jts-output-body">
-          <pre class="jts-code-pre" *ngIf="tsOutput"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="jts-output-empty" *ngIf="!tsOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>TypeScript interfaces will appear here</span>
-          </div>
+          @if (tsOutput) {
+            <pre class="jts-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!tsOutput) {
+            <div class="jts-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>TypeScript interfaces will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="jts-stats" *ngIf="tsOutput">
-        <div class="jts-stat">
-          <span class="jts-stat__label">Interfaces</span>
-          <span class="jts-stat__value">{{ interfaceCount }}</span>
+      @if (tsOutput) {
+        <div class="jts-stats">
+          <div class="jts-stat">
+            <span class="jts-stat__label">Interfaces</span>
+            <span class="jts-stat__value">{{ interfaceCount }}</span>
+          </div>
+          <div class="jts-stat-divider"></div>
+          <div class="jts-stat">
+            <span class="jts-stat__label">Properties</span>
+            <span class="jts-stat__value">{{ propertyCount }}</span>
+          </div>
+          <div class="jts-stat-divider"></div>
+          <div class="jts-stat">
+            <span class="jts-stat__label">Lines</span>
+            <span class="jts-stat__value">{{ tsOutput.split('\n').length }}</span>
+          </div>
         </div>
-        <div class="jts-stat-divider"></div>
-        <div class="jts-stat">
-          <span class="jts-stat__label">Properties</span>
-          <span class="jts-stat__value">{{ propertyCount }}</span>
-        </div>
-        <div class="jts-stat-divider"></div>
-        <div class="jts-stat">
-          <span class="jts-stat__label">Lines</span>
-          <span class="jts-stat__value">{{ tsOutput.split('\n').length }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

@@ -79,66 +79,70 @@
           Validate &amp; Scan
         </button>
         <button class="ev-btn ev-btn--secondary" (click)="copyEnvExample()" [disabled]="!envInput.trim()" [class.ev-btn--success]="copiedExample">
-          <ng-container *ngIf="!copiedExample">
+          @if (!copiedExample) {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             Export .env.example
-          </ng-container>
-          <ng-container *ngIf="copiedExample">
+          }
+          @if (copiedExample) {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Copied!
-          </ng-container>
+          }
         </button>
       </div>
 
       <!-- Gitignore Suggestion (shown when secrets detected) -->
-      <div class="ev-panel ev-panel--gitignore" *ngIf="secretsDetected">
-        <div class="ev-panel__header">
-          <span class="ev-panel__title ev-panel__title--warn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            .gitignore Recommended
-          </span>
-          <div class="ev-panel__actions">
-            <button class="ev-btn-ghost ev-btn-sm" (click)="copyGitignore()" [class.ev-btn-ghost--success]="copiedGitignore">
-              <ng-container *ngIf="!copiedGitignore">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copiedGitignore">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
+      @if (secretsDetected) {
+        <div class="ev-panel ev-panel--gitignore">
+          <div class="ev-panel__header">
+            <span class="ev-panel__title ev-panel__title--warn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              .gitignore Recommended
+            </span>
+            <div class="ev-panel__actions">
+              <button class="ev-btn-ghost ev-btn-sm" (click)="copyGitignore()" [class.ev-btn-ghost--success]="copiedGitignore">
+                @if (!copiedGitignore) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                }
+                @if (copiedGitignore) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
+              </button>
+            </div>
+          </div>
+          <div class="ev-panel__body">
+            <pre class="ev-gitignore-pre"><code>{{ gitignoreEntries }}</code></pre>
           </div>
         </div>
-        <div class="ev-panel__body">
-          <pre class="ev-gitignore-pre"><code>{{ gitignoreEntries }}</code></pre>
-        </div>
-      </div>
+      }
 
       <!-- .env.example Preview -->
-      <div class="ev-panel" *ngIf="parsedLines.length > 0">
-        <div class="ev-panel__header">
-          <span class="ev-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            .env.example Preview
-          </span>
-          <div class="ev-panel__actions">
-            <button class="ev-btn-ghost ev-btn-sm" (click)="downloadEnvExample()" [class.ev-btn-ghost--success]="downloaded">
-              <ng-container *ngIf="!downloaded">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download
-              </ng-container>
-              <ng-container *ngIf="downloaded">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Saved!
-              </ng-container>
-            </button>
+      @if (parsedLines.length > 0) {
+        <div class="ev-panel">
+          <div class="ev-panel__header">
+            <span class="ev-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              .env.example Preview
+            </span>
+            <div class="ev-panel__actions">
+              <button class="ev-btn-ghost ev-btn-sm" (click)="downloadEnvExample()" [class.ev-btn-ghost--success]="downloaded">
+                @if (!downloaded) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download
+                }
+                @if (downloaded) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Saved!
+                }
+              </button>
+            </div>
+          </div>
+          <div class="ev-panel__body">
+            <pre class="ev-example-pre"><code>{{ generateEnvExample() }}</code></pre>
           </div>
         </div>
-        <div class="ev-panel__body">
-          <pre class="ev-example-pre"><code>{{ generateEnvExample() }}</code></pre>
-        </div>
-      </div>
+      }
 
     </div><!-- /left col -->
 
@@ -151,140 +155,164 @@
         [class.ev-status-bar--warnings]="validationStatus === 'warnings'"
         [class.ev-status-bar--errors]="validationStatus === 'errors'"
         [class.ev-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Paste .env content to begin validation...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>All clear — no issues found</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'warnings'">
+        }
+        @if (validationStatus === 'warnings') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>{{ warningCount + secretCount }} issue{{ (warningCount + secretCount) !== 1 ? 's' : '' }} found — review below</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'errors'">
+        }
+        @if (validationStatus === 'errors') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span>{{ errorCount }} error{{ errorCount !== 1 ? 's' : '' }}, {{ warningCount }} warning{{ warningCount !== 1 ? 's' : '' }} found</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Stats bar -->
-      <div class="ev-stats" *ngIf="issues.length > 0 || validationStatus === 'valid'">
-        <div class="ev-stat">
-          <span class="ev-stat__label">Keys</span>
-          <span class="ev-stat__value">{{ keyCount }}</span>
+      @if (issues.length > 0 || validationStatus === 'valid') {
+        <div class="ev-stats">
+          <div class="ev-stat">
+            <span class="ev-stat__label">Keys</span>
+            <span class="ev-stat__value">{{ keyCount }}</span>
+          </div>
+          <div class="ev-stat-divider"></div>
+          <div class="ev-stat">
+            <span class="ev-stat__label">Errors</span>
+            <span class="ev-stat__value" [class.ev-stat__value--error]="errorCount > 0">{{ errorCount }}</span>
+          </div>
+          <div class="ev-stat-divider"></div>
+          <div class="ev-stat">
+            <span class="ev-stat__label">Warnings</span>
+            <span class="ev-stat__value" [class.ev-stat__value--warn]="warningCount > 0">{{ warningCount }}</span>
+          </div>
+          <div class="ev-stat-divider"></div>
+          <div class="ev-stat">
+            <span class="ev-stat__label">Secrets</span>
+            <span class="ev-stat__value" [class.ev-stat__value--secret]="secretCount > 0">{{ secretCount }}</span>
+          </div>
+          <div class="ev-stat-divider"></div>
+          <div class="ev-stat">
+            <span class="ev-stat__label">Info</span>
+            <span class="ev-stat__value">{{ infoCount }}</span>
+          </div>
         </div>
-        <div class="ev-stat-divider"></div>
-        <div class="ev-stat">
-          <span class="ev-stat__label">Errors</span>
-          <span class="ev-stat__value" [class.ev-stat__value--error]="errorCount > 0">{{ errorCount }}</span>
-        </div>
-        <div class="ev-stat-divider"></div>
-        <div class="ev-stat">
-          <span class="ev-stat__label">Warnings</span>
-          <span class="ev-stat__value" [class.ev-stat__value--warn]="warningCount > 0">{{ warningCount }}</span>
-        </div>
-        <div class="ev-stat-divider"></div>
-        <div class="ev-stat">
-          <span class="ev-stat__label">Secrets</span>
-          <span class="ev-stat__value" [class.ev-stat__value--secret]="secretCount > 0">{{ secretCount }}</span>
-        </div>
-        <div class="ev-stat-divider"></div>
-        <div class="ev-stat">
-          <span class="ev-stat__label">Info</span>
-          <span class="ev-stat__value">{{ infoCount }}</span>
-        </div>
-      </div>
+      }
 
       <!-- Filter tabs -->
-      <div class="ev-filter-tabs" *ngIf="issues.length > 0">
-        <button class="ev-filter-tab" [class.ev-filter-tab--active]="activeFilter === 'all'" (click)="setFilter('all')">
-          All <span class="ev-filter-count">{{ issues.length }}</span>
-        </button>
-        <button class="ev-filter-tab ev-filter-tab--error" [class.ev-filter-tab--active]="activeFilter === 'error'" (click)="setFilter('error')" *ngIf="errorCount > 0">
-          Errors <span class="ev-filter-count">{{ errorCount }}</span>
-        </button>
-        <button class="ev-filter-tab ev-filter-tab--warning" [class.ev-filter-tab--active]="activeFilter === 'warning'" (click)="setFilter('warning')" *ngIf="warningCount > 0">
-          Warnings <span class="ev-filter-count">{{ warningCount }}</span>
-        </button>
-        <button class="ev-filter-tab ev-filter-tab--info" [class.ev-filter-tab--active]="activeFilter === 'info'" (click)="setFilter('info')" *ngIf="infoCount > 0">
-          Info <span class="ev-filter-count">{{ infoCount }}</span>
-        </button>
-      </div>
+      @if (issues.length > 0) {
+        <div class="ev-filter-tabs">
+          <button class="ev-filter-tab" [class.ev-filter-tab--active]="activeFilter === 'all'" (click)="setFilter('all')">
+            All <span class="ev-filter-count">{{ issues.length }}</span>
+          </button>
+          @if (errorCount > 0) {
+            <button class="ev-filter-tab ev-filter-tab--error" [class.ev-filter-tab--active]="activeFilter === 'error'" (click)="setFilter('error')">
+              Errors <span class="ev-filter-count">{{ errorCount }}</span>
+            </button>
+          }
+          @if (warningCount > 0) {
+            <button class="ev-filter-tab ev-filter-tab--warning" [class.ev-filter-tab--active]="activeFilter === 'warning'" (click)="setFilter('warning')">
+              Warnings <span class="ev-filter-count">{{ warningCount }}</span>
+            </button>
+          }
+          @if (infoCount > 0) {
+            <button class="ev-filter-tab ev-filter-tab--info" [class.ev-filter-tab--active]="activeFilter === 'info'" (click)="setFilter('info')">
+              Info <span class="ev-filter-count">{{ infoCount }}</span>
+            </button>
+          }
+        </div>
+      }
 
       <!-- Issues list -->
-      <div class="ev-panel ev-panel--results" *ngIf="issues.length > 0">
-        <div class="ev-panel__header">
-          <span class="ev-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            Validation Results
-          </span>
-          <span class="ev-char-count">{{ filteredIssues.length }} issue{{ filteredIssues.length !== 1 ? 's' : '' }}</span>
-        </div>
-        <div class="ev-panel__body ev-issues-list">
-          <div class="ev-issue"
-            *ngFor="let issue of filteredIssues"
-            [class.ev-issue--error]="issue.severity === 'error'"
-            [class.ev-issue--warning]="issue.severity === 'warning'"
-            [class.ev-issue--info]="issue.severity === 'info'">
-            <div class="ev-issue__icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path [attr.d]="getSeverityIcon(issue.severity)"/></svg>
-            </div>
-            <div class="ev-issue__content">
-              <div class="ev-issue__header">
-                <span class="ev-issue__severity">{{ issue.severity | uppercase }}</span>
-                <span class="ev-issue__line">Line {{ issue.line }}</span>
+      @if (issues.length > 0) {
+        <div class="ev-panel ev-panel--results">
+          <div class="ev-panel__header">
+            <span class="ev-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              Validation Results
+            </span>
+            <span class="ev-char-count">{{ filteredIssues.length }} issue{{ filteredIssues.length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="ev-panel__body ev-issues-list">
+            @for (issue of filteredIssues; track issue) {
+              <div class="ev-issue"
+                [class.ev-issue--error]="issue.severity === 'error'"
+                [class.ev-issue--warning]="issue.severity === 'warning'"
+                [class.ev-issue--info]="issue.severity === 'info'">
+                <div class="ev-issue__icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path [attr.d]="getSeverityIcon(issue.severity)"/></svg>
+                </div>
+                <div class="ev-issue__content">
+                  <div class="ev-issue__header">
+                    <span class="ev-issue__severity">{{ issue.severity | uppercase }}</span>
+                    <span class="ev-issue__line">Line {{ issue.line }}</span>
+                  </div>
+                  <p class="ev-issue__message">{{ issue.message }}</p>
+                </div>
               </div>
-              <p class="ev-issue__message">{{ issue.message }}</p>
-            </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Line-by-line view -->
-      <div class="ev-panel ev-panel--lines" *ngIf="parsedLines.length > 0">
-        <div class="ev-panel__header">
-          <span class="ev-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Line-by-Line View
-          </span>
-          <span class="ev-char-count">{{ parsedLines.length }} lines</span>
-        </div>
-        <div class="ev-panel__body ev-lines-body">
-          <div class="ev-line-row"
-            *ngFor="let pl of parsedLines"
-            [class.ev-line-row--error]="hasIssue(pl.lineNumber, 'error')"
-            [class.ev-line-row--warning]="hasIssue(pl.lineNumber, 'warning')"
-            [class.ev-line-row--info]="hasIssue(pl.lineNumber, 'info')"
-            [class.ev-line-row--comment]="pl.isComment"
-            [class.ev-line-row--empty]="pl.isEmpty">
-            <span class="ev-line-num">{{ pl.lineNumber }}</span>
-            <span class="ev-line-content">
-              <ng-container *ngIf="pl.isComment"><span class="ev-token-comment">{{ pl.raw }}</span></ng-container>
-              <ng-container *ngIf="pl.isEmpty">&nbsp;</ng-container>
-              <ng-container *ngIf="!pl.isComment && !pl.isEmpty && pl.key">
-                <span class="ev-token-key">{{ pl.key }}</span><span class="ev-token-eq">=</span><span class="ev-token-value">{{ pl.value }}</span>
-              </ng-container>
-              <ng-container *ngIf="!pl.isComment && !pl.isEmpty && !pl.key">
-                <span class="ev-token-invalid">{{ pl.raw }}</span>
-              </ng-container>
+      @if (parsedLines.length > 0) {
+        <div class="ev-panel ev-panel--lines">
+          <div class="ev-panel__header">
+            <span class="ev-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Line-by-Line View
             </span>
-            <span class="ev-line-indicator" *ngIf="getLineSeverity(pl.lineNumber) as sev">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path [attr.d]="getSeverityIcon(sev)"/></svg>
-            </span>
+            <span class="ev-char-count">{{ parsedLines.length }} lines</span>
+          </div>
+          <div class="ev-panel__body ev-lines-body">
+            @for (pl of parsedLines; track pl) {
+              <div class="ev-line-row"
+                [class.ev-line-row--error]="hasIssue(pl.lineNumber, 'error')"
+                [class.ev-line-row--warning]="hasIssue(pl.lineNumber, 'warning')"
+                [class.ev-line-row--info]="hasIssue(pl.lineNumber, 'info')"
+                [class.ev-line-row--comment]="pl.isComment"
+                [class.ev-line-row--empty]="pl.isEmpty">
+                <span class="ev-line-num">{{ pl.lineNumber }}</span>
+                <span class="ev-line-content">
+                  @if (pl.isComment) {
+                    <span class="ev-token-comment">{{ pl.raw }}</span>
+                  }
+                  @if (pl.isEmpty) {
+                    &nbsp;
+                  }
+                  @if (!pl.isComment && !pl.isEmpty && pl.key) {
+                    <span class="ev-token-key">{{ pl.key }}</span><span class="ev-token-eq">=</span><span class="ev-token-value">{{ pl.value }}</span>
+                  }
+                  @if (!pl.isComment && !pl.isEmpty && !pl.key) {
+                    <span class="ev-token-invalid">{{ pl.raw }}</span>
+                  }
+                </span>
+                @if (getLineSeverity(pl.lineNumber); as sev) {
+                  <span class="ev-line-indicator">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path [attr.d]="getSeverityIcon(sev)"/></svg>
+                  </span>
+                }
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Empty state -->
-      <div class="ev-panel" *ngIf="validationStatus === 'idle'">
-        <div class="ev-output-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          <span>Validation results will appear here</span>
-          <span class="ev-output-hint">Paste your .env content or load a sample to get started</span>
+      @if (validationStatus === 'idle') {
+        <div class="ev-panel">
+          <div class="ev-output-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <span>Validation results will appear here</span>
+            <span class="ev-output-hint">Paste your .env content or load a sample to get started</span>
+          </div>
         </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

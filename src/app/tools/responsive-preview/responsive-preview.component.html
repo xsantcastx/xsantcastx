@@ -26,7 +26,7 @@
         placeholder="Enter URL (e.g. https://example.com)"
         [(ngModel)]="url"
         (keydown.enter)="loadUrl()"
-      />
+        />
     </div>
     <button class="rp-btn rp-btn--primary" (click)="loadUrl()" [disabled]="!url.trim()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -35,205 +35,222 @@
   </div>
 
   <!-- Toolbar -->
-  <div class="rp-toolbar" *ngIf="activeUrl">
-
-    <!-- Device presets -->
-    <div class="rp-device-bar">
-      <button
-        *ngFor="let device of presets"
-        class="rp-device-chip"
-        [class.rp-device-chip--active]="activeDevice?.name === device.name && !compareMode"
-        (click)="selectDevice(device)"
-        [title]="device.name + ' (' + device.width + 'x' + device.height + ')'"
-      >
-        <span class="rp-device-chip__icon">{{ device.icon === 'phone_iphone' ? '&#128241;' : device.icon === 'tablet_mac' ? '&#128195;' : device.icon === 'laptop_mac' ? '&#128187;' : '&#128421;' }}</span>
-        <span class="rp-device-chip__label">{{ device.name }}</span>
-        <span class="rp-device-chip__size">{{ device.width }}&times;{{ device.height }}</span>
-      </button>
-    </div>
-
-    <!-- Controls row -->
-    <div class="rp-controls">
-      <!-- Custom size -->
-      <div class="rp-control-group">
-        <label class="rp-control-label">Custom Size</label>
-        <div class="rp-custom-inputs">
-          <input
-            type="number"
-            class="rp-size-input"
-            placeholder="W"
-            [(ngModel)]="customWidth"
-            min="1"
-            max="7680"
-            (keydown.enter)="applyCustomSize()"
-          />
-          <span class="rp-size-x">&times;</span>
-          <input
-            type="number"
-            class="rp-size-input"
-            placeholder="H"
-            [(ngModel)]="customHeight"
-            min="1"
-            max="4320"
-            (keydown.enter)="applyCustomSize()"
-          />
-          <button class="rp-btn rp-btn--sm" (click)="applyCustomSize()" title="Apply custom size">Apply</button>
-        </div>
-      </div>
-
-      <!-- Rotate -->
-      <button class="rp-btn rp-btn--ghost" (click)="toggleRotate()" title="Toggle portrait/landscape">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 3v6h-6"/><path d="M3 21v-6h6"/>
-          <path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/>
-          <path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/>
-        </svg>
-        {{ rotated ? 'Landscape' : 'Portrait' }}
-      </button>
-
-      <!-- Frame toggle -->
-      <button class="rp-btn rp-btn--ghost" (click)="toggleFrame()" [class.rp-btn--active]="showFrame" title="Toggle device frame">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-          <line x1="12" y1="18" x2="12.01" y2="18"/>
-        </svg>
-        Frame
-      </button>
-
-      <!-- Compare mode -->
-      <button class="rp-btn rp-btn--ghost" (click)="toggleCompareMode()" [class.rp-btn--active]="compareMode" title="Side-by-side compare">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
-        </svg>
-        Compare
-      </button>
-
-      <!-- Zoom -->
-      <div class="rp-control-group">
-        <label class="rp-control-label">Zoom</label>
-        <div class="rp-zoom-bar">
+  @if (activeUrl) {
+    <div class="rp-toolbar">
+      <!-- Device presets -->
+      <div class="rp-device-bar">
+        @for (device of presets; track device) {
           <button
-            *ngFor="let level of zoomLevels"
-            class="rp-zoom-chip"
-            [class.rp-zoom-chip--active]="zoom === level"
-            (click)="setZoom(level)"
-          >{{ level }}%</button>
+            class="rp-device-chip"
+            [class.rp-device-chip--active]="activeDevice?.name === device.name && !compareMode"
+            (click)="selectDevice(device)"
+            [title]="device.name + ' (' + device.width + 'x' + device.height + ')'"
+            >
+            <span class="rp-device-chip__icon">{{ device.icon === 'phone_iphone' ? '&#128241;' : device.icon === 'tablet_mac' ? '&#128195;' : device.icon === 'laptop_mac' ? '&#128187;' : '&#128421;' }}</span>
+            <span class="rp-device-chip__label">{{ device.name }}</span>
+            <span class="rp-device-chip__size">{{ device.width }}&times;{{ device.height }}</span>
+          </button>
+        }
+      </div>
+      <!-- Controls row -->
+      <div class="rp-controls">
+        <!-- Custom size -->
+        <div class="rp-control-group">
+          <label class="rp-control-label">Custom Size</label>
+          <div class="rp-custom-inputs">
+            <input
+              type="number"
+              class="rp-size-input"
+              placeholder="W"
+              [(ngModel)]="customWidth"
+              min="1"
+              max="7680"
+              (keydown.enter)="applyCustomSize()"
+              />
+            <span class="rp-size-x">&times;</span>
+            <input
+              type="number"
+              class="rp-size-input"
+              placeholder="H"
+              [(ngModel)]="customHeight"
+              min="1"
+              max="4320"
+              (keydown.enter)="applyCustomSize()"
+              />
+            <button class="rp-btn rp-btn--sm" (click)="applyCustomSize()" title="Apply custom size">Apply</button>
+          </div>
+        </div>
+        <!-- Rotate -->
+        <button class="rp-btn rp-btn--ghost" (click)="toggleRotate()" title="Toggle portrait/landscape">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 3v6h-6"/><path d="M3 21v-6h6"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/>
+            <path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/>
+          </svg>
+          {{ rotated ? 'Landscape' : 'Portrait' }}
+        </button>
+        <!-- Frame toggle -->
+        <button class="rp-btn rp-btn--ghost" (click)="toggleFrame()" [class.rp-btn--active]="showFrame" title="Toggle device frame">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+          Frame
+        </button>
+        <!-- Compare mode -->
+        <button class="rp-btn rp-btn--ghost" (click)="toggleCompareMode()" [class.rp-btn--active]="compareMode" title="Side-by-side compare">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+          </svg>
+          Compare
+        </button>
+        <!-- Zoom -->
+        <div class="rp-control-group">
+          <label class="rp-control-label">Zoom</label>
+          <div class="rp-zoom-bar">
+            @for (level of zoomLevels; track level) {
+              <button
+                class="rp-zoom-chip"
+                [class.rp-zoom-chip--active]="zoom === level"
+                (click)="setZoom(level)"
+              >{{ level }}%</button>
+            }
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  }
 
   <!-- ═══ Single Preview ═══ -->
-  <div class="rp-preview-area" *ngIf="activeUrl && !compareMode">
-    <div class="rp-dimension-badge">
-      {{ activeDevice?.name || 'Custom' }} &mdash; {{ currentWidth }}&times;{{ currentHeight }}
-      <span *ngIf="rotated"> (Landscape)</span>
-    </div>
-
-    <div class="rp-viewport-wrapper" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
-      <div
-        class="rp-device-frame"
-        [class]="frameClass"
-        [style.width.px]="currentWidth + (showFrame && (isPhone || isTablet) ? 32 : 0)"
-        [style.height.px]="currentHeight + (showFrame && (isPhone || isTablet) ? 64 : showFrame && activeDevice?.category === 'laptop' ? 48 : 0)"
-      >
-        <!-- Phone notch -->
-        <div class="rp-frame-notch" *ngIf="showFrame && isPhone && !rotated"></div>
-        <!-- Phone home bar -->
-        <div class="rp-frame-home" *ngIf="showFrame && isPhone && !rotated"></div>
-
-        <div class="rp-iframe-container" [style.width.px]="currentWidth" [style.height.px]="currentHeight">
-          <div class="rp-loading-overlay" *ngIf="!iframeLoaded">
-            <div class="rp-spinner"></div>
-            <span>Loading preview...</span>
+  @if (activeUrl && !compareMode) {
+    <div class="rp-preview-area">
+      <div class="rp-dimension-badge">
+        {{ activeDevice?.name || 'Custom' }} &mdash; {{ currentWidth }}&times;{{ currentHeight }}
+        @if (rotated) {
+          <span> (Landscape)</span>
+        }
+      </div>
+      <div class="rp-viewport-wrapper" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
+        <div
+          class="rp-device-frame"
+          [class]="frameClass"
+          [style.width.px]="currentWidth + (showFrame && (isPhone || isTablet) ? 32 : 0)"
+          [style.height.px]="currentHeight + (showFrame && (isPhone || isTablet) ? 64 : showFrame && activeDevice?.category === 'laptop' ? 48 : 0)"
+          >
+          <!-- Phone notch -->
+          @if (showFrame && isPhone && !rotated) {
+            <div class="rp-frame-notch"></div>
+          }
+          <!-- Phone home bar -->
+          @if (showFrame && isPhone && !rotated) {
+            <div class="rp-frame-home"></div>
+          }
+          <div class="rp-iframe-container" [style.width.px]="currentWidth" [style.height.px]="currentHeight">
+            @if (!iframeLoaded) {
+              <div class="rp-loading-overlay">
+                <div class="rp-spinner"></div>
+                <span>Loading preview...</span>
+              </div>
+            }
+            <iframe
+              [src]="safeUrl(activeUrl)"
+              [style.width.px]="currentWidth"
+              [style.height.px]="currentHeight"
+              class="rp-iframe"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              (load)="onIframeLoad()"
+            ></iframe>
           </div>
-          <iframe
-            [src]="safeUrl(activeUrl)"
-            [style.width.px]="currentWidth"
-            [style.height.px]="currentHeight"
-            class="rp-iframe"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            (load)="onIframeLoad()"
-          ></iframe>
         </div>
       </div>
     </div>
-  </div>
+  }
 
   <!-- ═══ Compare Mode ═══ -->
-  <div class="rp-compare-area" *ngIf="activeUrl && compareMode">
-    <!-- Slot A -->
-    <div class="rp-compare-slot">
-      <div class="rp-compare-header">
-        <select class="rp-compare-select" (change)="selectCompareDevice('A', presets[$any($event.target).selectedIndex])" [value]="slotA.device?.name">
-          <option *ngFor="let d of presets" [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
-        </select>
-        <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('A')" title="Rotate">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
-        </button>
-        <span class="rp-compare-dims">{{ getSlotWidth(slotA) }}&times;{{ getSlotHeight(slotA) }}</span>
-      </div>
-      <div class="rp-viewport-wrapper rp-viewport-wrapper--compare" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
-        <div class="rp-device-frame" [class]="getFrameClass(slotA)">
-          <div class="rp-iframe-container" [style.width.px]="getSlotWidth(slotA)" [style.height.px]="getSlotHeight(slotA)">
-            <div class="rp-loading-overlay" *ngIf="!slotA.loaded">
-              <div class="rp-spinner"></div>
+  @if (activeUrl && compareMode) {
+    <div class="rp-compare-area">
+      <!-- Slot A -->
+      <div class="rp-compare-slot">
+        <div class="rp-compare-header">
+          <select class="rp-compare-select" (change)="selectCompareDevice('A', presets[$any($event.target).selectedIndex])" [value]="slotA.device?.name">
+            @for (d of presets; track d) {
+              <option [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
+            }
+          </select>
+          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('A')" title="Rotate">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
+          </button>
+          <span class="rp-compare-dims">{{ getSlotWidth(slotA) }}&times;{{ getSlotHeight(slotA) }}</span>
+        </div>
+        <div class="rp-viewport-wrapper rp-viewport-wrapper--compare" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
+          <div class="rp-device-frame" [class]="getFrameClass(slotA)">
+            <div class="rp-iframe-container" [style.width.px]="getSlotWidth(slotA)" [style.height.px]="getSlotHeight(slotA)">
+              @if (!slotA.loaded) {
+                <div class="rp-loading-overlay">
+                  <div class="rp-spinner"></div>
+                </div>
+              }
+              <iframe
+                [src]="safeUrl(slotA.url)"
+                [style.width.px]="getSlotWidth(slotA)"
+                [style.height.px]="getSlotHeight(slotA)"
+                class="rp-iframe"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                (load)="onSlotLoad('A')"
+              ></iframe>
             </div>
-            <iframe
-              [src]="safeUrl(slotA.url)"
-              [style.width.px]="getSlotWidth(slotA)"
-              [style.height.px]="getSlotHeight(slotA)"
-              class="rp-iframe"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              (load)="onSlotLoad('A')"
-            ></iframe>
+          </div>
+        </div>
+      </div>
+      <!-- Slot B -->
+      <div class="rp-compare-slot">
+        <div class="rp-compare-header">
+          <select class="rp-compare-select" (change)="selectCompareDevice('B', presets[$any($event.target).selectedIndex])" [value]="slotB.device?.name">
+            @for (d of presets; track d) {
+              <option [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
+            }
+          </select>
+          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('B')" title="Rotate">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
+          </button>
+          <span class="rp-compare-dims">{{ getSlotWidth(slotB) }}&times;{{ getSlotHeight(slotB) }}</span>
+        </div>
+        <div class="rp-viewport-wrapper rp-viewport-wrapper--compare" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
+          <div class="rp-device-frame" [class]="getFrameClass(slotB)">
+            <div class="rp-iframe-container" [style.width.px]="getSlotWidth(slotB)" [style.height.px]="getSlotHeight(slotB)">
+              @if (!slotB.loaded) {
+                <div class="rp-loading-overlay">
+                  <div class="rp-spinner"></div>
+                </div>
+              }
+              <iframe
+                [src]="safeUrl(slotB.url)"
+                [style.width.px]="getSlotWidth(slotB)"
+                [style.height.px]="getSlotHeight(slotB)"
+                class="rp-iframe"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                (load)="onSlotLoad('B')"
+              ></iframe>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Slot B -->
-    <div class="rp-compare-slot">
-      <div class="rp-compare-header">
-        <select class="rp-compare-select" (change)="selectCompareDevice('B', presets[$any($event.target).selectedIndex])" [value]="slotB.device?.name">
-          <option *ngFor="let d of presets" [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
-        </select>
-        <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('B')" title="Rotate">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
-        </button>
-        <span class="rp-compare-dims">{{ getSlotWidth(slotB) }}&times;{{ getSlotHeight(slotB) }}</span>
-      </div>
-      <div class="rp-viewport-wrapper rp-viewport-wrapper--compare" [style.transform]="'scale(' + scaleFactor + ')'" [style.transform-origin]="'top center'">
-        <div class="rp-device-frame" [class]="getFrameClass(slotB)">
-          <div class="rp-iframe-container" [style.width.px]="getSlotWidth(slotB)" [style.height.px]="getSlotHeight(slotB)">
-            <div class="rp-loading-overlay" *ngIf="!slotB.loaded">
-              <div class="rp-spinner"></div>
-            </div>
-            <iframe
-              [src]="safeUrl(slotB.url)"
-              [style.width.px]="getSlotWidth(slotB)"
-              [style.height.px]="getSlotHeight(slotB)"
-              class="rp-iframe"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              (load)="onSlotLoad('B')"
-            ></iframe>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  }
 
   <!-- Empty state -->
-  <div class="rp-empty" *ngIf="!activeUrl">
-    <div class="rp-empty__icon">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-        <line x1="8" y1="21" x2="16" y2="21"/>
-        <line x1="12" y1="17" x2="12" y2="21"/>
-      </svg>
+  @if (!activeUrl) {
+    <div class="rp-empty">
+      <div class="rp-empty__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      </div>
+      <p class="rp-empty__title">Enter a URL to start previewing</p>
+      <p class="rp-empty__desc">Test how any website looks across different devices and screen sizes.</p>
     </div>
-    <p class="rp-empty__title">Enter a URL to start previewing</p>
-    <p class="rp-empty__desc">Test how any website looks across different devices and screen sizes.</p>
-  </div>
+  }
 
 </div>

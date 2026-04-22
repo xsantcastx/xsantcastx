@@ -50,30 +50,34 @@
         </div>
 
         <!-- CSV Import Panel -->
-        <div class="mt-csv-panel" *ngIf="showCsvImport">
-          <div class="mt-csv-controls">
-            <label class="mt-csv-label">
-              Delimiter:
-              <select [(ngModel)]="csvDelimiter" class="mt-csv-select">
-                <option value=",">,  (comma)</option>
-                <option value="&#9;">Tab</option>
-                <option value=";">; (semicolon)</option>
-                <option value="|">| (pipe)</option>
-              </select>
-            </label>
-            <button class="mt-btn-primary mt-btn-sm" (click)="importCsv()">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Import
-            </button>
+        @if (showCsvImport) {
+          <div class="mt-csv-panel">
+            <div class="mt-csv-controls">
+              <label class="mt-csv-label">
+                Delimiter:
+                <select [(ngModel)]="csvDelimiter" class="mt-csv-select">
+                  <option value=",">,  (comma)</option>
+                  <option value="&#9;">Tab</option>
+                  <option value=";">; (semicolon)</option>
+                  <option value="|">| (pipe)</option>
+                </select>
+              </label>
+              <button class="mt-btn-primary mt-btn-sm" (click)="importCsv()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Import
+              </button>
+            </div>
+            <textarea
+              class="mt-textarea mt-textarea--csv"
+              [(ngModel)]="csvInput"
+              placeholder="Paste CSV data here...&#10;&#10;Name,Role,Level&#10;Alice,Engineer,Senior&#10;Bob,Designer,Mid"
+              spellcheck="false"
+            ></textarea>
+            @if (errorMessage) {
+              <p class="mt-csv-hint">{{ errorMessage }}</p>
+            }
           </div>
-          <textarea
-            class="mt-textarea mt-textarea--csv"
-            [(ngModel)]="csvInput"
-            placeholder="Paste CSV data here...&#10;&#10;Name,Role,Level&#10;Alice,Engineer,Senior&#10;Bob,Designer,Mid"
-            spellcheck="false"
-          ></textarea>
-          <p class="mt-csv-hint" *ngIf="errorMessage">{{ errorMessage }}</p>
-        </div>
+        }
 
         <!-- Table grid -->
         <div class="mt-panel__body">
@@ -83,18 +87,20 @@
               <thead>
                 <tr class="mt-align-row">
                   <th class="mt-row-action-cell"></th>
-                  <th *ngFor="let a of alignments; let ci = index; trackBy: trackByIndex" class="mt-align-cell">
-                    <button class="mt-align-btn" (click)="cycleAlignment(ci)" [title]="'Alignment: ' + a">
-                      <span class="mt-align-indicator" [attr.data-align]="a">{{ getAlignmentLabel(a) }}</span>
-                    </button>
-                    <button
-                      class="mt-col-remove"
-                      (click)="removeColumn(ci)"
-                      [disabled]="cols <= 1"
-                      title="Remove column">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </th>
+                  @for (a of alignments; track $index; let ci = $index) {
+                    <th class="mt-align-cell">
+                      <button class="mt-align-btn" (click)="cycleAlignment(ci)" [title]="'Alignment: ' + a">
+                        <span class="mt-align-indicator" [attr.data-align]="a">{{ getAlignmentLabel(a) }}</span>
+                      </button>
+                      <button
+                        class="mt-col-remove"
+                        (click)="removeColumn(ci)"
+                        [disabled]="cols <= 1"
+                        title="Remove column">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </th>
+                  }
                   <th class="mt-add-col-cell">
                     <button class="mt-add-btn" (click)="addColumn()" [disabled]="cols >= MAX_SIZE" title="Add column">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -104,40 +110,46 @@
                 <!-- Header cells -->
                 <tr class="mt-header-row">
                   <td class="mt-row-action-cell mt-row-label">H</td>
-                  <th *ngFor="let header of headers; let ci = index; trackBy: trackByIndex" class="mt-header-cell">
-                    <input
-                      class="mt-cell-input mt-cell-input--header"
-                      [(ngModel)]="header.value"
-                      (ngModelChange)="onCellChange()"
-                      [placeholder]="'Header ' + (ci + 1)"
-                      spellcheck="false"
-                    />
-                  </th>
+                  @for (header of headers; track $index; let ci = $index) {
+                    <th class="mt-header-cell">
+                      <input
+                        class="mt-cell-input mt-cell-input--header"
+                        [(ngModel)]="header.value"
+                        (ngModelChange)="onCellChange()"
+                        [placeholder]="'Header ' + (ci + 1)"
+                        spellcheck="false"
+                        />
+                    </th>
+                  }
                   <td class="mt-add-col-cell"></td>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of body; let ri = index; trackBy: trackByIndex" class="mt-body-row">
-                  <td class="mt-row-action-cell">
-                    <button
-                      class="mt-row-remove"
-                      (click)="removeRow(ri)"
-                      [disabled]="body.length <= 1"
-                      title="Remove row">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </td>
-                  <td *ngFor="let cell of row; let ci = index; trackBy: trackByIndex" class="mt-body-cell">
-                    <input
-                      class="mt-cell-input"
-                      [(ngModel)]="cell.value"
-                      (ngModelChange)="onCellChange()"
-                      [placeholder]="'R' + (ri + 1) + 'C' + (ci + 1)"
-                      spellcheck="false"
-                    />
-                  </td>
-                  <td class="mt-add-col-cell"></td>
-                </tr>
+                @for (row of body; track $index; let ri = $index) {
+                  <tr class="mt-body-row">
+                    <td class="mt-row-action-cell">
+                      <button
+                        class="mt-row-remove"
+                        (click)="removeRow(ri)"
+                        [disabled]="body.length <= 1"
+                        title="Remove row">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </td>
+                    @for (cell of row; track $index; let ci = $index) {
+                      <td class="mt-body-cell">
+                        <input
+                          class="mt-cell-input"
+                          [(ngModel)]="cell.value"
+                          (ngModelChange)="onCellChange()"
+                          [placeholder]="'R' + (ri + 1) + 'C' + (ci + 1)"
+                          spellcheck="false"
+                          />
+                      </td>
+                    }
+                    <td class="mt-add-col-cell"></td>
+                  </tr>
+                }
               </tbody>
             </table>
           </div>
@@ -186,37 +198,39 @@
           </span>
           <div class="mt-panel__actions">
             <!-- Copy Markdown -->
-            <button
-              class="mt-btn-ghost mt-btn-sm"
-              *ngIf="outputFormat === 'markdown'"
-              (click)="copyMarkdown()"
-              [disabled]="!markdownOutput"
-              [class.mt-btn-ghost--success]="copiedMd">
-              <ng-container *ngIf="!copiedMd">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copiedMd">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
+            @if (outputFormat === 'markdown') {
+              <button
+                class="mt-btn-ghost mt-btn-sm"
+                (click)="copyMarkdown()"
+                [disabled]="!markdownOutput"
+                [class.mt-btn-ghost--success]="copiedMd">
+                @if (!copiedMd) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                }
+                @if (copiedMd) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
+              </button>
+            }
             <!-- Copy HTML -->
-            <button
-              class="mt-btn-ghost mt-btn-sm"
-              *ngIf="outputFormat === 'html'"
-              (click)="copyHtml()"
-              [disabled]="!htmlOutput"
-              [class.mt-btn-ghost--success]="copiedHtml">
-              <ng-container *ngIf="!copiedHtml">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copiedHtml">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
+            @if (outputFormat === 'html') {
+              <button
+                class="mt-btn-ghost mt-btn-sm"
+                (click)="copyHtml()"
+                [disabled]="!htmlOutput"
+                [class.mt-btn-ghost--success]="copiedHtml">
+                @if (!copiedHtml) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                }
+                @if (copiedHtml) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
+              </button>
+            }
           </div>
         </div>
 
@@ -238,19 +252,25 @@
           <table class="mt-preview-table">
             <thead>
               <tr>
-                <th *ngFor="let h of headers; let ci = index; trackBy: trackByIndex"
+                @for (h of headers; track $index; let ci = $index) {
+                  <th
                     [style.text-align]="alignments[ci]">
-                  {{ h.value || 'Header ' + (ci + 1) }}
-                </th>
+                    {{ h.value || 'Header ' + (ci + 1) }}
+                  </th>
+                }
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let row of body; let ri = index; trackBy: trackByIndex">
-                <td *ngFor="let cell of row; let ci = index; trackBy: trackByIndex"
-                    [style.text-align]="alignments[ci]">
-                  {{ cell.value || '-' }}
-                </td>
-              </tr>
+              @for (row of body; track $index; let ri = $index) {
+                <tr>
+                  @for (cell of row; track $index; let ci = $index) {
+                    <td
+                      [style.text-align]="alignments[ci]">
+                      {{ cell.value || '-' }}
+                    </td>
+                  }
+                </tr>
+              }
             </tbody>
           </table>
         </div>

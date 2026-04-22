@@ -125,54 +125,66 @@
           </span>
           <div class="sf-panel__actions">
             <button class="sf-btn-ghost sf-btn-sm" (click)="copyOutput()" [disabled]="!formattedOutput" [class.sf-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="sf-output-body">
-          <pre class="sf-code-pre" *ngIf="formattedOutput"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="sf-output-empty" *ngIf="!formattedOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>Formatted SQL will appear here</span>
-          </div>
+          @if (formattedOutput) {
+            <pre class="sf-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!formattedOutput) {
+            <div class="sf-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Formatted SQL will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="sf-stats" *ngIf="formattedOutput">
-        <div class="sf-stat">
-          <span class="sf-stat__label">Lines</span>
-          <span class="sf-stat__value">{{ lineCount | number }}</span>
+      @if (formattedOutput) {
+        <div class="sf-stats">
+          <div class="sf-stat">
+            <span class="sf-stat__label">Lines</span>
+            <span class="sf-stat__value">{{ lineCount | number }}</span>
+          </div>
+          <div class="sf-stat-divider"></div>
+          <div class="sf-stat">
+            <span class="sf-stat__label">Input</span>
+            <span class="sf-stat__value">{{ formatBytes(inputBytes) }}</span>
+          </div>
+          <div class="sf-stat-divider"></div>
+          <div class="sf-stat">
+            <span class="sf-stat__label">Output</span>
+            <span class="sf-stat__value">{{ formatBytes(outputBytes) }}</span>
+          </div>
+          @if (savingsPercent !== 0) {
+            <div class="sf-stat-divider"></div>
+          }
+          @if (savingsPercent > 0) {
+            <div class="sf-stat sf-stat--savings">
+              <span class="sf-stat__label">Saved</span>
+              <span class="sf-stat__value sf-stat__value--green">{{ savingsPercent }}%</span>
+            </div>
+          }
+          @if (savingsPercent < 0) {
+            <div class="sf-stat sf-stat--savings">
+              <span class="sf-stat__label">Expanded</span>
+              <span class="sf-stat__value sf-stat__value--muted">{{ -savingsPercent }}%</span>
+            </div>
+          }
         </div>
-        <div class="sf-stat-divider"></div>
-        <div class="sf-stat">
-          <span class="sf-stat__label">Input</span>
-          <span class="sf-stat__value">{{ formatBytes(inputBytes) }}</span>
-        </div>
-        <div class="sf-stat-divider"></div>
-        <div class="sf-stat">
-          <span class="sf-stat__label">Output</span>
-          <span class="sf-stat__value">{{ formatBytes(outputBytes) }}</span>
-        </div>
-        <div class="sf-stat-divider" *ngIf="savingsPercent !== 0"></div>
-        <div class="sf-stat sf-stat--savings" *ngIf="savingsPercent > 0">
-          <span class="sf-stat__label">Saved</span>
-          <span class="sf-stat__value sf-stat__value--green">{{ savingsPercent }}%</span>
-        </div>
-        <div class="sf-stat sf-stat--savings" *ngIf="savingsPercent < 0">
-          <span class="sf-stat__label">Expanded</span>
-          <span class="sf-stat__value sf-stat__value--muted">{{ -savingsPercent }}%</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

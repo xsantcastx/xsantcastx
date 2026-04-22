@@ -81,7 +81,7 @@
               min="1"
               max="10000"
               step="1"
-            />
+              />
             <input
               type="range"
               class="sr-range"
@@ -90,7 +90,7 @@
               min="1"
               max="500"
               step="1"
-            />
+              />
             <span class="sr-repeat-label">times</span>
           </div>
         </div>
@@ -115,14 +115,15 @@
               <button class="sr-seg-btn" [class.sr-seg-btn--active]="separatorType === 'space'" (click)="setSeparator('space')">Space</button>
               <button class="sr-seg-btn" [class.sr-seg-btn--active]="separatorType === 'custom'" (click)="setSeparator('custom')">Custom</button>
             </div>
-            <input
-              *ngIf="separatorType === 'custom'"
-              type="text"
-              class="sr-text-input"
-              [(ngModel)]="customSeparator"
-              (ngModelChange)="onOptionChange()"
-              placeholder="Enter custom separator..."
-            />
+            @if (separatorType === 'custom') {
+              <input
+                type="text"
+                class="sr-text-input"
+                [(ngModel)]="customSeparator"
+                (ngModelChange)="onOptionChange()"
+                placeholder="Enter custom separator..."
+                />
+            }
           </div>
 
           <!-- Toggles -->
@@ -194,7 +195,7 @@
                 [(ngModel)]="linePrefix"
                 (ngModelChange)="onOptionChange()"
                 placeholder="Prefix..."
-              />
+                />
               <span class="sr-wrap-sep">text</span>
               <input
                 type="text"
@@ -202,7 +203,7 @@
                 [(ngModel)]="lineSuffix"
                 (ngModelChange)="onOptionChange()"
                 placeholder="Suffix..."
-              />
+                />
             </div>
           </div>
 
@@ -218,14 +219,14 @@
       <div class="sr-status-bar"
         [class.sr-status-bar--valid]="output"
         [class.sr-status-bar--idle]="!output">
-        <ng-container *ngIf="!output">
+        @if (!output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="output">
+        }
+        @if (output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Repeated successfully</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -236,52 +237,60 @@
             Output
           </span>
           <div class="sr-panel__actions">
-            <span class="sr-char-count" *ngIf="output">{{ outputCharCount | number }} chars</span>
+            @if (output) {
+              <span class="sr-char-count">{{ outputCharCount | number }} chars</span>
+            }
             <button class="sr-btn-ghost sr-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.sr-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Output body -->
         <div class="sr-output-body">
-          <pre class="sr-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="sr-output-empty" *ngIf="!output">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-            <span>Repeated text will appear here</span>
-          </div>
+          @if (output) {
+            <pre class="sr-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output) {
+            <div class="sr-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+              <span>Repeated text will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="sr-stats" *ngIf="output">
-        <div class="sr-stat">
-          <span class="sr-stat__label">Input</span>
-          <span class="sr-stat__value">{{ inputCharCount | number }} <span class="sr-stat__unit">ch</span></span>
+      @if (output) {
+        <div class="sr-stats">
+          <div class="sr-stat">
+            <span class="sr-stat__label">Input</span>
+            <span class="sr-stat__value">{{ inputCharCount | number }} <span class="sr-stat__unit">ch</span></span>
+          </div>
+          <div class="sr-stat-divider"></div>
+          <div class="sr-stat">
+            <span class="sr-stat__label">Output</span>
+            <span class="sr-stat__value">{{ outputCharCount | number }} <span class="sr-stat__unit">ch</span></span>
+          </div>
+          <div class="sr-stat-divider"></div>
+          <div class="sr-stat">
+            <span class="sr-stat__label">Lines</span>
+            <span class="sr-stat__value sr-stat__value--cyan">{{ outputLineCount | number }}</span>
+          </div>
+          <div class="sr-stat-divider"></div>
+          <div class="sr-stat">
+            <span class="sr-stat__label">Repeat</span>
+            <span class="sr-stat__value sr-stat__value--cyan">{{ repeatCount | number }}x</span>
+          </div>
         </div>
-        <div class="sr-stat-divider"></div>
-        <div class="sr-stat">
-          <span class="sr-stat__label">Output</span>
-          <span class="sr-stat__value">{{ outputCharCount | number }} <span class="sr-stat__unit">ch</span></span>
-        </div>
-        <div class="sr-stat-divider"></div>
-        <div class="sr-stat">
-          <span class="sr-stat__label">Lines</span>
-          <span class="sr-stat__value sr-stat__value--cyan">{{ outputLineCount | number }}</span>
-        </div>
-        <div class="sr-stat-divider"></div>
-        <div class="sr-stat">
-          <span class="sr-stat__label">Repeat</span>
-          <span class="sr-stat__value sr-stat__value--cyan">{{ repeatCount | number }}x</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

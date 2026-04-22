@@ -155,7 +155,7 @@ export class HashGeneratorComponent implements OnDestroy {
     const cryptoAlgo = cryptoAlgoMap[algo];
     if (!cryptoAlgo) throw new Error('Unknown algorithm');
 
-    const hashBuffer = await crypto.subtle.digest(cryptoAlgo, data);
+    const hashBuffer = await crypto.subtle.digest(cryptoAlgo, new Uint8Array(data));
     return this.bufferToHex(hashBuffer);
   }
 

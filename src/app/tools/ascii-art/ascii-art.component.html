@@ -34,10 +34,14 @@
         <button class="aa-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.aa-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
       </div>
       <div class="aa-output-body">
-        <pre class="aa-code" *ngIf="output"><code>{{ output }}</code></pre>
-        <div class="aa-empty" *ngIf="!output">
-          <span>ASCII art will appear here</span>
-        </div>
+        @if (output) {
+          <pre class="aa-code"><code>{{ output }}</code></pre>
+        }
+        @if (!output) {
+          <div class="aa-empty">
+            <span>ASCII art will appear here</span>
+          </div>
+        }
       </div>
     </div>
   </div>

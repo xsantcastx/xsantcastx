@@ -31,39 +31,42 @@
 <section class="embed-section">
   <h2 class="embed-section__heading">Available Tools</h2>
   <div class="embed-tool-grid">
-    <div
-      *ngFor="let tool of tools"
-      class="embed-tool-card"
-      [class.embed-tool-card--active]="selectedTool?.id === tool.id"
-      (click)="selectTool(tool)">
-      <div class="embed-tool-card__header">
-        <span class="embed-tool-card__icon">{{ tool.textIcon }}</span>
-        <h3 class="embed-tool-card__title">{{ tool.title }}</h3>
+    @for (tool of tools; track tool) {
+      <div
+        class="embed-tool-card"
+        [class.embed-tool-card--active]="selectedTool?.id === tool.id"
+        (click)="selectTool(tool)">
+        <div class="embed-tool-card__header">
+          <span class="embed-tool-card__icon">{{ tool.textIcon }}</span>
+          <h3 class="embed-tool-card__title">{{ tool.title }}</h3>
+        </div>
+        <p class="embed-tool-card__desc">{{ tool.description }}</p>
+        <div class="embed-tool-card__actions">
+          <button class="embed-tool-card__copy" (click)="copyEmbedCode(tool); $event.stopPropagation()">
+            {{ copiedSlug === tool.id ? 'Copied!' : 'Copy embed code' }}
+          </button>
+          <a class="embed-tool-card__preview-link"
+            [href]="siteUrl + '/embed/' + tool.id + '?theme=dark'"
+            target="_blank" rel="noopener">
+            Preview
+          </a>
+        </div>
       </div>
-      <p class="embed-tool-card__desc">{{ tool.description }}</p>
-      <div class="embed-tool-card__actions">
-        <button class="embed-tool-card__copy" (click)="copyEmbedCode(tool); $event.stopPropagation()">
-          {{ copiedSlug === tool.id ? 'Copied!' : 'Copy embed code' }}
-        </button>
-        <a class="embed-tool-card__preview-link"
-           [href]="siteUrl + '/embed/' + tool.id + '?theme=dark'"
-           target="_blank" rel="noopener">
-          Preview
-        </a>
-      </div>
-    </div>
+    }
   </div>
 </section>
 
-<section class="embed-section" *ngIf="selectedTool">
-  <h2 class="embed-section__heading">Embed Code</h2>
-  <div class="embed-code-block">
-    <pre class="embed-code-block__pre"><code>{{ embedPreviewCode }}</code></pre>
-    <button class="embed-code-block__copy" (click)="copyEmbedCode(selectedTool!)">
-      {{ copiedSlug === selectedTool!.id ? 'Copied!' : 'Copy' }}
-    </button>
-  </div>
-</section>
+@if (selectedTool) {
+  <section class="embed-section">
+    <h2 class="embed-section__heading">Embed Code</h2>
+    <div class="embed-code-block">
+      <pre class="embed-code-block__pre"><code>{{ embedPreviewCode }}</code></pre>
+      <button class="embed-code-block__copy" (click)="copyEmbedCode(selectedTool!)">
+        {{ copiedSlug === selectedTool!.id ? 'Copied!' : 'Copy' }}
+      </button>
+    </div>
+  </section>
+}
 
 <section class="embed-section">
   <h2 class="embed-section__heading">Parameters</h2>

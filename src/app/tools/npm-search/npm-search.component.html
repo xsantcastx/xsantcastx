@@ -36,226 +36,252 @@
         placeholder="Search npm packages... e.g. react, lodash, express"
         spellcheck="false"
         autocomplete="off"
-      />
-      <div class="ns-search-spinner" *ngIf="loading">
-        <div class="ns-spinner"></div>
-      </div>
+        />
+      @if (loading) {
+        <div class="ns-search-spinner">
+          <div class="ns-spinner"></div>
+        </div>
+      }
     </div>
   </div>
 
   <!-- Recent searches -->
-  <div class="ns-recents" *ngIf="recentSearches.length > 0 && !selectedPackage">
-    <span class="ns-recents__label">Recent:</span>
-    <button class="ns-recent-tag" *ngFor="let r of recentSearches" (click)="searchFromRecent(r)">{{ r }}</button>
-    <button class="ns-recent-clear" (click)="clearRecents()">Clear</button>
-  </div>
+  @if (recentSearches.length > 0 && !selectedPackage) {
+    <div class="ns-recents">
+      <span class="ns-recents__label">Recent:</span>
+      @for (r of recentSearches; track r) {
+        <button class="ns-recent-tag" (click)="searchFromRecent(r)">{{ r }}</button>
+      }
+      <button class="ns-recent-clear" (click)="clearRecents()">Clear</button>
+    </div>
+  }
 
   <!-- Error -->
-  <div class="ns-error" *ngIf="errorMessage">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-    {{ errorMessage }}
-  </div>
+  @if (errorMessage) {
+    <div class="ns-error">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      {{ errorMessage }}
+    </div>
+  }
 
   <!-- Package detail view -->
-  <div class="ns-detail" *ngIf="selectedPackage">
-    <button class="ns-back-to-results" (click)="clearSelection()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Back to results
-    </button>
-
-    <div class="ns-detail-grid">
-
-      <!-- Info card -->
-      <div class="ns-panel">
-        <div class="ns-panel__header">
-          <span class="ns-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
-            Package Info
-          </span>
-          <a class="ns-npm-link" [href]="selectedPackage.package.links.npm || 'https://www.npmjs.com/package/' + selectedPackage.package.name" target="_blank" rel="noopener noreferrer">
-            View on npm
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
+  @if (selectedPackage) {
+    <div class="ns-detail">
+      <button class="ns-back-to-results" (click)="clearSelection()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to results
+      </button>
+      <div class="ns-detail-grid">
+        <!-- Info card -->
+        <div class="ns-panel">
+          <div class="ns-panel__header">
+            <span class="ns-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+              Package Info
+            </span>
+            <a class="ns-npm-link" [href]="selectedPackage.package.links.npm || 'https://www.npmjs.com/package/' + selectedPackage.package.name" target="_blank" rel="noopener noreferrer">
+              View on npm
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+          <div class="ns-panel__body">
+            <h2 class="ns-pkg-name">{{ selectedPackage.package.name }}</h2>
+            <span class="ns-pkg-version">v{{ selectedPackage.package.version }}</span>
+            <p class="ns-pkg-desc">{{ selectedPackage.package.description || 'No description available.' }}</p>
+            <div class="ns-meta-grid">
+              <div class="ns-meta-item">
+                <span class="ns-meta-label">License</span>
+                <span class="ns-meta-value">{{ selectedPackage.package.license || 'N/A' }}</span>
+              </div>
+              <div class="ns-meta-item">
+                <span class="ns-meta-label">Last Published</span>
+                <span class="ns-meta-value">{{ formatDate(selectedPackage.package.date) }}</span>
+              </div>
+              <div class="ns-meta-item">
+                <span class="ns-meta-label">Publisher</span>
+                <span class="ns-meta-value">{{ selectedPackage.package.publisher?.username || 'N/A' }}</span>
+              </div>
+              <div class="ns-meta-item">
+                <span class="ns-meta-label">Bundle Size</span>
+                @if (!bundleSizeLoading) {
+                  <span class="ns-meta-value">{{ bundleSize || 'N/A' }}</span>
+                }
+                @if (bundleSizeLoading) {
+                  <span class="ns-meta-value ns-meta-value--loading">Loading...</span>
+                }
+              </div>
+            </div>
+            <!-- Links -->
+            @if (selectedPackage.package.links.homepage || selectedPackage.package.links.repository) {
+              <div class="ns-links">
+                @if (selectedPackage.package.links.homepage) {
+                  <a class="ns-link-btn" [href]="selectedPackage.package.links.homepage" target="_blank" rel="noopener noreferrer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Homepage
+                  </a>
+                }
+                @if (selectedPackage.package.links.repository) {
+                  <a class="ns-link-btn" [href]="selectedPackage.package.links.repository" target="_blank" rel="noopener noreferrer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    Repository
+                  </a>
+                }
+              </div>
+            }
+            <!-- Keywords -->
+            @if (selectedPackage.package.keywords?.length) {
+              <div class="ns-keywords">
+                <span class="ns-meta-label">Keywords</span>
+                <div class="ns-keyword-tags">
+                  @for (kw of selectedPackage.package.keywords.slice(0, 10); track kw) {
+                    <span class="ns-keyword-tag">{{ kw }}</span>
+                  }
+                </div>
+              </div>
+            }
+            <!-- Score -->
+            <div class="ns-score-section">
+              <span class="ns-meta-label">npm Score</span>
+              <div class="ns-score-bars">
+                <div class="ns-score-row">
+                  <span class="ns-score-name">Quality</span>
+                  <div class="ns-score-track"><div class="ns-score-fill" [style.width.%]="scorePercent(selectedPackage.score.detail.quality)"></div></div>
+                  <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.quality) }}%</span>
+                </div>
+                <div class="ns-score-row">
+                  <span class="ns-score-name">Popularity</span>
+                  <div class="ns-score-track"><div class="ns-score-fill ns-score-fill--pop" [style.width.%]="scorePercent(selectedPackage.score.detail.popularity)"></div></div>
+                  <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.popularity) }}%</span>
+                </div>
+                <div class="ns-score-row">
+                  <span class="ns-score-name">Maintenance</span>
+                  <div class="ns-score-track"><div class="ns-score-fill ns-score-fill--maint" [style.width.%]="scorePercent(selectedPackage.score.detail.maintenance)"></div></div>
+                  <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.maintenance) }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="ns-panel__body">
-          <h2 class="ns-pkg-name">{{ selectedPackage.package.name }}</h2>
-          <span class="ns-pkg-version">v{{ selectedPackage.package.version }}</span>
-          <p class="ns-pkg-desc">{{ selectedPackage.package.description || 'No description available.' }}</p>
-
-          <div class="ns-meta-grid">
-            <div class="ns-meta-item">
-              <span class="ns-meta-label">License</span>
-              <span class="ns-meta-value">{{ selectedPackage.package.license || 'N/A' }}</span>
-            </div>
-            <div class="ns-meta-item">
-              <span class="ns-meta-label">Last Published</span>
-              <span class="ns-meta-value">{{ formatDate(selectedPackage.package.date) }}</span>
-            </div>
-            <div class="ns-meta-item">
-              <span class="ns-meta-label">Publisher</span>
-              <span class="ns-meta-value">{{ selectedPackage.package.publisher?.username || 'N/A' }}</span>
-            </div>
-            <div class="ns-meta-item">
-              <span class="ns-meta-label">Bundle Size</span>
-              <span class="ns-meta-value" *ngIf="!bundleSizeLoading">{{ bundleSize || 'N/A' }}</span>
-              <span class="ns-meta-value ns-meta-value--loading" *ngIf="bundleSizeLoading">Loading...</span>
-            </div>
+        <!-- Install commands card -->
+        <div class="ns-panel">
+          <div class="ns-panel__header">
+            <span class="ns-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Install Commands
+            </span>
           </div>
-
-          <!-- Links -->
-          <div class="ns-links" *ngIf="selectedPackage.package.links.homepage || selectedPackage.package.links.repository">
-            <a class="ns-link-btn" *ngIf="selectedPackage.package.links.homepage" [href]="selectedPackage.package.links.homepage" target="_blank" rel="noopener noreferrer">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              Homepage
-            </a>
-            <a class="ns-link-btn" *ngIf="selectedPackage.package.links.repository" [href]="selectedPackage.package.links.repository" target="_blank" rel="noopener noreferrer">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-              Repository
-            </a>
-          </div>
-
-          <!-- Keywords -->
-          <div class="ns-keywords" *ngIf="selectedPackage.package.keywords?.length">
-            <span class="ns-meta-label">Keywords</span>
-            <div class="ns-keyword-tags">
-              <span class="ns-keyword-tag" *ngFor="let kw of selectedPackage.package.keywords.slice(0, 10)">{{ kw }}</span>
+          <div class="ns-panel__body">
+            <!-- PM selector -->
+            <div class="ns-pm-tabs">
+              <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'npm'" (click)="selectedPm = 'npm'">npm</button>
+              <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'yarn'" (click)="selectedPm = 'yarn'">yarn</button>
+              <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'pnpm'" (click)="selectedPm = 'pnpm'">pnpm</button>
+              <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'bun'" (click)="selectedPm = 'bun'">bun</button>
             </div>
-          </div>
-
-          <!-- Score -->
-          <div class="ns-score-section">
-            <span class="ns-meta-label">npm Score</span>
-            <div class="ns-score-bars">
-              <div class="ns-score-row">
-                <span class="ns-score-name">Quality</span>
-                <div class="ns-score-track"><div class="ns-score-fill" [style.width.%]="scorePercent(selectedPackage.score.detail.quality)"></div></div>
-                <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.quality) }}%</span>
+            <!-- Commands -->
+            <div class="ns-cmd-list">
+              <div class="ns-cmd-row">
+                <span class="ns-cmd-label">Install</span>
+                <div class="ns-cmd-block">
+                  <code class="ns-cmd-code">{{ getInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
+                  <button class="ns-cmd-copy" (click)="copyCommand(getInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getInstallCommand(selectedPm, selectedPackage.package.name)">
+                    {{ copiedCommand === getInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
+                  </button>
+                </div>
               </div>
-              <div class="ns-score-row">
-                <span class="ns-score-name">Popularity</span>
-                <div class="ns-score-track"><div class="ns-score-fill ns-score-fill--pop" [style.width.%]="scorePercent(selectedPackage.score.detail.popularity)"></div></div>
-                <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.popularity) }}%</span>
+              <div class="ns-cmd-row">
+                <span class="ns-cmd-label">Dev dependency</span>
+                <div class="ns-cmd-block">
+                  <code class="ns-cmd-code">{{ getDevInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
+                  <button class="ns-cmd-copy" (click)="copyCommand(getDevInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getDevInstallCommand(selectedPm, selectedPackage.package.name)">
+                    {{ copiedCommand === getDevInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
+                  </button>
+                </div>
               </div>
-              <div class="ns-score-row">
-                <span class="ns-score-name">Maintenance</span>
-                <div class="ns-score-track"><div class="ns-score-fill ns-score-fill--maint" [style.width.%]="scorePercent(selectedPackage.score.detail.maintenance)"></div></div>
-                <span class="ns-score-pct">{{ scorePercent(selectedPackage.score.detail.maintenance) }}%</span>
+              <div class="ns-cmd-row">
+                <span class="ns-cmd-label">Global</span>
+                <div class="ns-cmd-block">
+                  <code class="ns-cmd-code">{{ getGlobalInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
+                  <button class="ns-cmd-copy" (click)="copyCommand(getGlobalInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getGlobalInstallCommand(selectedPm, selectedPackage.package.name)">
+                    {{ copiedCommand === getGlobalInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- All PMs comparison table -->
+            <div class="ns-compare-section">
+              <span class="ns-meta-label">Quick Compare</span>
+              <div class="ns-compare-table">
+                @for (pm of ['npm', 'yarn', 'pnpm', 'bun']; track pm) {
+                  <div class="ns-compare-row">
+                    <span class="ns-compare-pm">{{ pm }}</span>
+                    <code class="ns-compare-cmd">{{ getInstallCommand($any(pm), selectedPackage.package.name) }}</code>
+                    <button class="ns-cmd-copy ns-cmd-copy--sm" (click)="copyCommand(getInstallCommand($any(pm), selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getInstallCommand($any(pm), selectedPackage.package.name)">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    </button>
+                  </div>
+                }
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Install commands card -->
-      <div class="ns-panel">
-        <div class="ns-panel__header">
-          <span class="ns-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            Install Commands
-          </span>
-        </div>
-        <div class="ns-panel__body">
-
-          <!-- PM selector -->
-          <div class="ns-pm-tabs">
-            <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'npm'" (click)="selectedPm = 'npm'">npm</button>
-            <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'yarn'" (click)="selectedPm = 'yarn'">yarn</button>
-            <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'pnpm'" (click)="selectedPm = 'pnpm'">pnpm</button>
-            <button class="ns-pm-tab" [class.ns-pm-tab--active]="selectedPm === 'bun'" (click)="selectedPm = 'bun'">bun</button>
-          </div>
-
-          <!-- Commands -->
-          <div class="ns-cmd-list">
-            <div class="ns-cmd-row">
-              <span class="ns-cmd-label">Install</span>
-              <div class="ns-cmd-block">
-                <code class="ns-cmd-code">{{ getInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
-                <button class="ns-cmd-copy" (click)="copyCommand(getInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getInstallCommand(selectedPm, selectedPackage.package.name)">
-                  {{ copiedCommand === getInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
-                </button>
-              </div>
-            </div>
-            <div class="ns-cmd-row">
-              <span class="ns-cmd-label">Dev dependency</span>
-              <div class="ns-cmd-block">
-                <code class="ns-cmd-code">{{ getDevInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
-                <button class="ns-cmd-copy" (click)="copyCommand(getDevInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getDevInstallCommand(selectedPm, selectedPackage.package.name)">
-                  {{ copiedCommand === getDevInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
-                </button>
-              </div>
-            </div>
-            <div class="ns-cmd-row">
-              <span class="ns-cmd-label">Global</span>
-              <div class="ns-cmd-block">
-                <code class="ns-cmd-code">{{ getGlobalInstallCommand(selectedPm, selectedPackage.package.name) }}</code>
-                <button class="ns-cmd-copy" (click)="copyCommand(getGlobalInstallCommand(selectedPm, selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getGlobalInstallCommand(selectedPm, selectedPackage.package.name)">
-                  {{ copiedCommand === getGlobalInstallCommand(selectedPm, selectedPackage.package.name) ? 'Copied!' : 'Copy' }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- All PMs comparison table -->
-          <div class="ns-compare-section">
-            <span class="ns-meta-label">Quick Compare</span>
-            <div class="ns-compare-table">
-              <div class="ns-compare-row" *ngFor="let pm of ['npm', 'yarn', 'pnpm', 'bun']">
-                <span class="ns-compare-pm">{{ pm }}</span>
-                <code class="ns-compare-cmd">{{ getInstallCommand($any(pm), selectedPackage.package.name) }}</code>
-                <button class="ns-cmd-copy ns-cmd-copy--sm" (click)="copyCommand(getInstallCommand($any(pm), selectedPackage.package.name))" [class.ns-cmd-copy--done]="copiedCommand === getInstallCommand($any(pm), selectedPackage.package.name)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
     </div>
-  </div>
+  }
 
   <!-- Results list -->
-  <div class="ns-results" *ngIf="results.length > 0 && !selectedPackage">
-    <div class="ns-results-header">
-      <span class="ns-results-count">{{ totalResults | number }} packages found</span>
-    </div>
-    <div class="ns-result-card" *ngFor="let r of results" (click)="selectPackage(r)">
-      <div class="ns-result-top">
-        <span class="ns-result-name">{{ r.package.name }}</span>
-        <span class="ns-result-version">v{{ r.package.version }}</span>
+  @if (results.length > 0 && !selectedPackage) {
+    <div class="ns-results">
+      <div class="ns-results-header">
+        <span class="ns-results-count">{{ totalResults | number }} packages found</span>
       </div>
-      <p class="ns-result-desc">{{ r.package.description || 'No description' }}</p>
-      <div class="ns-result-meta">
-        <span class="ns-result-meta-item" *ngIf="r.package.license">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          {{ r.package.license }}
-        </span>
-        <span class="ns-result-meta-item">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          {{ formatDate(r.package.date) }}
-        </span>
-        <span class="ns-result-meta-item" *ngIf="r.package.publisher?.username">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          {{ r.package.publisher?.username }}
-        </span>
-        <span class="ns-result-score">
-          Score: {{ scorePercent(r.score.final) }}%
-        </span>
-      </div>
+      @for (r of results; track r) {
+        <div class="ns-result-card" (click)="selectPackage(r)">
+          <div class="ns-result-top">
+            <span class="ns-result-name">{{ r.package.name }}</span>
+            <span class="ns-result-version">v{{ r.package.version }}</span>
+          </div>
+          <p class="ns-result-desc">{{ r.package.description || 'No description' }}</p>
+          <div class="ns-result-meta">
+            @if (r.package.license) {
+              <span class="ns-result-meta-item">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                {{ r.package.license }}
+              </span>
+            }
+            <span class="ns-result-meta-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {{ formatDate(r.package.date) }}
+            </span>
+            @if (r.package.publisher?.username) {
+              <span class="ns-result-meta-item">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                {{ r.package.publisher?.username }}
+              </span>
+            }
+            <span class="ns-result-score">
+              Score: {{ scorePercent(r.score.final) }}%
+            </span>
+          </div>
+        </div>
+      }
     </div>
-  </div>
+  }
 
   <!-- Empty state -->
-  <div class="ns-empty" *ngIf="!loading && results.length === 0 && query.trim() && !errorMessage && !selectedPackage">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <span>No packages found for "{{ query }}"</span>
-  </div>
+  @if (!loading && results.length === 0 && query.trim() && !errorMessage && !selectedPackage) {
+    <div class="ns-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>No packages found for "{{ query }}"</span>
+    </div>
+  }
 
   <!-- Initial state -->
-  <div class="ns-empty" *ngIf="!loading && !query.trim() && results.length === 0 && !selectedPackage">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
-    <span>Search the npm registry to explore package details</span>
-  </div>
+  @if (!loading && !query.trim() && results.length === 0 && !selectedPackage) {
+    <div class="ns-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Search the npm registry to explore package details</span>
+    </div>
+  }
 
 </div>

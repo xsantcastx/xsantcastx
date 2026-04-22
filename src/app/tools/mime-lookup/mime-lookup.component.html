@@ -30,12 +30,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let entry of filteredMimeTypes" (click)="copyMime(entry)" class="ml-row">
-          <td><code class="ml-ext">{{ entry.extension }}</code></td>
-          <td><code class="ml-mime">{{ entry.mimeType }}</code></td>
-          <td><span class="ml-cat">{{ entry.category }}</span></td>
-          <td><span class="ml-copy-hint">Click to copy</span></td>
-        </tr>
+        @for (entry of filteredMimeTypes; track entry) {
+          <tr (click)="copyMime(entry)" class="ml-row">
+            <td><code class="ml-ext">{{ entry.extension }}</code></td>
+            <td><code class="ml-mime">{{ entry.mimeType }}</code></td>
+            <td><span class="ml-cat">{{ entry.category }}</span></td>
+            <td><span class="ml-copy-hint">Click to copy</span></td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>

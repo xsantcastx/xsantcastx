@@ -48,14 +48,18 @@
         </div>
         <div class="mission-body">
           <div class="mission-name">{{ currentTask }}</div>
-          <div class="mission-executing" *ngIf="currentTool">
-            <span class="exec-label">EXECUTING</span>
-            <span class="exec-tool">{{ currentTool }}</span>
-          </div>
-          <div class="mission-executing idle-exec" *ngIf="!currentTool && isActive">
-            <span class="exec-label">STATUS</span>
-            <span class="exec-tool">PROCESSING</span>
-          </div>
+          @if (currentTool) {
+            <div class="mission-executing">
+              <span class="exec-label">EXECUTING</span>
+              <span class="exec-tool">{{ currentTool }}</span>
+            </div>
+          }
+          @if (!currentTool && isActive) {
+            <div class="mission-executing idle-exec">
+              <span class="exec-label">STATUS</span>
+              <span class="exec-tool">PROCESSING</span>
+            </div>
+          }
           <div class="progress-wrap">
             <div class="progress-track">
               <div class="progress-fill" [style.width.%]="taskProgress"></div>
@@ -72,11 +76,13 @@
           <span class="panel-label">SESSION METRICS</span>
         </div>
         <div class="metrics-grid">
-          <div class="metric-card" *ngFor="let m of metrics">
-            <span class="metric-icon">{{ m.icon }}</span>
-            <span class="metric-value">{{ m.value }}</span>
-            <span class="metric-label">{{ m.label }}</span>
-          </div>
+          @for (m of metrics; track m) {
+            <div class="metric-card">
+              <span class="metric-icon">{{ m.icon }}</span>
+              <span class="metric-value">{{ m.value }}</span>
+              <span class="metric-label">{{ m.label }}</span>
+            </div>
+          }
         </div>
       </div>
 
@@ -86,17 +92,21 @@
           <span class="panel-label">TOOL USAGE</span>
         </div>
         <div class="tool-list">
-          <div class="tool-row" *ngFor="let t of toolStats">
-            <span class="tool-row-name">{{ t.name }}</span>
-            <div class="tool-row-track">
-              <div class="tool-row-fill" [style.width.%]="t.pct" [style.background]="t.color"
-                   [style.boxShadow]="'0 0 8px ' + t.color + '66'"></div>
+          @for (t of toolStats; track t) {
+            <div class="tool-row">
+              <span class="tool-row-name">{{ t.name }}</span>
+              <div class="tool-row-track">
+                <div class="tool-row-fill" [style.width.%]="t.pct" [style.background]="t.color"
+                [style.boxShadow]="'0 0 8px ' + t.color + '66'"></div>
+              </div>
+              <span class="tool-row-count">{{ t.count }}</span>
             </div>
-            <span class="tool-row-count">{{ t.count }}</span>
-          </div>
-          <div class="tool-empty" *ngIf="toolStats.length === 0">
-            <span class="tool-empty-text">Waiting for tool calls...</span>
-          </div>
+          }
+          @if (toolStats.length === 0) {
+            <div class="tool-empty">
+              <span class="tool-empty-text">Waiting for tool calls...</span>
+            </div>
+          }
         </div>
       </div>
 
@@ -110,25 +120,34 @@
           <span class="feed-count">{{ activityLog.length }} EVENTS</span>
         </div>
         <div class="feed-container" #feedContainer>
-          <div class="feed-entry"
-               *ngFor="let entry of activityLog; trackBy: trackEntry"
-               [ngClass]="['entry-' + entry.type, entry.isNew ? 'entry-new' : '']">
-            <span class="entry-ts">{{ entry.timestamp | date:'HH:mm:ss' }}</span>
-            <span class="entry-dot" [ngClass]="'dot-' + entry.type"></span>
-            <div class="entry-body">
-              <span class="entry-tool-badge" *ngIf="entry.tool">{{ entry.tool }}</span>
-              <span class="entry-text">{{ entry.text }}</span>
-              <span class="entry-detail" *ngIf="entry.detail">{{ entry.detail }}</span>
+          @for (entry of activityLog; track trackEntry($index, entry)) {
+            <div class="feed-entry"
+              [ngClass]="['entry-' + entry.type, entry.isNew ? 'entry-new' : '']">
+              <span class="entry-ts">{{ entry.timestamp | date:'HH:mm:ss' }}</span>
+              <span class="entry-dot" [ngClass]="'dot-' + entry.type"></span>
+              <div class="entry-body">
+                @if (entry.tool) {
+                  <span class="entry-tool-badge">{{ entry.tool }}</span>
+                }
+                <span class="entry-text">{{ entry.text }}</span>
+                @if (entry.detail) {
+                  <span class="entry-detail">{{ entry.detail }}</span>
+                }
+              </div>
             </div>
-          </div>
-          <div class="terminal-cursor" *ngIf="isActive">
-            <span class="cursor-prompt">claude&#64;xsantcastx:~$&nbsp;</span>
-            <span class="cursor-blink">█</span>
-          </div>
-          <div class="feed-idle" *ngIf="activityLog.length === 0">
-            <span class="idle-text">Establishing connection...</span>
-            <span class="idle-dots"><span></span><span></span><span></span></span>
-          </div>
+          }
+          @if (isActive) {
+            <div class="terminal-cursor">
+              <span class="cursor-prompt">claude&#64;xsantcastx:~$&nbsp;</span>
+              <span class="cursor-blink">█</span>
+            </div>
+          }
+          @if (activityLog.length === 0) {
+            <div class="feed-idle">
+              <span class="idle-text">Establishing connection...</span>
+              <span class="idle-dots"><span></span><span></span><span></span></span>
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -148,44 +167,49 @@
 
         <!-- Messages -->
         <div class="chat-messages" #chatContainer>
-          <div class="chat-msg"
-               *ngFor="let m of chatMessages; trackBy: trackChat"
-               [ngClass]="{ 'msg-system': m.isSystem, 'msg-new': m.isNew }">
-            <span class="msg-name" [style.color]="m.color">{{ m.name }}</span>
-            <span class="msg-colon" *ngIf="!m.isSystem">:</span>
-            <span class="msg-text">{{ m.message }}</span>
-          </div>
-          <div class="chat-empty" *ngIf="chatMessages.length === 0">
-            <span>No messages yet — be first!</span>
-          </div>
+          @for (m of chatMessages; track trackChat($index, m)) {
+            <div class="chat-msg"
+              [ngClass]="{ 'msg-system': m.isSystem, 'msg-new': m.isNew }">
+              <span class="msg-name" [style.color]="m.color">{{ m.name }}</span>
+              @if (!m.isSystem) {
+                <span class="msg-colon">:</span>
+              }
+              <span class="msg-text">{{ m.message }}</span>
+            </div>
+          }
+          @if (chatMessages.length === 0) {
+            <div class="chat-empty">
+              <span>No messages yet — be first!</span>
+            </div>
+          }
         </div>
 
         <!-- Username row -->
         <div class="chat-username-row">
-          <ng-container *ngIf="!editingUsername">
+          @if (!editingUsername) {
             <span class="username-display" (click)="startEditUsername()">
               <span class="username-dot" [style.background]="getUserColor(chatUsername)"></span>
               {{ chatUsername }}
               <span class="username-edit-hint">edit</span>
             </span>
-          </ng-container>
-          <ng-container *ngIf="editingUsername">
+          }
+          @if (editingUsername) {
             <input class="username-edit-input"
-                   [(ngModel)]="usernameInput"
-                   (keydown.enter)="saveUsername()"
-                   (blur)="saveUsername()"
-                   placeholder="Your name"
-                   maxlength="20" />
-          </ng-container>
+              [(ngModel)]="usernameInput"
+              (keydown.enter)="saveUsername()"
+              (blur)="saveUsername()"
+              placeholder="Your name"
+              maxlength="20" />
+          }
         </div>
 
         <!-- Input row -->
         <div class="chat-input-row">
           <input class="chat-input"
-                 [(ngModel)]="chatInput"
-                 (keydown.enter)="sendMessage()"
-                 placeholder="Say something..."
-                 maxlength="200" />
+            [(ngModel)]="chatInput"
+            (keydown.enter)="sendMessage()"
+            placeholder="Say something..."
+            maxlength="200" />
           <button class="chat-send-btn" (click)="sendMessage()" [disabled]="!chatInput.trim()">
             SEND
           </button>
@@ -203,17 +227,20 @@
         </div>
 
         <div class="bot-messages" #botContainer>
-          <div class="bot-msg"
-               *ngFor="let m of botMessages; trackBy: trackBot"
-               [ngClass]="{ 'bot-msg-new': m.isNew }">
-            <span class="bot-ts">{{ m.timestamp | date:'HH:mm:ss' }}</span>
-            <span class="bot-name" [style.color]="getBotColor(m.botId)">{{ m.botName }}</span>
-            <span class="bot-sep">›</span>
-            <span class="bot-text">{{ m.message }}</span>
-          </div>
-          <div class="bot-empty" *ngIf="botMessages.length === 0">
-            <span class="idle-text">Agents connecting...</span>
-          </div>
+          @for (m of botMessages; track trackBot($index, m)) {
+            <div class="bot-msg"
+              [ngClass]="{ 'bot-msg-new': m.isNew }">
+              <span class="bot-ts">{{ m.timestamp | date:'HH:mm:ss' }}</span>
+              <span class="bot-name" [style.color]="getBotColor(m.botId)">{{ m.botName }}</span>
+              <span class="bot-sep">›</span>
+              <span class="bot-text">{{ m.message }}</span>
+            </div>
+          }
+          @if (botMessages.length === 0) {
+            <div class="bot-empty">
+              <span class="idle-text">Agents connecting...</span>
+            </div>
+          }
         </div>
       </div>
 

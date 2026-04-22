@@ -55,7 +55,7 @@
             [style.width.px]="previewBoxWidth"
             [style.height.px]="previewBoxHeight"
             [style.borderRadius]="borderRadiusInline"
-          >
+            >
             <!-- Corner labels -->
             <span class="br-corner-label br-corner-label--tl">{{ advancedMode ? advancedCorners.topLeftH + '/' + advancedCorners.topLeftV : corners.topLeft }}{{ unit }}</span>
             <span class="br-corner-label br-corner-label--tr">{{ advancedMode ? advancedCorners.topRightH + '/' + advancedCorners.topRightV : corners.topRight }}{{ unit }}</span>
@@ -88,12 +88,16 @@
         </div>
         <pre class="br-code-block">{{ displayedCode }}</pre>
         <button type="button" class="br-copy-btn" (click)="copyDisplayedCode()">
-          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          @if (!codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          }
+          @if (codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          }
           {{ codeCopied ? 'Copied!' : 'Copy Code' }}
         </button>
       </div>
@@ -111,14 +115,18 @@
               {{ unit === 'px' ? 'px' : '%' }}
             </button>
             <button type="button" class="br-toggle-btn" [class.is-active]="linked" (click)="toggleLinked()" title="Link/Unlink corners">
-              <svg *ngIf="linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              <svg *ngIf="!linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6a5 5 0 0 1 0-10h3"/>
-                <line x1="8" y1="12" x2="16" y2="12" stroke-dasharray="2 3"/>
-              </svg>
+              @if (linked) {
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              }
+              @if (!linked) {
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6a5 5 0 0 1 0-10h3"/>
+                  <line x1="8" y1="12" x2="16" y2="12" stroke-dasharray="2 3"/>
+                </svg>
+              }
               {{ linked ? 'Linked' : 'Unlinked' }}
             </button>
             <button type="button" class="br-toggle-btn" [class.is-active]="advancedMode" (click)="toggleAdvancedMode()">
@@ -128,124 +136,121 @@
         </div>
 
         <!-- Simple mode -->
-        <div class="br-controls-grid" *ngIf="!advancedMode">
-          <!-- Top Left -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Left</label>
-              <span class="br-control-group__value">{{ corners.topLeft }}{{ unit }}</span>
+        @if (!advancedMode) {
+          <div class="br-controls-grid">
+            <!-- Top Left -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Left</label>
+                <span class="br-control-group__value">{{ corners.topLeft }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="sliderMax" step="1"
+                [value]="corners.topLeft" (input)="onCornerChange('topLeft', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="sliderMax" step="1"
-              [value]="corners.topLeft" (input)="onCornerChange('topLeft', $event)" class="br-slider" />
-          </div>
-
-          <!-- Top Right -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Right</label>
-              <span class="br-control-group__value">{{ corners.topRight }}{{ unit }}</span>
+            <!-- Top Right -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Right</label>
+                <span class="br-control-group__value">{{ corners.topRight }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="sliderMax" step="1"
+                [value]="corners.topRight" (input)="onCornerChange('topRight', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="sliderMax" step="1"
-              [value]="corners.topRight" (input)="onCornerChange('topRight', $event)" class="br-slider" />
-          </div>
-
-          <!-- Bottom Right -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Right</label>
-              <span class="br-control-group__value">{{ corners.bottomRight }}{{ unit }}</span>
+            <!-- Bottom Right -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Right</label>
+                <span class="br-control-group__value">{{ corners.bottomRight }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="sliderMax" step="1"
+                [value]="corners.bottomRight" (input)="onCornerChange('bottomRight', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="sliderMax" step="1"
-              [value]="corners.bottomRight" (input)="onCornerChange('bottomRight', $event)" class="br-slider" />
-          </div>
-
-          <!-- Bottom Left -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Left</label>
-              <span class="br-control-group__value">{{ corners.bottomLeft }}{{ unit }}</span>
+            <!-- Bottom Left -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Left</label>
+                <span class="br-control-group__value">{{ corners.bottomLeft }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="sliderMax" step="1"
+                [value]="corners.bottomLeft" (input)="onCornerChange('bottomLeft', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="sliderMax" step="1"
-              [value]="corners.bottomLeft" (input)="onCornerChange('bottomLeft', $event)" class="br-slider" />
           </div>
-        </div>
+        }
 
         <!-- Advanced mode (8-value) -->
-        <div class="br-controls-grid br-controls-grid--advanced" *ngIf="advancedMode">
-          <p class="br-advanced-hint">Horizontal / Vertical radii per corner for blob shapes</p>
-
-          <!-- Top Left H/V -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Left H</label>
-              <span class="br-control-group__value">{{ advancedCorners.topLeftH }}{{ unit }}</span>
+        @if (advancedMode) {
+          <div class="br-controls-grid br-controls-grid--advanced">
+            <p class="br-advanced-hint">Horizontal / Vertical radii per corner for blob shapes</p>
+            <!-- Top Left H/V -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Left H</label>
+                <span class="br-control-group__value">{{ advancedCorners.topLeftH }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.topLeftH" (input)="onAdvancedCornerChange('topLeftH', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.topLeftH" (input)="onAdvancedCornerChange('topLeftH', $event)" class="br-slider" />
-          </div>
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Left V</label>
-              <span class="br-control-group__value">{{ advancedCorners.topLeftV }}{{ unit }}</span>
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Left V</label>
+                <span class="br-control-group__value">{{ advancedCorners.topLeftV }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.topLeftV" (input)="onAdvancedCornerChange('topLeftV', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.topLeftV" (input)="onAdvancedCornerChange('topLeftV', $event)" class="br-slider" />
-          </div>
-
-          <!-- Top Right H/V -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Right H</label>
-              <span class="br-control-group__value">{{ advancedCorners.topRightH }}{{ unit }}</span>
+            <!-- Top Right H/V -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Right H</label>
+                <span class="br-control-group__value">{{ advancedCorners.topRightH }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.topRightH" (input)="onAdvancedCornerChange('topRightH', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.topRightH" (input)="onAdvancedCornerChange('topRightH', $event)" class="br-slider" />
-          </div>
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Top Right V</label>
-              <span class="br-control-group__value">{{ advancedCorners.topRightV }}{{ unit }}</span>
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Top Right V</label>
+                <span class="br-control-group__value">{{ advancedCorners.topRightV }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.topRightV" (input)="onAdvancedCornerChange('topRightV', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.topRightV" (input)="onAdvancedCornerChange('topRightV', $event)" class="br-slider" />
-          </div>
-
-          <!-- Bottom Right H/V -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Right H</label>
-              <span class="br-control-group__value">{{ advancedCorners.bottomRightH }}{{ unit }}</span>
+            <!-- Bottom Right H/V -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Right H</label>
+                <span class="br-control-group__value">{{ advancedCorners.bottomRightH }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.bottomRightH" (input)="onAdvancedCornerChange('bottomRightH', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.bottomRightH" (input)="onAdvancedCornerChange('bottomRightH', $event)" class="br-slider" />
-          </div>
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Right V</label>
-              <span class="br-control-group__value">{{ advancedCorners.bottomRightV }}{{ unit }}</span>
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Right V</label>
+                <span class="br-control-group__value">{{ advancedCorners.bottomRightV }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.bottomRightV" (input)="onAdvancedCornerChange('bottomRightV', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.bottomRightV" (input)="onAdvancedCornerChange('bottomRightV', $event)" class="br-slider" />
-          </div>
-
-          <!-- Bottom Left H/V -->
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Left H</label>
-              <span class="br-control-group__value">{{ advancedCorners.bottomLeftH }}{{ unit }}</span>
+            <!-- Bottom Left H/V -->
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Left H</label>
+                <span class="br-control-group__value">{{ advancedCorners.bottomLeftH }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.bottomLeftH" (input)="onAdvancedCornerChange('bottomLeftH', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.bottomLeftH" (input)="onAdvancedCornerChange('bottomLeftH', $event)" class="br-slider" />
-          </div>
-          <div class="br-control-group">
-            <div class="br-control-group__top">
-              <label class="br-control-group__label">Bottom Left V</label>
-              <span class="br-control-group__value">{{ advancedCorners.bottomLeftV }}{{ unit }}</span>
+            <div class="br-control-group">
+              <div class="br-control-group__top">
+                <label class="br-control-group__label">Bottom Left V</label>
+                <span class="br-control-group__value">{{ advancedCorners.bottomLeftV }}{{ unit }}</span>
+              </div>
+              <input type="range" min="0" [max]="advancedSliderMax" step="1"
+                [value]="advancedCorners.bottomLeftV" (input)="onAdvancedCornerChange('bottomLeftV', $event)" class="br-slider" />
             </div>
-            <input type="range" min="0" [max]="advancedSliderMax" step="1"
-              [value]="advancedCorners.bottomLeftV" (input)="onAdvancedCornerChange('bottomLeftV', $event)" class="br-slider" />
           </div>
-        </div>
+        }
       </div>
 
       <!-- Presets -->
@@ -254,15 +259,16 @@
           <span class="br-card__label">Presets</span>
         </div>
         <div class="br-presets-grid">
-          <button
-            type="button"
-            class="br-preset-item"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <div class="br-preset-preview" [ngStyle]="getPresetPreviewStyle(preset)"></div>
-            <span class="br-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="br-preset-item"
+              (click)="applyPreset(preset)"
+              >
+              <div class="br-preset-preview" [ngStyle]="getPresetPreviewStyle(preset)"></div>
+              <span class="br-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

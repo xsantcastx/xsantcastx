@@ -54,33 +54,41 @@
         </div>
 
         <!-- Hero Preview -->
-        <div class="fp-preview-area" *ngIf="previewContext === 'hero'">
-          <div class="fp-hero-preview">
-            <h2 class="fp-hero-heading" [ngStyle]="headingStyle" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
-            <p class="fp-hero-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
-          </div>
-        </div>
-
-        <!-- Article Preview -->
-        <div class="fp-preview-area" *ngIf="previewContext === 'article'">
-          <div class="fp-article-preview">
-            <span class="fp-article-meta" [ngStyle]="bodyStyle" style="font-size: 12px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em;">Design &middot; 5 min read</span>
-            <h2 class="fp-article-heading" [ngStyle]="headingStyle" style="font-size: 32px; margin: 0.5rem 0 1rem;" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
-            <p class="fp-article-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
-            <p class="fp-article-body" [ngStyle]="bodyStyle" style="opacity: 0.6;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
-          </div>
-        </div>
-
-        <!-- Card Preview -->
-        <div class="fp-preview-area fp-preview-area--cards" *ngIf="previewContext === 'card'">
-          <div class="fp-card-preview" *ngFor="let i of [1, 2, 3]">
-            <div class="fp-card-preview__img"></div>
-            <div class="fp-card-preview__content">
-              <h3 class="fp-card-preview__title" [ngStyle]="headingStyle" style="font-size: 18px;">{{ i === 1 ? 'Design Systems' : i === 2 ? 'Color Theory' : 'Typography' }}</h3>
-              <p class="fp-card-preview__text" [ngStyle]="bodyStyle" style="font-size: 14px;">A short description of the topic that shows how body text looks at smaller sizes.</p>
+        @if (previewContext === 'hero') {
+          <div class="fp-preview-area">
+            <div class="fp-hero-preview">
+              <h2 class="fp-hero-heading" [ngStyle]="headingStyle" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
+              <p class="fp-hero-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
             </div>
           </div>
-        </div>
+        }
+
+        <!-- Article Preview -->
+        @if (previewContext === 'article') {
+          <div class="fp-preview-area">
+            <div class="fp-article-preview">
+              <span class="fp-article-meta" [ngStyle]="bodyStyle" style="font-size: 12px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em;">Design &middot; 5 min read</span>
+              <h2 class="fp-article-heading" [ngStyle]="headingStyle" style="font-size: 32px; margin: 0.5rem 0 1rem;" contenteditable="true" (input)="headingText = $any($event.target).innerText">{{ headingText }}</h2>
+              <p class="fp-article-body" [ngStyle]="bodyStyle" contenteditable="true" (input)="bodyText = $any($event.target).innerText">{{ bodyText }}</p>
+              <p class="fp-article-body" [ngStyle]="bodyStyle" style="opacity: 0.6;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+            </div>
+          </div>
+        }
+
+        <!-- Card Preview -->
+        @if (previewContext === 'card') {
+          <div class="fp-preview-area fp-preview-area--cards">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="fp-card-preview">
+                <div class="fp-card-preview__img"></div>
+                <div class="fp-card-preview__content">
+                  <h3 class="fp-card-preview__title" [ngStyle]="headingStyle" style="font-size: 18px;">{{ i === 1 ? 'Design Systems' : i === 2 ? 'Color Theory' : 'Typography' }}</h3>
+                  <p class="fp-card-preview__text" [ngStyle]="bodyStyle" style="font-size: 14px;">A short description of the topic that shows how body text looks at smaller sizes.</p>
+                </div>
+              </div>
+            }
+          </div>
+        }
 
         <!-- Pairing name -->
         <div class="fp-preview-meta">
@@ -105,22 +113,30 @@
 
         <div class="fp-code-actions">
           <button type="button" class="fp-btn fp-btn--primary" (click)="copyCSS()">
-            <svg *ngIf="!cssCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="cssCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!cssCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (cssCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ cssCopied ? 'Copied!' : 'Copy CSS' }}
           </button>
           <button type="button" class="fp-btn fp-btn--ghost" (click)="copyLink()">
-            <svg *ngIf="!linkCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-            <svg *ngIf="linkCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!linkCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            }
+            @if (linkCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ linkCopied ? 'Copied!' : 'Copy &lt;link&gt; Tags' }}
           </button>
         </div>
@@ -239,29 +255,31 @@
 
         <!-- Category Filters -->
         <div class="fp-category-filters">
-          <button
-            type="button"
-            class="fp-category-btn"
-            *ngFor="let cat of categories; trackBy: trackByCategoryValue"
-            [class.is-active]="activeCategory === cat.value"
-            (click)="selectCategory(cat.value)"
-          >{{ cat.label }}</button>
+          @for (cat of categories; track trackByCategoryValue($index, cat)) {
+            <button
+              type="button"
+              class="fp-category-btn"
+              [class.is-active]="activeCategory === cat.value"
+              (click)="selectCategory(cat.value)"
+            >{{ cat.label }}</button>
+          }
         </div>
 
         <!-- Pairing List -->
         <div class="fp-pairing-list">
-          <div
-            class="fp-pairing-item"
-            *ngFor="let pairing of filteredPairings; trackBy: trackByPairingId"
-            [class.is-active]="activePairing.id === pairing.id"
-            (click)="selectPairing(pairing)"
-          >
-            <div class="fp-pairing-item__info">
-              <span class="fp-pairing-item__name">{{ pairing.name }}</span>
-              <span class="fp-pairing-item__fonts">{{ pairing.heading }} + {{ pairing.body }}</span>
+          @for (pairing of filteredPairings; track trackByPairingId($index, pairing)) {
+            <div
+              class="fp-pairing-item"
+              [class.is-active]="activePairing.id === pairing.id"
+              (click)="selectPairing(pairing)"
+              >
+              <div class="fp-pairing-item__info">
+                <span class="fp-pairing-item__name">{{ pairing.name }}</span>
+                <span class="fp-pairing-item__fonts">{{ pairing.heading }} + {{ pairing.body }}</span>
+              </div>
+              <span class="fp-pairing-item__badge">{{ pairing.category }}</span>
             </div>
-            <span class="fp-pairing-item__badge">{{ pairing.category }}</span>
-          </div>
+          }
         </div>
       </div>
     </div>

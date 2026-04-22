@@ -27,13 +27,15 @@
         <div class="gi-panel__body">
           <input class="gi-search" type="text" [(ngModel)]="searchQuery" placeholder="Search technologies..." />
           <div class="gi-tech-grid">
-            <button *ngFor="let tech of filteredTechnologies"
-              class="gi-tech-chip"
-              [class.gi-tech-chip--active]="tech.selected"
-              (click)="toggleTech(tech)">
-              <span class="gi-tech-chip__name">{{ tech.name }}</span>
-              <span class="gi-tech-chip__cat">{{ tech.category }}</span>
-            </button>
+            @for (tech of filteredTechnologies; track tech) {
+              <button
+                class="gi-tech-chip"
+                [class.gi-tech-chip--active]="tech.selected"
+                (click)="toggleTech(tech)">
+                <span class="gi-tech-chip__name">{{ tech.name }}</span>
+                <span class="gi-tech-chip__cat">{{ tech.category }}</span>
+              </button>
+            }
           </div>
         </div>
       </div>
@@ -51,10 +53,14 @@
           </div>
         </div>
         <div class="gi-panel__body gi-panel__body--code">
-          <pre class="gi-code" *ngIf="generatedOutput"><code>{{ generatedOutput }}</code></pre>
-          <div class="gi-empty" *ngIf="!generatedOutput">
-            <span>Select technologies on the left to generate your .gitignore</span>
-          </div>
+          @if (generatedOutput) {
+            <pre class="gi-code"><code>{{ generatedOutput }}</code></pre>
+          }
+          @if (!generatedOutput) {
+            <div class="gi-empty">
+              <span>Select technologies on the left to generate your .gitignore</span>
+            </div>
+          }
         </div>
       </div>
     </div>
