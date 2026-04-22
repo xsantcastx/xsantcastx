@@ -153,102 +153,112 @@
       </div>
 
       <!-- Results table(s) -->
-      <div class="ac-results" *ngIf="activeTab === 'side-by-side' || activeTab === 'wcag2'">
-        <div class="ac-panel">
-          <div class="ac-panel__header">
-            <span class="ac-panel__title">WCAG 2.x Compliance</span>
-          </div>
-          <div class="ac-table-wrap">
-            <table class="ac-table">
-              <thead>
-                <tr>
-                  <th>Level</th>
-                  <th>Context</th>
-                  <th>Required</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let r of wcagResults">
-                  <td><span class="ac-level-badge">{{ r.level }}</span></td>
-                  <td>{{ r.context }}</td>
-                  <td class="ac-mono">{{ r.required }}:1</td>
-                  <td>
-                    <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
-                      {{ r.passes ? 'PASS' : 'FAIL' }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      @if (activeTab === 'side-by-side' || activeTab === 'wcag2') {
+        <div class="ac-results">
+          <div class="ac-panel">
+            <div class="ac-panel__header">
+              <span class="ac-panel__title">WCAG 2.x Compliance</span>
+            </div>
+            <div class="ac-table-wrap">
+              <table class="ac-table">
+                <thead>
+                  <tr>
+                    <th>Level</th>
+                    <th>Context</th>
+                    <th>Required</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of wcagResults; track r) {
+                    <tr>
+                      <td><span class="ac-level-badge">{{ r.level }}</span></td>
+                      <td>{{ r.context }}</td>
+                      <td class="ac-mono">{{ r.required }}:1</td>
+                      <td>
+                        <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
+                          {{ r.passes ? 'PASS' : 'FAIL' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      }
 
-      <div class="ac-results" *ngIf="activeTab === 'side-by-side' || activeTab === 'apca'">
-        <div class="ac-panel">
-          <div class="ac-panel__header">
-            <span class="ac-panel__title">APCA Compliance <span class="ac-badge">Font-Aware</span></span>
-          </div>
-          <div class="ac-table-wrap">
-            <table class="ac-table">
-              <thead>
-                <tr>
-                  <th>Use Case</th>
-                  <th>Min Size</th>
-                  <th>Min Weight</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let r of apcaResults">
-                  <td>{{ r.use }}</td>
-                  <td class="ac-mono">{{ r.minFontSize > 0 ? r.minFontSize + 'px' : 'N/A' }}</td>
-                  <td class="ac-mono">{{ r.minWeight > 0 ? r.minWeight : 'N/A' }}</td>
-                  <td>
-                    <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
-                      {{ r.passes ? 'PASS' : 'FAIL' }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      @if (activeTab === 'side-by-side' || activeTab === 'apca') {
+        <div class="ac-results">
+          <div class="ac-panel">
+            <div class="ac-panel__header">
+              <span class="ac-panel__title">APCA Compliance <span class="ac-badge">Font-Aware</span></span>
+            </div>
+            <div class="ac-table-wrap">
+              <table class="ac-table">
+                <thead>
+                  <tr>
+                    <th>Use Case</th>
+                    <th>Min Size</th>
+                    <th>Min Weight</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of apcaResults; track r) {
+                    <tr>
+                      <td>{{ r.use }}</td>
+                      <td class="ac-mono">{{ r.minFontSize > 0 ? r.minFontSize + 'px' : 'N/A' }}</td>
+                      <td class="ac-mono">{{ r.minWeight > 0 ? r.minWeight : 'N/A' }}</td>
+                      <td>
+                        <span class="ac-result-tag" [class.ac-result-tag--pass]="r.passes" [class.ac-result-tag--fail]="!r.passes">
+                          {{ r.passes ? 'PASS' : 'FAIL' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      }
 
       <!-- Suggestion -->
-      <div class="ac-suggestion" *ngIf="suggestion">
-        <div class="ac-panel">
-          <div class="ac-panel__header">
-            <span class="ac-panel__title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              Nearest Accessible Color
-            </span>
-          </div>
-          <div class="ac-panel__body ac-suggestion-body">
-            <div class="ac-suggestion-preview">
-              <span class="ac-color-swatch ac-color-swatch--lg" [style.background-color]="suggestion.hex"></span>
-              <div class="ac-suggestion-info">
-                <span class="ac-suggestion-hex">{{ suggestion.hex }}</span>
-                <span class="ac-suggestion-stats">WCAG {{ suggestion.wcagRatio }}:1 | Lc {{ suggestion.apcaLc }}</span>
-              </div>
+      @if (suggestion) {
+        <div class="ac-suggestion">
+          <div class="ac-panel">
+            <div class="ac-panel__header">
+              <span class="ac-panel__title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Nearest Accessible Color
+              </span>
             </div>
-            <button class="ac-btn-primary" (click)="applySuggestion()">Apply Suggestion</button>
+            <div class="ac-panel__body ac-suggestion-body">
+              <div class="ac-suggestion-preview">
+                <span class="ac-color-swatch ac-color-swatch--lg" [style.background-color]="suggestion.hex"></span>
+                <div class="ac-suggestion-info">
+                  <span class="ac-suggestion-hex">{{ suggestion.hex }}</span>
+                  <span class="ac-suggestion-stats">WCAG {{ suggestion.wcagRatio }}:1 | Lc {{ suggestion.apcaLc }}</span>
+                </div>
+              </div>
+              <button class="ac-btn-primary" (click)="applySuggestion()">Apply Suggestion</button>
+            </div>
           </div>
         </div>
-      </div>
+      }
 
       <!-- Copy -->
       <button class="ac-btn-ghost ac-btn-copy" (click)="copyResults()" [class.ac-btn-ghost--success]="copied">
-        <ng-container *ngIf="!copied">
+        @if (!copied) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           Copy Results
-        </ng-container>
-        <ng-container *ngIf="copied">
+        }
+        @if (copied) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           Copied!
-        </ng-container>
+        }
       </button>
 
     </div><!-- /right col -->

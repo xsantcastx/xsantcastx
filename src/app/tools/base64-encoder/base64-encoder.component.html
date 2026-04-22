@@ -38,7 +38,9 @@
             Input
           </span>
           <div class="be-panel__actions">
-            <span class="be-char-count" *ngIf="!fileMode">{{ inputCharCount | number }} chars</span>
+            @if (!fileMode) {
+              <span class="be-char-count">{{ inputCharCount | number }} chars</span>
+            }
             <button class="be-btn-ghost be-btn-sm" (click)="loadSample()" title="Load sample">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Sample
@@ -51,11 +53,12 @@
         </div>
 
         <!-- Text input -->
-        <div class="be-panel__body be-panel__body--input" *ngIf="!fileMode">
-          <textarea
-            class="be-textarea"
-            [(ngModel)]="textInput"
-            (ngModelChange)="onInput()"
+        @if (!fileMode) {
+          <div class="be-panel__body be-panel__body--input">
+            <textarea
+              class="be-textarea"
+              [(ngModel)]="textInput"
+              (ngModelChange)="onInput()"
             [placeholder]="mode === 'encode' ? 'Paste or type text to encode…\n\ne.g. Hello, World! 🌍' : 'Paste Base64 string to decode…\n\ne.g. SGVsbG8sIFdvcmxkIQ=='"
             spellcheck="false"
             autocomplete="off"
@@ -63,43 +66,48 @@
             autocapitalize="off"
           ></textarea>
         </div>
+}
 
         <!-- File drop zone (encode-only) -->
-        <div class="be-panel__body" *ngIf="fileMode && mode === 'encode'">
-          <div
-            class="be-dropzone"
-            [class.be-dropzone--over]="isDragOver"
-            [class.be-dropzone--has-file]="!!fileName"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave()"
-            (drop)="onDrop($event)"
-            (click)="fileInput.click()"
-          >
-            <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
-            <ng-container *ngIf="!fileName">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="be-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="be-dropzone__label">Drop any file here</span>
-              <span class="be-dropzone__hint">or click to browse — encodes to Base64 string</span>
-            </ng-container>
-            <ng-container *ngIf="fileName">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="be-dropzone__icon be-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="be-dropzone__label">{{ fileName }}</span>
-              <span class="be-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
-            </ng-container>
+        @if (fileMode && mode === 'encode') {
+          <div class="be-panel__body">
+            <div
+              class="be-dropzone"
+              [class.be-dropzone--over]="isDragOver"
+              [class.be-dropzone--has-file]="!!fileName"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave()"
+              (drop)="onDrop($event)"
+              (click)="fileInput.click()"
+              >
+              <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
+              @if (!fileName) {
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="be-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span class="be-dropzone__label">Drop any file here</span>
+                <span class="be-dropzone__hint">or click to browse — encodes to Base64 string</span>
+              }
+              @if (fileName) {
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="be-dropzone__icon be-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="be-dropzone__label">{{ fileName }}</span>
+                <span class="be-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
+              }
+            </div>
           </div>
-        </div>
+        }
 
         <!-- File mode hint for decode -->
-        <div class="be-panel__body be-panel__body--input" *ngIf="fileMode && mode === 'decode'">
-          <textarea
-            class="be-textarea"
-            [(ngModel)]="textInput"
-            (ngModelChange)="onInput()"
-            placeholder="Paste Base64 string to decode…"
-            spellcheck="false"
-            autocomplete="off"
-          ></textarea>
-        </div>
+        @if (fileMode && mode === 'decode') {
+          <div class="be-panel__body be-panel__body--input">
+            <textarea
+              class="be-textarea"
+              [(ngModel)]="textInput"
+              (ngModelChange)="onInput()"
+              placeholder="Paste Base64 string to decode…"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+          </div>
+        }
 
       </div><!-- /input panel -->
 
@@ -135,18 +143,24 @@
               <span class="be-toggle__track"><span class="be-toggle__thumb"></span></span>
               <span class="be-toggle__label">URL-safe Base64 <span class="be-badge">RFC 4648</span></span>
             </label>
-            <p class="be-option-hint" *ngIf="urlSafe">Replaces <code>+</code> with <code>-</code> and <code>/</code> with <code>_</code>. Padding removed.</p>
+            @if (urlSafe) {
+              <p class="be-option-hint">Replaces <code>+</code> with <code>-</code> and <code>/</code> with <code>_</code>. Padding removed.</p>
+            }
           </div>
 
           <!-- File mode toggle (encode only) -->
-          <div class="be-option-row" *ngIf="mode === 'encode'">
-            <label class="be-toggle" for="fileMode">
-              <input type="checkbox" id="fileMode" [(ngModel)]="fileMode" (ngModelChange)="onFileModeChange()" />
-              <span class="be-toggle__track"><span class="be-toggle__thumb"></span></span>
-              <span class="be-toggle__label">File encode mode <span class="be-badge">images & files</span></span>
-            </label>
-            <p class="be-option-hint" *ngIf="fileMode">Drag & drop any file to encode it as a Base64 string — useful for embedding images in CSS/HTML.</p>
-          </div>
+          @if (mode === 'encode') {
+            <div class="be-option-row">
+              <label class="be-toggle" for="fileMode">
+                <input type="checkbox" id="fileMode" [(ngModel)]="fileMode" (ngModelChange)="onFileModeChange()" />
+                <span class="be-toggle__track"><span class="be-toggle__thumb"></span></span>
+                <span class="be-toggle__label">File encode mode <span class="be-badge">images & files</span></span>
+              </label>
+              @if (fileMode) {
+                <p class="be-option-hint">Drag & drop any file to encode it as a Base64 string — useful for embedding images in CSS/HTML.</p>
+              }
+            </div>
+          }
 
         </div>
       </div><!-- /options panel -->
@@ -161,18 +175,18 @@
         [class.be-status-bar--valid]="output && !errorMessage"
         [class.be-status-bar--invalid]="!!errorMessage"
         [class.be-status-bar--idle]="!output && !errorMessage">
-        <ng-container *ngIf="!output && !errorMessage">
+        @if (!output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input…</span>
-        </ng-container>
-        <ng-container *ngIf="output && !errorMessage">
+        }
+        @if (output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ mode === 'encode' ? 'Encoded' : 'Decoded' }} successfully</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage">
+        }
+        @if (errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="be-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -183,56 +197,70 @@
             Output
           </span>
           <div class="be-panel__actions">
-            <span class="be-char-count" *ngIf="output">{{ outputCharCount | number }} chars</span>
+            @if (output) {
+              <span class="be-char-count">{{ outputCharCount | number }} chars</span>
+            }
             <button class="be-btn-ghost be-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.be-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Output body -->
         <div class="be-output-body">
-          <pre class="be-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="be-output-empty" *ngIf="!output && !errorMessage">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>{{ mode === 'encode' ? 'Encoded Base64 will appear here' : 'Decoded text will appear here' }}</span>
-          </div>
-          <div class="be-output-error" *ngIf="errorMessage && !output">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <span>{{ errorMessage }}</span>
-          </div>
+          @if (output) {
+            <pre class="be-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output && !errorMessage) {
+            <div class="be-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>{{ mode === 'encode' ? 'Encoded Base64 will appear here' : 'Decoded text will appear here' }}</span>
+            </div>
+          }
+          @if (errorMessage && !output) {
+            <div class="be-output-error">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span>{{ errorMessage }}</span>
+            </div>
+          }
         </div>
       </div><!-- /output panel -->
 
       <!-- Stats bar -->
-      <div class="be-stats" *ngIf="output">
-        <div class="be-stat">
-          <span class="be-stat__label">Input</span>
-          <span class="be-stat__value">{{ inputCharCount | number }} <span class="be-stat__unit">{{ fileMode ? 'B' : 'ch' }}</span></span>
+      @if (output) {
+        <div class="be-stats">
+          <div class="be-stat">
+            <span class="be-stat__label">Input</span>
+            <span class="be-stat__value">{{ inputCharCount | number }} <span class="be-stat__unit">{{ fileMode ? 'B' : 'ch' }}</span></span>
+          </div>
+          <div class="be-stat-divider"></div>
+          <div class="be-stat">
+            <span class="be-stat__label">Output</span>
+            <span class="be-stat__value">{{ outputCharCount | number }} <span class="be-stat__unit">ch</span></span>
+          </div>
+          @if (mode === 'encode' && encodedSizeIncrease > 0) {
+            <div class="be-stat-divider"></div>
+          }
+          @if (mode === 'encode' && encodedSizeIncrease > 0) {
+            <div class="be-stat">
+              <span class="be-stat__label">Overhead</span>
+              <span class="be-stat__value be-stat__value--muted">+{{ encodedSizeIncrease }}%</span>
+            </div>
+          }
+          <div class="be-stat-divider"></div>
+          <div class="be-stat">
+            <span class="be-stat__label">Mode</span>
+            <span class="be-stat__value be-stat__value--cyan">{{ urlSafe ? 'URL-safe' : 'Standard' }}</span>
+          </div>
         </div>
-        <div class="be-stat-divider"></div>
-        <div class="be-stat">
-          <span class="be-stat__label">Output</span>
-          <span class="be-stat__value">{{ outputCharCount | number }} <span class="be-stat__unit">ch</span></span>
-        </div>
-        <div class="be-stat-divider" *ngIf="mode === 'encode' && encodedSizeIncrease > 0"></div>
-        <div class="be-stat" *ngIf="mode === 'encode' && encodedSizeIncrease > 0">
-          <span class="be-stat__label">Overhead</span>
-          <span class="be-stat__value be-stat__value--muted">+{{ encodedSizeIncrease }}%</span>
-        </div>
-        <div class="be-stat-divider"></div>
-        <div class="be-stat">
-          <span class="be-stat__label">Mode</span>
-          <span class="be-stat__value be-stat__value--cyan">{{ urlSafe ? 'URL-safe' : 'Standard' }}</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

@@ -30,43 +30,51 @@
           <div class="tz-field">
             <label class="tz-label">From</label>
             <select class="tz-select" [(ngModel)]="sourceTimezone">
-              <option *ngFor="let tz of timezones" [value]="tz">{{ tz }}</option>
+              @for (tz of timezones; track tz) {
+                <option [value]="tz">{{ tz }}</option>
+              }
             </select>
           </div>
           <div class="tz-field">
             <label class="tz-label">To</label>
             <select class="tz-select" [(ngModel)]="targetTimezone">
-              <option *ngFor="let tz of timezones" [value]="tz">{{ tz }}</option>
+              @for (tz of timezones; track tz) {
+                <option [value]="tz">{{ tz }}</option>
+              }
             </select>
           </div>
           <button class="tz-btn" (click)="convert()">Convert</button>
         </div>
       </div>
 
-      <div class="tz-panel tz-result-panel" *ngIf="result">
-        <div class="tz-panel__header">
-          <span class="tz-panel__title">Result</span>
-          <button class="tz-btn-ghost" (click)="copyResult()" [class.tz-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      @if (result) {
+        <div class="tz-panel tz-result-panel">
+          <div class="tz-panel__header">
+            <span class="tz-panel__title">Result</span>
+            <button class="tz-btn-ghost" (click)="copyResult()" [class.tz-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
+          </div>
+          <div class="tz-result">
+            <span class="tz-result__tz">{{ result.timezone }}</span>
+            <span class="tz-result__time">{{ result.time }}</span>
+            <span class="tz-result__date">{{ result.date }}</span>
+            <span class="tz-result__offset">{{ result.offset }}</span>
+          </div>
         </div>
-        <div class="tz-result">
-          <span class="tz-result__tz">{{ result.timezone }}</span>
-          <span class="tz-result__time">{{ result.time }}</span>
-          <span class="tz-result__date">{{ result.date }}</span>
-          <span class="tz-result__offset">{{ result.offset }}</span>
-        </div>
-      </div>
+      }
     </div>
 
     <div class="tz-col tz-col--right">
       <div class="tz-panel">
         <div class="tz-panel__header"><span class="tz-panel__title">World Clock</span></div>
         <div class="tz-world">
-          <div class="tz-world-row" *ngFor="let wc of worldClock">
-            <span class="tz-world-tz">{{ wc.timezone }}</span>
-            <span class="tz-world-time">{{ wc.time }}</span>
-            <span class="tz-world-date">{{ wc.date }}</span>
-            <span class="tz-world-offset">{{ wc.offset }}</span>
-          </div>
+          @for (wc of worldClock; track wc) {
+            <div class="tz-world-row">
+              <span class="tz-world-tz">{{ wc.timezone }}</span>
+              <span class="tz-world-time">{{ wc.time }}</span>
+              <span class="tz-world-date">{{ wc.date }}</span>
+              <span class="tz-world-offset">{{ wc.offset }}</span>
+            </div>
+          }
         </div>
       </div>
     </div>

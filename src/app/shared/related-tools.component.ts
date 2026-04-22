@@ -7,40 +7,44 @@ import { ToolsDataService } from '../tools/tools-data.service';
   selector: 'app-related-tools',
   standalone: false,
   template: `
-    <section class="related-tools" *ngIf="relatedTools.length > 0">
-      <div class="related-tools__header">
-        <div class="related-tools__line"></div>
-        <h3 class="related-tools__title">Related Tools</h3>
-        <div class="related-tools__line"></div>
-      </div>
-      <div class="related-tools__grid">
-        <a
-          class="rt-card"
-          *ngFor="let tool of relatedTools"
-          [routerLink]="tool.route"
-        >
-          <div class="rt-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
-          <div class="rt-card__body">
-            <h4 class="rt-card__name">{{ tool.title }}</h4>
-            <p class="rt-card__desc">{{ tool.description }}</p>
-            <div class="rt-card__tags">
-              <span
-                *ngFor="let tag of tool.tags | slice:0:3"
-                class="rt-tag"
-                [class.rt-tag--shared]="isSharedTag(tag)"
-              >{{ tag }}</span>
-            </div>
-          </div>
-          <span class="rt-card__arrow" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-      </div>
-      <div class="related-tools__browse">
-        <a routerLink="/tools" class="related-tools__browse-link">Browse all tools &rarr;</a>
-      </div>
-    </section>
-  `,
+    @if (relatedTools.length > 0) {
+      <section class="related-tools">
+        <div class="related-tools__header">
+          <div class="related-tools__line"></div>
+          <h3 class="related-tools__title">Related Tools</h3>
+          <div class="related-tools__line"></div>
+        </div>
+        <div class="related-tools__grid">
+          @for (tool of relatedTools; track tool) {
+            <a
+              class="rt-card"
+              [routerLink]="tool.route"
+              >
+              <div class="rt-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
+              <div class="rt-card__body">
+                <h4 class="rt-card__name">{{ tool.title }}</h4>
+                <p class="rt-card__desc">{{ tool.description }}</p>
+                <div class="rt-card__tags">
+                  @for (tag of tool.tags | slice:0:3; track tag) {
+                    <span
+                      class="rt-tag"
+                      [class.rt-tag--shared]="isSharedTag(tag)"
+                    >{{ tag }}</span>
+                  }
+                </div>
+              </div>
+              <span class="rt-card__arrow" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </span>
+            </a>
+          }
+        </div>
+        <div class="related-tools__browse">
+          <a routerLink="/tools" class="related-tools__browse-link">Browse all tools &rarr;</a>
+        </div>
+      </section>
+    }
+    `,
   styles: [`
     .related-tools {
       margin-top: 3rem;

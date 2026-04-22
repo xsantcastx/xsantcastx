@@ -34,10 +34,12 @@
               <button class="sps-seg-btn" [class.sps-seg-btn--active]="mode==='geometric'" (click)="mode='geometric'; generate()">Geometric</button>
             </div>
           </div>
-          <div class="sps-field" *ngIf="mode==='geometric'">
-            <label class="sps-label">Ratio</label>
-            <input class="sps-input" type="number" [(ngModel)]="ratio" (ngModelChange)="generate()" min="1" max="4" step="0.1" />
-          </div>
+          @if (mode==='geometric') {
+            <div class="sps-field">
+              <label class="sps-label">Ratio</label>
+              <input class="sps-input" type="number" [(ngModel)]="ratio" (ngModelChange)="generate()" min="1" max="4" step="0.1" />
+            </div>
+          }
         </div>
       </div>
 
@@ -47,8 +49,8 @@
           <button class="sps-btn-ghost" (click)="copyCss()" [class.sps-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
         </div>
         <pre class="sps-code"><code>:root {{ '{' }}
-{{ cssVariables }}
-{{ '}' }}</code></pre>
+          {{ cssVariables }}
+        {{ '}' }}</code></pre>
       </div>
     </div>
 
@@ -56,14 +58,16 @@
       <div class="sps-panel">
         <div class="sps-panel__header"><span class="sps-panel__title">Visual Scale</span></div>
         <div class="sps-scale">
-          <div class="sps-step" *ngFor="let s of scale">
-            <span class="sps-step__label">{{ s.label }}</span>
-            <div class="sps-step__bar-wrap">
-              <div class="sps-step__bar" [style.width.%]="maxValue > 0 ? (s.value / maxValue) * 100 : 0"></div>
+          @for (s of scale; track s) {
+            <div class="sps-step">
+              <span class="sps-step__label">{{ s.label }}</span>
+              <div class="sps-step__bar-wrap">
+                <div class="sps-step__bar" [style.width.%]="maxValue > 0 ? (s.value / maxValue) * 100 : 0"></div>
+              </div>
+              <span class="sps-step__px">{{ s.px }}</span>
+              <span class="sps-step__rem">{{ s.rem }}</span>
             </div>
-            <span class="sps-step__px">{{ s.px }}</span>
-            <span class="sps-step__rem">{{ s.rem }}</span>
-          </div>
+          }
         </div>
       </div>
     </div>

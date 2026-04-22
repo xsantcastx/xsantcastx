@@ -43,14 +43,14 @@
               Random
             </button>
             <button class="hm-btn-ghost hm-btn-sm" (click)="copySecret()" [disabled]="!secretKey" [class.hm-btn-ghost--success]="secretCopied">
-              <ng-container *ngIf="!secretCopied">
+              @if (!secretCopied) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="secretCopied">
+              }
+              @if (secretCopied) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
@@ -64,10 +64,14 @@
               placeholder="Enter your secret key..."
               spellcheck="false"
               autocomplete="off"
-            />
+              />
             <button class="hm-btn-icon" (click)="toggleSecretVisibility()" [title]="showSecret ? 'Hide' : 'Show'">
-              <svg *ngIf="!showSecret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg *ngIf="showSecret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              @if (!showSecret) {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+              @if (showSecret) {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              }
             </button>
           </div>
           <p class="hm-hint">Your key stays in-browser. Click Random for a cryptographically secure 256-bit key.</p>
@@ -82,7 +86,9 @@
             Message
           </span>
           <div class="hm-panel__actions">
-            <span class="hm-char-count" *ngIf="inputMode === 'text'">{{ inputCharCount | number }} chars</span>
+            @if (inputMode === 'text') {
+              <span class="hm-char-count">{{ inputCharCount | number }} chars</span>
+            }
             <button class="hm-btn-ghost hm-btn-sm" (click)="loadSample()" title="Load sample">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Sample
@@ -95,43 +101,47 @@
         </div>
 
         <!-- Text input -->
-        <div class="hm-panel__body hm-panel__body--input" *ngIf="inputMode === 'text'">
-          <textarea
-            class="hm-textarea"
-            [(ngModel)]="messageInput"
-            (ngModelChange)="onInput()"
-            placeholder="Enter message to sign with HMAC&#10;&#10;e.g. Hello, World!"
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-        </div>
+        @if (inputMode === 'text') {
+          <div class="hm-panel__body hm-panel__body--input">
+            <textarea
+              class="hm-textarea"
+              [(ngModel)]="messageInput"
+              (ngModelChange)="onInput()"
+              placeholder="Enter message to sign with HMAC&#10;&#10;e.g. Hello, World!"
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
+        }
 
         <!-- File drop zone -->
-        <div class="hm-panel__body" *ngIf="inputMode === 'file'">
-          <div
-            class="hm-dropzone"
-            [class.hm-dropzone--over]="isDragOver"
-            [class.hm-dropzone--has-file]="!!fileName"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave()"
-            (drop)="onDrop($event)"
-            (click)="fileInput.click()"
-          >
-            <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
-            <ng-container *ngIf="!fileName">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hm-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="hm-dropzone__label">Drop any file here</span>
-              <span class="hm-dropzone__hint">or click to browse — generates HMAC from file content</span>
-            </ng-container>
-            <ng-container *ngIf="fileName">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hm-dropzone__icon hm-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="hm-dropzone__label">{{ fileName }}</span>
-              <span class="hm-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
-            </ng-container>
+        @if (inputMode === 'file') {
+          <div class="hm-panel__body">
+            <div
+              class="hm-dropzone"
+              [class.hm-dropzone--over]="isDragOver"
+              [class.hm-dropzone--has-file]="!!fileName"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave()"
+              (drop)="onDrop($event)"
+              (click)="fileInput.click()"
+              >
+              <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
+              @if (!fileName) {
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hm-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span class="hm-dropzone__label">Drop any file here</span>
+                <span class="hm-dropzone__hint">or click to browse — generates HMAC from file content</span>
+              }
+              @if (fileName) {
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hm-dropzone__icon hm-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="hm-dropzone__label">{{ fileName }}</span>
+                <span class="hm-dropzone__hint">{{ formatBytes(fileSize) }} · {{ fileMimeType || 'unknown type' }} · click to replace</span>
+              }
+            </div>
           </div>
-        </div>
+        }
       </div>
 
       <!-- Options Panel -->
@@ -181,22 +191,22 @@
         [class.hm-status-bar--invalid]="!!errorMessage"
         [class.hm-status-bar--idle]="!hasResults && !errorMessage && !isHashing"
         [class.hm-status-bar--hashing]="isHashing">
-        <ng-container *ngIf="!hasResults && !errorMessage && !isHashing">
+        @if (!hasResults && !errorMessage && !isHashing) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Enter a secret key and message...</span>
-        </ng-container>
-        <ng-container *ngIf="isHashing">
+        }
+        @if (isHashing) {
           <svg class="hm-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="50" stroke-dashoffset="20"/></svg>
           <span>Generating HMAC...</span>
-        </ng-container>
-        <ng-container *ngIf="hasResults && !errorMessage && !isHashing">
+        }
+        @if (hasResults && !errorMessage && !isHashing) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ hmacResults.length }} HMAC signatures generated</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage">
+        }
+        @if (errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="hm-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- HMAC Results Panel -->
@@ -206,72 +216,84 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             HMAC Results
           </span>
-          <div class="hm-panel__actions" *ngIf="hasResults">
-            <button class="hm-btn-ghost hm-btn-sm" (click)="copyAllResults()" title="Copy all">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy All
-            </button>
-          </div>
+          @if (hasResults) {
+            <div class="hm-panel__actions">
+              <button class="hm-btn-ghost hm-btn-sm" (click)="copyAllResults()" title="Copy all">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy All
+              </button>
+            </div>
+          }
         </div>
 
         <div class="hm-output-body">
           <!-- HMAC result rows -->
-          <div class="hm-hash-list" *ngIf="hasResults">
-            <div class="hm-hash-row" *ngFor="let result of hmacResults">
-              <div class="hm-hash-row__header">
-                <span class="hm-hash-row__algo">HMAC-{{ result.algorithm }}</span>
-                <span class="hm-hash-row__length">{{ result.hmac.length }} chars</span>
-                <button class="hm-btn-ghost hm-btn-sm" (click)="copyHmac(result)" [class.hm-btn-ghost--success]="result.copied">
-                  <ng-container *ngIf="!result.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Copy
-                  </ng-container>
-                  <ng-container *ngIf="result.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Copied!
-                  </ng-container>
-                </button>
-              </div>
-              <code class="hm-hash-row__value">{{ result.hmac }}</code>
+          @if (hasResults) {
+            <div class="hm-hash-list">
+              @for (result of hmacResults; track result) {
+                <div class="hm-hash-row">
+                  <div class="hm-hash-row__header">
+                    <span class="hm-hash-row__algo">HMAC-{{ result.algorithm }}</span>
+                    <span class="hm-hash-row__length">{{ result.hmac.length }} chars</span>
+                    <button class="hm-btn-ghost hm-btn-sm" (click)="copyHmac(result)" [class.hm-btn-ghost--success]="result.copied">
+                      @if (!result.copied) {
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        Copy
+                      }
+                      @if (result.copied) {
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Copied!
+                      }
+                    </button>
+                  </div>
+                  <code class="hm-hash-row__value">{{ result.hmac }}</code>
+                </div>
+              }
             </div>
-          </div>
+          }
 
           <!-- Empty state -->
-          <div class="hm-output-empty" *ngIf="!hasResults && !errorMessage">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-            <span>HMAC signatures will appear here</span>
-          </div>
+          @if (!hasResults && !errorMessage) {
+            <div class="hm-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+              <span>HMAC signatures will appear here</span>
+            </div>
+          }
 
           <!-- Error state -->
-          <div class="hm-output-error" *ngIf="errorMessage && !hasResults">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <span>{{ errorMessage }}</span>
-          </div>
+          @if (errorMessage && !hasResults) {
+            <div class="hm-output-error">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span>{{ errorMessage }}</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="hm-stats" *ngIf="hasResults">
-        <div class="hm-stat">
-          <span class="hm-stat__label">Input</span>
-          <span class="hm-stat__value">{{ inputCharCount | number }} <span class="hm-stat__unit">{{ inputMode === 'file' ? 'B' : 'ch' }}</span></span>
+      @if (hasResults) {
+        <div class="hm-stats">
+          <div class="hm-stat">
+            <span class="hm-stat__label">Input</span>
+            <span class="hm-stat__value">{{ inputCharCount | number }} <span class="hm-stat__unit">{{ inputMode === 'file' ? 'B' : 'ch' }}</span></span>
+          </div>
+          <div class="hm-stat-divider"></div>
+          <div class="hm-stat">
+            <span class="hm-stat__label">Algorithms</span>
+            <span class="hm-stat__value">{{ hmacResults.length }}</span>
+          </div>
+          <div class="hm-stat-divider"></div>
+          <div class="hm-stat">
+            <span class="hm-stat__label">Format</span>
+            <span class="hm-stat__value hm-stat__value--cyan">{{ uppercase ? 'UPPER' : 'lower' }}</span>
+          </div>
+          <div class="hm-stat-divider"></div>
+          <div class="hm-stat">
+            <span class="hm-stat__label">Key Length</span>
+            <span class="hm-stat__value hm-stat__value--cyan">{{ secretKey.length }} ch</span>
+          </div>
         </div>
-        <div class="hm-stat-divider"></div>
-        <div class="hm-stat">
-          <span class="hm-stat__label">Algorithms</span>
-          <span class="hm-stat__value">{{ hmacResults.length }}</span>
-        </div>
-        <div class="hm-stat-divider"></div>
-        <div class="hm-stat">
-          <span class="hm-stat__label">Format</span>
-          <span class="hm-stat__value hm-stat__value--cyan">{{ uppercase ? 'UPPER' : 'lower' }}</span>
-        </div>
-        <div class="hm-stat-divider"></div>
-        <div class="hm-stat">
-          <span class="hm-stat__label">Key Length</span>
-          <span class="hm-stat__value hm-stat__value--cyan">{{ secretKey.length }} ch</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

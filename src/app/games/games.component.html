@@ -55,32 +55,35 @@
       <h2 class="gp-section-title">Game Library</h2>
 
       <div class="gp-grid">
-        <div
-          class="gp-card glass-card"
-          *ngFor="let game of games"
-          [class.gp-card--locked]="game.locked"
-          [class.gp-card--unlocked]="!game.locked"
-          [attr.data-rarity]="game.rarity"
-        >
-          <div class="gp-card__top">
-            <span class="gp-card__icon" [class.gp-card__icon--locked]="game.locked">
-              {{ game.locked ? '🔒' : game.icon }}
-            </span>
-            <span class="gp-card__rarity">{{ game.rarity }}</span>
+        @for (game of games; track game) {
+          <div
+            class="gp-card glass-card"
+            [class.gp-card--locked]="game.locked"
+            [class.gp-card--unlocked]="!game.locked"
+            [attr.data-rarity]="game.rarity"
+            >
+            <div class="gp-card__top">
+              <span class="gp-card__icon" [class.gp-card__icon--locked]="game.locked">
+                {{ game.locked ? '🔒' : game.icon }}
+              </span>
+              <span class="gp-card__rarity">{{ game.rarity }}</span>
+            </div>
+            <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
+            <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
+            <div class="gp-card__footer">
+              @if (!game.locked) {
+                <button class="gp-play-btn">
+                  Play &rarr;
+                </button>
+              }
+              @if (game.locked) {
+                <span class="gp-locked-label">
+                  Locked — find the egg to unlock
+                </span>
+              }
+            </div>
           </div>
-
-          <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
-          <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
-
-          <div class="gp-card__footer">
-            <button *ngIf="!game.locked" class="gp-play-btn">
-              Play &rarr;
-            </button>
-            <span *ngIf="game.locked" class="gp-locked-label">
-              Locked — find the egg to unlock
-            </span>
-          </div>
-        </div>
+        }
       </div>
     </div>
   </section>

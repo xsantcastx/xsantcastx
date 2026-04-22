@@ -35,20 +35,21 @@
     <aside class="csv-sidebar">
       <div class="csv-sidebar__header">Categories</div>
       <nav class="csv-category-nav">
-        <button
-          *ngFor="let cat of categories"
-          [class.is-active]="cat === activeCategory"
-          class="csv-category-btn"
-          (click)="setActiveCategory(cat)"
-        >
-          <svg class="csv-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path [attr.d]="categoryIcons[cat]" />
-          </svg>
-          <div class="csv-category-label">
-            <span class="csv-category-name">{{ categoryLabels[cat] }}</span>
-            <span class="csv-category-count">{{ getCategoryCount(cat) }}</span>
-          </div>
-        </button>
+        @for (cat of categories; track cat) {
+          <button
+            [class.is-active]="cat === activeCategory"
+            class="csv-category-btn"
+            (click)="setActiveCategory(cat)"
+            >
+            <svg class="csv-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path [attr.d]="categoryIcons[cat]" />
+            </svg>
+            <div class="csv-category-label">
+              <span class="csv-category-name">{{ categoryLabels[cat] }}</span>
+              <span class="csv-category-count">{{ getCategoryCount(cat) }}</span>
+            </div>
+          </button>
+        }
       </nav>
 
       <!-- Sample buttons -->
@@ -74,7 +75,7 @@
             placeholder="Variable name (e.g., primary-color)"
             class="csv-input"
             (keyup.enter)="addVariable()"
-          />
+            />
         </div>
         <div class="csv-form-group">
           <input
@@ -83,11 +84,13 @@
             placeholder="Value (e.g., #00ffcc or 1rem)"
             class="csv-input"
             (keyup.enter)="addVariable()"
-          />
+            />
         </div>
         <div class="csv-form-group">
           <select [(ngModel)]="newCategory" class="csv-select">
-            <option *ngFor="let cat of categories" [value]="cat">{{ categoryLabels[cat] }}</option>
+            @for (cat of categories; track cat) {
+              <option [value]="cat">{{ categoryLabels[cat] }}</option>
+            }
           </select>
         </div>
         <button class="csv-btn csv-btn--primary" (click)="addVariable()">
@@ -96,77 +99,88 @@
       </div>
 
       <!-- Variables list -->
-      <div class="csv-card csv-variables-list" *ngIf="filteredVariables.length > 0">
-        <h3 class="csv-section-title">{{ categoryLabels[activeCategory] }} ({{ filteredVariables.length }})</h3>
-        <div class="csv-variables">
-          <div *ngFor="let v of filteredVariables" class="csv-variable-item">
-            <!-- Edit mode -->
-            <div *ngIf="editingId === v.id" class="csv-variable-edit">
-              <input
-                [(ngModel)]="editName"
-                type="text"
-                class="csv-input csv-input--sm"
-                placeholder="Name"
-              />
-              <div class="csv-variable-value-input">
-                <input
-                  [(ngModel)]="editValue"
-                  type="text"
-                  class="csv-input csv-input--sm"
-                  placeholder="Value"
-                />
-                <div
-                  *ngIf="isColorValue(editValue)"
-                  class="csv-color-swatch"
-                  [style.backgroundColor]="editValue"
-                  [title]="editValue"
-                ></div>
+      @if (filteredVariables.length > 0) {
+        <div class="csv-card csv-variables-list">
+          <h3 class="csv-section-title">{{ categoryLabels[activeCategory] }} ({{ filteredVariables.length }})</h3>
+          <div class="csv-variables">
+            @for (v of filteredVariables; track v) {
+              <div class="csv-variable-item">
+                <!-- Edit mode -->
+                @if (editingId === v.id) {
+                  <div class="csv-variable-edit">
+                    <input
+                      [(ngModel)]="editName"
+                      type="text"
+                      class="csv-input csv-input--sm"
+                      placeholder="Name"
+                      />
+                    <div class="csv-variable-value-input">
+                      <input
+                        [(ngModel)]="editValue"
+                        type="text"
+                        class="csv-input csv-input--sm"
+                        placeholder="Value"
+                        />
+                      @if (isColorValue(editValue)) {
+                        <div
+                          class="csv-color-swatch"
+                          [style.backgroundColor]="editValue"
+                          [title]="editValue"
+                        ></div>
+                      }
+                    </div>
+                    <div class="csv-variable-actions">
+                      <button class="csv-btn csv-btn--sm csv-btn--primary" (click)="saveEdit(v.id)">
+                        Save
+                      </button>
+                      <button class="csv-btn csv-btn--sm csv-btn--secondary" (click)="cancelEdit()">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                }
+                <!-- View mode -->
+                @if (editingId !== v.id) {
+                  <div class="csv-variable-view">
+                    <div class="csv-variable-content">
+                      <div class="csv-variable-name">{{ v.name }}</div>
+                      <div class="csv-variable-value-display">
+                        <code>{{ v.value }}</code>
+                        @if (isColorValue(v.value)) {
+                          <div
+                            class="csv-color-swatch"
+                            [style.backgroundColor]="v.value"
+                            [title]="v.value"
+                          ></div>
+                        }
+                      </div>
+                    </div>
+                    <div class="csv-variable-actions">
+                      <button class="csv-btn csv-btn--sm csv-btn--ghost" (click)="startEdit(v)">
+                        Edit
+                      </button>
+                      <button class="csv-btn csv-btn--sm csv-btn--danger" (click)="removeVariable(v.id)">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                }
               </div>
-              <div class="csv-variable-actions">
-                <button class="csv-btn csv-btn--sm csv-btn--primary" (click)="saveEdit(v.id)">
-                  Save
-                </button>
-                <button class="csv-btn csv-btn--sm csv-btn--secondary" (click)="cancelEdit()">
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-            <!-- View mode -->
-            <div *ngIf="editingId !== v.id" class="csv-variable-view">
-              <div class="csv-variable-content">
-                <div class="csv-variable-name">{{ v.name }}</div>
-                <div class="csv-variable-value-display">
-                  <code>{{ v.value }}</code>
-                  <div
-                    *ngIf="isColorValue(v.value)"
-                    class="csv-color-swatch"
-                    [style.backgroundColor]="v.value"
-                    [title]="v.value"
-                  ></div>
-                </div>
-              </div>
-              <div class="csv-variable-actions">
-                <button class="csv-btn csv-btn--sm csv-btn--ghost" (click)="startEdit(v)">
-                  Edit
-                </button>
-                <button class="csv-btn csv-btn--sm csv-btn--danger" (click)="removeVariable(v.id)">
-                  Delete
-                </button>
-              </div>
-            </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Empty state -->
-      <div class="csv-card csv-empty-state" *ngIf="filteredVariables.length === 0">
-        <svg class="csv-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M9 9h6M9 15h3" />
-        </svg>
-        <p>No {{ categoryLabels[activeCategory] | lowercase }} yet</p>
-      </div>
+      @if (filteredVariables.length === 0) {
+        <div class="csv-card csv-empty-state">
+          <svg class="csv-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M9 9h6M9 15h3" />
+          </svg>
+          <p>No {{ categoryLabels[activeCategory] | lowercase }} yet</p>
+        </div>
+      }
 
       <!-- Import section -->
       <div class="csv-card csv-import-section">
@@ -177,25 +191,29 @@
           {{ showImport ? 'Hide' : 'Import from CSS' }}
         </button>
 
-        <div *ngIf="showImport" class="csv-import-content">
-          <p class="csv-import-help">Paste CSS with custom properties (e.g., :root {{ '{' }} --name: value; {{ '}' }})</p>
-          <textarea
-            [(ngModel)]="importText"
-            [placeholder]="':root {\n  --primary: #00ffcc;\n  --spacing-md: 1rem;\n}'"
-            class="csv-textarea"
-          ></textarea>
-          <div class="csv-import-actions">
-            <button class="csv-btn csv-btn--primary" (click)="parseImport()">
-              Import
-            </button>
-            <button class="csv-btn csv-btn--secondary" (click)="clearImport()">
-              Clear
-            </button>
+        @if (showImport) {
+          <div class="csv-import-content">
+            <p class="csv-import-help">Paste CSS with custom properties (e.g., :root {{ '{' }} --name: value; {{ '}' }})</p>
+            <textarea
+              [(ngModel)]="importText"
+              [placeholder]="':root {\n  --primary: #00ffcc;\n  --spacing-md: 1rem;\n}'"
+              class="csv-textarea"
+            ></textarea>
+            <div class="csv-import-actions">
+              <button class="csv-btn csv-btn--primary" (click)="parseImport()">
+                Import
+              </button>
+              <button class="csv-btn csv-btn--secondary" (click)="clearImport()">
+                Clear
+              </button>
+            </div>
+            @if (importCount > 0) {
+              <div class="csv-import-result">
+                ✓ Imported {{ importCount }} variable{{ importCount !== 1 ? 's' : '' }}
+              </div>
+            }
           </div>
-          <div *ngIf="importCount > 0" class="csv-import-result">
-            ✓ Imported {{ importCount }} variable{{ importCount !== 1 ? 's' : '' }}
-          </div>
-        </div>
+        }
       </div>
     </div>
 
@@ -206,37 +224,42 @@
         <h3 class="csv-section-title">Export</h3>
 
         <div class="csv-format-tabs">
-          <button
-            *ngFor="let fmt of ['css', 'scss', 'json', 'tailwind']"
-            [class.is-active]="fmt === exportFormat"
-            class="csv-format-tab"
-            (click)="castExportFormat(fmt)"
-          >
-            {{ fmt.toUpperCase() }}
-          </button>
+          @for (fmt of ['css', 'scss', 'json', 'tailwind']; track fmt) {
+            <button
+              [class.is-active]="fmt === exportFormat"
+              class="csv-format-tab"
+              (click)="castExportFormat(fmt)"
+              >
+              {{ fmt.toUpperCase() }}
+            </button>
+          }
         </div>
 
-        <div class="csv-code-block" *ngIf="generatedOutput">
-          <pre><code>{{ generatedOutput }}</code></pre>
-        </div>
+        @if (generatedOutput) {
+          <div class="csv-code-block">
+            <pre><code>{{ generatedOutput }}</code></pre>
+          </div>
+        }
 
-        <div class="csv-code-empty" *ngIf="!generatedOutput">
-          No variables to export
-        </div>
+        @if (!generatedOutput) {
+          <div class="csv-code-empty">
+            No variables to export
+          </div>
+        }
 
         <div class="csv-export-actions">
           <button
             class="csv-btn csv-btn--primary"
             [disabled]="!generatedOutput"
             (click)="copyOutput()"
-          >
+            >
             {{ copied ? '✓ Copied!' : 'Copy' }}
           </button>
           <button
             class="csv-btn csv-btn--secondary"
             [disabled]="!generatedOutput"
             (click)="downloadOutput()"
-          >
+            >
             Download
           </button>
         </div>
@@ -248,39 +271,47 @@
 
         <div class="csv-preview" [style]="getPreviewStyles()">
           <!-- Color swatches -->
-          <div class="csv-preview-swatches" *ngIf="hasVariablesInCategory('colors')">
-            <div class="csv-preview-label">Colors</div>
-            <div class="csv-preview-grid">
-              <div
-                *ngFor="let v of getVariablesByCategory('colors')"
-                class="csv-preview-swatch"
-                [style.backgroundColor]="v.value"
-                [title]="v.name + ': ' + v.value"
-              ></div>
+          @if (hasVariablesInCategory('colors')) {
+            <div class="csv-preview-swatches">
+              <div class="csv-preview-label">Colors</div>
+              <div class="csv-preview-grid">
+                @for (v of getVariablesByCategory('colors'); track v) {
+                  <div
+                    class="csv-preview-swatch"
+                    [style.backgroundColor]="v.value"
+                    [title]="v.name + ': ' + v.value"
+                  ></div>
+                }
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Typography preview -->
-          <div class="csv-preview-typography" *ngIf="hasVariablesInCategory('typography')">
-            <div class="csv-preview-label">Typography</div>
-            <div class="csv-preview-text" [style.fontFamily]="previewFont">
-              The quick brown fox
+          @if (hasVariablesInCategory('typography')) {
+            <div class="csv-preview-typography">
+              <div class="csv-preview-label">Typography</div>
+              <div class="csv-preview-text" [style.fontFamily]="previewFont">
+                The quick brown fox
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Spacing preview -->
-          <div class="csv-preview-spacing" *ngIf="hasVariablesInCategory('spacing')">
-            <div class="csv-preview-label">Spacing</div>
-            <div class="csv-preview-boxes">
-              <div
-                *ngFor="let v of getVariablesByCategory('spacing') | slice:0:3"
-                class="csv-preview-box"
-                [style.width]="v.value"
-                [style.height]="v.value"
-                [title]="v.name"
-              ></div>
+          @if (hasVariablesInCategory('spacing')) {
+            <div class="csv-preview-spacing">
+              <div class="csv-preview-label">Spacing</div>
+              <div class="csv-preview-boxes">
+                @for (v of getVariablesByCategory('spacing') | slice:0:3; track v) {
+                  <div
+                    class="csv-preview-box"
+                    [style.width]="v.value"
+                    [style.height]="v.value"
+                    [title]="v.name"
+                  ></div>
+                }
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Buttons preview -->
           <div class="csv-preview-buttons">
@@ -290,14 +321,14 @@
               [style.backgroundColor]="previewPrimary"
               [style.borderRadius]="previewRadius"
               [style.boxShadow]="previewShadow"
-            >
+              >
               Primary
             </button>
             <button
               class="csv-preview-btn csv-preview-btn--secondary"
               [style.backgroundColor]="previewSecondary"
               [style.borderRadius]="previewRadius"
-            >
+              >
               Secondary
             </button>
           </div>
@@ -307,7 +338,7 @@
           <button
             class="csv-btn csv-btn--sm csv-btn--secondary"
             (click)="copyPreviewCSS()"
-          >
+            >
             {{ previewCopied ? '✓ Copied!' : 'Copy as CSS' }}
           </button>
         </div>

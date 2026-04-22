@@ -102,7 +102,9 @@
               <span class="jm-toggle__track"><span class="jm-toggle__thumb"></span></span>
               <span class="jm-toggle__label">Remove null values <span class="jm-badge">clean</span></span>
             </label>
-            <p class="jm-option-hint" *ngIf="removeNulls">Strips all keys with null values from the output.</p>
+            @if (removeNulls) {
+              <p class="jm-option-hint">Strips all keys with null values from the output.</p>
+            }
           </div>
 
           <!-- Remove empty strings -->
@@ -112,7 +114,9 @@
               <span class="jm-toggle__track"><span class="jm-toggle__thumb"></span></span>
               <span class="jm-toggle__label">Remove empty strings <span class="jm-badge">clean</span></span>
             </label>
-            <p class="jm-option-hint" *ngIf="removeEmptyStrings">Strips all keys with empty string values from the output.</p>
+            @if (removeEmptyStrings) {
+              <p class="jm-option-hint">Strips all keys with empty string values from the output.</p>
+            }
           </div>
 
         </div>
@@ -140,19 +144,23 @@
         [class.jm-status-bar--valid]="validationStatus === 'valid'"
         [class.jm-status-bar--invalid]="validationStatus === 'invalid'"
         [class.jm-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Valid JSON</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="jm-status-error">{{ errorMessage }}</span>
-          <span class="jm-status-loc" *ngIf="errorLine">Line {{ errorLine }}<ng-container *ngIf="errorColumn">, Col {{ errorColumn }}</ng-container></span>
-        </ng-container>
+          @if (errorLine) {
+            <span class="jm-status-loc">Line {{ errorLine }}@if (errorColumn) {
+              , Col {{ errorColumn }}
+            }</span>
+          }
+        }
       </div>
 
       <!-- Output Panel -->
@@ -164,54 +172,66 @@
           </span>
           <div class="jm-panel__actions">
             <button class="jm-btn-ghost jm-btn-sm" (click)="copyOutput()" [disabled]="!formattedOutput" [class.jm-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="jm-output-body">
-          <pre class="jm-code-pre" *ngIf="formattedOutput"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="jm-output-empty" *ngIf="!formattedOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-            <span>Minified or beautified output will appear here</span>
-          </div>
+          @if (formattedOutput) {
+            <pre class="jm-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!formattedOutput) {
+            <div class="jm-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              <span>Minified or beautified output will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="jm-stats" *ngIf="formattedOutput">
-        <div class="jm-stat">
-          <span class="jm-stat__label">Lines</span>
-          <span class="jm-stat__value">{{ lineCount | number }}</span>
+      @if (formattedOutput) {
+        <div class="jm-stats">
+          <div class="jm-stat">
+            <span class="jm-stat__label">Lines</span>
+            <span class="jm-stat__value">{{ lineCount | number }}</span>
+          </div>
+          <div class="jm-stat-divider"></div>
+          <div class="jm-stat">
+            <span class="jm-stat__label">Input</span>
+            <span class="jm-stat__value">{{ formatBytes(inputBytes) }}</span>
+          </div>
+          <div class="jm-stat-divider"></div>
+          <div class="jm-stat">
+            <span class="jm-stat__label">Output</span>
+            <span class="jm-stat__value">{{ formatBytes(outputBytes) }}</span>
+          </div>
+          @if (savingsPercent !== 0) {
+            <div class="jm-stat-divider"></div>
+          }
+          @if (savingsPercent > 0) {
+            <div class="jm-stat jm-stat--savings">
+              <span class="jm-stat__label">Compressed</span>
+              <span class="jm-stat__value jm-stat__value--green">{{ savingsPercent }}%</span>
+            </div>
+          }
+          @if (savingsPercent < 0) {
+            <div class="jm-stat jm-stat--savings">
+              <span class="jm-stat__label">Expanded</span>
+              <span class="jm-stat__value jm-stat__value--muted">{{ -savingsPercent }}%</span>
+            </div>
+          }
         </div>
-        <div class="jm-stat-divider"></div>
-        <div class="jm-stat">
-          <span class="jm-stat__label">Input</span>
-          <span class="jm-stat__value">{{ formatBytes(inputBytes) }}</span>
-        </div>
-        <div class="jm-stat-divider"></div>
-        <div class="jm-stat">
-          <span class="jm-stat__label">Output</span>
-          <span class="jm-stat__value">{{ formatBytes(outputBytes) }}</span>
-        </div>
-        <div class="jm-stat-divider" *ngIf="savingsPercent !== 0"></div>
-        <div class="jm-stat jm-stat--savings" *ngIf="savingsPercent > 0">
-          <span class="jm-stat__label">Compressed</span>
-          <span class="jm-stat__value jm-stat__value--green">{{ savingsPercent }}%</span>
-        </div>
-        <div class="jm-stat jm-stat--savings" *ngIf="savingsPercent < 0">
-          <span class="jm-stat__label">Expanded</span>
-          <span class="jm-stat__value jm-stat__value--muted">{{ -savingsPercent }}%</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

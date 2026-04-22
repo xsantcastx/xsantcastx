@@ -68,16 +68,20 @@
         <div class="sg-panel__body sg-options-grid">
 
           <!-- Separator (shown in bulk mode) -->
-          <div class="sg-option-row" *ngIf="bulkMode">
-            <span class="sg-option-label">Separator</span>
-            <div class="sg-seg-ctrl">
-              <button class="sg-seg-btn" *ngFor="let sep of ['hyphen', 'underscore', 'dot']"
-                [class.sg-seg-btn--active]="separator === sep"
-                (click)="separator = $any(sep); onOptionChange()">
-                {{ separatorLabel($any(sep)) }}
-              </button>
+          @if (bulkMode) {
+            <div class="sg-option-row">
+              <span class="sg-option-label">Separator</span>
+              <div class="sg-seg-ctrl">
+                @for (sep of ['hyphen', 'underscore', 'dot']; track sep) {
+                  <button class="sg-seg-btn"
+                    [class.sg-seg-btn--active]="separator === sep"
+                    (click)="separator = $any(sep); onOptionChange()">
+                    {{ separatorLabel($any(sep)) }}
+                  </button>
+                }
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Lowercase toggle -->
           <div class="sg-option-row">
@@ -127,7 +131,7 @@
               min="0"
               max="2000"
               placeholder="0"
-            />
+              />
           </div>
 
         </div>
@@ -142,112 +146,128 @@
       <div class="sg-status-bar"
         [class.sg-status-bar--valid]="(variants.length > 0 || bulkLines.length > 0)"
         [class.sg-status-bar--idle]="variants.length === 0 && bulkLines.length === 0">
-        <ng-container *ngIf="variants.length === 0 && bulkLines.length === 0">
+        @if (variants.length === 0 && bulkLines.length === 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input&hellip;</span>
-        </ng-container>
-        <ng-container *ngIf="variants.length > 0 || bulkLines.length > 0">
+        }
+        @if (variants.length > 0 || bulkLines.length > 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ bulkMode ? bulkLines.length + ' slugs generated' : '3 variants generated' }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Single mode: Variant cards -->
-      <div class="sg-panel sg-panel--output" *ngIf="!bulkMode">
-        <div class="sg-panel__header">
-          <span class="sg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Slug Variants
-          </span>
-          <div class="sg-panel__actions" *ngIf="variants.length > 0">
-            <button class="sg-btn-ghost sg-btn-sm" (click)="copyAllVariants()" [class.sg-btn-ghost--success]="allCopied">
-              <ng-container *ngIf="!allCopied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy All
-              </ng-container>
-              <ng-container *ngIf="allCopied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
-          </div>
-        </div>
-
-        <div class="sg-output-body">
-          <!-- Variants list -->
-          <div class="sg-variant-list" *ngIf="variants.length > 0">
-            <div class="sg-variant" *ngFor="let v of variants">
-              <div class="sg-variant__header">
-                <span class="sg-variant__label">{{ v.label }}</span>
-                <button class="sg-btn-ghost sg-btn-sm" (click)="copyVariant(v)" [class.sg-btn-ghost--success]="v.copied">
-                  <ng-container *ngIf="!v.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Copy
-                  </ng-container>
-                  <ng-container *ngIf="v.copied">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      @if (!bulkMode) {
+        <div class="sg-panel sg-panel--output">
+          <div class="sg-panel__header">
+            <span class="sg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Slug Variants
+            </span>
+            @if (variants.length > 0) {
+              <div class="sg-panel__actions">
+                <button class="sg-btn-ghost sg-btn-sm" (click)="copyAllVariants()" [class.sg-btn-ghost--success]="allCopied">
+                  @if (!allCopied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy All
+                  }
+                  @if (allCopied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     Copied!
-                  </ng-container>
+                  }
                 </button>
               </div>
-              <code class="sg-variant__value">{{ v.value }}</code>
-            </div>
+            }
           </div>
-
-          <!-- Empty state -->
-          <div class="sg-output-empty" *ngIf="variants.length === 0">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            <span>Slug variants will appear here</span>
+          <div class="sg-output-body">
+            <!-- Variants list -->
+            @if (variants.length > 0) {
+              <div class="sg-variant-list">
+                @for (v of variants; track v) {
+                  <div class="sg-variant">
+                    <div class="sg-variant__header">
+                      <span class="sg-variant__label">{{ v.label }}</span>
+                      <button class="sg-btn-ghost sg-btn-sm" (click)="copyVariant(v)" [class.sg-btn-ghost--success]="v.copied">
+                        @if (!v.copied) {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                          Copy
+                        }
+                        @if (v.copied) {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          Copied!
+                        }
+                      </button>
+                    </div>
+                    <code class="sg-variant__value">{{ v.value }}</code>
+                  </div>
+                }
+              </div>
+            }
+            <!-- Empty state -->
+            @if (variants.length === 0) {
+              <div class="sg-output-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span>Slug variants will appear here</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- Bulk mode: Lines list -->
-      <div class="sg-panel sg-panel--output" *ngIf="bulkMode">
-        <div class="sg-panel__header">
-          <span class="sg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            Bulk Slugs
-          </span>
-          <div class="sg-panel__actions" *ngIf="bulkLines.length > 0">
-            <button class="sg-btn-ghost sg-btn-sm" (click)="copyAllBulk()" [class.sg-btn-ghost--success]="allCopied">
-              <ng-container *ngIf="!allCopied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy All
-              </ng-container>
-              <ng-container *ngIf="allCopied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
-          </div>
-        </div>
-
-        <div class="sg-output-body">
-          <div class="sg-bulk-list" *ngIf="bulkLines.length > 0">
-            <div class="sg-bulk-row" *ngFor="let line of bulkLines; let i = index">
-              <span class="sg-bulk-row__num">{{ i + 1 }}</span>
-              <div class="sg-bulk-row__content">
-                <span class="sg-bulk-row__original">{{ line.original }}</span>
-                <code class="sg-bulk-row__slug">{{ line.slug }}</code>
+      @if (bulkMode) {
+        <div class="sg-panel sg-panel--output">
+          <div class="sg-panel__header">
+            <span class="sg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Bulk Slugs
+            </span>
+            @if (bulkLines.length > 0) {
+              <div class="sg-panel__actions">
+                <button class="sg-btn-ghost sg-btn-sm" (click)="copyAllBulk()" [class.sg-btn-ghost--success]="allCopied">
+                  @if (!allCopied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy All
+                  }
+                  @if (allCopied) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
               </div>
-              <button class="sg-btn-ghost sg-btn-sm sg-bulk-row__copy" (click)="copyBulkLine(line)" [class.sg-btn-ghost--success]="line.copied">
-                <ng-container *ngIf="!line.copied">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                </ng-container>
-                <ng-container *ngIf="line.copied">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </ng-container>
-              </button>
-            </div>
+            }
           </div>
-
-          <div class="sg-output-empty" *ngIf="bulkLines.length === 0">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span>Paste multiple lines to generate slugs for each</span>
+          <div class="sg-output-body">
+            @if (bulkLines.length > 0) {
+              <div class="sg-bulk-list">
+                @for (line of bulkLines; track line; let i = $index) {
+                  <div class="sg-bulk-row">
+                    <span class="sg-bulk-row__num">{{ i + 1 }}</span>
+                    <div class="sg-bulk-row__content">
+                      <span class="sg-bulk-row__original">{{ line.original }}</span>
+                      <code class="sg-bulk-row__slug">{{ line.slug }}</code>
+                    </div>
+                    <button class="sg-btn-ghost sg-btn-sm sg-bulk-row__copy" (click)="copyBulkLine(line)" [class.sg-btn-ghost--success]="line.copied">
+                      @if (!line.copied) {
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      }
+                      @if (line.copied) {
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      }
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+            @if (bulkLines.length === 0) {
+              <div class="sg-output-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span>Paste multiple lines to generate slugs for each</span>
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
     </div>
 

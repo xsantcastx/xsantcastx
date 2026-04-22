@@ -37,383 +37,392 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════
-       META TAG BUILDER
-       ═══════════════════════════════════════════════════════════ -->
-  <div class="rg-layout" *ngIf="activeTab === 'meta'">
-
-    <!-- LEFT: Controls -->
-    <div class="rg-col rg-col--left">
-
-      <!-- Presets -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            Quick Presets
-          </span>
-        </div>
-        <div class="rg-panel__body rg-presets">
-          <button class="rg-preset-btn" (click)="applyPreset('default')">Default (index, follow)</button>
-          <button class="rg-preset-btn" (click)="applyPreset('noindex')">No Index</button>
-          <button class="rg-preset-btn" (click)="applyPreset('noindex-nofollow')">No Index + No Follow</button>
-          <button class="rg-preset-btn" (click)="applyPreset('noarchive')">No Archive</button>
-          <button class="rg-preset-btn" (click)="applyPreset('restricted')">Fully Restricted</button>
-        </div>
-      </div>
-
-      <!-- Indexing Directives -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Indexing
-          </span>
-        </div>
-        <div class="rg-panel__body rg-directives">
-
-          <!-- Index toggle -->
-          <div class="rg-directive-row">
-            <label class="rg-toggle">
-              <input type="checkbox" [(ngModel)]="useIndex" (ngModelChange)="onIndexToggle()" />
-              <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
-              <span class="rg-toggle__label">
-                {{ useIndex ? 'index' : 'noindex' }}
-                <span class="rg-badge" [class.rg-badge--warn]="!useIndex">{{ useIndex ? 'ALLOWED' : 'BLOCKED' }}</span>
-              </span>
-            </label>
-            <button class="rg-info-btn" (click)="toggleExplanation('index')" [class.rg-info-btn--active]="expandedDirective === 'index'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'index'">
-              Controls whether search engines should index this page. When set to <code>noindex</code>, the page will not appear in search results.
-            </p>
+  META TAG BUILDER
+  ═══════════════════════════════════════════════════════════ -->
+  @if (activeTab === 'meta') {
+    <div class="rg-layout">
+      <!-- LEFT: Controls -->
+      <div class="rg-col rg-col--left">
+        <!-- Presets -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Quick Presets
+            </span>
           </div>
-
-          <!-- Follow toggle -->
-          <div class="rg-directive-row">
-            <label class="rg-toggle">
-              <input type="checkbox" [(ngModel)]="useFollow" (ngModelChange)="onFollowToggle()" />
-              <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
-              <span class="rg-toggle__label">
-                {{ useFollow ? 'follow' : 'nofollow' }}
-                <span class="rg-badge" [class.rg-badge--warn]="!useFollow">{{ useFollow ? 'ALLOWED' : 'BLOCKED' }}</span>
-              </span>
-            </label>
-            <button class="rg-info-btn" (click)="toggleExplanation('follow')" [class.rg-info-btn--active]="expandedDirective === 'follow'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'follow'">
-              Controls whether search engines should follow links on this page. When set to <code>nofollow</code>, crawlers will not follow or pass link equity through any links.
-            </p>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Content Directives -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-            Content Directives
-          </span>
-        </div>
-        <div class="rg-panel__body rg-directives">
-          <div class="rg-directive-row" *ngFor="let d of getDirectivesByGroup('content')">
-            <label class="rg-toggle">
-              <input type="checkbox" [(ngModel)]="d.value" (ngModelChange)="onDirectiveChange()" />
-              <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
-              <span class="rg-toggle__label">{{ d.label }}</span>
-            </label>
-            <button class="rg-info-btn" (click)="toggleExplanation(d.key)" [class.rg-info-btn--active]="expandedDirective === d.key">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === d.key">{{ d.description }}</p>
+          <div class="rg-panel__body rg-presets">
+            <button class="rg-preset-btn" (click)="applyPreset('default')">Default (index, follow)</button>
+            <button class="rg-preset-btn" (click)="applyPreset('noindex')">No Index</button>
+            <button class="rg-preset-btn" (click)="applyPreset('noindex-nofollow')">No Index + No Follow</button>
+            <button class="rg-preset-btn" (click)="applyPreset('noarchive')">No Archive</button>
+            <button class="rg-preset-btn" (click)="applyPreset('restricted')">Fully Restricted</button>
           </div>
         </div>
-      </div>
-
-      <!-- Advanced Directives -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
-            Advanced
-          </span>
-        </div>
-        <div class="rg-panel__body rg-directives">
-
-          <!-- max-snippet -->
-          <div class="rg-directive-row">
-            <div class="rg-advanced-field">
-              <label class="rg-field-label">max-snippet</label>
-              <input type="number" class="rg-number-input" [(ngModel)]="directives[6].value" min="-1" />
+        <!-- Indexing Directives -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Indexing
+            </span>
+          </div>
+          <div class="rg-panel__body rg-directives">
+            <!-- Index toggle -->
+            <div class="rg-directive-row">
+              <label class="rg-toggle">
+                <input type="checkbox" [(ngModel)]="useIndex" (ngModelChange)="onIndexToggle()" />
+                <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
+                <span class="rg-toggle__label">
+                  {{ useIndex ? 'index' : 'noindex' }}
+                  <span class="rg-badge" [class.rg-badge--warn]="!useIndex">{{ useIndex ? 'ALLOWED' : 'BLOCKED' }}</span>
+                </span>
+              </label>
+              <button class="rg-info-btn" (click)="toggleExplanation('index')" [class.rg-info-btn--active]="expandedDirective === 'index'">?</button>
+              @if (expandedDirective === 'index') {
+                <p class="rg-directive-hint">
+                  Controls whether search engines should index this page. When set to <code>noindex</code>, the page will not appear in search results.
+                </p>
+              }
             </div>
-            <button class="rg-info-btn" (click)="toggleExplanation('max-snippet')" [class.rg-info-btn--active]="expandedDirective === 'max-snippet'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'max-snippet'">{{ directives[6].description }}</p>
-          </div>
-
-          <!-- max-image-preview -->
-          <div class="rg-directive-row">
-            <div class="rg-advanced-field">
-              <label class="rg-field-label">max-image-preview</label>
-              <select class="rg-select" [(ngModel)]="directives[7].value">
-                <option *ngFor="let opt of imagePreviewOptions" [value]="opt">{{ opt }}</option>
-              </select>
+            <!-- Follow toggle -->
+            <div class="rg-directive-row">
+              <label class="rg-toggle">
+                <input type="checkbox" [(ngModel)]="useFollow" (ngModelChange)="onFollowToggle()" />
+                <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
+                <span class="rg-toggle__label">
+                  {{ useFollow ? 'follow' : 'nofollow' }}
+                  <span class="rg-badge" [class.rg-badge--warn]="!useFollow">{{ useFollow ? 'ALLOWED' : 'BLOCKED' }}</span>
+                </span>
+              </label>
+              <button class="rg-info-btn" (click)="toggleExplanation('follow')" [class.rg-info-btn--active]="expandedDirective === 'follow'">?</button>
+              @if (expandedDirective === 'follow') {
+                <p class="rg-directive-hint">
+                  Controls whether search engines should follow links on this page. When set to <code>nofollow</code>, crawlers will not follow or pass link equity through any links.
+                </p>
+              }
             </div>
-            <button class="rg-info-btn" (click)="toggleExplanation('max-image-preview')" [class.rg-info-btn--active]="expandedDirective === 'max-image-preview'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'max-image-preview'">{{ directives[7].description }}</p>
           </div>
-
-          <!-- max-video-preview -->
-          <div class="rg-directive-row">
-            <div class="rg-advanced-field">
-              <label class="rg-field-label">max-video-preview</label>
-              <input type="number" class="rg-number-input" [(ngModel)]="directives[8].value" min="-1" />
+        </div>
+        <!-- Content Directives -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              Content Directives
+            </span>
+          </div>
+          <div class="rg-panel__body rg-directives">
+            @for (d of getDirectivesByGroup('content'); track d) {
+              <div class="rg-directive-row">
+                <label class="rg-toggle">
+                  <input type="checkbox" [(ngModel)]="d.value" (ngModelChange)="onDirectiveChange()" />
+                  <span class="rg-toggle__track"><span class="rg-toggle__thumb"></span></span>
+                  <span class="rg-toggle__label">{{ d.label }}</span>
+                </label>
+                <button class="rg-info-btn" (click)="toggleExplanation(d.key)" [class.rg-info-btn--active]="expandedDirective === d.key">?</button>
+                @if (expandedDirective === d.key) {
+                  <p class="rg-directive-hint">{{ d.description }}</p>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        <!-- Advanced Directives -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+              Advanced
+            </span>
+          </div>
+          <div class="rg-panel__body rg-directives">
+            <!-- max-snippet -->
+            <div class="rg-directive-row">
+              <div class="rg-advanced-field">
+                <label class="rg-field-label">max-snippet</label>
+                <input type="number" class="rg-number-input" [(ngModel)]="directives[6].value" min="-1" />
+              </div>
+              <button class="rg-info-btn" (click)="toggleExplanation('max-snippet')" [class.rg-info-btn--active]="expandedDirective === 'max-snippet'">?</button>
+              @if (expandedDirective === 'max-snippet') {
+                <p class="rg-directive-hint">{{ directives[6].description }}</p>
+              }
             </div>
-            <button class="rg-info-btn" (click)="toggleExplanation('max-video-preview')" [class.rg-info-btn--active]="expandedDirective === 'max-video-preview'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'max-video-preview'">{{ directives[8].description }}</p>
-          </div>
-
-          <!-- unavailable_after -->
-          <div class="rg-directive-row">
-            <div class="rg-advanced-field">
-              <label class="rg-field-label">unavailable_after</label>
-              <input type="date" class="rg-text-input" [(ngModel)]="directives[9].value" />
+            <!-- max-image-preview -->
+            <div class="rg-directive-row">
+              <div class="rg-advanced-field">
+                <label class="rg-field-label">max-image-preview</label>
+                <select class="rg-select" [(ngModel)]="directives[7].value">
+                  @for (opt of imagePreviewOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </div>
+              <button class="rg-info-btn" (click)="toggleExplanation('max-image-preview')" [class.rg-info-btn--active]="expandedDirective === 'max-image-preview'">?</button>
+              @if (expandedDirective === 'max-image-preview') {
+                <p class="rg-directive-hint">{{ directives[7].description }}</p>
+              }
             </div>
-            <button class="rg-info-btn" (click)="toggleExplanation('unavailable_after')" [class.rg-info-btn--active]="expandedDirective === 'unavailable_after'">?</button>
-            <p class="rg-directive-hint" *ngIf="expandedDirective === 'unavailable_after'">{{ directives[9].description }}</p>
-          </div>
-
-        </div>
-      </div>
-
-    </div><!-- /left col -->
-
-    <!-- RIGHT: Preview -->
-    <div class="rg-col rg-col--right">
-
-      <!-- Meta Tag Output -->
-      <div class="rg-panel rg-panel--output">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Generated Meta Tag
-          </span>
-          <div class="rg-panel__actions">
-            <button class="rg-btn-ghost rg-btn-sm" (click)="copyMeta()" [class.rg-btn-ghost--success]="copiedMeta">
-              <ng-container *ngIf="!copiedMeta">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copiedMeta">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
+            <!-- max-video-preview -->
+            <div class="rg-directive-row">
+              <div class="rg-advanced-field">
+                <label class="rg-field-label">max-video-preview</label>
+                <input type="number" class="rg-number-input" [(ngModel)]="directives[8].value" min="-1" />
+              </div>
+              <button class="rg-info-btn" (click)="toggleExplanation('max-video-preview')" [class.rg-info-btn--active]="expandedDirective === 'max-video-preview'">?</button>
+              @if (expandedDirective === 'max-video-preview') {
+                <p class="rg-directive-hint">{{ directives[8].description }}</p>
+              }
+            </div>
+            <!-- unavailable_after -->
+            <div class="rg-directive-row">
+              <div class="rg-advanced-field">
+                <label class="rg-field-label">unavailable_after</label>
+                <input type="date" class="rg-text-input" [(ngModel)]="directives[9].value" />
+              </div>
+              <button class="rg-info-btn" (click)="toggleExplanation('unavailable_after')" [class.rg-info-btn--active]="expandedDirective === 'unavailable_after'">?</button>
+              @if (expandedDirective === 'unavailable_after') {
+                <p class="rg-directive-hint">{{ directives[9].description }}</p>
+              }
+            </div>
           </div>
         </div>
-        <div class="rg-output-body">
-          <pre class="rg-code-pre"><code class="rg-code rg-code--meta">{{ generatedMetaTag }}</code></pre>
-        </div>
-      </div>
-
-      <!-- Googlebot variant -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-            Googlebot Variant
-          </span>
-        </div>
-        <div class="rg-output-body">
-          <pre class="rg-code-pre"><code class="rg-code rg-code--googlebot">{{ googlebotMetaTag }}</code></pre>
-        </div>
-      </div>
-
-      <!-- Directive Summary -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            Active Directives
-          </span>
-        </div>
-        <div class="rg-panel__body rg-summary">
-          <div class="rg-summary-item" [class.rg-summary-item--active]="useIndex">
-            <span class="rg-summary-dot"></span>
-            <span>Indexing: <strong>{{ useIndex ? 'Allowed' : 'Blocked' }}</strong></span>
+      </div><!-- /left col -->
+      <!-- RIGHT: Preview -->
+      <div class="rg-col rg-col--right">
+        <!-- Meta Tag Output -->
+        <div class="rg-panel rg-panel--output">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Generated Meta Tag
+            </span>
+            <div class="rg-panel__actions">
+              <button class="rg-btn-ghost rg-btn-sm" (click)="copyMeta()" [class.rg-btn-ghost--success]="copiedMeta">
+                @if (!copiedMeta) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                }
+                @if (copiedMeta) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
+              </button>
+            </div>
           </div>
-          <div class="rg-summary-item" [class.rg-summary-item--active]="useFollow">
-            <span class="rg-summary-dot"></span>
-            <span>Link following: <strong>{{ useFollow ? 'Allowed' : 'Blocked' }}</strong></span>
+          <div class="rg-output-body">
+            <pre class="rg-code-pre"><code class="rg-code rg-code--meta">{{ generatedMetaTag }}</code></pre>
           </div>
-          <div class="rg-summary-item" *ngFor="let d of directives" [class.rg-summary-item--active]="d.type === 'boolean' ? !d.value : true">
-            <ng-container *ngIf="d.type === 'boolean'">
+        </div>
+        <!-- Googlebot variant -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              Googlebot Variant
+            </span>
+          </div>
+          <div class="rg-output-body">
+            <pre class="rg-code-pre"><code class="rg-code rg-code--googlebot">{{ googlebotMetaTag }}</code></pre>
+          </div>
+        </div>
+        <!-- Directive Summary -->
+        <div class="rg-panel">
+          <div class="rg-panel__header">
+            <span class="rg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Active Directives
+            </span>
+          </div>
+          <div class="rg-panel__body rg-summary">
+            <div class="rg-summary-item" [class.rg-summary-item--active]="useIndex">
               <span class="rg-summary-dot"></span>
-              <span>{{ d.label }}: <strong>{{ d.value ? 'Yes' : 'No' }}</strong></span>
-            </ng-container>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /right col -->
-  </div><!-- /meta layout -->
-
-  <!-- ═══════════════════════════════════════════════════════════
-       ROBOTS.TXT BUILDER
-       ═══════════════════════════════════════════════════════════ -->
-  <div class="rg-layout" *ngIf="activeTab === 'robotstxt'">
-
-    <!-- LEFT: Rules -->
-    <div class="rg-col rg-col--left">
-
-      <div class="rg-panel" *ngFor="let rule of rules; let ri = index; trackBy: trackByIndex">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
-            Rule {{ ri + 1 }}
-          </span>
-          <div class="rg-panel__actions" *ngIf="rules.length > 1">
-            <button class="rg-btn-ghost rg-btn-sm rg-btn-ghost--danger" (click)="removeRule(ri)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-              Remove
-            </button>
-          </div>
-        </div>
-        <div class="rg-panel__body rg-rule-body">
-
-          <!-- User-agent -->
-          <div class="rg-field-group">
-            <label class="rg-field-label">User-agent</label>
-            <input type="text" class="rg-text-input" [(ngModel)]="rule.userAgent" placeholder="* (all crawlers)" />
-          </div>
-
-          <!-- Allow paths -->
-          <div class="rg-field-group">
-            <label class="rg-field-label">Allow</label>
-            <div class="rg-path-row" *ngFor="let path of rule.allow; let pi = index; trackBy: trackByIndex">
-              <input type="text" class="rg-text-input" [(ngModel)]="rule.allow[pi]" placeholder="/path/" />
-              <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeAllowPath(rule, pi)" *ngIf="rule.allow.length > 1" title="Remove path">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+              <span>Indexing: <strong>{{ useIndex ? 'Allowed' : 'Blocked' }}</strong></span>
             </div>
-            <button class="rg-btn-ghost rg-btn-sm" (click)="addAllowPath(rule)">+ Add Allow Path</button>
-          </div>
-
-          <!-- Disallow paths -->
-          <div class="rg-field-group">
-            <label class="rg-field-label">Disallow</label>
-            <div class="rg-path-row" *ngFor="let path of rule.disallow; let pi = index; trackBy: trackByIndex">
-              <input type="text" class="rg-text-input" [(ngModel)]="rule.disallow[pi]" placeholder="/private/" />
-              <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeDisallowPath(rule, pi)" *ngIf="rule.disallow.length > 1" title="Remove path">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+            <div class="rg-summary-item" [class.rg-summary-item--active]="useFollow">
+              <span class="rg-summary-dot"></span>
+              <span>Link following: <strong>{{ useFollow ? 'Allowed' : 'Blocked' }}</strong></span>
             </div>
-            <button class="rg-btn-ghost rg-btn-sm" (click)="addDisallowPath(rule)">+ Add Disallow Path</button>
+            @for (d of directives; track d) {
+              <div class="rg-summary-item" [class.rg-summary-item--active]="d.type === 'boolean' ? !d.value : true">
+                @if (d.type === 'boolean') {
+                  <span class="rg-summary-dot"></span>
+                  <span>{{ d.label }}: <strong>{{ d.value ? 'Yes' : 'No' }}</strong></span>
+                }
+              </div>
+            }
           </div>
-
-          <!-- Crawl-delay -->
-          <div class="rg-field-group">
-            <label class="rg-field-label">Crawl-delay <span class="rg-field-optional">(seconds)</span></label>
-            <input type="number" class="rg-number-input" [(ngModel)]="rule.crawlDelay" placeholder="None" min="0" />
-          </div>
-
         </div>
+      </div><!-- /right col -->
+    </div>
+    }<!-- /meta layout -->
+
+    <!-- ═══════════════════════════════════════════════════════════
+    ROBOTS.TXT BUILDER
+    ═══════════════════════════════════════════════════════════ -->
+    @if (activeTab === 'robotstxt') {
+      <div class="rg-layout">
+        <!-- LEFT: Rules -->
+        <div class="rg-col rg-col--left">
+          @for (rule of rules; track $index; let ri = $index) {
+            <div class="rg-panel">
+              <div class="rg-panel__header">
+                <span class="rg-panel__title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
+                  Rule {{ ri + 1 }}
+                </span>
+                @if (rules.length > 1) {
+                  <div class="rg-panel__actions">
+                    <button class="rg-btn-ghost rg-btn-sm rg-btn-ghost--danger" (click)="removeRule(ri)">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                      Remove
+                    </button>
+                  </div>
+                }
+              </div>
+              <div class="rg-panel__body rg-rule-body">
+                <!-- User-agent -->
+                <div class="rg-field-group">
+                  <label class="rg-field-label">User-agent</label>
+                  <input type="text" class="rg-text-input" [(ngModel)]="rule.userAgent" placeholder="* (all crawlers)" />
+                </div>
+                <!-- Allow paths -->
+                <div class="rg-field-group">
+                  <label class="rg-field-label">Allow</label>
+                  @for (path of rule.allow; track $index; let pi = $index) {
+                    <div class="rg-path-row">
+                      <input type="text" class="rg-text-input" [(ngModel)]="rule.allow[pi]" placeholder="/path/" />
+                      @if (rule.allow.length > 1) {
+                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeAllowPath(rule, pi)" title="Remove path">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      }
+                    </div>
+                  }
+                  <button class="rg-btn-ghost rg-btn-sm" (click)="addAllowPath(rule)">+ Add Allow Path</button>
+                </div>
+                <!-- Disallow paths -->
+                <div class="rg-field-group">
+                  <label class="rg-field-label">Disallow</label>
+                  @for (path of rule.disallow; track $index; let pi = $index) {
+                    <div class="rg-path-row">
+                      <input type="text" class="rg-text-input" [(ngModel)]="rule.disallow[pi]" placeholder="/private/" />
+                      @if (rule.disallow.length > 1) {
+                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeDisallowPath(rule, pi)" title="Remove path">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      }
+                    </div>
+                  }
+                  <button class="rg-btn-ghost rg-btn-sm" (click)="addDisallowPath(rule)">+ Add Disallow Path</button>
+                </div>
+                <!-- Crawl-delay -->
+                <div class="rg-field-group">
+                  <label class="rg-field-label">Crawl-delay <span class="rg-field-optional">(seconds)</span></label>
+                  <input type="number" class="rg-number-input" [(ngModel)]="rule.crawlDelay" placeholder="None" min="0" />
+                </div>
+              </div>
+            </div>
+          }
+          <button class="rg-add-rule-btn" (click)="addRule()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Another Rule
+          </button>
+          <!-- Sitemap URLs -->
+          <div class="rg-panel">
+            <div class="rg-panel__header">
+              <span class="rg-panel__title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                Sitemap URLs
+              </span>
+            </div>
+            <div class="rg-panel__body rg-rule-body">
+              @for (url of sitemapUrls; track $index; let si = $index) {
+                <div class="rg-path-row">
+                  <input type="text" class="rg-text-input" [(ngModel)]="sitemapUrls[si]" placeholder="https://example.com/sitemap.xml" />
+                  @if (sitemapUrls.length > 1) {
+                    <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeSitemap(si)" title="Remove sitemap">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  }
+                </div>
+              }
+              <button class="rg-btn-ghost rg-btn-sm" (click)="addSitemap()">+ Add Sitemap</button>
+            </div>
+          </div>
+        </div><!-- /left col -->
+        <!-- RIGHT: Preview -->
+        <div class="rg-col rg-col--right">
+          <div class="rg-panel rg-panel--output">
+            <div class="rg-panel__header">
+              <span class="rg-panel__title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Generated robots.txt
+              </span>
+              <div class="rg-panel__actions">
+                <button class="rg-btn-ghost rg-btn-sm" (click)="copyRobotsTxt()" [class.rg-btn-ghost--success]="copiedTxt">
+                  @if (!copiedTxt) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy
+                  }
+                  @if (copiedTxt) {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
+              </div>
+            </div>
+            <div class="rg-output-body rg-output-body--tall">
+              <pre class="rg-code-pre"><code class="rg-code rg-code--txt">{{ generatedRobotsTxt }}</code></pre>
+              @if (!generatedRobotsTxt) {
+                <div class="rg-output-empty">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span>Add rules to generate robots.txt</span>
+                </div>
+              }
+            </div>
+          </div>
+          <!-- Directive Reference -->
+          <div class="rg-panel">
+            <div class="rg-panel__header">
+              <span class="rg-panel__title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                robots.txt Reference
+              </span>
+            </div>
+            <div class="rg-panel__body rg-reference">
+              <div class="rg-ref-item">
+                <code>User-agent</code>
+                <span>Specifies which crawler the rules apply to. Use <code>*</code> for all bots, or specific names like <code>Googlebot</code>, <code>Bingbot</code>.</span>
+              </div>
+              <div class="rg-ref-item">
+                <code>Allow</code>
+                <span>Explicitly allows crawling of a specific path, overriding broader Disallow rules.</span>
+              </div>
+              <div class="rg-ref-item">
+                <code>Disallow</code>
+                <span>Blocks crawlers from accessing the specified path. Use <code>/</code> to block the entire site.</span>
+              </div>
+              <div class="rg-ref-item">
+                <code>Crawl-delay</code>
+                <span>Number of seconds a crawler should wait between requests. Not supported by all crawlers (Google ignores it).</span>
+              </div>
+              <div class="rg-ref-item">
+                <code>Sitemap</code>
+                <span>Full URL to your XML sitemap. Helps crawlers discover all pages on your site.</span>
+              </div>
+            </div>
+          </div>
+        </div><!-- /right col -->
       </div>
+      }<!-- /robotstxt layout -->
 
-      <button class="rg-add-rule-btn" (click)="addRule()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Another Rule
-      </button>
+      <app-embed-code-generator toolSlug="robots-generator" toolName="Robots Meta Tag Generator"></app-embed-code-generator>
 
-      <!-- Sitemap URLs -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-            Sitemap URLs
-          </span>
-        </div>
-        <div class="rg-panel__body rg-rule-body">
-          <div class="rg-path-row" *ngFor="let url of sitemapUrls; let si = index; trackBy: trackByIndex">
-            <input type="text" class="rg-text-input" [(ngModel)]="sitemapUrls[si]" placeholder="https://example.com/sitemap.xml" />
-            <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeSitemap(si)" *ngIf="sitemapUrls.length > 1" title="Remove sitemap">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <button class="rg-btn-ghost rg-btn-sm" (click)="addSitemap()">+ Add Sitemap</button>
-        </div>
-      </div>
+      <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'robots-generator'"></app-newsletter-capture>
 
-    </div><!-- /left col -->
+      <app-affiliate-cta [category]="'SEO Tools'" [toolSlug]="'robots-generator'"></app-affiliate-cta>
 
-    <!-- RIGHT: Preview -->
-    <div class="rg-col rg-col--right">
+      <app-related-tools [currentToolId]="'robots-generator'"></app-related-tools>
 
-      <div class="rg-panel rg-panel--output">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Generated robots.txt
-          </span>
-          <div class="rg-panel__actions">
-            <button class="rg-btn-ghost rg-btn-sm" (click)="copyRobotsTxt()" [class.rg-btn-ghost--success]="copiedTxt">
-              <ng-container *ngIf="!copiedTxt">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copiedTxt">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
-          </div>
-        </div>
-        <div class="rg-output-body rg-output-body--tall">
-          <pre class="rg-code-pre"><code class="rg-code rg-code--txt">{{ generatedRobotsTxt }}</code></pre>
-          <div class="rg-output-empty" *ngIf="!generatedRobotsTxt">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>Add rules to generate robots.txt</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Directive Reference -->
-      <div class="rg-panel">
-        <div class="rg-panel__header">
-          <span class="rg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            robots.txt Reference
-          </span>
-        </div>
-        <div class="rg-panel__body rg-reference">
-          <div class="rg-ref-item">
-            <code>User-agent</code>
-            <span>Specifies which crawler the rules apply to. Use <code>*</code> for all bots, or specific names like <code>Googlebot</code>, <code>Bingbot</code>.</span>
-          </div>
-          <div class="rg-ref-item">
-            <code>Allow</code>
-            <span>Explicitly allows crawling of a specific path, overriding broader Disallow rules.</span>
-          </div>
-          <div class="rg-ref-item">
-            <code>Disallow</code>
-            <span>Blocks crawlers from accessing the specified path. Use <code>/</code> to block the entire site.</span>
-          </div>
-          <div class="rg-ref-item">
-            <code>Crawl-delay</code>
-            <span>Number of seconds a crawler should wait between requests. Not supported by all crawlers (Google ignores it).</span>
-          </div>
-          <div class="rg-ref-item">
-            <code>Sitemap</code>
-            <span>Full URL to your XML sitemap. Helps crawlers discover all pages on your site.</span>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /right col -->
-  </div><!-- /robotstxt layout -->
-
-  <app-embed-code-generator toolSlug="robots-generator" toolName="Robots Meta Tag Generator"></app-embed-code-generator>
-
-  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'robots-generator'"></app-newsletter-capture>
-
-  <app-affiliate-cta [category]="'SEO Tools'" [toolSlug]="'robots-generator'"></app-affiliate-cta>
-
-  <app-related-tools [currentToolId]="'robots-generator'"></app-related-tools>
-
-</div>
+    </div>

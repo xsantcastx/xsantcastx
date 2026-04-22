@@ -70,7 +70,7 @@
                 (ngModelChange)="onAmountChange()"
                 [min]="1"
                 [max]="maxAmount"
-              />
+                />
               <span class="lg-amount-hint">{{ modeLabel }} (1&ndash;{{ maxAmount }})</span>
             </div>
           </div>
@@ -129,14 +129,14 @@
       <div class="lg-status-bar"
         [class.lg-status-bar--valid]="output"
         [class.lg-status-bar--idle]="!output">
-        <ng-container *ngIf="!output">
+        @if (!output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Configure options and click Generate</span>
-        </ng-container>
-        <ng-container *ngIf="output">
+        }
+        @if (output) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Generated {{ paragraphCount }} {{ paragraphCount === 1 ? 'paragraph' : (mode === 'paragraphs' ? 'paragraphs' : 'block') }} of {{ variant }} text</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -152,50 +152,56 @@
               Clear
             </button>
             <button class="lg-btn-ghost lg-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.lg-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Output body -->
         <div class="lg-output-body">
-          <pre class="lg-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="lg-output-empty" *ngIf="!output">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>Generated lorem ipsum will appear here</span>
-          </div>
+          @if (output) {
+            <pre class="lg-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output) {
+            <div class="lg-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Generated lorem ipsum will appear here</span>
+            </div>
+          }
         </div>
       </div><!-- /output panel -->
 
       <!-- Stats bar -->
-      <div class="lg-stats" *ngIf="output">
-        <div class="lg-stat">
-          <span class="lg-stat__label">Words</span>
-          <span class="lg-stat__value">{{ wordCount | number }}</span>
+      @if (output) {
+        <div class="lg-stats">
+          <div class="lg-stat">
+            <span class="lg-stat__label">Words</span>
+            <span class="lg-stat__value">{{ wordCount | number }}</span>
+          </div>
+          <div class="lg-stat-divider"></div>
+          <div class="lg-stat">
+            <span class="lg-stat__label">Characters</span>
+            <span class="lg-stat__value">{{ charCount | number }}</span>
+          </div>
+          <div class="lg-stat-divider"></div>
+          <div class="lg-stat">
+            <span class="lg-stat__label">Paragraphs</span>
+            <span class="lg-stat__value">{{ paragraphCount | number }}</span>
+          </div>
+          <div class="lg-stat-divider"></div>
+          <div class="lg-stat">
+            <span class="lg-stat__label">Variant</span>
+            <span class="lg-stat__value lg-stat__value--cyan">{{ variant }}</span>
+          </div>
         </div>
-        <div class="lg-stat-divider"></div>
-        <div class="lg-stat">
-          <span class="lg-stat__label">Characters</span>
-          <span class="lg-stat__value">{{ charCount | number }}</span>
-        </div>
-        <div class="lg-stat-divider"></div>
-        <div class="lg-stat">
-          <span class="lg-stat__label">Paragraphs</span>
-          <span class="lg-stat__value">{{ paragraphCount | number }}</span>
-        </div>
-        <div class="lg-stat-divider"></div>
-        <div class="lg-stat">
-          <span class="lg-stat__label">Variant</span>
-          <span class="lg-stat__value lg-stat__value--cyan">{{ variant }}</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

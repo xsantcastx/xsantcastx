@@ -36,170 +36,184 @@
     <div class="hx-col hx-col--left">
 
       <!-- File Upload Panel -->
-      <div class="hx-panel" *ngIf="mode === 'file'">
-        <div class="hx-panel__header">
-          <span class="hx-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            File Input
-          </span>
-          <div class="hx-panel__actions">
-            <button class="hx-btn-ghost hx-btn-sm" (click)="loadSample()" title="Load sample">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              Sample
-            </button>
-            <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!fileName" title="Clear">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-              Clear
-            </button>
-          </div>
-        </div>
-        <div class="hx-panel__body">
-          <div
-            class="hx-dropzone"
-            [class.hx-dropzone--over]="isDragOver"
-            [class.hx-dropzone--has-file]="!!fileName"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave()"
-            (drop)="onDrop($event)"
-            (click)="fileInput.click()"
-          >
-            <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
-            <ng-container *ngIf="!fileName">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hx-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="hx-dropzone__label">Drop any file here</span>
-              <span class="hx-dropzone__hint">or click to browse -- view raw hex bytes</span>
-            </ng-container>
-            <ng-container *ngIf="fileName">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hx-dropzone__icon hx-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="hx-dropzone__label">{{ fileName }}</span>
-              <span class="hx-dropzone__hint">{{ formatBytes(fileSize) }} -- click to replace</span>
-            </ng-container>
-          </div>
-        </div>
-      </div>
-
-      <!-- Text-to-Hex Panel -->
-      <div class="hx-panel" *ngIf="mode === 'text-to-hex'">
-        <div class="hx-panel__header">
-          <span class="hx-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Text Input
-          </span>
-          <div class="hx-panel__actions">
-            <button class="hx-btn-ghost hx-btn-sm" (click)="loadSample()" title="Load sample">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              Sample
-            </button>
-            <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!textInput" title="Clear">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-              Clear
-            </button>
-          </div>
-        </div>
-        <div class="hx-panel__body hx-panel__body--input">
-          <textarea
-            class="hx-textarea"
-            [(ngModel)]="textInput"
-            (ngModelChange)="onTextInput()"
-            placeholder="Type or paste text to convert to hex..."
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- Hex-to-Text Panel -->
-      <div class="hx-panel" *ngIf="mode === 'hex-to-text'">
-        <div class="hx-panel__header">
-          <span class="hx-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Hex Input
-          </span>
-          <div class="hx-panel__actions">
-            <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!hexInput" title="Clear">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-              Clear
-            </button>
-          </div>
-        </div>
-        <div class="hx-panel__body hx-panel__body--input">
-          <textarea
-            class="hx-textarea"
-            [(ngModel)]="hexInput"
-            (ngModelChange)="onHexInput()"
-            placeholder="Paste hex bytes to decode to text...&#10;&#10;e.g. 48 65 6C 6C 6F"
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- Conversion Output (text-to-hex / hex-to-text) -->
-      <div class="hx-panel" *ngIf="(mode === 'text-to-hex' || mode === 'hex-to-text') && conversionOutput">
-        <div class="hx-panel__header">
-          <span class="hx-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            {{ mode === 'text-to-hex' ? 'Hex Output' : 'Text Output' }}
-          </span>
-          <div class="hx-panel__actions">
-            <button class="hx-btn-ghost hx-btn-sm" (click)="copyConversionOutput()" [class.hx-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Copied!
-              </ng-container>
-            </button>
-          </div>
-        </div>
-        <div class="hx-panel__body">
-          <pre class="hx-conversion-pre"><code>{{ conversionOutput }}</code></pre>
-        </div>
-      </div>
-
-      <!-- Search Panel -->
-      <div class="hx-panel" *ngIf="hexRows.length > 0">
-        <div class="hx-panel__header">
-          <span class="hx-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Search Hex Pattern
-          </span>
-        </div>
-        <div class="hx-panel__body hx-search-body">
-          <div class="hx-search-row">
-            <input
-              class="hx-search-input"
-              [(ngModel)]="searchPattern"
-              (keyup.enter)="onSearch()"
-              placeholder="e.g. 4D 5A or FF D8 FF"
-              spellcheck="false"
-              autocomplete="off"
-            />
-            <button class="hx-btn-ghost" (click)="onSearch()" [disabled]="!searchPattern.trim()">Search</button>
-          </div>
-          <div class="hx-search-results" *ngIf="searchMatches.length > 0">
-            <span class="hx-search-count">{{ searchMatches.length }} match{{ searchMatches.length !== 1 ? 'es' : '' }}</span>
-            <div class="hx-search-nav">
-              <button class="hx-btn-ghost hx-btn-sm" (click)="prevMatch()" [disabled]="searchMatches.length <= 1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      @if (mode === 'file') {
+        <div class="hx-panel">
+          <div class="hx-panel__header">
+            <span class="hx-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              File Input
+            </span>
+            <div class="hx-panel__actions">
+              <button class="hx-btn-ghost hx-btn-sm" (click)="loadSample()" title="Load sample">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Sample
               </button>
-              <span class="hx-search-pos">{{ currentMatchIndex + 1 }} / {{ searchMatches.length }}</span>
-              <button class="hx-btn-ghost hx-btn-sm" (click)="nextMatch()" [disabled]="searchMatches.length <= 1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!fileName" title="Clear">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Clear
               </button>
             </div>
           </div>
-          <div class="hx-search-no-results" *ngIf="searchMatches.length === 0 && searchPattern.trim() && !errorMessage">
-            No matches found.
+          <div class="hx-panel__body">
+            <div
+              class="hx-dropzone"
+              [class.hx-dropzone--over]="isDragOver"
+              [class.hx-dropzone--has-file]="!!fileName"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave()"
+              (drop)="onDrop($event)"
+              (click)="fileInput.click()"
+              >
+              <input #fileInput type="file" style="display:none" (change)="onFileSelect($event)" />
+              @if (!fileName) {
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hx-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span class="hx-dropzone__label">Drop any file here</span>
+                <span class="hx-dropzone__hint">or click to browse -- view raw hex bytes</span>
+              }
+              @if (fileName) {
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hx-dropzone__icon hx-dropzone__icon--file"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="hx-dropzone__label">{{ fileName }}</span>
+                <span class="hx-dropzone__hint">{{ formatBytes(fileSize) }} -- click to replace</span>
+              }
+            </div>
           </div>
         </div>
-      </div>
+      }
+
+      <!-- Text-to-Hex Panel -->
+      @if (mode === 'text-to-hex') {
+        <div class="hx-panel">
+          <div class="hx-panel__header">
+            <span class="hx-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Text Input
+            </span>
+            <div class="hx-panel__actions">
+              <button class="hx-btn-ghost hx-btn-sm" (click)="loadSample()" title="Load sample">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Sample
+              </button>
+              <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!textInput" title="Clear">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Clear
+              </button>
+            </div>
+          </div>
+          <div class="hx-panel__body hx-panel__body--input">
+            <textarea
+              class="hx-textarea"
+              [(ngModel)]="textInput"
+              (ngModelChange)="onTextInput()"
+              placeholder="Type or paste text to convert to hex..."
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
+        </div>
+      }
+
+      <!-- Hex-to-Text Panel -->
+      @if (mode === 'hex-to-text') {
+        <div class="hx-panel">
+          <div class="hx-panel__header">
+            <span class="hx-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Hex Input
+            </span>
+            <div class="hx-panel__actions">
+              <button class="hx-btn-ghost hx-btn-sm" (click)="clearAll()" [disabled]="!hexInput" title="Clear">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Clear
+              </button>
+            </div>
+          </div>
+          <div class="hx-panel__body hx-panel__body--input">
+            <textarea
+              class="hx-textarea"
+              [(ngModel)]="hexInput"
+              (ngModelChange)="onHexInput()"
+              placeholder="Paste hex bytes to decode to text...&#10;&#10;e.g. 48 65 6C 6C 6F"
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
+        </div>
+      }
+
+      <!-- Conversion Output (text-to-hex / hex-to-text) -->
+      @if ((mode === 'text-to-hex' || mode === 'hex-to-text') && conversionOutput) {
+        <div class="hx-panel">
+          <div class="hx-panel__header">
+            <span class="hx-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              {{ mode === 'text-to-hex' ? 'Hex Output' : 'Text Output' }}
+            </span>
+            <div class="hx-panel__actions">
+              <button class="hx-btn-ghost hx-btn-sm" (click)="copyConversionOutput()" [class.hx-btn-ghost--success]="copied">
+                @if (!copied) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                }
+                @if (copied) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
+              </button>
+            </div>
+          </div>
+          <div class="hx-panel__body">
+            <pre class="hx-conversion-pre"><code>{{ conversionOutput }}</code></pre>
+          </div>
+        </div>
+      }
+
+      <!-- Search Panel -->
+      @if (hexRows.length > 0) {
+        <div class="hx-panel">
+          <div class="hx-panel__header">
+            <span class="hx-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Search Hex Pattern
+            </span>
+          </div>
+          <div class="hx-panel__body hx-search-body">
+            <div class="hx-search-row">
+              <input
+                class="hx-search-input"
+                [(ngModel)]="searchPattern"
+                (keyup.enter)="onSearch()"
+                placeholder="e.g. 4D 5A or FF D8 FF"
+                spellcheck="false"
+                autocomplete="off"
+                />
+              <button class="hx-btn-ghost" (click)="onSearch()" [disabled]="!searchPattern.trim()">Search</button>
+            </div>
+            @if (searchMatches.length > 0) {
+              <div class="hx-search-results">
+                <span class="hx-search-count">{{ searchMatches.length }} match{{ searchMatches.length !== 1 ? 'es' : '' }}</span>
+                <div class="hx-search-nav">
+                  <button class="hx-btn-ghost hx-btn-sm" (click)="prevMatch()" [disabled]="searchMatches.length <= 1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <span class="hx-search-pos">{{ currentMatchIndex + 1 }} / {{ searchMatches.length }}</span>
+                  <button class="hx-btn-ghost hx-btn-sm" (click)="nextMatch()" [disabled]="searchMatches.length <= 1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            }
+            @if (searchMatches.length === 0 && searchPattern.trim() && !errorMessage) {
+              <div class="hx-search-no-results">
+                No matches found.
+              </div>
+            }
+          </div>
+        </div>
+      }
 
     </div><!-- /left col -->
 
@@ -207,10 +221,12 @@
     <div class="hx-col hx-col--right">
 
       <!-- Error bar -->
-      <div class="hx-status-bar hx-status-bar--invalid" *ngIf="errorMessage">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        <span class="hx-status-error">{{ errorMessage }}</span>
-      </div>
+      @if (errorMessage) {
+        <div class="hx-status-bar hx-status-bar--invalid">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="hx-status-error">{{ errorMessage }}</span>
+        </div>
+      }
 
       <!-- Hex Dump Panel -->
       <div class="hx-panel hx-panel--dump">
@@ -220,91 +236,109 @@
             Hex Dump
           </span>
           <div class="hx-panel__actions">
-            <span class="hx-file-size" *ngIf="fileSize > 0">{{ formatBytes(fileSize) }}</span>
+            @if (fileSize > 0) {
+              <span class="hx-file-size">{{ formatBytes(fileSize) }}</span>
+            }
             <button class="hx-btn-ghost hx-btn-sm" (click)="copyHexDump()" [disabled]="hexRows.length === 0" [class.hx-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <div class="hx-dump-body">
           <!-- Column headers -->
-          <div class="hx-dump-header" *ngIf="hexRows.length > 0">
-            <span class="hx-dump-offset">Offset</span>
-            <span class="hx-dump-hex-header">00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F</span>
-            <span class="hx-dump-ascii-header">ASCII</span>
-          </div>
+          @if (hexRows.length > 0) {
+            <div class="hx-dump-header">
+              <span class="hx-dump-offset">Offset</span>
+              <span class="hx-dump-hex-header">00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F</span>
+              <span class="hx-dump-ascii-header">ASCII</span>
+            </div>
+          }
 
           <!-- Hex rows -->
-          <div class="hx-dump-scroll" *ngIf="hexRows.length > 0">
-            <div class="hx-dump-row" *ngFor="let row of hexRows">
-              <span class="hx-dump-offset">{{ row.offset }}</span>
-              <span class="hx-dump-bytes">
-                <span
-                  *ngFor="let byte of row.bytes; let i = index"
-                  class="hx-byte"
-                  [class.hx-byte--hover]="byte.index === hoveredByteIndex && byte.index >= 0"
-                  [class.hx-byte--match]="isSearchMatch(byte.index)"
-                  [class.hx-byte--current]="isCurrentMatch(byte.index)"
-                  [class.hx-byte--gap]="i === 7"
-                  [class.hx-byte--empty]="byte.index < 0"
-                  (mouseenter)="onByteHover(byte.index)"
-                  (mouseleave)="onByteLeave()"
-                >{{ byte.value }}</span>
-              </span>
-              <span class="hx-dump-ascii">
-                <span
-                  *ngFor="let ch of row.ascii.split(''); let i = index"
-                  class="hx-ascii-char"
-                  [class.hx-ascii-char--hover]="(row.bytes[i]?.index ?? -1) === hoveredByteIndex && hoveredByteIndex >= 0"
-                  [class.hx-ascii-char--match]="isSearchMatch(row.bytes[i]?.index ?? -1)"
-                  [class.hx-ascii-char--current]="isCurrentMatch(row.bytes[i]?.index ?? -1)"
-                  [class.hx-ascii-char--dot]="ch === '.'"
-                  (mouseenter)="onByteHover(row.bytes[i]?.index ?? -1)"
-                  (mouseleave)="onByteLeave()"
-                >{{ ch }}</span>
-              </span>
+          @if (hexRows.length > 0) {
+            <div class="hx-dump-scroll">
+              @for (row of hexRows; track row) {
+                <div class="hx-dump-row">
+                  <span class="hx-dump-offset">{{ row.offset }}</span>
+                  <span class="hx-dump-bytes">
+                    @for (byte of row.bytes; track byte; let i = $index) {
+                      <span
+                        class="hx-byte"
+                        [class.hx-byte--hover]="byte.index === hoveredByteIndex && byte.index >= 0"
+                        [class.hx-byte--match]="isSearchMatch(byte.index)"
+                        [class.hx-byte--current]="isCurrentMatch(byte.index)"
+                        [class.hx-byte--gap]="i === 7"
+                        [class.hx-byte--empty]="byte.index < 0"
+                        (mouseenter)="onByteHover(byte.index)"
+                        (mouseleave)="onByteLeave()"
+                      >{{ byte.value }}</span>
+                    }
+                  </span>
+                  <span class="hx-dump-ascii">
+                    @for (ch of row.ascii.split(''); track ch; let i = $index) {
+                      <span
+                        class="hx-ascii-char"
+                        [class.hx-ascii-char--hover]="(row.bytes[i]?.index ?? -1) === hoveredByteIndex && hoveredByteIndex >= 0"
+                        [class.hx-ascii-char--match]="isSearchMatch(row.bytes[i]?.index ?? -1)"
+                        [class.hx-ascii-char--current]="isCurrentMatch(row.bytes[i]?.index ?? -1)"
+                        [class.hx-ascii-char--dot]="ch === '.'"
+                        (mouseenter)="onByteHover(row.bytes[i]?.index ?? -1)"
+                        (mouseleave)="onByteLeave()"
+                      >{{ ch }}</span>
+                    }
+                  </span>
+                </div>
+              }
             </div>
-          </div>
+          }
 
           <!-- Empty state -->
-          <div class="hx-dump-empty" *ngIf="hexRows.length === 0">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-            <span>Hex dump will appear here</span>
-            <span class="hx-dump-empty__hint">Upload a file or enter text to view hex bytes</span>
-          </div>
+          @if (hexRows.length === 0) {
+            <div class="hx-dump-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <span>Hex dump will appear here</span>
+              <span class="hx-dump-empty__hint">Upload a file or enter text to view hex bytes</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="hx-stats" *ngIf="fileBytes">
-        <div class="hx-stat">
-          <span class="hx-stat__label">Size</span>
-          <span class="hx-stat__value">{{ formatBytes(fileSize) }}</span>
+      @if (fileBytes) {
+        <div class="hx-stats">
+          <div class="hx-stat">
+            <span class="hx-stat__label">Size</span>
+            <span class="hx-stat__value">{{ formatBytes(fileSize) }}</span>
+          </div>
+          <div class="hx-stat-divider"></div>
+          <div class="hx-stat">
+            <span class="hx-stat__label">Bytes</span>
+            <span class="hx-stat__value hx-stat__value--cyan">{{ fileSize | number }}</span>
+          </div>
+          <div class="hx-stat-divider"></div>
+          <div class="hx-stat">
+            <span class="hx-stat__label">Rows</span>
+            <span class="hx-stat__value">{{ hexRows.length | number }}</span>
+          </div>
+          @if (fileName) {
+            <div class="hx-stat-divider"></div>
+          }
+          @if (fileName) {
+            <div class="hx-stat">
+              <span class="hx-stat__label">File</span>
+              <span class="hx-stat__value hx-stat__value--cyan hx-stat__value--truncate">{{ fileName }}</span>
+            </div>
+          }
         </div>
-        <div class="hx-stat-divider"></div>
-        <div class="hx-stat">
-          <span class="hx-stat__label">Bytes</span>
-          <span class="hx-stat__value hx-stat__value--cyan">{{ fileSize | number }}</span>
-        </div>
-        <div class="hx-stat-divider"></div>
-        <div class="hx-stat">
-          <span class="hx-stat__label">Rows</span>
-          <span class="hx-stat__value">{{ hexRows.length | number }}</span>
-        </div>
-        <div class="hx-stat-divider" *ngIf="fileName"></div>
-        <div class="hx-stat" *ngIf="fileName">
-          <span class="hx-stat__label">File</span>
-          <span class="hx-stat__value hx-stat__value--cyan hx-stat__value--truncate">{{ fileName }}</span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

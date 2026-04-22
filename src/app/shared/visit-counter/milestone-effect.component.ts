@@ -7,35 +7,40 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
   selector: 'app-milestone-effect',
   standalone: false,
   template: `
-    <div class="ms-overlay" *ngIf="event" [class.ms-overlay--visible]="visible" (click)="dismiss()">
-      <div class="ms-particles" *ngIf="visible">
-        <span *ngFor="let p of particles" class="ms-particle"
-          [attr.style]="particleStyle(p)">
-        </span>
-      </div>
-
-      <div class="ms-card" [class.ms-card--visible]="cardVisible" [attr.data-tier]="event.tier">
-        <div class="ms-card__glow"></div>
-        <div class="ms-card__inner">
-          <div class="ms-card__badge" [attr.data-tier]="event.tier">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
+    @if (event) {
+      <div class="ms-overlay" [class.ms-overlay--visible]="visible" (click)="dismiss()">
+        @if (visible) {
+          <div class="ms-particles">
+            @for (p of particles; track p) {
+              <span class="ms-particle"
+                [attr.style]="particleStyle(p)">
+              </span>
+            }
           </div>
-          <p class="ms-card__label">{{ event.label }}</p>
-          <div class="ms-card__number">
-            <span class="ms-card__hash">#</span>
-            <span class="ms-card__count" [attr.data-tier]="event.tier">{{ formattedCount }}</span>
+        }
+        <div class="ms-card" [class.ms-card--visible]="cardVisible" [attr.data-tier]="event.tier">
+          <div class="ms-card__glow"></div>
+          <div class="ms-card__inner">
+            <div class="ms-card__badge" [attr.data-tier]="event.tier">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <p class="ms-card__label">{{ event.label }}</p>
+            <div class="ms-card__number">
+              <span class="ms-card__hash">#</span>
+              <span class="ms-card__count" [attr.data-tier]="event.tier">{{ formattedCount }}</span>
+            </div>
+            <p class="ms-card__subtitle">You are visitor number {{ formattedCount }}</p>
+            <div class="ms-card__tier" [attr.data-tier]="event.tier">
+              {{ event.tier | uppercase }} MILESTONE
+            </div>
+            <button class="ms-card__dismiss" (click)="dismiss()">Continue</button>
           </div>
-          <p class="ms-card__subtitle">You are visitor number {{ formattedCount }}</p>
-          <div class="ms-card__tier" [attr.data-tier]="event.tier">
-            {{ event.tier | uppercase }} MILESTONE
-          </div>
-          <button class="ms-card__dismiss" (click)="dismiss()">Continue</button>
         </div>
       </div>
-    </div>
-  `,
+    }
+    `,
   styles: [`
     /* ── Overlay ────────────────────────────────────────── */
     .ms-overlay {

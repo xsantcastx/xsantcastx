@@ -18,7 +18,7 @@
           placeholder="Search tools..."
           autocomplete="off"
           spellcheck="false"
-        />
+          />
         <span class="tools-search__kbd" aria-hidden="true">⌘K</span>
       </div>
     </div>
@@ -36,77 +36,96 @@
 
   <!-- Category filter buttons -->
   <div class="tools-categories">
-    <button
-      class="tools-cat-btn"
-      *ngFor="let cat of categories"
-      [class.tools-cat-btn--active]="activeCategory === cat"
-      (click)="setCategory(cat)"
-    >{{ cat }}</button>
+    @for (cat of categories; track cat) {
+      <button
+        class="tools-cat-btn"
+        [class.tools-cat-btn--active]="activeCategory === cat"
+        (click)="setCategory(cat)"
+      >{{ cat }}</button>
+    }
   </div>
 
   <!-- Active tag filter bar -->
-  <div class="tools-filter-bar" *ngIf="activeTag">
-    <span class="tools-filter-bar__label">Filtered by:</span>
-    <span class="tools-filter-bar__tag">
-      {{ activeTag }}
-      <button class="tools-filter-bar__clear" (click)="clearTag()" aria-label="Clear tag filter">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </span>
-    <span class="tools-filter-bar__count">{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
-  </div>
+  @if (activeTag) {
+    <div class="tools-filter-bar">
+      <span class="tools-filter-bar__label">Filtered by:</span>
+      <span class="tools-filter-bar__tag">
+        {{ activeTag }}
+        <button class="tools-filter-bar__clear" (click)="clearTag()" aria-label="Clear tag filter">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </span>
+      <span class="tools-filter-bar__count">{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+    </div>
+  }
 
   <!-- Results count -->
-  <div class="tools-results-count" *ngIf="searchQuery || activeCategory !== 'All'">
-    <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
-    <button class="tools-results-count__clear" (click)="clearAll()" *ngIf="searchQuery || activeCategory !== 'All' || activeTag">Clear filters</button>
-  </div>
+  @if (searchQuery || activeCategory !== 'All') {
+    <div class="tools-results-count">
+      <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+      @if (searchQuery || activeCategory !== 'All' || activeTag) {
+        <button class="tools-results-count__clear" (click)="clearAll()">Clear filters</button>
+      }
+    </div>
+  }
 
   <div class="tools-grid">
-    <a
-      *ngFor="let tool of filteredTools"
-      class="tool-card"
-      [class.tool-card--live]="tool.status === 'live'"
-      [class.tool-card--soon]="tool.status === 'coming-soon'"
-      [href]="tool.status === 'live' ? tool.route : null"
-      (click)="handleCardClick($event, tool)"
-    >
-      <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
-
-      <div class="tool-card__body">
-        <div class="tool-card__title-row">
-          <h2 class="tool-card__title">{{ tool.title }}</h2>
-          <span *ngIf="tool.status === 'coming-soon'" class="tool-badge-soon">{{ translate('tools.badge.soon') }}</span>
+    @for (tool of filteredTools; track tool) {
+      <a
+        class="tool-card"
+        [class.tool-card--live]="tool.status === 'live'"
+        [class.tool-card--soon]="tool.status === 'coming-soon'"
+        [href]="tool.status === 'live' ? tool.route : null"
+        (click)="handleCardClick($event, tool)"
+        >
+        <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
+        <div class="tool-card__body">
+          <div class="tool-card__title-row">
+            <h2 class="tool-card__title">{{ tool.title }}</h2>
+            @if (tool.status === 'coming-soon') {
+              <span class="tool-badge-soon">{{ translate('tools.badge.soon') }}</span>
+            }
+          </div>
+          <p class="tool-card__desc">{{ tool.description }}</p>
+          <div class="tool-card__tags">
+            @for (tag of tool.tags; track tag) {
+              <button
+                class="tool-tag"
+                [class.tool-tag--active]="isTagActive(tag)"
+                (click)="filterByTag(tag, $event)"
+                [attr.aria-pressed]="isTagActive(tag)"
+                [attr.aria-label]="'Filter by ' + tag"
+              >{{ tag }}</button>
+            }
+          </div>
         </div>
-        <p class="tool-card__desc">{{ tool.description }}</p>
-        <div class="tool-card__tags">
-          <button
-            *ngFor="let tag of tool.tags"
-            class="tool-tag"
-            [class.tool-tag--active]="isTagActive(tag)"
-            (click)="filterByTag(tag, $event)"
-            [attr.aria-pressed]="isTagActive(tag)"
-            [attr.aria-label]="'Filter by ' + tag"
-          >{{ tag }}</button>
-        </div>
-      </div>
-
-      <div *ngIf="tool.status === 'live'" class="tool-card__arrow" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"/>
-          <polyline points="12 5 19 12 12 19"/>
-        </svg>
-      </div>
-    </a>
+        @if (tool.status === 'live') {
+          <div class="tool-card__arrow" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </div>
+        }
+      </a>
+    }
 
     <!-- Empty state when filter returns no results -->
-    <div class="tools-empty" *ngIf="filteredTools.length === 0">
-      <span class="tools-empty__icon">◌</span>
-      <p *ngIf="searchQuery">No tools match "{{ searchQuery }}"</p>
-      <p *ngIf="!searchQuery && activeTag">No tools match the tag "{{ activeTag }}"</p>
-      <p *ngIf="!searchQuery && !activeTag && activeCategory !== 'All'">No tools in "{{ activeCategory }}" yet</p>
-      <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
-    </div>
+    @if (filteredTools.length === 0) {
+      <div class="tools-empty">
+        <span class="tools-empty__icon">◌</span>
+        @if (searchQuery) {
+          <p>No tools match "{{ searchQuery }}"</p>
+        }
+        @if (!searchQuery && activeTag) {
+          <p>No tools match the tag "{{ activeTag }}"</p>
+        }
+        @if (!searchQuery && !activeTag && activeCategory !== 'All') {
+          <p>No tools in "{{ activeCategory }}" yet</p>
+        }
+        <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
+      </div>
+    }
   </div>
 </div>

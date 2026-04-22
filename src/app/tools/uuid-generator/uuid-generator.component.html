@@ -84,14 +84,16 @@
           </div>
 
           <!-- Hyphens -->
-          <div class="ug-option-row" *ngIf="uuidType !== 'ulid'">
-            <label class="ug-toggle" for="hyphens">
-              <input type="checkbox" id="hyphens" [(ngModel)]="includeHyphens" (ngModelChange)="onHyphensChange()" />
-              <span class="ug-toggle__track"><span class="ug-toggle__thumb"></span></span>
-              <span class="ug-toggle__label">Include hyphens <span class="ug-badge">RFC 9562</span></span>
-            </label>
-            <p class="ug-option-hint">{{ includeHyphens ? '8-4-4-4-12 format with hyphens' : 'Compact 32-character hex string' }}</p>
-          </div>
+          @if (uuidType !== 'ulid') {
+            <div class="ug-option-row">
+              <label class="ug-toggle" for="hyphens">
+                <input type="checkbox" id="hyphens" [(ngModel)]="includeHyphens" (ngModelChange)="onHyphensChange()" />
+                <span class="ug-toggle__track"><span class="ug-toggle__thumb"></span></span>
+                <span class="ug-toggle__label">Include hyphens <span class="ug-badge">RFC 9562</span></span>
+              </label>
+              <p class="ug-option-hint">{{ includeHyphens ? '8-4-4-4-12 format with hyphens' : 'Compact 32-character hex string' }}</p>
+            </div>
+          }
 
           <!-- Bulk count -->
           <div class="ug-option-row">
@@ -105,7 +107,7 @@
                 min="1"
                 max="100"
                 placeholder="1"
-              />
+                />
               <span class="ug-bulk-hint">1 - 100</span>
             </div>
           </div>
@@ -147,30 +149,36 @@
         </div>
 
         <!-- Validation result -->
-        <div class="ug-validation-result" *ngIf="validationResult">
-          <div class="ug-validation-status"
-            [class.ug-validation-status--valid]="validationResult.valid"
-            [class.ug-validation-status--invalid]="!validationResult.valid">
-            <ng-container *ngIf="validationResult.valid">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span>Valid</span>
-            </ng-container>
-            <ng-container *ngIf="!validationResult.valid">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              <span>Invalid UUID format</span>
-            </ng-container>
-          </div>
-          <div class="ug-validation-details" *ngIf="validationResult.valid">
-            <div class="ug-validation-row">
-              <span class="ug-validation-label">Type</span>
-              <span class="ug-validation-value">{{ validationResult.version }}</span>
+        @if (validationResult) {
+          <div class="ug-validation-result">
+            <div class="ug-validation-status"
+              [class.ug-validation-status--valid]="validationResult.valid"
+              [class.ug-validation-status--invalid]="!validationResult.valid">
+              @if (validationResult.valid) {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Valid</span>
+              }
+              @if (!validationResult.valid) {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span>Invalid UUID format</span>
+              }
             </div>
-            <div class="ug-validation-row" *ngIf="validationResult.variant">
-              <span class="ug-validation-label">Variant</span>
-              <span class="ug-validation-value">{{ validationResult.variant }}</span>
-            </div>
+            @if (validationResult.valid) {
+              <div class="ug-validation-details">
+                <div class="ug-validation-row">
+                  <span class="ug-validation-label">Type</span>
+                  <span class="ug-validation-value">{{ validationResult.version }}</span>
+                </div>
+                @if (validationResult.variant) {
+                  <div class="ug-validation-row">
+                    <span class="ug-validation-label">Variant</span>
+                    <span class="ug-validation-value">{{ validationResult.variant }}</span>
+                  </div>
+                }
+              </div>
+            }
           </div>
-        </div>
+        }
       </div>
 
     </div><!-- /left col -->
@@ -182,14 +190,14 @@
       <div class="ug-status-bar"
         [class.ug-status-bar--valid]="generatedUuids.length > 0"
         [class.ug-status-bar--idle]="generatedUuids.length === 0">
-        <ng-container *ngIf="generatedUuids.length === 0">
+        @if (generatedUuids.length === 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Click Generate to create {{ typeLabel }}s</span>
-        </ng-container>
-        <ng-container *ngIf="generatedUuids.length > 0">
+        }
+        @if (generatedUuids.length > 0) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Generated {{ generatedUuids.length }} {{ typeLabel }}{{ generatedUuids.length > 1 ? 's' : '' }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -200,16 +208,18 @@
             Output
           </span>
           <div class="ug-panel__actions">
-            <span class="ug-char-count" *ngIf="generatedUuids.length > 0">{{ generatedUuids.length }} item{{ generatedUuids.length > 1 ? 's' : '' }}</span>
+            @if (generatedUuids.length > 0) {
+              <span class="ug-char-count">{{ generatedUuids.length }} item{{ generatedUuids.length > 1 ? 's' : '' }}</span>
+            }
             <button class="ug-btn-ghost ug-btn-sm" (click)="copyAll()" [disabled]="!generatedUuids.length" [class.ug-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy All
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
             <button class="ug-btn-ghost ug-btn-sm" (click)="clearAll()" [disabled]="!generatedUuids.length" title="Clear">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
@@ -221,50 +231,58 @@
         <!-- Output body -->
         <div class="ug-output-body">
           <!-- UUID list -->
-          <div class="ug-uuid-list" *ngIf="generatedUuids.length > 0">
-            <div class="ug-uuid-item" *ngFor="let uuid of generatedUuids; let i = index">
-              <code class="ug-uuid-code">{{ uuid }}</code>
-              <button class="ug-copy-single" (click)="copySingle(i)" [class.ug-copy-single--copied]="copiedIndex === i" title="Copy">
-                <ng-container *ngIf="copiedIndex !== i">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                </ng-container>
-                <ng-container *ngIf="copiedIndex === i">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </ng-container>
-              </button>
+          @if (generatedUuids.length > 0) {
+            <div class="ug-uuid-list">
+              @for (uuid of generatedUuids; track uuid; let i = $index) {
+                <div class="ug-uuid-item">
+                  <code class="ug-uuid-code">{{ uuid }}</code>
+                  <button class="ug-copy-single" (click)="copySingle(i)" [class.ug-copy-single--copied]="copiedIndex === i" title="Copy">
+                    @if (copiedIndex !== i) {
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    }
+                    @if (copiedIndex === i) {
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    }
+                  </button>
+                </div>
+              }
             </div>
-          </div>
+          }
 
           <!-- Empty state -->
-          <div class="ug-output-empty" *ngIf="generatedUuids.length === 0">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-            <span>Generated UUIDs will appear here</span>
-          </div>
+          @if (generatedUuids.length === 0) {
+            <div class="ug-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              <span>Generated UUIDs will appear here</span>
+            </div>
+          }
         </div>
       </div><!-- /output panel -->
 
       <!-- Stats bar -->
-      <div class="ug-stats" *ngIf="generatedUuids.length > 0">
-        <div class="ug-stat">
-          <span class="ug-stat__label">Type</span>
-          <span class="ug-stat__value ug-stat__value--cyan">{{ typeLabel }}</span>
+      @if (generatedUuids.length > 0) {
+        <div class="ug-stats">
+          <div class="ug-stat">
+            <span class="ug-stat__label">Type</span>
+            <span class="ug-stat__value ug-stat__value--cyan">{{ typeLabel }}</span>
+          </div>
+          <div class="ug-stat-divider"></div>
+          <div class="ug-stat">
+            <span class="ug-stat__label">Count</span>
+            <span class="ug-stat__value">{{ generatedUuids.length }}</span>
+          </div>
+          <div class="ug-stat-divider"></div>
+          <div class="ug-stat">
+            <span class="ug-stat__label">Format</span>
+            <span class="ug-stat__value ug-stat__value--muted">{{ caseFormat === 'upper' ? 'UPPER' : 'lower' }}{{ uuidType !== 'ulid' ? (includeHyphens ? ' + hyphens' : ' compact') : '' }}</span>
+          </div>
+          <div class="ug-stat-divider"></div>
+          <div class="ug-stat">
+            <span class="ug-stat__label">Length</span>
+            <span class="ug-stat__value">{{ generatedUuids[0].length }} <span class="ug-stat__unit">ch</span></span>
+          </div>
         </div>
-        <div class="ug-stat-divider"></div>
-        <div class="ug-stat">
-          <span class="ug-stat__label">Count</span>
-          <span class="ug-stat__value">{{ generatedUuids.length }}</span>
-        </div>
-        <div class="ug-stat-divider"></div>
-        <div class="ug-stat">
-          <span class="ug-stat__label">Format</span>
-          <span class="ug-stat__value ug-stat__value--muted">{{ caseFormat === 'upper' ? 'UPPER' : 'lower' }}{{ uuidType !== 'ulid' ? (includeHyphens ? ' + hyphens' : ' compact') : '' }}</span>
-        </div>
-        <div class="ug-stat-divider"></div>
-        <div class="ug-stat">
-          <span class="ug-stat__label">Length</span>
-          <span class="ug-stat__value">{{ generatedUuids[0].length }} <span class="ug-stat__unit">ch</span></span>
-        </div>
-      </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

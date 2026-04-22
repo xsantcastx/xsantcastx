@@ -56,21 +56,22 @@
 
         <div class="cf-preview-area">
           <!-- Before / After comparison -->
-          <div class="cf-preview-comparison" *ngIf="showBeforeAfter; else singlePreview">
-            <div class="cf-preview-half">
-              <span class="cf-preview-label">Before</span>
-              <div class="cf-gradient-sample"></div>
+          @if (showBeforeAfter) {
+            <div class="cf-preview-comparison">
+              <div class="cf-preview-half">
+                <span class="cf-preview-label">Before</span>
+                <div class="cf-gradient-sample"></div>
+              </div>
+              <div class="cf-preview-divider"></div>
+              <div class="cf-preview-half">
+                <span class="cf-preview-label">After</span>
+                <div class="cf-gradient-sample" [style.filter]="filterStyle"></div>
+              </div>
             </div>
-            <div class="cf-preview-divider"></div>
-            <div class="cf-preview-half">
-              <span class="cf-preview-label">After</span>
-              <div class="cf-gradient-sample" [style.filter]="filterStyle"></div>
-            </div>
-          </div>
-
-          <ng-template #singlePreview>
+          } @else {
             <div class="cf-gradient-sample cf-gradient-sample--full" [style.filter]="filterStyle"></div>
-          </ng-template>
+          }
+
         </div>
       </div>
 
@@ -81,12 +82,16 @@
         </div>
         <pre class="cf-code-block">{{ cssCode }}</pre>
         <button type="button" class="cf-copy-btn" (click)="copyCode()">
-          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          @if (!codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          }
+          @if (codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          }
           {{ codeCopied ? 'Copied!' : 'Copy Code' }}
         </button>
       </div>
@@ -101,20 +106,22 @@
           <span class="cf-card__label">Filters</span>
         </div>
         <div class="cf-controls-grid">
-          <div class="cf-control-group" *ngFor="let config of filterConfigs; trackBy: trackByKey">
-            <div class="cf-control-group__top">
-              <label class="cf-control-group__label" [class.is-modified]="isFilterModified(config)">{{ config.label }}</label>
-              <span class="cf-control-group__value" [class.is-modified]="isFilterModified(config)">{{ getFilterDisplayValue(config) }}</span>
+          @for (config of filterConfigs; track trackByKey($index, config)) {
+            <div class="cf-control-group">
+              <div class="cf-control-group__top">
+                <label class="cf-control-group__label" [class.is-modified]="isFilterModified(config)">{{ config.label }}</label>
+                <span class="cf-control-group__value" [class.is-modified]="isFilterModified(config)">{{ getFilterDisplayValue(config) }}</span>
+              </div>
+              <input type="range"
+                [min]="config.min"
+                [max]="config.max"
+                [step]="config.step"
+                [value]="filters[config.key]"
+                (input)="onFilterChange(config.key, $event)"
+                class="cf-slider"
+                [class.is-modified]="isFilterModified(config)" />
             </div>
-            <input type="range"
-              [min]="config.min"
-              [max]="config.max"
-              [step]="config.step"
-              [value]="filters[config.key]"
-              (input)="onFilterChange(config.key, $event)"
-              class="cf-slider"
-              [class.is-modified]="isFilterModified(config)" />
-          </div>
+          }
         </div>
       </div>
 
@@ -126,39 +133,41 @@
             {{ dropShadowEnabled ? 'ON' : 'OFF' }}
           </button>
         </div>
-        <div class="cf-controls-grid" *ngIf="dropShadowEnabled">
-          <div class="cf-control-group">
-            <div class="cf-control-group__top">
-              <label class="cf-control-group__label">Offset X</label>
-              <span class="cf-control-group__value">{{ dropShadow.x }}px</span>
+        @if (dropShadowEnabled) {
+          <div class="cf-controls-grid">
+            <div class="cf-control-group">
+              <div class="cf-control-group__top">
+                <label class="cf-control-group__label">Offset X</label>
+                <span class="cf-control-group__value">{{ dropShadow.x }}px</span>
+              </div>
+              <input type="range" min="-50" max="50" step="1"
+                [value]="dropShadow.x" (input)="onDropShadowChange('x', $event)" class="cf-slider" />
             </div>
-            <input type="range" min="-50" max="50" step="1"
-              [value]="dropShadow.x" (input)="onDropShadowChange('x', $event)" class="cf-slider" />
-          </div>
-          <div class="cf-control-group">
-            <div class="cf-control-group__top">
-              <label class="cf-control-group__label">Offset Y</label>
-              <span class="cf-control-group__value">{{ dropShadow.y }}px</span>
+            <div class="cf-control-group">
+              <div class="cf-control-group__top">
+                <label class="cf-control-group__label">Offset Y</label>
+                <span class="cf-control-group__value">{{ dropShadow.y }}px</span>
+              </div>
+              <input type="range" min="-50" max="50" step="1"
+                [value]="dropShadow.y" (input)="onDropShadowChange('y', $event)" class="cf-slider" />
             </div>
-            <input type="range" min="-50" max="50" step="1"
-              [value]="dropShadow.y" (input)="onDropShadowChange('y', $event)" class="cf-slider" />
-          </div>
-          <div class="cf-control-group">
-            <div class="cf-control-group__top">
-              <label class="cf-control-group__label">Blur</label>
-              <span class="cf-control-group__value">{{ dropShadow.blur }}px</span>
+            <div class="cf-control-group">
+              <div class="cf-control-group__top">
+                <label class="cf-control-group__label">Blur</label>
+                <span class="cf-control-group__value">{{ dropShadow.blur }}px</span>
+              </div>
+              <input type="range" min="0" max="50" step="1"
+                [value]="dropShadow.blur" (input)="onDropShadowChange('blur', $event)" class="cf-slider" />
             </div>
-            <input type="range" min="0" max="50" step="1"
-              [value]="dropShadow.blur" (input)="onDropShadowChange('blur', $event)" class="cf-slider" />
-          </div>
-          <div class="cf-control-group">
-            <div class="cf-control-group__top">
-              <label class="cf-control-group__label">Color</label>
-              <span class="cf-control-group__value cf-color-swatch" [style.background]="dropShadow.color"></span>
+            <div class="cf-control-group">
+              <div class="cf-control-group__top">
+                <label class="cf-control-group__label">Color</label>
+                <span class="cf-control-group__value cf-color-swatch" [style.background]="dropShadow.color"></span>
+              </div>
+              <input type="color" [value]="dropShadow.color" (input)="onDropShadowChange('color', $event)" class="cf-color-input" />
             </div>
-            <input type="color" [value]="dropShadow.color" (input)="onDropShadowChange('color', $event)" class="cf-color-input" />
           </div>
-        </div>
+        }
       </div>
 
       <!-- Presets -->
@@ -167,15 +176,16 @@
           <span class="cf-card__label">Presets</span>
         </div>
         <div class="cf-presets-grid">
-          <button
-            type="button"
-            class="cf-preset-item"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <span class="cf-preset-icon">{{ preset.icon }}</span>
-            <span class="cf-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="cf-preset-item"
+              (click)="applyPreset(preset)"
+              >
+              <span class="cf-preset-icon">{{ preset.icon }}</span>
+              <span class="cf-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

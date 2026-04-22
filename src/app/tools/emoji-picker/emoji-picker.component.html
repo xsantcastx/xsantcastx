@@ -26,18 +26,24 @@
     <div class="ep-search-wrap">
       <svg class="ep-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input class="ep-search" type="text" [(ngModel)]="searchQuery" (input)="onSearchInput()" placeholder="Search emojis..." autocomplete="off" spellcheck="false"/>
-      <button *ngIf="searchQuery" class="ep-search-clear" (click)="clearSearch()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      @if (searchQuery) {
+        <button class="ep-search-clear" (click)="clearSearch()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
     </div>
 
     <div class="ep-options">
       <!-- Skin tone -->
       <div class="ep-skin-wrap">
         <button class="ep-skin-btn" (click)="toggleSkinTonePicker()" title="Skin tone">{{ currentSkinToneSwatch }}</button>
-        <div class="ep-skin-picker" *ngIf="showSkinTonePicker">
-          <button *ngFor="let tone of skinTones; let i = index" class="ep-skin-option" [class.ep-skin-option--active]="selectedSkinToneIndex === i" (click)="selectSkinTone(i)">{{ i === 0 ? '\u270B' : '\u270B' + tone.modifier }}</button>
-        </div>
+        @if (showSkinTonePicker) {
+          <div class="ep-skin-picker">
+            @for (tone of skinTones; track tone; let i = $index) {
+              <button class="ep-skin-option" [class.ep-skin-option--active]="selectedSkinToneIndex === i" (click)="selectSkinTone(i)">{{ i === 0 ? '\u270B' : '\u270B' + tone.modifier }}</button>
+            }
+          </div>
+        }
       </div>
 
       <!-- Grid size -->
@@ -59,48 +65,64 @@
   <div class="ep-layout">
     <!-- Category tabs -->
     <div class="ep-cat-tabs">
-      <button *ngFor="let cat of categories" class="ep-cat-tab" [class.ep-cat-tab--active]="activeCategoryId === cat.id" (click)="setActiveCategory(cat.id)" [title]="cat.label">{{ cat.icon }}</button>
+      @for (cat of categories; track cat) {
+        <button class="ep-cat-tab" [class.ep-cat-tab--active]="activeCategoryId === cat.id" (click)="setActiveCategory(cat.id)" [title]="cat.label">{{ cat.icon }}</button>
+      }
     </div>
 
     <!-- Emoji grid -->
     <div class="ep-grid-area">
       <!-- Recent -->
-      <div class="ep-section" *ngIf="recentEmojis.length > 0 && !searchQuery">
-        <p class="ep-section__label">Recently Used</p>
-        <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
-          <button *ngFor="let emoji of recentEmojis" class="ep-emoji" (click)="onRecentClick(emoji)" [title]="'Recently used'">{{ emoji }}</button>
+      @if (recentEmojis.length > 0 && !searchQuery) {
+        <div class="ep-section">
+          <p class="ep-section__label">Recently Used</p>
+          <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
+            @for (emoji of recentEmojis; track emoji) {
+              <button class="ep-emoji" (click)="onRecentClick(emoji)" [title]="'Recently used'">{{ emoji }}</button>
+            }
+          </div>
         </div>
-      </div>
+      }
 
       <!-- Categories -->
-      <div *ngFor="let cat of filteredCategories" class="ep-section" [id]="'ep-cat-' + cat.id">
-        <p class="ep-section__label">{{ cat.icon }} {{ cat.label }}</p>
-        <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
-          <button *ngFor="let entry of cat.emojis" class="ep-emoji" (click)="onEmojiClick(entry)" [title]="entry.name">{{ applySkinTone(entry.emoji) }}</button>
+      @for (cat of filteredCategories; track cat) {
+        <div class="ep-section" [id]="'ep-cat-' + cat.id">
+          <p class="ep-section__label">{{ cat.icon }} {{ cat.label }}</p>
+          <div class="ep-grid" [class.ep-grid--small]="gridSize === 'small'" [class.ep-grid--large]="gridSize === 'large'">
+            @for (entry of cat.emojis; track entry) {
+              <button class="ep-emoji" (click)="onEmojiClick(entry)" [title]="entry.name">{{ applySkinTone(entry.emoji) }}</button>
+            }
+          </div>
         </div>
-      </div>
+      }
 
       <!-- Empty -->
-      <div class="ep-empty" *ngIf="flatFilteredCount === 0">
-        <p>No emojis match "{{ searchQuery }}"</p>
-        <button class="ep-empty__clear" (click)="clearSearch()">Clear search</button>
-      </div>
+      @if (flatFilteredCount === 0) {
+        <div class="ep-empty">
+          <p>No emojis match "{{ searchQuery }}"</p>
+          <button class="ep-empty__clear" (click)="clearSearch()">Clear search</button>
+        </div>
+      }
     </div>
 
     <!-- Detail panel -->
-    <div class="ep-detail" *ngIf="selectedEmoji">
-      <div class="ep-detail__preview">{{ selectedEmoji.emoji }}</div>
-      <p class="ep-detail__name">{{ selectedEmoji.name }}</p>
-      <div class="ep-detail__row">
-        <span class="ep-detail__label">Unicode</span>
-        <code class="ep-detail__value">{{ selectedEmoji.codepoint }}</code>
+    @if (selectedEmoji) {
+      <div class="ep-detail">
+        <div class="ep-detail__preview">{{ selectedEmoji.emoji }}</div>
+        <p class="ep-detail__name">{{ selectedEmoji.name }}</p>
+        <div class="ep-detail__row">
+          <span class="ep-detail__label">Unicode</span>
+          <code class="ep-detail__value">{{ selectedEmoji.codepoint }}</code>
+        </div>
+        <div class="ep-detail__row">
+          <span class="ep-detail__label">HTML</span>
+          <code class="ep-detail__value">{{ selectedEmoji.htmlEntity }}</code>
+        </div>
+        @if (copied) {
+          <div class="ep-detail__copied">Copied: {{ copiedText }}</div>
+        }
       </div>
-      <div class="ep-detail__row">
-        <span class="ep-detail__label">HTML</span>
-        <code class="ep-detail__value">{{ selectedEmoji.htmlEntity }}</code>
-      </div>
-      <div class="ep-detail__copied" *ngIf="copied">Copied: {{ copiedText }}</div>
-    </div>
+    }
   </div>
 
   <p class="ep-count">{{ flatFilteredCount }} emojis</p>

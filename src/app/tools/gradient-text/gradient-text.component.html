@@ -86,12 +86,16 @@
         </div>
         <div class="gt-code-actions">
           <button type="button" class="gt-btn gt-btn--primary" (click)="copyCSS()">
-            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ codeCopied ? 'Copied!' : 'Copy Code' }}
           </button>
         </div>
@@ -114,13 +118,15 @@
               <button type="button" class="gt-toggle-btn" [class.is-active]="gradientType === 'radial'" (click)="onTypeChange('radial')">Radial</button>
             </div>
           </div>
-          <div class="gt-control-group" *ngIf="gradientType === 'linear'">
-            <div class="gt-control-group__top">
-              <label class="gt-control-group__label">Angle</label>
-              <span class="gt-control-group__value">{{ angle }}&deg;</span>
+          @if (gradientType === 'linear') {
+            <div class="gt-control-group">
+              <div class="gt-control-group__top">
+                <label class="gt-control-group__label">Angle</label>
+                <span class="gt-control-group__value">{{ angle }}&deg;</span>
+              </div>
+              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="onAngleChange($event)" class="gt-slider" />
             </div>
-            <input type="range" min="0" max="360" step="1" [value]="angle" (input)="onAngleChange($event)" class="gt-slider" />
-          </div>
+          }
           <div class="gt-control-group gt-control-group--inline">
             <label class="gt-control-group__label">Animated</label>
             <button type="button" class="gt-toggle-btn" [class.is-active]="animated" (click)="toggleAnimation()">{{ animated ? 'On' : 'Off' }}</button>
@@ -144,17 +150,19 @@
         <div class="gt-gradient-bar" [style.background]="gradientValue"></div>
 
         <div class="gt-stop-list">
-          <div class="gt-stop-item" *ngFor="let stop of colorStops; let i = index; trackBy: trackByStopId">
-            <input type="color" [value]="stop.color" (input)="onStopColorChange(i, $event)" class="gt-color-input" />
-            <span class="gt-stop-hex">{{ stop.color }}</span>
-            <input type="range" min="0" max="100" step="1" [value]="stop.position" (input)="onStopPositionChange(i, $event)" class="gt-slider gt-slider--stop" />
-            <span class="gt-stop-pos">{{ stop.position }}%</span>
-            <button type="button" class="gt-icon-btn gt-icon-btn--xs gt-icon-btn--danger" [disabled]="colorStops.length <= 2" (click)="removeColorStop(i)" title="Remove stop">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
+          @for (stop of colorStops; track trackByStopId(i, stop); let i = $index) {
+            <div class="gt-stop-item">
+              <input type="color" [value]="stop.color" (input)="onStopColorChange(i, $event)" class="gt-color-input" />
+              <span class="gt-stop-hex">{{ stop.color }}</span>
+              <input type="range" min="0" max="100" step="1" [value]="stop.position" (input)="onStopPositionChange(i, $event)" class="gt-slider gt-slider--stop" />
+              <span class="gt-stop-pos">{{ stop.position }}%</span>
+              <button type="button" class="gt-icon-btn gt-icon-btn--xs gt-icon-btn--danger" [disabled]="colorStops.length <= 2" (click)="removeColorStop(i)" title="Remove stop">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          }
         </div>
       </div>
 
@@ -164,15 +172,16 @@
           <span class="gt-card__label">Presets</span>
         </div>
         <div class="gt-preset-grid">
-          <button
-            type="button"
-            class="gt-preset-btn"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <div class="gt-preset-swatch" [style.background]="getPresetGradient(preset)"></div>
-            <span class="gt-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="gt-preset-btn"
+              (click)="applyPreset(preset)"
+              >
+              <div class="gt-preset-swatch" [style.background]="getPresetGradient(preset)"></div>
+              <span class="gt-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
 

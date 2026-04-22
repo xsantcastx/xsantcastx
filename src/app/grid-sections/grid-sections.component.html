@@ -1,28 +1,35 @@
 <section class="grid-section">
   <div class="grid-container">
-    <div 
-      class="grid-item" 
-      *ngFor="let item of gridItems; let i = index" 
-      [class.active]="item.active"
-      (click)="!item.active && toggleItem(i)"
-    >
-      <div class="grid-title" *ngIf="!item.active">{{ item.title }}</div>
-
-      <div class="grid-content" *ngIf="item.active" (click)="$event.stopPropagation()">
-        <button class="close-btn" (click)="closeItem(i)">✖</button>
-
-        <!-- Dynamically load the resume component only for the correct item -->
-        <ng-container [ngSwitch]="item.title">
-          <app-resume-card *ngSwitchCase="'Professional Summary'"></app-resume-card>
-          <app-aboutme-card *ngSwitchCase="'About Me'"></app-aboutme-card>
-          <div *ngSwitchDefault [innerHTML]="item.content"></div>
-        </ng-container>
-
-
-        <ng-template #defaultContent>
-          <div [innerHTML]="item.content"></div>
-        </ng-template>
+    @for (item of gridItems; track item; let i = $index) {
+      <div
+        class="grid-item"
+        [class.active]="item.active"
+        (click)="!item.active && toggleItem(i)"
+        >
+        @if (!item.active) {
+          <div class="grid-title">{{ item.title }}</div>
+        }
+        @if (item.active) {
+          <div class="grid-content" (click)="$event.stopPropagation()">
+            <button class="close-btn" (click)="closeItem(i)">✖</button>
+            <!-- Dynamically load the resume component only for the correct item -->
+            @switch (item.title) {
+              @case ('Professional Summary') {
+                <app-resume-card></app-resume-card>
+              }
+              @case ('About Me') {
+                <app-aboutme-card></app-aboutme-card>
+              }
+              @default {
+                <div [innerHTML]="item.content"></div>
+              }
+            }
+            <ng-template #defaultContent>
+              <div [innerHTML]="item.content"></div>
+            </ng-template>
+          </div>
+        }
       </div>
-    </div>
+    }
   </div>
 </section>

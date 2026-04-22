@@ -28,12 +28,14 @@
           Presets
         </h2>
         <div class="pb-preset-grid">
-          <button class="pb-preset-btn" *ngFor="let preset of presets; trackBy: trackByPresetName" (click)="applyPreset(preset)">
-            <span class="pb-preset-btn__name">{{ preset.name }}</span>
-            <div class="pb-preset-btn__preview" [style.background]="preset.bgColor" [style.border-radius.px]="3" [style.height.px]="8">
-              <div [ngStyle]="getPresetPreviewFillStyle(preset)"></div>
-            </div>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button class="pb-preset-btn" (click)="applyPreset(preset)">
+              <span class="pb-preset-btn__name">{{ preset.name }}</span>
+              <div class="pb-preset-btn__preview" [style.background]="preset.bgColor" [style.border-radius.px]="3" [style.height.px]="8">
+                <div [ngStyle]="getPresetPreviewFillStyle(preset)"></div>
+              </div>
+            </button>
+          }
         </div>
       </div>
 
@@ -73,11 +75,13 @@
           <input type="color" class="pb-color-input" [(ngModel)]="fillColor">
           <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="fillColor">
         </div>
-        <div class="pb-color-row" *ngIf="gradientFill">
-          <label class="pb-label">Gradient End</label>
-          <input type="color" class="pb-color-input" [(ngModel)]="gradientColor">
-          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="gradientColor">
-        </div>
+        @if (gradientFill) {
+          <div class="pb-color-row">
+            <label class="pb-label">Gradient End</label>
+            <input type="color" class="pb-color-input" [(ngModel)]="gradientColor">
+            <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="gradientColor">
+          </div>
+        }
       </div>
 
       <\!-- Fill -->
@@ -102,10 +106,12 @@
             <span class="pb-toggle__label">Gradient Fill</span>
           </label>
         </div>
-        <div class="pb-field" *ngIf="animatedStripes">
-          <label class="pb-label">Animation Speed <span class="pb-label__val">{{ animationSpeed }}s</span></label>
-          <input type="range" class="pb-slider" min="0.2" max="5" step="0.1" [(ngModel)]="animationSpeed">
-        </div>
+        @if (animatedStripes) {
+          <div class="pb-field">
+            <label class="pb-label">Animation Speed <span class="pb-label__val">{{ animationSpeed }}s</span></label>
+            <input type="range" class="pb-slider" min="0.2" max="5" step="0.1" [(ngModel)]="animationSpeed">
+          </div>
+        }
       </div>
 
       <\!-- Label -->
@@ -140,10 +146,14 @@
         <div class="pb-preview-area">
           <div [ngStyle]="previewContainerStyle">
             <div [ngStyle]="previewFillStyle">
-              <span *ngIf="labelPosition === 'inside'" class="pb-preview-label pb-preview-label--inside" [style.font-size.px]="height * 0.55 > 10 ? height * 0.55 : 10">{{ fillPercentage }}%</span>
+              @if (labelPosition === 'inside') {
+                <span class="pb-preview-label pb-preview-label--inside" [style.font-size.px]="height * 0.55 > 10 ? height * 0.55 : 10">{{ fillPercentage }}%</span>
+              }
             </div>
           </div>
-          <span *ngIf="labelPosition === 'outside'" class="pb-preview-label pb-preview-label--outside">{{ fillPercentage }}%</span>
+          @if (labelPosition === 'outside') {
+            <span class="pb-preview-label pb-preview-label--outside">{{ fillPercentage }}%</span>
+          }
         </div>
       </div>
 

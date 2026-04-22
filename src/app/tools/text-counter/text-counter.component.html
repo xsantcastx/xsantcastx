@@ -27,7 +27,9 @@
             Input Text
           </span>
           <div class="txc-panel__actions">
-            <span class="txc-char-count" *ngIf="characters > 0">{{ characters | number }} chars</span>
+            @if (characters > 0) {
+              <span class="txc-char-count">{{ characters | number }} chars</span>
+            }
             <button class="txc-btn-ghost txc-btn-sm" (click)="loadSample()" title="Load sample">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Sample
@@ -55,63 +57,80 @@ Try pasting an article, essay, email, or any block of text to get instant statis
       </div>
 
       <!-- Frequency tabs panel -->
-      <div class="txc-panel" *ngIf="words > 0">
-        <div class="txc-panel__header">
-          <div class="txc-tabs">
-            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'words'" (click)="setTab('words')">Top Words</button>
-            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'chars'" (click)="setTab('chars')">Char Frequency</button>
-            <button class="txc-tab" [class.txc-tab--active]="activeTab === 'density'" (click)="setTab('density')">Keyword Density</button>
+      @if (words > 0) {
+        <div class="txc-panel">
+          <div class="txc-panel__header">
+            <div class="txc-tabs">
+              <button class="txc-tab" [class.txc-tab--active]="activeTab === 'words'" (click)="setTab('words')">Top Words</button>
+              <button class="txc-tab" [class.txc-tab--active]="activeTab === 'chars'" (click)="setTab('chars')">Char Frequency</button>
+              <button class="txc-tab" [class.txc-tab--active]="activeTab === 'density'" (click)="setTab('density')">Keyword Density</button>
+            </div>
+          </div>
+          <div class="txc-panel__body txc-freq-body">
+            <!-- Top Words -->
+            @if (activeTab === 'words') {
+              <div class="txc-freq-list">
+                @for (item of topWords; track item; let i = $index) {
+                  <div class="txc-freq-item">
+                    <span class="txc-freq-rank">{{ i + 1 }}</span>
+                    <span class="txc-freq-word">{{ item.word }}</span>
+                    <div class="txc-freq-bar-wrap">
+                      <div class="txc-freq-bar" [style.width.%]="topWords.length ? (item.count / topWords[0].count) * 100 : 0"></div>
+                    </div>
+                    <span class="txc-freq-count">{{ item.count }}</span>
+                  </div>
+                }
+                @if (topWords.length === 0) {
+                  <div class="txc-freq-empty">No words found.</div>
+                }
+              </div>
+            }
+            <!-- Char Frequency -->
+            @if (activeTab === 'chars') {
+              <div class="txc-freq-list">
+                @for (item of charFrequency; track item; let i = $index) {
+                  <div class="txc-freq-item">
+                    <span class="txc-freq-rank">{{ i + 1 }}</span>
+                    <span class="txc-freq-word txc-freq-word--char">{{ item.char }}</span>
+                    <div class="txc-freq-bar-wrap">
+                      <div class="txc-freq-bar txc-freq-bar--purple" [style.width.%]="charFrequency.length ? (item.count / charFrequency[0].count) * 100 : 0"></div>
+                    </div>
+                    <span class="txc-freq-count">{{ item.percentage }}%</span>
+                  </div>
+                }
+                @if (charFrequency.length === 0) {
+                  <div class="txc-freq-empty">No characters found.</div>
+                }
+              </div>
+            }
+            <!-- Keyword Density -->
+            @if (activeTab === 'density') {
+              <div class="txc-freq-list">
+                @for (item of visibleDensity; track item; let i = $index) {
+                  <div class="txc-freq-item">
+                    <span class="txc-freq-rank">{{ i + 1 }}</span>
+                    <span class="txc-freq-word">{{ item.word }}</span>
+                    <div class="txc-freq-bar-wrap">
+                      <div class="txc-freq-bar txc-freq-bar--gold" [style.width.%]="keywordDensity.length ? (item.density / keywordDensity[0].density) * 100 : 0"></div>
+                    </div>
+                    <span class="txc-freq-count">{{ item.density }}%</span>
+                  </div>
+                }
+                @if (keywordDensity.length > 15) {
+                  <button
+                    class="txc-show-more"
+                    (click)="showAllDensity = !showAllDensity">
+                    {{ showAllDensity ? 'Show less' : 'Show all ' + keywordDensity.length + ' words' }}
+                  </button>
+                }
+                @if (keywordDensity.length === 0) {
+                  <div class="txc-freq-empty">No keywords found.</div>
+                }
+              </div>
+            }
           </div>
         </div>
-        <div class="txc-panel__body txc-freq-body">
-
-          <!-- Top Words -->
-          <div *ngIf="activeTab === 'words'" class="txc-freq-list">
-            <div class="txc-freq-item" *ngFor="let item of topWords; let i = index">
-              <span class="txc-freq-rank">{{ i + 1 }}</span>
-              <span class="txc-freq-word">{{ item.word }}</span>
-              <div class="txc-freq-bar-wrap">
-                <div class="txc-freq-bar" [style.width.%]="topWords.length ? (item.count / topWords[0].count) * 100 : 0"></div>
-              </div>
-              <span class="txc-freq-count">{{ item.count }}</span>
-            </div>
-            <div class="txc-freq-empty" *ngIf="topWords.length === 0">No words found.</div>
-          </div>
-
-          <!-- Char Frequency -->
-          <div *ngIf="activeTab === 'chars'" class="txc-freq-list">
-            <div class="txc-freq-item" *ngFor="let item of charFrequency; let i = index">
-              <span class="txc-freq-rank">{{ i + 1 }}</span>
-              <span class="txc-freq-word txc-freq-word--char">{{ item.char }}</span>
-              <div class="txc-freq-bar-wrap">
-                <div class="txc-freq-bar txc-freq-bar--purple" [style.width.%]="charFrequency.length ? (item.count / charFrequency[0].count) * 100 : 0"></div>
-              </div>
-              <span class="txc-freq-count">{{ item.percentage }}%</span>
-            </div>
-            <div class="txc-freq-empty" *ngIf="charFrequency.length === 0">No characters found.</div>
-          </div>
-
-          <!-- Keyword Density -->
-          <div *ngIf="activeTab === 'density'" class="txc-freq-list">
-            <div class="txc-freq-item" *ngFor="let item of visibleDensity; let i = index">
-              <span class="txc-freq-rank">{{ i + 1 }}</span>
-              <span class="txc-freq-word">{{ item.word }}</span>
-              <div class="txc-freq-bar-wrap">
-                <div class="txc-freq-bar txc-freq-bar--gold" [style.width.%]="keywordDensity.length ? (item.density / keywordDensity[0].density) * 100 : 0"></div>
-              </div>
-              <span class="txc-freq-count">{{ item.density }}%</span>
-            </div>
-            <button
-              class="txc-show-more"
-              *ngIf="keywordDensity.length > 15"
-              (click)="showAllDensity = !showAllDensity">
-              {{ showAllDensity ? 'Show less' : 'Show all ' + keywordDensity.length + ' words' }}
-            </button>
-            <div class="txc-freq-empty" *ngIf="keywordDensity.length === 0">No keywords found.</div>
-          </div>
-
-        </div>
-      </div>
+      }
 
     </div>
 
@@ -177,16 +196,18 @@ Try pasting an article, essay, email, or any block of text to get instant statis
       </div>
 
       <!-- Empty state -->
-      <div class="txc-empty-state" *ngIf="words === 0">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-          <polyline points="10 9 9 9 8 9"/>
-        </svg>
-        <span>Type or paste text to see live stats</span>
-      </div>
+      @if (words === 0) {
+        <div class="txc-empty-state">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <span>Type or paste text to see live stats</span>
+        </div>
+      }
 
     </div>
 

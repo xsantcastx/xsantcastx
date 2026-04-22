@@ -55,7 +55,7 @@
               class="cc-native-picker"
               [value]="formats.hex"
               (input)="onPickerChange($any($event.target).value)"
-            />
+              />
             <div class="cc-swatch" [style.background]="formats.hex">
               <span class="cc-swatch__label">{{ formats.hex }}</span>
             </div>
@@ -85,10 +85,14 @@
                 placeholder="#RRGGBB"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <button class="cc-copy-btn" (click)="copyValue(hexString, 'hex')" [class.cc-copy-btn--copied]="copiedField === 'hex'" title="Copy HEX">
-                <svg *ngIf="copiedField !== 'hex'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="copiedField === 'hex'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                @if (copiedField !== 'hex') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                }
+                @if (copiedField === 'hex') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
               </button>
             </div>
           </div>
@@ -105,10 +109,14 @@
                 placeholder="R, G, B (0-255)"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <button class="cc-copy-btn" (click)="copyValue(rgbString, 'rgb')" [class.cc-copy-btn--copied]="copiedField === 'rgb'" title="Copy RGB">
-                <svg *ngIf="copiedField !== 'rgb'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="copiedField === 'rgb'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                @if (copiedField !== 'rgb') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                }
+                @if (copiedField === 'rgb') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
               </button>
             </div>
           </div>
@@ -125,10 +133,14 @@
                 placeholder="H, S, L (0-360, 0-100, 0-100)"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <button class="cc-copy-btn" (click)="copyValue(hslString, 'hsl')" [class.cc-copy-btn--copied]="copiedField === 'hsl'" title="Copy HSL">
-                <svg *ngIf="copiedField !== 'hsl'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="copiedField === 'hsl'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                @if (copiedField !== 'hsl') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                }
+                @if (copiedField === 'hsl') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
               </button>
             </div>
           </div>
@@ -145,10 +157,14 @@
                 placeholder="H, S, B (0-360, 0-100, 0-100)"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <button class="cc-copy-btn" (click)="copyValue(hsbString, 'hsb')" [class.cc-copy-btn--copied]="copiedField === 'hsb'" title="Copy HSB">
-                <svg *ngIf="copiedField !== 'hsb'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="copiedField === 'hsb'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                @if (copiedField !== 'hsb') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                }
+                @if (copiedField === 'hsb') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
               </button>
             </div>
           </div>
@@ -165,10 +181,14 @@
                 placeholder="C, M, Y, K (0-100)"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <button class="cc-copy-btn" (click)="copyValue(cmykString, 'cmyk')" [class.cc-copy-btn--copied]="copiedField === 'cmyk'" title="Copy CMYK">
-                <svg *ngIf="copiedField !== 'cmyk'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="copiedField === 'cmyk'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                @if (copiedField !== 'cmyk') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                }
+                @if (copiedField === 'cmyk') {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
               </button>
             </div>
           </div>
@@ -177,10 +197,12 @@
       </div>
 
       <!-- Error -->
-      <div class="cc-status-bar cc-status-bar--invalid" *ngIf="errorMessage">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        <span class="cc-status-error">{{ errorMessage }}</span>
-      </div>
+      @if (errorMessage) {
+        <div class="cc-status-bar cc-status-bar--invalid">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="cc-status-error">{{ errorMessage }}</span>
+        </div>
+      }
 
     </div>
 
@@ -196,28 +218,31 @@
           </span>
         </div>
         <div class="cc-panel__body cc-harmonies-body">
-          <div class="cc-harmony-group" *ngFor="let harmony of harmonies">
-            <span class="cc-harmony-label">{{ harmony.name }}</span>
-            <div class="cc-harmony-swatches">
-              <div
-                class="cc-harmony-swatch"
-                [style.background]="formats.hex"
-                (click)="copyValue(formats.hex, 'h-base-' + harmony.name)"
-                [title]="formats.hex"
-              >
-                <span class="cc-harmony-hex">{{ formats.hex }}</span>
-              </div>
-              <div
-                class="cc-harmony-swatch"
-                *ngFor="let color of harmony.colors; let i = index"
-                [style.background]="color"
-                (click)="copyValue(color, 'h-' + harmony.name + '-' + i)"
-                [title]="color"
-              >
-                <span class="cc-harmony-hex">{{ color }}</span>
+          @for (harmony of harmonies; track harmony) {
+            <div class="cc-harmony-group">
+              <span class="cc-harmony-label">{{ harmony.name }}</span>
+              <div class="cc-harmony-swatches">
+                <div
+                  class="cc-harmony-swatch"
+                  [style.background]="formats.hex"
+                  (click)="copyValue(formats.hex, 'h-base-' + harmony.name)"
+                  [title]="formats.hex"
+                  >
+                  <span class="cc-harmony-hex">{{ formats.hex }}</span>
+                </div>
+                @for (color of harmony.colors; track color; let i = $index) {
+                  <div
+                    class="cc-harmony-swatch"
+                    [style.background]="color"
+                    (click)="copyValue(color, 'h-' + harmony.name + '-' + i)"
+                    [title]="color"
+                    >
+                    <span class="cc-harmony-hex">{{ color }}</span>
+                  </div>
+                }
               </div>
             </div>
-          </div>
+          }
         </div>
       </div>
 
@@ -233,13 +258,14 @@
           <div class="cc-tints-section">
             <span class="cc-tints-label">Tints (lighter)</span>
             <div class="cc-tints-strip">
-              <div
-                class="cc-tint-swatch"
-                *ngFor="let tint of tints; let i = index"
-                [style.background]="tint"
-                (click)="copyValue(tint, 'tint-' + i)"
-                [title]="tint"
-              ></div>
+              @for (tint of tints; track tint; let i = $index) {
+                <div
+                  class="cc-tint-swatch"
+                  [style.background]="tint"
+                  (click)="copyValue(tint, 'tint-' + i)"
+                  [title]="tint"
+                ></div>
+              }
             </div>
           </div>
           <div class="cc-tints-section">
@@ -256,13 +282,14 @@
           <div class="cc-tints-section">
             <span class="cc-tints-label">Shades (darker)</span>
             <div class="cc-tints-strip">
-              <div
-                class="cc-tint-swatch"
-                *ngFor="let shade of shades; let i = index"
-                [style.background]="shade"
-                (click)="copyValue(shade, 'shade-' + i)"
-                [title]="shade"
-              ></div>
+              @for (shade of shades; track shade; let i = $index) {
+                <div
+                  class="cc-tint-swatch"
+                  [style.background]="shade"
+                  (click)="copyValue(shade, 'shade-' + i)"
+                  [title]="shade"
+                ></div>
+              }
             </div>
           </div>
         </div>
@@ -277,14 +304,14 @@
           </span>
           <div class="cc-panel__actions">
             <button class="cc-btn-ghost cc-btn-sm" (click)="copyValue(cssVariables, 'css')" [class.cc-btn-ghost--success]="copiedField === 'css'">
-              <ng-container *ngIf="copiedField !== 'css'">
+              @if (copiedField !== 'css') {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copiedField === 'css'">
+              }
+              @if (copiedField === 'css') {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>

@@ -143,12 +143,16 @@
         </div>
         <pre class="bm-code-block">{{ cssCode }}</pre>
         <button type="button" class="bm-copy-btn" (click)="copyCode()">
-          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          @if (!codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          }
+          @if (codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          }
           {{ codeCopied ? 'Copied!' : 'Copy Code' }}
         </button>
       </div>
@@ -199,24 +203,28 @@
           <span class="bm-card__hint">{{ margin.top + margin.right + margin.bottom + margin.left }}px total</span>
         </div>
         <div class="bm-controls-grid" [class.bm-controls-grid--2col]="!shorthand">
-          <div class="bm-control-group" *ngIf="shorthand">
-            <div class="bm-control-group__top">
-              <label class="bm-control-group__label">All Sides</label>
-              <span class="bm-control-group__value">{{ margin.top }}px</span>
-            </div>
-            <input type="range" min="0" max="100" step="1"
-              [value]="margin.top" (input)="onMarginChange('top', $event)" class="bm-slider" />
-          </div>
-          <ng-container *ngIf="!shorthand">
-            <div class="bm-control-group" *ngFor="let side of sides">
+          @if (shorthand) {
+            <div class="bm-control-group">
               <div class="bm-control-group__top">
-                <label class="bm-control-group__label">{{ side | titlecase }}</label>
-                <span class="bm-control-group__value">{{ margin[side] }}px</span>
+                <label class="bm-control-group__label">All Sides</label>
+                <span class="bm-control-group__value">{{ margin.top }}px</span>
               </div>
               <input type="range" min="0" max="100" step="1"
-                [value]="margin[side]" (input)="onMarginChange(side, $event)" class="bm-slider" />
+                [value]="margin.top" (input)="onMarginChange('top', $event)" class="bm-slider" />
             </div>
-          </ng-container>
+          }
+          @if (!shorthand) {
+            @for (side of sides; track side) {
+              <div class="bm-control-group">
+                <div class="bm-control-group__top">
+                  <label class="bm-control-group__label">{{ side | titlecase }}</label>
+                  <span class="bm-control-group__value">{{ margin[side] }}px</span>
+                </div>
+                <input type="range" min="0" max="100" step="1"
+                  [value]="margin[side]" (input)="onMarginChange(side, $event)" class="bm-slider" />
+              </div>
+            }
+          }
         </div>
       </div>
 
@@ -227,29 +235,37 @@
         </div>
         <div class="bm-border-controls">
           <!-- Shorthand: single border control -->
-          <div class="bm-border-row" *ngIf="shorthand">
-            <span class="bm-border-row__side">All</span>
-            <input type="range" min="0" max="20" step="1"
-              [value]="border.top.width" (input)="onBorderWidthChange('top', $event)" class="bm-slider bm-slider--short" />
-            <span class="bm-border-row__val">{{ border.top.width }}px</span>
-            <select class="bm-select" [value]="border.top.style" (change)="onBorderStyleChange('top', $event)">
-              <option *ngFor="let s of borderStyles" [value]="s">{{ s }}</option>
-            </select>
-            <input type="color" [value]="border.top.color" (input)="onBorderColorChange('top', $event)" class="bm-color-input" />
-          </div>
-          <!-- Per-side border controls -->
-          <ng-container *ngIf="!shorthand">
-            <div class="bm-border-row" *ngFor="let side of sides">
-              <span class="bm-border-row__side">{{ side | titlecase }}</span>
+          @if (shorthand) {
+            <div class="bm-border-row">
+              <span class="bm-border-row__side">All</span>
               <input type="range" min="0" max="20" step="1"
-                [value]="border[side].width" (input)="onBorderWidthChange(side, $event)" class="bm-slider bm-slider--short" />
-              <span class="bm-border-row__val">{{ border[side].width }}px</span>
-              <select class="bm-select" [value]="border[side].style" (change)="onBorderStyleChange(side, $event)">
-                <option *ngFor="let s of borderStyles" [value]="s">{{ s }}</option>
+                [value]="border.top.width" (input)="onBorderWidthChange('top', $event)" class="bm-slider bm-slider--short" />
+              <span class="bm-border-row__val">{{ border.top.width }}px</span>
+              <select class="bm-select" [value]="border.top.style" (change)="onBorderStyleChange('top', $event)">
+                @for (s of borderStyles; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
               </select>
-              <input type="color" [value]="border[side].color" (input)="onBorderColorChange(side, $event)" class="bm-color-input" />
+              <input type="color" [value]="border.top.color" (input)="onBorderColorChange('top', $event)" class="bm-color-input" />
             </div>
-          </ng-container>
+          }
+          <!-- Per-side border controls -->
+          @if (!shorthand) {
+            @for (side of sides; track side) {
+              <div class="bm-border-row">
+                <span class="bm-border-row__side">{{ side | titlecase }}</span>
+                <input type="range" min="0" max="20" step="1"
+                  [value]="border[side].width" (input)="onBorderWidthChange(side, $event)" class="bm-slider bm-slider--short" />
+                <span class="bm-border-row__val">{{ border[side].width }}px</span>
+                <select class="bm-select" [value]="border[side].style" (change)="onBorderStyleChange(side, $event)">
+                  @for (s of borderStyles; track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
+                </select>
+                <input type="color" [value]="border[side].color" (input)="onBorderColorChange(side, $event)" class="bm-color-input" />
+              </div>
+            }
+          }
         </div>
       </div>
 
@@ -260,24 +276,28 @@
           <span class="bm-card__hint">{{ padding.top + padding.right + padding.bottom + padding.left }}px total</span>
         </div>
         <div class="bm-controls-grid" [class.bm-controls-grid--2col]="!shorthand">
-          <div class="bm-control-group" *ngIf="shorthand">
-            <div class="bm-control-group__top">
-              <label class="bm-control-group__label">All Sides</label>
-              <span class="bm-control-group__value">{{ padding.top }}px</span>
-            </div>
-            <input type="range" min="0" max="100" step="1"
-              [value]="padding.top" (input)="onPaddingChange('top', $event)" class="bm-slider" />
-          </div>
-          <ng-container *ngIf="!shorthand">
-            <div class="bm-control-group" *ngFor="let side of sides">
+          @if (shorthand) {
+            <div class="bm-control-group">
               <div class="bm-control-group__top">
-                <label class="bm-control-group__label">{{ side | titlecase }}</label>
-                <span class="bm-control-group__value">{{ padding[side] }}px</span>
+                <label class="bm-control-group__label">All Sides</label>
+                <span class="bm-control-group__value">{{ padding.top }}px</span>
               </div>
               <input type="range" min="0" max="100" step="1"
-                [value]="padding[side]" (input)="onPaddingChange(side, $event)" class="bm-slider" />
+                [value]="padding.top" (input)="onPaddingChange('top', $event)" class="bm-slider" />
             </div>
-          </ng-container>
+          }
+          @if (!shorthand) {
+            @for (side of sides; track side) {
+              <div class="bm-control-group">
+                <div class="bm-control-group__top">
+                  <label class="bm-control-group__label">{{ side | titlecase }}</label>
+                  <span class="bm-control-group__value">{{ padding[side] }}px</span>
+                </div>
+                <input type="range" min="0" max="100" step="1"
+                  [value]="padding[side]" (input)="onPaddingChange(side, $event)" class="bm-slider" />
+              </div>
+            }
+          }
         </div>
       </div>
 
@@ -287,14 +307,15 @@
           <span class="bm-card__label">Presets</span>
         </div>
         <div class="bm-presets-grid">
-          <button
-            type="button"
-            class="bm-preset-item"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <span class="bm-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="bm-preset-item"
+              (click)="applyPreset(preset)"
+              >
+              <span class="bm-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

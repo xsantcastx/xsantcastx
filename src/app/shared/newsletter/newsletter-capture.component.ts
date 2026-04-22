@@ -6,64 +6,72 @@ import { NewsletterService } from './newsletter.service';
   selector: 'app-newsletter-capture',
   standalone: false,
   template: `
-    <aside class="nl-capture" *ngIf="!dismissed && !alreadySubscribed" aria-label="Newsletter signup">
-      <div class="nl-capture__inner">
-
-        <!-- Icon + text -->
-        <div class="nl-capture__content">
-          <div class="nl-capture__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
+    @if (!dismissed && !alreadySubscribed) {
+      <aside class="nl-capture" aria-label="Newsletter signup">
+        <div class="nl-capture__inner">
+          <!-- Icon + text -->
+          <div class="nl-capture__content">
+            <div class="nl-capture__icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <div>
+              <p class="nl-capture__headline">Get weekly dev tips + new tool alerts</p>
+              <p class="nl-capture__sub">No spam. Unsubscribe anytime.</p>
+            </div>
           </div>
-          <div>
-            <p class="nl-capture__headline">Get weekly dev tips + new tool alerts</p>
-            <p class="nl-capture__sub">No spam. Unsubscribe anytime.</p>
-          </div>
+          <!-- Form -->
+          @if (status !== 'success') {
+            <form class="nl-capture__form" (ngSubmit)="onSubmit()">
+              <input
+                type="email"
+                class="nl-capture__input"
+                [(ngModel)]="email"
+                name="nlEmail"
+                placeholder="you@example.com"
+                autocomplete="email"
+                required
+                [disabled]="status === 'loading'"
+                />
+              <button type="submit" class="nl-capture__btn" [disabled]="status === 'loading'">
+                @if (status !== 'loading') {
+                  <span>Subscribe</span>
+                }
+                @if (status === 'loading') {
+                  <span class="nl-capture__spinner"></span>
+                }
+              </button>
+            </form>
+          }
+          <!-- Success -->
+          @if (status === 'success') {
+            <p class="nl-capture__success">
+              <span class="nl-capture__check">✓</span> You're in! We'll ping you when something new ships.
+            </p>
+          }
+          <!-- Error -->
+          @if (status === 'error') {
+            <p class="nl-capture__error">
+              {{ errorMsg }}
+            </p>
+          }
+          <!-- Dismiss -->
+          @if (status !== 'success') {
+            <button class="nl-capture__dismiss" (click)="dismiss()" aria-label="Dismiss newsletter signup"
+              >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          }
         </div>
-
-        <!-- Form -->
-        <form class="nl-capture__form" (ngSubmit)="onSubmit()" *ngIf="status !== 'success'">
-          <input
-            type="email"
-            class="nl-capture__input"
-            [(ngModel)]="email"
-            name="nlEmail"
-            placeholder="you@example.com"
-            autocomplete="email"
-            required
-            [disabled]="status === 'loading'"
-          />
-          <button type="submit" class="nl-capture__btn" [disabled]="status === 'loading'">
-            <span *ngIf="status !== 'loading'">Subscribe</span>
-            <span *ngIf="status === 'loading'" class="nl-capture__spinner"></span>
-          </button>
-        </form>
-
-        <!-- Success -->
-        <p class="nl-capture__success" *ngIf="status === 'success'">
-          <span class="nl-capture__check">✓</span> You're in! We'll ping you when something new ships.
-        </p>
-
-        <!-- Error -->
-        <p class="nl-capture__error" *ngIf="status === 'error'">
-          {{ errorMsg }}
-        </p>
-
-        <!-- Dismiss -->
-        <button class="nl-capture__dismiss" (click)="dismiss()" aria-label="Dismiss newsletter signup"
-                *ngIf="status !== 'success'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-
-      </div>
-    </aside>
-  `,
+      </aside>
+    }
+    `,
   styleUrls: ['./newsletter-capture.component.css']
 })
 export class NewsletterCaptureComponent {

@@ -87,18 +87,22 @@
         </div>
       </div>
 
-      <div class="cpk-panel" *ngIf="colorHistory.length > 0">
-        <div class="cpk-panel__header"><span class="cpk-panel__title">History</span></div>
-        <div class="cpk-panel__body cpk-history">
-          <button *ngFor="let color of colorHistory"
-            class="cpk-history-swatch"
-            [style.background]="color"
-            [title]="color"
-            [attr.aria-label]="'Select ' + color + ' from history'"
-            (click)="selectFromHistory(color)">
-          </button>
+      @if (colorHistory.length > 0) {
+        <div class="cpk-panel">
+          <div class="cpk-panel__header"><span class="cpk-panel__title">History</span></div>
+          <div class="cpk-panel__body cpk-history">
+            @for (color of colorHistory; track color) {
+              <button
+                class="cpk-history-swatch"
+                [style.background]="color"
+                [title]="color"
+                [attr.aria-label]="'Select ' + color + ' from history'"
+                (click)="selectFromHistory(color)">
+              </button>
+            }
+          </div>
         </div>
-      </div>
+      }
     </div>
   </div>
 

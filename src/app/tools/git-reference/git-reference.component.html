@@ -40,24 +40,27 @@
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
-      />
-      <button class="gr-search__clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchInput()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+        />
+      @if (searchQuery) {
+        <button class="gr-search__clear" (click)="searchQuery = ''; onSearchInput()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
     </div>
 
     <!-- Top row: category tabs + cheatsheet toggle -->
     <div class="gr-filter-row">
       <div class="gr-tabs">
-        <button
-          *ngFor="let cat of categories"
-          class="gr-tab"
-          [class.gr-tab--active]="activeCategory === cat.key"
-          [attr.style]="'--tab-color: ' + cat.color"
-          (click)="setCategory(cat.key)"
-        >
-          {{ cat.label }}
-        </button>
+        @for (cat of categories; track cat) {
+          <button
+            class="gr-tab"
+            [class.gr-tab--active]="activeCategory === cat.key"
+            [attr.style]="'--tab-color: ' + cat.color"
+            (click)="setCategory(cat.key)"
+            >
+            {{ cat.label }}
+          </button>
+        }
       </div>
       <button class="gr-cheatsheet-toggle" [class.gr-cheatsheet-toggle--active]="cheatsheetMode" (click)="toggleCheatsheet()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -74,127 +77,137 @@
   </div>
 
   <!-- ── Cheatsheet Mode ── -->
-  <div class="gr-cheatsheet" *ngIf="cheatsheetMode">
-    <div class="gr-cheat-card" *ngFor="let entry of filteredCommands" [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)">
-      <div class="gr-cheat-card__header">
-        <code class="gr-cheat-card__cmd">{{ entry.command }}</code>
-        <button class="gr-cheat-card__copy" (click)="copyCommand(entry.command, $event)" [class.gr-cheat-card__copy--success]="isCopied(entry.command)" title="Copy command">
-          <svg *ngIf="!isCopied(entry.command)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          <svg *ngIf="isCopied(entry.command)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
-      </div>
-      <p class="gr-cheat-card__desc">{{ entry.description }}</p>
-    </div>
-
-    <!-- Empty state -->
-    <div class="gr-empty" *ngIf="filteredCommands.length === 0">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span>No commands found matching "{{ searchQuery }}"</span>
-    </div>
-  </div>
-
-  <!-- ── Detail Mode ── -->
-  <div class="gr-layout" *ngIf="!cheatsheetMode">
-
-    <!-- List panel -->
-    <div class="gr-list-col" [class.gr-list-col--has-detail]="!!selectedCommand">
-      <div class="gr-list">
-
-        <!-- Empty state -->
-        <div class="gr-empty" *ngIf="filteredCommands.length === 0">
+  @if (cheatsheetMode) {
+    <div class="gr-cheatsheet">
+      @for (entry of filteredCommands; track entry) {
+        <div class="gr-cheat-card" [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)">
+          <div class="gr-cheat-card__header">
+            <code class="gr-cheat-card__cmd">{{ entry.command }}</code>
+            <button class="gr-cheat-card__copy" (click)="copyCommand(entry.command, $event)" [class.gr-cheat-card__copy--success]="isCopied(entry.command)" title="Copy command">
+              @if (!isCopied(entry.command)) {
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              }
+              @if (isCopied(entry.command)) {
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              }
+            </button>
+          </div>
+          <p class="gr-cheat-card__desc">{{ entry.description }}</p>
+        </div>
+      }
+      <!-- Empty state -->
+      @if (filteredCommands.length === 0) {
+        <div class="gr-empty">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <span>No commands found matching "{{ searchQuery }}"</span>
         </div>
-
-        <!-- Command entries -->
-        <button
-          *ngFor="let entry of filteredCommands"
-          class="gr-entry"
-          [class.gr-entry--selected]="selectedCommand?.command === entry.command"
-          [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
-          (click)="selectCommand(entry)"
-        >
-          <code class="gr-entry__cmd">{{ entry.command }}</code>
-          <div class="gr-entry__info">
-            <span class="gr-entry__desc">{{ entry.description }}</span>
-          </div>
-          <span class="gr-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ entry.category }}</span>
-          <svg class="gr-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-
-      </div>
+      }
     </div>
+  }
 
-    <!-- Detail panel -->
-    <div class="gr-detail-col" *ngIf="selectedCommand">
-      <div class="gr-detail">
-
-        <div class="gr-detail__header">
-          <div class="gr-detail__title-row">
-            <div>
-              <code class="gr-detail__cmd">{{ selectedCommand.command }}</code>
-              <span class="gr-detail__category" [style.color]="getCategoryColor(selectedCommand.category)">{{ getCategoryLabel(selectedCommand.category) }}</span>
+  <!-- ── Detail Mode ── -->
+  @if (!cheatsheetMode) {
+    <div class="gr-layout">
+      <!-- List panel -->
+      <div class="gr-list-col" [class.gr-list-col--has-detail]="!!selectedCommand">
+        <div class="gr-list">
+          <!-- Empty state -->
+          @if (filteredCommands.length === 0) {
+            <div class="gr-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span>No commands found matching "{{ searchQuery }}"</span>
             </div>
-          </div>
-          <button class="gr-detail__close" (click)="closeDetail()" title="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          }
+          <!-- Command entries -->
+          @for (entry of filteredCommands; track entry) {
+            <button
+              class="gr-entry"
+              [class.gr-entry--selected]="selectedCommand?.command === entry.command"
+              [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)"
+              (click)="selectCommand(entry)"
+              >
+              <code class="gr-entry__cmd">{{ entry.command }}</code>
+              <div class="gr-entry__info">
+                <span class="gr-entry__desc">{{ entry.description }}</span>
+              </div>
+              <span class="gr-entry__badge" [style.color]="getCategoryColor(entry.category)">{{ entry.category }}</span>
+              <svg class="gr-entry__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          }
         </div>
-
-        <div class="gr-detail__body">
-
-          <div class="gr-detail__section">
-            <h3 class="gr-detail__label">Description</h3>
-            <p class="gr-detail__text">{{ selectedCommand.description }}</p>
-          </div>
-
-          <div class="gr-detail__section">
-            <h3 class="gr-detail__label">Example</h3>
-            <div class="gr-detail__example">
-              <code>{{ selectedCommand.example }}</code>
-              <button class="gr-detail__example-copy" (click)="copyCommand(selectedCommand.example)" [class.gr-detail__example-copy--success]="isCopied(selectedCommand.example)" title="Copy example">
-                <svg *ngIf="!isCopied(selectedCommand.example)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                <svg *ngIf="isCopied(selectedCommand.example)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <!-- Detail panel -->
+      @if (selectedCommand) {
+        <div class="gr-detail-col">
+          <div class="gr-detail">
+            <div class="gr-detail__header">
+              <div class="gr-detail__title-row">
+                <div>
+                  <code class="gr-detail__cmd">{{ selectedCommand.command }}</code>
+                  <span class="gr-detail__category" [style.color]="getCategoryColor(selectedCommand.category)">{{ getCategoryLabel(selectedCommand.category) }}</span>
+                </div>
+              </div>
+              <button class="gr-detail__close" (click)="closeDetail()" title="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="gr-detail__body">
+              <div class="gr-detail__section">
+                <h3 class="gr-detail__label">Description</h3>
+                <p class="gr-detail__text">{{ selectedCommand.description }}</p>
+              </div>
+              <div class="gr-detail__section">
+                <h3 class="gr-detail__label">Example</h3>
+                <div class="gr-detail__example">
+                  <code>{{ selectedCommand.example }}</code>
+                  <button class="gr-detail__example-copy" (click)="copyCommand(selectedCommand.example)" [class.gr-detail__example-copy--success]="isCopied(selectedCommand.example)" title="Copy example">
+                    @if (!isCopied(selectedCommand.example)) {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    }
+                    @if (isCopied(selectedCommand.example)) {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    }
+                  </button>
+                </div>
+              </div>
+              @if (selectedCommand.flags.length > 0) {
+                <div class="gr-detail__section">
+                  <h3 class="gr-detail__label">Common Flags</h3>
+                  <div class="gr-detail__flags">
+                    @for (f of selectedCommand.flags; track f) {
+                      <div class="gr-detail__flag">
+                        <code class="gr-detail__flag-name">{{ f.flag }}</code>
+                        <span class="gr-detail__flag-desc">{{ f.desc }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="gr-detail__footer">
+              <button class="gr-btn-copy" (click)="copyCommand(selectedCommand.command)" [class.gr-btn-copy--success]="isCopied(selectedCommand.command)">
+                @if (!isCopied(selectedCommand.command)) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy Command
+                }
+                @if (isCopied(selectedCommand.command)) {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Copied!
+                }
               </button>
             </div>
           </div>
-
-          <div class="gr-detail__section" *ngIf="selectedCommand.flags.length > 0">
-            <h3 class="gr-detail__label">Common Flags</h3>
-            <div class="gr-detail__flags">
-              <div class="gr-detail__flag" *ngFor="let f of selectedCommand.flags">
-                <code class="gr-detail__flag-name">{{ f.flag }}</code>
-                <span class="gr-detail__flag-desc">{{ f.desc }}</span>
-              </div>
-            </div>
-          </div>
-
         </div>
-
-        <div class="gr-detail__footer">
-          <button class="gr-btn-copy" (click)="copyCommand(selectedCommand.command)" [class.gr-btn-copy--success]="isCopied(selectedCommand.command)">
-            <ng-container *ngIf="!isCopied(selectedCommand.command)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy Command
-            </ng-container>
-            <ng-container *ngIf="isCopied(selectedCommand.command)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Copied!
-            </ng-container>
-          </button>
-        </div>
-
-      </div>
+      }
     </div>
+    }<!-- /layout -->
 
-  </div><!-- /layout -->
+    <app-embed-code-generator toolSlug="git-reference" toolName="Git Command Reference"></app-embed-code-generator>
 
-  <app-embed-code-generator toolSlug="git-reference" toolName="Git Command Reference"></app-embed-code-generator>
+    <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'git-reference'"></app-newsletter-capture>
 
-  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'git-reference'"></app-newsletter-capture>
+    <app-affiliate-cta [category]="'Developer References'" [toolSlug]="'git-reference'"></app-affiliate-cta>
 
-  <app-affiliate-cta [category]="'Developer References'" [toolSlug]="'git-reference'"></app-affiliate-cta>
+    <app-related-tools [currentToolId]="'git-reference'"></app-related-tools>
 
-  <app-related-tools [currentToolId]="'git-reference'"></app-related-tools>
-
-</div>
+  </div>

@@ -42,101 +42,103 @@ interface ScoredResult {
   standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="cp-backdrop"
-      *ngIf="palette.isOpen()"
-      (click)="onBackdropClick($event)"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="cp-title"
-    >
-      <div class="cp-panel" (click)="$event.stopPropagation()">
-        <div class="cp-header">
-          <svg
-            class="cp-search-icon"
-            aria-hidden="true"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            #searchInput
-            type="text"
-            class="cp-input"
-            id="cp-title"
-            [(ngModel)]="query"
-            (ngModelChange)="onQueryChange()"
-            (keydown)="onKeydown($event)"
-            placeholder="Search tools — try 'json', 'regex', 'color'…"
-            aria-label="Search all tools"
-            aria-controls="cp-listbox"
+    @if (palette.isOpen()) {
+      <div
+        class="cp-backdrop"
+        (click)="onBackdropClick($event)"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cp-title"
+        >
+        <div class="cp-panel" (click)="$event.stopPropagation()">
+          <div class="cp-header">
+            <svg
+              class="cp-search-icon"
+              aria-hidden="true"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              >
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              #searchInput
+              type="text"
+              class="cp-input"
+              id="cp-title"
+              [(ngModel)]="query"
+              (ngModelChange)="onQueryChange()"
+              (keydown)="onKeydown($event)"
+              placeholder="Search tools — try 'json', 'regex', 'color'…"
+              aria-label="Search all tools"
+              aria-controls="cp-listbox"
             [attr.aria-activedescendant]="
               results.length > 0 ? 'cp-item-' + activeIndex : null
             "
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <kbd class="cp-kbd cp-kbd--esc" aria-hidden="true">Esc</kbd>
-        </div>
-
-        <div class="cp-results-wrap">
-          <ul
-            *ngIf="results.length > 0"
-            id="cp-listbox"
-            class="cp-list"
-            role="listbox"
-            #listEl
-          >
-            <li
-              *ngFor="let r of results; let i = index; trackBy: trackById"
-              [id]="'cp-item-' + i"
-              class="cp-item"
-              [class.cp-item--active]="i === activeIndex"
-              role="option"
-              [attr.aria-selected]="i === activeIndex"
-              (mouseenter)="activeIndex = i"
-              (click)="selectResult(r.tool)"
-            >
-              <div class="cp-item__icon" [innerHTML]="iconFor(r.tool)"></div>
-              <div class="cp-item__body">
-                <div class="cp-item__title">{{ r.tool.title }}</div>
-                <div class="cp-item__desc">{{ r.tool.description }}</div>
+              autocomplete="off"
+              spellcheck="false"
+              />
+            <kbd class="cp-kbd cp-kbd--esc" aria-hidden="true">Esc</kbd>
+          </div>
+          <div class="cp-results-wrap">
+            @if (results.length > 0) {
+              <ul
+                id="cp-listbox"
+                class="cp-list"
+                role="listbox"
+                #listEl
+                >
+                @for (r of results; track trackById(i, r); let i = $index) {
+                  <li
+                    [id]="'cp-item-' + i"
+                    class="cp-item"
+                    [class.cp-item--active]="i === activeIndex"
+                    role="option"
+                    [attr.aria-selected]="i === activeIndex"
+                    (mouseenter)="activeIndex = i"
+                    (click)="selectResult(r.tool)"
+                    >
+                    <div class="cp-item__icon" [innerHTML]="iconFor(r.tool)"></div>
+                    <div class="cp-item__body">
+                      <div class="cp-item__title">{{ r.tool.title }}</div>
+                      <div class="cp-item__desc">{{ r.tool.description }}</div>
+                    </div>
+                    <div class="cp-item__meta">
+                      <span class="cp-item__cat">{{ r.tool.category }}</span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+            @if (results.length === 0) {
+              <div class="cp-empty">
+                <div class="cp-empty__glyph">⌘K</div>
+                <div class="cp-empty__title">No tools match "{{ query }}"</div>
+                <div class="cp-empty__hint">
+                  Try a broader term like <em>json</em>, <em>regex</em>, or
+                  <em>color</em>.
+                </div>
               </div>
-              <div class="cp-item__meta">
-                <span class="cp-item__cat">{{ r.tool.category }}</span>
-              </div>
-            </li>
-          </ul>
-
-          <div *ngIf="results.length === 0" class="cp-empty">
-            <div class="cp-empty__glyph">⌘K</div>
-            <div class="cp-empty__title">No tools match "{{ query }}"</div>
-            <div class="cp-empty__hint">
-              Try a broader term like <em>json</em>, <em>regex</em>, or
-              <em>color</em>.
+            }
+          </div>
+          <div class="cp-footer">
+            <div class="cp-footer__hints">
+              <span><kbd class="cp-kbd">↑</kbd><kbd class="cp-kbd">↓</kbd> navigate</span>
+              <span><kbd class="cp-kbd">↵</kbd> open</span>
+              <span><kbd class="cp-kbd">esc</kbd> close</span>
             </div>
+            <div class="cp-footer__brand">xsantcastx · {{ totalCount }} tools</div>
           </div>
-        </div>
-
-        <div class="cp-footer">
-          <div class="cp-footer__hints">
-            <span><kbd class="cp-kbd">↑</kbd><kbd class="cp-kbd">↓</kbd> navigate</span>
-            <span><kbd class="cp-kbd">↵</kbd> open</span>
-            <span><kbd class="cp-kbd">esc</kbd> close</span>
-          </div>
-          <div class="cp-footer__brand">xsantcastx · {{ totalCount }} tools</div>
         </div>
       </div>
-    </div>
-  `,
+    }
+    `,
   styles: [
     `
       .cp-backdrop {

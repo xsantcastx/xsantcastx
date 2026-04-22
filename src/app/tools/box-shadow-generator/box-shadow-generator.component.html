@@ -90,7 +90,7 @@
               [value]="previewBorderRadius"
               (input)="onBorderRadiusChange($event)"
               class="bs-slider"
-            />
+              />
             <span class="bs-slider-value">{{ previewBorderRadius }}px</span>
           </div>
         </div>
@@ -112,21 +112,33 @@
 
         <div class="bs-code-actions">
           <button type="button" class="bs-btn bs-btn--primary" (click)="copyDisplayedCode()">
-            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ codeCopied ? 'Copied!' : 'Copy Code' }}
           </button>
-          <button type="button" class="bs-btn bs-btn--ghost" (click)="copyCSS()" *ngIf="codeFormat !== 'css'">
-            Copy CSS
-          </button>
-          <button type="button" class="bs-btn bs-btn--ghost" (click)="copyTailwind()" *ngIf="codeFormat !== 'tailwind'">
-            <span *ngIf="!tailwindCopied">Copy Tailwind</span>
-            <span *ngIf="tailwindCopied">Copied!</span>
-          </button>
+          @if (codeFormat !== 'css') {
+            <button type="button" class="bs-btn bs-btn--ghost" (click)="copyCSS()">
+              Copy CSS
+            </button>
+          }
+          @if (codeFormat !== 'tailwind') {
+            <button type="button" class="bs-btn bs-btn--ghost" (click)="copyTailwind()">
+              @if (!tailwindCopied) {
+                <span>Copy Tailwind</span>
+              }
+              @if (tailwindCopied) {
+                <span>Copied!</span>
+              }
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -147,165 +159,161 @@
         </div>
 
         <div class="bs-layer-list">
-          <div
-            class="bs-layer-item"
-            *ngFor="let layer of layers; let i = index; trackBy: trackByLayerId"
-            [class.is-active]="activeLayerIndex === i"
-            (click)="selectLayer(i)"
-          >
-            <div class="bs-layer-item__preview">
-              <div class="bs-layer-mini-box" [ngStyle]="getLayerPreviewStyle(layer)"></div>
+          @for (layer of layers; track trackByLayerId(i, layer); let i = $index) {
+            <div
+              class="bs-layer-item"
+              [class.is-active]="activeLayerIndex === i"
+              (click)="selectLayer(i)"
+              >
+              <div class="bs-layer-item__preview">
+                <div class="bs-layer-mini-box" [ngStyle]="getLayerPreviewStyle(layer)"></div>
+              </div>
+              <div class="bs-layer-item__info">
+                <span class="bs-layer-item__name">Layer {{ i + 1 }}</span>
+                <span class="bs-layer-item__detail">
+                  {{ layer.inset ? 'inset ' : '' }}{{ layer.horizontalOffset }}px {{ layer.verticalOffset }}px {{ layer.blurRadius }}px {{ layer.spreadRadius }}px
+                </span>
+              </div>
+              <div class="bs-layer-item__actions" (click)="$event.stopPropagation()">
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === 0" (click)="moveLayerUp(i)" title="Move up">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                  </svg>
+                </button>
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === layers.length - 1" (click)="moveLayerDown(i)" title="Move down">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" (click)="duplicateLayer(i)" title="Duplicate">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs bs-icon-btn--danger" [disabled]="layers.length <= 1" (click)="removeLayer(i)" title="Delete">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div class="bs-layer-item__info">
-              <span class="bs-layer-item__name">Layer {{ i + 1 }}</span>
-              <span class="bs-layer-item__detail">
-                {{ layer.inset ? 'inset ' : '' }}{{ layer.horizontalOffset }}px {{ layer.verticalOffset }}px {{ layer.blurRadius }}px {{ layer.spreadRadius }}px
-              </span>
-            </div>
-            <div class="bs-layer-item__actions" (click)="$event.stopPropagation()">
-              <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === 0" (click)="moveLayerUp(i)" title="Move up">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="18 15 12 9 6 15"/>
-                </svg>
-              </button>
-              <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === layers.length - 1" (click)="moveLayerDown(i)" title="Move down">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-              <button type="button" class="bs-icon-btn bs-icon-btn--xs" (click)="duplicateLayer(i)" title="Duplicate">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-              </button>
-              <button type="button" class="bs-icon-btn bs-icon-btn--xs bs-icon-btn--danger" [disabled]="layers.length <= 1" (click)="removeLayer(i)" title="Delete">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+          }
         </div>
       </div>
 
       <!-- Shadow Layer Controls -->
-      <div class="bs-card" *ngIf="activeLayer">
-        <div class="bs-card__header">
-          <span class="bs-card__label">Layer {{ activeLayerIndex + 1 }} Controls</span>
-        </div>
-
-        <div class="bs-controls-grid">
-          <!-- Horizontal Offset -->
-          <div class="bs-control-group">
-            <div class="bs-control-group__top">
-              <label class="bs-control-group__label">Horizontal Offset</label>
-              <span class="bs-control-group__value">{{ activeLayer.horizontalOffset }}px</span>
-            </div>
-            <input
-              type="range"
-              min="-100"
-              max="100"
-              step="1"
-              [value]="activeLayer.horizontalOffset"
-              (input)="updateSliderField('horizontalOffset', $event)"
-              class="bs-slider"
-            />
+      @if (activeLayer) {
+        <div class="bs-card">
+          <div class="bs-card__header">
+            <span class="bs-card__label">Layer {{ activeLayerIndex + 1 }} Controls</span>
           </div>
-
-          <!-- Vertical Offset -->
-          <div class="bs-control-group">
-            <div class="bs-control-group__top">
-              <label class="bs-control-group__label">Vertical Offset</label>
-              <span class="bs-control-group__value">{{ activeLayer.verticalOffset }}px</span>
-            </div>
-            <input
-              type="range"
-              min="-100"
-              max="100"
-              step="1"
-              [value]="activeLayer.verticalOffset"
-              (input)="updateSliderField('verticalOffset', $event)"
-              class="bs-slider"
-            />
-          </div>
-
-          <!-- Blur Radius -->
-          <div class="bs-control-group">
-            <div class="bs-control-group__top">
-              <label class="bs-control-group__label">Blur Radius</label>
-              <span class="bs-control-group__value">{{ activeLayer.blurRadius }}px</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              [value]="activeLayer.blurRadius"
-              (input)="updateSliderField('blurRadius', $event)"
-              class="bs-slider"
-            />
-          </div>
-
-          <!-- Spread Radius -->
-          <div class="bs-control-group">
-            <div class="bs-control-group__top">
-              <label class="bs-control-group__label">Spread Radius</label>
-              <span class="bs-control-group__value">{{ activeLayer.spreadRadius }}px</span>
-            </div>
-            <input
-              type="range"
-              min="-50"
-              max="50"
-              step="1"
-              [value]="activeLayer.spreadRadius"
-              (input)="updateSliderField('spreadRadius', $event)"
-              class="bs-slider"
-            />
-          </div>
-
-          <!-- Opacity -->
-          <div class="bs-control-group">
-            <div class="bs-control-group__top">
-              <label class="bs-control-group__label">Opacity</label>
-              <span class="bs-control-group__value">{{ getOpacityPercent(activeLayer) }}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              [value]="activeLayer.opacity"
-              (input)="updateOpacity($event)"
-              class="bs-slider"
-            />
-          </div>
-
-          <!-- Color -->
-          <div class="bs-control-group">
-            <label class="bs-control-group__label">Shadow Color</label>
-            <div class="bs-color-row">
+          <div class="bs-controls-grid">
+            <!-- Horizontal Offset -->
+            <div class="bs-control-group">
+              <div class="bs-control-group__top">
+                <label class="bs-control-group__label">Horizontal Offset</label>
+                <span class="bs-control-group__value">{{ activeLayer.horizontalOffset }}px</span>
+              </div>
               <input
-                type="color"
-                [value]="activeLayer.color"
-                (input)="updateColor($event)"
-                class="bs-color-input"
-              />
-              <span class="bs-color-hex">{{ activeLayer.color }}</span>
+                type="range"
+                min="-100"
+                max="100"
+                step="1"
+                [value]="activeLayer.horizontalOffset"
+                (input)="updateSliderField('horizontalOffset', $event)"
+                class="bs-slider"
+                />
+            </div>
+            <!-- Vertical Offset -->
+            <div class="bs-control-group">
+              <div class="bs-control-group__top">
+                <label class="bs-control-group__label">Vertical Offset</label>
+                <span class="bs-control-group__value">{{ activeLayer.verticalOffset }}px</span>
+              </div>
+              <input
+                type="range"
+                min="-100"
+                max="100"
+                step="1"
+                [value]="activeLayer.verticalOffset"
+                (input)="updateSliderField('verticalOffset', $event)"
+                class="bs-slider"
+                />
+            </div>
+            <!-- Blur Radius -->
+            <div class="bs-control-group">
+              <div class="bs-control-group__top">
+                <label class="bs-control-group__label">Blur Radius</label>
+                <span class="bs-control-group__value">{{ activeLayer.blurRadius }}px</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [value]="activeLayer.blurRadius"
+                (input)="updateSliderField('blurRadius', $event)"
+                class="bs-slider"
+                />
+            </div>
+            <!-- Spread Radius -->
+            <div class="bs-control-group">
+              <div class="bs-control-group__top">
+                <label class="bs-control-group__label">Spread Radius</label>
+                <span class="bs-control-group__value">{{ activeLayer.spreadRadius }}px</span>
+              </div>
+              <input
+                type="range"
+                min="-50"
+                max="50"
+                step="1"
+                [value]="activeLayer.spreadRadius"
+                (input)="updateSliderField('spreadRadius', $event)"
+                class="bs-slider"
+                />
+            </div>
+            <!-- Opacity -->
+            <div class="bs-control-group">
+              <div class="bs-control-group__top">
+                <label class="bs-control-group__label">Opacity</label>
+                <span class="bs-control-group__value">{{ getOpacityPercent(activeLayer) }}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                [value]="activeLayer.opacity"
+                (input)="updateOpacity($event)"
+                class="bs-slider"
+                />
+            </div>
+            <!-- Color -->
+            <div class="bs-control-group">
+              <label class="bs-control-group__label">Shadow Color</label>
+              <div class="bs-color-row">
+                <input
+                  type="color"
+                  [value]="activeLayer.color"
+                  (input)="updateColor($event)"
+                  class="bs-color-input"
+                  />
+                <span class="bs-color-hex">{{ activeLayer.color }}</span>
+              </div>
+            </div>
+            <!-- Inset Toggle -->
+            <div class="bs-control-group bs-control-group--inline">
+              <label class="bs-control-group__label">Inset Shadow</label>
+              <button
+                type="button"
+                class="bs-toggle-btn"
+                [class.is-active]="activeLayer.inset"
+                (click)="toggleInset()"
+              >{{ activeLayer.inset ? 'On' : 'Off' }}</button>
             </div>
           </div>
-
-          <!-- Inset Toggle -->
-          <div class="bs-control-group bs-control-group--inline">
-            <label class="bs-control-group__label">Inset Shadow</label>
-            <button
-              type="button"
-              class="bs-toggle-btn"
-              [class.is-active]="activeLayer.inset"
-              (click)="toggleInset()"
-            >{{ activeLayer.inset ? 'On' : 'Off' }}</button>
-          </div>
         </div>
-      </div>
+      }
     </div>
 
     <!-- Code Output -->
@@ -314,9 +322,9 @@
         <span class="bs-card__label">Generated Code</span>
         <div class="bs-format-btns">
           <button type="button" class="bs-tab-btn" [class.is-active]="codeFormat === 'css'"
-            (click)="codeFormat = 'css'">CSS</button>
+          (click)="codeFormat = 'css'">CSS</button>
           <button type="button" class="bs-tab-btn" [class.is-active]="codeFormat === 'tailwind'"
-            (click)="codeFormat = 'tailwind'">Tailwind</button>
+          (click)="codeFormat = 'tailwind'">Tailwind</button>
         </div>
       </div>
       <pre class="bs-code-block">{{ displayedCode }}</pre>

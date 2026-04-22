@@ -30,41 +30,57 @@
         <div class="jt-panel__header">
           <span class="jt-panel__title">Tree View</span>
           <div class="jt-panel__actions">
-            <span class="jt-char-count" *ngIf="nodeCount">{{ nodeCount }} nodes</span>
+            @if (nodeCount) {
+              <span class="jt-char-count">{{ nodeCount }} nodes</span>
+            }
             <button class="jt-btn-ghost" (click)="expandAll()" [disabled]="!nodes.length">Expand</button>
             <button class="jt-btn-ghost" (click)="collapseAll()" [disabled]="!nodes.length">Collapse</button>
           </div>
         </div>
 
-        <div class="jt-search" *ngIf="nodes.length">
-          <input class="jt-search-input" [(ngModel)]="searchTerm" placeholder="Search keys or values..." />
-        </div>
+        @if (nodes.length) {
+          <div class="jt-search">
+            <input class="jt-search-input" [(ngModel)]="searchTerm" placeholder="Search keys or values..." />
+          </div>
+        }
 
-        <div class="jt-tree" *ngIf="nodes.length">
-          <ng-container *ngFor="let node of nodes">
-            <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node }"></ng-container>
-          </ng-container>
-        </div>
+        @if (nodes.length) {
+          <div class="jt-tree">
+            @for (node of nodes; track node) {
+              <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node }"></ng-container>
+            }
+          </div>
+        }
 
-        <div class="jt-error" *ngIf="errorMessage">{{ errorMessage }}</div>
-        <div class="jt-empty" *ngIf="!nodes.length && !errorMessage"><span>Paste JSON to see the tree</span></div>
+        @if (errorMessage) {
+          <div class="jt-error">{{ errorMessage }}</div>
+        }
+        @if (!nodes.length && !errorMessage) {
+          <div class="jt-empty"><span>Paste JSON to see the tree</span></div>
+        }
       </div>
     </div>
   </div>
 
   <ng-template #treeNode let-node>
-    <div class="jt-node" [style.paddingLeft.px]="node.depth * 20" *ngIf="matchesSearch(node)">
-      <button class="jt-toggle" *ngIf="node.children" (click)="toggleNode(node)">
-        {{ node.expanded ? '\u25BC' : '\u25B6' }}
-      </button>
-      <span class="jt-key">{{ node.key }}</span>
-      <span class="jt-badge" [ngClass]="getTypeBadgeClass(node.type)">{{ node.type }}</span>
-      <span class="jt-value" *ngIf="!node.children || !node.expanded">{{ formatValue(node) }}</span>
-    </div>
-    <ng-container *ngIf="node.children && node.expanded">
-      <ng-container *ngFor="let child of node.children">
+    @if (matchesSearch(node)) {
+      <div class="jt-node" [style.paddingLeft.px]="node.depth * 20">
+        @if (node.children) {
+          <button class="jt-toggle" (click)="toggleNode(node)">
+            {{ node.expanded ? '\u25BC' : '\u25B6' }}
+          </button>
+        }
+        <span class="jt-key">{{ node.key }}</span>
+        <span class="jt-badge" [ngClass]="getTypeBadgeClass(node.type)">{{ node.type }}</span>
+        @if (!node.children || !node.expanded) {
+          <span class="jt-value">{{ formatValue(node) }}</span>
+        }
+      </div>
+    }
+    @if (node.children && node.expanded) {
+      @for (child of node.children; track child) {
         <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: child }"></ng-container>
-      </ng-container>
-    </ng-container>
+      }
+    }
   </ng-template>
 </div>

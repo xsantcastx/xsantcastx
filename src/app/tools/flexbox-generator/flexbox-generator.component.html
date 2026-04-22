@@ -50,15 +50,16 @@
 
         <div class="fx-preview-area">
           <div class="fx-preview-container" [ngStyle]="containerStyle">
-            <div
-              *ngFor="let child of children; let i = index; trackBy: trackByChildId"
-              class="fx-preview-item"
-              [ngStyle]="getChildStyle(child)"
-              [class.is-selected]="selectedChildIndex === i"
-              (click)="selectChild(i)"
-            >
-              {{ i + 1 }}
-            </div>
+            @for (child of children; track trackByChildId(i, child); let i = $index) {
+              <div
+                class="fx-preview-item"
+                [ngStyle]="getChildStyle(child)"
+                [class.is-selected]="selectedChildIndex === i"
+                (click)="selectChild(i)"
+                >
+                {{ i + 1 }}
+              </div>
+            }
           </div>
         </div>
       </div>
@@ -73,12 +74,16 @@
         </div>
         <div class="fx-code-actions">
           <button type="button" class="fx-btn fx-btn--primary" (click)="copyCSS()">
-            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ codeCopied ? 'Copied!' : 'Copy CSS' }}
           </button>
         </div>
@@ -99,7 +104,9 @@
           <div class="fx-control-group">
             <label class="fx-control-group__label">flex-direction</label>
             <select class="fx-select" [(ngModel)]="flexDirection">
-              <option *ngFor="let opt of flexDirectionOptions" [value]="opt">{{ opt }}</option>
+              @for (opt of flexDirectionOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
             </select>
           </div>
 
@@ -107,7 +114,9 @@
           <div class="fx-control-group">
             <label class="fx-control-group__label">justify-content</label>
             <select class="fx-select" [(ngModel)]="justifyContent">
-              <option *ngFor="let opt of justifyContentOptions" [value]="opt">{{ opt }}</option>
+              @for (opt of justifyContentOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
             </select>
           </div>
 
@@ -115,7 +124,9 @@
           <div class="fx-control-group">
             <label class="fx-control-group__label">align-items</label>
             <select class="fx-select" [(ngModel)]="alignItems">
-              <option *ngFor="let opt of alignItemsOptions" [value]="opt">{{ opt }}</option>
+              @for (opt of alignItemsOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
             </select>
           </div>
 
@@ -123,7 +134,9 @@
           <div class="fx-control-group">
             <label class="fx-control-group__label">align-content</label>
             <select class="fx-select" [(ngModel)]="alignContent">
-              <option *ngFor="let opt of alignContentOptions" [value]="opt">{{ opt }}</option>
+              @for (opt of alignContentOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
             </select>
           </div>
 
@@ -131,7 +144,9 @@
           <div class="fx-control-group">
             <label class="fx-control-group__label">flex-wrap</label>
             <select class="fx-select" [(ngModel)]="flexWrap">
-              <option *ngFor="let opt of flexWrapOptions" [value]="opt">{{ opt }}</option>
+              @for (opt of flexWrapOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
             </select>
           </div>
 
@@ -149,7 +164,7 @@
               [value]="gap"
               (input)="onGapChange($event)"
               class="fx-slider"
-            />
+              />
           </div>
         </div>
       </div>
@@ -167,109 +182,109 @@
         </div>
 
         <div class="fx-child-list">
-          <div
-            class="fx-child-item"
-            *ngFor="let child of children; let i = index; trackBy: trackByChildId"
-            [class.is-active]="selectedChildIndex === i"
-            (click)="selectChild(i)"
-          >
-            <div class="fx-child-item__swatch" [style.background]="child.color"></div>
-            <div class="fx-child-item__info">
-              <span class="fx-child-item__name">Item {{ i + 1 }}</span>
-              <span class="fx-child-item__detail">
-                grow:{{ child.flexGrow }} shrink:{{ child.flexShrink }} basis:{{ child.flexBasis }}
-              </span>
+          @for (child of children; track trackByChildId(i, child); let i = $index) {
+            <div
+              class="fx-child-item"
+              [class.is-active]="selectedChildIndex === i"
+              (click)="selectChild(i)"
+              >
+              <div class="fx-child-item__swatch" [style.background]="child.color"></div>
+              <div class="fx-child-item__info">
+                <span class="fx-child-item__name">Item {{ i + 1 }}</span>
+                <span class="fx-child-item__detail">
+                  grow:{{ child.flexGrow }} shrink:{{ child.flexShrink }} basis:{{ child.flexBasis }}
+                </span>
+              </div>
+              <div class="fx-child-item__actions" (click)="$event.stopPropagation()">
+                <button type="button" class="fx-icon-btn fx-icon-btn--xs fx-icon-btn--danger" [disabled]="children.length <= 1" (click)="removeChild(i)" title="Remove">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div class="fx-child-item__actions" (click)="$event.stopPropagation()">
-              <button type="button" class="fx-icon-btn fx-icon-btn--xs fx-icon-btn--danger" [disabled]="children.length <= 1" (click)="removeChild(i)" title="Remove">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+          }
         </div>
       </div>
 
       <!-- Selected Child Controls -->
-      <div class="fx-card" *ngIf="selectedChild">
-        <div class="fx-card__header">
-          <span class="fx-card__label">Item {{ (selectedChildIndex ?? 0) + 1 }} Properties</span>
+      @if (selectedChild) {
+        <div class="fx-card">
+          <div class="fx-card__header">
+            <span class="fx-card__label">Item {{ (selectedChildIndex ?? 0) + 1 }} Properties</span>
+          </div>
+          <div class="fx-controls-grid">
+            <!-- flex-grow -->
+            <div class="fx-control-group">
+              <div class="fx-control-group__top">
+                <label class="fx-control-group__label">flex-grow</label>
+                <span class="fx-control-group__value">{{ selectedChild.flexGrow }}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                [value]="selectedChild.flexGrow"
+                (input)="updateChildSlider('flexGrow', $event)"
+                class="fx-slider"
+                />
+            </div>
+            <!-- flex-shrink -->
+            <div class="fx-control-group">
+              <div class="fx-control-group__top">
+                <label class="fx-control-group__label">flex-shrink</label>
+                <span class="fx-control-group__value">{{ selectedChild.flexShrink }}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                [value]="selectedChild.flexShrink"
+                (input)="updateChildSlider('flexShrink', $event)"
+                class="fx-slider"
+                />
+            </div>
+            <!-- flex-basis -->
+            <div class="fx-control-group">
+              <label class="fx-control-group__label">flex-basis</label>
+              <input
+                type="text"
+                class="fx-text-input"
+                [value]="selectedChild.flexBasis"
+                (input)="updateChildField('flexBasis', $any($event.target).value)"
+                placeholder="auto, 100px, 50%..."
+                />
+            </div>
+            <!-- order -->
+            <div class="fx-control-group">
+              <div class="fx-control-group__top">
+                <label class="fx-control-group__label">order</label>
+                <span class="fx-control-group__value">{{ selectedChild.order }}</span>
+              </div>
+              <input
+                type="range"
+                min="-5"
+                max="5"
+                step="1"
+                [value]="selectedChild.order"
+                (input)="updateChildSlider('order', $event)"
+                class="fx-slider"
+                />
+            </div>
+            <!-- align-self -->
+            <div class="fx-control-group">
+              <label class="fx-control-group__label">align-self</label>
+              <select class="fx-select" [value]="selectedChild.alignSelf" (change)="updateChildField('alignSelf', $any($event.target).value)">
+                @for (opt of alignSelfOptions; track opt) {
+                  <option [value]="opt">{{ opt }}</option>
+                }
+              </select>
+            </div>
+          </div>
         </div>
-
-        <div class="fx-controls-grid">
-          <!-- flex-grow -->
-          <div class="fx-control-group">
-            <div class="fx-control-group__top">
-              <label class="fx-control-group__label">flex-grow</label>
-              <span class="fx-control-group__value">{{ selectedChild.flexGrow }}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="1"
-              [value]="selectedChild.flexGrow"
-              (input)="updateChildSlider('flexGrow', $event)"
-              class="fx-slider"
-            />
-          </div>
-
-          <!-- flex-shrink -->
-          <div class="fx-control-group">
-            <div class="fx-control-group__top">
-              <label class="fx-control-group__label">flex-shrink</label>
-              <span class="fx-control-group__value">{{ selectedChild.flexShrink }}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="1"
-              [value]="selectedChild.flexShrink"
-              (input)="updateChildSlider('flexShrink', $event)"
-              class="fx-slider"
-            />
-          </div>
-
-          <!-- flex-basis -->
-          <div class="fx-control-group">
-            <label class="fx-control-group__label">flex-basis</label>
-            <input
-              type="text"
-              class="fx-text-input"
-              [value]="selectedChild.flexBasis"
-              (input)="updateChildField('flexBasis', $any($event.target).value)"
-              placeholder="auto, 100px, 50%..."
-            />
-          </div>
-
-          <!-- order -->
-          <div class="fx-control-group">
-            <div class="fx-control-group__top">
-              <label class="fx-control-group__label">order</label>
-              <span class="fx-control-group__value">{{ selectedChild.order }}</span>
-            </div>
-            <input
-              type="range"
-              min="-5"
-              max="5"
-              step="1"
-              [value]="selectedChild.order"
-              (input)="updateChildSlider('order', $event)"
-              class="fx-slider"
-            />
-          </div>
-
-          <!-- align-self -->
-          <div class="fx-control-group">
-            <label class="fx-control-group__label">align-self</label>
-            <select class="fx-select" [value]="selectedChild.alignSelf" (change)="updateChildField('alignSelf', $any($event.target).value)">
-              <option *ngFor="let opt of alignSelfOptions" [value]="opt">{{ opt }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      }
 
       <!-- Presets -->
       <div class="fx-card">
@@ -277,15 +292,16 @@
           <span class="fx-card__label">Layout Presets</span>
         </div>
         <div class="fx-presets-grid">
-          <button
-            type="button"
-            class="fx-preset-btn"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <span class="fx-preset-btn__name">{{ preset.name }}</span>
-            <span class="fx-preset-btn__desc">{{ preset.description }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="fx-preset-btn"
+              (click)="applyPreset(preset)"
+              >
+              <span class="fx-preset-btn__name">{{ preset.name }}</span>
+              <span class="fx-preset-btn__desc">{{ preset.description }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

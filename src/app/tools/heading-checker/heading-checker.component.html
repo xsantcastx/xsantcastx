@@ -28,33 +28,43 @@
       </div>
     </div>
 
-    <div class="hc-panel" *ngIf="headings.length > 0">
-      <div class="hc-panel__header">
-        <span class="hc-panel__title">Heading Hierarchy ({{ headings.length }})</span>
-      </div>
-      <div class="hc-panel__body hc-tree">
-        <div *ngFor="let h of headings" class="hc-tree-node" [style.paddingLeft]="(h.level - 1) * 20 + 'px'">
-          <span class="hc-tree-tag" [attr.data-level]="h.level">H{{ h.level }}</span>
-          <span class="hc-tree-text">{{ h.text || '(empty)' }}</span>
-          <span class="hc-tree-line">line {{ h.line }}</span>
+    @if (headings.length > 0) {
+      <div class="hc-panel">
+        <div class="hc-panel__header">
+          <span class="hc-panel__title">Heading Hierarchy ({{ headings.length }})</span>
+        </div>
+        <div class="hc-panel__body hc-tree">
+          @for (h of headings; track h) {
+            <div class="hc-tree-node" [style.paddingLeft]="(h.level - 1) * 20 + 'px'">
+              <span class="hc-tree-tag" [attr.data-level]="h.level">H{{ h.level }}</span>
+              <span class="hc-tree-text">{{ h.text || '(empty)' }}</span>
+              <span class="hc-tree-line">line {{ h.line }}</span>
+            </div>
+          }
         </div>
       </div>
-    </div>
+    }
 
-    <div class="hc-panel" *ngIf="issues.length > 0">
-      <div class="hc-panel__header">
-        <span class="hc-panel__title">Issues ({{ issues.length }})</span>
-      </div>
-      <div class="hc-panel__body hc-issues">
-        <div *ngFor="let issue of issues" class="hc-issue" [class.hc-issue--error]="issue.type === 'error'" [class.hc-issue--warning]="issue.type === 'warning'">
-          <span class="hc-issue__badge">{{ issue.type }}</span>
-          <span class="hc-issue__msg">{{ issue.message }}</span>
+    @if (issues.length > 0) {
+      <div class="hc-panel">
+        <div class="hc-panel__header">
+          <span class="hc-panel__title">Issues ({{ issues.length }})</span>
+        </div>
+        <div class="hc-panel__body hc-issues">
+          @for (issue of issues; track issue) {
+            <div class="hc-issue" [class.hc-issue--error]="issue.type === 'error'" [class.hc-issue--warning]="issue.type === 'warning'">
+              <span class="hc-issue__badge">{{ issue.type }}</span>
+              <span class="hc-issue__msg">{{ issue.message }}</span>
+            </div>
+          }
         </div>
       </div>
-    </div>
+    }
 
-    <div class="hc-success" *ngIf="headings.length > 0 && issues.length === 0">
-      All headings are properly structured!
-    </div>
+    @if (headings.length > 0 && issues.length === 0) {
+      <div class="hc-success">
+        All headings are properly structured!
+      </div>
+    }
   </div>
 </div>

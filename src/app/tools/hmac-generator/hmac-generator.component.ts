@@ -171,7 +171,7 @@ export class HmacGeneratorComponent implements OnDestroy {
       ['sign']
     );
 
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, new Uint8Array(data));
     return this.bufferToHex(signature);
   }
 

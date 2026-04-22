@@ -21,7 +21,9 @@
           <span class="cl-panel__title">Templates</span>
         </div>
         <div class="cl-templates">
-          <button class="cl-template-btn" *ngFor="let t of ['Code Review','Deploy','PR']" (click)="loadTemplate(t)">{{ t }}</button>
+          @for (t of ['Code Review','Deploy','PR']; track t) {
+            <button class="cl-template-btn" (click)="loadTemplate(t)">{{ t }}</button>
+          }
         </div>
       </div>
 
@@ -45,27 +47,39 @@
       <div class="cl-panel">
         <div class="cl-panel__header">
           <span class="cl-panel__title">Checklist</span>
-          <span class="cl-progress" *ngIf="items.length">{{ checkedCount }}/{{ items.length }} ({{ progress }}%)</span>
+          @if (items.length) {
+            <span class="cl-progress">{{ checkedCount }}/{{ items.length }} ({{ progress }}%)</span>
+          }
         </div>
 
-        <div class="cl-progress-bar" *ngIf="items.length">
-          <div class="cl-progress-bar__fill" [style.width.%]="progress"></div>
-        </div>
+        @if (items.length) {
+          <div class="cl-progress-bar">
+            <div class="cl-progress-bar__fill" [style.width.%]="progress"></div>
+          </div>
+        }
 
         <div class="cl-items">
-          <div class="cl-item" *ngFor="let item of items; let i = index" [class.cl-item--checked]="item.checked">
-            <button class="cl-check" (click)="toggleItem(i)">
-              <svg *ngIf="!item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
-              <svg *ngIf="item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
-            </button>
-            <span class="cl-item-text">{{ item.text }}</span>
-            <button class="cl-remove" (click)="removeItem(i)">&times;</button>
-          </div>
+          @for (item of items; track item; let i = $index) {
+            <div class="cl-item" [class.cl-item--checked]="item.checked">
+              <button class="cl-check" (click)="toggleItem(i)">
+                @if (!item.checked) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+                }
+                @if (item.checked) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
+                }
+              </button>
+              <span class="cl-item-text">{{ item.text }}</span>
+              <button class="cl-remove" (click)="removeItem(i)">&times;</button>
+            </div>
+          }
         </div>
 
-        <div class="cl-empty" *ngIf="!items.length">
-          <span>Add items or load a template to get started.</span>
-        </div>
+        @if (!items.length) {
+          <div class="cl-empty">
+            <span>Add items or load a template to get started.</span>
+          </div>
+        }
       </div>
     </div>
   </div>

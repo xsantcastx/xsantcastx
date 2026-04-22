@@ -52,99 +52,113 @@
           Presets
         </h2>
         <div class="cp-preset-grid">
-          <button class="cp-preset-btn" *ngFor="let preset of presets; trackBy: trackByPresetName" (click)="applyPreset(preset)">
-            {{ preset.name }}
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button class="cp-preset-btn" (click)="applyPreset(preset)">
+              {{ preset.name }}
+            </button>
+          }
         </div>
       </div>
 
       <\!-- Polygon Points -->
-      <div class="cp-card" *ngIf="shapeType === 'polygon'">
-        <div class="cp-card__header">
-          <h2 class="cp-card__title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-            Points ({{ polygonPoints.length }})
-          </h2>
-          <button class="cp-add-btn" (click)="addPoint()">+ Add Point</button>
-        </div>
-        <div class="cp-points-list">
-          <div class="cp-point-row" *ngFor="let point of polygonPoints; let i = index; trackBy: trackByPointIndex">
-            <span class="cp-point-row__idx">{{ i + 1 }}</span>
-            <label class="cp-point-row__lbl">X</label>
-            <input type="range" class="cp-slider cp-slider--sm" min="0" max="100" [value]="point.x" (input)="onPointXChange(i, $event)">
-            <span class="cp-point-row__val">{{ point.x }}%</span>
-            <label class="cp-point-row__lbl">Y</label>
-            <input type="range" class="cp-slider cp-slider--sm" min="0" max="100" [value]="point.y" (input)="onPointYChange(i, $event)">
-            <span class="cp-point-row__val">{{ point.y }}%</span>
-            <button class="cp-point-row__rm" (click)="removePoint(i)" *ngIf="polygonPoints.length > 3" title="Remove">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+      @if (shapeType === 'polygon') {
+        <div class="cp-card">
+          <div class="cp-card__header">
+            <h2 class="cp-card__title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              Points ({{ polygonPoints.length }})
+            </h2>
+            <button class="cp-add-btn" (click)="addPoint()">+ Add Point</button>
+          </div>
+          <div class="cp-points-list">
+            @for (point of polygonPoints; track $index; let i = $index) {
+              <div class="cp-point-row">
+                <span class="cp-point-row__idx">{{ i + 1 }}</span>
+                <label class="cp-point-row__lbl">X</label>
+                <input type="range" class="cp-slider cp-slider--sm" min="0" max="100" [value]="point.x" (input)="onPointXChange(i, $event)">
+                <span class="cp-point-row__val">{{ point.x }}%</span>
+                <label class="cp-point-row__lbl">Y</label>
+                <input type="range" class="cp-slider cp-slider--sm" min="0" max="100" [value]="point.y" (input)="onPointYChange(i, $event)">
+                <span class="cp-point-row__val">{{ point.y }}%</span>
+                @if (polygonPoints.length > 3) {
+                  <button class="cp-point-row__rm" (click)="removePoint(i)" title="Remove">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <\!-- Circle Controls -->
-      <div class="cp-card" *ngIf="shapeType === 'circle'">
-        <h2 class="cp-card__title">Circle Parameters</h2>
-        <div class="cp-field">
-          <label class="cp-label">Radius <span class="cp-label__val">{{ circleRadius }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="circleRadius" (input)="onCircleRadiusChange($event)">
+      @if (shapeType === 'circle') {
+        <div class="cp-card">
+          <h2 class="cp-card__title">Circle Parameters</h2>
+          <div class="cp-field">
+            <label class="cp-label">Radius <span class="cp-label__val">{{ circleRadius }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleRadius" (input)="onCircleRadiusChange($event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Center X <span class="cp-label__val">{{ circleCx }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCx" (input)="onCircleCxChange($event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Center Y <span class="cp-label__val">{{ circleCy }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCy" (input)="onCircleCyChange($event)">
+          </div>
         </div>
-        <div class="cp-field">
-          <label class="cp-label">Center X <span class="cp-label__val">{{ circleCx }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="circleCx" (input)="onCircleCxChange($event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Center Y <span class="cp-label__val">{{ circleCy }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="circleCy" (input)="onCircleCyChange($event)">
-        </div>
-      </div>
+      }
 
       <\!-- Ellipse Controls -->
-      <div class="cp-card" *ngIf="shapeType === 'ellipse'">
-        <h2 class="cp-card__title">Ellipse Parameters</h2>
-        <div class="cp-field">
-          <label class="cp-label">Radius X <span class="cp-label__val">{{ ellipseRx }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRx" (input)="onEllipseRxChange($event)">
+      @if (shapeType === 'ellipse') {
+        <div class="cp-card">
+          <h2 class="cp-card__title">Ellipse Parameters</h2>
+          <div class="cp-field">
+            <label class="cp-label">Radius X <span class="cp-label__val">{{ ellipseRx }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRx" (input)="onEllipseRxChange($event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Radius Y <span class="cp-label__val">{{ ellipseRy }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRy" (input)="onEllipseRyChange($event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Center X <span class="cp-label__val">{{ ellipseCx }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCx" (input)="onEllipseCxChange($event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Center Y <span class="cp-label__val">{{ ellipseCy }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCy" (input)="onEllipseCyChange($event)">
+          </div>
         </div>
-        <div class="cp-field">
-          <label class="cp-label">Radius Y <span class="cp-label__val">{{ ellipseRy }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRy" (input)="onEllipseRyChange($event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Center X <span class="cp-label__val">{{ ellipseCx }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCx" (input)="onEllipseCxChange($event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Center Y <span class="cp-label__val">{{ ellipseCy }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCy" (input)="onEllipseCyChange($event)">
-        </div>
-      </div>
+      }
 
       <\!-- Inset Controls -->
-      <div class="cp-card" *ngIf="shapeType === 'inset'">
-        <h2 class="cp-card__title">Inset Parameters</h2>
-        <div class="cp-field">
-          <label class="cp-label">Top <span class="cp-label__val">{{ insetTop }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="50" [value]="insetTop" (input)="onInsetChange('top', $event)">
+      @if (shapeType === 'inset') {
+        <div class="cp-card">
+          <h2 class="cp-card__title">Inset Parameters</h2>
+          <div class="cp-field">
+            <label class="cp-label">Top <span class="cp-label__val">{{ insetTop }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetTop" (input)="onInsetChange('top', $event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Right <span class="cp-label__val">{{ insetRight }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRight" (input)="onInsetChange('right', $event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Bottom <span class="cp-label__val">{{ insetBottom }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetBottom" (input)="onInsetChange('bottom', $event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Left <span class="cp-label__val">{{ insetLeft }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetLeft" (input)="onInsetChange('left', $event)">
+          </div>
+          <div class="cp-field">
+            <label class="cp-label">Border Radius <span class="cp-label__val">{{ insetRound }}%</span></label>
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRound" (input)="onInsetRoundChange($event)">
+          </div>
         </div>
-        <div class="cp-field">
-          <label class="cp-label">Right <span class="cp-label__val">{{ insetRight }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="50" [value]="insetRight" (input)="onInsetChange('right', $event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Bottom <span class="cp-label__val">{{ insetBottom }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="50" [value]="insetBottom" (input)="onInsetChange('bottom', $event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Left <span class="cp-label__val">{{ insetLeft }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="50" [value]="insetLeft" (input)="onInsetChange('left', $event)">
-        </div>
-        <div class="cp-field">
-          <label class="cp-label">Border Radius <span class="cp-label__val">{{ insetRound }}%</span></label>
-          <input type="range" class="cp-slider" min="0" max="50" [value]="insetRound" (input)="onInsetRoundChange($event)">
-        </div>
-      </div>
+      }
 
       <\!-- Colors -->
       <div class="cp-card">
@@ -182,21 +196,24 @@
             <div class="cp-shape" [style.background]="shapeColor" [style.clip-path]="clipPathValue" [style.width.px]="previewSize" [style.height.px]="previewSize"></div>
 
             <\!-- SVG overlay for polygon guides -->
-            <svg *ngIf="shapeType === 'polygon'" class="cp-svg-overlay" [attr.width]="previewSize" [attr.height]="previewSize">
-              <polygon [attr.points]="svgPolygonPoints" fill="none" stroke="rgba(0,255,204,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
-            </svg>
+            @if (shapeType === 'polygon') {
+              <svg class="cp-svg-overlay" [attr.width]="previewSize" [attr.height]="previewSize">
+                <polygon [attr.points]="svgPolygonPoints" fill="none" stroke="rgba(0,255,204,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
+              </svg>
+            }
 
             <\!-- Polygon drag handles -->
-            <ng-container *ngIf="shapeType === 'polygon'">
-              <div
-                *ngFor="let point of polygonPoints; let i = index; trackBy: trackByPointIndex"
-                class="cp-handle"
-                [ngStyle]="getHandleStyle(point)"
-                (mousedown)="onHandleMouseDown($event, i)"
-                (touchstart)="onHandleTouchStart($event, i)">
-                <span class="cp-handle__label">{{ i + 1 }}</span>
-              </div>
-            </ng-container>
+            @if (shapeType === 'polygon') {
+              @for (point of polygonPoints; track $index; let i = $index) {
+                <div
+                  class="cp-handle"
+                  [ngStyle]="getHandleStyle(point)"
+                  (mousedown)="onHandleMouseDown($event, i)"
+                  (touchstart)="onHandleTouchStart($event, i)">
+                  <span class="cp-handle__label">{{ i + 1 }}</span>
+                </div>
+              }
+            }
           </div>
         </div>
       </div>

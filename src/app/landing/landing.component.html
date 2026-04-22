@@ -1,8 +1,8 @@
 <div class="homepage">
 
   <!-- ═══════════════════════════════════════════
-       SECTION 1 — HERO
-       ═══════════════════════════════════════════ -->
+  SECTION 1 — HERO
+  ═══════════════════════════════════════════ -->
   <section id="hero" class="hp-hero">
     <div class="hp-hero__bg">
       <div class="hp-hero__bg-glow hp-hero__bg-glow--cyan"></div>
@@ -38,30 +38,31 @@
       </div>
 
       <!-- RIGHT: animated card carousel. aria-hidden because the rotating
-           preview is decorative; the real tool grid below is the accessible
-           entry point. Without aria-hidden, screen readers announce each
-           card as it cycles in and out which is meaningless noise. -->
+      preview is decorative; the real tool grid below is the accessible
+      entry point. Without aria-hidden, screen readers announce each
+      card as it cycles in and out which is meaningless noise. -->
       <div class="hp-hero__visual">
         <div class="hero-carousel" aria-hidden="true">
-          <div
-            class="hc-card"
-            *ngFor="let card of heroCarouselCards; trackBy: trackHeroCard"
-            [attr.style]="'--ci: ' + card.ci"
-          >
-            <div class="hc-card__top">
-              <span class="hc-card__icon">{{ card.tool.icon }}</span>
-              <span class="hc-card__cat">{{ card.tool.category }}</span>
+          @for (card of heroCarouselCards; track trackHeroCard($index, card)) {
+            <div
+              class="hc-card"
+              [attr.style]="'--ci: ' + card.ci"
+              >
+              <div class="hc-card__top">
+                <span class="hc-card__icon">{{ card.tool.icon }}</span>
+                <span class="hc-card__cat">{{ card.tool.category }}</span>
+              </div>
+              <h3 class="hc-card__name">{{ card.tool.name }}</h3>
+              <p class="hc-card__desc">{{ card.tool.desc }}</p>
+              <div class="hc-card__footer">
+                <span class="hc-card__cta">Try it &rarr;</span>
+                <!-- Card index counter, not a timer. Two-digit zero-padded
+                via precomputed indexLabel/totalLabel — prevents the
+                "01:016 looks like broken mm:ss" bug from 2026-04-10. -->
+                <span class="hc-card__num">{{ card.indexLabel }} / {{ card.totalLabel }}</span>
+              </div>
             </div>
-            <h3 class="hc-card__name">{{ card.tool.name }}</h3>
-            <p class="hc-card__desc">{{ card.tool.desc }}</p>
-            <div class="hc-card__footer">
-              <span class="hc-card__cta">Try it &rarr;</span>
-              <!-- Card index counter, not a timer. Two-digit zero-padded
-                   via precomputed indexLabel/totalLabel — prevents the
-                   "01:016 looks like broken mm:ss" bug from 2026-04-10. -->
-              <span class="hc-card__num">{{ card.indexLabel }} / {{ card.totalLabel }}</span>
-            </div>
-          </div>
+          }
         </div>
         <p class="hp-hero__carousel-hint">
           <span class="hp-live-dot"></span>
@@ -77,8 +78,8 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 2 — STATS BAR
-       ═══════════════════════════════════════════ -->
+  SECTION 2 — STATS BAR
+  ═══════════════════════════════════════════ -->
   <div class="hp-stats">
     <div class="hp-stats__inner">
       <div class="hp-stat">
@@ -109,9 +110,9 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 3 — LATEST TOOLS (last 8 added)
-       Full catalog lives at /tools
-       ═══════════════════════════════════════════ -->
+  SECTION 3 — LATEST TOOLS (last 8 added)
+  Full catalog lives at /tools
+  ═══════════════════════════════════════════ -->
   <section id="services" class="hp-tools">
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
@@ -125,21 +126,22 @@
       </div>
 
       <div class="hp-tools__grid">
-        <a
-          class="hp-tool-card glass-card"
-          *ngFor="let tool of latestTools; trackBy: trackToolById"
-          [routerLink]="tool.route"
-        >
-          <div class="hp-tool-card__icon-wrap">
-            <span class="hp-tool-card__icon">{{ tool.icon }}</span>
-          </div>
-          <div class="hp-tool-card__body">
-            <span class="hp-tool-card__cat">{{ tool.category }}</span>
-            <h3 class="hp-tool-card__name">{{ tool.name }}</h3>
-            <p class="hp-tool-card__desc">{{ tool.desc }}</p>
-          </div>
-          <span class="hp-tool-card__cta">Try it &rarr;</span>
-        </a>
+        @for (tool of latestTools; track trackToolById($index, tool)) {
+          <a
+            class="hp-tool-card glass-card"
+            [routerLink]="tool.route"
+            >
+            <div class="hp-tool-card__icon-wrap">
+              <span class="hp-tool-card__icon">{{ tool.icon }}</span>
+            </div>
+            <div class="hp-tool-card__body">
+              <span class="hp-tool-card__cat">{{ tool.category }}</span>
+              <h3 class="hp-tool-card__name">{{ tool.name }}</h3>
+              <p class="hp-tool-card__desc">{{ tool.desc }}</p>
+            </div>
+            <span class="hp-tool-card__cta">Try it &rarr;</span>
+          </a>
+        }
       </div>
 
       <div class="hp-tools__footer">
@@ -152,8 +154,8 @@
 
 
   <!-- ═══════════════════════════════════════════
-       AD PLACEMENT — below tool grid
-       ═══════════════════════════════════════════ -->
+  AD PLACEMENT — below tool grid
+  ═══════════════════════════════════════════ -->
   <div class="hp-ad-banner">
     <div class="hp-ad-banner__inner">
       <app-adsense label="Advertisement"></app-adsense>
@@ -162,8 +164,8 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 4 — FEATURED SPOTLIGHT
-       ═══════════════════════════════════════════ -->
+  SECTION 4 — FEATURED SPOTLIGHT
+  ═══════════════════════════════════════════ -->
   <section id="projects" class="hp-spotlight">
     <div class="hp-spotlight__inner">
       <div class="hp-spotlight__label">
@@ -176,10 +178,12 @@
           <h2 class="hp-spotlight__name">{{ spotlightTool.name }}</h2>
           <p class="hp-spotlight__desc">{{ spotlightTool.desc }}</p>
           <ul class="hp-spotlight__features">
-            <li *ngFor="let f of spotlightTool.features; trackBy: trackFeature">
-              <span class="hp-spotlight__check">✓</span>
-              {{ f }}
-            </li>
+            @for (f of spotlightTool.features; track trackFeature($index, f)) {
+              <li>
+                <span class="hp-spotlight__check">✓</span>
+                {{ f }}
+              </li>
+            }
           </ul>
           <a [routerLink]="spotlightTool.route" class="cta-button hp-spotlight__btn">
             Open Tool &rarr;
@@ -213,8 +217,8 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 5 — WATCH LIVE WORK
-       ═══════════════════════════════════════════ -->
+  SECTION 5 — WATCH LIVE WORK
+  ═══════════════════════════════════════════ -->
   <section id="about" class="hp-live">
     <div class="hp-live__inner">
       <div class="hp-live__text">
@@ -286,61 +290,69 @@
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 6 — CHANGELOG
-       ═══════════════════════════════════════════ -->
+  SECTION 6 — CHANGELOG
+  ═══════════════════════════════════════════ -->
   <section class="hp-changelog">
     <div class="hp-changelog__inner">
       <p class="hp-section-eyebrow">What's New</p>
       <h2 class="hp-section-title">Latest Updates</h2>
 
       <!-- Loading state -->
-      <div class="hp-cl-loading" *ngIf="changelogLoading">
-        <div class="hp-cl-loading__bar"></div>
-        <div class="hp-cl-loading__bar hp-cl-loading__bar--short"></div>
-        <div class="hp-cl-loading__bar"></div>
-      </div>
+      @if (changelogLoading) {
+        <div class="hp-cl-loading">
+          <div class="hp-cl-loading__bar"></div>
+          <div class="hp-cl-loading__bar hp-cl-loading__bar--short"></div>
+          <div class="hp-cl-loading__bar"></div>
+        </div>
+      }
 
       <!-- Grouped changelog -->
-      <div class="hp-cl-feed" *ngIf="!changelogLoading">
-
-        <div class="hp-cl-empty" *ngIf="changelogDays.length === 0">
-          No updates yet — check back soon.
-        </div>
-
-        <div class="hp-cl-day" *ngFor="let day of changelogDays; let di = index; trackBy: trackChangelogDay">
-
-          <!-- Day header (clickable to expand/collapse) -->
-          <button class="hp-cl-day__header" (click)="toggleChangelogDay(day)" [attr.aria-expanded]="day.expanded">
-            <span class="hp-cl-day__dot" [class.hp-cl-day__dot--latest]="di === 0"></span>
-            <span class="hp-cl-day__label">{{ day.dateLabel }}</span>
-            <span class="hp-cl-day__count">{{ day.entries.length }} update{{ day.entries.length !== 1 ? 's' : '' }}</span>
-            <span class="hp-cl-day__new-badge" *ngIf="di === 0">New</span>
-            <span class="hp-cl-day__chevron" [class.hp-cl-day__chevron--open]="day.expanded">&#x203A;</span>
-          </button>
-
-          <!-- Entries (expanded view) -->
-          <div class="hp-cl-entries" [class.hp-cl-entries--open]="day.expanded">
-            <div class="hp-cl-entry" *ngFor="let entry of day.entries; trackBy: trackChangelogEntry">
-              <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
-              <div class="hp-cl-entry__body">
-                <p class="hp-cl-entry__title">{{ entry.title }}</p>
-                <p class="hp-cl-entry__details">{{ entry.details }}</p>
-              </div>
+      @if (!changelogLoading) {
+        <div class="hp-cl-feed">
+          @if (changelogDays.length === 0) {
+            <div class="hp-cl-empty">
+              No updates yet — check back soon.
             </div>
-          </div>
-
-          <!-- Connector line between days -->
-          <div class="hp-cl-day__connector" *ngIf="di < changelogDays.length - 1"></div>
-
+          }
+          @for (day of changelogDays; track trackChangelogDay(di, day); let di = $index) {
+            <div class="hp-cl-day">
+              <!-- Day header (clickable to expand/collapse) -->
+              <button class="hp-cl-day__header" (click)="toggleChangelogDay(day)" [attr.aria-expanded]="day.expanded">
+                <span class="hp-cl-day__dot" [class.hp-cl-day__dot--latest]="di === 0"></span>
+                <span class="hp-cl-day__label">{{ day.dateLabel }}</span>
+                <span class="hp-cl-day__count">{{ day.entries.length }} update{{ day.entries.length !== 1 ? 's' : '' }}</span>
+                @if (di === 0) {
+                  <span class="hp-cl-day__new-badge">New</span>
+                }
+                <span class="hp-cl-day__chevron" [class.hp-cl-day__chevron--open]="day.expanded">&#x203A;</span>
+              </button>
+              <!-- Entries (expanded view) -->
+              <div class="hp-cl-entries" [class.hp-cl-entries--open]="day.expanded">
+                @for (entry of day.entries; track trackChangelogEntry($index, entry)) {
+                  <div class="hp-cl-entry">
+                    <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
+                    <div class="hp-cl-entry__body">
+                      <p class="hp-cl-entry__title">{{ entry.title }}</p>
+                      <p class="hp-cl-entry__details">{{ entry.details }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+              <!-- Connector line between days -->
+              @if (di < changelogDays.length - 1) {
+                <div class="hp-cl-day__connector"></div>
+              }
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
   </section>
 
 
   <!-- ═══════════════════════════════════════════
-       SECTION 7 — FOOTER CTA
-       ═══════════════════════════════════════════ -->
+  SECTION 7 — FOOTER CTA
+  ═══════════════════════════════════════════ -->
   <section id="contact" class="hp-footer-cta">
     <div class="hp-footer-cta__inner">
       <div class="hp-footer-cta__text">
@@ -348,29 +360,39 @@
         <p class="hp-footer-cta__sub">No spam. No account needed. Just useful things.</p>
       </div>
 
-      <form class="hp-sub-form" (ngSubmit)="onSubscribe()" *ngIf="subscribeStatus !== 'success'">
-        <input
-          type="email"
-          class="hp-sub-form__input"
-          [(ngModel)]="subscribeEmail"
-          name="subscribeEmail"
-          placeholder="you@example.com"
-          autocomplete="email"
-          required
-        />
-        <button type="submit" class="cta-button hp-sub-form__btn" [disabled]="subscribeStatus === 'loading'">
-          <span *ngIf="subscribeStatus !== 'loading'">Notify Me</span>
-          <span *ngIf="subscribeStatus === 'loading'" class="hp-sub-form__spinner">...</span>
-        </button>
-      </form>
+      @if (subscribeStatus !== 'success') {
+        <form class="hp-sub-form" (ngSubmit)="onSubscribe()">
+          <input
+            type="email"
+            class="hp-sub-form__input"
+            [(ngModel)]="subscribeEmail"
+            name="subscribeEmail"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+            />
+          <button type="submit" class="cta-button hp-sub-form__btn" [disabled]="subscribeStatus === 'loading'">
+            @if (subscribeStatus !== 'loading') {
+              <span>Notify Me</span>
+            }
+            @if (subscribeStatus === 'loading') {
+              <span class="hp-sub-form__spinner">...</span>
+            }
+          </button>
+        </form>
+      }
 
-      <p class="hp-sub-success" *ngIf="subscribeStatus === 'success'">
-        <span class="hp-sub-success__icon">✓</span>
-        You're on the list. We'll ping you when something new ships.
-      </p>
-      <p class="hp-sub-error" *ngIf="subscribeStatus === 'error'">
-        Something went wrong — try again or check back soon.
-      </p>
+      @if (subscribeStatus === 'success') {
+        <p class="hp-sub-success">
+          <span class="hp-sub-success__icon">✓</span>
+          You're on the list. We'll ping you when something new ships.
+        </p>
+      }
+      @if (subscribeStatus === 'error') {
+        <p class="hp-sub-error">
+          Something went wrong — try again or check back soon.
+        </p>
+      }
 
       <div class="hp-footer-cta__social">
         <a href="https://github.com/xsantcastx" target="_blank" rel="noopener" class="hp-social-link" aria-label="GitHub">

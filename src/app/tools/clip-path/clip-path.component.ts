@@ -1,4 +1,5 @@
-import { Component, inject, ElementRef, ViewChild, AfterViewInit, NgZone } from '@angular/core';
+import { Component, inject, ElementRef, ViewChild, AfterViewInit, NgZone, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
@@ -182,7 +183,10 @@ export class ClipPathComponent implements AfterViewInit {
     private ngZone: NgZone
   ) {}
 
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   ngAfterViewInit(): void {
+    if (!this.isBrowser) return;
     // bind global mouse events for dragging
     this.ngZone.runOutsideAngular(() => {
       document.addEventListener('mousemove', this.onMouseMove);
@@ -193,6 +197,7 @@ export class ClipPathComponent implements AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    if (!this.isBrowser) return;
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('touchmove', this.onTouchMove);

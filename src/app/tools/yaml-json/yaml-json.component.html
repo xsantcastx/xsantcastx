@@ -100,18 +100,18 @@
         [class.yj-status-bar--valid]="output && !errorMessage"
         [class.yj-status-bar--invalid]="errorMessage"
         [class.yj-status-bar--idle]="!output && !errorMessage">
-        <ng-container *ngIf="!output && !errorMessage">
+        @if (!output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="output && !errorMessage">
+        }
+        @if (output && !errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Converted successfully</span>
-        </ng-container>
-        <ng-container *ngIf="errorMessage">
+        }
+        @if (errorMessage) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="yj-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -123,45 +123,51 @@
           </span>
           <div class="yj-panel__actions">
             <button class="yj-btn-ghost yj-btn-sm" (click)="copyOutput()" [disabled]="!output" [class.yj-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="yj-output-body">
-          <pre class="yj-code-pre" *ngIf="output"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="yj-output-empty" *ngIf="!output">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            <span>Converted output will appear here</span>
-          </div>
+          @if (output) {
+            <pre class="yj-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!output) {
+            <div class="yj-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              <span>Converted output will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="yj-stats" *ngIf="output">
-        <div class="yj-stat">
-          <span class="yj-stat__label">Lines</span>
-          <span class="yj-stat__value">{{ lineCount | number }}</span>
+      @if (output) {
+        <div class="yj-stats">
+          <div class="yj-stat">
+            <span class="yj-stat__label">Lines</span>
+            <span class="yj-stat__value">{{ lineCount | number }}</span>
+          </div>
+          <div class="yj-stat-divider"></div>
+          <div class="yj-stat">
+            <span class="yj-stat__label">Input</span>
+            <span class="yj-stat__value">{{ formatBytes(inputBytes) }}</span>
+          </div>
+          <div class="yj-stat-divider"></div>
+          <div class="yj-stat">
+            <span class="yj-stat__label">Output</span>
+            <span class="yj-stat__value">{{ formatBytes(outputBytes) }}</span>
+          </div>
         </div>
-        <div class="yj-stat-divider"></div>
-        <div class="yj-stat">
-          <span class="yj-stat__label">Input</span>
-          <span class="yj-stat__value">{{ formatBytes(inputBytes) }}</span>
-        </div>
-        <div class="yj-stat-divider"></div>
-        <div class="yj-stat">
-          <span class="yj-stat__label">Output</span>
-          <span class="yj-stat__value">{{ formatBytes(outputBytes) }}</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

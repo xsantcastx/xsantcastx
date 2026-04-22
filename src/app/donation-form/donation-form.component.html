@@ -13,7 +13,9 @@
         <span>{{ translate('donation.form.copy') }}</span>
       </button>
     </div>
-    <p class="copy-feedback" *ngIf="copyFeedback" [class.is-error]="copyIsError">{{ copyFeedback }}</p>
+    @if (copyFeedback) {
+      <p class="copy-feedback" [class.is-error]="copyIsError">{{ copyFeedback }}</p>
+    }
   </div>
 
   <div class="wallet-visual">
@@ -34,11 +36,12 @@
     </button>
   </form>
 
-  <p
-    *ngIf="confirmationMessage"
-    class="confirmation"
-    [class.is-error]="confirmationIsError"
-  >
-    {{ confirmationMessage }}
-  </p>
+  @if (confirmationMessage) {
+    <p
+      class="confirmation"
+      [class.is-error]="confirmationIsError"
+      >
+      {{ confirmationMessage }}
+    </p>
+  }
 </section>

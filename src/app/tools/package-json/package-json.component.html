@@ -46,14 +46,18 @@
           <button class="pj-btn-ghost" (click)="addScript()">+ Add</button>
         </div>
         <div class="pj-presets">
-          <button class="pj-preset-btn" *ngFor="let p of ['Node.js','React','TypeScript','Vite']" (click)="loadPreset(p)">{{ p }}</button>
+          @for (p of ['Node.js','React','TypeScript','Vite']; track p) {
+            <button class="pj-preset-btn" (click)="loadPreset(p)">{{ p }}</button>
+          }
         </div>
         <div class="pj-scripts">
-          <div class="pj-script-row" *ngFor="let s of scripts; let i = index">
-            <input class="pj-input pj-input--sm" [(ngModel)]="s.key" placeholder="key" />
-            <input class="pj-input pj-input--sm" [(ngModel)]="s.value" placeholder="command" />
-            <button class="pj-remove" (click)="removeScript(i)">&times;</button>
-          </div>
+          @for (s of scripts; track s; let i = $index) {
+            <div class="pj-script-row">
+              <input class="pj-input pj-input--sm" [(ngModel)]="s.key" placeholder="key" />
+              <input class="pj-input pj-input--sm" [(ngModel)]="s.value" placeholder="command" />
+              <button class="pj-remove" (click)="removeScript(i)">&times;</button>
+            </div>
+          }
         </div>
       </div>
 
@@ -64,9 +68,13 @@
             <input class="pj-input" [(ngModel)]="newKeyword" (keyup.enter)="addKeyword()" placeholder="Add keyword..." />
             <button class="pj-btn-ghost" (click)="addKeyword()">Add</button>
           </div>
-          <div class="pj-kw-tags" *ngIf="keywords.length">
-            <span class="pj-kw-tag" *ngFor="let kw of keywords; let i = index">{{ kw }} <button class="pj-kw-remove" (click)="removeKeyword(i)">&times;</button></span>
-          </div>
+          @if (keywords.length) {
+            <div class="pj-kw-tags">
+              @for (kw of keywords; track kw; let i = $index) {
+                <span class="pj-kw-tag">{{ kw }} <button class="pj-kw-remove" (click)="removeKeyword(i)">&times;</button></span>
+              }
+            </div>
+          }
         </div>
       </div>
     </div>

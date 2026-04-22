@@ -50,15 +50,16 @@
 
         <div class="gg-preview-area">
           <div class="gg-preview-container" [ngStyle]="containerStyle">
-            <div
-              *ngFor="let item of items; let i = index; trackBy: trackByItemId"
-              class="gg-preview-item"
-              [ngStyle]="getItemStyle(item)"
-              [class.is-selected]="selectedItemIndex === i"
-              (click)="selectItem(i)"
-            >
-              {{ item.label }}
-            </div>
+            @for (item of items; track trackByItemId(i, item); let i = $index) {
+              <div
+                class="gg-preview-item"
+                [ngStyle]="getItemStyle(item)"
+                [class.is-selected]="selectedItemIndex === i"
+                (click)="selectItem(i)"
+                >
+                {{ item.label }}
+              </div>
+            }
           </div>
         </div>
       </div>
@@ -73,12 +74,16 @@
         </div>
         <div class="gg-code-actions">
           <button type="button" class="gg-btn gg-btn--primary" (click)="copyCSS()">
-            <svg *ngIf="!codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="codeCopied" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            @if (!codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            }
+            @if (codeCopied) {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
             {{ codeCopied ? 'Copied!' : 'Copy CSS' }}
           </button>
         </div>
@@ -109,7 +114,7 @@
               [value]="rows"
               (input)="onRowsChange(+$any($event.target).value)"
               class="gg-slider"
-            />
+              />
           </div>
 
           <!-- Columns -->
@@ -126,7 +131,7 @@
               [value]="columns"
               (input)="onColumnsChange(+$any($event.target).value)"
               class="gg-slider"
-            />
+              />
           </div>
 
           <!-- Gap -->
@@ -143,7 +148,7 @@
               [value]="gap"
               (input)="onGapChange($event)"
               class="gg-slider"
-            />
+              />
           </div>
         </div>
       </div>
@@ -154,16 +159,18 @@
           <span class="gg-card__label">Row Templates</span>
         </div>
         <div class="gg-template-list">
-          <div class="gg-template-row" *ngFor="let val of rowTemplate; let i = index; trackBy: trackByIndex">
-            <span class="gg-template-row__label">R{{ i + 1 }}</span>
-            <input
-              type="text"
-              class="gg-text-input gg-text-input--sm"
-              [value]="val"
-              (input)="updateRowTemplate(i, $any($event.target).value)"
-              placeholder="1fr, 100px, auto..."
-            />
-          </div>
+          @for (val of rowTemplate; track $index; let i = $index) {
+            <div class="gg-template-row">
+              <span class="gg-template-row__label">R{{ i + 1 }}</span>
+              <input
+                type="text"
+                class="gg-text-input gg-text-input--sm"
+                [value]="val"
+                (input)="updateRowTemplate(i, $any($event.target).value)"
+                placeholder="1fr, 100px, auto..."
+                />
+            </div>
+          }
         </div>
       </div>
 
@@ -173,16 +180,18 @@
           <span class="gg-card__label">Column Templates</span>
         </div>
         <div class="gg-template-list">
-          <div class="gg-template-row" *ngFor="let val of colTemplate; let i = index; trackBy: trackByIndex">
-            <span class="gg-template-row__label">C{{ i + 1 }}</span>
-            <input
-              type="text"
-              class="gg-text-input gg-text-input--sm"
-              [value]="val"
-              (input)="updateColTemplate(i, $any($event.target).value)"
-              placeholder="1fr, 200px, auto..."
-            />
-          </div>
+          @for (val of colTemplate; track $index; let i = $index) {
+            <div class="gg-template-row">
+              <span class="gg-template-row__label">C{{ i + 1 }}</span>
+              <input
+                type="text"
+                class="gg-text-input gg-text-input--sm"
+                [value]="val"
+                (input)="updateColTemplate(i, $any($event.target).value)"
+                placeholder="1fr, 200px, auto..."
+                />
+            </div>
+          }
         </div>
       </div>
 
@@ -194,25 +203,30 @@
             {{ useAreas ? 'Disable' : 'Enable' }}
           </button>
         </div>
-        <div class="gg-areas-editor" *ngIf="useAreas">
-          <div class="gg-areas-grid" [style.grid-template-columns]="'40px repeat(' + columns + ', 1fr)'">
-            <!-- Column headers -->
-            <div class="gg-areas-corner"></div>
-            <div class="gg-areas-col-header" *ngFor="let c of colTemplate; let ci = index; trackBy: trackByIndex">C{{ ci + 1 }}</div>
-            <!-- Rows -->
-            <ng-container *ngFor="let row of areas; let ri = index; trackBy: trackByIndex">
-              <div class="gg-areas-row-header">R{{ ri + 1 }}</div>
-              <input
-                *ngFor="let cell of row; let ci = index; trackBy: trackByIndex"
-                type="text"
-                class="gg-areas-cell"
-                [value]="cell"
-                (input)="updateAreaCell(ri, ci, $any($event.target).value)"
-                placeholder="."
-              />
-            </ng-container>
+        @if (useAreas) {
+          <div class="gg-areas-editor">
+            <div class="gg-areas-grid" [style.grid-template-columns]="'40px repeat(' + columns + ', 1fr)'">
+              <!-- Column headers -->
+              <div class="gg-areas-corner"></div>
+              @for (c of colTemplate; track $index; let ci = $index) {
+                <div class="gg-areas-col-header">C{{ ci + 1 }}</div>
+              }
+              <!-- Rows -->
+              @for (row of areas; track $index; let ri = $index) {
+                <div class="gg-areas-row-header">R{{ ri + 1 }}</div>
+                @for (cell of row; track $index; let ci = $index) {
+                  <input
+                    type="text"
+                    class="gg-areas-cell"
+                    [value]="cell"
+                    (input)="updateAreaCell(ri, ci, $any($event.target).value)"
+                    placeholder="."
+                    />
+                }
+              }
+            </div>
           </div>
-        </div>
+        }
       </div>
 
       <!-- Items List -->
@@ -228,130 +242,137 @@
         </div>
 
         <div class="gg-child-list">
-          <div
-            class="gg-child-item"
-            *ngFor="let item of items; let i = index; trackBy: trackByItemId"
-            [class.is-active]="selectedItemIndex === i"
-            (click)="selectItem(i)"
-          >
-            <div class="gg-child-item__swatch" [style.background]="item.color"></div>
-            <div class="gg-child-item__info">
-              <span class="gg-child-item__name">{{ item.label }}</span>
-              <span class="gg-child-item__detail">
-                col:{{ item.colStart }}/{{ item.colSpan }} row:{{ item.rowStart }}/{{ item.rowSpan }}
-              </span>
+          @for (item of items; track trackByItemId(i, item); let i = $index) {
+            <div
+              class="gg-child-item"
+              [class.is-active]="selectedItemIndex === i"
+              (click)="selectItem(i)"
+              >
+              <div class="gg-child-item__swatch" [style.background]="item.color"></div>
+              <div class="gg-child-item__info">
+                <span class="gg-child-item__name">{{ item.label }}</span>
+                <span class="gg-child-item__detail">
+                  col:{{ item.colStart }}/{{ item.colSpan }} row:{{ item.rowStart }}/{{ item.rowSpan }}
+                </span>
+              </div>
+              <div class="gg-child-item__actions" (click)="$event.stopPropagation()">
+                <button type="button" class="gg-icon-btn gg-icon-btn--xs gg-icon-btn--danger" [disabled]="items.length <= 1" (click)="removeItem(i)" title="Remove">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div class="gg-child-item__actions" (click)="$event.stopPropagation()">
-              <button type="button" class="gg-icon-btn gg-icon-btn--xs gg-icon-btn--danger" [disabled]="items.length <= 1" (click)="removeItem(i)" title="Remove">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+          }
         </div>
       </div>
 
       <!-- Selected Item Controls -->
-      <div class="gg-card" *ngIf="selectedItem">
-        <div class="gg-card__header">
-          <span class="gg-card__label">{{ selectedItem.label }} Properties</span>
+      @if (selectedItem) {
+        <div class="gg-card">
+          <div class="gg-card__header">
+            <span class="gg-card__label">{{ selectedItem.label }} Properties</span>
+          </div>
+          <div class="gg-controls-grid">
+            <!-- Label -->
+            <div class="gg-control-group gg-control-group--full">
+              <label class="gg-control-group__label">Label</label>
+              <input
+                type="text"
+                class="gg-text-input"
+                [value]="selectedItem.label"
+                (input)="updateItemField('label', $any($event.target).value)"
+                placeholder="Item name"
+                />
+            </div>
+            <!-- Area Name (when areas enabled) -->
+            @if (useAreas) {
+              <div class="gg-control-group gg-control-group--full">
+                <label class="gg-control-group__label">grid-area</label>
+                <input
+                  type="text"
+                  class="gg-text-input"
+                  [value]="selectedItem.areaName"
+                  (input)="updateItemField('areaName', $any($event.target).value)"
+                  placeholder="area-name"
+                  />
+              </div>
+            }
+            <!-- Column Start -->
+            @if (!useAreas || !selectedItem.areaName) {
+              <div class="gg-control-group">
+                <div class="gg-control-group__top">
+                  <label class="gg-control-group__label">col-start</label>
+                  <span class="gg-control-group__value">{{ selectedItem.colStart }}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  [max]="columns"
+                  step="1"
+                  [value]="selectedItem.colStart"
+                  (input)="updateItemNumericField('colStart', $event)"
+                  class="gg-slider"
+                  />
+              </div>
+            }
+            <!-- Column Span -->
+            @if (!useAreas || !selectedItem.areaName) {
+              <div class="gg-control-group">
+                <div class="gg-control-group__top">
+                  <label class="gg-control-group__label">col-span</label>
+                  <span class="gg-control-group__value">{{ selectedItem.colSpan }}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  [max]="columns - selectedItem.colStart + 1"
+                  step="1"
+                  [value]="selectedItem.colSpan"
+                  (input)="updateItemNumericField('colSpan', $event)"
+                  class="gg-slider"
+                  />
+              </div>
+            }
+            <!-- Row Start -->
+            @if (!useAreas || !selectedItem.areaName) {
+              <div class="gg-control-group">
+                <div class="gg-control-group__top">
+                  <label class="gg-control-group__label">row-start</label>
+                  <span class="gg-control-group__value">{{ selectedItem.rowStart }}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  [max]="rows"
+                  step="1"
+                  [value]="selectedItem.rowStart"
+                  (input)="updateItemNumericField('rowStart', $event)"
+                  class="gg-slider"
+                  />
+              </div>
+            }
+            <!-- Row Span -->
+            @if (!useAreas || !selectedItem.areaName) {
+              <div class="gg-control-group">
+                <div class="gg-control-group__top">
+                  <label class="gg-control-group__label">row-span</label>
+                  <span class="gg-control-group__value">{{ selectedItem.rowSpan }}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  [max]="rows - selectedItem.rowStart + 1"
+                  step="1"
+                  [value]="selectedItem.rowSpan"
+                  (input)="updateItemNumericField('rowSpan', $event)"
+                  class="gg-slider"
+                  />
+              </div>
+            }
+          </div>
         </div>
-
-        <div class="gg-controls-grid">
-          <!-- Label -->
-          <div class="gg-control-group gg-control-group--full">
-            <label class="gg-control-group__label">Label</label>
-            <input
-              type="text"
-              class="gg-text-input"
-              [value]="selectedItem.label"
-              (input)="updateItemField('label', $any($event.target).value)"
-              placeholder="Item name"
-            />
-          </div>
-
-          <!-- Area Name (when areas enabled) -->
-          <div class="gg-control-group gg-control-group--full" *ngIf="useAreas">
-            <label class="gg-control-group__label">grid-area</label>
-            <input
-              type="text"
-              class="gg-text-input"
-              [value]="selectedItem.areaName"
-              (input)="updateItemField('areaName', $any($event.target).value)"
-              placeholder="area-name"
-            />
-          </div>
-
-          <!-- Column Start -->
-          <div class="gg-control-group" *ngIf="!useAreas || !selectedItem.areaName">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">col-start</label>
-              <span class="gg-control-group__value">{{ selectedItem.colStart }}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              [max]="columns"
-              step="1"
-              [value]="selectedItem.colStart"
-              (input)="updateItemNumericField('colStart', $event)"
-              class="gg-slider"
-            />
-          </div>
-
-          <!-- Column Span -->
-          <div class="gg-control-group" *ngIf="!useAreas || !selectedItem.areaName">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">col-span</label>
-              <span class="gg-control-group__value">{{ selectedItem.colSpan }}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              [max]="columns - selectedItem.colStart + 1"
-              step="1"
-              [value]="selectedItem.colSpan"
-              (input)="updateItemNumericField('colSpan', $event)"
-              class="gg-slider"
-            />
-          </div>
-
-          <!-- Row Start -->
-          <div class="gg-control-group" *ngIf="!useAreas || !selectedItem.areaName">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">row-start</label>
-              <span class="gg-control-group__value">{{ selectedItem.rowStart }}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              [max]="rows"
-              step="1"
-              [value]="selectedItem.rowStart"
-              (input)="updateItemNumericField('rowStart', $event)"
-              class="gg-slider"
-            />
-          </div>
-
-          <!-- Row Span -->
-          <div class="gg-control-group" *ngIf="!useAreas || !selectedItem.areaName">
-            <div class="gg-control-group__top">
-              <label class="gg-control-group__label">row-span</label>
-              <span class="gg-control-group__value">{{ selectedItem.rowSpan }}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              [max]="rows - selectedItem.rowStart + 1"
-              step="1"
-              [value]="selectedItem.rowSpan"
-              (input)="updateItemNumericField('rowSpan', $event)"
-              class="gg-slider"
-            />
-          </div>
-        </div>
-      </div>
+      }
 
       <!-- Presets -->
       <div class="gg-card">
@@ -359,15 +380,16 @@
           <span class="gg-card__label">Layout Presets</span>
         </div>
         <div class="gg-presets-grid">
-          <button
-            type="button"
-            class="gg-preset-btn"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <span class="gg-preset-btn__name">{{ preset.name }}</span>
-            <span class="gg-preset-btn__desc">{{ preset.description }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="gg-preset-btn"
+              (click)="applyPreset(preset)"
+              >
+              <span class="gg-preset-btn__name">{{ preset.name }}</span>
+              <span class="gg-preset-btn__desc">{{ preset.description }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

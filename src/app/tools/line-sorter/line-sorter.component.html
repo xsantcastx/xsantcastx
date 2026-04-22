@@ -75,17 +75,23 @@
         <div class="lsr-panel__header">
           <span class="lsr-panel__title">Output</span>
           <div class="lsr-panel__actions">
-            <span class="lsr-char-count" *ngIf="output">{{ outputLineCount }} lines</span>
+            @if (output) {
+              <span class="lsr-char-count">{{ outputLineCount }} lines</span>
+            }
             <button class="lsr-btn-ghost" (click)="copyOutput()" [disabled]="!output" [class.lsr-btn-ghost--success]="copied">
               {{ copied ? 'Copied!' : 'Copy' }}
             </button>
           </div>
         </div>
         <div class="lsr-panel__body">
-          <pre class="lsr-code-pre" *ngIf="output"><code>{{ output }}</code></pre>
-          <div class="lsr-output-empty" *ngIf="!output">
-            <span>Sorted lines will appear here</span>
-          </div>
+          @if (output) {
+            <pre class="lsr-code-pre"><code>{{ output }}</code></pre>
+          }
+          @if (!output) {
+            <div class="lsr-output-empty">
+              <span>Sorted lines will appear here</span>
+            </div>
+          }
         </div>
       </div>
     </div>

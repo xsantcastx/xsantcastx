@@ -28,31 +28,33 @@
       </div>
     </div>
 
-    <div class="ua-panel" *ngIf="parsed">
-      <div class="ua-panel__header">
-        <span class="ua-panel__title">Parsed Result</span>
-        <button class="ua-btn-ghost" (click)="copyResult()" [class.ua-btn-ghost--success]="copied">
-          {{ copied ? 'Copied!' : 'Copy' }}
-        </button>
+    @if (parsed) {
+      <div class="ua-panel">
+        <div class="ua-panel__header">
+          <span class="ua-panel__title">Parsed Result</span>
+          <button class="ua-btn-ghost" (click)="copyResult()" [class.ua-btn-ghost--success]="copied">
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </button>
+        </div>
+        <div class="ua-panel__body ua-results">
+          <div class="ua-result-row">
+            <span class="ua-result-label">Browser</span>
+            <span class="ua-result-value">{{ parsed.browser }} {{ parsed.browserVersion }}</span>
+          </div>
+          <div class="ua-result-row">
+            <span class="ua-result-label">Operating System</span>
+            <span class="ua-result-value">{{ parsed.os }} {{ parsed.osVersion }}</span>
+          </div>
+          <div class="ua-result-row">
+            <span class="ua-result-label">Device</span>
+            <span class="ua-result-value">{{ parsed.device }}</span>
+          </div>
+          <div class="ua-result-row">
+            <span class="ua-result-label">Engine</span>
+            <span class="ua-result-value">{{ parsed.engine }}</span>
+          </div>
+        </div>
       </div>
-      <div class="ua-panel__body ua-results">
-        <div class="ua-result-row">
-          <span class="ua-result-label">Browser</span>
-          <span class="ua-result-value">{{ parsed.browser }} {{ parsed.browserVersion }}</span>
-        </div>
-        <div class="ua-result-row">
-          <span class="ua-result-label">Operating System</span>
-          <span class="ua-result-value">{{ parsed.os }} {{ parsed.osVersion }}</span>
-        </div>
-        <div class="ua-result-row">
-          <span class="ua-result-label">Device</span>
-          <span class="ua-result-value">{{ parsed.device }}</span>
-        </div>
-        <div class="ua-result-row">
-          <span class="ua-result-label">Engine</span>
-          <span class="ua-result-value">{{ parsed.engine }}</span>
-        </div>
-      </div>
-    </div>
+    }
   </div>
 </div>

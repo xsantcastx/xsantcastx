@@ -86,12 +86,16 @@
         </div>
         <pre class="ts-code-block">{{ cssCode }}</pre>
         <button type="button" class="ts-copy-btn" (click)="copyCSS()">
-          <svg *ngIf="!codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg *ngIf="codeCopied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          @if (!codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          }
+          @if (codeCopied) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          }
           {{ codeCopied ? 'Copied!' : 'Copy Code' }}
         </button>
       </div>
@@ -113,80 +117,77 @@
         </div>
 
         <div class="ts-layers-list">
-          <div
-            class="ts-layer"
-            *ngFor="let layer of layers; let i = index; trackBy: trackByLayerId"
-          >
-            <div class="ts-layer__header">
-              <span class="ts-layer__title">
-                <span class="ts-layer__swatch" [style.background]="layer.color"></span>
-                Layer {{ i + 1 }}
-              </span>
-              <div class="ts-layer__actions">
-                <button type="button" class="ts-icon-btn" (click)="moveLayerUp(i)" [disabled]="i === 0" title="Move up">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="18 15 12 9 6 15"/>
-                  </svg>
-                </button>
-                <button type="button" class="ts-icon-btn" (click)="moveLayerDown(i)" [disabled]="i === layers.length - 1" title="Move down">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                  </svg>
-                </button>
-                <button type="button" class="ts-icon-btn" (click)="duplicateLayer(i)" title="Duplicate">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-                <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="removeLayer(i)" [disabled]="layers.length <= 1" title="Remove layer">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
+          @for (layer of layers; track trackByLayerId(i, layer); let i = $index) {
+            <div
+              class="ts-layer"
+              >
+              <div class="ts-layer__header">
+                <span class="ts-layer__title">
+                  <span class="ts-layer__swatch" [style.background]="layer.color"></span>
+                  Layer {{ i + 1 }}
+                </span>
+                <div class="ts-layer__actions">
+                  <button type="button" class="ts-icon-btn" (click)="moveLayerUp(i)" [disabled]="i === 0" title="Move up">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                  </button>
+                  <button type="button" class="ts-icon-btn" (click)="moveLayerDown(i)" [disabled]="i === layers.length - 1" title="Move down">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  <button type="button" class="ts-icon-btn" (click)="duplicateLayer(i)" title="Duplicate">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                  </button>
+                  <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="removeLayer(i)" [disabled]="layers.length <= 1" title="Remove layer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="ts-layer__controls">
+                <!-- X Offset -->
+                <div class="ts-control-group">
+                  <div class="ts-control-group__top">
+                    <label class="ts-control-group__label">X Offset</label>
+                    <span class="ts-control-group__value">{{ layer.offsetX }}px</span>
+                  </div>
+                  <input type="range" min="-50" max="50" step="1"
+                    [value]="layer.offsetX" (input)="onOffsetXChange(i, $event)" class="ts-slider" />
+                </div>
+                <!-- Y Offset -->
+                <div class="ts-control-group">
+                  <div class="ts-control-group__top">
+                    <label class="ts-control-group__label">Y Offset</label>
+                    <span class="ts-control-group__value">{{ layer.offsetY }}px</span>
+                  </div>
+                  <input type="range" min="-50" max="50" step="1"
+                    [value]="layer.offsetY" (input)="onOffsetYChange(i, $event)" class="ts-slider" />
+                </div>
+                <!-- Blur -->
+                <div class="ts-control-group">
+                  <div class="ts-control-group__top">
+                    <label class="ts-control-group__label">Blur</label>
+                    <span class="ts-control-group__value">{{ layer.blur }}px</span>
+                  </div>
+                  <input type="range" min="0" max="50" step="1"
+                    [value]="layer.blur" (input)="onBlurChange(i, $event)" class="ts-slider" />
+                </div>
+                <!-- Color -->
+                <div class="ts-control-group">
+                  <div class="ts-control-group__top">
+                    <label class="ts-control-group__label">Color</label>
+                    <span class="ts-control-group__value">{{ layer.color }}</span>
+                  </div>
+                  <input type="color" [value]="layer.color" (input)="onColorChange(i, $event)" class="ts-color-input ts-color-input--wide" />
+                </div>
               </div>
             </div>
-
-            <div class="ts-layer__controls">
-              <!-- X Offset -->
-              <div class="ts-control-group">
-                <div class="ts-control-group__top">
-                  <label class="ts-control-group__label">X Offset</label>
-                  <span class="ts-control-group__value">{{ layer.offsetX }}px</span>
-                </div>
-                <input type="range" min="-50" max="50" step="1"
-                  [value]="layer.offsetX" (input)="onOffsetXChange(i, $event)" class="ts-slider" />
-              </div>
-
-              <!-- Y Offset -->
-              <div class="ts-control-group">
-                <div class="ts-control-group__top">
-                  <label class="ts-control-group__label">Y Offset</label>
-                  <span class="ts-control-group__value">{{ layer.offsetY }}px</span>
-                </div>
-                <input type="range" min="-50" max="50" step="1"
-                  [value]="layer.offsetY" (input)="onOffsetYChange(i, $event)" class="ts-slider" />
-              </div>
-
-              <!-- Blur -->
-              <div class="ts-control-group">
-                <div class="ts-control-group__top">
-                  <label class="ts-control-group__label">Blur</label>
-                  <span class="ts-control-group__value">{{ layer.blur }}px</span>
-                </div>
-                <input type="range" min="0" max="50" step="1"
-                  [value]="layer.blur" (input)="onBlurChange(i, $event)" class="ts-slider" />
-              </div>
-
-              <!-- Color -->
-              <div class="ts-control-group">
-                <div class="ts-control-group__top">
-                  <label class="ts-control-group__label">Color</label>
-                  <span class="ts-control-group__value">{{ layer.color }}</span>
-                </div>
-                <input type="color" [value]="layer.color" (input)="onColorChange(i, $event)" class="ts-color-input ts-color-input--wide" />
-              </div>
-            </div>
-          </div>
+          }
         </div>
       </div>
 
@@ -196,20 +197,21 @@
           <span class="ts-card__label">Presets</span>
         </div>
         <div class="ts-presets-grid">
-          <button
-            type="button"
-            class="ts-preset-item"
-            *ngFor="let preset of presets; trackBy: trackByPresetName"
-            (click)="applyPreset(preset)"
-          >
-            <span
-              class="ts-preset-preview"
-              [style.color]="preset.previewColor || '#ffffff'"
-              [style.background]="preset.previewBg || '#0a0a0f'"
-              [style.textShadow]="getPresetShadow(preset)"
-            >Aa</span>
-            <span class="ts-preset-name">{{ preset.name }}</span>
-          </button>
+          @for (preset of presets; track trackByPresetName($index, preset)) {
+            <button
+              type="button"
+              class="ts-preset-item"
+              (click)="applyPreset(preset)"
+              >
+              <span
+                class="ts-preset-preview"
+                [style.color]="preset.previewColor || '#ffffff'"
+                [style.background]="preset.previewBg || '#0a0a0f'"
+                [style.textShadow]="getPresetShadow(preset)"
+              >Aa</span>
+              <span class="ts-preset-name">{{ preset.name }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>

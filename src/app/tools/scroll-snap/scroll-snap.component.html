@@ -76,9 +76,11 @@
             [class.snp-preview--both]="direction==='both'"
             [style.gap.px]="gap"
             [style.scrollPadding.px]="padding">
-            <div *ngFor="let i of items" class="snp-preview-item" [style.backgroundColor]="getColor(i) + '22'" [style.borderColor]="getColor(i)">
-              <span [style.color]="getColor(i)">{{ i + 1 }}</span>
-            </div>
+            @for (i of items; track i) {
+              <div class="snp-preview-item" [style.backgroundColor]="getColor(i) + '22'" [style.borderColor]="getColor(i)">
+                <span [style.color]="getColor(i)">{{ i + 1 }}</span>
+              </div>
+            }
           </div>
         </div>
       </div>

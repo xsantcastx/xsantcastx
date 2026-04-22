@@ -48,167 +48,180 @@
   </nav>
 
   <!-- ═══════════════════════════════════════════════════════════
-       SECTION: Expressions
-       ═══════════════════════════════════════════════════════════ -->
-  <section *ngIf="activeSection === 'expressions'" class="cr-section">
-
-    <!-- Search + Category Filters -->
-    <div class="cr-toolbar">
-      <div class="cr-search">
-        <svg class="cr-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input
-          class="cr-search__input"
-          type="text"
-          placeholder="Search expressions..."
-          [(ngModel)]="searchQuery"
-          (input)="onSearchInput()"
-        />
-      </div>
-      <div class="cr-categories">
-        <button
-          *ngFor="let cat of categories"
-          class="cr-cat-btn"
-          [class.cr-cat-btn--active]="activeCategory === cat.key"
-          [attr.style]="'--cat-color: ' + cat.color"
-          (click)="setCategory(cat.key)">
-          {{ cat.label }}
-        </button>
-      </div>
-    </div>
-
-    <p class="cr-result-count">{{ resultCount }} expression{{ resultCount !== 1 ? 's' : '' }}</p>
-
-    <!-- Expression Cards -->
-    <div class="cr-grid">
-      <button
-        *ngFor="let expr of filteredExpressions; let i = index"
-        class="cr-card"
-        [class.cr-card--copied]="copiedIndex === i"
-        (click)="copyExpression(expr, i)"
-        [title]="'Click to copy: ' + expr.expression">
-        <div class="cr-card__top">
-          <code class="cr-card__expr">{{ expr.expression }}</code>
-          <span class="cr-card__badge" [style.color]="getCategoryColor(expr.category)">{{ expr.category }}</span>
+  SECTION: Expressions
+  ═══════════════════════════════════════════════════════════ -->
+  @if (activeSection === 'expressions') {
+    <section class="cr-section">
+      <!-- Search + Category Filters -->
+      <div class="cr-toolbar">
+        <div class="cr-search">
+          <svg class="cr-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input
+            class="cr-search__input"
+            type="text"
+            placeholder="Search expressions..."
+            [(ngModel)]="searchQuery"
+            (input)="onSearchInput()"
+            />
         </div>
-        <p class="cr-card__desc">{{ expr.description }}</p>
-        <p class="cr-card__next">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          {{ expr.nextRun }}
+        <div class="cr-categories">
+          @for (cat of categories; track cat) {
+            <button
+              class="cr-cat-btn"
+              [class.cr-cat-btn--active]="activeCategory === cat.key"
+              [attr.style]="'--cat-color: ' + cat.color"
+              (click)="setCategory(cat.key)">
+              {{ cat.label }}
+            </button>
+          }
+        </div>
+      </div>
+      <p class="cr-result-count">{{ resultCount }} expression{{ resultCount !== 1 ? 's' : '' }}</p>
+      <!-- Expression Cards -->
+      <div class="cr-grid">
+        @for (expr of filteredExpressions; track expr; let i = $index) {
+          <button
+            class="cr-card"
+            [class.cr-card--copied]="copiedIndex === i"
+            (click)="copyExpression(expr, i)"
+            [title]="'Click to copy: ' + expr.expression">
+            <div class="cr-card__top">
+              <code class="cr-card__expr">{{ expr.expression }}</code>
+              <span class="cr-card__badge" [style.color]="getCategoryColor(expr.category)">{{ expr.category }}</span>
+            </div>
+            <p class="cr-card__desc">{{ expr.description }}</p>
+            <p class="cr-card__next">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {{ expr.nextRun }}
+            </p>
+            @if (copiedIndex !== i) {
+              <span class="cr-card__copy-hint">Click to copy</span>
+            }
+            @if (copiedIndex === i) {
+              <span class="cr-card__copy-hint cr-card__copy-hint--ok">Copied!</span>
+            }
+          </button>
+        }
+      </div>
+      @if (filteredExpressions.length === 0) {
+        <p class="cr-empty">
+          No expressions match your search. Try a different term or category.
         </p>
-        <span class="cr-card__copy-hint" *ngIf="copiedIndex !== i">Click to copy</span>
-        <span class="cr-card__copy-hint cr-card__copy-hint--ok" *ngIf="copiedIndex === i">Copied!</span>
-      </button>
-    </div>
-
-    <p class="cr-empty" *ngIf="filteredExpressions.length === 0">
-      No expressions match your search. Try a different term or category.
-    </p>
-  </section>
+      }
+    </section>
+  }
 
   <!-- ═══════════════════════════════════════════════════════════
-       SECTION: Syntax Diagram
-       ═══════════════════════════════════════════════════════════ -->
-  <section *ngIf="activeSection === 'syntax'" class="cr-section">
-
-    <h2 class="cr-section__title">Cron Syntax Diagram</h2>
-    <p class="cr-section__subtitle">A standard cron expression has 5 fields separated by spaces.</p>
-
-    <!-- Visual diagram -->
-    <div class="cr-diagram">
-      <div class="cr-diagram__row">
-        <div class="cr-diagram__field" *ngFor="let f of syntaxFields" [attr.style]="'--field-color: ' + f.color">
-          <span class="cr-diagram__value">{{ f.value }}</span>
-          <span class="cr-diagram__connector"></span>
-          <span class="cr-diagram__label">{{ f.label }}</span>
+  SECTION: Syntax Diagram
+  ═══════════════════════════════════════════════════════════ -->
+  @if (activeSection === 'syntax') {
+    <section class="cr-section">
+      <h2 class="cr-section__title">Cron Syntax Diagram</h2>
+      <p class="cr-section__subtitle">A standard cron expression has 5 fields separated by spaces.</p>
+      <!-- Visual diagram -->
+      <div class="cr-diagram">
+        <div class="cr-diagram__row">
+          @for (f of syntaxFields; track f) {
+            <div class="cr-diagram__field" [attr.style]="'--field-color: ' + f.color">
+              <span class="cr-diagram__value">{{ f.value }}</span>
+              <span class="cr-diagram__connector"></span>
+              <span class="cr-diagram__label">{{ f.label }}</span>
+            </div>
+          }
         </div>
+        <code class="cr-diagram__full">* &nbsp; * &nbsp; * &nbsp; * &nbsp; *</code>
+        <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┗━ Day of week (0–6, Sun=0)</p>
+        <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┗━━━ Month (1–12)</p>
+        <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┗━━━━━ Day of month (1–31)</p>
+        <p class="cr-diagram__hint">┃ &nbsp; ┗━━━━━━━ Hour (0–23)</p>
+        <p class="cr-diagram__hint">┗━━━━━━━━━ Minute (0–59)</p>
       </div>
-      <code class="cr-diagram__full">* &nbsp; * &nbsp; * &nbsp; * &nbsp; *</code>
-      <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┗━ Day of week (0–6, Sun=0)</p>
-      <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┃ &nbsp; ┗━━━ Month (1–12)</p>
-      <p class="cr-diagram__hint">┃ &nbsp; ┃ &nbsp; ┗━━━━━ Day of month (1–31)</p>
-      <p class="cr-diagram__hint">┃ &nbsp; ┗━━━━━━━ Hour (0–23)</p>
-      <p class="cr-diagram__hint">┗━━━━━━━━━ Minute (0–59)</p>
-    </div>
-
-    <!-- Fields table -->
-    <div class="cr-table-wrap">
-      <table class="cr-table">
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Allowed Values</th>
-            <th>Special Characters</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let field of cronFields">
-            <td class="cr-table__field-name">{{ field.name }}</td>
-            <td><code>{{ field.allowed }}</code></td>
-            <td><code>{{ field.specials }}</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+      <!-- Fields table -->
+      <div class="cr-table-wrap">
+        <table class="cr-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Allowed Values</th>
+              <th>Special Characters</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (field of cronFields; track field) {
+              <tr>
+                <td class="cr-table__field-name">{{ field.name }}</td>
+                <td><code>{{ field.allowed }}</code></td>
+                <td><code>{{ field.specials }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 
   <!-- ═══════════════════════════════════════════════════════════
-       SECTION: Wildcards
-       ═══════════════════════════════════════════════════════════ -->
-  <section *ngIf="activeSection === 'wildcards'" class="cr-section">
-
-    <h2 class="cr-section__title">Special Characters</h2>
-    <p class="cr-section__subtitle">These symbols let you define ranges, steps, and lists in cron fields.</p>
-
-    <div class="cr-wildcards">
-      <div class="cr-wc-card" *ngFor="let wc of wildcards">
-        <div class="cr-wc-card__symbol">{{ wc.symbol }}</div>
-        <div class="cr-wc-card__body">
-          <h3 class="cr-wc-card__name">{{ wc.name }}</h3>
-          <p class="cr-wc-card__desc">{{ wc.description }}</p>
-          <div class="cr-wc-card__example">
-            <code>{{ wc.example }}</code>
-            <span>{{ wc.exampleMeaning }}</span>
+  SECTION: Wildcards
+  ═══════════════════════════════════════════════════════════ -->
+  @if (activeSection === 'wildcards') {
+    <section class="cr-section">
+      <h2 class="cr-section__title">Special Characters</h2>
+      <p class="cr-section__subtitle">These symbols let you define ranges, steps, and lists in cron fields.</p>
+      <div class="cr-wildcards">
+        @for (wc of wildcards; track wc) {
+          <div class="cr-wc-card">
+            <div class="cr-wc-card__symbol">{{ wc.symbol }}</div>
+            <div class="cr-wc-card__body">
+              <h3 class="cr-wc-card__name">{{ wc.name }}</h3>
+              <p class="cr-wc-card__desc">{{ wc.description }}</p>
+              <div class="cr-wc-card__example">
+                <code>{{ wc.example }}</code>
+                <span>{{ wc.exampleMeaning }}</span>
+              </div>
+            </div>
           </div>
-        </div>
+        }
       </div>
-    </div>
-  </section>
+    </section>
+  }
 
   <!-- ═══════════════════════════════════════════════════════════
-       SECTION: Info
-       ═══════════════════════════════════════════════════════════ -->
-  <section *ngIf="activeSection === 'info'" class="cr-section">
-
-    <h2 class="cr-section__title">Cron vs Crontab</h2>
-    <p class="cr-section__subtitle">Understand the terminology behind scheduled tasks on Unix systems.</p>
-
-    <div class="cr-info-cards">
-      <div class="cr-info-card" *ngFor="let item of cronVsCrontab">
-        <h3 class="cr-info-card__term">{{ item.term }}</h3>
-        <p class="cr-info-card__def">{{ item.definition }}</p>
+  SECTION: Info
+  ═══════════════════════════════════════════════════════════ -->
+  @if (activeSection === 'info') {
+    <section class="cr-section">
+      <h2 class="cr-section__title">Cron vs Crontab</h2>
+      <p class="cr-section__subtitle">Understand the terminology behind scheduled tasks on Unix systems.</p>
+      <div class="cr-info-cards">
+        @for (item of cronVsCrontab; track item) {
+          <div class="cr-info-card">
+            <h3 class="cr-info-card__term">{{ item.term }}</h3>
+            <p class="cr-info-card__def">{{ item.definition }}</p>
+          </div>
+        }
       </div>
-    </div>
-
-    <h2 class="cr-section__title cr-section__title--mt">System Crontab Locations</h2>
-    <p class="cr-section__subtitle">Where cron files live on Linux, FreeBSD, and macOS.</p>
-
-    <div class="cr-table-wrap">
-      <table class="cr-table">
-        <thead>
-          <tr>
-            <th>Path</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let loc of crontabLocations">
-            <td><code class="cr-path">{{ loc.path }}</code></td>
-            <td>{{ loc.description }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+      <h2 class="cr-section__title cr-section__title--mt">System Crontab Locations</h2>
+      <p class="cr-section__subtitle">Where cron files live on Linux, FreeBSD, and macOS.</p>
+      <div class="cr-table-wrap">
+        <table class="cr-table">
+          <thead>
+            <tr>
+              <th>Path</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (loc of crontabLocations; track loc) {
+              <tr>
+                <td><code class="cr-path">{{ loc.path }}</code></td>
+                <td>{{ loc.description }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 
   <!-- Related tools -->
   <app-related-tools [currentToolId]="'crontab-ref'"></app-related-tools>

@@ -27,35 +27,36 @@
   </header>
 
   <!-- Global error -->
-  <p class="tool-error" *ngIf="error">{{ error }}</p>
+  @if (error) {
+    <p class="tool-error">{{ error }}</p>
+  }
 
   <!-- Drop zone (empty state) -->
-  <label
-    *ngIf="images.length === 0"
-    class="ic-upload"
-    [class.is-active]="isDragOver"
-    (dragover)="onDragOver($event)"
-    (dragleave)="onDragLeave()"
-    (drop)="onDrop($event)"
-  >
-    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="ic-upload__input" (change)="onFileInput($event)" />
-    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="ic-upload__icon">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
-      <polyline points="21 15 16 10 5 21"/>
-      <polyline points="12 5 12 2 15 5"/>
-    </svg>
-    <span class="ic-upload__title">{{ translate('tools.compressor.upload.title') }}</span>
-    <span class="ic-upload__hint">{{ translate('tools.compressor.upload.hint') }} &nbsp;·&nbsp; {{ MAX_FILES }} {{ translate('tools.compressor.upload.files') }}</span>
-  </label>
+  @if (images.length === 0) {
+    <label
+      class="ic-upload"
+      [class.is-active]="isDragOver"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+      >
+      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="ic-upload__input" (change)="onFileInput($event)" />
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="ic-upload__icon">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+        <polyline points="12 5 12 2 15 5"/>
+      </svg>
+      <span class="ic-upload__title">{{ translate('tools.compressor.upload.title') }}</span>
+      <span class="ic-upload__hint">{{ translate('tools.compressor.upload.hint') }} &nbsp;·&nbsp; {{ MAX_FILES }} {{ translate('tools.compressor.upload.files') }}</span>
+    </label>
+  }
 
   <!-- Loaded state -->
-  <ng-container *ngIf="images.length > 0">
-
+  @if (images.length > 0) {
     <!-- Controls bar -->
     <div class="ic-controls">
       <div class="ic-controls__left">
-
         <!-- Quality -->
         <div class="ic-control-group">
           <label class="ic-control-group__label" for="quality-slider">{{ translate('tools.compressor.quality') }}</label>
@@ -69,11 +70,10 @@
               [value]="quality"
               (input)="quality = +$any($event.target).value"
               class="ic-slider"
-            />
+              />
             <span class="ic-quality-value">{{ quality }}%</span>
           </div>
         </div>
-
         <!-- Output format -->
         <div class="ic-control-group">
           <span class="ic-control-group__label">{{ translate('tools.compressor.output') }}</span>
@@ -90,34 +90,30 @@
             >WebP</button>
           </div>
         </div>
-
       </div>
-
       <div class="ic-controls__right">
         <button
           type="button"
           class="ic-btn ic-btn--ghost"
           (click)="recompressAll()"
           [disabled]="isCompressingAll"
-        >
+          >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" [class.spin]="isCompressingAll">
             <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.59"/>
           </svg>
           {{ translate('tools.compressor.recompress') }}
         </button>
-
         <button
           type="button"
           class="ic-btn ic-btn--primary"
           (click)="downloadAll()"
           [disabled]="doneCount === 0"
-        >
+          >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
           {{ translate('tools.compressor.download') }} All ({{ doneCount }})
         </button>
-
         <!-- Add more -->
         <label class="ic-btn ic-btn--ghost ic-add-more">
           <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="ic-upload__input" (change)="onFileInput($event)" />
@@ -126,7 +122,6 @@
           </svg>
           {{ translate('tools.compressor.add.more') }}
         </label>
-
         <button type="button" class="ic-btn ic-btn--danger" (click)="clearAll()" title="Clear all">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
@@ -134,98 +129,105 @@
         </button>
       </div>
     </div>
-
     <!-- Summary bar -->
-    <div class="ic-summary" *ngIf="doneCount > 0">
-      <span class="ic-summary__item">
-        <span class="ic-summary__val">{{ doneCount }}/{{ images.length }}</span> {{ translate('tools.compressor.summary.compressed') }}
-      </span>
-      <span class="ic-summary__sep">·</span>
-      <span class="ic-summary__item">
-        <span class="ic-summary__val ic-summary__val--green">–{{ totalSavings }}%</span> {{ translate('tools.compressor.summary.avg') }}
-      </span>
-    </div>
-
+    @if (doneCount > 0) {
+      <div class="ic-summary">
+        <span class="ic-summary__item">
+          <span class="ic-summary__val">{{ doneCount }}/{{ images.length }}</span> {{ translate('tools.compressor.summary.compressed') }}
+        </span>
+        <span class="ic-summary__sep">·</span>
+        <span class="ic-summary__item">
+          <span class="ic-summary__val ic-summary__val--green">–{{ totalSavings }}%</span> {{ translate('tools.compressor.summary.avg') }}
+        </span>
+      </div>
+    }
     <!-- Image grid -->
     <div class="ic-grid">
-      <div class="ic-card" *ngFor="let img of images; let i = index">
-
-        <!-- Thumbnails row -->
-        <div class="ic-card__thumbs">
-          <!-- Original -->
-          <div class="ic-thumb ic-thumb--original">
-            <img [src]="img.originalUrl" [alt]="translate('tools.compressor.original')" />
-            <span class="ic-thumb__label">{{ translate('tools.compressor.original') }}</span>
-          </div>
-
-          <!-- Arrow -->
-          <svg class="ic-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>
-
-          <!-- Compressed / loading / error -->
-          <div class="ic-thumb ic-thumb--compressed">
-            <div class="ic-thumb__spinner" *ngIf="img.status === 'compressing'">
-              <svg class="spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-              </svg>
+      @for (img of images; track img; let i = $index) {
+        <div class="ic-card">
+          <!-- Thumbnails row -->
+          <div class="ic-card__thumbs">
+            <!-- Original -->
+            <div class="ic-thumb ic-thumb--original">
+              <img [src]="img.originalUrl" [alt]="translate('tools.compressor.original')" />
+              <span class="ic-thumb__label">{{ translate('tools.compressor.original') }}</span>
             </div>
-            <div class="ic-thumb__error" *ngIf="img.status === 'error'">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </div>
-            <img *ngIf="img.status === 'done'" [src]="img.previewUrl" [alt]="translate('tools.compressor.compressed')" />
-            <span class="ic-thumb__label">{{ translate('tools.compressor.compressed') }}</span>
-          </div>
-        </div>
-
-        <!-- Stats row -->
-        <div class="ic-card__meta">
-          <p class="ic-card__filename" [title]="img.file.name">{{ img.file.name }}</p>
-          <div class="ic-card__stats" *ngIf="img.status === 'done'">
-            <span class="ic-stat">{{ formatBytes(img.originalSize) }}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <!-- Arrow -->
+            <svg class="ic-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
-            <span class="ic-stat">{{ formatBytes(img.compressedSize) }}</span>
-            <span class="ic-savings-badge" [class.ic-savings-badge--neg]="img.savings < 0">
-              {{ img.savings >= 0 ? '–' : '+' }}{{ img.savings < 0 ? -img.savings : img.savings }}%
-            </span>
+            <!-- Compressed / loading / error -->
+            <div class="ic-thumb ic-thumb--compressed">
+              @if (img.status === 'compressing') {
+                <div class="ic-thumb__spinner">
+                  <svg class="spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                </div>
+              }
+              @if (img.status === 'error') {
+                <div class="ic-thumb__error">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+              }
+              @if (img.status === 'done') {
+                <img [src]="img.previewUrl" [alt]="translate('tools.compressor.compressed')" />
+              }
+              <span class="ic-thumb__label">{{ translate('tools.compressor.compressed') }}</span>
+            </div>
           </div>
-          <div class="ic-card__stats" *ngIf="img.status === 'compressing'">
-            <span class="ic-stat ic-stat--muted">{{ translate('tools.compressor.compressing') }}</span>
+          <!-- Stats row -->
+          <div class="ic-card__meta">
+            <p class="ic-card__filename" [title]="img.file.name">{{ img.file.name }}</p>
+            @if (img.status === 'done') {
+              <div class="ic-card__stats">
+                <span class="ic-stat">{{ formatBytes(img.originalSize) }}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+                <span class="ic-stat">{{ formatBytes(img.compressedSize) }}</span>
+                <span class="ic-savings-badge" [class.ic-savings-badge--neg]="img.savings < 0">
+                  {{ img.savings >= 0 ? '–' : '+' }}{{ img.savings < 0 ? -img.savings : img.savings }}%
+                </span>
+              </div>
+            }
+            @if (img.status === 'compressing') {
+              <div class="ic-card__stats">
+                <span class="ic-stat ic-stat--muted">{{ translate('tools.compressor.compressing') }}</span>
+              </div>
+            }
+            @if (img.status === 'error') {
+              <div class="ic-card__stats">
+                <span class="ic-stat ic-stat--error">{{ img.errorMsg }}</span>
+              </div>
+            }
           </div>
-          <div class="ic-card__stats" *ngIf="img.status === 'error'">
-            <span class="ic-stat ic-stat--error">{{ img.errorMsg }}</span>
+          <!-- Actions row -->
+          <div class="ic-card__actions">
+            <button
+              type="button"
+              class="ic-btn ic-btn--primary ic-btn--sm"
+              [disabled]="img.status !== 'done'"
+              (click)="downloadSingle(img)"
+              >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              {{ translate('tools.compressor.download') }}
+            </button>
+            <button type="button" class="ic-btn ic-btn--ghost ic-btn--sm" (click)="removeImage(i)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              {{ translate('tools.compressor.remove') }}
+            </button>
           </div>
         </div>
-
-        <!-- Actions row -->
-        <div class="ic-card__actions">
-          <button
-            type="button"
-            class="ic-btn ic-btn--primary ic-btn--sm"
-            [disabled]="img.status !== 'done'"
-            (click)="downloadSingle(img)"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            {{ translate('tools.compressor.download') }}
-          </button>
-          <button type="button" class="ic-btn ic-btn--ghost ic-btn--sm" (click)="removeImage(i)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-            {{ translate('tools.compressor.remove') }}
-          </button>
-        </div>
-
-      </div>
+      }
     </div>
-
-  </ng-container>
+  }
 
   <app-embed-code-generator toolSlug="image-compressor" toolName="Image Compressor"></app-embed-code-generator>
 

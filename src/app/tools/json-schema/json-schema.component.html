@@ -100,7 +100,9 @@
               <span class="jsc-toggle__track"><span class="jsc-toggle__thumb"></span></span>
               <span class="jsc-toggle__label">Allow additional properties</span>
             </label>
-            <p class="jsc-option-hint" *ngIf="!options.additionalProperties">Objects will reject properties not in the schema.</p>
+            @if (!options.additionalProperties) {
+              <p class="jsc-option-hint">Objects will reject properties not in the schema.</p>
+            }
           </div>
 
         </div>
@@ -115,54 +117,61 @@
       </div>
 
       <!-- Validate Against Schema -->
-      <div class="jsc-panel" *ngIf="schemaOutput">
-        <div class="jsc-panel__header">
-          <span class="jsc-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-            Validate JSON
-          </span>
-          <div class="jsc-panel__actions">
-            <button class="jsc-btn-ghost jsc-btn-sm" (click)="validateAgainstSchema()" [disabled]="!validateInput.trim()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Validate
-            </button>
-          </div>
-        </div>
-        <div class="jsc-panel__body jsc-panel__body--input">
-          <textarea
-            class="jsc-textarea jsc-textarea--sm"
-            [(ngModel)]="validateInput"
-            placeholder="Paste JSON to validate against the generated schema..."
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          ></textarea>
-        </div>
-
-        <!-- Validation results -->
-        <div class="jsc-validation-results" *ngIf="validationPassed !== null">
-          <div class="jsc-validation-banner"
-            [class.jsc-validation-banner--pass]="validationPassed"
-            [class.jsc-validation-banner--fail]="!validationPassed">
-            <ng-container *ngIf="validationPassed">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span>Valid — JSON matches the schema</span>
-            </ng-container>
-            <ng-container *ngIf="!validationPassed">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              <span>Invalid — {{ validationResults.length }} issue{{ validationResults.length === 1 ? '' : 's' }} found</span>
-            </ng-container>
-          </div>
-          <div class="jsc-issues" *ngIf="!validationPassed">
-            <div class="jsc-issue" *ngFor="let issue of validationResults">
-              <span class="jsc-issue__path">{{ issue.path }}</span>
-              <span class="jsc-issue__msg">{{ issue.message }}</span>
-              <span class="jsc-issue__detail">Expected: <strong>{{ issue.expected }}</strong> — Got: <strong>{{ issue.received }}</strong></span>
+      @if (schemaOutput) {
+        <div class="jsc-panel">
+          <div class="jsc-panel__header">
+            <span class="jsc-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+              Validate JSON
+            </span>
+            <div class="jsc-panel__actions">
+              <button class="jsc-btn-ghost jsc-btn-sm" (click)="validateAgainstSchema()" [disabled]="!validateInput.trim()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Validate
+              </button>
             </div>
           </div>
+          <div class="jsc-panel__body jsc-panel__body--input">
+            <textarea
+              class="jsc-textarea jsc-textarea--sm"
+              [(ngModel)]="validateInput"
+              placeholder="Paste JSON to validate against the generated schema..."
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
+          <!-- Validation results -->
+          @if (validationPassed !== null) {
+            <div class="jsc-validation-results">
+              <div class="jsc-validation-banner"
+                [class.jsc-validation-banner--pass]="validationPassed"
+                [class.jsc-validation-banner--fail]="!validationPassed">
+                @if (validationPassed) {
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Valid — JSON matches the schema</span>
+                }
+                @if (!validationPassed) {
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  <span>Invalid — {{ validationResults.length }} issue{{ validationResults.length === 1 ? '' : 's' }} found</span>
+                }
+              </div>
+              @if (!validationPassed) {
+                <div class="jsc-issues">
+                  @for (issue of validationResults; track issue) {
+                    <div class="jsc-issue">
+                      <span class="jsc-issue__path">{{ issue.path }}</span>
+                      <span class="jsc-issue__msg">{{ issue.message }}</span>
+                      <span class="jsc-issue__detail">Expected: <strong>{{ issue.expected }}</strong> — Got: <strong>{{ issue.received }}</strong></span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
         </div>
-      </div>
+      }
 
     </div>
 
@@ -174,18 +183,18 @@
         [class.jsc-status-bar--valid]="validationStatus === 'valid'"
         [class.jsc-status-bar--invalid]="validationStatus === 'invalid'"
         [class.jsc-status-bar--idle]="validationStatus === 'idle'">
-        <ng-container *ngIf="validationStatus === 'idle'">
+        @if (validationStatus === 'idle') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Waiting for input...</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'valid'">
+        }
+        @if (validationStatus === 'valid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>Schema generated — draft-07</span>
-        </ng-container>
-        <ng-container *ngIf="validationStatus === 'invalid'">
+        }
+        @if (validationStatus === 'invalid') {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="jsc-status-error">{{ errorMessage }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Output Panel -->
@@ -197,55 +206,61 @@
           </span>
           <div class="jsc-panel__actions">
             <button class="jsc-btn-ghost jsc-btn-sm" (click)="copyOutput()" [disabled]="!schemaOutput" [class.jsc-btn-ghost--success]="copied">
-              <ng-container *ngIf="!copied">
+              @if (!copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 Copy
-              </ng-container>
-              <ng-container *ngIf="copied">
+              }
+              @if (copied) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Copied!
-              </ng-container>
+              }
             </button>
             <button class="jsc-btn-ghost jsc-btn-sm" (click)="downloadOutput()" [disabled]="!schemaOutput" [class.jsc-btn-ghost--success]="downloaded">
-              <ng-container *ngIf="!downloaded">
+              @if (!downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 .json
-              </ng-container>
-              <ng-container *ngIf="downloaded">
+              }
+              @if (downloaded) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Saved!
-              </ng-container>
+              }
             </button>
           </div>
         </div>
 
         <!-- Code display -->
         <div class="jsc-output-body">
-          <pre class="jsc-code-pre" *ngIf="schemaOutput"><code [innerHTML]="highlightedHtml"></code></pre>
-          <div class="jsc-output-empty" *ngIf="!schemaOutput">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>Generated schema will appear here</span>
-          </div>
+          @if (schemaOutput) {
+            <pre class="jsc-code-pre"><code [innerHTML]="highlightedHtml"></code></pre>
+          }
+          @if (!schemaOutput) {
+            <div class="jsc-output-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Generated schema will appear here</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Stats bar -->
-      <div class="jsc-stats" *ngIf="schemaOutput">
-        <div class="jsc-stat">
-          <span class="jsc-stat__label">Properties</span>
-          <span class="jsc-stat__value">{{ propertyCount }}</span>
+      @if (schemaOutput) {
+        <div class="jsc-stats">
+          <div class="jsc-stat">
+            <span class="jsc-stat__label">Properties</span>
+            <span class="jsc-stat__value">{{ propertyCount }}</span>
+          </div>
+          <div class="jsc-stat-divider"></div>
+          <div class="jsc-stat">
+            <span class="jsc-stat__label">Depth</span>
+            <span class="jsc-stat__value">{{ depthCount }}</span>
+          </div>
+          <div class="jsc-stat-divider"></div>
+          <div class="jsc-stat">
+            <span class="jsc-stat__label">Draft</span>
+            <span class="jsc-stat__value jsc-stat__value--green">07</span>
+          </div>
         </div>
-        <div class="jsc-stat-divider"></div>
-        <div class="jsc-stat">
-          <span class="jsc-stat__label">Depth</span>
-          <span class="jsc-stat__value">{{ depthCount }}</span>
-        </div>
-        <div class="jsc-stat-divider"></div>
-        <div class="jsc-stat">
-          <span class="jsc-stat__label">Draft</span>
-          <span class="jsc-stat__value jsc-stat__value--green">07</span>
-        </div>
-      </div>
+      }
 
     </div>
   </div>

@@ -41,18 +41,20 @@
         placeholder="Describe what you want to match... e.g. 'email address', 'phone number', 'url'"
         spellcheck="false"
         autocomplete="off"
-      />
-      <div class="rxg-nl-result" *ngIf="generatedPattern">
-        <code class="rxg-nl-pattern">/{{ generatedPattern }}/{{ generatedFlags }}</code>
-        <button class="rxg-btn-icon" (click)="copyGenerated()" [title]="copiedId === '__generated__' ? 'Copied!' : 'Copy pattern'">
-          <ng-container *ngIf="copiedId !== '__generated__'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          </ng-container>
-          <ng-container *ngIf="copiedId === '__generated__'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </ng-container>
-        </button>
-      </div>
+        />
+      @if (generatedPattern) {
+        <div class="rxg-nl-result">
+          <code class="rxg-nl-pattern">/{{ generatedPattern }}/{{ generatedFlags }}</code>
+          <button class="rxg-btn-icon" (click)="copyGenerated()" [title]="copiedId === '__generated__' ? 'Copied!' : 'Copy pattern'">
+            @if (copiedId !== '__generated__') {
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            }
+            @if (copiedId === '__generated__') {
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            }
+          </button>
+        </div>
+      }
     </div>
   </div>
 
@@ -71,40 +73,43 @@
 
         <!-- Category filter -->
         <div class="rxg-categories">
-          <button
-            *ngFor="let cat of categories"
-            class="rxg-cat-btn"
-            [class.rxg-cat-btn--active]="activeCategory === cat"
-            (click)="activeCategory = cat"
-          >{{ cat }}</button>
+          @for (cat of categories; track cat) {
+            <button
+              class="rxg-cat-btn"
+              [class.rxg-cat-btn--active]="activeCategory === cat"
+              (click)="activeCategory = cat"
+            >{{ cat }}</button>
+          }
         </div>
 
         <!-- Pattern cards -->
         <div class="rxg-pattern-list">
-          <div class="rxg-pattern-card" *ngFor="let p of filteredPatterns">
-            <div class="rxg-pattern-card__top">
-              <span class="rxg-pattern-card__name">{{ p.name }}</span>
-              <span class="rxg-pattern-card__cat">{{ p.category }}</span>
+          @for (p of filteredPatterns; track p) {
+            <div class="rxg-pattern-card">
+              <div class="rxg-pattern-card__top">
+                <span class="rxg-pattern-card__name">{{ p.name }}</span>
+                <span class="rxg-pattern-card__cat">{{ p.category }}</span>
+              </div>
+              <code class="rxg-pattern-card__regex">/{{ p.pattern }}/{{ p.flags }}</code>
+              <p class="rxg-pattern-card__desc">{{ p.description }}</p>
+              <div class="rxg-pattern-card__actions">
+                <button class="rxg-btn-ghost rxg-btn-sm" (click)="usePattern(p)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Test
+                </button>
+                <button class="rxg-btn-ghost rxg-btn-sm" (click)="copyPattern(p)" [class.rxg-btn-ghost--success]="copiedId === p.name">
+                  @if (copiedId !== p.name) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copy
+                  }
+                  @if (copiedId === p.name) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Copied!
+                  }
+                </button>
+              </div>
             </div>
-            <code class="rxg-pattern-card__regex">/{{ p.pattern }}/{{ p.flags }}</code>
-            <p class="rxg-pattern-card__desc">{{ p.description }}</p>
-            <div class="rxg-pattern-card__actions">
-              <button class="rxg-btn-ghost rxg-btn-sm" (click)="usePattern(p)">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Test
-              </button>
-              <button class="rxg-btn-ghost rxg-btn-sm" (click)="copyPattern(p)" [class.rxg-btn-ghost--success]="copiedId === p.name">
-                <ng-container *ngIf="copiedId !== p.name">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                  Copy
-                </ng-container>
-                <ng-container *ngIf="copiedId === p.name">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Copied!
-                </ng-container>
-              </button>
-            </div>
-          </div>
+          }
         </div>
       </div>
     </div>
@@ -162,7 +167,7 @@
             placeholder="Enter regex pattern..."
             spellcheck="false"
             autocomplete="off"
-          />
+            />
         </div>
       </div>
 
@@ -199,54 +204,62 @@
         [class.rxg-status-bar--valid]="matchCount > 0 && !testError"
         [class.rxg-status-bar--invalid]="!!testError"
         [class.rxg-status-bar--idle]="matchCount === 0 && !testError">
-        <ng-container *ngIf="!testPattern || (!testText && !testError)">
+        @if (!testPattern || (!testText && !testError)) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Enter a pattern and test text to begin matching</span>
-        </ng-container>
-        <ng-container *ngIf="matchCount > 0 && !testError">
+        }
+        @if (matchCount > 0 && !testError) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>{{ matchCount }} match{{ matchCount !== 1 ? 'es' : '' }} found</span>
-        </ng-container>
-        <ng-container *ngIf="testPattern && testText && matchCount === 0 && !testError">
+        }
+        @if (testPattern && testText && matchCount === 0 && !testError) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>No matches found</span>
-        </ng-container>
-        <ng-container *ngIf="testError">
+        }
+        @if (testError) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span class="rxg-status-error">{{ testError }}</span>
-        </ng-container>
+        }
       </div>
 
       <!-- Highlighted output -->
-      <div class="rxg-panel rxg-panel--output" *ngIf="testText && testPattern && !testError">
-        <div class="rxg-panel__header">
-          <span class="rxg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Matches
-          </span>
-          <span class="rxg-match-count" *ngIf="matchCount > 0">{{ matchCount }}</span>
-        </div>
-        <div class="rxg-output-body">
-          <pre class="rxg-code-pre"><code [innerHTML]="highlightedText"></code></pre>
-        </div>
-      </div>
-
-      <!-- Match list -->
-      <div class="rxg-panel" *ngIf="testMatches.length > 0">
-        <div class="rxg-panel__header">
-          <span class="rxg-panel__title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            Match List
-          </span>
-        </div>
-        <div class="rxg-match-list">
-          <div class="rxg-match-item" *ngFor="let m of testMatches; let i = index">
-            <span class="rxg-match-item__idx">#{{ i + 1 }}</span>
-            <code class="rxg-match-item__text">{{ m.text }}</code>
-            <span class="rxg-match-item__pos">index {{ m.index }}</span>
+      @if (testText && testPattern && !testError) {
+        <div class="rxg-panel rxg-panel--output">
+          <div class="rxg-panel__header">
+            <span class="rxg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Matches
+            </span>
+            @if (matchCount > 0) {
+              <span class="rxg-match-count">{{ matchCount }}</span>
+            }
+          </div>
+          <div class="rxg-output-body">
+            <pre class="rxg-code-pre"><code [innerHTML]="highlightedText"></code></pre>
           </div>
         </div>
-      </div>
+      }
+
+      <!-- Match list -->
+      @if (testMatches.length > 0) {
+        <div class="rxg-panel">
+          <div class="rxg-panel__header">
+            <span class="rxg-panel__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Match List
+            </span>
+          </div>
+          <div class="rxg-match-list">
+            @for (m of testMatches; track m; let i = $index) {
+              <div class="rxg-match-item">
+                <span class="rxg-match-item__idx">#{{ i + 1 }}</span>
+                <code class="rxg-match-item__text">{{ m.text }}</code>
+                <span class="rxg-match-item__pos">index {{ m.index }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
     </div><!-- /right col -->
   </div><!-- /layout -->

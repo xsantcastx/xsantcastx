@@ -152,10 +152,12 @@
                 placeholder="755"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <span class="ch-numeric-input__hint">Type 3 octal digits (0-7)</span>
             </div>
-            <p class="ch-error" *ngIf="numericError">{{ numericError }}</p>
+            @if (numericError) {
+              <p class="ch-error">{{ numericError }}</p>
+            }
           </div>
 
         </div>
@@ -170,16 +172,17 @@
           </span>
         </div>
         <div class="ch-panel__body ch-presets">
-          <button
-            *ngFor="let preset of presets"
-            class="ch-preset"
-            [class.ch-preset--active]="numericValue === preset.numeric"
-            (click)="applyPreset(preset)"
-            [title]="preset.description"
-          >
-            <span class="ch-preset__value">{{ preset.label }}</span>
-            <span class="ch-preset__desc">{{ preset.description }}</span>
-          </button>
+          @for (preset of presets; track preset) {
+            <button
+              class="ch-preset"
+              [class.ch-preset--active]="numericValue === preset.numeric"
+              (click)="applyPreset(preset)"
+              [title]="preset.description"
+              >
+              <span class="ch-preset__value">{{ preset.label }}</span>
+              <span class="ch-preset__desc">{{ preset.description }}</span>
+            </button>
+          }
         </div>
       </div><!-- /presets panel -->
 
@@ -205,38 +208,42 @@
                 placeholder="022"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
               <span class="ch-numeric-input__hint">e.g. 022, 077, 0027</span>
             </div>
-            <p class="ch-error" *ngIf="umaskError">{{ umaskError }}</p>
+            @if (umaskError) {
+              <p class="ch-error">{{ umaskError }}</p>
+            }
           </div>
 
-          <div class="ch-umask__results" *ngIf="!umaskError && umaskInput">
-            <div class="ch-umask__result">
-              <span class="ch-umask__label">New files</span>
-              <span class="ch-umask__value">{{ umaskFilePermission }}</span>
+          @if (!umaskError && umaskInput) {
+            <div class="ch-umask__results">
+              <div class="ch-umask__result">
+                <span class="ch-umask__label">New files</span>
+                <span class="ch-umask__value">{{ umaskFilePermission }}</span>
+              </div>
+              <div class="ch-umask__divider"></div>
+              <div class="ch-umask__result">
+                <span class="ch-umask__label">New directories</span>
+                <span class="ch-umask__value">{{ umaskDirPermission }}</span>
+              </div>
+              <div class="ch-umask__divider"></div>
+              <div class="ch-umask__result">
+                <span class="ch-umask__label">Symbolic (files)</span>
+                <span class="ch-umask__value ch-umask__value--symbolic">{{ umaskSymbolic }}</span>
+              </div>
             </div>
-            <div class="ch-umask__divider"></div>
-            <div class="ch-umask__result">
-              <span class="ch-umask__label">New directories</span>
-              <span class="ch-umask__value">{{ umaskDirPermission }}</span>
-            </div>
-            <div class="ch-umask__divider"></div>
-            <div class="ch-umask__result">
-              <span class="ch-umask__label">Symbolic (files)</span>
-              <span class="ch-umask__value ch-umask__value--symbolic">{{ umaskSymbolic }}</span>
-            </div>
-          </div>
+          }
 
           <button class="ch-btn-ghost ch-btn-sm" (click)="copyUmaskResult()" [disabled]="!!umaskError || !umaskInput" [class.ch-btn-ghost--success]="copiedUmask">
-            <ng-container *ngIf="!copiedUmask">
+            @if (!copiedUmask) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               Copy Umask Result
-            </ng-container>
-            <ng-container *ngIf="copiedUmask">
+            }
+            @if (copiedUmask) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               Copied!
-            </ng-container>
+            }
           </button>
         </div>
       </div><!-- /umask panel -->
@@ -262,14 +269,14 @@
             <div class="ch-result-block__header">
               <span class="ch-result-block__label">Numeric Notation</span>
               <button class="ch-btn-ghost ch-btn-sm" (click)="copyNumeric()" [class.ch-btn-ghost--success]="copiedNumeric">
-                <ng-container *ngIf="!copiedNumeric">
+                @if (!copiedNumeric) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   Copy
-                </ng-container>
-                <ng-container *ngIf="copiedNumeric">
+                }
+                @if (copiedNumeric) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   Copied!
-                </ng-container>
+                }
               </button>
             </div>
             <div class="ch-result-block__value ch-result-block__value--large">{{ numericValue }}</div>
@@ -280,14 +287,14 @@
             <div class="ch-result-block__header">
               <span class="ch-result-block__label">Symbolic Notation</span>
               <button class="ch-btn-ghost ch-btn-sm" (click)="copySymbolic()" [class.ch-btn-ghost--success]="copiedSymbolic">
-                <ng-container *ngIf="!copiedSymbolic">
+                @if (!copiedSymbolic) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   Copy
-                </ng-container>
-                <ng-container *ngIf="copiedSymbolic">
+                }
+                @if (copiedSymbolic) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   Copied!
-                </ng-container>
+                }
               </button>
             </div>
             <div class="ch-result-block__value ch-result-block__value--symbolic">
@@ -300,14 +307,14 @@
             <div class="ch-result-block__header">
               <span class="ch-result-block__label">chmod Command</span>
               <button class="ch-btn-ghost ch-btn-sm" (click)="copyCommand()" [class.ch-btn-ghost--success]="copiedCommand">
-                <ng-container *ngIf="!copiedCommand">
+                @if (!copiedCommand) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   Copy
-                </ng-container>
-                <ng-container *ngIf="copiedCommand">
+                }
+                @if (copiedCommand) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   Copied!
-                </ng-container>
+                }
               </button>
             </div>
             <div class="ch-result-block__command">
@@ -323,7 +330,7 @@
                 placeholder="./file.sh"
                 spellcheck="false"
                 autocomplete="off"
-              />
+                />
             </div>
           </div>
 

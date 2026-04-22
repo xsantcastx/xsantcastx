@@ -22,49 +22,63 @@
           <input class="lp-search-input" [(ngModel)]="searchTerm" placeholder="Search licenses..." />
         </div>
         <div class="lp-list">
-          <button *ngFor="let lic of filteredLicenses" class="lp-list-item" [class.lp-list-item--active]="selectedLicense?.id === lic.id" (click)="selectLicense(lic)">
-            <span class="lp-list-item__name">{{ lic.name }}</span>
-            <span class="lp-list-item__cat">{{ lic.category }}</span>
-          </button>
+          @for (lic of filteredLicenses; track lic) {
+            <button class="lp-list-item" [class.lp-list-item--active]="selectedLicense?.id === lic.id" (click)="selectLicense(lic)">
+              <span class="lp-list-item__name">{{ lic.name }}</span>
+              <span class="lp-list-item__cat">{{ lic.category }}</span>
+            </button>
+          }
         </div>
       </div>
     </div>
 
     <div class="lp-col lp-col--right">
-      <div class="lp-panel" *ngIf="selectedLicense">
-        <div class="lp-panel__header">
-          <span class="lp-panel__title">{{ selectedLicense.name }}</span>
-          <span class="lp-category-badge">{{ selectedLicense.category }}</span>
+      @if (selectedLicense) {
+        <div class="lp-panel">
+          <div class="lp-panel__header">
+            <span class="lp-panel__title">{{ selectedLicense.name }}</span>
+            <span class="lp-category-badge">{{ selectedLicense.category }}</span>
+          </div>
+          <div class="lp-details">
+            <div class="lp-detail-section">
+              <span class="lp-detail-label">Permissions</span>
+              <div class="lp-tags">@for (p of selectedLicense.permissions; track p) {
+                <span class="lp-tag lp-tag--green">{{ p }}</span>
+              }</div>
+            </div>
+            @if (selectedLicense.conditions.length) {
+              <div class="lp-detail-section">
+                <span class="lp-detail-label">Conditions</span>
+                <div class="lp-tags">@for (c of selectedLicense.conditions; track c) {
+                  <span class="lp-tag lp-tag--blue">{{ c }}</span>
+                }</div>
+              </div>
+            }
+            @if (selectedLicense.limitations.length) {
+              <div class="lp-detail-section">
+                <span class="lp-detail-label">Limitations</span>
+                <div class="lp-tags">@for (l of selectedLicense.limitations; track l) {
+                  <span class="lp-tag lp-tag--red">{{ l }}</span>
+                }</div>
+              </div>
+            }
+          </div>
+          <div class="lp-gen">
+            <div class="lp-gen-fields">
+              <input class="lp-input" [(ngModel)]="authorName" placeholder="Author name" />
+              <input class="lp-input" [(ngModel)]="year" placeholder="Year" />
+            </div>
+            <pre class="lp-output"><code>{{ generatedBody }}</code></pre>
+            <button class="lp-btn" (click)="copyLicense()" [class.lp-btn--success]="copied">{{ copied ? 'Copied!' : 'Copy LICENSE' }}</button>
+          </div>
         </div>
+      }
 
-        <div class="lp-details">
-          <div class="lp-detail-section">
-            <span class="lp-detail-label">Permissions</span>
-            <div class="lp-tags"><span class="lp-tag lp-tag--green" *ngFor="let p of selectedLicense.permissions">{{ p }}</span></div>
-          </div>
-          <div class="lp-detail-section" *ngIf="selectedLicense.conditions.length">
-            <span class="lp-detail-label">Conditions</span>
-            <div class="lp-tags"><span class="lp-tag lp-tag--blue" *ngFor="let c of selectedLicense.conditions">{{ c }}</span></div>
-          </div>
-          <div class="lp-detail-section" *ngIf="selectedLicense.limitations.length">
-            <span class="lp-detail-label">Limitations</span>
-            <div class="lp-tags"><span class="lp-tag lp-tag--red" *ngFor="let l of selectedLicense.limitations">{{ l }}</span></div>
-          </div>
+      @if (!selectedLicense) {
+        <div class="lp-empty">
+          <span>Select a license to view details and generate a LICENSE file.</span>
         </div>
-
-        <div class="lp-gen">
-          <div class="lp-gen-fields">
-            <input class="lp-input" [(ngModel)]="authorName" placeholder="Author name" />
-            <input class="lp-input" [(ngModel)]="year" placeholder="Year" />
-          </div>
-          <pre class="lp-output"><code>{{ generatedBody }}</code></pre>
-          <button class="lp-btn" (click)="copyLicense()" [class.lp-btn--success]="copied">{{ copied ? 'Copied!' : 'Copy LICENSE' }}</button>
-        </div>
-      </div>
-
-      <div class="lp-empty" *ngIf="!selectedLicense">
-        <span>Select a license to view details and generate a LICENSE file.</span>
-      </div>
+      }
     </div>
   </div>
 </div>

@@ -26,24 +26,30 @@
         </div>
       </div>
 
-      <div class="cn-panel" *ngIf="closestColor">
-        <div class="cn-panel__header">
-          <span class="cn-panel__title">Closest Match</span>
-          <button class="cn-btn-ghost" (click)="copyName()" [class.cn-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
-        </div>
-        <div class="cn-panel__body cn-match">
-          <div class="cn-match__swatches">
-            <div class="cn-swatch" [style.background]="hexInput"><span class="cn-swatch__label">Input</span></div>
-            <div class="cn-swatch" [style.background]="closestColor.hex"><span class="cn-swatch__label">{{ closestColor.name }}</span></div>
+      @if (closestColor) {
+        <div class="cn-panel">
+          <div class="cn-panel__header">
+            <span class="cn-panel__title">Closest Match</span>
+            <button class="cn-btn-ghost" (click)="copyName()" [class.cn-btn-ghost--success]="copied">{{ copied ? 'Copied!' : 'Copy' }}</button>
           </div>
-          <div class="cn-match__info">
-            <div class="cn-match__name">{{ closestColor.name }}</div>
-            <div class="cn-match__hex">{{ closestColor.hex }}</div>
-            <div class="cn-match__dist" *ngIf="distance === 0">Exact match!</div>
-            <div class="cn-match__dist" *ngIf="distance > 0">Distance: {{ distance }}</div>
+          <div class="cn-panel__body cn-match">
+            <div class="cn-match__swatches">
+              <div class="cn-swatch" [style.background]="hexInput"><span class="cn-swatch__label">Input</span></div>
+              <div class="cn-swatch" [style.background]="closestColor.hex"><span class="cn-swatch__label">{{ closestColor.name }}</span></div>
+            </div>
+            <div class="cn-match__info">
+              <div class="cn-match__name">{{ closestColor.name }}</div>
+              <div class="cn-match__hex">{{ closestColor.hex }}</div>
+              @if (distance === 0) {
+                <div class="cn-match__dist">Exact match!</div>
+              }
+              @if (distance > 0) {
+                <div class="cn-match__dist">Distance: {{ distance }}</div>
+              }
+            </div>
           </div>
         </div>
-      </div>
+      }
     </div>
 
     <div class="cn-col cn-col--right">
@@ -54,9 +60,11 @@
         <div class="cn-panel__body">
           <input type="text" [(ngModel)]="searchQuery" class="cn-search" placeholder="Search colors..." />
           <div class="cn-color-grid">
-            <button *ngFor="let c of filteredColors" class="cn-color-tile" [style.background]="c.hex" [title]="c.name + ' ' + c.hex" (click)="selectColor(c)">
-              <span class="cn-color-tile__name">{{ c.name }}</span>
-            </button>
+            @for (c of filteredColors; track c) {
+              <button class="cn-color-tile" [style.background]="c.hex" [title]="c.name + ' ' + c.hex" (click)="selectColor(c)">
+                <span class="cn-color-tile__name">{{ c.name }}</span>
+              </button>
+            }
           </div>
         </div>
       </div>
