@@ -343,7 +343,10 @@
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.16em;
-  padding: 0.4rem 0.75rem;
+  /* WCAG 2.5.5 — minimum 44x44px touch target */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.6rem 1rem;
   border-radius: 999px;
   text-transform: uppercase;
   cursor: pointer;
