@@ -29,9 +29,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Use PAT so the pipeline can push branches and create PRs
-          token: ${{ secrets.GH_PAT }}
+          # Prefer the PAT (needed for opening PRs against branch-protected
+          # main and for triggering downstream workflows). Fall back to the
+          # runner's auto-issued GITHUB_TOKEN so the checkout never lands
+          # without auth — that empty-token state was the root cause of
+          # runs #36–#43 silently failing with "could not read Username".
+          token: ${{ secrets.GH_PAT || github.token }}
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -61,6 +66,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_PAT: ${{ secrets.GH_PAT }}
+          # Fallback for pipeline/agents/deploy.py::_configure_git when GH_PAT
+          # is unset/empty. Workflow has `permissions: contents: write` so
+          # this token can push to main; PR creation will still require GH_PAT.
+          GITHUB_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           DEPLOY_TO_MAIN: ${{ vars.DEPLOY_TO_MAIN || 'false' }}
           # Social Media — Agent 5 (missing secrets are handled gracefully)
