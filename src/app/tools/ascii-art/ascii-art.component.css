@@ -26,3 +26,25 @@
 .aa-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
 .aa-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .aa-btn-ghost--success { color: #00ffcc !important; border-color: rgba(0,255,204,0.35) !important; }
+
+@media (max-width: 768px) {
+  .aa-page { padding: calc(var(--header-offset) + 1.5rem) var(--page-gutter) 3rem; }
+  .back-link { margin-bottom: 1.25rem; font-size: 0.78rem; }
+  .tool-header { margin-bottom: 1.5rem; }
+  .tool-header__share { flex-wrap: wrap; }
+  .aa-panel__header { padding: 0.65rem 0.85rem; }
+  .aa-input-wrap { padding: 1rem; }
+  .aa-input { font-size: 1rem; padding: 0.55rem 0.85rem; }
+  .aa-output-body { padding: 1rem; min-height: 120px; }
+  .aa-code code { font-size: 0.62rem; line-height: 1.15; }
+}
+
+@media (max-width: 480px) {
+  .aa-page { padding: calc(var(--header-offset) + 1rem) 0.85rem 2.5rem; }
+  .tool-header__share { gap: 0.4rem; }
+  .share-btn { padding: 0.35rem 0.7rem; font-size: 0.72rem; }
+  .aa-input { font-size: 0.95rem; }
+  .aa-output-body { padding: 0.85rem; }
+  .aa-code code { font-size: 0.55rem; }
+  .aa-btn-ghost { font-size: 0.7rem; padding: 0.28rem 0.55rem; }
+}

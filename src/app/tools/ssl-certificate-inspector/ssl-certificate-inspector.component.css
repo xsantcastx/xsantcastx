@@ -487,3 +487,46 @@
   width: 14px;
   height: 14px;
 }
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .ssl-inspector-page {
+    padding: 1.5rem 1rem 3rem;
+  }
+  .back-link {
+    margin-bottom: 1.25rem;
+  }
+  .tool-header {
+    margin-bottom: 1.5rem;
+  }
+  .tool-header__title {
+    font-size: 1.6rem;
+  }
+  .tool-header__subtitle {
+    font-size: 0.875rem;
+  }
+  .trust-chain__node {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ssl-inspector-page {
+    padding: 1.25rem 0.85rem 2.5rem;
+  }
+  .tool-header__title {
+    font-size: 1.4rem;
+  }
+  .tool-header__share {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .trust-chain__node {
+    gap: 0.6rem;
+  }
+  .status-pill {
+    font-size: 0.72rem;
+    padding: 0.18rem 0.5rem;
+  }
+}

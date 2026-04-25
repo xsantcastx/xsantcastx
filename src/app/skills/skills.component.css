@@ -28,3 +28,39 @@
     transform: translateY(-10px);
     box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
 }
+@media (max-width: 768px) {
+  .skills {
+    padding: 3rem 5%;
+  }
+  .skills h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .skills-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1.25rem;
+  }
+  .skill-card {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .skills {
+    padding: 2.25rem 4%;
+  }
+  .skills h2 {
+    font-size: 1.6rem;
+    margin-bottom: 1.25rem;
+  }
+  .skills-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .skill-card {
+    padding: 1rem;
+  }
+  .skill-card:hover {
+    transform: none;
+  }
+}
