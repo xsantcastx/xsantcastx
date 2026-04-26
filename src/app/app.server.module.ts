@@ -1,4 +1,4 @@
-import { NgModule, ErrorHandler, Inject, Optional } from '@angular/core';
+import { NgModule, ErrorHandler, Inject, Injectable, Optional } from '@angular/core';
 import { ServerModule } from '@angular/platform-server';
 import { DOCUMENT } from '@angular/common';
 import { AppModule } from './app.module';
@@ -24,6 +24,7 @@ import { AppComponent } from './app.component';
  *
  * scripts/check-prerender-health.js parses these lines.
  */
+@Injectable()
 class SsrErrorHandler implements ErrorHandler {
   constructor(@Optional() @Inject(DOCUMENT) private readonly document: Document | null) {}
 
