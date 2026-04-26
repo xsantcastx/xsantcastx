@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 type IndentOption = '2' | '4' | 'tab';
 
@@ -50,7 +51,15 @@ export class JsonFormatterComponent implements OnDestroy {
   inputBytes = 0;
   outputBytes = 0;
 
-  constructor(private router: Router, private sanitizer: DomSanitizer) {}
+  constructor(
+    private router: Router,
+    private sanitizer: DomSanitizer,
+    private translationService: TranslationService
+  ) {}
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   ngOnDestroy() {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
