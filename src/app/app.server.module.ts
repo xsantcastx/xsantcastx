@@ -23,6 +23,12 @@ import { AppComponent } from './app.component';
  *   [SSR-SWALLOWED-STACK] route=<url> <frame> | <frame> | <frame>
  *
  * scripts/check-prerender-health.js parses these lines.
+ *
+ * NOTE: @Injectable() is required by Angular 21+ for any class used with
+ * `useClass` in a provider; without it the AOT compiler emits NG2005
+ * ("This constructor is not compatible with Angular Dependency Injection")
+ * and the build fails on production. See Agent Backlog 34ee6899-* for the
+ * 2026-04-26 build failure that motivated adding it.
  */
 @Injectable()
 class SsrErrorHandler implements ErrorHandler {
