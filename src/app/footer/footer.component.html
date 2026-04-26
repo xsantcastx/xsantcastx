@@ -54,7 +54,8 @@
 
   <!-- Crypto Donation Modal -->
   <div class="donation-modal" id="cryptoModal" [class.show]="showCryptoModal"
-    role="dialog" aria-modal="true" aria-labelledby="crypto-modal-title">
+    role="dialog" aria-modal="true" aria-labelledby="crypto-modal-title"
+    [appFocusTrap]="showCryptoModal" (escape)="closeModals()">
     <div class="modal-content">
       <div class="modal-header">
         <h4 id="crypto-modal-title">Crypto Donations</h4>
@@ -81,7 +82,8 @@
 
   <!-- PayPal Donation Modal -->
   <div class="donation-modal" id="paypalModal" [class.show]="showPayPalModal"
-    role="dialog" aria-modal="true" aria-labelledby="paypal-modal-title">
+    role="dialog" aria-modal="true" aria-labelledby="paypal-modal-title"
+    [appFocusTrap]="showPayPalModal" (escape)="closeModals()">
     <div class="modal-content">
       <div class="modal-header">
         <h4 id="paypal-modal-title">{{ translate('footer.paypal.title') }}</h4>
@@ -97,14 +99,18 @@
             @for (amount of donationAmounts; track amount) {
               <button
                 class="amount-btn"
+                type="button"
                 [class.selected]="selectedAmount === amount.value && !showCustomInput"
+                [attr.aria-pressed]="selectedAmount === amount.value && !showCustomInput"
                 (click)="selectAmount(amount.value)">
                 {{ amount.label }}
               </button>
             }
             <button
               class="amount-btn custom-btn"
+              type="button"
               [class.selected]="showCustomInput"
+              [attr.aria-pressed]="showCustomInput"
               (click)="toggleCustomAmount()">
               {{ translate('footer.custom.amount') }}
             </button>
@@ -167,7 +173,8 @@
 
   <!-- Stripe Donation Modal -->
   <div class="donation-modal" id="stripeModal" [class.show]="showStripeModal"
-    role="dialog" aria-modal="true" aria-labelledby="stripe-modal-title">
+    role="dialog" aria-modal="true" aria-labelledby="stripe-modal-title"
+    [appFocusTrap]="showStripeModal" (escape)="closeModals()">
     <div class="modal-content">
       <div class="modal-header">
         <h4 id="stripe-modal-title">{{ translate('footer.stripe.title') }}</h4>
@@ -183,14 +190,18 @@
             @for (amount of donationAmounts; track amount) {
               <button
                 class="amount-btn"
+                type="button"
                 [class.selected]="selectedAmount === amount.value && !showCustomInput"
+                [attr.aria-pressed]="selectedAmount === amount.value && !showCustomInput"
                 (click)="selectAmount(amount.value)">
                 {{ amount.label }}
               </button>
             }
             <button
               class="amount-btn custom-btn"
+              type="button"
               [class.selected]="showCustomInput"
+              [attr.aria-pressed]="showCustomInput"
               (click)="toggleCustomAmount()">
               {{ translate('footer.custom.amount') }}
             </button>
@@ -246,5 +257,22 @@
         <p class="payment-note">{{ translate('footer.stripe.note') }}</p>
       </div>
     </div>
+  </div>
+
+  <!--
+    aria-live "toast" region — replaces blocking alert() calls. The container
+    is always rendered (so SR observes it) and aria-live="polite" announces
+    new content without interrupting whatever the user is reading. Visual
+    styling fades in/out via .show class.
+  -->
+  <div
+    class="footer-toast"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+    [class.show]="!!toastMessage">
+    @if (toastMessage) {
+      <span>{{ toastMessage }}</span>
+    }
   </div>
 </footer>
