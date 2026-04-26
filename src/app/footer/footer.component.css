@@ -382,3 +382,52 @@ footer {
     padding: clamp(1.4rem, 6vw, 2rem);
   }
 }
+
+/*
+  Footer toast — replaces blocking alert() for clipboard / payment feedback.
+  Lives in the footer because that's where its triggers fire; positioned
+  fixed so it floats above page content. Always present in the DOM (kept
+  pollite-live region under SR observation) but visually hidden until a
+  message is queued via .show class.
+*/
+.footer-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%) translateY(0.5rem);
+  max-width: min(92vw, 380px);
+  padding: 0.75rem 1.1rem;
+  background: var(--surface-strong, rgba(8, 12, 24, 0.95));
+  color: var(--text-color, #f1f5f9);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-strong, 0 18px 40px rgba(0, 0, 0, 0.45));
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10001;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.footer-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-toast {
+    transition: opacity 0.001s linear;
+  }
+}
+
+/*
+  aria-pressed visual state: keep the existing .selected gradient as the
+  primary cue, but make the pressed state perceivable via a subtle inset
+  ring too — tooltips/screen-magnifier users sometimes lose the gradient
+  in low-contrast modes.
+*/
+.amount-btn[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}

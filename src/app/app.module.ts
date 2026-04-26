@@ -63,6 +63,7 @@ import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
 import { ScrollTrackingDirective } from './scroll-tracking.directive';
+import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
@@ -232,6 +233,7 @@ import { McpComponent } from './mcp/mcp.component';
     AboutComponent,
     CookieBannerComponent,
     ScrollTrackingDirective,
+    FocusTrapDirective,
     LiveComponent,
     CarbonAdComponent,
     AdsenseComponent,
