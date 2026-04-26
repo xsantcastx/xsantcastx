@@ -210,6 +210,28 @@ export class TranslationService {
     'tools.badge.soon': { en: 'Soon', es: 'Próximamente' },
     'tools.common.back': { en: 'All Tools', es: 'Todas las Herramientas' },
     'tools.common.share': { en: 'Share', es: 'Compartir' },
+    // Shared button + UI panel labels — reusable across all tool templates (i18n batch 2026-04-26)
+    'tools.common.shareX': { en: 'Share on X', es: 'Compartir en X' },
+    'tools.common.shareLinkedIn': { en: 'Share on LinkedIn', es: 'Compartir en LinkedIn' },
+    'tools.common.backToTools': { en: 'Back to Tools', es: 'Volver a Herramientas' },
+    'tools.common.copy': { en: 'Copy', es: 'Copiar' },
+    'tools.common.copied': { en: 'Copied', es: 'Copiado' },
+    'tools.common.copyCode': { en: 'Copy Code', es: 'Copiar Código' },
+    'tools.common.copyAll': { en: 'Copy All', es: 'Copiar Todo' },
+    'tools.common.clear': { en: 'Clear', es: 'Borrar' },
+    'tools.common.sample': { en: 'Sample', es: 'Ejemplo' },
+    'tools.common.generate': { en: 'Generate', es: 'Generar' },
+    'tools.common.compare': { en: 'Compare', es: 'Comparar' },
+    'tools.common.download': { en: 'Download', es: 'Descargar' },
+    'tools.common.input': { en: 'Input', es: 'Entrada' },
+    'tools.common.output': { en: 'Output', es: 'Salida' },
+    'tools.common.options': { en: 'Options', es: 'Opciones' },
+    'tools.common.results': { en: 'Results', es: 'Resultados' },
+    'tools.common.presets': { en: 'Presets', es: 'Preajustes' },
+    'tools.common.mode': { en: 'Mode', es: 'Modo' },
+    'tools.common.text': { en: 'Text', es: 'Texto' },
+    'tools.common.file': { en: 'File', es: 'Archivo' },
+    'tools.common.charsCount': { en: 'chars', es: 'caracteres' },
 
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
@@ -370,7 +392,32 @@ export class TranslationService {
     'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },
     'cookies.banner.aria': { en: 'Cookie consent banner', es: 'Banner de consentimiento de cookies' },
     'cookies.accept.aria': { en: 'Accept analytics cookies', es: 'Aceptar cookies de analytics' },
-    'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' }
+    'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' },
+
+    // ─── JSON Formatter page (i18n batch 2026-04-26) ──────────────────────────
+    'tools.jsonFormatter.eyebrow': { en: 'Code Converters', es: 'Convertidores de Código' },
+    'tools.jsonFormatter.title': { en: 'JSON Formatter', es: 'Formateador JSON' },
+    'tools.jsonFormatter.titleAccent': { en: 'Validator', es: 'Validador' },
+    'tools.jsonFormatter.subtitle': {
+      en: 'Format, validate, minify and repair JSON instantly — live syntax checking, no sign-up required.',
+      es: 'Formatea, valida, minifica y repara JSON al instante — verificación de sintaxis en vivo, sin necesidad de registrarse.'
+    },
+    'tools.jsonFormatter.loadSample': { en: 'Load sample JSON', es: 'Cargar JSON de ejemplo' },
+    'tools.jsonFormatter.clearInput': { en: 'Clear input', es: 'Borrar entrada' },
+    'tools.jsonFormatter.format': { en: 'Format / Prettify', es: 'Formatear / Embellecer' },
+    'tools.jsonFormatter.minify': { en: 'Minify', es: 'Minificar' },
+    'tools.jsonFormatter.copied': { en: 'Copied!', es: '¡Copiado!' },
+    'tools.jsonFormatter.saved': { en: 'Saved!', es: '¡Guardado!' },
+    'tools.jsonFormatter.outputEmpty': { en: 'Formatted output will appear here', es: 'La salida formateada aparecerá aquí' },
+
+    // ─── Hash Generator page (i18n batch 2026-04-26) ──────────────────────────
+    'tools.hashGenerator.eyebrow': { en: 'Security Tools', es: 'Herramientas de Seguridad' },
+    'tools.hashGenerator.title': { en: 'Hash', es: 'Hash' },
+    'tools.hashGenerator.titleAccent': { en: 'Generator', es: 'Generador' },
+    'tools.hashGenerator.subtitle': {
+      en: 'Generate MD5, SHA-1, SHA-256, SHA-384 and SHA-512 hashes from text or files. Compare hashes, copy results — all client-side, no data leaves your browser.',
+      es: 'Genera hashes MD5, SHA-1, SHA-256, SHA-384 y SHA-512 desde texto o archivos. Compara hashes, copia resultados — todo del lado cliente, ningún dato sale de tu navegador.'
+    }
   };
 
   constructor() {
