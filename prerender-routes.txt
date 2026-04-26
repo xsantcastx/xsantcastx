@@ -178,6 +178,7 @@
 /tools/image-resizer
 /embed/image-resizer
 /mcp
+/games
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor
