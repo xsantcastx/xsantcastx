@@ -757,7 +757,7 @@
 .gdc-step__text { color: var(--text-color); }
 
 /* ─── Responsive ─── */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .gdc-form-grid    { grid-template-columns: 1fr; }
   .gdc-status-grid  { grid-template-columns: 1fr; }
   .gdc-config-grid  { grid-template-columns: 1fr; }

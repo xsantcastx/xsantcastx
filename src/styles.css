@@ -1,3 +1,29 @@
+/*
+ * ============================================================================
+ * Canonical Responsive Breakpoints (Brand Standard)
+ * ============================================================================
+ * Use these three tiers in @media queries across the app:
+ *
+ *   --bp-sm:  480px   small phones / mobile portrait
+ *   --bp-md:  768px   tablets / mobile landscape (PRIMARY mobile breakpoint)
+ *   --bp-lg: 1024px   desktop and larger
+ *
+ * NOTE: CSS custom properties cannot be used inside @media query conditions
+ * directly, so these are documented as canonical literal values rather than
+ * tokens. Reference them as plain pixel literals in @media queries.
+ *
+ * Migration policy:
+ *   - 374px, 420px        → 480px (--bp-sm)
+ *   - 600px, 640px, 700px → 768px (--bp-md)
+ *   - 860px, 900px, 960px → 1024px (--bp-lg) when used as a desktop cutoff,
+ *                          or 768px (--bp-md) when used as a tablet cutoff
+ *   - Existing 768px / 1024px usages are already aligned — do not touch.
+ *
+ * Backlog reference: Notion 341e6899-f10e-81dc-a047-f07c7492fc72
+ *   "CSS: Standardize Media Query Breakpoints Across All Components"
+ * ============================================================================
+ */
+
 /* ===== Skip-to-Main Link (a11y) ===== */
 .skip-to-main {
   position: absolute;
