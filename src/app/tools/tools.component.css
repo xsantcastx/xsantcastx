@@ -533,8 +533,8 @@ a.tool-card {
   }
 }
 
-/* Small phones (< 375px) */
-@media (max-width: 374px) {
+/* Small phones (< 480px — canonical --bp-sm tier) */
+@media (max-width: 479px) {
   .tools-page {
     padding-left: 1rem;
     padding-right: 1rem;
