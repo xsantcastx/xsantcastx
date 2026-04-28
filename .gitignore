@@ -104,9 +104,15 @@ runs/
 pipeline/.env
 pipeline/.env.local
 
+# Python bytecode caches (pipeline/* tooling)
+__pycache__/
+*.py[cod]
+*$py.class
+
 # stale agent-mode workspace artifacts (sandbox cannot unlink)
 *.tmp.restore
 *.bak
 .test_write_check
 .agent-handoff/
 .gitignore.new
+.gitignore.new2
