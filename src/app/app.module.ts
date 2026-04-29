@@ -80,6 +80,7 @@ import { ToolUsageCounterComponent } from './shared/tool-usage-counter/tool-usag
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { AffiliateCTAComponent } from './shared/affiliate/affiliate-cta.component';
+import { SponsorSlotComponent } from './shared/sponsor-slot/sponsor-slot.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { CronBuilderComponent } from './tools/cron-builder/cron-builder.component';
 import { ApiRequestBuilderComponent } from './tools/api-request-builder/api-request-builder.component';
@@ -247,6 +248,7 @@ import { McpComponent } from './mcp/mcp.component';
     MilestoneEffectComponent,
     EggDiscoveryComponent,
     AffiliateCTAComponent,
+    SponsorSlotComponent,
     CommandPaletteComponent,
     CronBuilderComponent,
     ApiRequestBuilderComponent,
