@@ -1,0 +1,198 @@
+/* ──────────────────────────────────────────────────────────────────────
+ * SponsorSlotComponent — Featured Partner direct-deal sponsor card.
+ *
+ * Visual baseline matches the existing AffiliateCTA + CarbonAd cards
+ * (dark glass, mint accent, soft border) so the slot feels native to
+ * the rest of the chrome and isn't perceived as an interstitial ad.
+ *
+ * The card uses --sponsor-accent (set inline from each sponsor's
+ * accentColor) for the CTA border/button so individual brands can
+ * pop without a per-sponsor stylesheet.
+ * ────────────────────────────────────────────────────────────────────── */
+
+:host {
+  display: block;
+}
+
+.sponsor-slot {
+  --sponsor-accent: #00ffcc; /* default fallback; overridden inline per-sponsor */
+  position: relative;
+  display: block;
+  margin: 0 auto 1.5rem;
+  max-width: 360px;
+  border-radius: 14px;
+  background: rgba(16, 22, 43, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid var(--sponsor-accent);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.sponsor-slot:hover {
+  border-color: rgba(0, 255, 204, 0.22);
+  box-shadow: 0 12px 40px -16px rgba(0, 0, 0, 0.7);
+}
+
+.sponsor-slot__inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 14px 12px;
+}
+
+/* Brand icon — squared chip to anchor the slot visually */
+.sponsor-slot__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--sponsor-accent);
+  flex-shrink: 0;
+}
+
+/* Body — three short lines, brand / headline / desc */
+.sponsor-slot__body {
+  min-width: 0; /* allow text to truncate */
+}
+
+.sponsor-slot__brand {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.55);
+}
+
+.sponsor-slot__headline {
+  margin: 2px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+  line-height: 1.35;
+}
+
+.sponsor-slot__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(214, 221, 235, 0.78);
+  /* Cap to two lines so a long description never breaks the layout */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* CTA button — borrows the brand accent for instant contextual fit */
+.sponsor-slot__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--sponsor-accent);
+  background: transparent;
+  color: var(--sponsor-accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.sponsor-slot__cta:hover,
+.sponsor-slot__cta:focus-visible {
+  background: var(--sponsor-accent);
+  color: #0a0f23;
+  transform: translateY(-1px);
+}
+
+.sponsor-slot__cta:focus-visible {
+  outline: 2px solid var(--sponsor-accent);
+  outline-offset: 2px;
+}
+
+/* Dismiss — small, kept reachable but visually quiet */
+.sponsor-slot__dismiss {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(214, 221, 235, 0.5);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sponsor-slot__dismiss:hover,
+.sponsor-slot__dismiss:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  outline: none;
+}
+
+.sponsor-slot__dismiss:focus-visible {
+  outline: 2px solid var(--sponsor-accent);
+  outline-offset: 2px;
+}
+
+/* "Sponsored" disclosure label — pinned to bottom-right per IAB guidance */
+.sponsor-slot__badge {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.42);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Reduced motion — drop the lift on hover */
+@media (prefers-reduced-motion: reduce) {
+  .sponsor-slot,
+  .sponsor-slot__cta {
+    transition: none;
+  }
+  .sponsor-slot__cta:hover {
+    transform: none;
+  }
+}
+
+/* Narrow / sidebar layouts — collapse to a stacked card */
+@media (max-width: 374px) {
+  .sponsor-slot__inner {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'icon body dismiss'
+      'cta cta cta';
+  }
+  .sponsor-slot__icon {
+    grid-area: icon;
+  }
+  .sponsor-slot__body {
+    grid-area: body;
+  }
+  .sponsor-slot__cta {
+    grid-area: cta;
+    justify-self: stretch;
+    justify-content: center;
+  }
+  .sponsor-slot__dismiss {
+    grid-area: dismiss;
+  }
+}
