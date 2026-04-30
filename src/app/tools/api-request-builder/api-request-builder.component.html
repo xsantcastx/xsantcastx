@@ -283,6 +283,14 @@
 
   <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'api-request-builder'"></app-newsletter-capture>
 
+  <!--
+    Featured Partner slot (tools-sidebar:ai). API-aligned audience (Postman /
+    Hoppscotch / Insomnia users) — natural fit for monitoring / observability /
+    devtools sponsors. Renders nothing until SPONSOR_INVENTORY has a matching
+    live entry. Tracked in Agent Backlog: Sponsored Tool Slots program (351e6899).
+  -->
+  <app-sponsor-slot placement="tools-sidebar:ai"></app-sponsor-slot>
+
   <app-affiliate-cta [category]="'Developer Tools'" [toolSlug]="'api-request-builder'"></app-affiliate-cta>
 
   <app-related-tools [currentToolId]="'api-request-builder'"></app-related-tools>
