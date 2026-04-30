@@ -1,0 +1,223 @@
+<div class="spe-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()" type="button" aria-label="Back to tools">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">SVG Tools</p>
+    <h1 class="tool-header__title">SVG Path Visualizer &amp; Editor</h1>
+    <p class="tool-header__subtitle">Paste, visualize, edit, and optimize SVG paths in your browser. Drag control points, see live measurements, and copy minified output — 100% client-side.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x" aria-label="Share SVG Path Editor on X">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li" aria-label="Share SVG Path Editor on LinkedIn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'svg-path-editor'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Presets -->
+  <div class="spe-presets" role="toolbar" aria-label="Path presets">
+    <span class="spe-presets__label">Presets:</span>
+    <button
+      *ngFor="let preset of presets"
+      type="button"
+      class="spe-preset-btn"
+      (click)="applyPreset(preset)">{{ preset.name }}</button>
+  </div>
+
+  <!-- Layout -->
+  <div class="spe-layout">
+
+    <!-- LEFT: Input + viewport -->
+    <section class="spe-col spe-col--main">
+
+      <label class="spe-label" for="spe-input">SVG Path Data (<code>d</code> attribute)</label>
+      <textarea
+        id="spe-input"
+        class="spe-textarea"
+        [(ngModel)]="pathInput"
+        (input)="parsePath()"
+        placeholder="M 10 10 L 100 100 ..."
+        spellcheck="false"
+        aria-describedby="spe-input-help"></textarea>
+      <p id="spe-input-help" class="spe-help">Edit directly, or drag control points in the canvas below. Errors highlight in red.</p>
+
+      <div *ngIf="pathError" class="spe-error" role="alert">
+        <strong>Parse error:</strong> {{ pathError }}
+      </div>
+
+      <!-- Viewport -->
+      <div class="spe-viewport-frame">
+        <div class="spe-viewport-toolbar">
+          <button type="button" class="spe-vt-btn" (click)="zoomOut()" aria-label="Zoom out">−</button>
+          <span class="spe-zoom" aria-live="polite">{{ getZoomPercent() }}%</span>
+          <button type="button" class="spe-vt-btn" (click)="zoomIn()" aria-label="Zoom in">+</button>
+          <button type="button" class="spe-vt-btn spe-vt-btn--text" (click)="resetView()">Reset View</button>
+          <button
+            type="button"
+            class="spe-vt-btn spe-vt-btn--toggle"
+            [class.spe-vt-btn--on]="showGrid"
+            [attr.aria-pressed]="showGrid"
+            (click)="toggleGrid()">Grid</button>
+          <button
+            type="button"
+            class="spe-vt-btn spe-vt-btn--toggle"
+            [class.spe-vt-btn--on]="showControlPoints"
+            [attr.aria-pressed]="showControlPoints"
+            (click)="toggleControlPoints()">Control points</button>
+        </div>
+
+        <svg
+          #svgViewport
+          class="spe-viewport"
+          [attr.viewBox]="viewBox"
+          xmlns="http://www.w3.org/2000/svg"
+          (mousedown)="onMouseDown($event)"
+          (mousemove)="onMouseMove($event)"
+          (mouseup)="onMouseUp($event)"
+          (mouseleave)="onMouseUp($event)"
+          (wheel)="onWheel($event)"
+          aria-label="SVG path viewport. Shift-drag or middle-click drag to pan. Scroll to zoom.">
+
+          <!-- Fine grid -->
+          <g *ngIf="showGrid" class="spe-grid spe-grid--fine">
+            <line *ngFor="let v of fineGridLines; trackBy: trackByIndex" [attr.x1]="v" y1="0" [attr.x2]="v" [attr.y2]="viewBoxSize"/>
+            <line *ngFor="let v of fineGridLines; trackBy: trackByIndex" x1="0" [attr.y1]="v" [attr.x2]="viewBoxSize" [attr.y2]="v"/>
+          </g>
+
+          <!-- Coarse grid -->
+          <g *ngIf="showGrid" class="spe-grid spe-grid--coarse">
+            <line *ngFor="let v of gridLines; trackBy: trackByIndex" [attr.x1]="v" y1="0" [attr.x2]="v" [attr.y2]="viewBoxSize"/>
+            <line *ngFor="let v of gridLines; trackBy: trackByIndex" x1="0" [attr.y1]="v" [attr.x2]="viewBoxSize" [attr.y2]="v"/>
+          </g>
+
+          <!-- Control lines -->
+          <g *ngIf="showControlPoints" class="spe-ctrl-lines">
+            <line
+              *ngFor="let line of getControlLineEndpoints(); trackBy: trackByIndex"
+              [attr.x1]="line.x1"
+              [attr.y1]="line.y1"
+              [attr.x2]="line.x2"
+              [attr.y2]="line.y2"
+              [attr.stroke-width]="controlLineWidth"/>
+          </g>
+
+          <!-- Path -->
+          <path
+            #pathElement
+            class="spe-path"
+            [attr.d]="pathInput"
+            [attr.stroke-width]="pathStrokeWidth"
+            fill="none"/>
+
+          <!-- Control points -->
+          <g *ngIf="showControlPoints" class="spe-points">
+            <circle
+              *ngFor="let pt of controlPoints; trackBy: trackByIndex"
+              [attr.cx]="pt.x"
+              [attr.cy]="pt.y"
+              [attr.r]="controlPointSize"
+              [class.spe-point--endpoint]="pt.kind === 'endpoint'"
+              [class.spe-point--control]="pt.kind === 'control'"
+              (mousedown)="onPointMouseDown($event, pt)"/>
+          </g>
+
+        </svg>
+      </div>
+
+      <!-- Info -->
+      <dl class="spe-info">
+        <div><dt>Commands</dt><dd>{{ commandCount }}</dd></div>
+        <div><dt>Length</dt><dd>{{ pathLength }}</dd></div>
+        <div><dt>BBox</dt><dd>{{ boundingBox.width }} × {{ boundingBox.height }}</dd></div>
+        <div><dt>Origin</dt><dd>({{ boundingBox.x }}, {{ boundingBox.y }})</dd></div>
+      </dl>
+
+    </section>
+
+    <!-- RIGHT: Commands + minify -->
+    <aside class="spe-col spe-col--side">
+
+      <!-- Minified output -->
+      <section class="spe-panel">
+        <header class="spe-panel__header">
+          <h2 class="spe-panel__title">Minified output</h2>
+          <button type="button" class="spe-copy-btn" (click)="copyMinified()" [disabled]="!minifiedPath">
+            <span *ngIf="!minifiedCopied">Copy</span>
+            <span *ngIf="minifiedCopied">Copied!</span>
+          </button>
+        </header>
+        <div class="spe-panel__body">
+          <label class="spe-precision">
+            <span>Decimals:</span>
+            <input
+              type="range"
+              min="0" max="6" step="1"
+              [value]="decimalPrecision"
+              (input)="onPrecisionChange($event)"
+              [attr.aria-label]="'Decimal precision: ' + decimalPrecision"/>
+            <output>{{ decimalPrecision }}</output>
+          </label>
+          <pre class="spe-minified" aria-label="Minified path data"><code>{{ minifiedPath || '—' }}</code></pre>
+          <p class="spe-help" *ngIf="minifiedPath">
+            {{ pathInput.length }} chars → {{ minifiedPath.length }} chars
+            <span *ngIf="pathInput.length > minifiedPath.length"> (saved {{ pathInput.length - minifiedPath.length }})</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- Raw copy -->
+      <section class="spe-panel">
+        <header class="spe-panel__header">
+          <h2 class="spe-panel__title">Raw path</h2>
+          <button type="button" class="spe-copy-btn" (click)="copyPath()" [disabled]="!pathInput">
+            <span *ngIf="!pathCopied">Copy</span>
+            <span *ngIf="pathCopied">Copied!</span>
+          </button>
+        </header>
+      </section>
+
+      <!-- Commands -->
+      <section class="spe-panel">
+        <header class="spe-panel__header">
+          <h2 class="spe-panel__title">Commands ({{ commandCount }})</h2>
+        </header>
+        <div class="spe-panel__body spe-commands">
+          <div *ngIf="parsedCommands.length === 0" class="spe-help">No commands parsed.</div>
+          <div
+            *ngFor="let cmd of parsedCommands; let i = index; trackBy: trackByIndex"
+            class="spe-cmd">
+            <span class="spe-cmd__type" [attr.title]="getCommandLabel(cmd.type)">{{ cmd.type }}</span>
+            <span class="spe-cmd__label">{{ getCommandLabel(cmd.type) }}</span>
+            <div class="spe-cmd__params">
+              <input
+                *ngFor="let p of cmd.params; let pi = index; trackBy: trackByIndex"
+                type="number"
+                step="any"
+                class="spe-cmd__input"
+                [value]="p"
+                (change)="updateCommandParam(i, pi, $event)"
+                [attr.aria-label]="'Command ' + (i + 1) + ' param ' + (pi + 1)"/>
+            </div>
+            <button
+              type="button"
+              class="spe-cmd__remove"
+              (click)="removeCommand(i)"
+              [disabled]="parsedCommands.length <= 1"
+              [attr.aria-label]="'Remove command ' + (i + 1)">×</button>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</div>

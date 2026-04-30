@@ -185,6 +185,8 @@ import { DockerRefComponent } from './tools/docker-ref/docker-ref.component';
 import { MediaQueryComponent } from './tools/media-query/media-query.component';
 import { ProgressBarComponent } from './tools/progress-bar/progress-bar.component';
 import { ClipPathComponent } from './tools/clip-path/clip-path.component';
+import { CharMapComponent } from './tools/char-map/char-map.component';
+import { SvgPathEditorComponent } from './tools/svg-path-editor/svg-path-editor.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -353,6 +355,8 @@ import { McpComponent } from './mcp/mcp.component';
     MediaQueryComponent,
     ProgressBarComponent,
     ClipPathComponent,
+    CharMapComponent,
+    SvgPathEditorComponent,
     GamesComponent,
     McpComponent
   ],
