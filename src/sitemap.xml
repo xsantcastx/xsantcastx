@@ -356,4 +356,6 @@
   <url><loc>https://xsantcastx.com/games</loc><lastmod>2026-04-26</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://xsantcastx.com/mcp</loc><lastmod>2026-04-26</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://xsantcastx.com/guestbook</loc><lastmod>2026-04-27</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://xsantcastx.com/tools/char-map</loc><lastmod>2026-04-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://xsantcastx.com/tools/svg-path-editor</loc><lastmod>2026-04-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>
