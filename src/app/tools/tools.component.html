@@ -34,6 +34,14 @@
     </div>
   </div>
 
+  <!--
+    Featured Partner slot (tools-index:hero).
+    Renders nothing when SPONSOR_INVENTORY has no live deal AND `?sponsor_house=1`
+    is NOT set, so this is a no-op in production until a sponsor lands.
+    Tracked in Agent Backlog: Sponsored Tool Slots program (351e6899).
+  -->
+  <app-sponsor-slot placement="tools-index:hero"></app-sponsor-slot>
+
   <!-- Category filter buttons -->
   <div class="tools-categories">
     @for (cat of categories; track cat) {
