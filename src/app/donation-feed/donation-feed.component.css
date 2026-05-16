@@ -31,3 +31,30 @@
   color: #00ffcc;
   text-align: right;
 }
+
+@media (max-width: 768px) {
+  .donation-feed-container {
+    padding: 1.25rem 1rem;
+    margin-top: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+  }
+  .feed {
+    max-height: 320px;
+  }
+  .feed-item {
+    padding: 0.85rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .donation-feed-container {
+    padding: 1rem 0.85rem;
+  }
+  .feed {
+    max-height: 260px;
+  }
+  .timestamp {
+    font-size: 0.72rem;
+  }
+}

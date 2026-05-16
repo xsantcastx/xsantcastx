@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 type InputMode = 'text' | 'file';
@@ -54,7 +55,14 @@ export class HashGeneratorComponent implements OnDestroy {
 
   readonly algorithms = ['MD5', 'SHA-1', 'SHA-256', 'SHA-384', 'SHA-512'];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private translationService: TranslationService
+  ) {}
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   ngOnDestroy() {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);

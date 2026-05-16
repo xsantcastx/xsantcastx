@@ -80,3 +80,45 @@
   padding: 4px 14px 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
+
+@media (max-width: 768px) {
+  .carbon-ad-wrap {
+    max-width: 100%;
+    margin: 0 auto 1rem;
+    border-radius: 12px;
+  }
+  .carbon-ad-label {
+    padding: 5px 10px 3px;
+    font-size: 8px;
+  }
+  :host ::ng-deep #carbonads .carbon-wrap {
+    gap: 10px;
+    padding: 10px 12px 12px;
+  }
+  :host ::ng-deep #carbonads .carbon-img img {
+    width: 110px;
+  }
+  :host ::ng-deep #carbonads .carbon-text {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  :host ::ng-deep #carbonads .carbon-poweredby {
+    padding: 4px 12px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  :host ::ng-deep #carbonads .carbon-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  :host ::ng-deep #carbonads .carbon-img img {
+    width: 100%;
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  :host ::ng-deep #carbonads .carbon-text {
+    text-align: center;
+  }
+}

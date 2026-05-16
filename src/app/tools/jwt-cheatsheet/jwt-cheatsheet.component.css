@@ -31,3 +31,28 @@
 .jcs-card__desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0 0 0.4rem; }
 .jcs-card__example { font-family: 'Fira Code', monospace; font-size: 0.78rem; color: rgba(0,255,204,0.7); display: block; }
 .jcs-card__meta { font-size: 0.72rem; color: var(--text-muted); font-family: 'Fira Code', monospace; }
+
+@media (max-width: 768px) {
+  .jcs-page { padding: calc(var(--header-offset) + 1.5rem) var(--page-gutter) 3rem; }
+  .back-link { margin-bottom: 1.25rem; font-size: 0.78rem; }
+  .tool-header { margin-bottom: 1.5rem; }
+  .jcs-toolbar { gap: 0.65rem; margin-bottom: 1rem; }
+  .jcs-search { flex-basis: 100%; min-width: 0; }
+  .jcs-tabs { width: 100%; flex-wrap: wrap; }
+  .jcs-tab { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+  .jcs-card { padding: 0.85rem 1rem; }
+  .jcs-card__name { font-size: 0.88rem; }
+  .jcs-card__desc { font-size: 0.82rem; }
+  .jcs-card__example { font-size: 0.74rem; word-break: break-all; }
+}
+
+@media (max-width: 480px) {
+  .jcs-page { padding: calc(var(--header-offset) + 1rem) 0.85rem 2.5rem; }
+  .jcs-search { font-size: 0.82rem; padding: 0.5rem 0.75rem; }
+  .jcs-tab { padding: 0.35rem 0.65rem; font-size: 0.72rem; }
+  .jcs-card { padding: 0.75rem 0.85rem; }
+  .jcs-card__head { gap: 0.4rem; }
+  .jcs-card__name { font-size: 0.82rem; }
+  .jcs-card__desc { font-size: 0.78rem; line-height: 1.45; }
+  .jcs-card__example { font-size: 0.7rem; }
+}

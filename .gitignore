@@ -103,3 +103,10 @@ runs/
 # Pipeline local env overrides
 pipeline/.env
 pipeline/.env.local
+
+# stale agent-mode workspace artifacts (sandbox cannot unlink)
+*.tmp.restore
+*.bak
+.test_write_check
+.agent-handoff/
+.gitignore.new

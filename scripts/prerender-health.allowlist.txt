@@ -1,0 +1,22 @@
+# Prerender Health Allowlist
+#
+# Used by scripts/check-prerender-health.js to suppress known-OK
+# warnings from the SsrErrorHandler / stub-render detector. Anything
+# NOT listed here is treated as a regression and exits non-zero.
+#
+# Format (one rule per line):
+#
+#   <route> <kind>            — allow swallowed errors of <kind> on <route>
+#   stub:<route>              — allow this route to render below threshold
+#
+# Lines starting with `#` and blank lines are ignored.
+#
+# Keep this list short. If a route shows up here, file a backlog
+# ticket against the underlying cause first — the goal is for this
+# file to remain empty long-term.
+
+# `/` is a meta-refresh redirect to /home, intentionally tiny.
+stub:/
+
+# `/404` is a single-line redirect/template; CLI emits it ~100B.
+stub:/404
