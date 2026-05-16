@@ -1,9 +1,10 @@
 import { Component, OnInit, OnDestroy, inject, ApplicationRef } from '@angular/core';
-import { RealtimeDBserviceService } from '../realtime-dbservice.service'; 
+import { RealtimeDBserviceService } from '../realtime-dbservice.service';
 import { Auth, user } from '@angular/fire/auth';
 import { Subscription } from 'rxjs';
 import { runInInjectionContext } from '@angular/core';
 import { Title } from '@angular/platform-browser';
+import { TranslationService } from '../translation.service';
 
 @Component({
   selector: 'app-guestbook',
@@ -24,13 +25,18 @@ export class GuestbookComponent implements OnInit, OnDestroy {
 
   private auth = inject(Auth);
   private appRef = inject(ApplicationRef);
+  private translationService = inject(TranslationService);
   private userSubscription?: Subscription;
 
   constructor(
     private titleService: Title,
     private realtimeDb: RealtimeDBserviceService
   ) {
-    this.titleService.setTitle('💬 Leave Your Glitchy Mark | xsantcastx');
+    this.titleService.setTitle('💬 Sign the cosmic wall | xsantcastx');
+  }
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
   }
 
   ngOnInit(): void {

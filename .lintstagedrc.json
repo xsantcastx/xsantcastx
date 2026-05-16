@@ -1,0 +1,8 @@
+{
+  "*.ts": [
+    "node scripts/precommit-ts.js"
+  ],
+  "*.json": [
+    "node scripts/precommit-json.js"
+  ]
+}

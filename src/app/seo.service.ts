@@ -7,7 +7,8 @@ import { filter } from 'rxjs/operators';
 export const SITE_URL = 'https://xsantcastx.com';
 
 const SITE_NAME   = 'xsantcastx';
-const DEFAULT_IMG = `${SITE_URL}/assets/og/og-default.jpg`;
+const DEFAULT_IMG = `${SITE_URL}/assets/og/og-cosmic.svg`;
+const DEFAULT_IMG_FALLBACK = `${SITE_URL}/assets/og/og-default.jpg`;
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {
@@ -41,18 +42,23 @@ export class SeoService {
     if (keywords) this.meta.updateTag({ name: 'keywords', content: keywords });
 
     // ── Open Graph ────────────────────────────────────────────────────────
-    this.meta.updateTag({ property: 'og:title',       content: pageTitle });
-    this.meta.updateTag({ property: 'og:description', content: desc });
-    this.meta.updateTag({ property: 'og:url',         content: canonical });
-    this.meta.updateTag({ property: 'og:image',       content: ogImage });
-    this.meta.updateTag({ property: 'og:site_name',   content: SITE_NAME });
-    this.meta.updateTag({ property: 'og:type',        content: 'website' });
+    this.meta.updateTag({ property: 'og:title',         content: pageTitle });
+    this.meta.updateTag({ property: 'og:description',   content: desc });
+    this.meta.updateTag({ property: 'og:url',           content: canonical });
+    this.meta.updateTag({ property: 'og:image',         content: ogImage });
+    this.meta.updateTag({ property: 'og:image:width',   content: '1200' });
+    this.meta.updateTag({ property: 'og:image:height',  content: '630' });
+    this.meta.updateTag({ property: 'og:image:type',    content: ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg' });
+    this.meta.updateTag({ property: 'og:image:alt',     content: 'xsantcastx — a cosmic constellation of free browser tools' });
+    this.meta.updateTag({ property: 'og:site_name',     content: SITE_NAME });
+    this.meta.updateTag({ property: 'og:type',          content: 'website' });
 
     // ── Twitter ───────────────────────────────────────────────────────────
     this.meta.updateTag({ name: 'twitter:card',        content: 'summary_large_image' });
     this.meta.updateTag({ name: 'twitter:title',       content: pageTitle });
     this.meta.updateTag({ name: 'twitter:description', content: desc });
     this.meta.updateTag({ name: 'twitter:image',       content: ogImage });
+    this.meta.updateTag({ name: 'twitter:image:alt',   content: 'xsantcastx — a cosmic constellation of free browser tools' });
 
     // ── Canonical ─────────────────────────────────────────────────────────
     let link = this.doc.querySelector<HTMLLinkElement>('link[rel="canonical"]');

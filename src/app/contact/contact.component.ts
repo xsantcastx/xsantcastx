@@ -53,8 +53,12 @@ export class ContactComponent {
         this.analyticsService.trackContactSubmit('form', this.projectType);
       },
       error: (error) => {
+        // Raw `error.message` can leak backend internals like "Brevo API key
+        // not configured in environment" — never show that to users. The cosmic
+        // i18n message tells them the transmission failed and offers the
+        // fallback email so they can still reach us.
         console.error('Contact form error:', error);
-        this.submitMessage = error.message || this.translate('contact.form.error');
+        this.submitMessage = this.translate('contact.form.error');
         this.isSubmitting = false;
       }
     });
