@@ -2,8 +2,13 @@
   <!-- Donate Section -->
   <div class="donate-section">
     <div class="donate-content">
+      <p class="footer-eyebrow">
+        <span class="footer-eyebrow-pulse"></span>
+        {{ translate('cosmic.eyebrow.fuelMission') }}
+      </p>
       <h3>{{ translate('footer.donate') }}</h3>
       <p>{{ translate('footer.donate.desc') }}</p>
+      <p class="footer-tagline">{{ translate('cosmic.tagline.fuelMission') }}</p>
       <div class="donate-options">
         <button class="donate-btn crypto" (click)="openCryptoDonate()">
           <i class="fab fa-bitcoin"></i>
@@ -223,8 +228,8 @@
         <!-- Stripe Payment Section -->
         <div class="payment-section">
           @if (!isStripeReady && !stripeProcessing) {
-            <div class="loading-message error">
-              ⚠️ Stripe is not configured. Please contact the site administrator.
+            <div class="loading-message">
+              {{ translate('footer.stripe.notReady') }}
             </div>
           }
           @if (isStripeReady && !stripeProcessing) {
