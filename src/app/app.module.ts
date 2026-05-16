@@ -400,9 +400,20 @@ import { McpComponent } from './mcp/mcp.component';
     ] as any[] : []),
     provideFirestore(() => {
       const app = getApp();
-      return initializeFirestore(app, {
-        experimentalForceLongPolling: true
-      });
+      // Calling initializeFirestore() twice (once on the SSR pass, once on
+      // client hydration) throws "Firestore has already been started" and
+      // leaves us with two different SDK instances — the source of the
+      // "Type does not match the expected instance. Did you pass a reference
+      // from a different Firestore SDK?" red wall in the console.
+      // Fall back to the already-initialized instance on subsequent calls so
+      // every consumer shares one Firestore reference.
+      try {
+        return initializeFirestore(app, {
+          experimentalForceLongPolling: true
+        });
+      } catch (e) {
+        return getFirestore(app);
+      }
     }),
     provideDatabase(() => getDatabase()),
     provideAuth(() => getAuth()),

@@ -163,33 +163,33 @@ export class TranslationService {
     'contact.form.message.placeholder': { en: 'Tell us about your project, goals, and any specific requirements...', es: 'Cuentanos sobre tu proyecto, objetivos y requerimientos.' },
     'contact.form.submit': { en: 'Send Project Brief', es: 'Enviar Propuesta' },
     'contact.form.sending': { en: 'Sending...', es: 'Enviando...' },
-    'contact.form.success': { en: 'Thank you! Your project brief has been sent. We will reply within 24 hours.', es: 'Gracias! Tu propuesta fue enviada. Responderemos en menos de 24 horas.' },
-    'contact.form.error': { en: 'Sorry, there was an error sending your message. Please try again or contact us directly.', es: 'Lo sentimos, hubo un error al enviar tu mensaje. Intenta de nuevo o contactanos directamente.' },
+    'contact.form.success': { en: 'Signal received. Your transmission reached us — we will reply within 24 hours.', es: 'Senal recibida. Tu transmision llego — responderemos en menos de 24 horas.' },
+    'contact.form.error': { en: 'The transmission scattered before it reached us. Try again — or send a beam directly to xsantcastx@xsantcastx.com.', es: 'La transmision se disperso antes de llegar. Intenta de nuevo — o envia un mensaje directo a xsantcastx@xsantcastx.com.' },
 
     // Donation Form
-    'donation.form.title': { en: 'Support with KASPA', es: 'Apoya con KASPA' },
-    'donation.form.subtitle': { en: 'Scan, send a note, and keep the builds flowing.', es: 'Escanea, deja un mensaje y ayuda a que los proyectos sigan.' },
-    'donation.form.walletLabel': { en: 'Kaspa wallet address', es: 'Direccion de billetera Kaspa' },
+    'donation.form.title': { en: 'Fuel the mission with KASPA', es: 'Alimenta la mision con KASPA' },
+    'donation.form.subtitle': { en: 'Scan the seal, whisper a name, keep the stars burning.', es: 'Escanea el sello, susurra un nombre y mantiene las estrellas ardiendo.' },
+    'donation.form.walletLabel': { en: 'KASPA wallet address', es: 'Direccion de billetera KASPA' },
     'donation.form.copy': { en: 'Copy', es: 'Copiar' },
-    'donation.form.copySuccess': { en: 'Wallet copied to clipboard.', es: 'Direccion copiada al portapapeles.' },
-    'donation.form.copyError': { en: 'Unable to copy. Please copy it manually.', es: 'No se pudo copiar. Copia la direccion manualmente.' },
-    'donation.form.qrAlt': { en: 'Kaspa wallet QR code', es: 'Codigo QR de la billetera Kaspa' },
-    'donation.form.messageLabel': { en: 'Leave a message', es: 'Deja un mensaje' },
-    'donation.form.messagePlaceholder': { en: 'Share a shout-out, request, or idea you would like me to build next...', es: 'Comparte un saludo, una peticion o una idea que te gustaria que construyera.' },
-    'donation.form.messageRequired': { en: 'Please add a short message before sending.', es: 'Agrega un mensaje corto antes de enviarlo.' },
-    'donation.form.submit': { en: 'Send message', es: 'Enviar mensaje' },
-    'donation.form.success': { en: 'Thank you for the support!', es: 'Gracias por el apoyo!' },
-    'donation.form.error': { en: 'Could not send the message. Try again in a moment.', es: 'No se pudo enviar el mensaje. Intentalo de nuevo en un momento.' },
+    'donation.form.copySuccess': { en: 'Address copied into your hand.', es: 'Direccion copiada a tu mano.' },
+    'donation.form.copyError': { en: 'Could not copy the signal. Take it manually.', es: 'No se pudo copiar la senal. Tomala manualmente.' },
+    'donation.form.qrAlt': { en: 'KASPA wallet QR sigil', es: 'Sigilo QR de la billetera KASPA' },
+    'donation.form.messageLabel': { en: 'Leave a whisper', es: 'Deja un susurro' },
+    'donation.form.messagePlaceholder': { en: 'A shout-out, a request, an idea worth building next...', es: 'Un saludo, una peticion, una idea que valga la pena construir...' },
+    'donation.form.messageRequired': { en: 'Whisper something into the void first.', es: 'Susurra algo al vacio primero.' },
+    'donation.form.submit': { en: 'Send the signal →', es: 'Enviar la senal →' },
+    'donation.form.success': { en: 'The cosmos heard you. Thank you.', es: 'El cosmos te escucho. Gracias.' },
+    'donation.form.error': { en: 'The signal scattered. Try again in a moment.', es: 'La senal se disperso. Intentalo de nuevo.' },
 
     // Footer
-    'footer.donate': { en: 'Support My Work', es: 'Apoya Mi Trabajo' },
-    'footer.donate.desc': { en: 'Help me continue creating amazing projects', es: 'Ayudame a seguir creando proyectos increibles' },
-    'footer.paypal.title': { en: 'PayPal Donation', es: 'Donacion PayPal' },
-    'footer.paypal.desc': { en: 'Support my development work with a secure PayPal donation', es: 'Apoya mi trabajo de desarrollo con una donacion segura por PayPal' },
-    'footer.paypal.note': { en: 'Your support helps me create better projects!', es: 'Tu apoyo me ayuda a crear mejores proyectos!' },
-    'footer.stripe.title': { en: 'Card Donation', es: 'Donacion con Tarjeta' },
-    'footer.stripe.desc': { en: 'Support my work with a secure card payment', es: 'Apoya mi trabajo con un pago seguro con tarjeta' },
-    'footer.stripe.note': { en: 'Powered by Stripe for secure transactions', es: 'Impulsado por Stripe para transacciones seguras' },
+    'footer.donate': { en: 'Fuel the mission', es: 'Alimenta la mision' },
+    'footer.donate.desc': { en: 'Every coin keeps another star alive in this universe.', es: 'Cada moneda mantiene viva una estrella mas en este universo.' },
+    'footer.paypal.title': { en: 'PayPal portal', es: 'Portal PayPal' },
+    'footer.paypal.desc': { en: 'Send fuel through PayPal — a secure, instant signal.', es: 'Envia combustible por PayPal — senal segura e instantanea.' },
+    'footer.paypal.note': { en: 'Every drop of fuel keeps a new tool shipping.', es: 'Cada gota de combustible mantiene una herramienta nueva en orbita.' },
+    'footer.stripe.title': { en: 'Card portal', es: 'Portal de Tarjeta' },
+    'footer.stripe.desc': { en: 'Send fuel by card — a secure, instant signal.', es: 'Envia combustible con tarjeta — senal segura e instantanea.' },
+    'footer.stripe.note': { en: 'Encrypted by Stripe — your card never crosses my orbit.', es: 'Cifrado por Stripe — tu tarjeta nunca cruza mi orbita.' },
     'footer.donation': { en: 'Donation', es: 'Donacion' },
     'footer.amount': { en: 'Amount', es: 'Cantidad' },
     'footer.custom.amount': { en: 'Custom Amount', es: 'Cantidad Personalizada' },
@@ -363,14 +363,51 @@ export class TranslationService {
     'tools.svgToCode.page.subtitle': { en: 'Convert SVG files into production-ready React, Vue 3, or Angular components with configurable props, accessibility attributes, and SVG optimization.', es: 'Convierte archivos SVG en componentes listos para producción de React, Vue 3 o Angular con props configurables, atributos de accesibilidad y optimización de SVG.' },
 
     // Cookie Banner / GDPR Consent
-    'cookies.banner.title': { en: 'Cookie Preferences', es: 'Preferencias de Cookies' },
-    'cookies.banner.description': { en: 'We use analytics cookies to improve your experience and understand how our site is used.', es: 'Usamos cookies de analytics para mejorar tu experiencia y entender como se usa nuestro sitio.' },
-    'cookies.banner.details': { en: 'These cookies help us analyze traffic and optimize performance. No personal data is sold or shared.', es: 'Estas cookies nos ayudan a analizar el trafico y optimizar el rendimiento. No vendemos ni compartimos datos personales.' },
+    'cookies.banner.title': { en: 'Cookie preferences', es: 'Preferencias de cookies' },
+    'cookies.banner.description': { en: 'Tiny analytics breadcrumbs help us see which stars get visited most.', es: 'Pequenas migas de analytics nos ayudan a ver que estrellas se visitan mas.' },
+    'cookies.banner.details': { en: 'No personal data is sold or shared — we just count footsteps in the cosmos.', es: 'No se vende ni se comparte ningun dato personal — solo contamos pisadas en el cosmos.' },
     'cookies.accept': { en: 'Accept Analytics', es: 'Aceptar Analytics' },
     'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },
     'cookies.banner.aria': { en: 'Cookie consent banner', es: 'Banner de consentimiento de cookies' },
     'cookies.accept.aria': { en: 'Accept analytics cookies', es: 'Aceptar cookies de analytics' },
-    'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' }
+    'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' },
+
+    // ─── Cosmic eyebrows + taglines ────────────────────────────────────────
+    'cosmic.eyebrow.latestTools':         { en: 'Latest Tools',           es: 'Ultimas herramientas' },
+    'cosmic.eyebrow.whatsNew':            { en: "What's New",             es: 'Novedades' },
+    'cosmic.eyebrow.openChannel':         { en: 'Open Channel',           es: 'Canal abierto' },
+    'cosmic.eyebrow.builtShipped':        { en: 'Built & Shipped',        es: 'Construido y enviado' },
+    'cosmic.eyebrow.skillConstellation':  { en: 'Skill Constellation',    es: 'Constelacion de habilidades' },
+    'cosmic.eyebrow.visitorConstellation':{ en: 'Visitor Constellation',  es: 'Constelacion de visitantes' },
+    'cosmic.eyebrow.fuelMission':         { en: 'Fuel the Mission',       es: 'Alimenta la mision' },
+
+    'cosmic.tagline.latestTools':         { en: 'new stars born this week in the xsantcastx universe',                  es: 'nuevas estrellas nacidas esta semana en el universo xsantcastx' },
+    'cosmic.tagline.whatsNew':            { en: 'tracking every star added to the universe',                            es: 'siguiendo cada estrella anadida al universo' },
+    'cosmic.tagline.openChannel':         { en: "a signal flare into the universe — drop one and I'll catch it",        es: 'una bengala al universo — lanza una y la atrapo' },
+    'cosmic.tagline.builtShipped':        { en: 'galaxies of work — each one a real product orbiting a real audience',  es: 'galaxias de trabajo — cada una un producto real orbitando una audiencia real' },
+    'cosmic.tagline.skillConstellation':  { en: 'a constellation of crafts I orbit through every project',              es: 'una constelacion de oficios que orbito en cada proyecto' },
+    'cosmic.tagline.visitorConstellation':{ en: 'every name here is a star that passed through',                        es: 'cada nombre aqui es una estrella que paso por este lugar' },
+    'cosmic.tagline.fuelMission':         { en: 'every coin keeps another star alive in the universe',                  es: 'cada moneda mantiene viva otra estrella en el universo' },
+    'cosmic.tagline.chooseGalaxy':        { en: 'Choose a galaxy — each is a constellation of free tools',              es: 'Elige una galaxia — cada una es una constelacion de herramientas gratis' },
+
+    // ─── Guestbook cosmic copy ─────────────────────────────────────────────
+    'cosmic.guestbook.title':       { en: 'Sign the cosmic wall',          es: 'Firma el muro cosmico' },
+    'cosmic.guestbook.loading':     { en: 'Tuning the signal...',          es: 'Sintonizando la senal...' },
+    'cosmic.guestbook.loadingMore': { en: 'Pulling more echoes...',        es: 'Tirando mas ecos...' },
+    'cosmic.guestbook.loadMore':    { en: '✦ Reveal older messages',       es: '✦ Revelar mensajes antiguos' },
+    'cosmic.guestbook.nickname':    { en: 'Your call sign',                es: 'Tu nombre clave' },
+    'cosmic.guestbook.message':     { en: 'Drop a message into the void...', es: 'Lanza un mensaje al vacio...' },
+    'cosmic.guestbook.submit':      { en: 'Send into the void →',          es: 'Enviar al vacio →' },
+
+    // ─── Cosmic anchor planet ──────────────────────────────────────────────
+    'cosmic.anchor.whisper':        { en: 'somewhere between the tools and the void — a world still spinning.', es: 'en algun lugar entre las herramientas y el vacio — un mundo que sigue girando.' },
+
+    // ─── Payment fallback copy ─────────────────────────────────────────────
+    'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
+
+    // ─── Trust microcopy ───────────────────────────────────────────────────
+    'contact.form.trust':           { en: '🛡 Sent only to xsantcastx — we reply within 24 hours.',     es: '🛡 Enviado solo a xsantcastx — respondemos en menos de 24 horas.' },
+    'newsletter.trust':             { en: 'No spam. No account needed. Unsubscribe anytime.',          es: 'Sin spam. Sin cuenta. Date de baja cuando quieras.' }
   };
 
   constructor() {

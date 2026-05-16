@@ -64,8 +64,16 @@ export class VisitCounterService {
           tier: hit.tier,
         });
       }
-    } catch (err) {
-      console.error('[VisitCounter] Error:', err);
+    } catch (err: any) {
+      // Permission-denied means firestore.rules haven't been deployed yet
+      // (common in dev). That's expected and shouldn't paint the console red.
+      // Any other error is genuinely unexpected and worth surfacing as a warn.
+      const code = err?.code || err?.message || '';
+      if (typeof code === 'string' && code.indexOf('permission-denied') >= 0) {
+        // Silent degrade — counter just doesn't increment this session.
+        return;
+      }
+      console.warn('[VisitCounter] degraded:', err);
     }
   }
 }

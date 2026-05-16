@@ -46,10 +46,14 @@
           @for (card of heroCarouselCards; track trackHeroCard($index, card)) {
             <div
               class="hc-card"
+              [attr.data-category]="card.tool.category"
+              [attr.data-tags]="card.tool.tags.join(',')"
               [attr.style]="'--ci: ' + card.ci"
               >
               <div class="hc-card__top">
-                <span class="hc-card__icon">{{ card.tool.icon }}</span>
+                <span class="hc-card__icon-wrap" aria-hidden="true">
+                  <span class="hc-card__icon">{{ card.tool.icon }}</span>
+                </span>
                 <span class="hc-card__cat">{{ card.tool.category }}</span>
               </div>
               <h3 class="hc-card__name">{{ card.tool.name }}</h3>
@@ -84,7 +88,7 @@
     <div class="hp-stats__inner">
       <div class="hp-stat">
         <span class="hp-stat__icon">⬡</span>
-        <span class="hp-stat__num">{{ tools.length }}</span>
+        <span class="hp-stat__num" [attr.data-counter]="tools.length">{{ tools.length }}</span>
         <span class="hp-stat__label">Free Tools</span>
       </div>
       <div class="hp-stats__divider"></div>
@@ -117,8 +121,12 @@
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
         <div class="hp-tools__hd-text">
-          <p class="hp-section-eyebrow">Latest Tools</p>
+          <p class="hp-section-eyebrow">
+            <span class="hp-eyebrow-pulse"></span>
+            {{ translate('cosmic.eyebrow.latestTools') }}
+          </p>
           <h2 class="hp-section-title">Fresh off the forge</h2>
+          <p class="hp-section-tagline">{{ translate('cosmic.tagline.latestTools') }}</p>
         </div>
         <a routerLink="/tools" class="hp-tools__view-all">
           Browse all {{ tools.length }} tools &rarr;
@@ -128,10 +136,12 @@
       <div class="hp-tools__grid">
         @for (tool of latestTools; track trackToolById($index, tool)) {
           <a
-            class="hp-tool-card glass-card"
+            class="hp-tool-card"
+            [attr.data-category]="tool.category"
+            [attr.data-tags]="tool.tags.join(',')"
             [routerLink]="tool.route"
             >
-            <div class="hp-tool-card__icon-wrap">
+            <div class="hp-tool-card__icon-wrap" aria-hidden="true">
               <span class="hp-tool-card__icon">{{ tool.icon }}</span>
             </div>
             <div class="hp-tool-card__body">
@@ -217,6 +227,27 @@
 
 
   <!-- ═══════════════════════════════════════════
+       COSMIC ANCHOR — a small rotating planet
+       between sections as a moment of breath
+       ═══════════════════════════════════════════ -->
+  <section class="hp-anchor" aria-hidden="true">
+    <div class="hp-anchor__inner">
+      <div class="cosmic-planet">
+        <div class="cosmic-planet__atmosphere"></div>
+        <div class="cosmic-planet__sphere">
+          <div class="cosmic-planet__surface"></div>
+          <div class="cosmic-planet__clouds"></div>
+          <div class="cosmic-planet__terminator"></div>
+          <div class="cosmic-planet__highlight"></div>
+        </div>
+        <div class="cosmic-planet__ring"></div>
+      </div>
+      <p class="hp-anchor__whisper">{{ translate('cosmic.anchor.whisper') }}</p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
   SECTION 5 — WATCH LIVE WORK
   ═══════════════════════════════════════════ -->
   <section id="about" class="hp-live">
@@ -294,8 +325,12 @@
   ═══════════════════════════════════════════ -->
   <section class="hp-changelog">
     <div class="hp-changelog__inner">
-      <p class="hp-section-eyebrow">What's New</p>
+      <p class="hp-section-eyebrow">
+        <span class="hp-eyebrow-pulse"></span>
+        {{ translate('cosmic.eyebrow.whatsNew') }}
+      </p>
       <h2 class="hp-section-title">Latest Updates</h2>
+      <p class="hp-section-tagline">{{ translate('cosmic.tagline.whatsNew') }}</p>
 
       <!-- Loading state -->
       @if (changelogLoading) {
@@ -357,7 +392,7 @@
     <div class="hp-footer-cta__inner">
       <div class="hp-footer-cta__text">
         <h2 class="hp-footer-cta__title">More tools shipping weekly.</h2>
-        <p class="hp-footer-cta__sub">No spam. No account needed. Just useful things.</p>
+        <p class="hp-footer-cta__sub">{{ translate('newsletter.trust') }}</p>
       </div>
 
       @if (subscribeStatus !== 'success') {
@@ -384,13 +419,13 @@
 
       @if (subscribeStatus === 'success') {
         <p class="hp-sub-success">
-          <span class="hp-sub-success__icon">✓</span>
-          You're on the list. We'll ping you when something new ships.
+          <span class="hp-sub-success__icon">✦</span>
+          Signal received. The next time a star is born in this universe, we'll send a beam your way.
         </p>
       }
       @if (subscribeStatus === 'error') {
         <p class="hp-sub-error">
-          Something went wrong — try again or check back soon.
+          The signal scattered — that doesn't look like a real email. Try again.
         </p>
       }
 

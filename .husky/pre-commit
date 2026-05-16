@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# ─────────────────────────────────────────────────────────────────────
+# pre-commit — runs lint-staged across staged files only (fast).
+#
+# Requires: `npm i -D husky lint-staged` once, then `npm run prepare`
+# (the `prepare` lifecycle script auto-installs the hooks).
+#
+# Skip with: `git commit --no-verify` for emergency commits — but please
+# don't make a habit of it.
+# ─────────────────────────────────────────────────────────────────────
+
+# Exit early on a clean / empty stage so a `git commit --allow-empty` works.
+if git diff --cached --quiet; then
+  echo "pre-commit: no staged changes, skipping."
+  exit 0
+fi
+
+# Use npx so we don't require lint-staged to be on PATH globally.
+npx --no-install lint-staged 2>/dev/null || {
+  echo "pre-commit: lint-staged not installed."
+  echo "  run: npm i -D husky lint-staged && npm run prepare"
+  echo "  (or: git commit --no-verify to bypass this hook)"
+  exit 0
+}
