@@ -374,10 +374,15 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(0, 255, 204, 0.08), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 50% 80%, rgba(123, 97, 255, 0.1), transparent 70%),
+    rgba(4, 2, 12, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
   z-index: 998; /* Below menu but above content */
 }
 
@@ -400,7 +405,18 @@
   width: 100%;
   background: rgba(224, 247, 250, 0.85);
   border-radius: 999px;
-  transition: transform 0.35s ease, opacity 0.3s ease;
+  transition: transform 0.35s ease, opacity 0.3s ease, background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hamburger:hover span,
+.hamburger:focus-visible span {
+  background: rgba(0, 255, 204, 0.95);
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+}
+
+.hamburger.active span {
+  background: rgba(0, 255, 204, 1);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.7), 0 0 24px rgba(123, 97, 255, 0.3);
 }
 
 .hamburger.active span:nth-child(1) {
@@ -504,20 +520,57 @@
     flex-direction: column;
     gap: 1.2rem;
     padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
-    background: rgba(8, 10, 24, 0.98);
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 0%, rgba(0, 255, 204, 0.12), transparent 60%),
+      radial-gradient(ellipse 55% 45% at 80% 100%, rgba(123, 97, 255, 0.14), transparent 60%),
+      rgba(8, 3, 22, 0.88);
+    backdrop-filter: blur(28px) saturate(1.1);
+    -webkit-backdrop-filter: blur(28px) saturate(1.1);
     transform: translateY(-100%);
     opacity: 0;
     pointer-events: none;
     visibility: hidden;
-    transition: opacity 0.35s ease, transform 0.45s ease, visibility 0.35s ease;
+    transition: opacity 0.35s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.35s ease;
     border-bottom-left-radius: 24px;
     border-bottom-right-radius: 24px;
-    box-shadow: 0 24px 45px rgba(0, 0, 0, 0.45);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.55),
+      0 0 32px -8px rgba(0, 255, 204, 0.25);
+    border-left: 1px solid rgba(0, 255, 204, 0.12);
+    border-right: 1px solid rgba(123, 97, 255, 0.12);
+    border-bottom: 1px solid rgba(0, 255, 204, 0.15);
     z-index: 9999; /* Higher than navbar */
     max-height: calc(100vh - 80px);
     overflow-y: auto;
+    isolation: isolate;
+  }
+
+  /* Cosmic gradient cap line at the top of the menu — matches every cosmic section */
+  .nav-menu::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.55) 50%, transparent);
+    pointer-events: none;
+  }
+
+  /* Faint drifting starfield baked into the menu backdrop */
+  .nav-menu::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 28%, rgba(0, 255, 204, 0.55), transparent 100%),
+      radial-gradient(1px 1px at 36% 72%, rgba(255, 255, 255, 0.45), transparent 100%),
+      radial-gradient(1.5px 1.5px at 58% 22%, rgba(123, 97, 255, 0.55), transparent 100%),
+      radial-gradient(1px 1px at 78% 64%, rgba(255, 109, 215, 0.45), transparent 100%),
+      radial-gradient(1.5px 1.5px at 92% 32%, rgba(0, 200, 255, 0.5), transparent 100%);
+    background-size: 360px 360px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: inherit;
   }
 
   .nav-menu.mobile-open {

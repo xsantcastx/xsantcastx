@@ -7,7 +7,12 @@ import { TranslationService } from '../translation.service';
     selector: 'app-skills',
     template: `
     <section class="skills">
+      <p class="skills__eyebrow">
+        <span class="skills__pulse"></span>
+        {{ translate('cosmic.eyebrow.skillConstellation') }}
+      </p>
       <h2>{{ translate('skills.title') }}</h2>
+      <p class="skills__tagline">{{ translate('cosmic.tagline.skillConstellation') }}</p>
       @if (isLoading) {
         <div class="loading">{{ translate('skills.loading') }}</div>
       }
@@ -16,9 +21,10 @@ import { TranslationService } from '../translation.service';
       }
       @if (!isLoading && !error) {
         <div class="skills-grid">
-          @for (skill of skills; track skill) {
-            <div class="skill-card">
-              {{ skill.name }}
+          @for (skill of skills; track skill.name) {
+            <div class="skill-card" [attr.aria-label]="skill.name">
+              <span class="skill-card__star" aria-hidden="true"></span>
+              <h3 class="skill-card__name">{{ skill.name }}</h3>
             </div>
           }
         </div>

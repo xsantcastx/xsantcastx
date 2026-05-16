@@ -133,6 +133,7 @@ import { ClipPathComponent } from './tools/clip-path/clip-path.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
 import { GamesComponent } from './games/games.component';
+import { GuestbookComponent } from './guestbook/guestbook.component';
 import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
@@ -1352,6 +1353,16 @@ const routes: Routes = [
     data: {
       description: 'Use tools to discover Easter eggs and unlock hidden mini-games. 106 secrets across 135 tools.',
       keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`
+    }
+  },
+  {
+    path: 'guestbook',
+    component: GuestbookComponent,
+    title: 'Guestbook — Sign the wall | xsantcastx',
+    data: {
+      description: 'Leave a message in the cosmic guestbook. A constellation of visitors who passed through.',
+      keywords: 'guestbook, visitors, leave a message, xsantcastx',
       ogImage: `${SITE_URL}/assets/og/og-default.jpg`
     }
   },
