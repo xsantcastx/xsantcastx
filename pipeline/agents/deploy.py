@@ -42,15 +42,44 @@ def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 
 
 def _configure_git() -> None:
-    """Set git identity and inject PAT into remote URL if available."""
+    """Set git identity and inject a token into the origin URL.
+
+    Resolution order: GH_PAT (preferred — needed for branch protection / PR
+    creation), then GITHUB_TOKEN (auto-issued by Actions runner; works for
+    push when the workflow has ``permissions: contents: write``).
+
+    Raises a loud ``RuntimeError`` if neither is available, so the failure
+    surfaces with a clear actionable message instead of git's opaque
+    "could not read Username for 'https://github.com'" prompt — which is
+    what bit runs #36–#43 of daily-pipeline.yml (auth env var was empty,
+    so the script silently no-op'd remote-url and the subsequent push
+    prompted for credentials inside a non-interactive runner).
+    """
     _git("config", "user.name", "xsantcastx-pipeline")
     _git("config", "user.email", "noreply@github.com")
 
-    gh_pat = os.environ.get("GH_PAT", "")
     gh_repo = os.environ.get("GH_REPO", "xsantcastx/xsantcastx")
+    gh_pat = os.environ.get("GH_PAT", "").strip()
+    github_token = os.environ.get("GITHUB_TOKEN", "").strip()
+
     if gh_pat:
-        remote_url = f"https://x-access-token:{gh_pat}@github.com/{gh_repo}.git"
-        _git("remote", "set-url", "origin", remote_url)
+        token, source = gh_pat, "GH_PAT"
+    elif github_token:
+        token, source = github_token, "GITHUB_TOKEN"
+    else:
+        raise RuntimeError(
+            "No git push credential available: both GH_PAT and GITHUB_TOKEN "
+            "are unset/empty. In CI, ensure the workflow exposes one of them "
+            "via `env:` (and that the secret/token is actually configured). "
+            "See .github/workflows/daily-pipeline.yml — the `Run pipeline` "
+            "step must include `GH_PAT: ${{ secrets.GH_PAT }}` or "
+            "`GITHUB_TOKEN: ${{ github.token }}`."
+        )
+
+    remote_url = f"https://x-access-token:{token}@github.com/{gh_repo}.git"
+    _git("remote", "set-url", "origin", remote_url)
+    # Token-free log line — never echo the token itself.
+    print(f"[deploy] Configured origin to push as {gh_repo} using {source}.")
 
 
 def _current_branch() -> str:
