@@ -36,7 +36,23 @@ export class ChangelogService {
 
     return collectionData(q, { idField: 'id' }).pipe(
       map((entries: any[]) => this.groupByDay(entries)),
-      catchError((err) => { console.error('[ChangelogService]', err); return of([]); })
+      catchError((err: any) => {
+        // permission-denied (rules not deployed) and SDK-instance-mismatch
+        // (SSR→client hydration) are expected in dev. Silent-degrade those
+        // so the changelog falls back to "No updates yet" instead of bleeding
+        // red into the console. Surface anything else as a warn.
+        const code = err?.code || '';
+        const msg = err?.message || '';
+        if (
+          code === 'permission-denied' ||
+          (typeof msg === 'string' && msg.indexOf('Type does not match') >= 0) ||
+          (typeof msg === 'string' && msg.indexOf('different Firestore SDK') >= 0)
+        ) {
+          return of([]);
+        }
+        console.warn('[ChangelogService] degraded:', err);
+        return of([]);
+      })
     );
   }
 

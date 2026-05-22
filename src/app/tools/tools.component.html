@@ -34,14 +34,6 @@
     </div>
   </div>
 
-  <!--
-    Featured Partner slot (tools-index:hero).
-    Renders nothing when SPONSOR_INVENTORY has no live deal AND `?sponsor_house=1`
-    is NOT set, so this is a no-op in production until a sponsor lands.
-    Tracked in Agent Backlog: Sponsored Tool Slots program (351e6899).
-  -->
-  <app-sponsor-slot placement="tools-index:hero"></app-sponsor-slot>
-
   <!-- Category filter buttons -->
   <div class="tools-categories">
     @for (cat of categories; track cat) {
@@ -67,73 +59,171 @@
     </div>
   }
 
-  <!-- Results count -->
-  @if (searchQuery || activeCategory !== 'All') {
-    <div class="tools-results-count">
-      <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
-      @if (searchQuery || activeCategory !== 'All' || activeTag) {
-        <button class="tools-results-count__clear" (click)="clearAll()">Clear filters</button>
+  <!-- ═════ GALAXY MAP ═════ -->
+  @if (currentView === 'galaxies') {
+    <div class="cosmic-tagline">
+      <span class="cosmic-tagline__dot"></span>
+      <span>{{ translate('cosmic.tagline.chooseGalaxy') }}</span>
+    </div>
+
+    <div class="galaxy-map">
+      @for (galaxy of galaxies; track galaxy.name) {
+        <button
+          type="button"
+          class="galaxy"
+          [style.--galaxy-hue]="galaxy.hue"
+          [style.--galaxy-glow]="galaxy.glow"
+          (click)="enterGalaxy(galaxy.name)"
+          [attr.aria-label]="'Enter ' + galaxy.name + ' galaxy — ' + galaxy.count + ' tools'"
+        >
+          <span class="galaxy__arms" aria-hidden="true"></span>
+          <span class="galaxy__dust" aria-hidden="true"></span>
+          <span class="galaxy__ring" aria-hidden="true"></span>
+          <span class="galaxy__core" aria-hidden="true"></span>
+          <span class="galaxy__meta">
+            <span class="galaxy__name">{{ galaxy.name }}</span>
+            <span class="galaxy__count">{{ galaxy.count }} star{{ galaxy.count === 1 ? '' : 's' }}</span>
+          </span>
+        </button>
       }
     </div>
   }
 
-  <div class="tools-grid">
-    @for (tool of filteredTools; track tool.id) {
-      <a
-        class="tool-card"
-        [class.tool-card--live]="tool.status === 'live'"
-        [class.tool-card--soon]="tool.status === 'coming-soon'"
-        [href]="tool.status === 'live' ? tool.route : null"
-        (click)="handleCardClick($event, tool)"
-        >
-        <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
-        <div class="tool-card__body">
-          <div class="tool-card__title-row">
-            <h2 class="tool-card__title">{{ tool.title }}</h2>
-            @if (tool.status === 'coming-soon') {
-              <span class="tool-badge-soon">{{ translate('tools.badge.soon') }}</span>
-            }
-          </div>
-          <p class="tool-card__desc">{{ tool.description }}</p>
-          <div class="tool-card__tags">
-            @for (tag of tool.tags; track tag) {
-              <button
-                class="tool-tag"
-                [class.tool-tag--active]="isTagActive(tag)"
-                (click)="filterByTag(tag, $event)"
-                [attr.aria-pressed]="isTagActive(tag)"
-                [attr.aria-label]="'Filter by ' + tag"
-              >{{ tag }}</button>
-            }
-          </div>
-        </div>
-        @if (tool.status === 'live') {
-          <div class="tool-card__arrow" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"/>
-              <polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </div>
-        }
-      </a>
-    }
+  <!-- ═════ STAR SYSTEM ═════ -->
+  @if (currentView === 'stars') {
+    <div
+      class="star-system"
+      [style.--galaxy-hue]="selectedGalaxyHue"
+      [style.--galaxy-glow]="selectedGalaxyGlow"
+    >
+      <button type="button" class="star-system__back" (click)="exitGalaxy()">
+        ← back to galaxies
+      </button>
 
-    <!-- Empty state when filter returns no results -->
-    @if (filteredTools.length === 0) {
-      <div class="tools-empty">
-        <span class="tools-empty__icon">◌</span>
-        @if (searchQuery) {
-          <p>No tools match "{{ searchQuery }}"</p>
+      <div class="star-system__hud" [class.star-system__hud--active]="hoveredTool">
+        @if (hoveredTool) {
+          <span class="star-system__hud-title">{{ hoveredTool.title }}</span>
+          <span class="star-system__hud-desc">{{ hoveredTool.description }}</span>
+          <span class="star-system__hud-tags">
+            @for (tag of hoveredTool.tags; track tag) {
+              <span class="star-system__hud-tag">{{ tag }}</span>
+            }
+          </span>
+        } @else {
+          <span class="star-system__hud-title">{{ activeCategory }}</span>
+          <span class="star-system__hud-desc">{{ orbitStars.length }} stars in orbit — hover to probe, click to warp in</span>
         }
-        @if (!searchQuery && activeTag) {
-          <p>No tools match the tag "{{ activeTag }}"</p>
+      </div>
+
+      <div class="star-system__scene" aria-hidden="false">
+        <div class="star-system__core">
+          <span class="star-system__core-label">{{ activeCategory }}</span>
+        </div>
+
+        @for (ring of orbitRings; track ring.radius) {
+          <div class="orbit-ring" [style.--ring-radius.px]="ring.radius" aria-hidden="true"></div>
         }
-        @if (!searchQuery && !activeTag && activeCategory !== 'All') {
-          <p>No tools in "{{ activeCategory }}" yet</p>
+
+        @for (star of orbitStars; track star.tool.id) {
+          <a
+            class="orbit-star"
+            [class.orbit-star--live]="star.tool.status === 'live'"
+            [class.orbit-star--soon]="star.tool.status === 'coming-soon'"
+            [class.orbit-star--warping]="warpingToolId === star.tool.id"
+            [class.orbit-star--hovered]="hoveredStarId === star.tool.id"
+            [attr.data-category]="star.tool.category"
+            [attr.data-tags]="star.tool.tags.join(',')"
+            [attr.aria-label]="star.tool.title + ' — ' + star.tool.description"
+            [style.--orbit-radius.px]="star.radius"
+            [style.--orbit-duration]="star.duration + 's'"
+            [style.--orbit-delay]="star.delay + 's'"
+            [style.--orbit-direction]="star.direction"
+            [style.--star-size]="star.size"
+            [style.--star-z]="star.zOffset + 'px'"
+            [href]="star.tool.status === 'live' ? star.tool.route : null"
+            (click)="handleCardClick($event, star.tool)"
+            (mouseenter)="setHoveredStar(star.tool.id)"
+            (mouseleave)="setHoveredStar(null)"
+            (focus)="setHoveredStar(star.tool.id)"
+            (blur)="setHoveredStar(null)"
+          >
+            <span class="orbit-star__anchor">
+              <span class="orbit-star__core" [innerHTML]="getIconHtml(star.tool)"></span>
+              @if (star.tool.status === 'coming-soon') {
+                <span class="orbit-star__badge">soon</span>
+              }
+            </span>
+          </a>
         }
-        <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
+      </div>
+    </div>
+  }
+
+  <!-- ═════ SEARCH GRID (flat cosmic list) ═════ -->
+  @if (currentView === 'search') {
+    @if (searchQuery || activeCategory !== 'All' || activeTag) {
+      <div class="tools-results-count">
+        <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+        <button class="tools-results-count__clear" (click)="clearAll()">Clear filters</button>
       </div>
     }
-  </div>
+
+    <div class="tools-grid">
+      @for (tool of filteredTools; track tool.id) {
+        <a
+          class="tool-card"
+          [class.tool-card--live]="tool.status === 'live'"
+          [class.tool-card--soon]="tool.status === 'coming-soon'"
+          [class.tool-card--warping]="warpingToolId === tool.id"
+          [attr.data-category]="tool.category"
+          [attr.data-tags]="tool.tags.join(',')"
+          [attr.aria-label]="tool.title + ' — ' + tool.description"
+          [href]="tool.status === 'live' ? tool.route : null"
+          (click)="handleCardClick($event, tool)"
+          >
+          <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
+          <div class="tool-card__body">
+            <div class="tool-card__title-row">
+              <h2 class="tool-card__title">{{ tool.title }}</h2>
+              @if (tool.status === 'coming-soon') {
+                <span class="tool-badge-soon">{{ translate('tools.badge.soon') }}</span>
+              }
+            </div>
+            <p class="tool-card__desc">{{ tool.description }}</p>
+            <div class="tool-card__tags">
+              @for (tag of tool.tags; track tag) {
+                <button
+                  class="tool-tag"
+                  [class.tool-tag--active]="isTagActive(tag)"
+                  (click)="filterByTag(tag, $event)"
+                  [attr.aria-pressed]="isTagActive(tag)"
+                  [attr.aria-label]="'Filter by ' + tag"
+                >{{ tag }}</button>
+              }
+            </div>
+          </div>
+        </a>
+      }
+
+      @if (filteredTools.length === 0) {
+        <div class="tools-empty">
+          <span class="tools-empty__icon">◌</span>
+          @if (searchQuery) {
+            <p>No tools match "{{ searchQuery }}"</p>
+          }
+          @if (!searchQuery && activeTag) {
+            <p>No tools match the tag "{{ activeTag }}"</p>
+          }
+          @if (!searchQuery && !activeTag && activeCategory !== 'All') {
+            <p>No tools in "{{ activeCategory }}" yet</p>
+          }
+          <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (warpingToolId) {
+    <div class="cosmic-warp-overlay" aria-hidden="true"></div>
+  }
 </div>

@@ -4,8 +4,13 @@
 /contact
 /donate
 /live
+/guestbook
 /tools
 /tools/box-shadow-generator
+/tools/char-map
+/embed/char-map
+/tools/svg-path-editor
+/embed/svg-path-editor
 /tools/email-deliverability-auditor
 /tools/gmail-deliverability-checker
 /tools/ssl-certificate-inspector

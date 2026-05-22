@@ -5,6 +5,7 @@ import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { ChangelogService, ChangelogDay } from '../changelog.service';
 import { Subscription } from 'rxjs';
 import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
+import { TranslationService } from '../translation.service';
 
 export interface Tool {
   id: string;
@@ -14,6 +15,7 @@ export interface Tool {
   category: string;
   icon: string;
   features: string[];
+  tags: string[];
 }
 
 /**
@@ -51,7 +53,12 @@ export class LandingComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private changelogService = inject(ChangelogService);
+  private translationService = inject(TranslationService);
   private changelogSub?: Subscription;
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
 
   changelogDays: ChangelogDay[] = [];
   changelogLoading = true;
@@ -73,6 +80,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     category: t.category,
     icon: t.textIcon,
     features: t.features,
+    tags: t.tags,
   }));
 
   /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
@@ -92,6 +100,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     category: t.category,
     icon: t.textIcon,
     features: t.features,
+    tags: t.tags,
   }));
 
   /** Precomputed view models for the hero carousel slots. Padding is done
@@ -204,12 +213,20 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   async onSubscribe(): Promise<void> {
-    if (!this.subscribeEmail || !this.subscribeEmail.includes('@')) return;
+    // RFC 5322 lite — tight enough to reject "foo@", loose enough to accept
+    // weird-but-valid corporate emails. Mirrors the firestore.rules regex so
+    // a request that passes here can't fail server-side just for syntax.
+    const email = (this.subscribeEmail || '').trim();
+    const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && email.length >= 5 && email.length <= 254;
+    if (!valid) {
+      this.subscribeStatus = 'error';
+      return;
+    }
     this.subscribeStatus = 'loading';
     try {
       const col = collection(this.firestore, 'homepage_subscribers');
       await addDoc(col, {
-        email: this.subscribeEmail,
+        email: email,
         subscribedAt: new Date().toISOString(),
         source: 'homepage_footer_cta'
       });
