@@ -1,5 +1,9 @@
 import { onRequest } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
+
+// Secret Manager-backed secret (set via: firebase functions:secrets:set BREVO_API_KEY)
+const brevoApiKey = defineSecret("BREVO_API_KEY");
 
 interface ContactFormData {
   name: string;
@@ -13,6 +17,7 @@ export const sendContactEmail = onRequest(
   {
     cors: ["https://xsantcastx.com", "https://xsantcastx-1694b.web.app", "https://xsantcastx-1694b.firebaseapp.com"],
     maxInstances: 10,
+    secrets: [brevoApiKey],
   },
   async (request, response) => {
     // Only allow POST requests
