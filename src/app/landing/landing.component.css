@@ -2094,130 +2094,243 @@
   width: clamp(220px, 38vmin, 320px);
   height: clamp(220px, 38vmin, 320px);
   perspective: 1200px;
-  transform-style: preserve-3d;
+  isolation: isolate;
 }
+
+/* Explicit depth order so the ring can pass behind the planet (back half) and
+   in front of it (front half), and the moon can dip behind on its far arc. */
+.cosmic-planet__atmosphere { z-index: 0; }
+.cosmic-planet__sphere     { z-index: 2; }
 
 /* Atmospheric outer glow — soft halo of light */
 .cosmic-planet__atmosphere {
   position: absolute;
   inset: -18%;
   border-radius: 50%;
-  background: radial-gradient(circle at center,
-    rgba(140, 200, 255, 0.32) 0%,
-    rgba(123, 97, 255, 0.18) 40%,
-    transparent 70%);
-  filter: blur(14px);
+  background:
+    radial-gradient(circle at 38% 34%, rgba(150, 215, 255, 0.40) 0%, rgba(90, 150, 255, 0.16) 38%, transparent 66%),
+    radial-gradient(circle at center, rgba(70, 130, 255, 0.16) 30%, rgba(123, 97, 255, 0.10) 56%, transparent 76%);
+  filter: blur(15px);
   animation: planetGlow 7s ease-in-out infinite;
   pointer-events: none;
 }
 
-/* The rotating sphere body */
+/* Planet body — deep-ocean base + outer light bloom. The sphere itself is a
+   static circle; the spin reads from the surface/cloud layers drifting. */
 .cosmic-planet__sphere {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   overflow: hidden;
   background:
-    radial-gradient(circle at 32% 30%, #6fc8ff 0%, #3a7bcc 25%, #1a3a7a 55%, #0a1838 85%, #050a1d 100%);
+    radial-gradient(circle at 30% 27%, #1d5190 0%, #143d76 32%, #0c2a57 58%, #07193a 82%, #040d22 100%);
   box-shadow:
-    inset -22px -22px 60px rgba(0, 0, 0, 0.65),
-    inset 18px 18px 40px rgba(120, 200, 255, 0.18),
-    0 0 60px -6px rgba(0, 200, 255, 0.35),
-    0 0 120px -10px rgba(123, 97, 255, 0.45);
-  /* The sphere body stays a static circle. Rotating a flat disc with rotateY()
-     just foreshortens it into a vertical ellipse — the "spin" comes from the
-     surface/cloud layers drifting their background-position instead. */
+    0 0 55px -6px rgba(0, 180, 255, 0.38),
+    0 0 130px -10px rgba(90, 150, 255, 0.42);
 }
 
-/* Surface texture — continents simulated via stacked radial gradients */
+/* Polar ice caps — bright frost at both poles, shaded by the terminator above */
+.cosmic-planet__sphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 44% 17% at 50% -3%, rgba(238, 247, 255, 0.6), rgba(238, 247, 255, 0) 72%),
+    radial-gradient(ellipse 44% 17% at 50% 103%, rgba(225, 240, 255, 0.48), rgba(225, 240, 255, 0) 72%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Atmosphere rim — Fresnel glow hugging the limb, sells the "from orbit" look */
+.cosmic-planet__sphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 14px 1px rgba(150, 215, 255, 0.55),
+    inset 9px 7px 38px rgba(175, 225, 255, 0.20),
+    inset -14px -14px 46px rgba(0, 6, 20, 0.55);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Oceans + continents — procedural terrain (fractal noise mapped to an
+   ocean → coast → green land → tan-highland palette). */
 .cosmic-planet__surface {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background-image:
-    radial-gradient(ellipse 30% 20% at 22% 38%, rgba(80, 220, 180, 0.42), transparent 60%),
-    radial-gradient(ellipse 28% 18% at 65% 55%, rgba(120, 180, 230, 0.32), transparent 60%),
-    radial-gradient(ellipse 18% 12% at 45% 72%, rgba(180, 220, 250, 0.4), transparent 60%),
-    radial-gradient(ellipse 22% 14% at 78% 28%, rgba(80, 200, 200, 0.36), transparent 60%),
-    radial-gradient(ellipse 16% 12% at 12% 70%, rgba(160, 200, 220, 0.3), transparent 60%),
-    radial-gradient(ellipse 12% 10% at 88% 80%, rgba(90, 180, 200, 0.32), transparent 60%);
-  mix-blend-mode: screen;
-  animation: planetSurface 80s linear infinite;
-  will-change: transform;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='e' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.021 0.036' numOctaves='6' seed='24' stitchTiles='stitch' result='n'/%3E%3CfeColorMatrix in='n' type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='table' tableValues='0.01 0.02 0.03 0.04 0.06 0.20 0.46 0.82'/%3E%3CfeFuncG type='table' tableValues='0.05 0.09 0.13 0.22 0.34 0.50 0.52 0.84'/%3E%3CfeFuncB type='table' tableValues='0.18 0.30 0.45 0.58 0.55 0.30 0.26 0.80'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23e)'/%3E%3C/svg%3E");
+  background-size: 200% 100%;
+  background-repeat: repeat;
+  opacity: 0.95;
+  animation: planetSurface 90s linear infinite;
+  z-index: 1;
 }
 
-/* Higher cloud layer — drifts at a different speed for parallax */
+/* Drifting cloud cover — finer fractal noise thresholded into white wisps */
 .cosmic-planet__clouds {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background-image:
-    radial-gradient(ellipse 22% 10% at 30% 28%, rgba(255, 255, 255, 0.42), transparent 55%),
-    radial-gradient(ellipse 18% 8% at 60% 52%, rgba(255, 255, 255, 0.34), transparent 55%),
-    radial-gradient(ellipse 14% 8% at 78% 40%, rgba(255, 255, 255, 0.32), transparent 55%),
-    radial-gradient(ellipse 20% 9% at 18% 62%, rgba(255, 255, 255, 0.38), transparent 55%),
-    radial-gradient(ellipse 16% 7% at 50% 78%, rgba(255, 255, 255, 0.32), transparent 55%);
-  filter: blur(1.5px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.04' numOctaves='4' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.9 -0.85' result='m'/%3E%3CfeFlood flood-color='%23ffffff'/%3E%3CfeComposite in2='m' operator='in'/%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-size: 200% 100%;
+  background-repeat: repeat;
   mix-blend-mode: screen;
-  animation: planetSurface 55s linear infinite reverse;
-  opacity: 0.85;
-  will-change: transform;
+  opacity: 0.45;
+  filter: blur(0.4px);
+  animation: planetSurface 60s linear infinite reverse;
+  z-index: 2;
 }
 
-/* Terminator — soft shadow blending day/night side */
+/* Spherical shading + day/night terminator, multiplied over terrain & clouds */
 .cosmic-planet__terminator {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: linear-gradient(110deg,
-    transparent 40%,
-    rgba(0, 0, 0, 0.32) 60%,
-    rgba(0, 0, 0, 0.6) 85%);
+  background: radial-gradient(circle at 33% 28%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 150, 90, 0.07) 52%,
+    rgba(2, 6, 16, 0.34) 62%,
+    rgba(0, 2, 10, 0.84) 86%,
+    rgba(0, 1, 5, 0.98) 100%);
   pointer-events: none;
+  z-index: 3;
 }
 
-/* Specular highlight — small bright spot on the day side */
+/* Night-side city lights — sparse warm pinpoints, masked to the dark hemisphere */
+.cosmic-planet__nightlights {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 26 -24' result='m'/%3E%3CfeFlood flood-color='%23ffd38a'/%3E%3CfeComposite in2='m' operator='in'/%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200% 100%;
+  background-repeat: repeat;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  -webkit-mask: radial-gradient(circle at 33% 28%, transparent 0%, transparent 50%, #000 86%);
+          mask: radial-gradient(circle at 33% 28%, transparent 0%, transparent 50%, #000 86%);
+  animation: planetSurface 90s linear infinite;
+  z-index: 4;
+}
+
+/* Sharp specular sun-glint where the star reflects off the ocean */
+.cosmic-planet__glint {
+  position: absolute;
+  top: 17%;
+  left: 21%;
+  width: 16%;
+  height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.92) 0%, rgba(255, 248, 230, 0.42) 30%, transparent 62%);
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Broad cool day-side sheen */
 .cosmic-planet__highlight {
   position: absolute;
-  top: 18%;
-  left: 22%;
-  width: 26%;
-  height: 26%;
+  inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.36) 0%, transparent 60%);
-  filter: blur(8px);
+  background: radial-gradient(circle at 30% 26%, rgba(175, 222, 255, 0.18) 0%, transparent 44%);
+  mix-blend-mode: screen;
   pointer-events: none;
+  z-index: 5;
 }
 
-/* Tilted ring — Saturn-style band orbiting the planet */
+/* Atmospheric limb — bright blue scattering arc on the sunlit edge */
+.cosmic-planet__limb {
+  position: absolute;
+  inset: -1.5%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    transparent 60%,
+    rgba(150, 216, 255, 0) 64%,
+    rgba(155, 220, 255, 0.6) 82%,
+    rgba(120, 190, 255, 0.14) 93%,
+    transparent 100%);
+  -webkit-mask: linear-gradient(135deg, #000 16%, rgba(0, 0, 0, 0.18) 60%, transparent 86%);
+          mask: linear-gradient(135deg, #000 16%, rgba(0, 0, 0, 0.18) 60%, transparent 86%);
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ─── Saturn-style ring ────────────────────────────────────────────────
+   A flat banded annulus tilted into perspective, split into a back half
+   (drawn behind the planet) and a front half (drawn in front) so it wraps
+   correctly around the sphere. Concentric bands + division gaps give it
+   structure; the inner edge sits just outside the planet. */
 .cosmic-planet__ring {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 175%;
-  height: 30%;
-  margin-left: -87.5%;
-  margin-top: -15%;
+  width: 196%;
+  height: 196%;
+  margin: -98%;
   border-radius: 50%;
-  border: 2px solid transparent;
-  background:
-    linear-gradient(rgba(120, 200, 255, 0.3), rgba(120, 200, 255, 0.3)) padding-box,
-    conic-gradient(
-      from 0deg,
-      rgba(120, 200, 255, 0.05),
-      rgba(180, 220, 255, 0.55) 25%,
-      rgba(120, 200, 255, 0.05) 50%,
-      rgba(180, 220, 255, 0.55) 75%,
-      rgba(120, 200, 255, 0.05)
-    ) border-box;
-  -webkit-mask:
-    radial-gradient(ellipse 50% 50% at center, transparent 0%, transparent 49%, black 50%, black 100%);
-          mask:
-    radial-gradient(ellipse 50% 50% at center, transparent 0%, transparent 49%, black 50%, black 100%);
-  transform: rotateX(72deg) rotateZ(-18deg);
-  filter: blur(0.5px);
-  animation: planetRingSpin 60s linear infinite;
+  transform: rotateX(74deg) rotateZ(-16deg);
+  background: radial-gradient(circle at 50% 50%,
+    transparent 0 30%,
+    rgba(208, 226, 255, 0) 30.5%,
+    rgba(212, 230, 255, 0.50) 33%,
+    rgba(176, 202, 244, 0.16) 36.5%,
+    rgba(232, 242, 255, 0.70) 40%,
+    rgba(200, 222, 252, 0.58) 43%,
+    rgba(150, 184, 236, 0.08) 45.4%,
+    rgba(208, 228, 254, 0.46) 47.2%,
+    rgba(170, 200, 245, 0) 49.6%);
+  filter: blur(0.4px);
   pointer-events: none;
+}
+
+/* Far half — behind the planet */
+.cosmic-planet__ring--back {
+  z-index: 1;
+  -webkit-mask: linear-gradient(to bottom, #000 0 52%, transparent 52%);
+          mask: linear-gradient(to bottom, #000 0 52%, transparent 52%);
+}
+
+/* Near half — in front of the planet, with a touch more glow */
+.cosmic-planet__ring--front {
+  z-index: 4;
+  -webkit-mask: linear-gradient(to bottom, transparent 0 48%, #000 48%);
+          mask: linear-gradient(to bottom, transparent 0 48%, #000 48%);
+}
+
+/* Orbiting moon — elliptical path with fake depth (scales/dims and dips behind
+   the planet on the far half of the orbit). */
+.cosmic-planet__moon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13%;
+  height: 13%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #efe9dd 0%, #c7c1b4 38%, #8c867a 66%, #4d4a43 86%, #2c2a25 100%);
+  box-shadow:
+    inset -3px -3px 7px rgba(0, 0, 0, 0.6),
+    inset 2px 2px 5px rgba(255, 255, 255, 0.14),
+    0 0 9px rgba(150, 185, 255, 0.22);
+  pointer-events: none;
+  animation: planetMoonOrbit 26s linear infinite;
+}
+
+@keyframes planetMoonOrbit {
+  0%    { left: 116%; top: 50%;   transform: translate(-50%, -50%) scale(0.92); z-index: 5; opacity: 0.95; filter: none; }
+  12.5% { left: 96.7%; top: 61.3%; transform: translate(-50%, -50%) scale(1.05); z-index: 5; opacity: 1; filter: none; }
+  25%   { left: 50%;  top: 66%;   transform: translate(-50%, -50%) scale(1.15); z-index: 5; opacity: 1; filter: none; }
+  37.5% { left: 3.3%; top: 61.3%; transform: translate(-50%, -50%) scale(1.05); z-index: 5; opacity: 1; filter: none; }
+  50%   { left: -16%; top: 50%;   transform: translate(-50%, -50%) scale(0.92); z-index: 5; opacity: 0.92; filter: none; }
+  62.5% { left: 3.3%; top: 38.7%; transform: translate(-50%, -50%) scale(0.78); z-index: 1; opacity: 0.8; filter: brightness(0.7); }
+  75%   { left: 50%;  top: 34%;   transform: translate(-50%, -50%) scale(0.7);  z-index: 1; opacity: 0.72; filter: brightness(0.62); }
+  87.5% { left: 96.7%; top: 38.7%; transform: translate(-50%, -50%) scale(0.78); z-index: 1; opacity: 0.8; filter: brightness(0.7); }
+  100%  { left: 116%; top: 50%;   transform: translate(-50%, -50%) scale(0.92); z-index: 5; opacity: 0.95; filter: none; }
 }
 
 @keyframes planetSurface {
@@ -2228,11 +2341,6 @@
 @keyframes planetGlow {
   0%, 100% { opacity: 0.85; transform: scale(1); filter: blur(14px); }
   50%       { opacity: 1; transform: scale(1.05); filter: blur(18px); }
-}
-
-@keyframes planetRingSpin {
-  from { transform: rotateX(72deg) rotateZ(-18deg); }
-  to   { transform: rotateX(72deg) rotateZ(342deg); }
 }
 
 .hp-anchor__whisper {
@@ -2251,8 +2359,10 @@
   .cosmic-planet__sphere,
   .cosmic-planet__surface,
   .cosmic-planet__clouds,
+  .cosmic-planet__nightlights,
   .cosmic-planet__atmosphere,
-  .cosmic-planet__ring { animation: none !important; }
+  .cosmic-planet__ring,
+  .cosmic-planet__moon { animation: none !important; }
 }
 
 @media (max-width: 640px) {
