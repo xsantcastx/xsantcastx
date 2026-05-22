@@ -83,7 +83,7 @@
       class="cm-tab"
       [class.cm-tab--active]="activeCategoryId === cat.id"
       [attr.aria-pressed]="activeCategoryId === cat.id"
-      (click)="setActiveCategory(cat.id)">{{ cat.name }} <span class="cm-tab__count">{{ cat.chars.length }}</span></button>
+      (click)="setActiveCategory(cat.id)">{{ cat.label }} <span class="cm-tab__count">{{ cat.chars.length }}</span></button>
   </nav>
 
   <!-- Recent chars -->
@@ -108,7 +108,7 @@
   <!-- Categories + chars -->
   <section *ngFor="let cat of filteredCategories" class="cm-cat">
     <header class="cm-cat__header">
-      <h2 class="cm-cat__title">{{ cat.name }}</h2>
+      <h2 class="cm-cat__title">{{ cat.label }}</h2>
       <span class="cm-cat__count">{{ cat.chars.length }}</span>
     </header>
     <div class="cm-grid" role="list">
