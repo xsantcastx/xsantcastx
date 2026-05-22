@@ -15,6 +15,22 @@
   width: 100%;
 }
 
+/* Perf: skip rendering + animating below-the-fold sections until they scroll
+   near the viewport. The home page runs ~150 concurrent CSS animations (planet,
+   live feed, glows); without this they all tick even while off-screen. The hero
+   is intentionally excluded so the first paint is unaffected.
+   `contain-intrinsic-size: auto <h>` reserves space (no scroll jump) and the
+   browser remembers each section's real height after its first render. */
+.hp-tools,
+.hp-spotlight,
+.hp-anchor,
+.hp-live,
+.hp-changelog,
+.hp-footer-cta {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 700px;
+}
+
 /* ─── Shared utilities ──────────────────────────────────────────── */
 
 .hp-section-eyebrow {

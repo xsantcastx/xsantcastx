@@ -14,7 +14,6 @@ import { ProjectsComponent } from './projects/projects.component';
 import { ContactComponent } from './contact/contact.component';
 import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
-import { NgxParticlesModule } from '@tsparticles/angular';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { EgComponent } from './eg/eg.component';
 import { GridSectionsComponent } from './grid-sections/grid-sections.component';
@@ -365,7 +364,6 @@ import { McpComponent } from './mcp/mcp.component';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    NgxParticlesModule,
     CommonModule,
     ResumeCardComponent,
     AboutmeCardComponent
