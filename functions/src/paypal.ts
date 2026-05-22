@@ -1,11 +1,19 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import * as dotenv from 'dotenv';
 
-// Load environment variables
+// Load environment variables (local emulator only; in prod the secrets below
+// are injected from Secret Manager via each function's `secrets` binding).
 dotenv.config();
+
+// Secret Manager-backed secrets — set with:
+//   firebase functions:secrets:set PAYPAL_CLIENT_ID
+//   firebase functions:secrets:set PAYPAL_CLIENT_SECRET
+const paypalClientId = defineSecret('PAYPAL_CLIENT_ID');
+const paypalClientSecret = defineSecret('PAYPAL_CLIENT_SECRET');
 
 // Initialize Firebase Admin if not already initialized
 if (getApps().length === 0) {
@@ -14,11 +22,12 @@ if (getApps().length === 0) {
 
 const db = getFirestore();
 
-// PayPal API configuration
-// Automatically detects sandbox vs live based on PAYPAL_MODE environment variable
-const PAYPAL_API_BASE = process.env.PAYPAL_MODE === 'live' 
-  ? 'https://api-m.paypal.com' 
-  : 'https://api-m.sandbox.paypal.com';
+// PayPal API configuration. Defaults to LIVE; set PAYPAL_MODE=sandbox to test.
+// (PAYPAL_MODE is non-secret config — not a Secret Manager secret. Defaulting
+// to live avoids accidentally pointing at sandbox if the var is unset.)
+const PAYPAL_API_BASE = process.env.PAYPAL_MODE === 'sandbox'
+  ? 'https://api-m.sandbox.paypal.com'
+  : 'https://api-m.paypal.com';
 
 interface PayPalOrderDetails {
   id: string;
@@ -95,7 +104,8 @@ async function verifyPayPalPayment(orderId: string): Promise<PayPalOrderDetails>
  * Process PayPal payment and log to Firestore
  */
 export const processPayPalPayment = onCall(
-  { 
+  {
+    secrets: [paypalClientId, paypalClientSecret], 
     maxInstances: 10,
     enforceAppCheck: true,
     consumeAppCheckToken: true
@@ -181,7 +191,8 @@ export const processPayPalPayment = onCall(
  * Get donation statistics (optional function for admin dashboard)
  */
 export const getPayPalDonationStats = onCall(
-  { maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
+  {
+    secrets: [paypalClientId, paypalClientSecret], maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     try {
       // Only allow authenticated admin users (you can add admin check here)

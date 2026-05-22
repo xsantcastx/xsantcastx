@@ -116,3 +116,6 @@ __pycache__/
 .agent-handoff/
 .gitignore.new
 .gitignore.new2
+
+# Firebase extension secrets (contains SMTP credentials) — never commit
+extensions/*.env

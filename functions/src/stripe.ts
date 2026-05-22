@@ -1,12 +1,20 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import Stripe from 'stripe';
 import * as dotenv from 'dotenv';
 
-// Load environment variables
+// Load environment variables (local emulator only; in prod these come from
+// Secret Manager via the `secrets` binding on each function below).
 dotenv.config();
+
+// Secret Manager-backed secrets — set with:
+//   firebase functions:secrets:set STRIPE_SECRET_KEY
+//   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+const stripeSecretKey = defineSecret('STRIPE_SECRET_KEY');
+const stripeWebhookSecret = defineSecret('STRIPE_WEBHOOK_SECRET');
 
 // Initialize Firebase Admin if not already initialized
 if (getApps().length === 0) {
@@ -32,7 +40,8 @@ const getStripeInstance = (): Stripe => {
  * Verify and log successful Stripe Checkout session
  */
 export const verifyCheckoutSession = onCall(
-  { 
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], 
     maxInstances: 10,
     enforceAppCheck: false, // Allow anonymous donations
     consumeAppCheckToken: false
@@ -138,7 +147,8 @@ export const verifyCheckoutSession = onCall(
  * Create a Stripe Checkout Session (simpler alternative to Payment Intent)
  */
 export const createCheckoutSession = onCall(
-  { 
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], 
     maxInstances: 10,
     enforceAppCheck: false, // Allow anonymous donations
     consumeAppCheckToken: false
@@ -210,7 +220,8 @@ export const createCheckoutSession = onCall(
  * Create a Stripe Payment Intent
  */
 export const createPaymentIntent = onCall(
-  { 
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], 
     maxInstances: 10,
     enforceAppCheck: true,
     consumeAppCheckToken: true
@@ -270,7 +281,8 @@ export const createPaymentIntent = onCall(
  * Confirm and log successful Stripe payment
  */
 export const confirmStripePayment = onCall(
-  { 
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], 
     maxInstances: 10,
     enforceAppCheck: true,
     consumeAppCheckToken: true
@@ -377,7 +389,8 @@ export const confirmStripePayment = onCall(
  * Handle Stripe webhooks (for production use)
  */
 export const handleStripeWebhook = onCall(
-  { 
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], 
     maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true
   },
   async (request) => {
@@ -452,7 +465,8 @@ export const handleStripeWebhook = onCall(
  * Get Stripe donation statistics (optional function for admin dashboard)
  */
 export const getStripeDonationStats = onCall(
-  { maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
+  {
+    secrets: [stripeSecretKey, stripeWebhookSecret], maxInstances: 5, enforceAppCheck: true, consumeAppCheckToken: true },
   async (request) => {
     try {
       // Only allow authenticated admin users (you can add admin check here)
