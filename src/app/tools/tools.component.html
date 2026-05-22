@@ -78,7 +78,7 @@
   }
 
   <div class="tools-grid">
-    @for (tool of filteredTools; track tool) {
+    @for (tool of filteredTools; track tool.id) {
       <a
         class="tool-card"
         [class.tool-card--live]="tool.status === 'live'"

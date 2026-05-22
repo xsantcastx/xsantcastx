@@ -1,4 +1,8 @@
 <nav class="navbar">
+  <!-- Glass blur layer (kept as a child so the navbar itself is not a containing
+       block for the fixed-position mobile menu/backdrop) -->
+  <span class="navbar__glass" aria-hidden="true"></span>
+
   <!-- Mobile Menu Backdrop -->
   <div class="mobile-backdrop" [class.show]="mobileMenuOpen" (click)="closeMobileMenu()" aria-hidden="true"></div>
 

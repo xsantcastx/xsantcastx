@@ -18,12 +18,14 @@
   align-items: center;
   justify-content: space-between;
   gap: clamp(1rem, 3vw, 4rem);
-  background: rgba(10, 15, 30, 0.58);
-  backdrop-filter: saturate(140%) blur(18px);
-  -webkit-backdrop-filter: saturate(140%) blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  /* NOTE: backdrop-filter (the glass blur) lives on .navbar__glass, NOT here.
+     A backdrop-filter on the navbar would make it the containing block for its
+     position:fixed children (the mobile menu + backdrop), confining their
+     inset:0 to the 64px navbar box instead of the viewport — which made the
+     mobile menu impossible to use. Keep the navbar free of containing-block
+     triggers (backdrop-filter/filter/transform/perspective/will-change). */
   box-shadow: 0 18px 35px rgba(0, 0, 0, 0.25);
-  transition: background 0.4s ease, border-color 0.4s ease, height 0.35s ease, padding 0.35s ease;
+  transition: height 0.35s ease, padding 0.35s ease;
   z-index: 1000;
   overflow: visible; /* Allow menu to overflow */
   width: 100%; /* Full width */
@@ -58,12 +60,30 @@
   pointer-events: none;
 }
 
+/* Glass layer: carries the navbar's background blur as a child so the navbar
+   itself does NOT become a containing block for its fixed-position descendants.
+   See the note in .navbar above. */
+.navbar__glass {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(10, 15, 30, 0.58);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+  transition: background 0.4s ease, border-color 0.4s ease;
+}
+
 .navbar.is-compact {
   --nav-height: 64px;
   --nav-padding-x: clamp(0.85rem, 2.4vw, 2.1rem);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.navbar.is-compact .navbar__glass {
   background: rgba(8, 12, 24, 0.9);
   border-bottom-color: rgba(0, 255, 204, 0.22);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .logo {
@@ -503,8 +523,10 @@
     top: 80px; /* Fixed height to match navbar */
     left: 0;
     right: 0;
+    bottom: 0; /* Full-height panel — no half-dimmed content strip below */
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 1.2rem;
     padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
     background: rgba(8, 10, 24, 0.98);
@@ -515,12 +537,10 @@
     pointer-events: none;
     visibility: hidden;
     transition: opacity 0.35s ease, transform 0.45s ease, visibility 0.35s ease;
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
     box-shadow: 0 24px 45px rgba(0, 0, 0, 0.45);
     z-index: 9999; /* Higher than navbar */
-    max-height: calc(100vh - 80px);
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .nav-menu.mobile-open {
