@@ -107,6 +107,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Tool usage counter ───────────────────────────────────────────────────
+    // Per-tool popularity counter written by ToolUsageService as
+    //   setDoc(ref, { count: increment(1) }, { merge: true })
+    // so each write contains ONLY { count }. Anyone may read and bump by +1.
+    match /tool-usage/{toolId} {
+      allow read: if true;
+      // First use creates the doc with count == 1.
+      allow create: if request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count == 1;
+      // Subsequent uses increment by exactly 1.
+      allow update: if request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count is number
+                    && request.resource.data.count == resource.data.count + 1;
+      allow delete: if false;
+    }
+
     // ── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
