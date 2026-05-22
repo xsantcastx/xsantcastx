@@ -36,27 +36,6 @@ import { DonationFormComponent } from './donation-form/donation-form.component';
 import { DonationFeedComponent } from './donation-feed/donation-feed.component';
 import { DonateComponent } from './donate/donate.component';
 import { LandingComponent } from './landing/landing.component';
-import { ToolsComponent } from './tools/tools.component';
-import { PdfGeneratorComponent } from './tools/pdf-generator/pdf-generator.component';
-import { ColorPaletteComponent } from './tools/color-palette/color-palette.component';
-import { ContrastCheckerComponent } from './tools/contrast-checker/contrast-checker.component';
-import { ImageCompressorComponent } from './tools/image-compressor/image-compressor.component';
-import { GmailDeliverabilityCheckerComponent } from './tools/gmail-deliverability-checker/gmail-deliverability-checker.component';
-import { BoxShadowGeneratorComponent } from './tools/box-shadow-generator/box-shadow-generator.component';
-import { EmailDeliverabilityAuditorComponent } from './tools/email-deliverability-auditor/email-deliverability-auditor.component';
-import { SslCertificateInspectorComponent } from './tools/ssl-certificate-inspector/ssl-certificate-inspector.component';
-import { SvgToCodeComponent } from './tools/svg-to-code/svg-to-code.component';
-import { SslCertificateAuditorComponent } from './tools/ssl-certificate-auditor/ssl-certificate-auditor.component';
-import { JsonFormatterComponent } from './tools/json-formatter/json-formatter.component';
-import { RegexTesterComponent } from './tools/regex-tester/regex-tester.component';
-import { Base64EncoderComponent } from './tools/base64-encoder/base64-encoder.component';
-import { GradientGeneratorComponent } from './tools/gradient-generator/gradient-generator.component';
-import { JwtDecoderComponent } from './tools/jwt-decoder/jwt-decoder.component';
-import { UuidGeneratorComponent } from './tools/uuid-generator/uuid-generator.component';
-import { HashGeneratorComponent } from './tools/hash-generator/hash-generator.component';
-import { MetaTagGeneratorComponent } from './tools/meta-tag-generator/meta-tag-generator.component';
-import { EnvValidatorComponent } from './tools/env-validator/env-validator.component';
-import { FontPairerComponent } from './tools/font-pairer/font-pairer.component';
 import { NewsFeedComponent } from './news-feed/news-feed.component';
 import { ServicesComponent } from './services/services.component';
 import { AboutComponent } from './about/about.component';
@@ -67,125 +46,12 @@ import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
 import { LiveComponent } from './live/live.component';
-import { CarbonAdComponent } from './shared/carbon-ad/carbon-ad.component';
 import { AdsenseComponent } from './shared/adsense/adsense.component';
 import { NotFoundComponent } from './not-found/not-found.component';
-import { RelatedToolsComponent } from './shared/related-tools.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
-import { EmbedCodeGeneratorComponent } from './shared/embed-code-generator/embed-code-generator.component';
-import { EmbedLandingComponent } from './embed-landing/embed-landing.component';
-import { NewsletterCaptureComponent } from './shared/newsletter/newsletter-capture.component';
-import { ToolUsageCounterComponent } from './shared/tool-usage-counter/tool-usage-counter.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
-import { AffiliateCTAComponent } from './shared/affiliate/affiliate-cta.component';
-import { SponsorSlotComponent } from './shared/sponsor-slot/sponsor-slot.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { CronBuilderComponent } from './tools/cron-builder/cron-builder.component';
-import { ApiRequestBuilderComponent } from './tools/api-request-builder/api-request-builder.component';
-import { JsonToTsComponent } from './tools/json-to-ts/json-to-ts.component';
-import { MarkdownEditorComponent } from './tools/markdown-editor/markdown-editor.component';
-import { DiffCheckerComponent } from './tools/diff-checker/diff-checker.component';
-import { TimestampConverterComponent } from './tools/timestamp-converter/timestamp-converter.component';
-import { UrlEncoderComponent } from './tools/url-encoder/url-encoder.component';
-import { SqlFormatterComponent } from './tools/sql-formatter/sql-formatter.component';
-import { BaseConverterComponent } from './tools/base-converter/base-converter.component';
-import { PasswordGeneratorComponent } from './tools/password-generator/password-generator.component';
-import { QrGeneratorComponent } from './tools/qr-generator/qr-generator.component';
-import { LoremGeneratorComponent } from './tools/lorem-generator/lorem-generator.component';
-import { ColorConverterComponent } from './tools/color-converter/color-converter.component';
-import { CaseConverterComponent } from './tools/case-converter/case-converter.component';
-import { FlexboxGeneratorComponent } from './tools/flexbox-generator/flexbox-generator.component';
-import { ChmodCalculatorComponent } from './tools/chmod-calculator/chmod-calculator.component';
-import { HtmlEntitiesComponent } from './tools/html-entities/html-entities.component';
-import { JsonPathComponent } from './tools/json-path/json-path.component';
-import { CssUnitsComponent } from './tools/css-units/css-units.component';
-import { AspectRatioComponent } from './tools/aspect-ratio/aspect-ratio.component';
-import { CssMinifierComponent } from './tools/css-minifier/css-minifier.component';
-import { HttpStatusComponent } from './tools/http-status/http-status.component';
-import { BorderRadiusComponent } from './tools/border-radius/border-radius.component';
-import { EmojiPickerComponent } from './tools/emoji-picker/emoji-picker.component';
-import { IpLookupComponent } from './tools/ip-lookup/ip-lookup.component';
-import { GridGeneratorComponent } from './tools/grid-generator/grid-generator.component';
-import { YamlJsonComponent } from './tools/yaml-json/yaml-json.component';
-import { JwtGeneratorComponent } from './tools/jwt-generator/jwt-generator.component';
-import { TailwindLookupComponent } from './tools/tailwind-lookup/tailwind-lookup.component';
-import { MdTableGeneratorComponent } from './tools/md-table-generator/md-table-generator.component';
-import { JsonEscapeComponent } from './tools/json-escape/json-escape.component';
-import { AnimationGeneratorComponent } from './tools/animation-generator/animation-generator.component';
-import { TextCounterComponent } from './tools/text-counter/text-counter.component';
-import { ScreenInfoComponent } from './tools/screen-info/screen-info.component';
-import { SlugGeneratorComponent } from './tools/slug-generator/slug-generator.component';
-import { CsvJsonComponent } from './tools/csv-json/csv-json.component';
-import { FaviconGeneratorComponent } from './tools/favicon-generator/favicon-generator.component';
-import { KeyboardShortcutsComponent } from './tools/keyboard-shortcuts/keyboard-shortcuts.component';
-import { PlaceholderImageComponent } from './tools/placeholder-image/placeholder-image.component';
-import { ColorBlindnessComponent } from './tools/color-blindness/color-blindness.component';
-import { RobotsGeneratorComponent } from './tools/robots-generator/robots-generator.component';
-import { DnsLookupComponent } from './tools/dns-lookup/dns-lookup.component';
-import { BoxModelComponent } from './tools/box-model/box-model.component';
-import { SnippetManagerComponent } from './tools/snippet-manager/snippet-manager.component';
-import { RegexGeneratorComponent } from './tools/regex-generator/regex-generator.component';
-import { TextShadowComponent } from './tools/text-shadow/text-shadow.component';
-import { HtmlToMdComponent } from './tools/html-to-md/html-to-md.component';
-import { DataSizeComponent } from './tools/data-size/data-size.component';
-import { ColorShadesComponent } from './tools/color-shades/color-shades.component';
-import { GitReferenceComponent } from './tools/git-reference/git-reference.component';
-import { ResponsivePreviewComponent } from './tools/responsive-preview/responsive-preview.component';
-import { PomodoroComponent } from './tools/pomodoro/pomodoro.component';
-import { CssFilterComponent } from './tools/css-filter/css-filter.component';
-import { NpmSearchComponent } from './tools/npm-search/npm-search.component';
-import { JsonMinifierComponent } from './tools/json-minifier/json-minifier.component';
-import { MorseCodeComponent } from './tools/morse-code/morse-code.component';
-import { BinaryTextComponent } from './tools/binary-text/binary-text.component';
-import { StringRepeaterComponent } from './tools/string-repeater/string-repeater.component';
-import { MockDataComponent } from './tools/mock-data/mock-data.component';
-import { ApcaContrastComponent } from './tools/apca-contrast/apca-contrast.component';
-import { TsPlaygroundComponent } from './tools/ts-playground/ts-playground.component';
-import { CaesarCipherComponent } from './tools/caesar-cipher/caesar-cipher.component';
-import { DesignTokensComponent } from './tools/design-tokens/design-tokens.component';
-import { JsonSchemaComponent } from './tools/json-schema/json-schema.component';
-import { ImageResizerComponent } from './tools/image-resizer/image-resizer.component';
-import { AsciiArtComponent } from './tools/ascii-art/ascii-art.component';
-import { ButtonGeneratorComponent } from './tools/button-generator/button-generator.component';
-import { ChecklistComponent } from './tools/checklist/checklist.component';
-import { ColorNameComponent } from './tools/color-name/color-name.component';
-import { ColorPickerComponent } from './tools/color-picker/color-picker.component';
-import { CountdownComponent } from './tools/countdown/countdown.component';
-import { GitignoreGeneratorComponent } from './tools/gitignore-generator/gitignore-generator.component';
-import { HeadingCheckerComponent } from './tools/heading-checker/heading-checker.component';
-import { HmacGeneratorComponent } from './tools/hmac-generator/hmac-generator.component';
-import { HtmlMinifierComponent } from './tools/html-minifier/html-minifier.component';
-import { JsMinifierComponent } from './tools/js-minifier/js-minifier.component';
-import { JsonDiffComponent } from './tools/json-diff/json-diff.component';
-import { JsonTreeComponent } from './tools/json-tree/json-tree.component';
-import { JwtCheatsheetComponent } from './tools/jwt-cheatsheet/jwt-cheatsheet.component';
-import { LicensePickerComponent } from './tools/license-picker/license-picker.component';
-import { LinesorterComponent } from './tools/line-sorter/line-sorter.component';
-import { MimeLookupComponent } from './tools/mime-lookup/mime-lookup.component';
-import { OgImagePreviewComponent } from './tools/og-image-preview/og-image-preview.component';
-import { PackageJsonComponent } from './tools/package-json/package-json.component';
-import { RegexCheatsheetComponent } from './tools/regex-cheatsheet/regex-cheatsheet.component';
-import { ScrollSnapComponent } from './tools/scroll-snap/scroll-snap.component';
-import { SpacingScaleComponent } from './tools/spacing-scale/spacing-scale.component';
-import { TimezoneConverterComponent } from './tools/timezone-converter/timezone-converter.component';
-import { TransformPlaygroundComponent } from './tools/transform-playground/transform-playground.component';
-import { TransitionGeneratorComponent } from './tools/transition-generator/transition-generator.component';
-import { UaParserComponent } from './tools/ua-parser/ua-parser.component';
-import { WebhookTesterComponent } from './tools/webhook-tester/webhook-tester.component';
-import { GradientTextComponent } from './tools/gradient-text/gradient-text.component';
-import { HexEditorComponent } from './tools/hex-editor/hex-editor.component';
-import { SitemapGeneratorComponent } from './tools/sitemap-generator/sitemap-generator.component';
-import { SeoCheckerComponent } from './tools/seo-checker/seo-checker.component';
-import { EncodingConverterComponent } from './tools/encoding-converter/encoding-converter.component';
-import { CrontabRefComponent } from './tools/crontab-ref/crontab-ref.component';
-import { CssVariablesComponent } from './tools/css-variables/css-variables.component';
-import { DockerRefComponent } from './tools/docker-ref/docker-ref.component';
-import { MediaQueryComponent } from './tools/media-query/media-query.component';
-import { ProgressBarComponent } from './tools/progress-bar/progress-bar.component';
-import { ClipPathComponent } from './tools/clip-path/clip-path.component';
-import { CharMapComponent } from './tools/char-map/char-map.component';
-import { SvgPathEditorComponent } from './tools/svg-path-editor/svg-path-editor.component';
 import { GamesComponent } from './games/games.component';
 import { McpComponent } from './mcp/mcp.component';
 
@@ -209,27 +75,6 @@ import { McpComponent } from './mcp/mcp.component';
     DonationFeedComponent,
     DonateComponent,
     LandingComponent,
-    ToolsComponent,
-    PdfGeneratorComponent,
-    ColorPaletteComponent,
-    ContrastCheckerComponent,
-    ImageCompressorComponent,
-    GmailDeliverabilityCheckerComponent,
-    BoxShadowGeneratorComponent,
-    EmailDeliverabilityAuditorComponent,
-    SslCertificateInspectorComponent,
-    SslCertificateAuditorComponent,
-    SvgToCodeComponent,
-    JsonFormatterComponent,
-    RegexTesterComponent,
-    Base64EncoderComponent,
-    GradientGeneratorComponent,
-    JwtDecoderComponent,
-    UuidGeneratorComponent,
-    HashGeneratorComponent,
-    MetaTagGeneratorComponent,
-    EnvValidatorComponent,
-    FontPairerComponent,
     NewsFeedComponent,
     ServicesComponent,
     AboutComponent,
@@ -237,125 +82,12 @@ import { McpComponent } from './mcp/mcp.component';
     ScrollTrackingDirective,
     FocusTrapDirective,
     LiveComponent,
-    CarbonAdComponent,
     AdsenseComponent,
     NotFoundComponent,
-    RelatedToolsComponent,
     EmbedBarComponent,
-    EmbedCodeGeneratorComponent,
-    EmbedLandingComponent,
-    NewsletterCaptureComponent,
-    ToolUsageCounterComponent,
     MilestoneEffectComponent,
     EggDiscoveryComponent,
-    AffiliateCTAComponent,
-    SponsorSlotComponent,
     CommandPaletteComponent,
-    CronBuilderComponent,
-    ApiRequestBuilderComponent,
-    JsonToTsComponent,
-    MarkdownEditorComponent,
-    DiffCheckerComponent,
-    TimestampConverterComponent,
-    UrlEncoderComponent,
-    SqlFormatterComponent,
-    BaseConverterComponent,
-    PasswordGeneratorComponent,
-    QrGeneratorComponent,
-    LoremGeneratorComponent,
-    ColorConverterComponent,
-    CaseConverterComponent,
-    FlexboxGeneratorComponent,
-    ChmodCalculatorComponent,
-    HtmlEntitiesComponent,
-    JsonPathComponent,
-    CssUnitsComponent,
-    AspectRatioComponent,
-    CssMinifierComponent,
-    HttpStatusComponent,
-    BorderRadiusComponent,
-    EmojiPickerComponent,
-    IpLookupComponent,
-    GridGeneratorComponent,
-    YamlJsonComponent,
-    JwtGeneratorComponent,
-    TailwindLookupComponent,
-    MdTableGeneratorComponent,
-    JsonEscapeComponent,
-    AnimationGeneratorComponent,
-    TextCounterComponent,
-    ScreenInfoComponent,
-    SlugGeneratorComponent,
-    CsvJsonComponent,
-    FaviconGeneratorComponent,
-    KeyboardShortcutsComponent,
-    PlaceholderImageComponent,
-    ColorBlindnessComponent,
-    RobotsGeneratorComponent,
-    DnsLookupComponent,
-    BoxModelComponent,
-    SnippetManagerComponent,
-    RegexGeneratorComponent,
-    TextShadowComponent,
-    HtmlToMdComponent,
-    DataSizeComponent,
-    ColorShadesComponent,
-    GitReferenceComponent,
-    ResponsivePreviewComponent,
-    PomodoroComponent,
-    CssFilterComponent,
-    NpmSearchComponent,
-    JsonMinifierComponent,
-    MorseCodeComponent,
-    BinaryTextComponent,
-    StringRepeaterComponent,
-    MockDataComponent,
-    ApcaContrastComponent,
-    TsPlaygroundComponent,
-    CaesarCipherComponent,
-    DesignTokensComponent,
-    JsonSchemaComponent,
-    ImageResizerComponent,
-    AsciiArtComponent,
-    ButtonGeneratorComponent,
-    ChecklistComponent,
-    ColorNameComponent,
-    ColorPickerComponent,
-    CountdownComponent,
-    GitignoreGeneratorComponent,
-    HeadingCheckerComponent,
-    HmacGeneratorComponent,
-    HtmlMinifierComponent,
-    JsMinifierComponent,
-    JsonDiffComponent,
-    JsonTreeComponent,
-    JwtCheatsheetComponent,
-    LicensePickerComponent,
-    LinesorterComponent,
-    MimeLookupComponent,
-    OgImagePreviewComponent,
-    PackageJsonComponent,
-    RegexCheatsheetComponent,
-    ScrollSnapComponent,
-    SpacingScaleComponent,
-    TimezoneConverterComponent,
-    TransformPlaygroundComponent,
-    TransitionGeneratorComponent,
-    UaParserComponent,
-    WebhookTesterComponent,
-    GradientTextComponent,
-    HexEditorComponent,
-    SitemapGeneratorComponent,
-    SeoCheckerComponent,
-    EncodingConverterComponent,
-    CrontabRefComponent,
-    CssVariablesComponent,
-    DockerRefComponent,
-    MediaQueryComponent,
-    ProgressBarComponent,
-    ClipPathComponent,
-    CharMapComponent,
-    SvgPathEditorComponent,
     GamesComponent,
     McpComponent
   ],
