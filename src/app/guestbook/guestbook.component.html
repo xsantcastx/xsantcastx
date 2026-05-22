@@ -1,28 +1,33 @@
 @if (loading) {
   <div class="glitch-loader">
-    <span>Loading Guestbook...</span>
+    <span>{{ translate('cosmic.guestbook.loading') }}</span>
   </div>
 }
 
 @if (!loading) {
   <div class="guestbook-container">
-    <h2>📓 Leave Your Glitchy Mark</h2>
+    <p class="section-eyebrow">
+      <span class="section-eyebrow-pulse"></span>
+      {{ translate('cosmic.eyebrow.visitorConstellation') }}
+    </p>
+    <h2>📓 {{ translate('cosmic.guestbook.title') }}</h2>
+    <p class="section-tagline">{{ translate('cosmic.tagline.visitorConstellation') }}</p>
     <form (ngSubmit)="submitMessage()" #form="ngForm" class="guestbook-form">
       <input
         type="text"
-        placeholder="Nickname"
+        [placeholder]="translate('cosmic.guestbook.nickname')"
         [(ngModel)]="nickname"
         name="nickname"
         required
         [readonly]="nickname !== ''"
         />
       <textarea
-        placeholder="Message"
+        [placeholder]="translate('cosmic.guestbook.message')"
         [(ngModel)]="message"
         name="message"
         required
       ></textarea>
-      <button type="submit" [disabled]="!form.valid">Submit</button>
+      <button type="submit" [disabled]="!form.valid">{{ translate('cosmic.guestbook.submit') }}</button>
     </form>
     @if (error) {
       <div class="error">{{ error }}</div>
@@ -39,14 +44,14 @@
       </ul>
       @if (loadingMore) {
         <div class="glitch-loader">
-          <span>Loading more entries...</span>
+          <span>{{ translate('cosmic.guestbook.loadingMore') }}</span>
         </div>
       }
       @if (!loadingMore && lastKey) {
         <button
           (click)="loadMoreEntries()"
           class="load-more-btn">
-          ⬇️ Load More
+          {{ translate('cosmic.guestbook.loadMore') }}
         </button>
       }
     </div>
