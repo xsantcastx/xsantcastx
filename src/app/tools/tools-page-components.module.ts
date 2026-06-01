@@ -52,6 +52,7 @@ import { GmailDeliverabilityCheckerComponent } from './gmail-deliverability-chec
 import { GradientGeneratorComponent } from './gradient-generator/gradient-generator.component';
 import { GradientTextComponent } from './gradient-text/gradient-text.component';
 import { GridGeneratorComponent } from './grid-generator/grid-generator.component';
+import { GroceryManagerComponent } from './grocery-manager/grocery-manager.component';
 import { HashGeneratorComponent } from './hash-generator/hash-generator.component';
 import { HeadingCheckerComponent } from './heading-checker/heading-checker.component';
 import { HexEditorComponent } from './hex-editor/hex-editor.component';
@@ -188,6 +189,7 @@ import { YamlJsonComponent } from './yaml-json/yaml-json.component';
     GradientGeneratorComponent,
     GradientTextComponent,
     GridGeneratorComponent,
+    GroceryManagerComponent,
     HashGeneratorComponent,
     HeadingCheckerComponent,
     HexEditorComponent,
@@ -318,6 +320,7 @@ import { YamlJsonComponent } from './yaml-json/yaml-json.component';
     GradientGeneratorComponent,
     GradientTextComponent,
     GridGeneratorComponent,
+    GroceryManagerComponent,
     HashGeneratorComponent,
     HeadingCheckerComponent,
     HexEditorComponent,
