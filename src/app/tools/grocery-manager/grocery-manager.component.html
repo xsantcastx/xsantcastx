@@ -1,0 +1,280 @@
+<div class="gm-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Tools
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">Productivity</p>
+    <h1 class="tool-header__title">Grocery <span class="tool-header__amp">Manager</span></h1>
+    <p class="tool-header__subtitle">Track the staples you always buy, get restock reminders based on how long ago you bought them, and see a running estimate of your bill. Everything stays in your browser — no sign-up.</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Share on LinkedIn
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'grocery-manager'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- Control bar -->
+  <div class="gm-controls">
+    <div class="gm-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" [(ngModel)]="search" placeholder="Search items / buscar…" aria-label="Search items" />
+    </div>
+
+    <label class="gm-select">
+      <span class="gm-select__label">Region</span>
+      <select [value]="region.code" (change)="setRegion($any($event.target).value)" aria-label="Region for price estimate">
+        @for (r of regions; track r.code) {
+          <option [value]="r.code">{{ r.label }}</option>
+        }
+      </select>
+    </label>
+
+    <button class="gm-chip" [class.gm-chip--on]="showSpanish" (click)="toggleSpanish()" type="button">
+      🌐 Español {{ showSpanish ? 'on' : 'off' }}
+    </button>
+
+    <button class="gm-btn gm-btn--primary" (click)="openAddForm()" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add item
+    </button>
+  </div>
+
+  <!-- ── Suggestions: recommended restock ── -->
+  @if (suggestions.length > 0) {
+    <section class="gm-panel gm-panel--suggest">
+      <div class="gm-panel__head">
+        <span class="gm-panel__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Running low — restock suggestions
+        </span>
+        <button class="gm-btn gm-btn--ghost" (click)="addAllSuggestions()" type="button">Add all to list</button>
+      </div>
+      <p class="gm-panel__hint">Based on how long ago you last bought each recurring item.</p>
+      <div class="gm-suggest-grid">
+        @for (item of suggestions; track trackById($index, item)) {
+          <button class="gm-suggest" [attr.data-status]="status(item)" (click)="addSuggestionToCart(item)" type="button">
+            <span class="gm-suggest__emoji">{{ item.emoji }}</span>
+            <span class="gm-suggest__body">
+              <span class="gm-suggest__name">{{ item.name }}</span>
+              <span class="gm-suggest__meta">
+                <span class="gm-badge" [attr.data-status]="status(item)">{{ statusLabel(item) }}</span>
+                @if (daysSince(item) !== null) {
+                  <span class="gm-suggest__age">{{ daysSince(item) }}d ago</span>
+                }
+              </span>
+            </span>
+            <span class="gm-suggest__plus">+</span>
+          </button>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- ── Current shopping list summary ── -->
+  <section class="gm-panel gm-panel--cart" [class.gm-panel--empty]="cartCount === 0">
+    <div class="gm-panel__head">
+      <span class="gm-panel__title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        This trip
+        <span class="gm-cart-count">{{ cartCount }}</span>
+      </span>
+      <div class="gm-cart-total">
+        <span class="gm-cart-total__label">Estimated</span>
+        <span class="gm-cart-total__value">{{ fmt(cartTotal) }}</span>
+      </div>
+    </div>
+
+    @if (cartCount === 0) {
+      <p class="gm-empty-note">No items checked yet. Tap the circle on any item below — or pull from the restock suggestions — to build this trip's list.</p>
+    } @else {
+      <ul class="gm-cart-list">
+        @for (item of cartItems; track trackById($index, item)) {
+          <li class="gm-cart-line">
+            <span class="gm-cart-line__name">
+              {{ item.emoji }} {{ item.name }}
+              @if (showSpanish) { <em class="gm-es">/ {{ item.nameEs }}</em> }
+              @if (item.qty > 1) { <span class="gm-cart-line__qty">×{{ item.qty }}</span> }
+            </span>
+            <span class="gm-cart-line__price">{{ fmt(linePrice(item)) }}</span>
+          </li>
+        }
+      </ul>
+      <div class="gm-cart-actions">
+        <button class="gm-btn gm-btn--primary" (click)="checkoutCart()" type="button">
+          ✓ Mark trip as bought
+        </button>
+        <button class="gm-btn gm-btn--ghost" (click)="clearCart()" type="button">Clear list</button>
+      </div>
+      <p class="gm-disclaimer">Rough estimate for <strong>{{ region.label }}</strong> — tweak any item's price (✎) to match your store.</p>
+    }
+  </section>
+
+  <!-- ── Category filter tabs ── -->
+  <div class="gm-filters" role="tablist" aria-label="Filter by category">
+    <button class="gm-filter" [class.gm-filter--on]="filterCategory === 'All'" (click)="filterCategory = 'All'" type="button">All</button>
+    @for (cat of categories; track cat) {
+      <button class="gm-filter" [attr.data-cat]="cat" [class.gm-filter--on]="filterCategory === cat" (click)="filterCategory = cat" type="button">{{ cat }}</button>
+    }
+  </div>
+
+  <!-- ── Main item list by category ── -->
+  @if (items.length === 0) {
+    <div class="gm-zero">
+      <p>Your pantry is empty.</p>
+      <button class="gm-btn gm-btn--primary" (click)="loadStarterList()" type="button">Load starter list</button>
+    </div>
+  } @else if (visibleCategories.length === 0) {
+    <div class="gm-zero"><p>No items match “{{ search }}”.</p></div>
+  } @else {
+    @for (cat of visibleCategories; track cat) {
+      <section class="gm-cat" [attr.data-cat]="cat">
+        <h2 class="gm-cat__title">{{ cat }}</h2>
+        <div class="gm-items">
+          @for (item of itemsInCategory(cat); track trackById($index, item)) {
+            <article class="gm-item" [attr.data-cat]="cat" [class.gm-item--incart]="item.inCart" [class.gm-item--optional]="item.optional">
+              <button class="gm-check" [class.gm-check--on]="item.inCart" (click)="toggleCart(item)" [attr.aria-label]="item.inCart ? 'Remove from list' : 'Add to list'" type="button">
+                @if (item.inCart) {
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                }
+              </button>
+
+              <span class="gm-item__emoji">{{ item.emoji }}</span>
+
+              <div class="gm-item__body">
+                <div class="gm-item__names">
+                  <span class="gm-item__name">{{ item.name }}</span>
+                  @if (showSpanish) { <span class="gm-item__es">{{ item.nameEs }}</span> }
+                  @if (item.optional) { <span class="gm-tag gm-tag--opt">optional</span> }
+                  @if (item.recurring) {
+                    <span class="gm-badge" [attr.data-status]="status(item)">{{ statusLabel(item) }}</span>
+                  }
+                </div>
+                <div class="gm-item__sub">
+                  @if (item.recurring && item.intervalDays > 0) {
+                    <span class="gm-item__interval" title="Repurchase cadence">↻ every {{ item.intervalDays }}d</span>
+                  }
+                  @if (daysSince(item) !== null) {
+                    <span class="gm-item__last">· last {{ daysSince(item) }}d ago</span>
+                  } @else {
+                    <span class="gm-item__last">· not bought yet</span>
+                  }
+                  <span class="gm-item__price">· {{ fmt(unitPrice(item)) }}@if (item.qty > 1) { <span> ea</span> }</span>
+                </div>
+              </div>
+
+              <div class="gm-qty">
+                <button class="gm-qty__btn" (click)="changeQty(item, -1)" aria-label="Decrease quantity" type="button">−</button>
+                <span class="gm-qty__val">{{ item.qty }}</span>
+                <button class="gm-qty__btn" (click)="changeQty(item, 1)" aria-label="Increase quantity" type="button">+</button>
+              </div>
+
+              <div class="gm-item__actions">
+                <button class="gm-icon-btn" (click)="markPurchased(item)" title="Mark as bought today" aria-label="Mark as bought today" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </button>
+                <button class="gm-icon-btn" (click)="openEditForm(item)" title="Edit" aria-label="Edit item" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                </button>
+                <button class="gm-icon-btn gm-icon-btn--danger" (click)="deleteItem(item)" title="Delete" aria-label="Delete item" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+
+  <!-- ── Footer utilities ── -->
+  <div class="gm-footer-utils">
+    <button class="gm-btn gm-btn--ghost" (click)="loadStarterList()" type="button">+ Load starter list</button>
+    <button class="gm-btn gm-btn--ghost gm-btn--danger" (click)="clearAll()" type="button">Clear everything</button>
+  </div>
+
+  <app-related-tools [currentToolId]="'grocery-manager'"></app-related-tools>
+</div>
+
+<!-- ── Add / edit modal ── -->
+@if (showAddForm) {
+  <div class="gm-modal-backdrop" (click)="cancelForm()">
+    <div class="gm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Add or edit item">
+      <h3 class="gm-modal__title">{{ editingId ? 'Edit item' : 'Add item' }}</h3>
+
+      <div class="gm-field-row">
+        <label class="gm-field gm-field--emoji">
+          <span>Icon</span>
+          <input type="text" [(ngModel)]="draft.emoji" maxlength="2" />
+        </label>
+        <label class="gm-field gm-field--grow">
+          <span>Name (English)</span>
+          <input type="text" [(ngModel)]="draft.name" placeholder="e.g. Greek yogurt" />
+        </label>
+      </div>
+
+      <label class="gm-field">
+        <span>Name (Español)</span>
+        <input type="text" [(ngModel)]="draft.nameEs" placeholder="p.ej. yogur griego" />
+      </label>
+
+      <div class="gm-field-row">
+        <label class="gm-field gm-field--grow">
+          <span>Category</span>
+          <select [(ngModel)]="draft.category">
+            @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        </label>
+        <label class="gm-field">
+          <span>Price ({{ region.symbol }} base)</span>
+          <input type="number" min="0" step="0.1" [(ngModel)]="draft.basePrice" />
+        </label>
+      </div>
+
+      <div class="gm-field-row">
+        <label class="gm-field gm-field--check">
+          <input type="checkbox" [(ngModel)]="draft.recurring" />
+          <span>I always buy this (track restock)</span>
+        </label>
+      </div>
+
+      @if (draft.recurring) {
+        <div class="gm-field-row">
+          <label class="gm-field gm-field--grow">
+            <span>Repurchase every (days)</span>
+            <input type="number" min="1" step="1" [(ngModel)]="draft.intervalDays" />
+          </label>
+          <label class="gm-field">
+            <span>Last bought</span>
+            <input type="date" [(ngModel)]="draft.lastPurchased" />
+          </label>
+        </div>
+      }
+
+      <label class="gm-field gm-field--check">
+        <input type="checkbox" [(ngModel)]="draft.optional" />
+        <span>Optional / nice-to-have</span>
+      </label>
+
+      <div class="gm-modal__actions">
+        <button class="gm-btn gm-btn--ghost" (click)="cancelForm()" type="button">Cancel</button>
+        <button class="gm-btn gm-btn--primary" (click)="saveDraft()" [disabled]="!draft.name.trim()" type="button">
+          {{ editingId ? 'Save changes' : 'Add item' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
