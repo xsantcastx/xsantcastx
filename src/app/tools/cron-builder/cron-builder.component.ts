@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface CronField {
   label: string;
@@ -17,10 +19,10 @@ interface Preset {
 }
 
 @Component({
-  selector: 'app-cron-builder',
-  templateUrl: './cron-builder.component.html',
-  styleUrls: ['./cron-builder.component.css'],
-  standalone: false
+    selector: 'app-cron-builder',
+    templateUrl: './cron-builder.component.html',
+    styleUrls: ['./cron-builder.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class CronBuilderComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

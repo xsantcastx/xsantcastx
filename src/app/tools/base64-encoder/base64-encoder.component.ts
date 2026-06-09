@@ -1,15 +1,17 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ToolMode = 'encode' | 'decode';
 
 @Component({
-  selector: 'app-base64-encoder',
-  templateUrl: './base64-encoder.component.html',
-  styleUrls: ['./base64-encoder.component.css'],
-  standalone: false
+    selector: 'app-base64-encoder',
+    templateUrl: './base64-encoder.component.html',
+    styleUrls: ['./base64-encoder.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class Base64EncoderComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

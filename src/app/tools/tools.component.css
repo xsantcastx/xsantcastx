@@ -176,7 +176,16 @@
   font: inherit;
 }
 
-.galaxy:hover,
+/* §3.5 — galaxy hover wrapped so touch devices never get phantom tilt */
+@media (hover: hover) {
+  .galaxy:hover {
+    transform: scale(1.08) rotateZ(-6deg);
+    filter: brightness(1.15);
+  }
+
+  .galaxy:hover .galaxy__ring { opacity: 0.9; }
+}
+
 .galaxy:focus-visible {
   transform: scale(1.08) rotateZ(-6deg);
   outline: none;
@@ -574,14 +583,34 @@
   pointer-events: none;
 }
 
-.orbit-star--live .orbit-star__anchor:hover,
+/* §3.5 — orbit-star hover effects wrapped so touch never sees phantom states.
+   focus-visible and JS-driven .orbit-star--hovered remain unconditional. */
+@media (hover: hover) {
+  .orbit-star--live .orbit-star__anchor:hover {
+    transform: translate(-50%, -50%) rotateX(-20deg) scale(1.6);
+    outline: none;
+  }
+
+  .orbit-star--live .orbit-star__anchor:hover .orbit-star__core {
+    box-shadow:
+      0 0 24px var(--star-glow),
+      0 0 70px var(--star-glow),
+      inset 0 0 12px rgba(255, 255, 255, 0.25);
+  }
+
+  .orbit-star--live .orbit-star__anchor:hover .orbit-star__core::after {
+    opacity: 0.9;
+    transform: scale(1.6);
+  }
+}
+
+/* focus-visible and JS-toggled hover state remain unconditional */
 .orbit-star--live .orbit-star__anchor:focus-visible,
 .orbit-star--hovered .orbit-star__anchor {
   transform: translate(-50%, -50%) rotateX(-20deg) scale(1.6);
   outline: none;
 }
 
-.orbit-star--live .orbit-star__anchor:hover .orbit-star__core,
 .orbit-star--live .orbit-star__anchor:focus-visible .orbit-star__core,
 .orbit-star--hovered .orbit-star__core {
   box-shadow:
@@ -596,7 +625,7 @@
 }
 
 .orbit-star--hovered .orbit-star__core::after,
-.orbit-star--live .orbit-star__anchor:hover .orbit-star__core::after {
+.orbit-star--live .orbit-star__anchor:focus-visible .orbit-star__core::after {
   opacity: 0.9;
   transform: scale(1.6);
 }
@@ -735,7 +764,8 @@ a.tool-card { text-decoration: none; color: inherit; }
   cursor: pointer;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
-  will-change: transform, filter;
+  /* §3.3 will-change removed — hover-only transform; promoting every card
+     wastes compositor memory. will-change is re-applied on hover below. */
   z-index: 1;
 }
 
@@ -863,10 +893,39 @@ a.tool-card { text-decoration: none; color: inherit; }
 .tool-card__tags { display: none; }
 
 .tool-card--live { cursor: pointer; }
-.tool-card--live:hover,
+
+/* §3.3 will-change + §3.5 hover guard: apply will-change only when hover is
+   available and the pointer is active, so mobile never promotes these cards. */
+@media (hover: hover) {
+  .tool-card--live:hover { will-change: transform, filter; }
+}
+
 .tool-card--live:focus-visible { transform: translateY(-6px) rotateX(-4deg); }
 
-.tool-card--live:hover .tool-card__icon,
+@media (hover: hover) {
+  .tool-card--live:hover { transform: translateY(-6px) rotateX(-4deg); }
+
+  .tool-card--live:hover .tool-card__icon {
+    animation-play-state: paused;
+    transform: scale(1.14);
+    box-shadow:
+      0 0 34px var(--star-glow),
+      0 0 88px var(--star-glow),
+      inset 0 0 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .tool-card--live:hover .tool-card__icon::after {
+    opacity: 0.95;
+    transform: scale(1.3);
+  }
+
+  .tool-card--live:hover .tool-card__title {
+    color: var(--star-color);
+    text-shadow: 0 0 14px var(--star-glow), 0 0 4px rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* focus-visible stays unconditional — keyboard navigation must always work */
 .tool-card--live:focus-visible .tool-card__icon {
   animation-play-state: paused;
   transform: scale(1.14);
@@ -876,13 +935,11 @@ a.tool-card { text-decoration: none; color: inherit; }
     inset 0 0 12px rgba(0, 0, 0, 0.3);
 }
 
-.tool-card--live:hover .tool-card__icon::after,
 .tool-card--live:focus-visible .tool-card__icon::after {
   opacity: 0.95;
   transform: scale(1.3);
 }
 
-.tool-card--live:hover .tool-card__title,
 .tool-card--live:focus-visible .tool-card__title {
   color: var(--star-color);
   text-shadow: 0 0 14px var(--star-glow), 0 0 4px rgba(255, 255, 255, 0.8);
@@ -1017,6 +1074,54 @@ a.tool-card { text-decoration: none; color: inherit; }
   .tool-card__icon { width: 48px; height: 48px; }
   .tool-card__title { font-size: 0.6rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   §3.5 — Tools galaxy lite mode (≤768px)
+   ───────────────────────────────────────────────────────────────────
+   Star count is JS-driven (orbit-star elements are rendered by Angular
+   from the tools registry). The JS-side count reduction is a handoff
+   item (see report). The CSS half we can control:
+
+   • Galaxy arms: reduce blur + opacity so the visual density reads
+     lighter without removing elements from the DOM.
+   • Orbit ring: hide every other dashed orbit ring via nth-child
+     (even rings hidden → visual ring count halved).
+   • Galaxy dust: opacity halved — fewer perceived star points.
+   • orbit-star: even-index stars faded to near-invisible, which
+     effectively halves the perceived star count without JS changes.
+
+   §3.5 — tilt guard: .galaxy:hover and .orbit-star:hover card hover
+   effects already wrapped above in @media (hover: hover).
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Reduce galaxy arm visual weight */
+  .galaxy__arms {
+    opacity: 0.4;
+    filter: blur(10px);
+  }
+
+  /* Halve perceived dust-star count */
+  .galaxy__dust {
+    opacity: 0.35;
+  }
+
+  /* Halve the visual orbit-ring count: hide even rings */
+  .orbit-ring:nth-child(even) {
+    display: none;
+  }
+
+  /* Fade every other orbit-star to near-invisible — halves perceived
+     star count in CSS without removing elements or touching TS. */
+  .orbit-star:nth-child(even) {
+    opacity: 0.08;
+  }
+
+  /* Reduce star-system scene tilt — cheaper perspective at small viewport */
+  .star-system__scene {
+    transform: rotateX(12deg);
+  }
+}
+
 
 /* Reduced motion — freeze the cosmos */
 @media (prefers-reduced-motion: reduce) {

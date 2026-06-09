@@ -1,8 +1,10 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type Alignment = 'left' | 'center' | 'right';
 type OutputFormat = 'markdown' | 'html';
@@ -12,10 +14,10 @@ interface TableCell {
 }
 
 @Component({
-  selector: 'app-md-table-generator',
-  templateUrl: './md-table-generator.component.html',
-  styleUrls: ['./md-table-generator.component.css'],
-  standalone: false
+    selector: 'app-md-table-generator',
+    templateUrl: './md-table-generator.component.html',
+    styleUrls: ['./md-table-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class MdTableGeneratorComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

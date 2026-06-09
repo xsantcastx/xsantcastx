@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export type GitCategory = 'all' | 'basics' | 'branching' | 'remote' | 'stash' | 'log' | 'diff' | 'reset' | 'rebase' | 'config';
 
@@ -15,10 +17,10 @@ export interface GitCommandEntry {
 }
 
 @Component({
-  selector: 'app-git-reference',
-  templateUrl: './git-reference.component.html',
-  styleUrls: ['./git-reference.component.css'],
-  standalone: false
+    selector: 'app-git-reference',
+    templateUrl: './git-reference.component.html',
+    styleUrls: ['./git-reference.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class GitReferenceComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

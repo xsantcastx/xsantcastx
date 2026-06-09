@@ -3,6 +3,9 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 
 interface CertificateNode {
   subject: string;
@@ -61,10 +64,10 @@ interface ScanResult {
 }
 
 @Component({
-  selector: 'app-ssl-certificate-inspector',
-  templateUrl: './ssl-certificate-inspector.component.html',
-  styleUrls: ['./ssl-certificate-inspector.component.css'],
-  standalone: false
+    selector: 'app-ssl-certificate-inspector',
+    templateUrl: './ssl-certificate-inspector.component.html',
+    styleUrls: ['./ssl-certificate-inspector.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DatePipe]
 })
 export class SslCertificateInspectorComponent implements OnInit, OnDestroy {
   private paramSub?: Subscription;

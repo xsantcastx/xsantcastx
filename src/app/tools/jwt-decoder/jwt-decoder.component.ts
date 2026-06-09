@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface JwtClaim {
   key: string;
@@ -13,10 +15,10 @@ interface JwtClaim {
 }
 
 @Component({
-  selector: 'app-jwt-decoder',
-  templateUrl: './jwt-decoder.component.html',
-  styleUrls: ['./jwt-decoder.component.css'],
-  standalone: false
+    selector: 'app-jwt-decoder',
+    templateUrl: './jwt-decoder.component.html',
+    styleUrls: ['./jwt-decoder.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class JwtDecoderComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

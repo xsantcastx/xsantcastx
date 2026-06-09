@@ -233,19 +233,34 @@
   <section class="hp-anchor" aria-hidden="true">
     <div class="hp-anchor__inner">
       <div class="cosmic-planet">
-        <div class="cosmic-planet__atmosphere"></div>
-        <div class="cosmic-planet__ring cosmic-planet__ring--back"></div>
+        <!-- z=0: outer diffuse glow halo (§3.3 cross-fade layers) -->
+        <div class="cosmic-planet__atmosphere" aria-hidden="true"></div>
+        <!-- z=1: ring far half — behind sphere -->
+        <div class="cosmic-planet__ring cosmic-planet__ring--back" aria-hidden="true"></div>
+        <!-- §1.4a: sphere's shadow wedge cast onto the ring far half -->
+        <div class="cosmic-planet__sphere-shadow" aria-hidden="true"></div>
+        <!-- z=2: sphere body — surface + clouds + terminator + lights inside -->
         <div class="cosmic-planet__sphere">
-          <div class="cosmic-planet__surface"></div>
-          <div class="cosmic-planet__clouds"></div>
-          <div class="cosmic-planet__terminator"></div>
-          <div class="cosmic-planet__nightlights"></div>
-          <div class="cosmic-planet__glint"></div>
-          <div class="cosmic-planet__highlight"></div>
+          <div class="cosmic-planet__surface" aria-hidden="true"></div>
+          <div class="cosmic-planet__clouds" aria-hidden="true"></div>
+          <!-- §1.2: terminator sits above surface+clouds so both darken at night -->
+          <div class="cosmic-planet__terminator" aria-hidden="true"></div>
+          <div class="cosmic-planet__nightlights" aria-hidden="true"></div>
+          <div class="cosmic-planet__glint" aria-hidden="true"></div>
+          <div class="cosmic-planet__highlight" aria-hidden="true"></div>
+          <!-- §1.4b: ring's shadow band across the lower sphere -->
+          <div class="cosmic-planet__ring-shadow" aria-hidden="true"></div>
+          <!-- §1.5/§3.4: ~2% noise overlay to kill OLED gradient banding -->
+          <div class="cosmic-planet__banding" aria-hidden="true"></div>
         </div>
-        <div class="cosmic-planet__limb"></div>
-        <div class="cosmic-planet__ring cosmic-planet__ring--front"></div>
-        <div class="cosmic-planet__moon"></div>
+        <!-- §1.3: Fresnel atmosphere rim — bright arc on sunlit limb -->
+        <div class="cosmic-planet__atmosphere-rim" aria-hidden="true"></div>
+        <!-- existing limb retained as subtle secondary scatter -->
+        <div class="cosmic-planet__limb" aria-hidden="true"></div>
+        <!-- z=4: ring near half — in front of sphere -->
+        <div class="cosmic-planet__ring cosmic-planet__ring--front" aria-hidden="true"></div>
+        <!-- §1.6: moon with mini-terminator gradient -->
+        <div class="cosmic-planet__moon" aria-hidden="true"></div>
       </div>
       <p class="hp-anchor__whisper">{{ translate('cosmic.anchor.whisper') }}</p>
     </div>

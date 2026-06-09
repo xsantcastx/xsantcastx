@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface HeadingEntry {
   level: number;
@@ -16,10 +18,10 @@ interface HeadingIssue {
 }
 
 @Component({
-  selector: 'app-heading-checker',
-  templateUrl: './heading-checker.component.html',
-  styleUrls: ['./heading-checker.component.css'],
-  standalone: false
+    selector: 'app-heading-checker',
+    templateUrl: './heading-checker.component.html',
+    styleUrls: ['./heading-checker.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class HeadingCheckerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 interface FlexChild {
   id: number;
@@ -28,10 +31,10 @@ const CHILD_COLORS = [
 ];
 
 @Component({
-  selector: 'app-flexbox-generator',
-  templateUrl: './flexbox-generator.component.html',
-  styleUrls: ['./flexbox-generator.component.css'],
-  standalone: false
+    selector: 'app-flexbox-generator',
+    templateUrl: './flexbox-generator.component.html',
+    styleUrls: ['./flexbox-generator.component.css'],
+    imports: [ToolsSharedModule, NgStyle, FormsModule]
 })
 export class FlexboxGeneratorComponent {
   // Container properties

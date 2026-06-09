@@ -3,12 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 @Component({
-  selector: 'app-color-picker',
-  templateUrl: './color-picker.component.html',
-  styleUrls: ['./color-picker.component.css'],
-  standalone: false
+    selector: 'app-color-picker',
+    templateUrl: './color-picker.component.html',
+    styleUrls: ['./color-picker.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class ColorPickerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

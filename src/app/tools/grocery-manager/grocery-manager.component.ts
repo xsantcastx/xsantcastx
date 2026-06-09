@@ -2,6 +2,8 @@ import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 /** Internal grocery categories — each mapped to a cosmic palette color in CSS. */
 type GroceryCategory =
@@ -39,10 +41,10 @@ interface Region {
 type StockStatus = 'restock' | 'due' | 'soon' | 'stocked';
 
 @Component({
-  selector: 'app-grocery-manager',
-  templateUrl: './grocery-manager.component.html',
-  styleUrls: ['./grocery-manager.component.css'],
-  standalone: false,
+    selector: 'app-grocery-manager',
+    templateUrl: './grocery-manager.component.html',
+    styleUrls: ['./grocery-manager.component.css'],
+    imports: [ToolsSharedModule, FormsModule],
 })
 export class GroceryManagerComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

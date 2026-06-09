@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface SpacingStep { label: string; value: number; px: string; rem: string; }
 
 @Component({
-  selector: 'app-spacing-scale',
-  templateUrl: './spacing-scale.component.html',
-  styleUrls: ['./spacing-scale.component.css'],
-  standalone: false
+    selector: 'app-spacing-scale',
+    templateUrl: './spacing-scale.component.html',
+    styleUrls: ['./spacing-scale.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class SpacingScaleComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

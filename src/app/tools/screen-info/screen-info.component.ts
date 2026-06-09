@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, NgZone, HostListener
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface DeviceResolution {
   name: string;
@@ -14,10 +16,10 @@ interface DeviceResolution {
 type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 @Component({
-  selector: 'app-screen-info',
-  templateUrl: './screen-info.component.html',
-  styleUrls: ['./screen-info.component.css'],
-  standalone: false
+    selector: 'app-screen-info',
+    templateUrl: './screen-info.component.html',
+    styleUrls: ['./screen-info.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class ScreenInfoComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

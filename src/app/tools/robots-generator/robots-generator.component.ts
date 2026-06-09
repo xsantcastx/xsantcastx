@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface RobotsDirective {
   key: string;
@@ -21,10 +23,10 @@ interface RobotsTxtRule {
 }
 
 @Component({
-  selector: 'app-robots-generator',
-  templateUrl: './robots-generator.component.html',
-  styleUrls: ['./robots-generator.component.css'],
-  standalone: false
+    selector: 'app-robots-generator',
+    templateUrl: './robots-generator.component.html',
+    styleUrls: ['./robots-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class RobotsGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

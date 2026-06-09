@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ExportFormat = 'css' | 'tailwind' | 'scss';
 type HarmonyType = 'complementary' | 'split-complementary' | 'triadic' | 'tetradic';
@@ -14,10 +16,10 @@ interface ColorSwatch {
 }
 
 @Component({
-  selector: 'app-color-shades',
-  templateUrl: './color-shades.component.html',
-  styleUrls: ['./color-shades.component.css'],
-  standalone: false
+    selector: 'app-color-shades',
+    templateUrl: './color-shades.component.html',
+    styleUrls: ['./color-shades.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class ColorShadesComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

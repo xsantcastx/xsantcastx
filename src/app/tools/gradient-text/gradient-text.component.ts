@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
 
 export interface ColorStop {
   id: number;
@@ -18,10 +20,10 @@ export interface GradientPreset {
 }
 
 @Component({
-  selector: 'app-gradient-text',
-  templateUrl: './gradient-text.component.html',
-  styleUrls: ['./gradient-text.component.css'],
-  standalone: false
+    selector: 'app-gradient-text',
+    templateUrl: './gradient-text.component.html',
+    styleUrls: ['./gradient-text.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class GradientTextComponent {
   private readonly eggs = inject(EasterEggService);

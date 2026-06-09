@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface CaseResult {
   label: string;
@@ -12,10 +14,10 @@ interface CaseResult {
 }
 
 @Component({
-  selector: 'app-case-converter',
-  templateUrl: './case-converter.component.html',
-  styleUrls: ['./case-converter.component.css'],
-  standalone: false
+    selector: 'app-case-converter',
+    templateUrl: './case-converter.component.html',
+    styleUrls: ['./case-converter.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class CaseConverterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

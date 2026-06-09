@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export type StatusCategory = 'all' | '1xx' | '2xx' | '3xx' | '4xx' | '5xx';
 
@@ -16,10 +18,10 @@ export interface HttpStatusEntry {
 }
 
 @Component({
-  selector: 'app-http-status',
-  templateUrl: './http-status.component.html',
-  styleUrls: ['./http-status.component.css'],
-  standalone: false
+    selector: 'app-http-status',
+    templateUrl: './http-status.component.html',
+    styleUrls: ['./http-status.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class HttpStatusComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

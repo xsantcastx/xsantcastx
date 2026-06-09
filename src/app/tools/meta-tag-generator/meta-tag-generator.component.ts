@@ -2,6 +2,9 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
+import { UpperCasePipe } from '@angular/common';
 
 interface MetaTagData {
   // Standard SEO
@@ -26,10 +29,10 @@ interface MetaTagData {
 }
 
 @Component({
-  selector: 'app-meta-tag-generator',
-  templateUrl: './meta-tag-generator.component.html',
-  styleUrls: ['./meta-tag-generator.component.css'],
-  standalone: false
+    selector: 'app-meta-tag-generator',
+    templateUrl: './meta-tag-generator.component.html',
+    styleUrls: ['./meta-tag-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class MetaTagGeneratorComponent {
   data: MetaTagData = {

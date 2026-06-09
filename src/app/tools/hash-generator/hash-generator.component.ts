@@ -1,9 +1,11 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type InputMode = 'text' | 'file';
 type TabMode = 'generate' | 'compare';
@@ -15,10 +17,10 @@ interface HashResult {
 }
 
 @Component({
-  selector: 'app-hash-generator',
-  templateUrl: './hash-generator.component.html',
-  styleUrls: ['./hash-generator.component.css'],
-  standalone: false
+    selector: 'app-hash-generator',
+    templateUrl: './hash-generator.component.html',
+    styleUrls: ['./hash-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class HashGeneratorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

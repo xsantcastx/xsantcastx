@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface WcagResult {
   level: 'AA' | 'AAA';
@@ -25,10 +26,10 @@ interface ColorSuggestion {
 }
 
 @Component({
-  selector: 'app-apca-contrast',
-  templateUrl: './apca-contrast.component.html',
-  styleUrls: ['./apca-contrast.component.css'],
-  standalone: false
+    selector: 'app-apca-contrast',
+    templateUrl: './apca-contrast.component.html',
+    styleUrls: ['./apca-contrast.component.css'],
+    imports: [ToolsSharedModule]
 })
 export class ApcaContrastComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

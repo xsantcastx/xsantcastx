@@ -1,7 +1,9 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type HexMode = 'file' | 'text-to-hex' | 'hex-to-text';
 
@@ -12,10 +14,10 @@ interface HexRow {
 }
 
 @Component({
-  selector: 'app-hex-editor',
-  templateUrl: './hex-editor.component.html',
-  styleUrls: ['./hex-editor.component.css'],
-  standalone: false
+    selector: 'app-hex-editor',
+    templateUrl: './hex-editor.component.html',
+    styleUrls: ['./hex-editor.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class HexEditorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
