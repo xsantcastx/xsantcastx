@@ -1,8 +1,12 @@
 import { NgModule } from '@angular/core';
-import { ToolsPageComponentsModule } from './tools-page-components.module';
 import { ToolsRoutingModule } from './tools-routing.module';
 
+/**
+ * ToolsModule — lazy entry for the /tools area. Tool page components are now
+ * standalone and code-split per route via `loadComponent` in ToolsRoutingModule,
+ * so this module only wires the child routes.
+ */
 @NgModule({
-  imports: [ToolsPageComponentsModule, ToolsRoutingModule]
+  imports: [ToolsRoutingModule]
 })
 export class ToolsModule {}

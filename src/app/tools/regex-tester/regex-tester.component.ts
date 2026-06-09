@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface MatchResult {
   index: number;
@@ -26,10 +28,10 @@ interface CommonPattern {
 }
 
 @Component({
-  selector: 'app-regex-tester',
-  templateUrl: './regex-tester.component.html',
-  styleUrls: ['./regex-tester.component.css'],
-  standalone: false
+    selector: 'app-regex-tester',
+    templateUrl: './regex-tester.component.html',
+    styleUrls: ['./regex-tester.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class RegexTesterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

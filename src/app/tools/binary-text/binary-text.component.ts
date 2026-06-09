@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ToolMode = 'text-to-binary' | 'binary-to-text';
 type Separator = 'space' | 'none' | 'dash';
@@ -16,10 +18,10 @@ interface CharBreakdown {
 }
 
 @Component({
-  selector: 'app-binary-text',
-  templateUrl: './binary-text.component.html',
-  styleUrls: ['./binary-text.component.css'],
-  standalone: false
+    selector: 'app-binary-text',
+    templateUrl: './binary-text.component.html',
+    styleUrls: ['./binary-text.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class BinaryTextComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

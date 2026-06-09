@@ -3,12 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 @Component({
-  selector: 'app-transform-playground',
-  templateUrl: './transform-playground.component.html',
-  styleUrls: ['./transform-playground.component.css'],
-  standalone: false
+    selector: 'app-transform-playground',
+    templateUrl: './transform-playground.component.html',
+    styleUrls: ['./transform-playground.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class TransformPlaygroundComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

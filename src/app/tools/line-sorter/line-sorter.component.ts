@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type SortMode = 'alpha' | 'length' | 'numeric' | 'random';
 
 @Component({
-  selector: 'app-line-sorter',
-  templateUrl: './line-sorter.component.html',
-  styleUrls: ['./line-sorter.component.css'],
-  standalone: false
+    selector: 'app-line-sorter',
+    templateUrl: './line-sorter.component.html',
+    styleUrls: ['./line-sorter.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class LinesorterComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

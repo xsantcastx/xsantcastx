@@ -2,6 +2,8 @@ import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type ActiveTab = 'lookup' | 'reference';
 
@@ -21,10 +23,10 @@ interface DnsTypeOption {
 }
 
 @Component({
-  selector: 'app-dns-lookup',
-  templateUrl: './dns-lookup.component.html',
-  styleUrls: ['./dns-lookup.component.css'],
-  standalone: false
+    selector: 'app-dns-lookup',
+    templateUrl: './dns-lookup.component.html',
+    styleUrls: ['./dns-lookup.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class DnsLookupComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

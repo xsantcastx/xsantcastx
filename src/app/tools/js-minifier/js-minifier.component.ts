@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type JsMode = 'minify' | 'beautify';
 
 @Component({
-  selector: 'app-js-minifier',
-  templateUrl: './js-minifier.component.html',
-  styleUrls: ['./js-minifier.component.css'],
-  standalone: false
+    selector: 'app-js-minifier',
+    templateUrl: './js-minifier.component.html',
+    styleUrls: ['./js-minifier.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class JsMinifierComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

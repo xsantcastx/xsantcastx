@@ -1,16 +1,18 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ToolMode = 'escape' | 'unescape';
 
 @Component({
-  selector: 'app-json-escape',
-  templateUrl: './json-escape.component.html',
-  styleUrls: ['./json-escape.component.css'],
-  standalone: false
+    selector: 'app-json-escape',
+    templateUrl: './json-escape.component.html',
+    styleUrls: ['./json-escape.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class JsonEscapeComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

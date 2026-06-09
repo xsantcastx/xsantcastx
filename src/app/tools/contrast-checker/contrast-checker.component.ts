@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface WcagResult {
   level: 'AA' | 'AAA';
@@ -12,10 +13,10 @@ interface WcagResult {
 }
 
 @Component({
-  selector: 'app-contrast-checker',
-  templateUrl: './contrast-checker.component.html',
-  styleUrls: ['./contrast-checker.component.css'],
-  standalone: false,
+    selector: 'app-contrast-checker',
+    templateUrl: './contrast-checker.component.html',
+    styleUrls: ['./contrast-checker.component.css'],
+    imports: [ToolsSharedModule],
 })
 export class ContrastCheckerComponent {
   private readonly eggs = inject(EasterEggService);

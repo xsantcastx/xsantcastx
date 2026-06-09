@@ -1,9 +1,11 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type IndentOption = '2' | '4' | 'tab';
 
@@ -15,10 +17,10 @@ interface ValidationResult {
 }
 
 @Component({
-  selector: 'app-json-formatter',
-  templateUrl: './json-formatter.component.html',
-  styleUrls: ['./json-formatter.component.css'],
-  standalone: false
+    selector: 'app-json-formatter',
+    templateUrl: './json-formatter.component.html',
+    styleUrls: ['./json-formatter.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class JsonFormatterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

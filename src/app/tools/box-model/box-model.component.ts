@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
+import { TitleCasePipe } from '@angular/common';
 
 type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'double' | 'groove' | 'ridge' | 'inset' | 'outset' | 'none';
 
@@ -37,10 +40,10 @@ interface SpacingPreset {
 }
 
 @Component({
-  selector: 'app-box-model',
-  templateUrl: './box-model.component.html',
-  styleUrls: ['./box-model.component.css'],
-  standalone: false
+    selector: 'app-box-model',
+    templateUrl: './box-model.component.html',
+    styleUrls: ['./box-model.component.css'],
+    imports: [ToolsSharedModule, FormsModule, TitleCasePipe]
 })
 export class BoxModelComponent {
   private readonly eggs = inject(EasterEggService);

@@ -3,12 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 @Component({
-  selector: 'app-countdown',
-  templateUrl: './countdown.component.html',
-  styleUrls: ['./countdown.component.css'],
-  standalone: false
+    selector: 'app-countdown',
+    templateUrl: './countdown.component.html',
+    styleUrls: ['./countdown.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class CountdownComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

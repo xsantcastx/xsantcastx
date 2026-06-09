@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface WebhookHeader { key: string; value: string; }
 
 @Component({
-  selector: 'app-webhook-tester',
-  templateUrl: './webhook-tester.component.html',
-  styleUrls: ['./webhook-tester.component.css'],
-  standalone: false
+    selector: 'app-webhook-tester',
+    templateUrl: './webhook-tester.component.html',
+    styleUrls: ['./webhook-tester.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class WebhookTesterComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

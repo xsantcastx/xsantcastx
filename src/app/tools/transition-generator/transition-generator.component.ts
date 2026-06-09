@@ -3,12 +3,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 @Component({
-  selector: 'app-transition-generator',
-  templateUrl: './transition-generator.component.html',
-  styleUrls: ['./transition-generator.component.css'],
-  standalone: false
+    selector: 'app-transition-generator',
+    templateUrl: './transition-generator.component.html',
+    styleUrls: ['./transition-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class TransitionGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

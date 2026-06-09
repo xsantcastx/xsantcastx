@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
 
 interface ShadowLayer {
   id: number;
@@ -26,10 +28,10 @@ interface HistoryState {
 }
 
 @Component({
-  selector: 'app-box-shadow-generator',
-  templateUrl: './box-shadow-generator.component.html',
-  styleUrls: ['./box-shadow-generator.component.css'],
-  standalone: false
+    selector: 'app-box-shadow-generator',
+    templateUrl: './box-shadow-generator.component.html',
+    styleUrls: ['./box-shadow-generator.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class BoxShadowGeneratorComponent {
   layers: ShadowLayer[] = [];

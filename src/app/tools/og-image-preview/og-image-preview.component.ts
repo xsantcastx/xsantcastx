@@ -1,14 +1,16 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, UpperCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 @Component({
-  selector: 'app-og-image-preview',
-  templateUrl: './og-image-preview.component.html',
-  styleUrls: ['./og-image-preview.component.css'],
-  standalone: false
+    selector: 'app-og-image-preview',
+    templateUrl: './og-image-preview.component.html',
+    styleUrls: ['./og-image-preview.component.css'],
+    imports: [FormsModule, ToolsSharedModule, UpperCasePipe]
 })
 export class OgImagePreviewComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -3,15 +3,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface JwtClaim { name: string; description: string; required: boolean; example: string; }
 interface JwtAlgorithm { name: string; type: string; description: string; keySize: string; security: 'low' | 'medium' | 'high'; }
 
 @Component({
-  selector: 'app-jwt-cheatsheet',
-  templateUrl: './jwt-cheatsheet.component.html',
-  styleUrls: ['./jwt-cheatsheet.component.css'],
-  standalone: false
+    selector: 'app-jwt-cheatsheet',
+    templateUrl: './jwt-cheatsheet.component.html',
+    styleUrls: ['./jwt-cheatsheet.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class JwtCheatsheetComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

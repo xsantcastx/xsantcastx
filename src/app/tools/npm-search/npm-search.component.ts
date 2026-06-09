@@ -1,8 +1,10 @@
 import { Component, inject, PLATFORM_ID, OnInit } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface NpmPackage {
   name: string;
@@ -38,10 +40,10 @@ interface SearchResult {
 type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun';
 
 @Component({
-  selector: 'app-npm-search',
-  templateUrl: './npm-search.component.html',
-  styleUrls: ['./npm-search.component.css'],
-  standalone: false
+    selector: 'app-npm-search',
+    templateUrl: './npm-search.component.html',
+    styleUrls: ['./npm-search.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class NpmSearchComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

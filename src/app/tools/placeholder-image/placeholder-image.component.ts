@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ImageFormat = 'png' | 'jpeg' | 'webp';
 
@@ -19,10 +21,10 @@ interface BatchItem {
 }
 
 @Component({
-  selector: 'app-placeholder-image',
-  templateUrl: './placeholder-image.component.html',
-  styleUrls: ['./placeholder-image.component.css'],
-  standalone: false
+    selector: 'app-placeholder-image',
+    templateUrl: './placeholder-image.component.html',
+    styleUrls: ['./placeholder-image.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class PlaceholderImageComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

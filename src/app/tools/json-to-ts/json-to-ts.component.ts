@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface GeneratedInterface {
   name: string;
@@ -11,10 +13,10 @@ interface GeneratedInterface {
 }
 
 @Component({
-  selector: 'app-json-to-ts',
-  templateUrl: './json-to-ts.component.html',
-  styleUrls: ['./json-to-ts.component.css'],
-  standalone: false
+    selector: 'app-json-to-ts',
+    templateUrl: './json-to-ts.component.html',
+    styleUrls: ['./json-to-ts.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class JsonToTsComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

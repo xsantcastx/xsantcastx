@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type InputMode = 'text' | 'file';
 
@@ -13,10 +15,10 @@ interface HmacResult {
 }
 
 @Component({
-  selector: 'app-hmac-generator',
-  templateUrl: './hmac-generator.component.html',
-  styleUrls: ['./hmac-generator.component.css'],
-  standalone: false
+    selector: 'app-hmac-generator',
+    templateUrl: './hmac-generator.component.html',
+    styleUrls: ['./hmac-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class HmacGeneratorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

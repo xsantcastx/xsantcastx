@@ -1,8 +1,10 @@
 import { Component, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface ResizeImage {
   file: File;
@@ -25,10 +27,10 @@ interface SizePreset {
 }
 
 @Component({
-  selector: 'app-image-resizer',
-  templateUrl: './image-resizer.component.html',
-  styleUrls: ['./image-resizer.component.css'],
-  standalone: false
+    selector: 'app-image-resizer',
+    templateUrl: './image-resizer.component.html',
+    styleUrls: ['./image-resizer.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class ImageResizerComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

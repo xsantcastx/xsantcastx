@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type Framework = 'react-tsx' | 'react-jsx' | 'vue3' | 'angular';
 type SizeStrategy = 'props' | 'viewbox';
@@ -23,10 +25,10 @@ interface A11yStatus {
 }
 
 @Component({
-  selector: 'app-svg-to-code',
-  templateUrl: './svg-to-code.component.html',
-  styleUrls: ['./svg-to-code.component.css'],
-  standalone: false
+    selector: 'app-svg-to-code',
+    templateUrl: './svg-to-code.component.html',
+    styleUrls: ['./svg-to-code.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class SvgToCodeComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

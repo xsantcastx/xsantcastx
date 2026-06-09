@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, UpperCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ContentType = 'text' | 'url' | 'email' | 'wifi' | 'vcard';
 
@@ -23,10 +25,10 @@ interface VCardConfig {
 }
 
 @Component({
-  selector: 'app-qr-generator',
-  templateUrl: './qr-generator.component.html',
-  styleUrls: ['./qr-generator.component.css'],
-  standalone: false
+    selector: 'app-qr-generator',
+    templateUrl: './qr-generator.component.html',
+    styleUrls: ['./qr-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class QrGeneratorComponent implements OnDestroy, AfterViewInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

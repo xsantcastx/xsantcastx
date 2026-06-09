@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ConvertMode = 'toDate' | 'toTimestamp';
 type TimestampUnit = 'seconds' | 'milliseconds';
@@ -13,10 +15,10 @@ interface TimezoneOption {
 }
 
 @Component({
-  selector: 'app-timestamp-converter',
-  templateUrl: './timestamp-converter.component.html',
-  styleUrls: ['./timestamp-converter.component.css'],
-  standalone: false
+    selector: 'app-timestamp-converter',
+    templateUrl: './timestamp-converter.component.html',
+    styleUrls: ['./timestamp-converter.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class TimestampConverterComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface RGB { r: number; g: number; b: number; }
 interface HSL { h: number; s: number; l: number; }
@@ -23,10 +25,10 @@ interface ColorHarmony {
 }
 
 @Component({
-  selector: 'app-color-converter',
-  templateUrl: './color-converter.component.html',
-  styleUrls: ['./color-converter.component.css'],
-  standalone: false
+    selector: 'app-color-converter',
+    templateUrl: './color-converter.component.html',
+    styleUrls: ['./color-converter.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class ColorConverterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -1,17 +1,19 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type SeparatorType = 'newline' | 'comma' | 'space' | 'custom';
 type SortOrder = 'none' | 'asc' | 'desc';
 
 @Component({
-  selector: 'app-string-repeater',
-  templateUrl: './string-repeater.component.html',
-  styleUrls: ['./string-repeater.component.css'],
-  standalone: false
+    selector: 'app-string-repeater',
+    templateUrl: './string-repeater.component.html',
+    styleUrls: ['./string-repeater.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class StringRepeaterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

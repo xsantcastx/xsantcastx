@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, UpperCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type Severity = 'error' | 'warning' | 'info';
 
@@ -30,10 +32,10 @@ interface SecretPattern {
 }
 
 @Component({
-  selector: 'app-env-validator',
-  templateUrl: './env-validator.component.html',
-  styleUrls: ['./env-validator.component.css'],
-  standalone: false
+    selector: 'app-env-validator',
+    templateUrl: './env-validator.component.html',
+    styleUrls: ['./env-validator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class EnvValidatorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

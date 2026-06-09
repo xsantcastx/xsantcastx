@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface CustomClaim {
   key: string;
@@ -12,10 +14,10 @@ interface CustomClaim {
 type Algorithm = 'HS256' | 'HS384' | 'HS512' | 'none';
 
 @Component({
-  selector: 'app-jwt-generator',
-  templateUrl: './jwt-generator.component.html',
-  styleUrls: ['./jwt-generator.component.css'],
-  standalone: false
+    selector: 'app-jwt-generator',
+    templateUrl: './jwt-generator.component.html',
+    styleUrls: ['./jwt-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class JwtGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

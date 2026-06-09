@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgClass, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ViewMode = 'side-by-side' | 'unified';
 type DiffLineType = 'added' | 'deleted' | 'changed' | 'unchanged';
@@ -23,10 +25,10 @@ interface UnifiedLine {
 }
 
 @Component({
-  selector: 'app-diff-checker',
-  templateUrl: './diff-checker.component.html',
-  styleUrls: ['./diff-checker.component.css'],
-  standalone: false
+    selector: 'app-diff-checker',
+    templateUrl: './diff-checker.component.html',
+    styleUrls: ['./diff-checker.component.css'],
+    imports: [ToolsSharedModule, FormsModule, NgClass, DecimalPipe]
 })
 export class DiffCheckerComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

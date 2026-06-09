@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface License {
   id: string;
@@ -15,10 +17,10 @@ interface License {
 }
 
 @Component({
-  selector: 'app-license-picker',
-  templateUrl: './license-picker.component.html',
-  styleUrls: ['./license-picker.component.css'],
-  standalone: false
+    selector: 'app-license-picker',
+    templateUrl: './license-picker.component.html',
+    styleUrls: ['./license-picker.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class LicensePickerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

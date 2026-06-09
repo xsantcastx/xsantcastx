@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface CheckItem {
   text: string;
@@ -10,10 +12,10 @@ interface CheckItem {
 }
 
 @Component({
-  selector: 'app-checklist',
-  templateUrl: './checklist.component.html',
-  styleUrls: ['./checklist.component.css'],
-  standalone: false
+    selector: 'app-checklist',
+    templateUrl: './checklist.component.html',
+    styleUrls: ['./checklist.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class ChecklistComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

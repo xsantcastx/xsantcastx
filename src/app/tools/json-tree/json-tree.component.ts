@@ -1,8 +1,10 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface TreeNode {
   key: string;
@@ -15,10 +17,10 @@ interface TreeNode {
 }
 
 @Component({
-  selector: 'app-json-tree',
-  templateUrl: './json-tree.component.html',
-  styleUrls: ['./json-tree.component.css'],
-  standalone: false
+    selector: 'app-json-tree',
+    templateUrl: './json-tree.component.html',
+    styleUrls: ['./json-tree.component.css'],
+    imports: [FormsModule, NgTemplateOutlet, NgClass, ToolsSharedModule]
 })
 export class JsonTreeComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

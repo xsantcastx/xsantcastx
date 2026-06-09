@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgStyle, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface Preset {
   label: string;
@@ -18,10 +20,10 @@ interface Resolution {
 }
 
 @Component({
-  selector: 'app-aspect-ratio',
-  templateUrl: './aspect-ratio.component.html',
-  styleUrls: ['./aspect-ratio.component.css'],
-  standalone: false
+    selector: 'app-aspect-ratio',
+    templateUrl: './aspect-ratio.component.html',
+    styleUrls: ['./aspect-ratio.component.css'],
+    imports: [ToolsSharedModule, FormsModule, NgStyle, DecimalPipe]
 })
 export class AspectRatioComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

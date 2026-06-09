@@ -3,6 +3,9 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
+import { NgClass, TitleCasePipe } from '@angular/common';
 
 export type RecordStatus = 'pass' | 'warn' | 'fail' | 'missing' | 'pending';
 
@@ -75,10 +78,10 @@ export interface AuditResults {
 }
 
 @Component({
-  selector: 'app-email-deliverability-auditor',
-  templateUrl: './email-deliverability-auditor.component.html',
-  styleUrls: ['./email-deliverability-auditor.component.css'],
-  standalone: false
+    selector: 'app-email-deliverability-auditor',
+    templateUrl: './email-deliverability-auditor.component.html',
+    styleUrls: ['./email-deliverability-auditor.component.css'],
+    imports: [ToolsSharedModule, FormsModule, NgClass, TitleCasePipe]
 })
 export class EmailDeliverabilityAuditorComponent implements OnInit, OnDestroy {
   private paramSub?: Subscription;

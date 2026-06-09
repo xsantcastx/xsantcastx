@@ -1,8 +1,10 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, UpperCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type OutputFormat = 'json' | 'csv' | 'sql';
 
@@ -17,10 +19,10 @@ interface MockRecord {
 }
 
 @Component({
-  selector: 'app-mock-data',
-  templateUrl: './mock-data.component.html',
-  styleUrls: ['./mock-data.component.css'],
-  standalone: false
+    selector: 'app-mock-data',
+    templateUrl: './mock-data.component.html',
+    styleUrls: ['./mock-data.component.css'],
+    imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class MockDataComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

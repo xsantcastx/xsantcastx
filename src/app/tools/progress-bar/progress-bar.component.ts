@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 export interface ProgressBarPreset {
   name: string;
@@ -20,10 +23,10 @@ export interface ProgressBarPreset {
 }
 
 @Component({
-  selector: 'app-progress-bar',
-  templateUrl: './progress-bar.component.html',
-  styleUrls: ['./progress-bar.component.css'],
-  standalone: false
+    selector: 'app-progress-bar',
+    templateUrl: './progress-bar.component.html',
+    styleUrls: ['./progress-bar.component.css'],
+    imports: [ToolsSharedModule, NgStyle, FormsModule]
 })
 export class ProgressBarComponent {
   private readonly eggs = inject(EasterEggService);

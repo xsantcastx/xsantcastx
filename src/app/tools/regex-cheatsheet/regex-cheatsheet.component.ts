@@ -3,15 +3,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface RegexEntry { pattern: string; description: string; example: string; }
 interface RegexCategory { name: string; entries: RegexEntry[]; }
 
 @Component({
-  selector: 'app-regex-cheatsheet',
-  templateUrl: './regex-cheatsheet.component.html',
-  styleUrls: ['./regex-cheatsheet.component.css'],
-  standalone: false
+    selector: 'app-regex-cheatsheet',
+    templateUrl: './regex-cheatsheet.component.html',
+    styleUrls: ['./regex-cheatsheet.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class RegexCheatsheetComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

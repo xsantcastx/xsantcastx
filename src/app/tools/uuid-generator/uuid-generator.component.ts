@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type UuidType = 'v4' | 'v1' | 'ulid';
 type CaseFormat = 'lower' | 'upper';
@@ -14,10 +16,10 @@ interface ValidationResult {
 }
 
 @Component({
-  selector: 'app-uuid-generator',
-  templateUrl: './uuid-generator.component.html',
-  styleUrls: ['./uuid-generator.component.css'],
-  standalone: false
+    selector: 'app-uuid-generator',
+    templateUrl: './uuid-generator.component.html',
+    styleUrls: ['./uuid-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class UuidGeneratorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

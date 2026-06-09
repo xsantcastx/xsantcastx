@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface FaviconSize {
   label: string;
@@ -11,10 +13,10 @@ interface FaviconSize {
 }
 
 @Component({
-  selector: 'app-favicon-generator',
-  templateUrl: './favicon-generator.component.html',
-  styleUrls: ['./favicon-generator.component.css'],
-  standalone: false
+    selector: 'app-favicon-generator',
+    templateUrl: './favicon-generator.component.html',
+    styleUrls: ['./favicon-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class FaviconGeneratorComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
