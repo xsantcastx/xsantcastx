@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export interface DevicePreset {
   name: string;
@@ -20,10 +22,10 @@ export interface PreviewSlot {
 }
 
 @Component({
-  selector: 'app-responsive-preview',
-  templateUrl: './responsive-preview.component.html',
-  styleUrls: ['./responsive-preview.component.css'],
-  standalone: false
+    selector: 'app-responsive-preview',
+    templateUrl: './responsive-preview.component.html',
+    styleUrls: ['./responsive-preview.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class ResponsivePreviewComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface UnitResult {
   unit: string;
@@ -17,10 +19,10 @@ interface SpacingRow {
 }
 
 @Component({
-  selector: 'app-css-units',
-  templateUrl: './css-units.component.html',
-  styleUrls: ['./css-units.component.css'],
-  standalone: false
+    selector: 'app-css-units',
+    templateUrl: './css-units.component.html',
+    styleUrls: ['./css-units.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class CssUnitsComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

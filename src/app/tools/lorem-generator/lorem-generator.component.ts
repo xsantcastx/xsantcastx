@@ -1,17 +1,19 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type GenerateMode = 'paragraphs' | 'sentences' | 'words';
 type TextVariant = 'classic' | 'hipster' | 'tech';
 
 @Component({
-  selector: 'app-lorem-generator',
-  templateUrl: './lorem-generator.component.html',
-  styleUrls: ['./lorem-generator.component.css'],
-  standalone: false
+    selector: 'app-lorem-generator',
+    templateUrl: './lorem-generator.component.html',
+    styleUrls: ['./lorem-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class LoremGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

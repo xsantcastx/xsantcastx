@@ -2,6 +2,8 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { DecimalPipe } from '@angular/common';
 
 interface KeywordResult {
   word: string;
@@ -15,10 +17,10 @@ interface SeoSuggestion {
 }
 
 @Component({
-  selector: 'app-seo-checker',
-  templateUrl: './seo-checker.component.html',
-  styleUrls: ['./seo-checker.component.css'],
-  standalone: false
+    selector: 'app-seo-checker',
+    templateUrl: './seo-checker.component.html',
+    styleUrls: ['./seo-checker.component.css'],
+    imports: [ToolsSharedModule, DecimalPipe]
 })
 export class SeoCheckerComponent {
   private readonly eggs = inject(EasterEggService);

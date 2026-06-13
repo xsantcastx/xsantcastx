@@ -2,6 +2,8 @@ import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type TimerMode = 'work' | 'shortBreak' | 'longBreak';
 type TimerState = 'idle' | 'running' | 'paused';
@@ -14,10 +16,10 @@ interface PomodoroSession {
 }
 
 @Component({
-  selector: 'app-pomodoro',
-  templateUrl: './pomodoro.component.html',
-  styleUrls: ['./pomodoro.component.css'],
-  standalone: false
+    selector: 'app-pomodoro',
+    templateUrl: './pomodoro.component.html',
+    styleUrls: ['./pomodoro.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class PomodoroComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

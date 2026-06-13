@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export interface CronField {
   name: string;
@@ -28,10 +30,10 @@ export interface CronWildcard {
 export type ExpressionCategory = 'all' | 'common' | 'system' | 'business' | 'devops' | 'database' | 'misc';
 
 @Component({
-  selector: 'app-crontab-ref',
-  templateUrl: './crontab-ref.component.html',
-  styleUrls: ['./crontab-ref.component.css'],
-  standalone: false
+    selector: 'app-crontab-ref',
+    templateUrl: './crontab-ref.component.html',
+    styleUrls: ['./crontab-ref.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class CrontabRefComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

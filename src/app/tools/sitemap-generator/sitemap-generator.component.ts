@@ -1,7 +1,9 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface SitemapUrl {
   loc: string;
@@ -11,10 +13,10 @@ interface SitemapUrl {
 }
 
 @Component({
-  selector: 'app-sitemap-generator',
-  templateUrl: './sitemap-generator.component.html',
-  styleUrls: ['./sitemap-generator.component.css'],
-  standalone: false
+    selector: 'app-sitemap-generator',
+    templateUrl: './sitemap-generator.component.html',
+    styleUrls: ['./sitemap-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class SitemapGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

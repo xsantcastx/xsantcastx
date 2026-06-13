@@ -1,8 +1,10 @@
 import { Component, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface DiffEntry {
   key: string;
@@ -12,10 +14,10 @@ interface DiffEntry {
 }
 
 @Component({
-  selector: 'app-json-diff',
-  templateUrl: './json-diff.component.html',
-  styleUrls: ['./json-diff.component.css'],
-  standalone: false
+    selector: 'app-json-diff',
+    templateUrl: './json-diff.component.html',
+    styleUrls: ['./json-diff.component.css'],
+    imports: [FormsModule, NgClass, ToolsSharedModule]
 })
 export class JsonDiffComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

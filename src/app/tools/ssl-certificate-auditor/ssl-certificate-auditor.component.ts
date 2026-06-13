@@ -2,6 +2,9 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
+import { UpperCasePipe } from '@angular/common';
 
 interface CertificateField {
   label: string;
@@ -39,10 +42,10 @@ interface CertificateResult {
 }
 
 @Component({
-  selector: 'app-ssl-certificate-auditor',
-  templateUrl: './ssl-certificate-auditor.component.html',
-  styleUrls: ['./ssl-certificate-auditor.component.css'],
-  standalone: false
+    selector: 'app-ssl-certificate-auditor',
+    templateUrl: './ssl-certificate-auditor.component.html',
+    styleUrls: ['./ssl-certificate-auditor.component.css'],
+    imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class SslCertificateAuditorComponent {
 

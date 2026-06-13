@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
 
 interface GridItem {
   id: number;
@@ -37,10 +39,10 @@ const CELL_COLORS = [
 const TEMPLATE_UNITS = ['fr', 'px', 'auto', 'minmax'];
 
 @Component({
-  selector: 'app-grid-generator',
-  templateUrl: './grid-generator.component.html',
-  styleUrls: ['./grid-generator.component.css'],
-  standalone: false
+    selector: 'app-grid-generator',
+    templateUrl: './grid-generator.component.html',
+    styleUrls: ['./grid-generator.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class GridGeneratorComponent {
   // Grid properties

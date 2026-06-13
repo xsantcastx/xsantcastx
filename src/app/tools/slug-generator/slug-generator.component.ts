@@ -1,7 +1,9 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type SeparatorType = 'hyphen' | 'underscore' | 'dot';
 
@@ -46,10 +48,10 @@ const TRANSLITERATE_MAP: Record<string, string> = {
 };
 
 @Component({
-  selector: 'app-slug-generator',
-  templateUrl: './slug-generator.component.html',
-  styleUrls: ['./slug-generator.component.css'],
-  standalone: false
+    selector: 'app-slug-generator',
+    templateUrl: './slug-generator.component.html',
+    styleUrls: ['./slug-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class SlugGeneratorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

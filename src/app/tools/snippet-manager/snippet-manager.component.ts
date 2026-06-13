@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export interface Snippet {
   id: string;
@@ -17,10 +19,10 @@ export interface Snippet {
 type ViewMode = 'list' | 'create' | 'edit';
 
 @Component({
-  selector: 'app-snippet-manager',
-  templateUrl: './snippet-manager.component.html',
-  styleUrls: ['./snippet-manager.component.css'],
-  standalone: false
+    selector: 'app-snippet-manager',
+    templateUrl: './snippet-manager.component.html',
+    styleUrls: ['./snippet-manager.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class SnippetManagerComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

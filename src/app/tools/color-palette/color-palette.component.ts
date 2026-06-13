@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface PaletteColor {
   hex: string;
@@ -12,10 +13,10 @@ interface PaletteColor {
 }
 
 @Component({
-  selector: 'app-color-palette',
-  templateUrl: './color-palette.component.html',
-  styleUrls: ['./color-palette.component.css'],
-  standalone: false
+    selector: 'app-color-palette',
+    templateUrl: './color-palette.component.html',
+    styleUrls: ['./color-palette.component.css'],
+    imports: [ToolsSharedModule]
 })
 export class ColorPaletteComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

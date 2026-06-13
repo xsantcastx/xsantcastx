@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type Direction = 'csv-to-json' | 'json-to-csv';
 type OutputFormat = 'objects' | 'arrays' | 'nested';
@@ -13,10 +15,10 @@ interface PreviewRow {
 }
 
 @Component({
-  selector: 'app-csv-json',
-  templateUrl: './csv-json.component.html',
-  styleUrls: ['./csv-json.component.css'],
-  standalone: false
+    selector: 'app-csv-json',
+    templateUrl: './csv-json.component.html',
+    styleUrls: ['./csv-json.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class CsvJsonComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

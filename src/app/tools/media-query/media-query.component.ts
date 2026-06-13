@@ -2,6 +2,8 @@ import { Component, inject, PLATFORM_ID, OnInit, OnDestroy } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export interface MediaFeature {
   feature: string;
@@ -33,10 +35,10 @@ export interface PresetGroup {
 }
 
 @Component({
-  selector: 'app-media-query',
-  templateUrl: './media-query.component.html',
-  styleUrls: ['./media-query.component.css'],
-  standalone: false
+    selector: 'app-media-query',
+    templateUrl: './media-query.component.html',
+    styleUrls: ['./media-query.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class MediaQueryComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

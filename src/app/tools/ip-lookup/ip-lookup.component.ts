@@ -1,7 +1,9 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type ActiveTab = 'myip' | 'validate' | 'subnet' | 'reference';
 
@@ -17,10 +19,10 @@ interface SubnetResult {
 }
 
 @Component({
-  selector: 'app-ip-lookup',
-  templateUrl: './ip-lookup.component.html',
-  styleUrls: ['./ip-lookup.component.css'],
-  standalone: false
+    selector: 'app-ip-lookup',
+    templateUrl: './ip-lookup.component.html',
+    styleUrls: ['./ip-lookup.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class IpLookupComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

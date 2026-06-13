@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type NumberBase = 2 | 8 | 10 | 16;
 
@@ -20,10 +22,10 @@ interface QuickValue {
 }
 
 @Component({
-  selector: 'app-base-converter',
-  templateUrl: './base-converter.component.html',
-  styleUrls: ['./base-converter.component.css'],
-  standalone: false
+    selector: 'app-base-converter',
+    templateUrl: './base-converter.component.html',
+    styleUrls: ['./base-converter.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class BaseConverterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

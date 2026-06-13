@@ -1,8 +1,10 @@
 import { Component, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type EmailProvider = 'gmail' | 'sendgrid' | 'aws-ses' | 'mailchimp' | 'custom';
 type DmarcPolicy = 'none' | 'quarantine' | 'reject';
@@ -36,10 +38,10 @@ interface ValidationStatus {
 }
 
 @Component({
-  selector: 'app-gmail-deliverability-checker',
-  templateUrl: './gmail-deliverability-checker.component.html',
-  styleUrls: ['./gmail-deliverability-checker.component.css'],
-  standalone: false
+    selector: 'app-gmail-deliverability-checker',
+    templateUrl: './gmail-deliverability-checker.component.html',
+    styleUrls: ['./gmail-deliverability-checker.component.css'],
+    imports: [ToolsSharedModule, FormsModule, TitleCasePipe]
 })
 export class GmailDeliverabilityCheckerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

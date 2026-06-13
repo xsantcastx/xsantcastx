@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>xsantcastx | Full-Stack Developer & Free Browser Tools</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="xsantcastx — Full-Stack Developer building modern web apps and free browser tools for designers and developers. PDF Catalog Generator, Color Palette Extractor, and more. No sign-up, no installs.">
   <meta name="keywords" content="full stack developer, free browser tools, css box shadow generator, email deliverability checker, gmail deliverability, ssl certificate checker, svg to react component, pdf catalog generator, color palette extractor, wcag contrast checker, image compressor, web development, angular, typescript, xsantcastx">
   <meta name="author" content="xsantcastx">
@@ -46,13 +46,12 @@
   <link rel="apple-touch-icon" sizes="180x180"    href="assets/apple-touch-icon.png">
 
   <!-- Preconnects for performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://www.google.com">
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Self-hosted font preloads (§3.2) — latin variable fonts for above-the-fold Orbitron headings + Inter body -->
+  <link rel="preload" href="/assets/fonts/orbitron-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -306,12 +305,26 @@
       var canvas = document.querySelector('.cosmic-canvas');
       if (canvas && canvas.getContext) {
         var ctx = canvas.getContext('2d');
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        // §2.2 — Lite mode: mobile screen OR low-end hardware
+        var lite = false;
+        try {
+          lite = matchMedia('(max-width: 768px)').matches
+            || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+            || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+        } catch (e) {}
+
+        // DPR: cap at 1.5 in lite, 2 on desktop
+        var dpr = Math.min(window.devicePixelRatio || 1, lite ? 1.5 : 2);
         var W = 0, H = 0;
         var particles = [];
         var mouseX = -9999, mouseY = -9999;
         var targetParallaxX = 0, targetParallaxY = 0;
         var parallaxX = 0, parallaxY = 0;
+
+        // §2.2 — Frame-time governor: rolling 60-frame avg; if > 12ms, shed 20%
+        var ftSamples = [];
+        var ftLast = 0;
 
         function resize() {
           W = canvas.clientWidth = window.innerWidth;
@@ -320,8 +333,10 @@
           canvas.height = Math.floor(H * dpr);
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-          // Density: ~1 particle per 14000px², capped 60–140
-          var target = Math.max(60, Math.min(140, Math.round((W * H) / 14000)));
+          // Density: ~1 particle per 14000px², capped 60–140 desktop / 30–70 lite
+          var minP = lite ? 30 : 60;
+          var maxP = lite ? 70 : 140;
+          var target = Math.max(minP, Math.min(maxP, Math.round((W * H) / (lite ? 28000 : 14000))));
           if (particles.length !== target) {
             particles.length = 0;
             for (var i = 0; i < target; i++) particles.push(spawn());
@@ -358,6 +373,26 @@
             draw(0);
             return;
           }
+
+          // §2.2 — Frame-time governor: track rolling 60-frame avg
+          if (ftLast > 0) {
+            var ft = t - ftLast;
+            ftSamples.push(ft);
+            if (ftSamples.length > 60) ftSamples.shift();
+            if (ftSamples.length === 60) {
+              var avg = 0;
+              for (var fi = 0; fi < 60; fi++) avg += ftSamples[fi];
+              avg /= 60;
+              if (avg > 12 && particles.length > 24) {
+                // Shed 20%, floor at 24
+                var next = Math.max(24, Math.floor(particles.length * 0.8));
+                particles.length = next;
+                ftSamples.length = 0; // reset window after adjustment
+              }
+            }
+          }
+          ftLast = t;
+
           // Smooth mouse parallax (lerp)
           parallaxX += (targetParallaxX - parallaxX) * 0.05;
           parallaxY += (targetParallaxY - parallaxY) * 0.05;
@@ -416,26 +451,28 @@
             p._px = px; p._py = py; p._alpha = alpha;
           }
 
-          // Connection lines (constellation effect)
-          for (var i = 0; i < particles.length; i++) {
-            var a = particles[i];
-            for (var j = i + 1; j < particles.length; j++) {
-              var b = particles[j];
-              var ddx = a._px - b._px, ddy = a._py - b._py;
-              var d2 = ddx * ddx + ddy * ddy;
-              if (d2 < maxLinkDistSq) {
-                var t = 1 - (d2 / maxLinkDistSq);
-                var lineAlpha = t * 0.18 * Math.min(a._alpha, b._alpha);
-                // Mix the two particle colors by averaging
-                var rr = (a.color.r + b.color.r) >> 1;
-                var gg = (a.color.g + b.color.g) >> 1;
-                var bb = (a.color.b + b.color.b) >> 1;
-                ctx.strokeStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + lineAlpha.toFixed(3) + ')';
-                ctx.lineWidth = 0.6;
-                ctx.beginPath();
-                ctx.moveTo(a._px, a._py);
-                ctx.lineTo(b._px, b._py);
-                ctx.stroke();
+          // Connection lines (constellation effect) — §2.2: skipped entirely in lite mode
+          if (!lite) {
+            for (var i = 0; i < particles.length; i++) {
+              var a = particles[i];
+              for (var j = i + 1; j < particles.length; j++) {
+                var b = particles[j];
+                var ddx = a._px - b._px, ddy = a._py - b._py;
+                var d2 = ddx * ddx + ddy * ddy;
+                if (d2 < maxLinkDistSq) {
+                  var t = 1 - (d2 / maxLinkDistSq);
+                  var lineAlpha = t * 0.18 * Math.min(a._alpha, b._alpha);
+                  // Mix the two particle colors by averaging
+                  var rr = (a.color.r + b.color.r) >> 1;
+                  var gg = (a.color.g + b.color.g) >> 1;
+                  var bb = (a.color.b + b.color.b) >> 1;
+                  ctx.strokeStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + lineAlpha.toFixed(3) + ')';
+                  ctx.lineWidth = 0.6;
+                  ctx.beginPath();
+                  ctx.moveTo(a._px, a._py);
+                  ctx.lineTo(b._px, b._py);
+                  ctx.stroke();
+                }
               }
             }
           }
@@ -829,7 +866,11 @@
       // ─────────────────────────────────────────────────────────────
       // 6. 3D CARD TILT — cards tilt to track cursor in 3D space
       // ─────────────────────────────────────────────────────────────
-      if (!prefersReduced) {
+      // §2.3 — skip entirely on touch devices or pointer:coarse/hover:none
+      var isTouchOrCoarse = ('ontouchstart' in window) || (function () {
+        try { return matchMedia('(hover: none)').matches; } catch (e) { return false; }
+      })();
+      if (!prefersReduced && !isTouchOrCoarse) {
         var tiltSelector = '.tool-card, .skill-card, .hp-tool-card, .project-card, .hp-spotlight__card, .galaxy';
         function bindTilt(el) {
           if (el.dataset.tilt) return;

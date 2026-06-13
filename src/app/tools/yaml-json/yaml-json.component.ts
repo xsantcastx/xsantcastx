@@ -1,17 +1,19 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type Direction = 'yaml-to-json' | 'json-to-yaml';
 
 @Component({
-  selector: 'app-yaml-json',
-  templateUrl: './yaml-json.component.html',
-  styleUrls: ['./yaml-json.component.css'],
-  standalone: false
+    selector: 'app-yaml-json',
+    templateUrl: './yaml-json.component.html',
+    styleUrls: ['./yaml-json.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class YamlJsonComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

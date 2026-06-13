@@ -2,6 +2,8 @@ import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface EncodingResult {
   label: string;
@@ -26,10 +28,10 @@ interface CharBreakdown {
 }
 
 @Component({
-  selector: 'app-encoding-converter',
-  templateUrl: './encoding-converter.component.html',
-  styleUrls: ['./encoding-converter.component.css'],
-  standalone: false
+    selector: 'app-encoding-converter',
+    templateUrl: './encoding-converter.component.html',
+    styleUrls: ['./encoding-converter.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class EncodingConverterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

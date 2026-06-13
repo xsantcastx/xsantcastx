@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface TechOption {
   name: string;
@@ -12,10 +14,10 @@ interface TechOption {
 }
 
 @Component({
-  selector: 'app-gitignore-generator',
-  templateUrl: './gitignore-generator.component.html',
-  styleUrls: ['./gitignore-generator.component.css'],
-  standalone: false
+    selector: 'app-gitignore-generator',
+    templateUrl: './gitignore-generator.component.html',
+    styleUrls: ['./gitignore-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class GitignoreGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

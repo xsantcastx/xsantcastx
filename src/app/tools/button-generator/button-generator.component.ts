@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface ButtonPreset {
   name: string;
@@ -14,10 +16,10 @@ interface ButtonPreset {
 }
 
 @Component({
-  selector: 'app-button-generator',
-  templateUrl: './button-generator.component.html',
-  styleUrls: ['./button-generator.component.css'],
-  standalone: false
+    selector: 'app-button-generator',
+    templateUrl: './button-generator.component.html',
+    styleUrls: ['./button-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class ButtonGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

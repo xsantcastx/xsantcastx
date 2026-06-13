@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export type ShortcutCategory = 'all' | 'vscode' | 'chrome-devtools' | 'git' | 'terminal' | 'macos' | 'windows';
 
@@ -14,10 +16,10 @@ export interface KeyboardShortcut {
 }
 
 @Component({
-  selector: 'app-keyboard-shortcuts',
-  templateUrl: './keyboard-shortcuts.component.html',
-  styleUrls: ['./keyboard-shortcuts.component.css'],
-  standalone: false
+    selector: 'app-keyboard-shortcuts',
+    templateUrl: './keyboard-shortcuts.component.html',
+    styleUrls: ['./keyboard-shortcuts.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class KeyboardShortcutsComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

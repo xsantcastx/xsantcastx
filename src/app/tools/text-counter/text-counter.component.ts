@@ -1,6 +1,9 @@
 import { Component, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { DecimalPipe } from '@angular/common';
 
 interface WordFrequency {
   word: string;
@@ -15,10 +18,10 @@ interface CharFrequency {
 }
 
 @Component({
-  selector: 'app-text-counter',
-  templateUrl: './text-counter.component.html',
-  styleUrls: ['./text-counter.component.css'],
-  standalone: false
+    selector: 'app-text-counter',
+    templateUrl: './text-counter.component.html',
+    styleUrls: ['./text-counter.component.css'],
+    imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class TextCounterComponent implements OnDestroy {
   private readonly eggs = inject(EasterEggService);

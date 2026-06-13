@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface RegexPattern {
   name: string;
@@ -13,10 +15,10 @@ interface RegexPattern {
 }
 
 @Component({
-  selector: 'app-regex-generator',
-  templateUrl: './regex-generator.component.html',
-  styleUrls: ['./regex-generator.component.css'],
-  standalone: false
+    selector: 'app-regex-generator',
+    templateUrl: './regex-generator.component.html',
+    styleUrls: ['./regex-generator.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class RegexGeneratorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

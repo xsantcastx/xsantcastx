@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type CopyFormat = 'emoji' | 'html' | 'unicode';
 
@@ -971,10 +973,10 @@ const EMOJI_DATA: EmojiCategory[] = [
 ];
 
 @Component({
-  selector: 'app-emoji-picker',
-  templateUrl: './emoji-picker.component.html',
-  styleUrls: ['./emoji-picker.component.css'],
-  standalone: false
+    selector: 'app-emoji-picker',
+    templateUrl: './emoji-picker.component.html',
+    styleUrls: ['./emoji-picker.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class EmojiPickerComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
 
 interface CornerRadius {
   topLeft: number;
@@ -31,10 +33,10 @@ interface RadiusPreset {
 }
 
 @Component({
-  selector: 'app-border-radius',
-  templateUrl: './border-radius.component.html',
-  styleUrls: ['./border-radius.component.css'],
-  standalone: false
+    selector: 'app-border-radius',
+    templateUrl: './border-radius.component.html',
+    styleUrls: ['./border-radius.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class BorderRadiusComponent {
   private readonly eggs = inject(EasterEggService);

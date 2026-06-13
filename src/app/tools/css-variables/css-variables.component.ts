@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, LowerCasePipe, SlicePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export interface CssVariable {
   id: string;
@@ -47,10 +49,10 @@ const SAMPLE_VARIABLES: CssVariable[] = [
 ];
 
 @Component({
-  selector: 'app-css-variables',
-  templateUrl: './css-variables.component.html',
-  styleUrls: ['./css-variables.component.css'],
-  standalone: false
+    selector: 'app-css-variables',
+    templateUrl: './css-variables.component.html',
+    styleUrls: ['./css-variables.component.css'],
+    imports: [FormsModule, ToolsSharedModule, LowerCasePipe, SlicePipe]
 })
 export class CssVariablesComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

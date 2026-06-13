@@ -1,9 +1,10 @@
 import { Component, inject, ElementRef, ViewChild, AfterViewInit, NgZone, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgStyle } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export type ShapeType = 'circle' | 'ellipse' | 'inset' | 'polygon';
 
@@ -35,10 +36,10 @@ export interface ShapePreset {
 }
 
 @Component({
-  selector: 'app-clip-path',
-  templateUrl: './clip-path.component.html',
-  styleUrls: ['./clip-path.component.css'],
-  standalone: false
+    selector: 'app-clip-path',
+    templateUrl: './clip-path.component.html',
+    styleUrls: ['./clip-path.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class ClipPathComponent implements AfterViewInit {
   private readonly eggs = inject(EasterEggService);

@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface ConversionResult {
   label: string;
@@ -21,10 +23,10 @@ interface StorageItem {
 type UnitSystem = 'binary' | 'decimal';
 
 @Component({
-  selector: 'app-data-size',
-  templateUrl: './data-size.component.html',
-  styleUrls: ['./data-size.component.css'],
-  standalone: false
+    selector: 'app-data-size',
+    templateUrl: './data-size.component.html',
+    styleUrls: ['./data-size.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class DataSizeComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

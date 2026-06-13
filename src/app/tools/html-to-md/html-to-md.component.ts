@@ -1,16 +1,18 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type ConvertDirection = 'html-to-md' | 'md-to-html';
 
 @Component({
-  selector: 'app-html-to-md',
-  templateUrl: './html-to-md.component.html',
-  styleUrls: ['./html-to-md.component.css'],
-  standalone: false
+    selector: 'app-html-to-md',
+    templateUrl: './html-to-md.component.html',
+    styleUrls: ['./html-to-md.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class HtmlToMdComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
