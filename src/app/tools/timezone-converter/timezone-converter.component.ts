@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface TzResult { timezone: string; time: string; date: string; offset: string; }
 
 @Component({
-  selector: 'app-timezone-converter',
-  templateUrl: './timezone-converter.component.html',
-  styleUrls: ['./timezone-converter.component.css'],
-  standalone: false
+    selector: 'app-timezone-converter',
+    templateUrl: './timezone-converter.component.html',
+    styleUrls: ['./timezone-converter.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class TimezoneConverterComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

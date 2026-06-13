@@ -9,6 +9,8 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface KeyframePoint {
   percent: number;
@@ -32,10 +34,10 @@ interface AnimationPreset {
 }
 
 @Component({
-  selector: 'app-animation-generator',
-  templateUrl: './animation-generator.component.html',
-  styleUrls: ['./animation-generator.component.css'],
-  standalone: false
+    selector: 'app-animation-generator',
+    templateUrl: './animation-generator.component.html',
+    styleUrls: ['./animation-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, DoCheck {
 

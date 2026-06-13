@@ -1,8 +1,9 @@
 import { Component, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgStyle } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 type StyleCategory = 'all' | 'modern' | 'classic' | 'playful' | 'minimal' | 'bold';
 type PreviewContext = 'hero' | 'article' | 'card';
@@ -18,10 +19,10 @@ interface FontPairing {
 }
 
 @Component({
-  selector: 'app-font-pairer',
-  templateUrl: './font-pairer.component.html',
-  styleUrls: ['./font-pairer.component.css'],
-  standalone: false
+    selector: 'app-font-pairer',
+    templateUrl: './font-pairer.component.html',
+    styleUrls: ['./font-pairer.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class FontPairerComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

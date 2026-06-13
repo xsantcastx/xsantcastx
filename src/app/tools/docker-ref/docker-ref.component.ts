@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 export type DockerCategory = 'all' | 'services' | 'networks' | 'volumes' | 'configs';
 
@@ -21,10 +23,10 @@ export interface DockerTemplate {
 }
 
 @Component({
-  selector: 'app-docker-ref',
-  templateUrl: './docker-ref.component.html',
-  styleUrls: ['./docker-ref.component.css'],
-  standalone: false
+    selector: 'app-docker-ref',
+    templateUrl: './docker-ref.component.html',
+    styleUrls: ['./docker-ref.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class DockerRefComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

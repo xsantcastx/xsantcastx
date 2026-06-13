@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 /** 3x3 color-vision transformation matrices (Brettel / Vienot models) */
 const MATRICES: Record<string, number[][]> = {
@@ -63,10 +65,10 @@ interface ContrastResult {
 }
 
 @Component({
-  selector: 'app-color-blindness',
-  templateUrl: './color-blindness.component.html',
-  styleUrls: ['./color-blindness.component.css'],
-  standalone: false,
+    selector: 'app-color-blindness',
+    templateUrl: './color-blindness.component.html',
+    styleUrls: ['./color-blindness.component.css'],
+    imports: [FormsModule, ToolsSharedModule],
 })
 export class ColorBlindnessComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

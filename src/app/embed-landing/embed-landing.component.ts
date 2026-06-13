@@ -4,10 +4,9 @@ import { SITE_URL } from '../seo.service';
 import { TOOLS_REGISTRY, getLiveTools, ToolDefinition } from '../tools/tools-registry';
 
 @Component({
-  selector: 'app-embed-landing',
-  templateUrl: './embed-landing.component.html',
-  styleUrls: ['./embed-landing.component.css'],
-  standalone: false
+    selector: 'app-embed-landing',
+    templateUrl: './embed-landing.component.html',
+    styleUrls: ['./embed-landing.component.css']
 })
 export class EmbedLandingComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

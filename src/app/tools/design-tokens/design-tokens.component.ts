@@ -1,8 +1,10 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type OutputFormat = 'css' | 'scss' | 'tailwind' | 'json-flat';
 
@@ -22,10 +24,10 @@ interface FlatToken {
 }
 
 @Component({
-  selector: 'app-design-tokens',
-  templateUrl: './design-tokens.component.html',
-  styleUrls: ['./design-tokens.component.css'],
-  standalone: false
+    selector: 'app-design-tokens',
+    templateUrl: './design-tokens.component.html',
+    styleUrls: ['./design-tokens.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class DesignTokensComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

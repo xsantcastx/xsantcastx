@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface MimeEntry { extension: string; mimeType: string; category: string; }
 
 @Component({
-  selector: 'app-mime-lookup',
-  templateUrl: './mime-lookup.component.html',
-  styleUrls: ['./mime-lookup.component.css'],
-  standalone: false
+    selector: 'app-mime-lookup',
+    templateUrl: './mime-lookup.component.html',
+    styleUrls: ['./mime-lookup.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class MimeLookupComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -1,15 +1,17 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'app-markdown-editor',
-  templateUrl: './markdown-editor.component.html',
-  styleUrls: ['./markdown-editor.component.css'],
-  standalone: false
+    selector: 'app-markdown-editor',
+    templateUrl: './markdown-editor.component.html',
+    styleUrls: ['./markdown-editor.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class MarkdownEditorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

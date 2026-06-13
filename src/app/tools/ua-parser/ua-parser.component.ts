@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface ParsedUA {
   browser: string;
@@ -14,10 +16,10 @@ interface ParsedUA {
 }
 
 @Component({
-  selector: 'app-ua-parser',
-  templateUrl: './ua-parser.component.html',
-  styleUrls: ['./ua-parser.component.css'],
-  standalone: false
+    selector: 'app-ua-parser',
+    templateUrl: './ua-parser.component.html',
+    styleUrls: ['./ua-parser.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class UaParserComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

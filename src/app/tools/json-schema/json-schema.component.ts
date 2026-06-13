@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface SchemaOptions {
   markAllRequired: boolean;
@@ -19,10 +21,10 @@ interface ValidationIssue {
 }
 
 @Component({
-  selector: 'app-json-schema',
-  templateUrl: './json-schema.component.html',
-  styleUrls: ['./json-schema.component.css'],
-  standalone: false
+    selector: 'app-json-schema',
+    templateUrl: './json-schema.component.html',
+    styleUrls: ['./json-schema.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class JsonSchemaComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

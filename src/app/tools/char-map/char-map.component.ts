@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgIf, NgFor } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface CharEntry {
   char: string;
@@ -718,10 +720,10 @@ const CHAR_DATA: CharCategory[] = [
 const TOTAL_CHARS = CHAR_DATA.reduce((sum, cat) => sum + cat.chars.length, 0);
 
 @Component({
-  selector: 'app-char-map',
-  templateUrl: './char-map.component.html',
-  styleUrls: ['./char-map.component.css'],
-  standalone: false
+    selector: 'app-char-map',
+    templateUrl: './char-map.component.html',
+    styleUrls: ['./char-map.component.css'],
+    imports: [ToolsSharedModule, FormsModule, NgIf, NgFor]
 })
 export class CharMapComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

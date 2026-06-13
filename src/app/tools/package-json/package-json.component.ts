@@ -3,14 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface ScriptEntry { key: string; value: string; }
 
 @Component({
-  selector: 'app-package-json',
-  templateUrl: './package-json.component.html',
-  styleUrls: ['./package-json.component.css'],
-  standalone: false
+    selector: 'app-package-json',
+    templateUrl: './package-json.component.html',
+    styleUrls: ['./package-json.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class PackageJsonComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

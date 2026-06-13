@@ -12,6 +12,8 @@ import {
   FieldConfig, FieldKey, Product, ProductImage, ProductSection, ProductStringFields
 } from './pdf-generator.types';
 import { buildCollagePages, CollagePage } from './collage-layout.util';
+import { FormsModule } from '@angular/forms';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export interface PreviewPage {
   type: 'cover' | 'divider' | 'minimal' | 'detailed' | 'editorial';
@@ -22,10 +24,10 @@ export interface PreviewPage {
 }
 
 @Component({
-  selector: 'app-pdf-generator',
-  templateUrl: './pdf-generator.component.html',
-  styleUrls: ['./pdf-generator.component.css'],
-  standalone: false
+    selector: 'app-pdf-generator',
+    templateUrl: './pdf-generator.component.html',
+    styleUrls: ['./pdf-generator.component.css'],
+    imports: [FormsModule, ToolsSharedModule]
 })
 export class PdfGeneratorComponent implements OnDestroy {
 

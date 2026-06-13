@@ -3,6 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface PermissionSet {
   read: boolean;
@@ -17,10 +19,10 @@ interface Preset {
 }
 
 @Component({
-  selector: 'app-chmod-calculator',
-  templateUrl: './chmod-calculator.component.html',
-  styleUrls: ['./chmod-calculator.component.css'],
-  standalone: false
+    selector: 'app-chmod-calculator',
+    templateUrl: './chmod-calculator.component.html',
+    styleUrls: ['./chmod-calculator.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class ChmodCalculatorComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -1,137 +1,11 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { SITE_URL } from '../seo.service';
-import { AnimationGeneratorComponent } from './animation-generator/animation-generator.component';
-import { ApcaContrastComponent } from './apca-contrast/apca-contrast.component';
-import { ApiRequestBuilderComponent } from './api-request-builder/api-request-builder.component';
-import { AsciiArtComponent } from './ascii-art/ascii-art.component';
-import { AspectRatioComponent } from './aspect-ratio/aspect-ratio.component';
-import { Base64EncoderComponent } from './base64-encoder/base64-encoder.component';
-import { BaseConverterComponent } from './base-converter/base-converter.component';
-import { BinaryTextComponent } from './binary-text/binary-text.component';
-import { BorderRadiusComponent } from './border-radius/border-radius.component';
-import { BoxModelComponent } from './box-model/box-model.component';
-import { BoxShadowGeneratorComponent } from './box-shadow-generator/box-shadow-generator.component';
-import { ButtonGeneratorComponent } from './button-generator/button-generator.component';
-import { CaesarCipherComponent } from './caesar-cipher/caesar-cipher.component';
-import { CaseConverterComponent } from './case-converter/case-converter.component';
-import { CharMapComponent } from './char-map/char-map.component';
-import { ChecklistComponent } from './checklist/checklist.component';
-import { ChmodCalculatorComponent } from './chmod-calculator/chmod-calculator.component';
-import { ClipPathComponent } from './clip-path/clip-path.component';
-import { ColorBlindnessComponent } from './color-blindness/color-blindness.component';
-import { ColorConverterComponent } from './color-converter/color-converter.component';
-import { ColorNameComponent } from './color-name/color-name.component';
-import { ColorPaletteComponent } from './color-palette/color-palette.component';
-import { ColorPickerComponent } from './color-picker/color-picker.component';
-import { ColorShadesComponent } from './color-shades/color-shades.component';
-import { ContrastCheckerComponent } from './contrast-checker/contrast-checker.component';
-import { CountdownComponent } from './countdown/countdown.component';
-import { CronBuilderComponent } from './cron-builder/cron-builder.component';
-import { CrontabRefComponent } from './crontab-ref/crontab-ref.component';
-import { CssFilterComponent } from './css-filter/css-filter.component';
-import { CssMinifierComponent } from './css-minifier/css-minifier.component';
-import { CssUnitsComponent } from './css-units/css-units.component';
-import { CssVariablesComponent } from './css-variables/css-variables.component';
-import { CsvJsonComponent } from './csv-json/csv-json.component';
-import { DataSizeComponent } from './data-size/data-size.component';
-import { DesignTokensComponent } from './design-tokens/design-tokens.component';
-import { DiffCheckerComponent } from './diff-checker/diff-checker.component';
-import { DnsLookupComponent } from './dns-lookup/dns-lookup.component';
-import { DockerRefComponent } from './docker-ref/docker-ref.component';
-import { EmailDeliverabilityAuditorComponent } from './email-deliverability-auditor/email-deliverability-auditor.component';
-import { EmbedLandingComponent } from '../embed-landing/embed-landing.component';
-import { EmojiPickerComponent } from './emoji-picker/emoji-picker.component';
-import { EncodingConverterComponent } from './encoding-converter/encoding-converter.component';
-import { EnvValidatorComponent } from './env-validator/env-validator.component';
-import { FaviconGeneratorComponent } from './favicon-generator/favicon-generator.component';
-import { FlexboxGeneratorComponent } from './flexbox-generator/flexbox-generator.component';
-import { FontPairerComponent } from './font-pairer/font-pairer.component';
-import { GitReferenceComponent } from './git-reference/git-reference.component';
-import { GitignoreGeneratorComponent } from './gitignore-generator/gitignore-generator.component';
-import { GmailDeliverabilityCheckerComponent } from './gmail-deliverability-checker/gmail-deliverability-checker.component';
-import { GradientGeneratorComponent } from './gradient-generator/gradient-generator.component';
-import { GradientTextComponent } from './gradient-text/gradient-text.component';
-import { GridGeneratorComponent } from './grid-generator/grid-generator.component';
-import { HashGeneratorComponent } from './hash-generator/hash-generator.component';
-import { HeadingCheckerComponent } from './heading-checker/heading-checker.component';
-import { HexEditorComponent } from './hex-editor/hex-editor.component';
-import { HmacGeneratorComponent } from './hmac-generator/hmac-generator.component';
-import { HtmlEntitiesComponent } from './html-entities/html-entities.component';
-import { HtmlMinifierComponent } from './html-minifier/html-minifier.component';
-import { HtmlToMdComponent } from './html-to-md/html-to-md.component';
-import { HttpStatusComponent } from './http-status/http-status.component';
-import { ImageCompressorComponent } from './image-compressor/image-compressor.component';
-import { ImageResizerComponent } from './image-resizer/image-resizer.component';
-import { IpLookupComponent } from './ip-lookup/ip-lookup.component';
-import { JsMinifierComponent } from './js-minifier/js-minifier.component';
-import { JsonDiffComponent } from './json-diff/json-diff.component';
-import { JsonEscapeComponent } from './json-escape/json-escape.component';
-import { JsonFormatterComponent } from './json-formatter/json-formatter.component';
-import { JsonMinifierComponent } from './json-minifier/json-minifier.component';
-import { JsonPathComponent } from './json-path/json-path.component';
-import { JsonSchemaComponent } from './json-schema/json-schema.component';
-import { JsonToTsComponent } from './json-to-ts/json-to-ts.component';
-import { JsonTreeComponent } from './json-tree/json-tree.component';
-import { JwtCheatsheetComponent } from './jwt-cheatsheet/jwt-cheatsheet.component';
-import { JwtDecoderComponent } from './jwt-decoder/jwt-decoder.component';
-import { JwtGeneratorComponent } from './jwt-generator/jwt-generator.component';
-import { KeyboardShortcutsComponent } from './keyboard-shortcuts/keyboard-shortcuts.component';
-import { LicensePickerComponent } from './license-picker/license-picker.component';
-import { LinesorterComponent } from './line-sorter/line-sorter.component';
-import { LoremGeneratorComponent } from './lorem-generator/lorem-generator.component';
-import { MarkdownEditorComponent } from './markdown-editor/markdown-editor.component';
-import { MdTableGeneratorComponent } from './md-table-generator/md-table-generator.component';
-import { MediaQueryComponent } from './media-query/media-query.component';
-import { MetaTagGeneratorComponent } from './meta-tag-generator/meta-tag-generator.component';
-import { MimeLookupComponent } from './mime-lookup/mime-lookup.component';
-import { MockDataComponent } from './mock-data/mock-data.component';
-import { MorseCodeComponent } from './morse-code/morse-code.component';
-import { NpmSearchComponent } from './npm-search/npm-search.component';
-import { OgImagePreviewComponent } from './og-image-preview/og-image-preview.component';
-import { PackageJsonComponent } from './package-json/package-json.component';
-import { PasswordGeneratorComponent } from './password-generator/password-generator.component';
-import { PdfGeneratorComponent } from './pdf-generator/pdf-generator.component';
-import { PlaceholderImageComponent } from './placeholder-image/placeholder-image.component';
-import { PomodoroComponent } from './pomodoro/pomodoro.component';
-import { ProgressBarComponent } from './progress-bar/progress-bar.component';
-import { QrGeneratorComponent } from './qr-generator/qr-generator.component';
-import { RegexCheatsheetComponent } from './regex-cheatsheet/regex-cheatsheet.component';
-import { RegexGeneratorComponent } from './regex-generator/regex-generator.component';
-import { RegexTesterComponent } from './regex-tester/regex-tester.component';
-import { ResponsivePreviewComponent } from './responsive-preview/responsive-preview.component';
-import { RobotsGeneratorComponent } from './robots-generator/robots-generator.component';
-import { ScreenInfoComponent } from './screen-info/screen-info.component';
-import { ScrollSnapComponent } from './scroll-snap/scroll-snap.component';
-import { SeoCheckerComponent } from './seo-checker/seo-checker.component';
-import { SitemapGeneratorComponent } from './sitemap-generator/sitemap-generator.component';
-import { SlugGeneratorComponent } from './slug-generator/slug-generator.component';
-import { SnippetManagerComponent } from './snippet-manager/snippet-manager.component';
-import { SpacingScaleComponent } from './spacing-scale/spacing-scale.component';
-import { SqlFormatterComponent } from './sql-formatter/sql-formatter.component';
-import { SslCertificateAuditorComponent } from './ssl-certificate-auditor/ssl-certificate-auditor.component';
-import { SslCertificateInspectorComponent } from './ssl-certificate-inspector/ssl-certificate-inspector.component';
-import { StringRepeaterComponent } from './string-repeater/string-repeater.component';
-import { SvgPathEditorComponent } from './svg-path-editor/svg-path-editor.component';
-import { SvgToCodeComponent } from './svg-to-code/svg-to-code.component';
-import { TailwindLookupComponent } from './tailwind-lookup/tailwind-lookup.component';
-import { TextCounterComponent } from './text-counter/text-counter.component';
-import { TextShadowComponent } from './text-shadow/text-shadow.component';
-import { TimestampConverterComponent } from './timestamp-converter/timestamp-converter.component';
-import { TimezoneConverterComponent } from './timezone-converter/timezone-converter.component';
-import { TransformPlaygroundComponent } from './transform-playground/transform-playground.component';
-import { TransitionGeneratorComponent } from './transition-generator/transition-generator.component';
-import { TsPlaygroundComponent } from './ts-playground/ts-playground.component';
-import { UaParserComponent } from './ua-parser/ua-parser.component';
-import { UrlEncoderComponent } from './url-encoder/url-encoder.component';
-import { UuidGeneratorComponent } from './uuid-generator/uuid-generator.component';
-import { WebhookTesterComponent } from './webhook-tester/webhook-tester.component';
-import { YamlJsonComponent } from './yaml-json/yaml-json.component';
 
 const routes: Routes = [
   {
       path: '',
-      component: EmbedLandingComponent,
+      loadComponent: () => import('../embed-landing/embed-landing.component').then(m => m.EmbedLandingComponent),
       title: 'Embed Developer Tools on Your Site — Free Widgets | xsantcastx',
       data: {
         description: 'Embed free developer tools on your blog, docs, or app. JSON Formatter, Base64 Encoder, Regex Tester, and more. One iframe tag, zero setup.',
@@ -145,131 +19,131 @@ const routes: Routes = [
         }
       }
     },
-  { path: 'json-formatter', component: JsonFormatterComponent, data: { embed: true } },
-  { path: 'base64-encoder', component: Base64EncoderComponent, data: { embed: true } },
-  { path: 'regex-tester', component: RegexTesterComponent, data: { embed: true } },
-  { path: 'box-shadow-generator', component: BoxShadowGeneratorComponent, data: { embed: true } },
-  { path: 'color-palette', component: ColorPaletteComponent, data: { embed: true } },
-  { path: 'contrast-checker', component: ContrastCheckerComponent, data: { embed: true } },
-  { path: 'image-compressor', component: ImageCompressorComponent, data: { embed: true } },
-  { path: 'pdf-generator', component: PdfGeneratorComponent, data: { embed: true } },
-  { path: 'gmail-deliverability-checker', component: GmailDeliverabilityCheckerComponent, data: { embed: true } },
-  { path: 'email-deliverability-auditor', component: EmailDeliverabilityAuditorComponent, data: { embed: true } },
-  { path: 'ssl-certificate-inspector', component: SslCertificateInspectorComponent, data: { embed: true } },
-  { path: 'ssl-certificate-auditor', component: SslCertificateAuditorComponent, data: { embed: true } },
-  { path: 'svg-to-code', component: SvgToCodeComponent, data: { embed: true } },
-  { path: 'gradient-generator', component: GradientGeneratorComponent, data: { embed: true } },
-  { path: 'jwt-decoder', component: JwtDecoderComponent, data: { embed: true } },
-  { path: 'uuid-generator', component: UuidGeneratorComponent, data: { embed: true } },
-  { path: 'hash-generator', component: HashGeneratorComponent, data: { embed: true } },
-  { path: 'meta-tag-generator', component: MetaTagGeneratorComponent, data: { embed: true } },
-  { path: 'env-validator', component: EnvValidatorComponent, data: { embed: true } },
-  { path: 'font-pairer', component: FontPairerComponent, data: { embed: true } },
-  { path: 'cron-builder', component: CronBuilderComponent, data: { embed: true } },
-  { path: 'api-request-builder', component: ApiRequestBuilderComponent, data: { embed: true } },
-  { path: 'json-to-ts', component: JsonToTsComponent, data: { embed: true } },
-  { path: 'markdown-editor', component: MarkdownEditorComponent, data: { embed: true } },
-  { path: 'diff-checker', component: DiffCheckerComponent, data: { embed: true } },
-  { path: 'timestamp-converter', component: TimestampConverterComponent, data: { embed: true } },
-  { path: 'url-encoder', component: UrlEncoderComponent, data: { embed: true } },
-  { path: 'sql-formatter', component: SqlFormatterComponent, data: { embed: true } },
-  { path: 'base-converter', component: BaseConverterComponent, data: { embed: true } },
-  { path: 'password-generator', component: PasswordGeneratorComponent, data: { embed: true } },
-  { path: 'qr-generator', component: QrGeneratorComponent, data: { embed: true } },
-  { path: 'lorem-generator', component: LoremGeneratorComponent, data: { embed: true } },
-  { path: 'color-converter', component: ColorConverterComponent, data: { embed: true } },
-  { path: 'case-converter', component: CaseConverterComponent, data: { embed: true } },
-  { path: 'flexbox-generator', component: FlexboxGeneratorComponent, data: { embed: true } },
-  { path: 'chmod-calculator', component: ChmodCalculatorComponent, data: { embed: true } },
-  { path: 'html-entities', component: HtmlEntitiesComponent, data: { embed: true } },
-  { path: 'json-path', component: JsonPathComponent, data: { embed: true } },
-  { path: 'css-units', component: CssUnitsComponent, data: { embed: true } },
-  { path: 'aspect-ratio', component: AspectRatioComponent, data: { embed: true } },
-  { path: 'css-minifier', component: CssMinifierComponent, data: { embed: true } },
-  { path: 'http-status', component: HttpStatusComponent, data: { embed: true } },
-  { path: 'border-radius', component: BorderRadiusComponent, data: { embed: true } },
-  { path: 'emoji-picker', component: EmojiPickerComponent, data: { embed: true } },
-  { path: 'ip-lookup', component: IpLookupComponent, data: { embed: true } },
-  { path: 'grid-generator', component: GridGeneratorComponent, data: { embed: true } },
-  { path: 'yaml-json', component: YamlJsonComponent, data: { embed: true } },
-  { path: 'jwt-generator', component: JwtGeneratorComponent, data: { embed: true } },
-  { path: 'tailwind-lookup', component: TailwindLookupComponent, data: { embed: true } },
-  { path: 'md-table-generator', component: MdTableGeneratorComponent, data: { embed: true } },
-  { path: 'json-escape', component: JsonEscapeComponent, data: { embed: true } },
-  { path: 'animation-generator', component: AnimationGeneratorComponent, data: { embed: true } },
-  { path: 'text-counter', component: TextCounterComponent, data: { embed: true } },
-  { path: 'screen-info', component: ScreenInfoComponent, data: { embed: true } },
-  { path: 'slug-generator', component: SlugGeneratorComponent, data: { embed: true } },
-  { path: 'csv-json', component: CsvJsonComponent, data: { embed: true } },
-  { path: 'favicon-generator', component: FaviconGeneratorComponent, data: { embed: true } },
-  { path: 'keyboard-shortcuts', component: KeyboardShortcutsComponent, data: { embed: true } },
-  { path: 'placeholder-image', component: PlaceholderImageComponent, data: { embed: true } },
-  { path: 'color-blindness', component: ColorBlindnessComponent, data: { embed: true } },
-  { path: 'robots-generator', component: RobotsGeneratorComponent, data: { embed: true } },
-  { path: 'dns-lookup', component: DnsLookupComponent, data: { embed: true } },
-  { path: 'box-model', component: BoxModelComponent, data: { embed: true } },
-  { path: 'snippet-manager', component: SnippetManagerComponent, data: { embed: true } },
-  { path: 'regex-generator', component: RegexGeneratorComponent, data: { embed: true } },
-  { path: 'text-shadow', component: TextShadowComponent, data: { embed: true } },
-  { path: 'html-to-md', component: HtmlToMdComponent, data: { embed: true } },
-  { path: 'data-size', component: DataSizeComponent, data: { embed: true } },
-  { path: 'color-shades', component: ColorShadesComponent, data: { embed: true } },
-  { path: 'git-reference', component: GitReferenceComponent, data: { embed: true } },
-  { path: 'responsive-preview', component: ResponsivePreviewComponent, data: { embed: true } },
-  { path: 'pomodoro', component: PomodoroComponent, data: { embed: true } },
-  { path: 'css-filter', component: CssFilterComponent, data: { embed: true } },
-  { path: 'npm-search', component: NpmSearchComponent, data: { embed: true } },
-  { path: 'json-minifier', component: JsonMinifierComponent, data: { embed: true } },
-  { path: 'morse-code', component: MorseCodeComponent, data: { embed: true } },
-  { path: 'binary-text', component: BinaryTextComponent, data: { embed: true } },
-  { path: 'string-repeater', component: StringRepeaterComponent, data: { embed: true } },
-  { path: 'mock-data', component: MockDataComponent, data: { embed: true } },
-  { path: 'apca-contrast', component: ApcaContrastComponent, data: { embed: true } },
-  { path: 'ts-playground', component: TsPlaygroundComponent, data: { embed: true } },
-  { path: 'caesar-cipher', component: CaesarCipherComponent, data: { embed: true } },
-  { path: 'design-tokens', component: DesignTokensComponent, data: { embed: true } },
-  { path: 'json-schema', component: JsonSchemaComponent, data: { embed: true } },
-  { path: 'image-resizer', component: ImageResizerComponent, data: { embed: true } },
-  { path: 'gradient-text', component: GradientTextComponent, data: { embed: true } },
-  { path: 'hex-editor', component: HexEditorComponent, data: { embed: true } },
-  { path: 'sitemap-generator', component: SitemapGeneratorComponent, data: { embed: true } },
-  { path: 'seo-checker', component: SeoCheckerComponent, data: { embed: true } },
-  { path: 'encoding-converter', component: EncodingConverterComponent, data: { embed: true } },
-  { path: 'crontab-ref', component: CrontabRefComponent, data: { embed: true } },
-  { path: 'css-variables', component: CssVariablesComponent, data: { embed: true } },
-  { path: 'docker-ref', component: DockerRefComponent, data: { embed: true } },
-  { path: 'ascii-art', component: AsciiArtComponent, data: { embed: true } },
-  { path: 'button-generator', component: ButtonGeneratorComponent, data: { embed: true } },
-  { path: 'checklist', component: ChecklistComponent, data: { embed: true } },
-  { path: 'color-name', component: ColorNameComponent, data: { embed: true } },
-  { path: 'color-picker', component: ColorPickerComponent, data: { embed: true } },
-  { path: 'countdown', component: CountdownComponent, data: { embed: true } },
-  { path: 'gitignore-generator', component: GitignoreGeneratorComponent, data: { embed: true } },
-  { path: 'heading-checker', component: HeadingCheckerComponent, data: { embed: true } },
-  { path: 'hmac-generator', component: HmacGeneratorComponent, data: { embed: true } },
-  { path: 'html-minifier', component: HtmlMinifierComponent, data: { embed: true } },
-  { path: 'js-minifier', component: JsMinifierComponent, data: { embed: true } },
-  { path: 'json-diff', component: JsonDiffComponent, data: { embed: true } },
-  { path: 'json-tree', component: JsonTreeComponent, data: { embed: true } },
-  { path: 'jwt-cheatsheet', component: JwtCheatsheetComponent, data: { embed: true } },
-  { path: 'license-picker', component: LicensePickerComponent, data: { embed: true } },
-  { path: 'line-sorter', component: LinesorterComponent, data: { embed: true } },
-  { path: 'mime-lookup', component: MimeLookupComponent, data: { embed: true } },
-  { path: 'og-image-preview', component: OgImagePreviewComponent, data: { embed: true } },
-  { path: 'package-json', component: PackageJsonComponent, data: { embed: true } },
-  { path: 'regex-cheatsheet', component: RegexCheatsheetComponent, data: { embed: true } },
-  { path: 'scroll-snap', component: ScrollSnapComponent, data: { embed: true } },
-  { path: 'spacing-scale', component: SpacingScaleComponent, data: { embed: true } },
-  { path: 'timezone-converter', component: TimezoneConverterComponent, data: { embed: true } },
-  { path: 'transform-playground', component: TransformPlaygroundComponent, data: { embed: true } },
-  { path: 'transition-generator', component: TransitionGeneratorComponent, data: { embed: true } },
-  { path: 'ua-parser', component: UaParserComponent, data: { embed: true } },
-  { path: 'webhook-tester', component: WebhookTesterComponent, data: { embed: true } },
-  { path: 'media-query', component: MediaQueryComponent, data: { embed: true } },
-  { path: 'progress-bar', component: ProgressBarComponent, data: { embed: true } },
-  { path: 'clip-path', component: ClipPathComponent, data: { embed: true } },
-  { path: 'char-map', component: CharMapComponent, data: { embed: true } },
-  { path: 'svg-path-editor', component: SvgPathEditorComponent, data: { embed: true } }
+  { path: 'json-formatter', loadComponent: () => import('./json-formatter/json-formatter.component').then(m => m.JsonFormatterComponent), data: { embed: true } },
+  { path: 'base64-encoder', loadComponent: () => import('./base64-encoder/base64-encoder.component').then(m => m.Base64EncoderComponent), data: { embed: true } },
+  { path: 'regex-tester', loadComponent: () => import('./regex-tester/regex-tester.component').then(m => m.RegexTesterComponent), data: { embed: true } },
+  { path: 'box-shadow-generator', loadComponent: () => import('./box-shadow-generator/box-shadow-generator.component').then(m => m.BoxShadowGeneratorComponent), data: { embed: true } },
+  { path: 'color-palette', loadComponent: () => import('./color-palette/color-palette.component').then(m => m.ColorPaletteComponent), data: { embed: true } },
+  { path: 'contrast-checker', loadComponent: () => import('./contrast-checker/contrast-checker.component').then(m => m.ContrastCheckerComponent), data: { embed: true } },
+  { path: 'image-compressor', loadComponent: () => import('./image-compressor/image-compressor.component').then(m => m.ImageCompressorComponent), data: { embed: true } },
+  { path: 'pdf-generator', loadComponent: () => import('./pdf-generator/pdf-generator.component').then(m => m.PdfGeneratorComponent), data: { embed: true } },
+  { path: 'gmail-deliverability-checker', loadComponent: () => import('./gmail-deliverability-checker/gmail-deliverability-checker.component').then(m => m.GmailDeliverabilityCheckerComponent), data: { embed: true } },
+  { path: 'email-deliverability-auditor', loadComponent: () => import('./email-deliverability-auditor/email-deliverability-auditor.component').then(m => m.EmailDeliverabilityAuditorComponent), data: { embed: true } },
+  { path: 'ssl-certificate-inspector', loadComponent: () => import('./ssl-certificate-inspector/ssl-certificate-inspector.component').then(m => m.SslCertificateInspectorComponent), data: { embed: true } },
+  { path: 'ssl-certificate-auditor', loadComponent: () => import('./ssl-certificate-auditor/ssl-certificate-auditor.component').then(m => m.SslCertificateAuditorComponent), data: { embed: true } },
+  { path: 'svg-to-code', loadComponent: () => import('./svg-to-code/svg-to-code.component').then(m => m.SvgToCodeComponent), data: { embed: true } },
+  { path: 'gradient-generator', loadComponent: () => import('./gradient-generator/gradient-generator.component').then(m => m.GradientGeneratorComponent), data: { embed: true } },
+  { path: 'jwt-decoder', loadComponent: () => import('./jwt-decoder/jwt-decoder.component').then(m => m.JwtDecoderComponent), data: { embed: true } },
+  { path: 'uuid-generator', loadComponent: () => import('./uuid-generator/uuid-generator.component').then(m => m.UuidGeneratorComponent), data: { embed: true } },
+  { path: 'hash-generator', loadComponent: () => import('./hash-generator/hash-generator.component').then(m => m.HashGeneratorComponent), data: { embed: true } },
+  { path: 'meta-tag-generator', loadComponent: () => import('./meta-tag-generator/meta-tag-generator.component').then(m => m.MetaTagGeneratorComponent), data: { embed: true } },
+  { path: 'env-validator', loadComponent: () => import('./env-validator/env-validator.component').then(m => m.EnvValidatorComponent), data: { embed: true } },
+  { path: 'font-pairer', loadComponent: () => import('./font-pairer/font-pairer.component').then(m => m.FontPairerComponent), data: { embed: true } },
+  { path: 'cron-builder', loadComponent: () => import('./cron-builder/cron-builder.component').then(m => m.CronBuilderComponent), data: { embed: true } },
+  { path: 'api-request-builder', loadComponent: () => import('./api-request-builder/api-request-builder.component').then(m => m.ApiRequestBuilderComponent), data: { embed: true } },
+  { path: 'json-to-ts', loadComponent: () => import('./json-to-ts/json-to-ts.component').then(m => m.JsonToTsComponent), data: { embed: true } },
+  { path: 'markdown-editor', loadComponent: () => import('./markdown-editor/markdown-editor.component').then(m => m.MarkdownEditorComponent), data: { embed: true } },
+  { path: 'diff-checker', loadComponent: () => import('./diff-checker/diff-checker.component').then(m => m.DiffCheckerComponent), data: { embed: true } },
+  { path: 'timestamp-converter', loadComponent: () => import('./timestamp-converter/timestamp-converter.component').then(m => m.TimestampConverterComponent), data: { embed: true } },
+  { path: 'url-encoder', loadComponent: () => import('./url-encoder/url-encoder.component').then(m => m.UrlEncoderComponent), data: { embed: true } },
+  { path: 'sql-formatter', loadComponent: () => import('./sql-formatter/sql-formatter.component').then(m => m.SqlFormatterComponent), data: { embed: true } },
+  { path: 'base-converter', loadComponent: () => import('./base-converter/base-converter.component').then(m => m.BaseConverterComponent), data: { embed: true } },
+  { path: 'password-generator', loadComponent: () => import('./password-generator/password-generator.component').then(m => m.PasswordGeneratorComponent), data: { embed: true } },
+  { path: 'qr-generator', loadComponent: () => import('./qr-generator/qr-generator.component').then(m => m.QrGeneratorComponent), data: { embed: true } },
+  { path: 'lorem-generator', loadComponent: () => import('./lorem-generator/lorem-generator.component').then(m => m.LoremGeneratorComponent), data: { embed: true } },
+  { path: 'color-converter', loadComponent: () => import('./color-converter/color-converter.component').then(m => m.ColorConverterComponent), data: { embed: true } },
+  { path: 'case-converter', loadComponent: () => import('./case-converter/case-converter.component').then(m => m.CaseConverterComponent), data: { embed: true } },
+  { path: 'flexbox-generator', loadComponent: () => import('./flexbox-generator/flexbox-generator.component').then(m => m.FlexboxGeneratorComponent), data: { embed: true } },
+  { path: 'chmod-calculator', loadComponent: () => import('./chmod-calculator/chmod-calculator.component').then(m => m.ChmodCalculatorComponent), data: { embed: true } },
+  { path: 'html-entities', loadComponent: () => import('./html-entities/html-entities.component').then(m => m.HtmlEntitiesComponent), data: { embed: true } },
+  { path: 'json-path', loadComponent: () => import('./json-path/json-path.component').then(m => m.JsonPathComponent), data: { embed: true } },
+  { path: 'css-units', loadComponent: () => import('./css-units/css-units.component').then(m => m.CssUnitsComponent), data: { embed: true } },
+  { path: 'aspect-ratio', loadComponent: () => import('./aspect-ratio/aspect-ratio.component').then(m => m.AspectRatioComponent), data: { embed: true } },
+  { path: 'css-minifier', loadComponent: () => import('./css-minifier/css-minifier.component').then(m => m.CssMinifierComponent), data: { embed: true } },
+  { path: 'http-status', loadComponent: () => import('./http-status/http-status.component').then(m => m.HttpStatusComponent), data: { embed: true } },
+  { path: 'border-radius', loadComponent: () => import('./border-radius/border-radius.component').then(m => m.BorderRadiusComponent), data: { embed: true } },
+  { path: 'emoji-picker', loadComponent: () => import('./emoji-picker/emoji-picker.component').then(m => m.EmojiPickerComponent), data: { embed: true } },
+  { path: 'ip-lookup', loadComponent: () => import('./ip-lookup/ip-lookup.component').then(m => m.IpLookupComponent), data: { embed: true } },
+  { path: 'grid-generator', loadComponent: () => import('./grid-generator/grid-generator.component').then(m => m.GridGeneratorComponent), data: { embed: true } },
+  { path: 'yaml-json', loadComponent: () => import('./yaml-json/yaml-json.component').then(m => m.YamlJsonComponent), data: { embed: true } },
+  { path: 'jwt-generator', loadComponent: () => import('./jwt-generator/jwt-generator.component').then(m => m.JwtGeneratorComponent), data: { embed: true } },
+  { path: 'tailwind-lookup', loadComponent: () => import('./tailwind-lookup/tailwind-lookup.component').then(m => m.TailwindLookupComponent), data: { embed: true } },
+  { path: 'md-table-generator', loadComponent: () => import('./md-table-generator/md-table-generator.component').then(m => m.MdTableGeneratorComponent), data: { embed: true } },
+  { path: 'json-escape', loadComponent: () => import('./json-escape/json-escape.component').then(m => m.JsonEscapeComponent), data: { embed: true } },
+  { path: 'animation-generator', loadComponent: () => import('./animation-generator/animation-generator.component').then(m => m.AnimationGeneratorComponent), data: { embed: true } },
+  { path: 'text-counter', loadComponent: () => import('./text-counter/text-counter.component').then(m => m.TextCounterComponent), data: { embed: true } },
+  { path: 'screen-info', loadComponent: () => import('./screen-info/screen-info.component').then(m => m.ScreenInfoComponent), data: { embed: true } },
+  { path: 'slug-generator', loadComponent: () => import('./slug-generator/slug-generator.component').then(m => m.SlugGeneratorComponent), data: { embed: true } },
+  { path: 'csv-json', loadComponent: () => import('./csv-json/csv-json.component').then(m => m.CsvJsonComponent), data: { embed: true } },
+  { path: 'favicon-generator', loadComponent: () => import('./favicon-generator/favicon-generator.component').then(m => m.FaviconGeneratorComponent), data: { embed: true } },
+  { path: 'keyboard-shortcuts', loadComponent: () => import('./keyboard-shortcuts/keyboard-shortcuts.component').then(m => m.KeyboardShortcutsComponent), data: { embed: true } },
+  { path: 'placeholder-image', loadComponent: () => import('./placeholder-image/placeholder-image.component').then(m => m.PlaceholderImageComponent), data: { embed: true } },
+  { path: 'color-blindness', loadComponent: () => import('./color-blindness/color-blindness.component').then(m => m.ColorBlindnessComponent), data: { embed: true } },
+  { path: 'robots-generator', loadComponent: () => import('./robots-generator/robots-generator.component').then(m => m.RobotsGeneratorComponent), data: { embed: true } },
+  { path: 'dns-lookup', loadComponent: () => import('./dns-lookup/dns-lookup.component').then(m => m.DnsLookupComponent), data: { embed: true } },
+  { path: 'box-model', loadComponent: () => import('./box-model/box-model.component').then(m => m.BoxModelComponent), data: { embed: true } },
+  { path: 'snippet-manager', loadComponent: () => import('./snippet-manager/snippet-manager.component').then(m => m.SnippetManagerComponent), data: { embed: true } },
+  { path: 'regex-generator', loadComponent: () => import('./regex-generator/regex-generator.component').then(m => m.RegexGeneratorComponent), data: { embed: true } },
+  { path: 'text-shadow', loadComponent: () => import('./text-shadow/text-shadow.component').then(m => m.TextShadowComponent), data: { embed: true } },
+  { path: 'html-to-md', loadComponent: () => import('./html-to-md/html-to-md.component').then(m => m.HtmlToMdComponent), data: { embed: true } },
+  { path: 'data-size', loadComponent: () => import('./data-size/data-size.component').then(m => m.DataSizeComponent), data: { embed: true } },
+  { path: 'color-shades', loadComponent: () => import('./color-shades/color-shades.component').then(m => m.ColorShadesComponent), data: { embed: true } },
+  { path: 'git-reference', loadComponent: () => import('./git-reference/git-reference.component').then(m => m.GitReferenceComponent), data: { embed: true } },
+  { path: 'responsive-preview', loadComponent: () => import('./responsive-preview/responsive-preview.component').then(m => m.ResponsivePreviewComponent), data: { embed: true } },
+  { path: 'pomodoro', loadComponent: () => import('./pomodoro/pomodoro.component').then(m => m.PomodoroComponent), data: { embed: true } },
+  { path: 'css-filter', loadComponent: () => import('./css-filter/css-filter.component').then(m => m.CssFilterComponent), data: { embed: true } },
+  { path: 'npm-search', loadComponent: () => import('./npm-search/npm-search.component').then(m => m.NpmSearchComponent), data: { embed: true } },
+  { path: 'json-minifier', loadComponent: () => import('./json-minifier/json-minifier.component').then(m => m.JsonMinifierComponent), data: { embed: true } },
+  { path: 'morse-code', loadComponent: () => import('./morse-code/morse-code.component').then(m => m.MorseCodeComponent), data: { embed: true } },
+  { path: 'binary-text', loadComponent: () => import('./binary-text/binary-text.component').then(m => m.BinaryTextComponent), data: { embed: true } },
+  { path: 'string-repeater', loadComponent: () => import('./string-repeater/string-repeater.component').then(m => m.StringRepeaterComponent), data: { embed: true } },
+  { path: 'mock-data', loadComponent: () => import('./mock-data/mock-data.component').then(m => m.MockDataComponent), data: { embed: true } },
+  { path: 'apca-contrast', loadComponent: () => import('./apca-contrast/apca-contrast.component').then(m => m.ApcaContrastComponent), data: { embed: true } },
+  { path: 'ts-playground', loadComponent: () => import('./ts-playground/ts-playground.component').then(m => m.TsPlaygroundComponent), data: { embed: true } },
+  { path: 'caesar-cipher', loadComponent: () => import('./caesar-cipher/caesar-cipher.component').then(m => m.CaesarCipherComponent), data: { embed: true } },
+  { path: 'design-tokens', loadComponent: () => import('./design-tokens/design-tokens.component').then(m => m.DesignTokensComponent), data: { embed: true } },
+  { path: 'json-schema', loadComponent: () => import('./json-schema/json-schema.component').then(m => m.JsonSchemaComponent), data: { embed: true } },
+  { path: 'image-resizer', loadComponent: () => import('./image-resizer/image-resizer.component').then(m => m.ImageResizerComponent), data: { embed: true } },
+  { path: 'gradient-text', loadComponent: () => import('./gradient-text/gradient-text.component').then(m => m.GradientTextComponent), data: { embed: true } },
+  { path: 'hex-editor', loadComponent: () => import('./hex-editor/hex-editor.component').then(m => m.HexEditorComponent), data: { embed: true } },
+  { path: 'sitemap-generator', loadComponent: () => import('./sitemap-generator/sitemap-generator.component').then(m => m.SitemapGeneratorComponent), data: { embed: true } },
+  { path: 'seo-checker', loadComponent: () => import('./seo-checker/seo-checker.component').then(m => m.SeoCheckerComponent), data: { embed: true } },
+  { path: 'encoding-converter', loadComponent: () => import('./encoding-converter/encoding-converter.component').then(m => m.EncodingConverterComponent), data: { embed: true } },
+  { path: 'crontab-ref', loadComponent: () => import('./crontab-ref/crontab-ref.component').then(m => m.CrontabRefComponent), data: { embed: true } },
+  { path: 'css-variables', loadComponent: () => import('./css-variables/css-variables.component').then(m => m.CssVariablesComponent), data: { embed: true } },
+  { path: 'docker-ref', loadComponent: () => import('./docker-ref/docker-ref.component').then(m => m.DockerRefComponent), data: { embed: true } },
+  { path: 'ascii-art', loadComponent: () => import('./ascii-art/ascii-art.component').then(m => m.AsciiArtComponent), data: { embed: true } },
+  { path: 'button-generator', loadComponent: () => import('./button-generator/button-generator.component').then(m => m.ButtonGeneratorComponent), data: { embed: true } },
+  { path: 'checklist', loadComponent: () => import('./checklist/checklist.component').then(m => m.ChecklistComponent), data: { embed: true } },
+  { path: 'color-name', loadComponent: () => import('./color-name/color-name.component').then(m => m.ColorNameComponent), data: { embed: true } },
+  { path: 'color-picker', loadComponent: () => import('./color-picker/color-picker.component').then(m => m.ColorPickerComponent), data: { embed: true } },
+  { path: 'countdown', loadComponent: () => import('./countdown/countdown.component').then(m => m.CountdownComponent), data: { embed: true } },
+  { path: 'gitignore-generator', loadComponent: () => import('./gitignore-generator/gitignore-generator.component').then(m => m.GitignoreGeneratorComponent), data: { embed: true } },
+  { path: 'heading-checker', loadComponent: () => import('./heading-checker/heading-checker.component').then(m => m.HeadingCheckerComponent), data: { embed: true } },
+  { path: 'hmac-generator', loadComponent: () => import('./hmac-generator/hmac-generator.component').then(m => m.HmacGeneratorComponent), data: { embed: true } },
+  { path: 'html-minifier', loadComponent: () => import('./html-minifier/html-minifier.component').then(m => m.HtmlMinifierComponent), data: { embed: true } },
+  { path: 'js-minifier', loadComponent: () => import('./js-minifier/js-minifier.component').then(m => m.JsMinifierComponent), data: { embed: true } },
+  { path: 'json-diff', loadComponent: () => import('./json-diff/json-diff.component').then(m => m.JsonDiffComponent), data: { embed: true } },
+  { path: 'json-tree', loadComponent: () => import('./json-tree/json-tree.component').then(m => m.JsonTreeComponent), data: { embed: true } },
+  { path: 'jwt-cheatsheet', loadComponent: () => import('./jwt-cheatsheet/jwt-cheatsheet.component').then(m => m.JwtCheatsheetComponent), data: { embed: true } },
+  { path: 'license-picker', loadComponent: () => import('./license-picker/license-picker.component').then(m => m.LicensePickerComponent), data: { embed: true } },
+  { path: 'line-sorter', loadComponent: () => import('./line-sorter/line-sorter.component').then(m => m.LinesorterComponent), data: { embed: true } },
+  { path: 'mime-lookup', loadComponent: () => import('./mime-lookup/mime-lookup.component').then(m => m.MimeLookupComponent), data: { embed: true } },
+  { path: 'og-image-preview', loadComponent: () => import('./og-image-preview/og-image-preview.component').then(m => m.OgImagePreviewComponent), data: { embed: true } },
+  { path: 'package-json', loadComponent: () => import('./package-json/package-json.component').then(m => m.PackageJsonComponent), data: { embed: true } },
+  { path: 'regex-cheatsheet', loadComponent: () => import('./regex-cheatsheet/regex-cheatsheet.component').then(m => m.RegexCheatsheetComponent), data: { embed: true } },
+  { path: 'scroll-snap', loadComponent: () => import('./scroll-snap/scroll-snap.component').then(m => m.ScrollSnapComponent), data: { embed: true } },
+  { path: 'spacing-scale', loadComponent: () => import('./spacing-scale/spacing-scale.component').then(m => m.SpacingScaleComponent), data: { embed: true } },
+  { path: 'timezone-converter', loadComponent: () => import('./timezone-converter/timezone-converter.component').then(m => m.TimezoneConverterComponent), data: { embed: true } },
+  { path: 'transform-playground', loadComponent: () => import('./transform-playground/transform-playground.component').then(m => m.TransformPlaygroundComponent), data: { embed: true } },
+  { path: 'transition-generator', loadComponent: () => import('./transition-generator/transition-generator.component').then(m => m.TransitionGeneratorComponent), data: { embed: true } },
+  { path: 'ua-parser', loadComponent: () => import('./ua-parser/ua-parser.component').then(m => m.UaParserComponent), data: { embed: true } },
+  { path: 'webhook-tester', loadComponent: () => import('./webhook-tester/webhook-tester.component').then(m => m.WebhookTesterComponent), data: { embed: true } },
+  { path: 'media-query', loadComponent: () => import('./media-query/media-query.component').then(m => m.MediaQueryComponent), data: { embed: true } },
+  { path: 'progress-bar', loadComponent: () => import('./progress-bar/progress-bar.component').then(m => m.ProgressBarComponent), data: { embed: true } },
+  { path: 'clip-path', loadComponent: () => import('./clip-path/clip-path.component').then(m => m.ClipPathComponent), data: { embed: true } },
+  { path: 'char-map', loadComponent: () => import('./char-map/char-map.component').then(m => m.CharMapComponent), data: { embed: true } },
+  { path: 'svg-path-editor', loadComponent: () => import('./svg-path-editor/svg-path-editor.component').then(m => m.SvgPathEditorComponent), data: { embed: true } }
 ];
 
 @NgModule({

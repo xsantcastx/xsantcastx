@@ -1,9 +1,11 @@
 import { Component, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 type IndentOption = '2' | '4' | 'tab';
 type SqlDialect = 'postgresql' | 'mysql' | 'sqlite';
@@ -85,10 +87,10 @@ WHERE category_id = (
 CREATE INDEX idx_orders_user_date ON orders (user_id, created_at DESC);`;
 
 @Component({
-  selector: 'app-sql-formatter',
-  templateUrl: './sql-formatter.component.html',
-  styleUrls: ['./sql-formatter.component.css'],
-  standalone: false
+    selector: 'app-sql-formatter',
+    templateUrl: './sql-formatter.component.html',
+    styleUrls: ['./sql-formatter.component.css'],
+    imports: [ToolsSharedModule, FormsModule, DecimalPipe]
 })
 export class SqlFormatterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

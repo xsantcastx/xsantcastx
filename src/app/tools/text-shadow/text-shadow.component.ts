@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 export interface TextShadowLayer {
   id: number;
@@ -20,10 +21,10 @@ export interface TextShadowPreset {
 }
 
 @Component({
-  selector: 'app-text-shadow',
-  templateUrl: './text-shadow.component.html',
-  styleUrls: ['./text-shadow.component.css'],
-  standalone: false
+    selector: 'app-text-shadow',
+    templateUrl: './text-shadow.component.html',
+    styleUrls: ['./text-shadow.component.css'],
+    imports: [ToolsSharedModule]
 })
 export class TextShadowComponent {
   private readonly eggs = inject(EasterEggService);

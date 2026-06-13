@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgFor, NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 interface PathCommand {
   type: string;
@@ -26,10 +29,10 @@ interface BBox {
 }
 
 @Component({
-  selector: 'app-svg-path-editor',
-  templateUrl: './svg-path-editor.component.html',
-  styleUrls: ['./svg-path-editor.component.css'],
-  standalone: false
+    selector: 'app-svg-path-editor',
+    templateUrl: './svg-path-editor.component.html',
+    styleUrls: ['./svg-path-editor.component.css'],
+    imports: [ToolsSharedModule, NgFor, FormsModule, NgIf]
 })
 export class SvgPathEditorComponent implements AfterViewInit {
   @ViewChild('svgViewport') svgViewport!: ElementRef<SVGSVGElement>;

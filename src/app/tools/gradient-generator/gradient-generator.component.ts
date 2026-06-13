@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { NgStyle } from '@angular/common';
 
 export type GradientType = 'linear' | 'radial' | 'conic';
 export type RadialShape = 'circle' | 'ellipse';
@@ -20,10 +22,10 @@ export interface GradientPreset {
 }
 
 @Component({
-  selector: 'app-gradient-generator',
-  templateUrl: './gradient-generator.component.html',
-  styleUrls: ['./gradient-generator.component.css'],
-  standalone: false
+    selector: 'app-gradient-generator',
+    templateUrl: './gradient-generator.component.html',
+    styleUrls: ['./gradient-generator.component.css'],
+    imports: [ToolsSharedModule, NgStyle]
 })
 export class GradientGeneratorComponent {
   gradientType: GradientType = 'linear';

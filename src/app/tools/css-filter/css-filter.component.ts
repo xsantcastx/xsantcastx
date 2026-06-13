@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface FilterConfig {
   key: string;
@@ -28,10 +29,10 @@ interface DropShadow {
 }
 
 @Component({
-  selector: 'app-css-filter',
-  templateUrl: './css-filter.component.html',
-  styleUrls: ['./css-filter.component.css'],
-  standalone: false
+    selector: 'app-css-filter',
+    templateUrl: './css-filter.component.html',
+    styleUrls: ['./css-filter.component.css'],
+    imports: [ToolsSharedModule]
 })
 export class CssFilterComponent {
   private readonly eggs = inject(EasterEggService);

@@ -100,6 +100,7 @@
 /embed/ssl-certificate-auditor
 /embed/svg-to-code
 /tools/ip-lookup
+/tools/grocery-manager
 /tools/grid-generator
 /tools/yaml-json
 /tools/jwt-generator

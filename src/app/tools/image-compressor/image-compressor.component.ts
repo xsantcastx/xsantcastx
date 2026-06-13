@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
 
 interface CompressedImage {
   file: File;
@@ -18,10 +19,10 @@ interface CompressedImage {
 }
 
 @Component({
-  selector: 'app-image-compressor',
-  templateUrl: './image-compressor.component.html',
-  styleUrls: ['./image-compressor.component.css'],
-  standalone: false
+    selector: 'app-image-compressor',
+    templateUrl: './image-compressor.component.html',
+    styleUrls: ['./image-compressor.component.css'],
+    imports: [ToolsSharedModule]
 })
 export class ImageCompressorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

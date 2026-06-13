@@ -6,6 +6,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
 import { TOOLS_REGISTRY, ToolDefinition, getCategories, getAllTags, getRelatedTools } from './tools-registry';
+import { FormsModule } from '@angular/forms';
 
 export interface ToolCard {
   id: string;
@@ -59,10 +60,10 @@ const ORBIT_RINGS = [
 ];
 
 @Component({
-  selector: 'app-tools',
-  templateUrl: './tools.component.html',
-  styleUrls: ['./tools.component.css'],
-  standalone: false
+    selector: 'app-tools',
+    templateUrl: './tools.component.html',
+    styleUrls: ['./tools.component.css'],
+    imports: [FormsModule]
 })
 export class ToolsComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
+import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { FormsModule } from '@angular/forms';
 
 interface HeaderEntry {
   key: string;
@@ -24,10 +26,10 @@ interface HistoryEntry {
 }
 
 @Component({
-  selector: 'app-api-request-builder',
-  templateUrl: './api-request-builder.component.html',
-  styleUrls: ['./api-request-builder.component.css'],
-  standalone: false
+    selector: 'app-api-request-builder',
+    templateUrl: './api-request-builder.component.html',
+    styleUrls: ['./api-request-builder.component.css'],
+    imports: [ToolsSharedModule, FormsModule]
 })
 export class ApiRequestBuilderComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
