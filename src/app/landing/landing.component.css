@@ -2359,14 +2359,18 @@
   z-index: 3;
 }
 
-/* Night-side city lights — sparse warm pinpoints, masked to the dark hemisphere */
+/* Night-side lights — not human. A dense bioluminescent cyan-violet grid,
+   masked to the dark hemisphere. Recolored from the original warm amber
+   (that read as "human city lights") to the brand alien palette so the
+   whole night side reads as an unfamiliar civilization's glow. */
 .cosmic-planet__nightlights {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 26 -24' result='m'/%3E%3CfeFlood flood-color='%23ffd38a'/%3E%3CfeComposite in2='m' operator='in'/%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 200% 100%;
-  background-repeat: repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 26 -24' result='m'/%3E%3CfeFlood flood-color='%234dffe0'/%3E%3CfeComposite in2='m' operator='in'/%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='n2' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='1' seed='31' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 30 -28.6' result='m2'/%3E%3CfeFlood flood-color='%23a48bff'/%3E%3CfeComposite in2='m2' operator='in'/%3E%3C/filter%3E%3Crect width='600' height='300' filter='url(%23n2)'/%3E%3C/svg%3E");
+  background-size: 200% 100%, 240% 100%;
+  background-repeat: repeat, repeat;
   mix-blend-mode: screen;
   opacity: 0.9;
   /* §1.1 — mask anchored to sun position so night lights only show on dark side */
@@ -2374,6 +2378,64 @@
           mask: radial-gradient(circle at var(--sun-x) var(--sun-y), transparent 0%, transparent 50%, #000 86%);
   animation: planetSurface 90s linear infinite;
   z-index: 4;
+}
+
+/* Megacity hubs — brighter pinpoints than the base light-grid, each pulsing
+   independently (staggered duration + delay) like an asynchronous city grid
+   breathing at night. Position/color/timing are per-instance CSS vars set
+   inline in the template so one rule covers all six. */
+.cosmic-planet__hub {
+  position: absolute;
+  top: var(--hy);
+  left: var(--hx);
+  width: 4.5%;
+  height: 4.5%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  background: radial-gradient(circle at center, #fff 0%, var(--hub-color) 34%, transparent 72%);
+  mix-blend-mode: screen;
+  opacity: 0.6;
+  filter: blur(0.3px);
+  animation: planetHubPulse var(--hub-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--hub-delay, 0s);
+  pointer-events: none;
+  will-change: transform, opacity;
+  z-index: 4;
+}
+
+@keyframes planetHubPulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+  50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.2); }
+}
+
+/* A signal, escaping the brightest hub into open space. Lives OUTSIDE the
+   sphere (sibling, not child) so overflow:hidden on the sphere doesn't clip
+   the ring as it expands past the planet's rim — reads as a ping breaking
+   free into the void. Positioned to match the primary hub at 74%/58%. */
+.cosmic-planet__beacon {
+  position: absolute;
+  top: 58%;
+  left: 74%;
+  width: 6%;
+  height: 6%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  background: radial-gradient(circle at center,
+    transparent 0%, transparent 40%,
+    rgba(77, 255, 224, 0.9) 46%,
+    rgba(77, 255, 224, 0.22) 58%,
+    transparent 72%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  animation: planetBeaconPing 4.2s cubic-bezier(0.15, 0.6, 0.35, 1) infinite;
+  z-index: 3;
+}
+
+@keyframes planetBeaconPing {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  12%  { opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(9); opacity: 0; }
 }
 
 /* §1.5 — Specular sun-glint near (--sun-x, --sun-y); mix-blend-mode: overlay;
@@ -2468,6 +2530,35 @@
   z-index: 4;
   -webkit-mask: linear-gradient(to bottom, transparent 0 48%, #000 48%);
           mask: linear-gradient(to bottom, transparent 0 48%, #000 48%);
+}
+
+/* Energy-conduit pulse — a narrow bright arc that continuously orbits the
+   ring, reading as data/power traveling around an engineered structure
+   rather than passive ice. Declared once on the shared .cosmic-planet__ring
+   class so BOTH the back and front instances render their own copy with the
+   same rotation, in sync: each is still clipped by its own parent's
+   back/front mask above, so the single pulse appears to travel continuously
+   from the far arc to the near arc as it swings around. */
+.cosmic-planet__ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg at 50% 50%,
+    transparent 0deg,
+    transparent 336deg,
+    rgba(77, 255, 224, 0.85) 349deg,
+    rgba(164, 139, 255, 0.65) 356deg,
+    transparent 360deg);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  animation: ringEnergyRotate 6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes ringEnergyRotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* §1.3 — Atmosphere-rim (Fresnel): a dedicated layer OUTSIDE the sphere,
@@ -2660,6 +2751,17 @@
   .cosmic-planet__glint              { animation: none !important; opacity: 0.18; }
   /* New layers are position:absolute static — no animation to disable */
   /* __atmosphere-rim, __ring-shadow, __sphere-shadow, __ring-shadow are static */
+
+  /* Alien lights — park hubs at a calm resting glow, no pulse */
+  .cosmic-planet__hub {
+    animation: none !important;
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  /* Beacon ping is inherently a motion effect — hide rather than freeze mid-expand */
+  .cosmic-planet__beacon { animation: none !important; opacity: 0; }
+  /* Ring energy pulse — static faint arc instead of a spin */
+  .cosmic-planet__ring::after { animation: none !important; opacity: 0.35; }
 }
 
 @media (max-width: 640px) {

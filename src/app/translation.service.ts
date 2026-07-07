@@ -422,7 +422,7 @@ export class TranslationService {
     'cosmic.guestbook.submit':      { en: 'Send into the void →',          es: 'Enviar al vacio →' },
 
     // ─── Cosmic anchor planet ──────────────────────────────────────────────
-    'cosmic.anchor.whisper':        { en: 'somewhere between the tools and the void — a world still spinning.', es: 'en algun lugar entre las herramientas y el vacio — un mundo que sigue girando.' },
+    'cosmic.anchor.whisper':        { en: 'look closer — those lights down there aren\'t ours.', es: 'mira mas de cerca — esas luces de ahi abajo no son nuestras.' },
 
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
