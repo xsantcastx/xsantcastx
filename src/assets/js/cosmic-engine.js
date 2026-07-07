@@ -1,0 +1,1083 @@
+/* Cosmic engine — externalized from index.html so CSP script-src `self`
+   covers it permanently (inline hash-pinning broke in prod whenever the
+   engine changed). Loaded with defer; all systems are SSR-safe/guarded. */
+
+    (function () {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+      var prefersReduced = false;
+      try { prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+      // ─────────────────────────────────────────────────────────────
+      // 0. BOOT SPLASH — fade out the cosmic loading curtain
+      // ─────────────────────────────────────────────────────────────
+      // Splash is part of SSR HTML so it's painted instantly. We dismiss it
+      // after a short delay (or immediately on reduced-motion).
+      (function () {
+        var boot = document.querySelector('.cosmic-boot');
+        if (!boot) return;
+        if (prefersReduced) { boot.parentNode && boot.parentNode.removeChild(boot); return; }
+        var dismiss = function () {
+          boot.classList.add('cosmic-boot--dismissed');
+          setTimeout(function () { boot.parentNode && boot.parentNode.removeChild(boot); }, 700);
+        };
+        // Wait until DOM is interactive + give the engine ~750ms to start its first frame
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () { setTimeout(dismiss, 750); });
+        } else {
+          setTimeout(dismiss, 750);
+        }
+      })();
+
+      // rAF-throttled debouncer — coalesces bursty mutations into 1 scan per frame
+      function rafThrottle(fn) {
+        var queued = false;
+        return function () {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(function () { queued = false; fn(); });
+        };
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 1. CONSTELLATION CANVAS — drifting particles + connection lines
+      // ─────────────────────────────────────────────────────────────
+      var canvas = document.querySelector('.cosmic-canvas');
+      if (canvas && canvas.getContext) {
+        var ctx = canvas.getContext('2d');
+
+        // §2.2 — Lite mode: mobile screen OR low-end hardware (mutable — re-evaluated on resize)
+        var lite = false;
+        var liteQuery = matchMedia('(max-width: 768px)');
+        function evalLite() {
+          try {
+            lite = liteQuery.matches
+              || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+              || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+          } catch (e) {}
+        }
+        evalLite();
+
+        // DPR: cap at 1.5 in lite, 2 on desktop (mutable — re-evaluated on resize)
+        var dpr = Math.min(window.devicePixelRatio || 1, lite ? 1.5 : 2);
+        var W = 0, H = 0;
+        var particles = [];
+        var mouseX = -9999, mouseY = -9999;
+        var targetParallaxX = 0, targetParallaxY = 0;
+        var parallaxX = 0, parallaxY = 0;
+
+        // §2.2 — Frame-time governor
+        // Shed rule: sustained jank — avg frame delta > 34ms (below 30fps mark).
+        // 60Hz healthy displays average ~16.7ms; the old threshold of 12ms would
+        // fire constantly on every normal display. 34ms means we only shed when
+        // the engine is genuinely struggling to hit 30fps.
+        // shedFactor carries governor sheds through resize() rebuilds.
+        var ftSamples = [];
+        var ftLast = 0;
+        var shedFactor = 1.0; // *= 0.8 per governor shed; applied to particle target in resize()
+
+        function resize() {
+          // D-4: re-evaluate lite and dpr each resize so rotating a tablet or
+          // dragging between monitors picks up the correct mode and pixel ratio.
+          var prevLite = lite;
+          evalLite();
+          dpr = Math.min(window.devicePixelRatio || 1, lite ? 1.5 : 2);
+
+          W = canvas.clientWidth = window.innerWidth;
+          H = canvas.clientHeight = window.innerHeight;
+          canvas.width = Math.floor(W * dpr);
+          canvas.height = Math.floor(H * dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          // Density: ~1 particle per 14000px², capped 60–140 desktop / 30–70 lite.
+          // D-3c: multiply by shedFactor to honour prior governor sheds.
+          var minP = lite ? 30 : 60;
+          var maxP = lite ? 70 : 140;
+          var base = Math.max(minP, Math.min(maxP, Math.round((W * H) / (lite ? 28000 : 14000))));
+          var target = Math.max(24, Math.floor(base * shedFactor));
+          if (particles.length !== target) {
+            particles.length = 0;
+            for (var i = 0; i < target; i++) particles.push(spawn());
+          }
+        }
+
+        function spawn() {
+          var palettes = [
+            { r: 0,   g: 255, b: 204 }, // cyan
+            { r: 140, g: 110, b: 255 }, // violet
+            { r: 255, g: 109, b: 215 }, // pink
+            { r: 95,  g: 182, b: 255 }, // blue
+            { r: 255, g: 198, b: 105 }  // amber
+          ];
+          var p = palettes[Math.floor(Math.random() * palettes.length)];
+          return {
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vx: (Math.random() - 0.5) * 0.18,
+            vy: (Math.random() - 0.5) * 0.18,
+            ivx: 0, ivy: 0,                  // impulse velocity (decays toward 0)
+            r: 0.6 + Math.random() * 1.6,
+            depth: 0.3 + Math.random() * 0.7, // parallax weight
+            twinklePhase: Math.random() * Math.PI * 2,
+            twinkleSpeed: 0.012 + Math.random() * 0.024,
+            flare: 0,                         // 0..1 — boosted by ripple, decays each frame
+            color: p
+          };
+        }
+
+        function step(t) {
+          if (prefersReduced) {
+            // Static draw, no rAF loop
+            draw(0);
+            return;
+          }
+
+          // §2.2 — Frame-time governor: rolling 60-frame avg of rAF deltas.
+          // Threshold: 34ms (sustained below 30fps). The original 12ms threshold fired on
+          // every healthy 60Hz display (~16.7ms avg) — constant shedding to floor was the bug.
+          // Samples are clamped to 100ms so a tab-restore spike cannot poison the window (D-3a).
+          // shedFactor persists across resize() rebuilds (D-3c).
+          if (ftLast > 0) {
+            var ft = Math.min(t - ftLast, 100); // clamp: ignore tab-restore spikes
+            ftSamples.push(ft);
+            if (ftSamples.length > 60) ftSamples.shift();
+            if (ftSamples.length === 60) {
+              var avg = 0;
+              for (var fi = 0; fi < 60; fi++) avg += ftSamples[fi];
+              avg /= 60;
+              if (avg > 34 && particles.length > 24) {
+                // Shed 20%, floor at 24; carry factor through future resize() calls
+                shedFactor = Math.max(0.1, shedFactor * 0.8);
+                var next = Math.max(24, Math.floor(particles.length * 0.8));
+                particles.length = next;
+                ftSamples.length = 0; // reset window after adjustment
+              }
+            }
+          }
+          ftLast = t;
+
+          // Smooth mouse parallax (lerp)
+          parallaxX += (targetParallaxX - parallaxX) * 0.05;
+          parallaxY += (targetParallaxY - parallaxY) * 0.05;
+          draw(t);
+          rafId = requestAnimationFrame(step);
+        }
+
+        var maxLinkDist = 130;
+        var maxLinkDistSq = maxLinkDist * maxLinkDist;
+
+        function draw() {
+          ctx.clearRect(0, 0, W, H);
+
+          // Update + draw particles
+          for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            // base drift + impulse from click ripples (decays per frame)
+            p.x += p.vx + p.ivx;
+            p.y += p.vy + p.ivy;
+            p.ivx *= 0.93;
+            p.ivy *= 0.93;
+            if (Math.abs(p.ivx) < 0.005) p.ivx = 0;
+            if (Math.abs(p.ivy) < 0.005) p.ivy = 0;
+            // flare from ripples decays
+            if (p.flare > 0) p.flare *= 0.94;
+            if (p.flare < 0.02) p.flare = 0;
+            // wrap
+            if (p.x < -10) p.x = W + 10; else if (p.x > W + 10) p.x = -10;
+            if (p.y < -10) p.y = H + 10; else if (p.y > H + 10) p.y = -10;
+
+            p.twinklePhase += p.twinkleSpeed;
+            var twinkle = 0.55 + 0.45 * Math.sin(p.twinklePhase);
+
+            // Apply parallax based on depth (closer = more shift)
+            var px = p.x + parallaxX * p.depth;
+            var py = p.y + parallaxY * p.depth;
+
+            // Mouse-glow boost — particles closer to cursor flare
+            var dx = px - mouseX, dy = py - mouseY;
+            var distSq = dx * dx + dy * dy;
+            var mouseBoost = 0;
+            if (distSq < 22500) { // 150px radius
+              mouseBoost = (1 - distSq / 22500) * 0.6;
+            }
+
+            var alpha = (0.45 + twinkle * 0.45 + mouseBoost + p.flare) * p.depth;
+            if (alpha > 1) alpha = 1;
+
+            var c = p.color;
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha.toFixed(3) + ')';
+            ctx.arc(px, py, p.r * (1 + mouseBoost * 0.8 + p.flare * 1.4), 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cache projected coords for line pass
+            p._px = px; p._py = py; p._alpha = alpha;
+          }
+
+          // Connection lines (constellation effect) — §2.2: skipped entirely in lite mode
+          if (!lite) {
+            for (var i = 0; i < particles.length; i++) {
+              var a = particles[i];
+              for (var j = i + 1; j < particles.length; j++) {
+                var b = particles[j];
+                var ddx = a._px - b._px, ddy = a._py - b._py;
+                var d2 = ddx * ddx + ddy * ddy;
+                if (d2 < maxLinkDistSq) {
+                  var t = 1 - (d2 / maxLinkDistSq);
+                  var lineAlpha = t * 0.18 * Math.min(a._alpha, b._alpha);
+                  // Mix the two particle colors by averaging
+                  var rr = (a.color.r + b.color.r) >> 1;
+                  var gg = (a.color.g + b.color.g) >> 1;
+                  var bb = (a.color.b + b.color.b) >> 1;
+                  ctx.strokeStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + lineAlpha.toFixed(3) + ')';
+                  ctx.lineWidth = 0.6;
+                  ctx.beginPath();
+                  ctx.moveTo(a._px, a._py);
+                  ctx.lineTo(b._px, b._py);
+                  ctx.stroke();
+                }
+              }
+            }
+          }
+        }
+
+        // Click ripples — expanding rings that fade
+        var ripples = [];
+        function addRipple(x, y) {
+          ripples.push({ x: x, y: y, t: performance.now(), maxR: 220 });
+          // Push particles outward proportional to inverse distance
+          var radius = 280;
+          var radiusSq = radius * radius;
+          for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            var px = p.x + parallaxX * p.depth;
+            var py = p.y + parallaxY * p.depth;
+            var dx = px - x, dy = py - y;
+            var d2 = dx * dx + dy * dy;
+            if (d2 >= radiusSq || d2 < 1) continue;
+            var d = Math.sqrt(d2);
+            var force = (1 - d / radius) * 4.5;     // up to 4.5px/frame impulse
+            p.ivx += (dx / d) * force;
+            p.ivy += (dy / d) * force;
+            p.flare = Math.min(1, p.flare + (1 - d / radius) * 0.7);
+          }
+        }
+
+        function drawRipples(now) {
+          for (var i = ripples.length - 1; i >= 0; i--) {
+            var r = ripples[i];
+            var age = (now - r.t) / 850;       // 0..1 over 0.85s
+            if (age >= 1) { ripples.splice(i, 1); continue; }
+            var radius = age * r.maxR;
+            var alpha = (1 - age) * 0.55;
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 255, 220, ' + alpha.toFixed(3) + ')';
+            ctx.lineWidth = 1.5 * (1 - age * 0.6);
+            ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            // inner glow ring
+            if (age < 0.5) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(140, 110, 255, ' + (alpha * 0.8).toFixed(3) + ')';
+              ctx.lineWidth = 0.8;
+              ctx.arc(r.x, r.y, radius * 0.6, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Hook ripples into the existing draw pipeline by wrapping draw()
+        var origDraw = draw;
+        draw = function () {
+          origDraw();
+          if (ripples.length) drawRipples(performance.now());
+        };
+
+        var rafId = 0;
+        window.addEventListener('resize', resize, { passive: true });
+        resize();
+        rafId = requestAnimationFrame(step);
+
+        // Mouse parallax — cursor pulls particles slightly opposite direction
+        window.addEventListener('mousemove', function (e) {
+          mouseX = e.clientX; mouseY = e.clientY;
+          var nx = (e.clientX / W) - 0.5;
+          var ny = (e.clientY / H) - 0.5;
+          targetParallaxX = -nx * 30;
+          targetParallaxY = -ny * 30;
+        }, { passive: true });
+
+        window.addEventListener('mouseleave', function () {
+          mouseX = -9999; mouseY = -9999;
+          targetParallaxX = 0; targetParallaxY = 0;
+        }, { passive: true });
+
+        // Click anywhere → ripple wavefront (skipped if user is interacting with form/input)
+        window.addEventListener('click', function (e) {
+          if (prefersReduced) return;
+          var t = e.target;
+          // Skip ripples on form fields so typing doesn't feel laggy
+          if (t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]')) return;
+          addRipple(e.clientX, e.clientY);
+        }, { passive: true });
+
+        // ─── Constellation tooltip — hover a card to anchor bright lines to nearby particles ───
+        var hoverAnchor = null; // { x, y, color: {r,g,b} }
+        var hoverSelector = '.tool-card, .skill-card, .hp-tool-card, .project-card, .galaxy, .orbit-star, .hp-spotlight__card';
+        function parseColor(str) {
+          // Accepts "#rrggbb", "#rgb", or "rgb(a)(...)"
+          if (!str) return { r: 0, g: 255, b: 204 };
+          str = str.trim();
+          if (str.charAt(0) === '#') {
+            if (str.length === 4) {
+              return { r: parseInt(str[1] + str[1], 16), g: parseInt(str[2] + str[2], 16), b: parseInt(str[3] + str[3], 16) };
+            }
+            return { r: parseInt(str.slice(1, 3), 16), g: parseInt(str.slice(3, 5), 16), b: parseInt(str.slice(5, 7), 16) };
+          }
+          var m = str.match(/(\d+)\D+(\d+)\D+(\d+)/);
+          if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+          return { r: 0, g: 255, b: 204 };
+        }
+        document.addEventListener('mouseover', function (e) {
+          var t = e.target && e.target.closest && e.target.closest(hoverSelector);
+          if (!t) return;
+          var col = parseColor(getComputedStyle(t).getPropertyValue('--star-color'));
+          // B-4: store the element, not its rect — the draw loop re-reads the
+          // rect each frame so lines stay attached while the page scrolls.
+          hoverAnchor = { el: t, color: col };
+        }, { passive: true });
+        document.addEventListener('mouseout', function (e) {
+          var t = e.target && e.target.closest && e.target.closest(hoverSelector);
+          if (!t) return;
+          // Only clear if we're leaving the entire matched element
+          var related = e.relatedTarget;
+          if (related && related.closest && related.closest(hoverSelector) === t) return;
+          hoverAnchor = null;
+        }, { passive: true });
+
+        // Track the hovered card element so we can read its tags + find tag-related siblings
+        var hoverElement = null;
+        document.addEventListener('mouseover', function (e) {
+          var t = e.target && e.target.closest && e.target.closest(hoverSelector);
+          hoverElement = t || null;
+        }, { passive: true });
+        document.addEventListener('mouseout', function (e) {
+          var t = e.target && e.target.closest && e.target.closest(hoverSelector);
+          if (!t) return;
+          var related = e.relatedTarget;
+          if (related && related.closest && related.closest(hoverSelector) === t) return;
+          hoverElement = null;
+        }, { passive: true });
+
+        // B-2 — touch: tap-to-toggle the connection lines (hover doesn't exist).
+        // First tap on a card shows its constellation + tag lines and blocks the
+        // navigation; a second tap on the same card navigates normally. Tapping
+        // anywhere else clears the lines. Capture phase so the first tap wins
+        // over Angular's routerLink click handler.
+        var coarsePointer = false;
+        try { coarsePointer = matchMedia('(hover: none)').matches || ('ontouchstart' in window); } catch (e) {}
+        if (coarsePointer && !prefersReduced) {
+          document.addEventListener('click', function (e) {
+            var t = e.target && e.target.closest && e.target.closest(hoverSelector);
+            if (!t || hoverElement === t) {
+              // tap elsewhere clears; second tap on the same card falls through
+              // to its normal click/navigation with the lines cleared
+              hoverAnchor = null; hoverElement = null;
+              return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            var col = parseColor(getComputedStyle(t).getPropertyValue('--star-color'));
+            hoverAnchor = { el: t, color: col };
+            hoverElement = t;
+          }, true);
+        }
+
+        // Hook tooltip lines into the existing draw pipeline
+        var origDraw2 = draw;
+        draw = function () {
+          origDraw2();
+          if (!hoverAnchor) return;
+          if (!hoverAnchor.el.isConnected) { hoverAnchor = null; hoverElement = null; return; }
+          // B-4: re-read the anchor rect every frame (one element — cheap)
+          var arect = hoverAnchor.el.getBoundingClientRect();
+          var ax = arect.left + arect.width / 2, ay = arect.top + arect.height / 2;
+          var c = hoverAnchor.color;
+
+          // 1) Lines to nearest canvas particles within 280px
+          var nearest = [];
+          for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            var dx = p._px - ax, dy = p._py - ay;
+            var d2 = dx * dx + dy * dy;
+            if (d2 > 78400) continue; // 280²
+            nearest.push({ p: p, d2: d2 });
+          }
+          nearest.sort(function (a, b) { return a.d2 - b.d2; });
+          for (var n = 0; n < Math.min(4, nearest.length); n++) {
+            var item = nearest[n];
+            var pt = 1 - (item.d2 / 78400);
+            ctx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (pt * 0.55).toFixed(3) + ')';
+            ctx.lineWidth = 1.1;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(item.p._px, item.p._py);
+            ctx.stroke();
+            item.p.flare = Math.min(1, item.p.flare + 0.3);
+          }
+
+          // 2) Tag-related connections — draw faint dashed lines to other cards sharing tags
+          if (!hoverElement) return;
+          var rawTags = hoverElement.getAttribute && hoverElement.getAttribute('data-tags');
+          if (!rawTags) return;
+          var myTags = {};
+          rawTags.split(',').forEach(function (t) { var k = t.trim().toLowerCase(); if (k) myTags[k] = 1; });
+          var related = document.querySelectorAll('[data-tags]');
+          ctx.setLineDash([4, 6]);
+          for (var k = 0; k < related.length; k++) {
+            var sibling = related[k];
+            if (sibling === hoverElement) continue;
+            var sibTags = (sibling.getAttribute('data-tags') || '').split(',');
+            var match = false;
+            for (var s = 0; s < sibTags.length; s++) {
+              if (myTags[sibTags[s].trim().toLowerCase()]) { match = true; break; }
+            }
+            if (!match) continue;
+            var rect2 = sibling.getBoundingClientRect();
+            // Skip if off-screen
+            if (rect2.bottom < 0 || rect2.top > window.innerHeight) continue;
+            var sx = rect2.left + rect2.width / 2;
+            var sy = rect2.top + rect2.height / 2;
+            ctx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.22)';
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(sx, sy);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+        };
+
+        // Touch start → ripple per touch point + small spark burst (mobile cursor companion)
+        if ('ontouchstart' in window) {
+          window.addEventListener('touchstart', function (e) {
+            if (prefersReduced) return;
+            var t = e.target;
+            if (t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]')) return;
+            for (var i = 0; i < e.touches.length; i++) {
+              var touch = e.touches[i];
+              addRipple(touch.clientX, touch.clientY);
+              // Tiny 6-particle sparkle on tap so touch users feel the cosmic feedback
+              if (typeof spawnSpark === 'function') {
+                spawnSpark(touch.clientX, touch.clientY, '#4dffe0', 6, 18, 32);
+              }
+            }
+          }, { passive: true });
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 2. CURSOR-REACTIVE COSMIC PULSAR — drifts toward cursor subtly
+      // ─────────────────────────────────────────────────────────────
+      var pulsar = document.querySelector('.cosmic-pulsar');
+      if (pulsar && !prefersReduced) {
+        var pulsarTX = 0, pulsarTY = 0, pulsarX = 0, pulsarY = 0;
+        function pulsarLoop() {
+          pulsarX += (pulsarTX - pulsarX) * 0.04;
+          pulsarY += (pulsarTY - pulsarY) * 0.04;
+          pulsar.style.setProperty('--cursor-shift-x', pulsarX.toFixed(2) + 'px');
+          pulsar.style.setProperty('--cursor-shift-y', pulsarY.toFixed(2) + 'px');
+          requestAnimationFrame(pulsarLoop);
+        }
+        window.addEventListener('mousemove', function (e) {
+          var nx = (e.clientX / window.innerWidth) - 0.5;
+          var ny = (e.clientY / window.innerHeight) - 0.5;
+          pulsarTX = nx * 80;
+          pulsarTY = ny * 60;
+        }, { passive: true });
+        requestAnimationFrame(pulsarLoop);
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 3. CUSTOM CURSOR — soft glow that follows the pointer
+      // ─────────────────────────────────────────────────────────────
+      var cursor = document.querySelector('.cosmic-cursor');
+      if (cursor && !prefersReduced && !('ontouchstart' in window)) {
+        var cx = 0, cy = 0, tx = 0, ty = 0;
+        function cursorLoop() {
+          cx += (tx - cx) * 0.18;
+          cy += (ty - cy) * 0.18;
+          cursor.style.transform = 'translate3d(' + cx + 'px,' + cy + 'px, 0) translate(-50%, -50%)';
+          requestAnimationFrame(cursorLoop);
+        }
+        window.addEventListener('mousemove', function (e) {
+          tx = e.clientX; ty = e.clientY;
+          cursor.classList.add('cosmic-cursor--active');
+        }, { passive: true });
+        window.addEventListener('mouseleave', function () { cursor.classList.remove('cosmic-cursor--active'); }, { passive: true });
+        // Hover-grow on interactive elements
+        document.addEventListener('mouseover', function (e) {
+          var t = e.target;
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card,.hc-card'))) {
+            cursor.classList.add('cosmic-cursor--hover');
+          }
+        }, { passive: true });
+        document.addEventListener('mouseout', function (e) {
+          var t = e.target;
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card,.hc-card'))) {
+            cursor.classList.remove('cosmic-cursor--hover');
+          }
+        }, { passive: true });
+        requestAnimationFrame(cursorLoop);
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 4. SCROLL-REVEAL — fade-up sections as they enter the viewport
+      // ─────────────────────────────────────────────────────────────
+      if ('IntersectionObserver' in window && !prefersReduced) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('cosmic-in-view');
+              io.unobserve(entry.target);
+            }
+          });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+        function attachReveal() {
+          var selectors = [
+            '.section-header',
+            '.hp-tools__hd',
+            '.hp-tool-card',
+            '.tool-card',
+            '.galaxy',
+            '.skill-card',
+            '.project-card',
+            '.hp-spotlight__card',
+            '.hp-live__card',
+            '.hp-stats',
+            '.hp-footer-cta',
+            '.tools-cta',
+            '.live-preview',
+            '.donate-section',
+            '.contact-section',
+            '.info-card',
+            '.hp-cl-day'
+          ];
+          var nodes = document.querySelectorAll(selectors.join(','));
+          for (var i = 0; i < nodes.length; i++) {
+            if (!nodes[i].classList.contains('cosmic-reveal')) {
+              nodes[i].classList.add('cosmic-reveal');
+              io.observe(nodes[i]);
+            }
+          }
+        }
+
+        // Attach on initial load + whenever Angular swaps routes
+        attachReveal();
+        var mo = new MutationObserver(rafThrottle(attachReveal));
+        mo.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 5. MAGNETIC CTAs — primary buttons gently pulled toward cursor
+      // ─────────────────────────────────────────────────────────────
+      if (!prefersReduced) {
+        var magnetSelector = '.cta-button:not(.is-ghost), .donate-btn, .hp-sub-form__btn, .submit-btn';
+        function bindMagnet(el) {
+          if (el.dataset.magnetic) return;
+          el.dataset.magnetic = '1';
+          el.addEventListener('mousemove', function (e) {
+            var rect = el.getBoundingClientRect();
+            var mx = e.clientX - (rect.left + rect.width / 2);
+            var my = e.clientY - (rect.top + rect.height / 2);
+            // 18% strength, capped to 12px
+            var dx = Math.max(-12, Math.min(12, mx * 0.18));
+            var dy = Math.max(-12, Math.min(12, my * 0.18));
+            el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+          });
+          el.addEventListener('mouseleave', function () {
+            el.style.transform = '';
+          });
+        }
+        function scanMagnets() {
+          var els = document.querySelectorAll(magnetSelector);
+          for (var i = 0; i < els.length; i++) bindMagnet(els[i]);
+        }
+        scanMagnets();
+        var mmo = new MutationObserver(rafThrottle(scanMagnets));
+        mmo.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 5b. CONSTELLATION CURSOR TRAIL — particles spawn at cursor and drift away
+      // ─────────────────────────────────────────────────────────────
+      if (!prefersReduced && !('ontouchstart' in window)) {
+        var trailContainer = document.createElement('div');
+        trailContainer.className = 'cosmic-trail-layer';
+        document.body.appendChild(trailContainer);
+
+        var lastTrailX = 0, lastTrailY = 0;
+        var trailParticles = [];
+        var maxTrail = 14;
+        var trailMinDist = 18; // only spawn if cursor moved 18+ px
+        var trailColors = ['#4dffe0', '#a48bff', '#ff6dd7', '#5fb6ff', '#ffc669'];
+
+        window.addEventListener('mousemove', function (e) {
+          var dx = e.clientX - lastTrailX;
+          var dy = e.clientY - lastTrailY;
+          if (dx * dx + dy * dy < trailMinDist * trailMinDist) return;
+          lastTrailX = e.clientX; lastTrailY = e.clientY;
+
+          if (trailParticles.length >= maxTrail) {
+            var oldest = trailParticles.shift();
+            if (oldest && oldest.parentNode) oldest.parentNode.removeChild(oldest);
+          }
+          var p = document.createElement('span');
+          p.className = 'cosmic-trail-particle';
+          p.style.left = e.clientX + 'px';
+          p.style.top = e.clientY + 'px';
+          p.style.setProperty('--trail-color', trailColors[Math.floor(Math.random() * trailColors.length)]);
+          p.style.setProperty('--trail-dx', ((Math.random() - 0.5) * 30).toFixed(1) + 'px');
+          p.style.setProperty('--trail-dy', ((Math.random() - 0.5) * 30 - 6).toFixed(1) + 'px');
+          trailContainer.appendChild(p);
+          trailParticles.push(p);
+          setTimeout(function () {
+            if (p.parentNode) p.parentNode.removeChild(p);
+            var idx = trailParticles.indexOf(p);
+            if (idx > -1) trailParticles.splice(idx, 1);
+          }, 1200);
+        }, { passive: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 6. 3D CARD TILT — cards tilt to track cursor in 3D space
+      // ─────────────────────────────────────────────────────────────
+      // §2.3 — skip entirely on touch devices or pointer:coarse/hover:none
+      var isTouchOrCoarse = ('ontouchstart' in window) || (function () {
+        try { return matchMedia('(hover: none)').matches; } catch (e) { return false; }
+      })();
+      if (!prefersReduced && !isTouchOrCoarse) {
+        var tiltSelector = '.tool-card, .skill-card, .hp-tool-card, .project-card, .hp-spotlight__card, .galaxy';
+        function bindTilt(el) {
+          if (el.dataset.tilt) return;
+          el.dataset.tilt = '1';
+          el.style.transformStyle = 'preserve-3d';
+          el.style.willChange = 'transform';
+          var rect = null;
+          var raf = 0;
+          function onMove(e) {
+            if (!rect) rect = el.getBoundingClientRect();
+            var px = (e.clientX - rect.left) / rect.width - 0.5;  // -0.5 .. 0.5
+            var py = (e.clientY - rect.top) / rect.height - 0.5;
+            var rotY = px * 10;   // up to 5° each side
+            var rotX = -py * 10;
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(function () {
+              el.style.setProperty('--tilt-x', rotX.toFixed(2) + 'deg');
+              el.style.setProperty('--tilt-y', rotY.toFixed(2) + 'deg');
+              el.style.setProperty('--tilt-mx', ((px + 0.5) * 100).toFixed(1) + '%');
+              el.style.setProperty('--tilt-my', ((py + 0.5) * 100).toFixed(1) + '%');
+              el.classList.add('cosmic-tilting');
+            });
+          }
+          function onLeave() {
+            rect = null;
+            cancelAnimationFrame(raf);
+            el.style.setProperty('--tilt-x', '0deg');
+            el.style.setProperty('--tilt-y', '0deg');
+            el.classList.remove('cosmic-tilting');
+          }
+          el.addEventListener('mousemove', onMove);
+          el.addEventListener('mouseleave', onLeave);
+        }
+        function scanTilt() {
+          var els = document.querySelectorAll(tiltSelector);
+          for (var i = 0; i < els.length; i++) bindTilt(els[i]);
+        }
+        scanTilt();
+        var tmo = new MutationObserver(rafThrottle(scanTilt));
+        tmo.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 7. CLICK SPARKS — primary CTAs spawn a starburst on click
+      // ─────────────────────────────────────────────────────────────
+      function spawnSpark(x, y, color, count, distMin, distMax) {
+        var burst = document.createElement('div');
+        burst.className = 'cosmic-spark-burst';
+        burst.style.left = x + 'px';
+        burst.style.top = y + 'px';
+        burst.style.setProperty('--spark-color', color || '#00ffcc');
+        var n = count || 12;
+        var dMin = distMin == null ? 40 : distMin;
+        var dRange = (distMax == null ? 90 : distMax) - dMin;
+        var palette = ['#4dffe0', '#a48bff', '#ff6dd7', '#5fb6ff', '#ffc669'];
+        for (var i = 0; i < n; i++) {
+          var p = document.createElement('span');
+          p.className = 'cosmic-spark';
+          var angle = (i / n) * Math.PI * 2 + Math.random() * 0.6;
+          var dist = dMin + Math.random() * dRange;
+          p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+          p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+          p.style.setProperty('--dur', (0.7 + Math.random() * 0.6).toFixed(2) + 's');
+          // Random color from palette for confetti, else inherit burst color
+          if (n > 18) {
+            p.style.setProperty('--spark-color', palette[Math.floor(Math.random() * palette.length)]);
+          }
+          burst.appendChild(p);
+        }
+        document.body.appendChild(burst);
+        setTimeout(function () { burst.remove(); }, 1500);
+      }
+
+      if (!prefersReduced) {
+        var sparkSelector = '.cta-button, .donate-btn, .hp-sub-form__btn, .submit-btn, .copy-btn, .arcane-seal';
+        document.addEventListener('click', function (e) {
+          var t = e.target && e.target.closest(sparkSelector);
+          if (!t) return;
+          var color = '#00ffcc';
+          if (t.classList.contains('donate-btn')) {
+            if (t.classList.contains('crypto')) color = '#ffb85a';
+            else if (t.classList.contains('paypal')) color = '#5ab6ff';
+            else if (t.classList.contains('stripe')) color = '#a48bff';
+          } else if (t.closest('.tool-card[data-category]')) {
+            // sample the active star color from CSS var
+            var c = getComputedStyle(t.closest('.tool-card')).getPropertyValue('--star-color').trim();
+            if (c) color = c;
+          }
+          spawnSpark(e.clientX, e.clientY, color);
+        }, { passive: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 8a. ANIMATED COUNTER — count up from 0 when entering view
+      // ─────────────────────────────────────────────────────────────
+      if ('IntersectionObserver' in window) {
+        var counterIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            var el = entry.target;
+            counterIO.unobserve(el);
+            var target = parseInt(el.getAttribute('data-counter') || el.textContent || '0', 10);
+            if (!target || prefersReduced) {
+              el.textContent = String(target);
+              return;
+            }
+            var dur = parseInt(el.getAttribute('data-counter-duration') || '1400', 10);
+            var start = performance.now();
+            (function tick(now) {
+              var p = Math.min(1, (now - start) / dur);
+              // ease-out cubic
+              var eased = 1 - Math.pow(1 - p, 3);
+              el.textContent = String(Math.round(target * eased));
+              if (p < 1) requestAnimationFrame(tick);
+            })(start);
+          });
+        }, { threshold: 0.4 });
+
+        function scanCounters() {
+          var els = document.querySelectorAll('[data-counter]:not([data-counter-bound])');
+          for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            el.setAttribute('data-counter-bound', '1');
+            // Capture current text as the target if data-counter is empty
+            var current = parseInt(el.textContent.replace(/[^\d]/g, ''), 10);
+            if (current && !el.getAttribute('data-counter')) {
+              el.setAttribute('data-counter', String(current));
+            }
+            el.textContent = '0';
+            counterIO.observe(el);
+          }
+        }
+        scanCounters();
+        var cmo = new MutationObserver(rafThrottle(scanCounters));
+        cmo.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 8b. TYPE-ON HEADINGS — split text into chars and stagger-fade
+      // ─────────────────────────────────────────────────────────────
+      if (!prefersReduced) {
+        function typeOn(el) {
+          if (el.dataset.typed) return;
+          el.dataset.typed = '1';
+          // Split each text node into per-character spans, leaving structural HTML intact.
+          // Skip BR and already-split .cosmic-char spans to avoid infinite recursion.
+          (function walk(node) {
+            // Snapshot children — we mutate during iteration, so iterate the live list with index recovery
+            var i = 0;
+            while (i < node.childNodes.length) {
+              var c = node.childNodes[i];
+              if (c.nodeType === 3) {
+                var text = c.textContent;
+                if (!text || /^\s*$/.test(text)) { i++; continue; }
+                var frag = document.createDocumentFragment();
+                for (var j = 0; j < text.length; j++) {
+                  if (text[j] === ' ') {
+                    frag.appendChild(document.createTextNode(' '));
+                    continue;
+                  }
+                  var span = document.createElement('span');
+                  span.className = 'cosmic-char';
+                  span.textContent = text[j];
+                  frag.appendChild(span);
+                }
+                var added = frag.childNodes.length;
+                node.replaceChild(frag, c);
+                i += added; // skip past the spans we just inserted — never recurse into them
+              } else if (c.nodeType === 1
+                         && c.tagName !== 'BR'
+                         && !(c.classList && c.classList.contains('cosmic-char'))) {
+                walk(c);
+                i++;
+              } else {
+                i++;
+              }
+            }
+          })(el);
+          // Apply staggered delays
+          var chars = el.querySelectorAll('.cosmic-char');
+          for (var k = 0; k < chars.length; k++) {
+            chars[k].style.animationDelay = (k * 28) + 'ms';
+          }
+          el.classList.add('cosmic-typed');
+        }
+
+        var typedSelector = '[data-typewriter], .hp-hero__title, .hp-section-title, .skills h2, .section-title, .hp-live__title, .hp-spotlight__name, .tools-header__title';
+        var typedIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              typeOn(e.target);
+              typedIO.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.25 });
+
+        function scanType() {
+          var els = document.querySelectorAll(typedSelector);
+          for (var i = 0; i < els.length; i++) {
+            if (!els[i].dataset.typed) typedIO.observe(els[i]);
+          }
+        }
+        scanType();
+        var tymo = new MutationObserver(rafThrottle(scanType));
+        tymo.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 8c. SCROLL-LINKED HERO PARALLAX — title floats slower than scroll
+      // ─────────────────────────────────────────────────────────────
+      if (!prefersReduced) {
+        function applyScrollParallax() {
+          var y = window.scrollY || window.pageYOffset || 0;
+          document.documentElement.style.setProperty('--scroll-y', y + 'px');
+          document.documentElement.style.setProperty('--scroll-y-slow', (y * 0.5) + 'px');
+          document.documentElement.style.setProperty('--scroll-y-slower', (y * 0.3) + 'px');
+        }
+        window.addEventListener('scroll', applyScrollParallax, { passive: true });
+        applyScrollParallax();
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 8d. FORM-SUCCESS CONFETTI — celebrate completed form submissions
+      // ─────────────────────────────────────────────────────────────
+      if (!prefersReduced) {
+        var successSelectors = [
+          '.form-status .success',
+          '.hp-sub-success',
+          '.donation-success',
+          '[data-success-burst]'
+        ];
+        var celebrated = new WeakSet();
+        function checkForSuccess() {
+          var els = document.querySelectorAll(successSelectors.join(','));
+          for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            if (celebrated.has(el)) continue;
+            celebrated.add(el);
+            var rect = el.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2;
+            var cy = rect.top + rect.height / 2;
+            // Big confetti burst
+            spawnSpark(cx, cy, '#00ffcc', 32, 60, 180);
+            // Secondary smaller burst slightly offset for layered feel
+            setTimeout(function (x, y) {
+              spawnSpark(x, y, '#ff6dd7', 22, 40, 140);
+            }.bind(null, cx, cy), 140);
+          }
+        }
+        var smo = new MutationObserver(rafThrottle(checkForSuccess));
+        smo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        checkForSuccess();
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 8e. AMBIENT COSMIC DRONE — Web Audio API, barely-audible, ritual-mode triggered
+      // ─────────────────────────────────────────────────────────────
+      // No external assets — synthesized in browser. Gated by ritual mode (arcane
+      // seal, konami code, xsantcastx.reveal). Browser autoplay policies require
+      // a user gesture to create AudioContext, which is naturally satisfied here.
+      if (!prefersReduced) {
+        var cosmicAudio = null;
+        function ensureCosmicAudio() {
+          if (cosmicAudio) return cosmicAudio;
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return null;
+          try {
+            var actx = new AudioCtx();
+
+            // Master + lowpass for warmth
+            var master = actx.createGain();
+            master.gain.value = 0; // silent until faded in
+            var filter = actx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 720;
+            filter.Q.value = 0.6;
+            filter.connect(master);
+            master.connect(actx.destination);
+
+            // Bass drone — low A1 (55 Hz) sine
+            var bass = actx.createOscillator();
+            bass.type = 'sine';
+            bass.frequency.value = 55;
+            var bassGain = actx.createGain();
+            bassGain.gain.value = 0.45;
+            bass.connect(bassGain).connect(filter);
+
+            // Octave pad — A2 triangle for body
+            var oct = actx.createOscillator();
+            oct.type = 'triangle';
+            oct.frequency.value = 110;
+            var octGain = actx.createGain();
+            octGain.gain.value = 0.18;
+            oct.connect(octGain).connect(filter);
+
+            // Mid harmony — A3 + slightly detuned twin (chorus effect)
+            var mid1 = actx.createOscillator();
+            mid1.type = 'sine';
+            mid1.frequency.value = 220;
+            var mid1Gain = actx.createGain();
+            mid1Gain.gain.value = 0.1;
+            mid1.connect(mid1Gain).connect(filter);
+
+            var mid2 = actx.createOscillator();
+            mid2.type = 'sine';
+            mid2.frequency.value = 220;
+            mid2.detune.value = 7; // 7 cents off — slow chorus beat
+            var mid2Gain = actx.createGain();
+            mid2Gain.gain.value = 0.08;
+            mid2.connect(mid2Gain).connect(filter);
+
+            // Fifth above — adds cosmic openness (E4 ≈ 329.6)
+            var fifth = actx.createOscillator();
+            fifth.type = 'sine';
+            fifth.frequency.value = 329.6;
+            var fifthGain = actx.createGain();
+            fifthGain.gain.value = 0.05;
+            fifth.connect(fifthGain).connect(filter);
+
+            // Slow LFO breathing the bass volume — 0.08 Hz = 12.5s cycle
+            var lfo = actx.createOscillator();
+            lfo.frequency.value = 0.08;
+            var lfoDepth = actx.createGain();
+            lfoDepth.gain.value = 0.12;
+            lfo.connect(lfoDepth).connect(bassGain.gain);
+
+            // Slow filter sweep — 0.04 Hz = 25s cycle, ±300Hz around 720Hz
+            var filterLfo = actx.createOscillator();
+            filterLfo.frequency.value = 0.04;
+            var filterDepth = actx.createGain();
+            filterDepth.gain.value = 220;
+            filterLfo.connect(filterDepth).connect(filter.frequency);
+
+            bass.start(); oct.start(); mid1.start(); mid2.start();
+            fifth.start(); lfo.start(); filterLfo.start();
+
+            cosmicAudio = {
+              ctx: actx,
+              master: master,
+              fadeIn: function (target, dur) {
+                target = target == null ? 0.05 : target;
+                dur = dur || 2.5;
+                if (actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+                master.gain.cancelScheduledValues(actx.currentTime);
+                master.gain.setValueAtTime(master.gain.value, actx.currentTime);
+                master.gain.linearRampToValueAtTime(target, actx.currentTime + dur);
+              },
+              fadeOut: function (dur) {
+                dur = dur || 1.5;
+                master.gain.cancelScheduledValues(actx.currentTime);
+                master.gain.setValueAtTime(master.gain.value, actx.currentTime);
+                master.gain.linearRampToValueAtTime(0, actx.currentTime + dur);
+              }
+            };
+          } catch (e) { return null; }
+          return cosmicAudio;
+        }
+
+        // Sync the drone with body.ritual-open
+        function syncCosmicAudio() {
+          var open = document.body.classList.contains('ritual-open');
+          if (!open && !cosmicAudio) return; // no need to instantiate if user never engaged ritual
+          var audio = ensureCosmicAudio();
+          if (!audio) return;
+          if (open) audio.fadeIn(0.05, 2.5);
+          else audio.fadeOut(1.5);
+        }
+
+        var rmo = new MutationObserver(rafThrottle(syncCosmicAudio));
+        rmo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        // Expose for the console reveal helper
+        try {
+          window.xsantcastx = window.xsantcastx || {};
+          window.xsantcastx.toggleAudio = function () {
+            var audio = ensureCosmicAudio();
+            if (!audio) return 'no-audio-context';
+            var on = audio.master.gain.value > 0.01;
+            if (on) audio.fadeOut(1.2);
+            else audio.fadeIn(0.05, 2);
+            return on ? 'silenced' : 'singing';
+          };
+        } catch (e) {}
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 9. PAGE TRANSITIONS — fade router-outlet swap through cosmic veil
+      // ─────────────────────────────────────────────────────────────
+      // Watch <router-outlet> + 1 sibling — when route changes, briefly veil + fade in
+      if ('MutationObserver' in window && !prefersReduced) {
+        var routeObserver = null;
+        function attachRouteObserver() {
+          var outlet = document.querySelector('router-outlet');
+          if (!outlet || outlet.dataset.fadeBound) return;
+          outlet.dataset.fadeBound = '1';
+          var veil = document.createElement('div');
+          veil.className = 'cosmic-route-veil';
+          document.body.appendChild(veil);
+          // The active component is the next sibling of router-outlet in Angular
+          var lastComponent = outlet.nextElementSibling;
+          var routeMo = new MutationObserver(function () {
+            var current = outlet.nextElementSibling;
+            if (current && current !== lastComponent) {
+              lastComponent = current;
+              veil.classList.remove('cosmic-route-veil--active');
+              // force reflow
+              veil.offsetWidth;
+              veil.classList.add('cosmic-route-veil--active');
+              setTimeout(function () { veil.classList.remove('cosmic-route-veil--active'); }, 450);
+            }
+          });
+          routeMo.observe(outlet.parentNode, { childList: true });
+        }
+        attachRouteObserver();
+        // re-attempt periodically until <router-outlet> exists
+        var routeTries = 0;
+        var routeInterval = setInterval(function () {
+          attachRouteObserver();
+          if (++routeTries > 20) clearInterval(routeInterval);
+        }, 500);
+      }
+    })();
+  
