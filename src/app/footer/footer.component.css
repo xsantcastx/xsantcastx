@@ -397,7 +397,15 @@ footer::after {
   z-index: 10000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  /* Perf: all three modals (crypto / PayPal / Stripe) live in the DOM on every
+     page. With only opacity:0 they stayed `visibility: visible`, so the
+     compositor kept three full-viewport z-index:10000 layers — each with an
+     8px backdrop-filter — alive and painted on every route, forever, for UI
+     nobody had opened. visibility:hidden takes them out of the paint and hit
+     test entirely; it is transitioned alongside opacity (visibility flips
+     discretely at the end of the timing function) so the fade still plays. */
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -405,6 +413,7 @@ footer::after {
 .donation-modal.show,
 .donation-modal.active {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -701,8 +710,12 @@ footer::after {
   }
 
   .modal-content { padding: clamp(1.4rem, 6vw, 2rem); }
-  .social-links { gap: 0.65rem; }
-  .social-links a { width: 40px; height: 40px; }
+  /* The mobile override used to shrink these orbs to 40x40 — below the WCAG
+     2.5.5 / iOS HIG 44px minimum, on the one breakpoint where a finger is the
+     only pointer. Keep the desktop 44px and buy the space back from the gap
+     instead; five 44px orbs plus 0.5rem gaps is 252px, comfortable at 375px. */
+  .social-links { gap: 0.5rem; }
+  .social-links a { width: 44px; height: 44px; }
 }
 
 /*
