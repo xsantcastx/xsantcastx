@@ -129,7 +129,7 @@
             Validator
           </span>
           <div class="ug-panel__actions">
-            <button class="ug-btn-ghost ug-btn-sm" (click)="clearValidator()" [disabled]="!validatorInput" title="Clear">
+            <button class="ug-btn-ghost ug-btn-sm" (click)="clearValidator()" [disabled]="!validatorInput" [attr.title]="translate('tools.common.clear')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
               {{ translate('tools.common.clear') }}
             </button>
@@ -221,7 +221,7 @@
                 {{ translate('tools.common.copiedExclaim') }}
               }
             </button>
-            <button class="ug-btn-ghost ug-btn-sm" (click)="clearAll()" [disabled]="!generatedUuids.length" title="Clear">
+            <button class="ug-btn-ghost ug-btn-sm" (click)="clearAll()" [disabled]="!generatedUuids.length" [attr.title]="translate('tools.common.clear')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
               {{ translate('tools.common.clear') }}
             </button>
@@ -236,7 +236,7 @@
               @for (uuid of generatedUuids; track uuid; let i = $index) {
                 <div class="ug-uuid-item">
                   <code class="ug-uuid-code">{{ uuid }}</code>
-                  <button class="ug-copy-single" (click)="copySingle(i)" [class.ug-copy-single--copied]="copiedIndex === i" title="Copy">
+                  <button type="button" class="ug-copy-single" [attr.aria-label]="'Copy UUID ' + (i + 1)" (click)="copySingle(i)" [class.ug-copy-single--copied]="copiedIndex === i" [attr.title]="translate('tools.common.copy')">
                     @if (copiedIndex !== i) {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }

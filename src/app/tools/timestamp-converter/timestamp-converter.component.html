@@ -73,7 +73,7 @@
             {{ translate('tools.common.input') }}
           </span>
           <div class="tc-panel__actions">
-            <button class="tc-btn-ghost tc-btn-sm" (click)="clearAll()" [disabled]="!timestampInput && !dateInput" title="Clear">
+            <button class="tc-btn-ghost tc-btn-sm" (click)="clearAll()" [disabled]="!timestampInput && !dateInput" [attr.title]="translate('tools.common.clear')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
               {{ translate('tools.common.clear') }}
             </button>
@@ -217,7 +217,7 @@
                 <span class="tc-result-label">Formatted ({{ selectedTimezone }})</span>
                 <div class="tc-result-value-wrap">
                   <span class="tc-result-value tc-result-value--primary">{{ convertedDate }}</span>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedDate, 'formatted')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy formatted date" (click)="copyValue(convertedDate, 'formatted')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'formatted') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -232,7 +232,7 @@
                 <span class="tc-result-label">ISO 8601</span>
                 <div class="tc-result-value-wrap">
                   <code class="tc-result-code">{{ convertedISO }}</code>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedISO, 'iso')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy ISO 8601 timestamp" (click)="copyValue(convertedISO, 'iso')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'iso') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -247,7 +247,7 @@
                 <span class="tc-result-label">UTC</span>
                 <div class="tc-result-value-wrap">
                   <span class="tc-result-value">{{ convertedUTC }}</span>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedUTC, 'utc')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy UTC date" (click)="copyValue(convertedUTC, 'utc')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'utc') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -262,7 +262,7 @@
                 <span class="tc-result-label">Local</span>
                 <div class="tc-result-value-wrap">
                   <span class="tc-result-value">{{ convertedLocal }}</span>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedLocal, 'local')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy local date" (click)="copyValue(convertedLocal, 'local')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'local') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -277,7 +277,7 @@
                 <span class="tc-result-label">Relative</span>
                 <div class="tc-result-value-wrap">
                   <span class="tc-result-value tc-result-value--relative">{{ convertedRelative }}</span>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedRelative, 'relative')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy relative time" (click)="copyValue(convertedRelative, 'relative')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'relative') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -314,7 +314,7 @@
                 <span class="tc-result-label">Unix Timestamp (seconds)</span>
                 <div class="tc-result-value-wrap">
                   <code class="tc-result-code tc-result-code--large">{{ convertedTimestamp }}</code>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedTimestamp, 'ts-s')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy Unix timestamp in seconds" (click)="copyValue(convertedTimestamp, 'ts-s')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'ts-s') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }
@@ -329,7 +329,7 @@
                 <span class="tc-result-label">Unix Timestamp (milliseconds)</span>
                 <div class="tc-result-value-wrap">
                   <code class="tc-result-code tc-result-code--large">{{ convertedTimestampMs }}</code>
-                  <button class="tc-copy-btn" (click)="copyValue(convertedTimestampMs, 'ts-ms')" title="Copy">
+                  <button type="button" class="tc-copy-btn" aria-label="Copy Unix timestamp in milliseconds" (click)="copyValue(convertedTimestampMs, 'ts-ms')" [attr.title]="translate('tools.common.copy')">
                     @if (copiedField !== 'ts-ms') {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }

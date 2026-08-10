@@ -1,16 +1,16 @@
 <div class="jd-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">JSON Tools</p>
-    <h1 class="tool-header__title">JSON Diff</h1>
-    <p class="tool-header__subtitle">Compare two JSON objects and see added, removed, and changed keys highlighted with colors.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.jsonTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.jsonDiff.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.jsonDiff.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -26,8 +26,8 @@
   </div>
 
   <div class="jd-actions">
-    <button class="jd-btn" (click)="compare()" [disabled]="!leftInput.trim() || !rightInput.trim()">Compare</button>
-    <button class="jd-btn-ghost" (click)="clearAll()">Clear</button>
+    <button class="jd-btn" (click)="compare()" [disabled]="!leftInput.trim() || !rightInput.trim()">{{ translate('tools.common.compare') }}</button>
+    <button class="jd-btn-ghost" (click)="clearAll()">{{ translate('tools.common.clear') }}</button>
   </div>
 
   @if (errorMessage) {
