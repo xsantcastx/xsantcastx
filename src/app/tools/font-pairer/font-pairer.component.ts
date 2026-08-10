@@ -1,4 +1,4 @@
-import { Component, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser, NgStyle } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
@@ -24,8 +24,22 @@ interface FontPairing {
     styleUrls: ['./font-pairer.component.css'],
     imports: [ToolsSharedModule, NgStyle]
 })
-export class FontPairerComponent implements OnDestroy {
+export class FontPairerComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  ngOnInit(): void {
+    if (!this.isBrowser) return;
+    for (const origin of ['https://fonts.googleapis.com', 'https://fonts.gstatic.com']) {
+      if (!document.head.querySelector(`link[rel="preconnect"][href="${origin}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = origin;
+        if (origin === 'https://fonts.gstatic.com') link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+      }
+    }
+  }
+
   readonly pairings: FontPairing[] = [
     { id: 1, name: 'Tech Forward', category: 'modern', heading: 'Space Grotesk', body: 'Inter', headingWeight: 700, bodyWeight: 400 },
     { id: 2, name: 'Editorial Elegance', category: 'classic', heading: 'Playfair Display', body: 'Source Serif 4', headingWeight: 700, bodyWeight: 400 },

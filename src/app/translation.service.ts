@@ -287,6 +287,13 @@ export class TranslationService {
     'tools.common.cat.utilities': { en: 'Utilities', es: 'Utilidades' },
     'tools.common.cat.utilityTools': { en: 'Utility Tools', es: 'Herramientas Utilitarias' },
     'tools.common.cat.writingTools': { en: 'Writing Tools', es: 'Herramientas de Escritura' },
+    'tools.common.cat.cssGenerators': { en: 'CSS Generators', es: 'Generadores CSS' },
+    'tools.common.cat.dnsAndEmailTools': { en: 'DNS &amp; Email Tools', es: 'Herramientas de DNS &amp; Correo' },
+    'tools.common.cat.emailDnsSecurity': { en: 'Email · DNS · Security', es: 'Correo · DNS · Seguridad' },
+    'tools.common.cat.securityAndDevtools': { en: 'Security &amp; DevTools', es: 'Seguridad &amp; DevTools' },
+    'tools.common.cat.securityNetworking': { en: 'Security / Networking', es: 'Seguridad / Redes' },
+    'tools.common.cat.svgTools': { en: 'SVG Tools', es: 'Herramientas SVG' },
+    'tools.common.cat.typographyTool': { en: 'Typography Tool', es: 'Herramienta de Tipografía' },
 
     // ─── Per-tool headers (title / subtitle) ──────────────────────────────────
     // Batch 1 — highest-traffic tools
@@ -700,6 +707,35 @@ export class TranslationService {
 
     'tools.gridGenerator.title': { en: 'CSS Grid Generator', es: 'Generador de CSS Grid' },
     'tools.gridGenerator.subtitle': { en: 'Visual CSS Grid playground with live preview. Configure rows, columns, template tracks, grid areas, and per-item placement. Export clean CSS code instantly.', es: 'Laboratorio visual de CSS Grid con vista previa en vivo. Configura filas, columnas, pistas de plantilla, áreas de rejilla y la colocación de cada elemento. Exporta código CSS limpio al instante.' },
+
+    // Batch 10 — email/security/SVG tools with headers still hardcoded
+    'tools.emailDeliverabilityAuditor.title': { en: 'Email Deliverability Auditor', es: 'Auditor de Entregabilidad de Correo' },
+    'tools.emailDeliverabilityAuditor.subtitle': { en: 'Audit SPF, DKIM, DMARC &amp; MX records and get instant fix suggestions for email delivery — runs entirely in your browser via DNS-over-HTTPS.', es: 'Audita los registros SPF, DKIM, DMARC &amp; MX y obtén sugerencias de corrección al instante para la entrega de correo — se ejecuta enteramente en tu navegador mediante DNS-over-HTTPS.' },
+
+    'tools.fontPairer.title': { en: 'Font Pairer', es: 'Combinador de Fuentes' },
+    'tools.fontPairer.subtitle': { en: 'Discover beautiful font combinations with live preview. Browse curated heading + body pairings, customize sizes, and copy CSS or Google Fonts link tags instantly.', es: 'Descubre combinaciones de fuentes atractivas con vista previa en vivo. Explora parejas curadas de titular + cuerpo, personaliza tamaños y copia al instante el CSS o las etiquetas link de Google Fonts.' },
+
+    'tools.gmailDeliverabilityChecker.title': { en: 'Gmail Deliverability Checker', es: 'Verificador de Entregabilidad en Gmail' },
+    'tools.gmailDeliverabilityChecker.subtitle': { en: 'Diagnose email delivery issues and auto-generate SPF, DKIM, DMARC DNS record fixes instantly — no backend required.', es: 'Diagnostica problemas de entrega de correo y genera automáticamente las correcciones de registros DNS SPF, DKIM y DMARC al instante — sin necesidad de backend.' },
+
+    'tools.metaTagGenerator.title': { en: 'Open Graph &amp; Meta Tag Generator', es: 'Generador de Open Graph &amp; Meta Etiquetas' },
+    'tools.metaTagGenerator.subtitle': { en: 'Generate perfect Open Graph, Twitter Card, and SEO meta tags with live social sharing previews. No sign-up, runs entirely in your browser.', es: 'Genera meta etiquetas Open Graph, Twitter Card y SEO perfectas con vistas previas en vivo para redes sociales. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.progressBar.title': { en: 'Progress Bar', es: 'Barras de Progreso' },
+    'tools.progressBar.title2': { en: 'Generator', es: 'Generador' },
+    'tools.progressBar.subtitle': { en: 'Design custom CSS progress bars with live preview, animated stripes, gradients, and presets. Copy-paste ready code.', es: 'Diseña barras de progreso CSS personalizadas con vista previa en vivo, franjas animadas, gradientes y preajustes. Código listo para copiar y pegar.' },
+
+    'tools.sslCertificateAuditor.title': { en: 'SSL Certificate Auditor', es: 'Auditor de Certificados SSL' },
+    'tools.sslCertificateAuditor.subtitle': { en: 'Audit SSL/TLS certificates, verify CA chain, check expiry, and surface security flags instantly — no backend required.', es: 'Audita certificados SSL/TLS, verifica la cadena de CA, comprueba la expiración y detecta señales de seguridad al instante — sin necesidad de backend.' },
+
+    'tools.sslCertificateInspector.title': { en: 'SSL Certificate Inspector', es: 'Inspector de Certificados SSL' },
+    'tools.sslCertificateInspector.subtitle': { en: 'Inspect SSL/TLS certificates, visualize chain of trust, and audit CA reputation instantly.', es: 'Inspecciona certificados SSL/TLS, visualiza la cadena de confianza y audita la reputación de la CA al instante.' },
+
+    'tools.svgPathEditor.title': { en: 'SVG Path Visualizer &amp; Editor', es: 'Visualizador &amp; Editor de Rutas SVG' },
+    'tools.svgPathEditor.subtitle': { en: 'Paste, visualize, edit, and optimize SVG paths in your browser. Drag control points, see live measurements, and copy minified output — 100% client-side.', es: 'Pega, visualiza, edita y optimiza rutas SVG en tu navegador. Arrastra los puntos de control, consulta medidas en vivo y copia la salida minificada — 100% en el cliente.' },
+
+    'tools.textShadow.title': { en: 'Text Shadow Generator', es: 'Generador de Text Shadow' },
+    'tools.textShadow.subtitle': { en: 'Design stunning CSS text shadows with multiple layers, live preview, 8 creative presets, and one-click code export. No sign-up, runs entirely in your browser.', es: 'Diseña sombras de texto CSS llamativas con múltiples capas, vista previa en vivo, 8 preajustes creativos y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
 
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
