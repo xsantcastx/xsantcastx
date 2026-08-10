@@ -5,6 +5,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 interface CustomClaim {
   key: string;
@@ -20,6 +21,9 @@ type Algorithm = 'HS256' | 'HS384' | 'HS512' | 'none';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class JwtGeneratorComponent {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free JWT Generator — build and sign JSON Web Tokens visually with HMAC. Client-side only, nothing leaves your browser!')}&url=${encodeURIComponent(SITE_URL + '/tools/jwt-generator')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/jwt-generator')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 

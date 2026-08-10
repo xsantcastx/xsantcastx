@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 type SeparatorType = 'hyphen' | 'underscore' | 'dot';
 
@@ -54,6 +55,9 @@ const TRANSLITERATE_MAP: Record<string, string> = {
     imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class SlugGeneratorComponent implements OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Slug Generator — turn any text into clean URL-friendly slugs with transliteration, case styles and bulk mode. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/slug-generator')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/slug-generator')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
