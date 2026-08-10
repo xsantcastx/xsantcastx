@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.1.0',
+  version: '2.2.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.2.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'a11y overhaul — every interactive control now has an accessible name',
+      'Zero buttons without an accessible name site-wide; 82 that relied on a hover-only title tooltip now carry a real label, translated where the tooltip was',
+      '296 form controls wired to the labels that were only visually beside them — sliders and colour pickers used to announce as unnamed',
+      'Header logo is a real button, not a div with role="button", and shows a focus ring again',
+      'rel="noopener noreferrer" on all 64 links that open a new tab',
+      'Heading levels no longer skip from h1 to h3 on games, css-variables and pdf-generator'
+    ]
+  },
   {
     version: '2.1.0',
     codename: 'Blueprint',
