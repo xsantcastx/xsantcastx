@@ -29,12 +29,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Prefer the PAT (needed for opening PRs against branch-protected
-          # main and for triggering downstream workflows). Fall back to the
-          # runner's auto-issued GITHUB_TOKEN so the checkout never lands
-          # without auth — that empty-token state was the root cause of
-          # runs #36–#43 silently failing with "could not read Username".
-          token: ${{ secrets.GH_PAT || github.token }}
+          # Use the PAT when it is present and non-empty (needed for opening
+          # PRs against branch-protected main and for triggering downstream
+          # workflows via push). The simple `secrets.GH_PAT || github.token`
+          # expression does NOT fall back when the PAT value is a non-empty
+          # but expired/revoked token — GitHub evaluates the secret as a
+          # truthy string regardless of validity, so checkout silently
+          # receives a bad credential and git fetch fails with
+          # "could not read Username". The explicit `!= ''` guard forces a
+          # true empty-string test so an expired PAT correctly falls through
+          # to the auto-issued GITHUB_TOKEN.
+          token: ${{ secrets.GH_PAT != '' && secrets.GH_PAT || github.token }}
           fetch-depth: 0
           persist-credentials: true
 
