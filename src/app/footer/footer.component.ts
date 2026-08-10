@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { PaymentService, DonationAmount, PaymentResult } from '../payment.service';
 import { environment } from '../../environments/environment';
-import { version } from '../../../package.json';
+import { APP_VERSION } from '../version';
 
 interface CryptoAddress {
   name: string;
@@ -19,7 +19,10 @@ interface CryptoAddress {
     standalone: false
 })
 export class FooterComponent implements OnInit, OnDestroy {
-  readonly appVersion: string = version;
+  /** Read from src/app/version.ts, not package.json — see that file for why. */
+  readonly appVersion: string = APP_VERSION.version;
+  readonly appCodename: string = APP_VERSION.codename;
+  readonly changelogRoute: string = APP_VERSION.changelog;
   /**
    * Subscription to TranslationService.currentLanguage$. Stored so we can
    * tear it down in ngOnDestroy. Mirrors the leak fix in HeaderComponent
