@@ -1,4 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, ApplicationRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RealtimeDBserviceService } from '../realtime-dbservice.service';
 import { Auth, user } from '@angular/fire/auth';
 import { Subscription } from 'rxjs';
@@ -6,11 +8,16 @@ import { runInInjectionContext } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { TranslationService } from '../translation.service';
 
+// Standalone + lazy-loaded on purpose: this is the only route that needs
+// Firebase Auth and Realtime Database. Keeping it out of AppModule lets
+// provideAuth()/provideDatabase() move to the route (see app-routing.module),
+// which keeps @firebase/auth, re2js and the RTDB SDK out of the initial bundle.
 @Component({
   selector: 'app-guestbook',
   templateUrl: './guestbook.component.html',
   styleUrls: ['./guestbook.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, FormsModule]
 })
 export class GuestbookComponent implements OnInit, OnDestroy {
   nickname = '';

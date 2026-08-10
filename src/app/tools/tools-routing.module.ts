@@ -180,7 +180,9 @@ const routes: Routes = [
     },
   {
       path: 'pdf-generator',
-      loadComponent: () => import('./pdf-generator/pdf-generator.component').then(m => m.PdfGeneratorComponent),
+      // loadChildren so provideAuth() rides along inside the lazy chunk
+      // (see pdf-generator.routes.ts) instead of the initial bundle.
+      loadChildren: () => import('./pdf-generator/pdf-generator.routes').then(m => m.PDF_GENERATOR_ROUTES),
       title: 'Free PDF Catalog Generator — Upload Images & Export PDF | xsantcastx',
       data: {
         description: 'Free online PDF catalog generator. Upload product images, add names, prices and descriptions, choose a layout template, and download a professional PDF. No sign-up needed.',
