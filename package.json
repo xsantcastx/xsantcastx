@@ -20,6 +20,19 @@
     "lhci": "lhci autorun"
   },
   "private": true,
+  "overrides": {
+    "@angular/build": {
+      "undici": "^7.29.0"
+    },
+    "@angular/cli": {
+      "@hono/node-server": "^2.1.0",
+      "@modelcontextprotocol/sdk": "^1.30.0"
+    },
+    "@lhci/cli": {
+      "tmp": "^0.2.7",
+      "uuid": "^11.1.1"
+    }
+  },
   "dependencies": {
     "@angular/animations": "^21.2.19",
     "@angular/common": "^21.2.19",
