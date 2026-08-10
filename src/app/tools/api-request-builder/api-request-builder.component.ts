@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface HeaderEntry {
   key: string;
@@ -33,6 +34,12 @@ interface HistoryEntry {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class ApiRequestBuilderComponent implements OnInit, OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free API Request Builder — compose, send and inspect HTTP requests right in the browser. No backend, no sign-up!')}&url=${encodeURIComponent(SITE_URL + '/tools/api-request-builder')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/api-request-builder')}`;
 

@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 export interface CssVariable {
   id: string;
@@ -55,6 +56,12 @@ const SAMPLE_VARIABLES: CssVariable[] = [
     imports: [FormsModule, ToolsSharedModule, LowerCasePipe, SlicePipe]
 })
 export class CssVariablesComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private idCounter = 0;

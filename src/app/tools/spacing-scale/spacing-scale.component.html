@@ -1,23 +1,23 @@
 <div class="sps-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Design Tools</p>
-    <h1 class="tool-header__title">Spacing Scale Generator</h1>
-    <p class="tool-header__subtitle">Generate consistent spacing scales (linear or geometric) with visual bars and CSS variable output.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.designTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.spacingScale.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.spacingScale.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
   <div class="sps-layout">
     <div class="sps-col sps-col--left">
       <div class="sps-panel">
-        <div class="sps-panel__header"><span class="sps-panel__title">Options</span></div>
+        <div class="sps-panel__header"><span class="sps-panel__title">{{ translate('tools.common.options') }}</span></div>
         <div class="sps-options">
           <div class="sps-field">
             <label class="sps-label">Base (px)</label>
@@ -28,7 +28,7 @@
             <input class="sps-input" type="number" [(ngModel)]="steps" (ngModelChange)="generate()" min="1" max="20" />
           </div>
           <div class="sps-field">
-            <label class="sps-label">Mode</label>
+            <label class="sps-label">{{ translate('tools.common.mode') }}</label>
             <div class="sps-seg-ctrl">
               <button class="sps-seg-btn" [class.sps-seg-btn--active]="mode==='linear'" (click)="mode='linear'; generate()">Linear</button>
               <button class="sps-seg-btn" [class.sps-seg-btn--active]="mode==='geometric'" (click)="mode='geometric'; generate()">Geometric</button>

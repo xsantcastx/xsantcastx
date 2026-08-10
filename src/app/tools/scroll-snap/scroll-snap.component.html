@@ -1,23 +1,23 @@
 <div class="snp-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">CSS Tools</p>
-    <h1 class="tool-header__title">Scroll Snap Builder</h1>
-    <p class="tool-header__subtitle">Build CSS scroll-snap layouts with a live preview. Configure direction, snap type, and alignment.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.cssTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.scrollSnap.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.scrollSnap.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
   <div class="snp-layout">
     <div class="snp-col snp-col--left">
       <div class="snp-panel">
-        <div class="snp-panel__header"><span class="snp-panel__title">Options</span></div>
+        <div class="snp-panel__header"><span class="snp-panel__title">{{ translate('tools.common.options') }}</span></div>
         <div class="snp-options">
           <div class="snp-field">
             <label class="snp-label">Direction</label>

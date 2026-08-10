@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { SITE_URL } from '../../seo.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 /** 3x3 color-vision transformation matrices (Brettel / Vienot models) */
 const MATRICES: Record<string, number[][]> = {
@@ -71,6 +72,12 @@ interface ContrastResult {
     imports: [FormsModule, ToolsSharedModule],
 })
 export class ColorBlindnessComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 
