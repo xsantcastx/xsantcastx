@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 @Component({
     selector: 'app-countdown',
@@ -13,6 +14,12 @@ import { ToolsSharedModule } from '../../shared/tools-shared.module';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class CountdownComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private eggs = inject(EasterEggService);
   private interval: ReturnType<typeof setInterval> | null = null;

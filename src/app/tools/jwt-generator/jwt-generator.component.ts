@@ -6,6 +6,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface CustomClaim {
   key: string;
@@ -21,6 +22,12 @@ type Algorithm = 'HS256' | 'HS384' | 'HS512' | 'none';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class JwtGeneratorComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free JWT Generator — build and sign JSON Web Tokens visually with HMAC. Client-side only, nothing leaves your browser!')}&url=${encodeURIComponent(SITE_URL + '/tools/jwt-generator')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/jwt-generator')}`;
 
