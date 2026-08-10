@@ -4,6 +4,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { DecimalPipe } from '@angular/common';
+import { TranslationService } from '../../translation.service';
 
 interface KeywordResult {
   word: string;
@@ -23,6 +24,12 @@ interface SeoSuggestion {
     imports: [ToolsSharedModule, DecimalPipe]
 })
 export class SeoCheckerComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly eggs = inject(EasterEggService);
 
   pageTitle = '';

@@ -1,16 +1,16 @@
 <div class="gi-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Developer Tools</p>
-    <h1 class="tool-header__title">.gitignore Generator</h1>
-    <p class="tool-header__subtitle">Select your technologies and generate a comprehensive .gitignore file instantly.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.developerTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.gitignoreGenerator.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.gitignoreGenerator.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -21,7 +21,7 @@
           <span class="gi-panel__title">Technologies ({{ selectedCount }} selected)</span>
           <div class="gi-panel__actions">
             <button class="gi-btn-ghost" (click)="selectAll()">Select All</button>
-            <button class="gi-btn-ghost" (click)="clearAll()">Clear</button>
+            <button class="gi-btn-ghost" (click)="clearAll()">{{ translate('tools.common.clear') }}</button>
           </div>
         </div>
         <div class="gi-panel__body">
@@ -49,7 +49,7 @@
             <button class="gi-btn-ghost" (click)="copyOutput()" [disabled]="!generatedOutput" [class.gi-btn-ghost--success]="copied">
               {{ copied ? 'Copied!' : 'Copy' }}
             </button>
-            <button class="gi-btn-ghost" (click)="downloadFile()" [disabled]="!generatedOutput">Download</button>
+            <button class="gi-btn-ghost" (click)="downloadFile()" [disabled]="!generatedOutput">{{ translate('tools.common.download') }}</button>
           </div>
         </div>
         <div class="gi-panel__body gi-panel__body--code">

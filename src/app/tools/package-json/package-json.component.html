@@ -1,16 +1,16 @@
 <div class="pj-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Node.js Tools</p>
-    <h1 class="tool-header__title">package.json Builder</h1>
-    <p class="tool-header__subtitle">Visual package.json editor with script presets for Node.js, React, TypeScript, and Vite.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.nodeJsTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.packageJson.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.packageJson.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 

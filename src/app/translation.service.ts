@@ -546,6 +546,56 @@ export class TranslationService {
     'tools.checklist.title': { en: 'Checklist Maker', es: 'Creador de Listas de Verificación' },
     'tools.checklist.subtitle': { en: 'Create checklists, check items off, and export as Markdown. Use templates for code review, deploy, or PR checklists.', es: 'Crea listas de verificación, marca elementos como completados y expórtalas como Markdown. Usa plantillas para revisión de código, despliegue o PRs.' },
 
+    // Batch 6 — SEO / security / project-config tools
+    'tools.seoChecker.title': { en: 'SEO Checker', es: 'Verificador SEO' },
+    'tools.seoChecker.subtitle': { en: 'Analyze your page title, meta description, and keywords with a live Google SERP preview. Get instant SEO suggestions — 100% client-side.', es: 'Analiza el título, la meta descripción y las palabras clave de tu página con una vista previa en vivo del SERP de Google. Obtén sugerencias SEO al instante — 100% en el cliente.' },
+
+    'tools.headingChecker.title': { en: 'Heading Checker', es: 'Verificador de Encabezados' },
+    'tools.headingChecker.subtitle': { en: 'Extract HTML headings, visualize hierarchy tree, and flag SEO issues.', es: 'Extrae los encabezados HTML, visualiza el árbol de jerarquía y señala problemas de SEO.' },
+
+    'tools.sitemapGenerator.title': { en: 'Sitemap', es: 'Sitemap' },
+    'tools.sitemapGenerator.title2': { en: 'XML', es: 'XML' },
+    'tools.sitemapGenerator.title3': { en: 'Generator', es: 'Generador' },
+    'tools.sitemapGenerator.subtitle': { en: 'Generate valid sitemap.xml files with per-URL options for lastmod, changefreq and priority. Download or copy instantly.', es: 'Genera archivos sitemap.xml válidos con opciones por URL para lastmod, changefreq y priority. Descarga o copia al instante.' },
+
+    'tools.robotsGenerator.title': { en: 'Robots Meta Tag', es: 'Meta Etiqueta Robots' },
+    'tools.robotsGenerator.title2': { en: 'robots.txt Generator', es: 'Generador de robots.txt' },
+    'tools.robotsGenerator.subtitle': { en: 'Visually build robots meta tags and robots.txt directives for search engine crawlers — no sign-up required.', es: 'Construye visualmente meta etiquetas robots y directivas de robots.txt para los rastreadores de buscadores — sin registro.' },
+
+    'tools.slugGenerator.title': { en: 'Slug Generator', es: 'Generador de Slugs' },
+    'tools.slugGenerator.subtitle': { en: 'Convert any text into clean, URL-friendly slugs. Transliterates accented characters, supports multiple case styles, and bulk mode.', es: 'Convierte cualquier texto en slugs limpios y aptos para URL. Translitera caracteres acentuados, admite varios estilos de capitalización y modo por lotes.' },
+
+    'tools.textCounter.title': { en: 'Text Counter', es: 'Contador de Texto' },
+    'tools.textCounter.title2': { en: 'Analyzer', es: 'Analizador' },
+    'tools.textCounter.subtitle': { en: 'Paste text and get instant stats: word count, character count, reading time, keyword density, and more — real-time as you type.', es: 'Pega texto y obtén estadísticas al instante: número de palabras, número de caracteres, tiempo de lectura, densidad de palabras clave y más — en tiempo real mientras escribes.' },
+
+    'tools.jwtGenerator.title': { en: 'JWT Generator', es: 'Generador JWT' },
+    'tools.jwtGenerator.title2': { en: 'Builder', es: 'Constructor' },
+    'tools.jwtGenerator.subtitle': { en: 'Build and sign JSON Web Tokens visually — configure headers, set claims, pick expiration dates, and sign with HMAC. Client-side only, no data sent anywhere.', es: 'Construye y firma JSON Web Tokens visualmente — configura cabeceras, define claims, elige fechas de expiración y firma con HMAC. Solo en el cliente, sin enviar datos a ningún lado.' },
+
+    'tools.jwtCheatsheet.title': { en: 'JWT Cheatsheet', es: 'Chuleta de JWT' },
+    'tools.jwtCheatsheet.subtitle': { en: 'JWT claims reference with algorithm comparison. Quick lookup for JSON Web Token development.', es: 'Referencia de claims JWT con comparación de algoritmos. Consulta rápida para el desarrollo con JSON Web Tokens.' },
+
+    'tools.envValidator.title': { en: '.env Validator', es: 'Validador de .env' },
+    'tools.envValidator.title2': { en: 'Secret Scanner', es: 'Escáner de Secretos' },
+    'tools.envValidator.subtitle': { en: 'Validate .env file syntax, detect leaked secrets, and export sanitized .env.example files — 100% client-side, no data leaves your browser.', es: 'Valida la sintaxis de archivos .env, detecta secretos filtrados y exporta archivos .env.example saneados — 100% en el cliente, ningún dato sale de tu navegador.' },
+
+    'tools.gitignoreGenerator.title': { en: '.gitignore Generator', es: 'Generador de .gitignore' },
+    'tools.gitignoreGenerator.subtitle': { en: 'Select your technologies and generate a comprehensive .gitignore file instantly.', es: 'Selecciona tus tecnologías y genera al instante un archivo .gitignore completo.' },
+
+    'tools.licensePicker.title': { en: 'License Picker', es: 'Selector de Licencias' },
+    'tools.licensePicker.subtitle': { en: 'Browse 15+ open source licenses, compare permissions, and generate a LICENSE file for your project.', es: 'Explora más de 15 licencias de código abierto, compara permisos y genera un archivo LICENSE para tu proyecto.' },
+
+    'tools.packageJson.title': { en: 'package.json Builder', es: 'Constructor de package.json' },
+    'tools.packageJson.subtitle': { en: 'Visual package.json editor with script presets for Node.js, React, TypeScript, and Vite.', es: 'Editor visual de package.json con preajustes de scripts para Node.js, React, TypeScript y Vite.' },
+
+    'tools.npmSearch.title': { en: 'NPM Package', es: 'Paquetes NPM' },
+    'tools.npmSearch.title2': { en: 'Info', es: 'Info' },
+    'tools.npmSearch.subtitle': { en: 'Search the npm registry, compare install commands across package managers, check bundle sizes, and explore package details.', es: 'Busca en el registro de npm, compara comandos de instalación entre gestores de paquetes, revisa el tamaño de los bundles y explora los detalles de cada paquete.' },
+
+    'tools.countdown.title': { en: 'Countdown Timer', es: 'Temporizador de Cuenta Regresiva' },
+    'tools.countdown.subtitle': { en: 'Set a target date and time, watch the countdown live.', es: 'Fija una fecha y hora objetivo y observa la cuenta regresiva en vivo.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },

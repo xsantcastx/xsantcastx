@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 interface JwtClaim { name: string; description: string; required: boolean; example: string; }
 interface JwtAlgorithm { name: string; type: string; description: string; keySize: string; security: 'low' | 'medium' | 'high'; }
@@ -16,6 +17,12 @@ interface JwtAlgorithm { name: string; type: string; description: string; keySiz
     imports: [FormsModule, ToolsSharedModule]
 })
 export class JwtCheatsheetComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 
