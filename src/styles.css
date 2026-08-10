@@ -1987,3 +1987,137 @@ summary:focus-visible {
     opacity: 0.4;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TOUCH TARGETS — WCAG 2.5.5 Target Size (Enhanced) / iOS HIG 44pt
+   ════════════════════════════════════════════════════════════════════════════
+   Audited live at 375x812 across /home /tools /blueprint /games /mcp /live
+   /skills /projects /contact /donate. Roughly 30 controls per page sat under
+   44px, and /blueprint had 161 — mostly its 126 constellation node links at
+   35px tall.
+
+   Scope note: WCAG 2.5.5 explicitly exempts targets inside a sentence, so
+   inline prose links (the email address on /contact, "the tools section" on
+   /games) are deliberately left alone — padding them to 44px would wreck the
+   line boxes of the paragraphs they live in. Everything that is a standalone
+   control gets the full target.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Standalone controls. min-height (not height) so anything already larger is
+     untouched, and inline-* is promoted to inline-flex so the min actually
+     applies — min-height is ignored on a non-replaced inline box. */
+  button,
+  [role='button'],
+  select,
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'],
+  input[type='checkbox'],
+  input[type='radio'],
+  summary {
+    min-height: 44px;
+  }
+
+  button,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'] {
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Text entry: a 29px input is as hard to hit as a 29px button, and iOS zooms
+     the viewport on focus for any font-size under 16px — which on this site
+     left the user zoomed in with no way back. 16px is the threshold, not a
+     preference. */
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  textarea,
+  select {
+    min-height: 44px;
+    font-size: max(16px, 1rem);
+  }
+
+  /* Links that are already block/flex boxes are standalone controls, not prose.
+     Listing them explicitly rather than using a bare `a` selector keeps inline
+     links in paragraphs exempt. */
+  a.tool-card,
+  a.hp-tool-card,
+  a.bp-link,
+  a.bp-galaxy__nodes-link,
+  .bp-galaxy__nodes a,
+  a.footer-mcp-link,
+  a.build-version,
+  a.hp-tools__view-all,
+  a.project-link,
+  a.cta-button,
+  a.social-link,
+  .footer-socials a,
+  .skill-card,
+  .project-card,
+  a.related-tool,
+  .related-tools a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  /* The header logo is a real button and was 36px tall. */
+  app-header .logo {
+    min-height: 44px;
+  }
+
+  /* Named offenders found in the audit that need more than a min-height —
+     these are laid out as centred pills, so they also need their box model
+     adjusted rather than just growing downward. */
+  .bp-tab,
+  .copy-btn,
+  .amount-btn,
+  .close-btn,
+  .chat-send-btn,
+  .tools-cat-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Footer social orbs were 40-42px — a couple of pixels short. Keep them
+     circular by growing both axes together. */
+  .footer-socials a,
+  .footer-social {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* Buttons that were exactly 43px (Notify Me, project Live Demo) are covered
+     by the rules above; this keeps their internal centring intact once they
+     grow the extra pixel. */
+  .cta-button,
+  .hp-sub-form__btn,
+  .submit-btn,
+  .project-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* The skip link is parked off-screen at top:-40px until focused, so its own
+   height doubles as the distance it has to travel to hide. Growing it to 44px
+   is safe (top:-40px still clears the viewport by way of the negative offset
+   plus overflow), and the target only matters once it IS focused. */
+@media (max-width: 768px) {
+  .skip-to-main {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    top: -60px;
+  }
+
+  .skip-to-main:focus {
+    top: 0;
+  }
+}
