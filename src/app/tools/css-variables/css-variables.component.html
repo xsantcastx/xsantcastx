@@ -67,7 +67,7 @@
     <div class="csv-content">
       <!-- Add new variable form -->
       <div class="csv-card csv-add-form">
-        <h3 class="csv-section-title">Add {{ categoryLabels[newCategory] }} Variable</h3>
+        <h2 class="csv-section-title">Add {{ categoryLabels[newCategory] }} Variable</h2>
         <div class="csv-form-group">
           <input
             [(ngModel)]="newName"
@@ -101,7 +101,7 @@
       <!-- Variables list -->
       @if (filteredVariables.length > 0) {
         <div class="csv-card csv-variables-list">
-          <h3 class="csv-section-title">{{ categoryLabels[activeCategory] }} ({{ filteredVariables.length }})</h3>
+          <h2 class="csv-section-title">{{ categoryLabels[activeCategory] }} ({{ filteredVariables.length }})</h2>
           <div class="csv-variables">
             @for (v of filteredVariables; track v) {
               <div class="csv-variable-item">
@@ -221,7 +221,7 @@
     <aside class="csv-aside">
       <!-- Export section -->
       <div class="csv-card csv-export-section">
-        <h3 class="csv-section-title">Export</h3>
+        <h2 class="csv-section-title">Export</h2>
 
         <div class="csv-format-tabs">
           @for (fmt of ['css', 'scss', 'json', 'tailwind']; track fmt) {
@@ -267,7 +267,7 @@
 
       <!-- Live preview section -->
       <div class="csv-card csv-preview-section">
-        <h3 class="csv-section-title">Live Preview</h3>
+        <h2 class="csv-section-title">Live Preview</h2>
 
         <div class="csv-preview" [style]="getPreviewStyles()">
           <!-- Color swatches -->
