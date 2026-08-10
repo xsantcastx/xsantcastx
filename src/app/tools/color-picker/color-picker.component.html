@@ -1,13 +1,13 @@
 <div class="cpk-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Design Tools</p>
-    <h1 class="tool-header__title">Color Picker</h1>
-    <p class="tool-header__subtitle">Advanced color picker with RGB/HSL sliders, hex input, and color history.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.designTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.colorPicker.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.colorPicker.subtitle') }}</p>
     <div class="tool-header__share">
       <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
       <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
