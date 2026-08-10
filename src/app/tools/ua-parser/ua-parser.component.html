@@ -1,16 +1,16 @@
 <div class="ua-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Browser Tools</p>
-    <h1 class="tool-header__title">User Agent Parser</h1>
-    <p class="tool-header__subtitle">Parse any user agent string to detect browser, OS, device type, and rendering engine.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.browserTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.uaParser.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.uaParser.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -19,8 +19,8 @@
       <div class="ua-panel__header">
         <span class="ua-panel__title">User Agent String</span>
         <div class="ua-panel__actions">
-          <button class="ua-btn-ghost" (click)="loadSample()">Sample</button>
-          <button class="ua-btn-ghost" (click)="clearAll()" [disabled]="!uaString">Clear</button>
+          <button class="ua-btn-ghost" (click)="loadSample()">{{ translate('tools.common.sample') }}</button>
+          <button class="ua-btn-ghost" (click)="clearAll()" [disabled]="!uaString">{{ translate('tools.common.clear') }}</button>
         </div>
       </div>
       <div class="ua-panel__body">

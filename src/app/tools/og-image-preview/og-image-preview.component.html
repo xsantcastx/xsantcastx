@@ -1,16 +1,16 @@
 <div class="ogp-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">SEO Tools</p>
-    <h1 class="tool-header__title">OG Image Preview</h1>
-    <p class="tool-header__subtitle">Preview how your Open Graph tags will look on Facebook, Twitter/X, LinkedIn, and Discord.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.seoTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.ogImagePreview.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.ogImagePreview.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -25,7 +25,7 @@
           <div class="ogp-field"><label class="ogp-label">Page URL</label><input class="ogp-input" [(ngModel)]="ogUrl" placeholder="https://example.com/page" /></div>
           <div class="ogp-field"><label class="ogp-label">Site Name</label><input class="ogp-input" [(ngModel)]="ogSiteName" placeholder="My Website" /></div>
           <div class="ogp-actions">
-            <button class="ogp-btn-ghost" (click)="clearAll()">Clear</button>
+            <button class="ogp-btn-ghost" (click)="clearAll()">{{ translate('tools.common.clear') }}</button>
           </div>
         </div>
       </div>
@@ -42,7 +42,7 @@
     <div class="ogp-col ogp-col--right">
       <div class="ogp-panel">
         <div class="ogp-panel__header">
-          <span class="ogp-panel__title">Preview</span>
+          <span class="ogp-panel__title">{{ translate('tools.common.preview') }}</span>
           <div class="ogp-tabs">
             <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='facebook'" (click)="activePreview='facebook'">Facebook</button>
             <button class="ogp-tab" [class.ogp-tab--active]="activePreview==='twitter'" (click)="activePreview='twitter'">Twitter/X</button>

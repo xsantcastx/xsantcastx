@@ -1,16 +1,16 @@
 <div class="wt-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">API Tools</p>
-    <h1 class="tool-header__title">Webhook Tester</h1>
-    <p class="tool-header__subtitle">Build webhook payloads with templates for GitHub, Stripe, and Slack. Generate cURL commands.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.apiTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.webhookTester.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.webhookTester.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -55,7 +55,7 @@
           </div>
 
           <div class="wt-actions">
-            <button class="wt-btn-ghost" (click)="clearAll()">Clear</button>
+            <button class="wt-btn-ghost" (click)="clearAll()">{{ translate('tools.common.clear') }}</button>
           </div>
         </div>
       </div>

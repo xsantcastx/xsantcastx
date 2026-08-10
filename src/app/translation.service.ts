@@ -497,6 +497,55 @@ export class TranslationService {
     'tools.apiRequestBuilder.title2': { en: 'Builder', es: 'Constructor' },
     'tools.apiRequestBuilder.subtitle': { en: 'Build, send and inspect HTTP requests directly from your browser — no backend, no sign-up.', es: 'Construye, envía e inspecciona peticiones HTTP directamente desde tu navegador — sin backend, sin registro.' },
 
+    // Batch 5 — network / device / image tools
+    'tools.dnsLookup.title': { en: 'DNS Record', es: 'Registros DNS' },
+    'tools.dnsLookup.title2': { en: 'Lookup', es: 'Consulta' },
+    'tools.dnsLookup.subtitle': { en: 'Query DNS records for any domain using Cloudflare DNS-over-HTTPS. View A, AAAA, CNAME, MX, NS, TXT, SOA, and SRV records with TTL values — all client-side.', es: 'Consulta los registros DNS de cualquier dominio usando Cloudflare DNS-over-HTTPS. Visualiza registros A, AAAA, CNAME, MX, NS, TXT, SOA y SRV con sus valores TTL — todo en el cliente.' },
+
+    'tools.ipLookup.title': { en: 'IP Address', es: 'Dirección IP' },
+    'tools.ipLookup.title2': { en: 'Info', es: 'Info' },
+    'tools.ipLookup.subtitle': { en: 'Detect your public IP, validate IPv4/IPv6 addresses, calculate subnets, and explore private IP ranges -- no sign-up required.', es: 'Detecta tu IP pública, valida direcciones IPv4/IPv6, calcula subredes y explora rangos de IP privadas -- sin registro.' },
+
+    'tools.webhookTester.title': { en: 'Webhook Tester', es: 'Probador de Webhooks' },
+    'tools.webhookTester.subtitle': { en: 'Build webhook payloads with templates for GitHub, Stripe, and Slack. Generate cURL commands.', es: 'Construye payloads de webhook con plantillas para GitHub, Stripe y Slack. Genera comandos cURL.' },
+
+    'tools.httpStatus.title': { en: 'HTTP Status Code', es: 'Códigos de Estado HTTP' },
+    'tools.httpStatus.title2': { en: 'Reference', es: 'Referencia' },
+    'tools.httpStatus.subtitle': { en: 'Searchable reference of every HTTP status code (1xx-5xx) with descriptions, common use cases, and detailed explanations. Color-coded by category.', es: 'Referencia consultable de todos los códigos de estado HTTP (1xx-5xx) con descripciones, casos de uso comunes y explicaciones detalladas. Codificada por color según la categoría.' },
+
+    'tools.mimeLookup.title': { en: 'MIME Type Lookup', es: 'Consulta de Tipos MIME' },
+    'tools.mimeLookup.subtitle': { en: 'Searchable MIME type reference. Find MIME types by file extension or search by type.', es: 'Referencia consultable de tipos MIME. Encuentra tipos MIME por extensión de archivo o busca por tipo.' },
+
+    'tools.uaParser.title': { en: 'User Agent Parser', es: 'Analizador de User Agent' },
+    'tools.uaParser.subtitle': { en: 'Parse any user agent string to detect browser, OS, device type, and rendering engine.', es: 'Analiza cualquier cadena de user agent para detectar el navegador, el sistema operativo, el tipo de dispositivo y el motor de renderizado.' },
+
+    'tools.screenInfo.title': { en: 'Screen Resolution', es: 'Resolución de Pantalla' },
+    'tools.screenInfo.title2': { en: 'Pixel Density', es: 'Densidad de Píxeles' },
+    'tools.screenInfo.subtitle': { en: 'Auto-detect your screen resolution, viewport size, DPR, color depth, orientation, and more. Calculate PPI/DPI for any display.', es: 'Detecta automáticamente la resolución de tu pantalla, el tamaño del viewport, el DPR, la profundidad de color, la orientación y más. Calcula el PPI/DPI de cualquier pantalla.' },
+
+    'tools.responsivePreview.title': { en: 'Responsive Preview', es: 'Vista Previa Responsiva' },
+    'tools.responsivePreview.subtitle': { en: 'Preview any URL at different screen sizes. Compare devices side-by-side, rotate between portrait and landscape, and test with custom dimensions.', es: 'Previsualiza cualquier URL en distintos tamaños de pantalla. Compara dispositivos lado a lado, alterna entre vertical y horizontal y prueba con dimensiones personalizadas.' },
+
+    'tools.ogImagePreview.title': { en: 'OG Image Preview', es: 'Vista Previa de Imagen OG' },
+    'tools.ogImagePreview.subtitle': { en: 'Preview how your Open Graph tags will look on Facebook, Twitter/X, LinkedIn, and Discord.', es: 'Previsualiza cómo se verán tus etiquetas Open Graph en Facebook, Twitter/X, LinkedIn y Discord.' },
+
+    'tools.faviconGenerator.title': { en: 'Favicon', es: 'Favicon' },
+    'tools.faviconGenerator.title2': { en: 'Generator', es: 'Generador' },
+    'tools.faviconGenerator.subtitle': { en: 'Generate favicons from text, emoji, or uploaded images. Customize colors, shape, and font. Download as PNG or ICO with ready-to-use HTML tags.', es: 'Genera favicons a partir de texto, emojis o imágenes subidas. Personaliza colores, forma y fuente. Descarga como PNG o ICO con etiquetas HTML listas para usar.' },
+
+    'tools.placeholderImage.title': { en: 'Placeholder Image', es: 'Imágenes de Relleno' },
+    'tools.placeholderImage.title2': { en: 'Generator', es: 'Generador' },
+    'tools.placeholderImage.subtitle': { en: 'Generate custom placeholder images with configurable dimensions, colors, text & format. Download or copy as data URI — no external service needed.', es: 'Genera imágenes de relleno personalizadas con dimensiones, colores, texto y formato configurables. Descárgalas o cópialas como data URI — sin necesidad de servicios externos.' },
+
+    'tools.imageResizer.title': { en: 'Image Resizer', es: 'Redimensionador de Imágenes' },
+    'tools.imageResizer.subtitle': { en: 'Resize images by percentage, exact dimensions, or social media presets. All processing happens in your browser — nothing is uploaded.', es: 'Redimensiona imágenes por porcentaje, dimensiones exactas o preajustes de redes sociales. Todo el procesamiento ocurre en tu navegador — no se sube nada.' },
+
+    'tools.charMap.title': { en: 'Special Characters &amp; Symbols Map', es: 'Mapa de Caracteres Especiales &amp; Símbolos' },
+    'tools.charMap.subtitle': { en: 'Browse 400+ Unicode characters across 8 categories. Click any glyph to copy it as a character, HTML entity, or Unicode codepoint — all client-side, no sign-up.', es: 'Explora más de 400 caracteres Unicode en 8 categorías. Haz clic en cualquier glifo para copiarlo como carácter, entidad HTML o punto de código Unicode — todo en el cliente, sin registro.' },
+
+    'tools.checklist.title': { en: 'Checklist Maker', es: 'Creador de Listas de Verificación' },
+    'tools.checklist.subtitle': { en: 'Create checklists, check items off, and export as Markdown. Use templates for code review, deploy, or PR checklists.', es: 'Crea listas de verificación, marca elementos como completados y expórtalas como Markdown. Usa plantillas para revisión de código, despliegue o PRs.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },

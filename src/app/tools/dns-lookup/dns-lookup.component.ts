@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 type ActiveTab = 'lookup' | 'reference';
 
@@ -30,6 +31,12 @@ interface DnsTypeOption {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class DnsLookupComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free DNS Record Lookup — query A, AAAA, CNAME, MX, NS, TXT, SOA and SRV records over DNS-over-HTTPS. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/dns-lookup')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/dns-lookup')}`;
 
