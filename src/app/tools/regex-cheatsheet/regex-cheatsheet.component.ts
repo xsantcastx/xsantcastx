@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 interface RegexEntry { pattern: string; description: string; example: string; }
 interface RegexCategory { name: string; entries: RegexEntry[]; }
@@ -16,6 +17,12 @@ interface RegexCategory { name: string; entries: RegexEntry[]; }
     imports: [FormsModule, ToolsSharedModule]
 })
 export class RegexCheatsheetComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private eggs = inject(EasterEggService);
 

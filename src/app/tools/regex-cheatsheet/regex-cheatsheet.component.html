@@ -1,16 +1,16 @@
 <div class="rc-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Reference</p>
-    <h1 class="tool-header__title">Regex Cheatsheet</h1>
-    <p class="tool-header__subtitle">Categorized regex reference with {{ totalPatterns }}+ patterns. Search to find what you need.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.reference') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.regexCheatsheet.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.regexCheatsheet.subtitlePre') }} {{ totalPatterns }}{{ translate('tools.regexCheatsheet.subtitlePost') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 

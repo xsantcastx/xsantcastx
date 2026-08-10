@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { TranslationService } from '../../translation.service';
 
 export interface CronField {
   name: string;
@@ -36,6 +37,12 @@ export type ExpressionCategory = 'all' | 'common' | 'system' | 'business' | 'dev
     imports: [ToolsSharedModule, FormsModule]
 })
 export class CrontabRefComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
