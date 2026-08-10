@@ -1125,3 +1125,69 @@
   font-size: 0.7rem;
   color: rgba(214,221,235,0.3);
 }
+
+/* ── Mobile overflow fix ──────────────────────────────────────────────
+   At 375px the grid was set to a single 1fr column, but its track still
+   resolved to 462px: grid and flex items default to min-width:auto, so the
+   track is floored at the min-content width of its contents (the chat input
+   row and the unbreakable strings in the message list). Everything past 375px
+   was then clipped by the page's overflow-x:hidden — the right edge of every
+   panel, including part of the chat send button, was simply unreachable.
+
+   min-width:0 lets the track collapse to the container; the wrapping rules
+   below stop long tokens (URLs, hashes, tool names in the feed) from
+   re-inflating it. */
+@media (max-width: 768px) {
+  .mission-grid > *,
+  .left-panel > *,
+  .center-panel > *,
+  .chat-panel > * {
+    min-width: 0;
+  }
+
+  .mission-grid,
+  .left-panel,
+  .center-panel,
+  .chat-panel,
+  .panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Flex children (the input in .chat-input-row, labels in .panel-header)
+     inherit the same min-width:auto floor. */
+  .chat-input-row,
+  .chat-username-row,
+  .panel-header,
+  .status-bar {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .chat-input {
+    min-width: 0;
+  }
+
+  /* Long unbreakable strings in the feed/messages would otherwise re-establish
+     a wide min-content and undo the above. */
+  .chat-msg,
+  .chat-msg *,
+  .bot-messages,
+  .bot-empty,
+  .feed-panel,
+  .mission-body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* WCAG 2.5.5 — the send button was a 0.55rem pill well under 44px. */
+  .chat-send-btn {
+    min-height: 44px;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .chat-input {
+    min-height: 44px;
+  }
+}

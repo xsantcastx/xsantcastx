@@ -775,6 +775,36 @@
   }
 }
 
+/* At 375px (iPhone SE) the logo lockup + EN/ES + hamburger came to ~380px of
+   intrinsic width inside a 375px viewport, so the row overflowed and the
+   hamburger's right edge sat ~4px off-screen. The logo is the only flexible
+   part — the controls are all at their 44px touch minimum and must not shrink.
+   Letting the lockup shrink and clip keeps the tap targets whole. */
+@media (max-width: 600px) {
+  .logo {
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+  }
+
+  .logo-lockup {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .logo-lockup .nav-glitch {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .mobile-controls {
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 420px) {
   .navbar {
     gap: 0.5rem; /* Even smaller gap */
@@ -793,8 +823,13 @@
     height: 1.85rem;
   }
 
+  /* At 375px the row (14.4 + 183 logo + 8 gap + 155 controls + 14.4) came to
+     374.8px against a 375px viewport — it fit, but with 0.2px to spare, so a
+     font swap or a wider locale clipped the wordmark's last letter. Shaving the
+     wordmark buys ~14px of real headroom. */
   .logo-lockup .nav-glitch {
-    font-size: clamp(1rem, 4.5vw, 1.2rem);
+    font-size: clamp(0.92rem, 4.1vw, 1.12rem);
+    letter-spacing: 0.06em;
   }
 
   .logo .nav-buzzword {
