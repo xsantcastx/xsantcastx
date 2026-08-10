@@ -51,7 +51,7 @@
             class="sc-input"
             placeholder="Enter your page title..."
             [value]="pageTitle"
-            (input)="onTitleInput($any($event.target).value)"
+            (input)="onTitleInput($any($event.target).value)" aria-label="Page Title"
             />
           <div class="sc-progress">
             <div class="sc-progress__bar"
@@ -79,7 +79,7 @@
             placeholder="Enter your meta description..."
             rows="4"
             [value]="metaDescription"
-            (input)="onDescInput($any($event.target).value)"
+            (input)="onDescInput($any($event.target).value)" aria-label="Meta Description"
           ></textarea>
           <div class="sc-progress">
             <div class="sc-progress__bar"
@@ -104,7 +104,7 @@
               class="sc-input"
               placeholder="https://example.com/my-page"
               [value]="pageUrl"
-              (input)="onUrlInput($any($event.target).value)"
+              (input)="onUrlInput($any($event.target).value)" aria-label="Page URL"
               />
           </div>
           <div class="sc-field" style="margin-top: 1rem">
@@ -114,7 +114,7 @@
               class="sc-input"
               placeholder="e.g. seo checker"
               [value]="focusKeyword"
-              (input)="onKeywordInput($any($event.target).value)"
+              (input)="onKeywordInput($any($event.target).value)" aria-label="Focus Keyword"
               />
           </div>
         </div>

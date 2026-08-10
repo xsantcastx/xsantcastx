@@ -55,12 +55,12 @@
             <div class="ph-dim-row">
               <div class="ph-field">
                 <label class="ph-label">Width (px)</label>
-                <input type="number" class="ph-input" [(ngModel)]="width" (ngModelChange)="onSettingsChange()" min="1" max="2000" />
+                <input type="number" class="ph-input" [(ngModel)]="width" (ngModelChange)="onSettingsChange()" min="1" max="2000" aria-label="Width (px)" />
               </div>
               <span class="ph-dim-x">&times;</span>
               <div class="ph-field">
                 <label class="ph-label">Height (px)</label>
-                <input type="number" class="ph-input" [(ngModel)]="height" (ngModelChange)="onSettingsChange()" min="1" max="2000" />
+                <input type="number" class="ph-input" [(ngModel)]="height" (ngModelChange)="onSettingsChange()" min="1" max="2000" aria-label="Height (px)" />
               </div>
             </div>
             <!-- Quick presets -->
@@ -129,8 +129,8 @@
           <div class="ph-color-row">
             <label class="ph-label">Background</label>
             <div class="ph-color-pick">
-              <input type="color" class="ph-color-input" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" />
-              <input type="text" class="ph-input ph-input--mono" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" maxlength="7" />
+              <input type="color" class="ph-color-input" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" aria-label="Background color picker" />
+              <input type="text" class="ph-input ph-input--mono" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" maxlength="7" aria-label="Background hex value" />
             </div>
           </div>
           <div class="ph-color-row">
@@ -154,11 +154,11 @@
         <div class="ph-panel__body">
           <div class="ph-field">
             <label class="ph-label">Custom text <span class="ph-label__hint">(blank = dimensions)</span></label>
-            <input type="text" class="ph-input" [(ngModel)]="customText" (ngModelChange)="onSettingsChange()" placeholder="{{ width }}&times;{{ height }}" />
+            <input type="text" class="ph-input" [(ngModel)]="customText" (ngModelChange)="onSettingsChange()" placeholder="{{ width }}&times;{{ height }}" aria-label="Custom text" />
           </div>
           <div class="ph-field">
             <label class="ph-label">Font size <span class="ph-label__hint">(0 = auto)</span></label>
-            <input type="number" class="ph-input" [(ngModel)]="fontSize" (ngModelChange)="onSettingsChange()" min="0" max="500" />
+            <input type="number" class="ph-input" [(ngModel)]="fontSize" (ngModelChange)="onSettingsChange()" min="0" max="500" aria-label="Font size" />
           </div>
           <div class="ph-field">
             <label class="ph-label">Format</label>
@@ -171,7 +171,7 @@
           @if (format === 'jpeg') {
             <div class="ph-field">
               <label class="ph-label">JPEG Quality: {{ (jpegQuality * 100).toFixed(0) }}%</label>
-              <input type="range" class="ph-range" [(ngModel)]="jpegQuality" (ngModelChange)="onSettingsChange()" min="0.1" max="1" step="0.01" />
+              <input type="range" class="ph-range" [(ngModel)]="jpegQuality" (ngModelChange)="onSettingsChange()" min="0.1" max="1" step="0.01" aria-label="JPEG Quality" />
             </div>
           }
         </div>

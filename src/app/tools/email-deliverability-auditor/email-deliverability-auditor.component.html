@@ -438,7 +438,7 @@
       <section class="eda-share-panel">
         <p class="eda-share-text">Share this audit</p>
         <div class="eda-share-row">
-          <input type="text" class="eda-share-url" [value]="shareResultUrl()" readonly />
+          <input type="text" class="eda-share-url" [value]="shareResultUrl()" readonly aria-label="Suggested Record" />
           <button type="button" class="eda-copy-btn" (click)="copyShareUrl()">
             {{ isCopied(shareResultUrl()) ? 'Copied!' : 'Copy Link' }}
           </button>

@@ -141,7 +141,7 @@
             <div class="rg-directive-row">
               <div class="rg-advanced-field">
                 <label class="rg-field-label">max-snippet</label>
-                <input type="number" class="rg-number-input" [(ngModel)]="directives[6].value" min="-1" />
+                <input type="number" class="rg-number-input" [(ngModel)]="directives[6].value" min="-1" aria-label="max-snippet" />
               </div>
               <button class="rg-info-btn" (click)="toggleExplanation('max-snippet')" [class.rg-info-btn--active]="expandedDirective === 'max-snippet'">?</button>
               @if (expandedDirective === 'max-snippet') {
@@ -152,7 +152,7 @@
             <div class="rg-directive-row">
               <div class="rg-advanced-field">
                 <label class="rg-field-label">max-image-preview</label>
-                <select class="rg-select" [(ngModel)]="directives[7].value">
+                <select class="rg-select" [(ngModel)]="directives[7].value" aria-label="max-image-preview">
                   @for (opt of imagePreviewOptions; track opt) {
                     <option [value]="opt">{{ opt }}</option>
                   }
@@ -167,7 +167,7 @@
             <div class="rg-directive-row">
               <div class="rg-advanced-field">
                 <label class="rg-field-label">max-video-preview</label>
-                <input type="number" class="rg-number-input" [(ngModel)]="directives[8].value" min="-1" />
+                <input type="number" class="rg-number-input" [(ngModel)]="directives[8].value" min="-1" aria-label="max-video-preview" />
               </div>
               <button class="rg-info-btn" (click)="toggleExplanation('max-video-preview')" [class.rg-info-btn--active]="expandedDirective === 'max-video-preview'">?</button>
               @if (expandedDirective === 'max-video-preview') {
@@ -178,7 +178,7 @@
             <div class="rg-directive-row">
               <div class="rg-advanced-field">
                 <label class="rg-field-label">unavailable_after</label>
-                <input type="date" class="rg-text-input" [(ngModel)]="directives[9].value" />
+                <input type="date" class="rg-text-input" [(ngModel)]="directives[9].value" aria-label="unavailable_after" />
               </div>
               <button class="rg-info-btn" (click)="toggleExplanation('unavailable_after')" [class.rg-info-btn--active]="expandedDirective === 'unavailable_after'">?</button>
               @if (expandedDirective === 'unavailable_after') {
@@ -284,14 +284,14 @@
                 <!-- User-agent -->
                 <div class="rg-field-group">
                   <label class="rg-field-label">User-agent</label>
-                  <input type="text" class="rg-text-input" [(ngModel)]="rule.userAgent" placeholder="* (all crawlers)" />
+                  <input type="text" class="rg-text-input" [(ngModel)]="rule.userAgent" placeholder="* (all crawlers)" aria-label="User-agent" />
                 </div>
                 <!-- Allow paths -->
                 <div class="rg-field-group">
                   <label class="rg-field-label">Allow</label>
                   @for (path of rule.allow; track $index; let pi = $index) {
                     <div class="rg-path-row">
-                      <input type="text" class="rg-text-input" [(ngModel)]="rule.allow[pi]" placeholder="/path/" />
+                      <input type="text" class="rg-text-input" [(ngModel)]="rule.allow[pi]" placeholder="/path/" aria-label="Allow" />
                       @if (rule.allow.length > 1) {
                         <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeAllowPath(rule, pi)" title="Remove path" aria-label="Remove path">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -306,7 +306,7 @@
                   <label class="rg-field-label">Disallow</label>
                   @for (path of rule.disallow; track $index; let pi = $index) {
                     <div class="rg-path-row">
-                      <input type="text" class="rg-text-input" [(ngModel)]="rule.disallow[pi]" placeholder="/private/" />
+                      <input type="text" class="rg-text-input" [(ngModel)]="rule.disallow[pi]" placeholder="/private/" aria-label="Disallow" />
                       @if (rule.disallow.length > 1) {
                         <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeDisallowPath(rule, pi)" title="Remove path" aria-label="Remove path">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -319,7 +319,7 @@
                 <!-- Crawl-delay -->
                 <div class="rg-field-group">
                   <label class="rg-field-label">Crawl-delay <span class="rg-field-optional">(seconds)</span></label>
-                  <input type="number" class="rg-number-input" [(ngModel)]="rule.crawlDelay" placeholder="None" min="0" />
+                  <input type="number" class="rg-number-input" [(ngModel)]="rule.crawlDelay" placeholder="None" min="0" aria-label="Crawl-delay" />
                 </div>
               </div>
             </div>
@@ -339,7 +339,7 @@
             <div class="rg-panel__body rg-rule-body">
               @for (url of sitemapUrls; track $index; let si = $index) {
                 <div class="rg-path-row">
-                  <input type="text" class="rg-text-input" [(ngModel)]="sitemapUrls[si]" placeholder="https://example.com/sitemap.xml" />
+                  <input type="text" class="rg-text-input" [(ngModel)]="sitemapUrls[si]" placeholder="https://example.com/sitemap.xml" aria-label="Crawl-delay" />
                   @if (sitemapUrls.length > 1) {
                     <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeSitemap(si)" title="Remove sitemap" aria-label="Remove sitemap">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

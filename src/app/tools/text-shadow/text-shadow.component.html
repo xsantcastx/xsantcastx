@@ -65,16 +65,16 @@
           </div>
           <div class="ts-inline-control">
             <label class="ts-inline-control__label">Size</label>
-            <input type="range" min="16" max="120" step="1" [value]="previewFontSize" (input)="onPreviewFontSizeChange($event)" class="ts-slider ts-slider--mini" />
+            <input type="range" min="16" max="120" step="1" [value]="previewFontSize" (input)="onPreviewFontSizeChange($event)" class="ts-slider ts-slider--mini" aria-label="Size" />
             <span class="ts-inline-control__value">{{ previewFontSize }}px</span>
           </div>
           <div class="ts-inline-control">
             <label class="ts-inline-control__label">Color</label>
-            <input type="color" [value]="previewColor" (input)="onPreviewColorChange($event)" class="ts-color-input" />
+            <input type="color" [value]="previewColor" (input)="onPreviewColorChange($event)" class="ts-color-input" aria-label="Color" />
           </div>
           <div class="ts-inline-control">
             <label class="ts-inline-control__label">BG</label>
-            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="ts-color-input" />
+            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="ts-color-input" aria-label="BG" />
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@
                     <span class="ts-control-group__value">{{ layer.offsetX }}px</span>
                   </div>
                   <input type="range" min="-50" max="50" step="1"
-                    [value]="layer.offsetX" (input)="onOffsetXChange(i, $event)" class="ts-slider" />
+                    [value]="layer.offsetX" (input)="onOffsetXChange(i, $event)" class="ts-slider" aria-label="X Offset" />
                 </div>
                 <!-- Y Offset -->
                 <div class="ts-control-group">
@@ -166,7 +166,7 @@
                     <span class="ts-control-group__value">{{ layer.offsetY }}px</span>
                   </div>
                   <input type="range" min="-50" max="50" step="1"
-                    [value]="layer.offsetY" (input)="onOffsetYChange(i, $event)" class="ts-slider" />
+                    [value]="layer.offsetY" (input)="onOffsetYChange(i, $event)" class="ts-slider" aria-label="Y Offset" />
                 </div>
                 <!-- Blur -->
                 <div class="ts-control-group">
@@ -175,7 +175,7 @@
                     <span class="ts-control-group__value">{{ layer.blur }}px</span>
                   </div>
                   <input type="range" min="0" max="50" step="1"
-                    [value]="layer.blur" (input)="onBlurChange(i, $event)" class="ts-slider" />
+                    [value]="layer.blur" (input)="onBlurChange(i, $event)" class="ts-slider" aria-label="Blur" />
                 </div>
                 <!-- Color -->
                 <div class="ts-control-group">
@@ -183,7 +183,7 @@
                     <label class="ts-control-group__label">Color</label>
                     <span class="ts-control-group__value">{{ layer.color }}</span>
                   </div>
-                  <input type="color" [value]="layer.color" (input)="onColorChange(i, $event)" class="ts-color-input ts-color-input--wide" />
+                  <input type="color" [value]="layer.color" (input)="onColorChange(i, $event)" class="ts-color-input ts-color-input--wide" aria-label="Color" />
                 </div>
               </div>
             </div>

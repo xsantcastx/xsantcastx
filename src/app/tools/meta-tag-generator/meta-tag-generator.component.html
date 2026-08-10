@@ -59,7 +59,7 @@
               class="mt-input"
               [(ngModel)]="data.title"
               (ngModelChange)="onTitleChange()"
-              placeholder="My Awesome Page - Brand Name"
+              placeholder="My Awesome Page - Brand Name" aria-label="Page Title"
               />
             @if (titleWarning) {
               <span class="mt-field__hint">Title exceeds recommended {{ titleMaxLength }} characters for SEO.</span>
@@ -79,7 +79,7 @@
               [(ngModel)]="data.description"
               (ngModelChange)="onDescriptionChange()"
               placeholder="A brief description of your page content for search engines..."
-              rows="3"
+              rows="3" aria-label="Meta Description"
             ></textarea>
             @if (descriptionWarning) {
               <span class="mt-field__hint">Description exceeds recommended {{ descriptionMaxLength }} characters for SEO.</span>
@@ -94,14 +94,14 @@
               class="mt-input"
               [(ngModel)]="data.canonical"
               (ngModelChange)="onCanonicalChange()"
-              placeholder="https://example.com/page"
+              placeholder="https://example.com/page" aria-label="Canonical URL"
               />
           </div>
 
           <!-- Robots -->
           <div class="mt-field">
             <label class="mt-field__label">Robots</label>
-            <select class="mt-select" [(ngModel)]="data.robots">
+            <select class="mt-select" [(ngModel)]="data.robots" aria-label="Robots">
               @for (opt of robotsOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -122,24 +122,24 @@
         <div class="mt-card__body">
           <div class="mt-field">
             <label class="mt-field__label">og:title</label>
-            <input type="text" class="mt-input" [(ngModel)]="data.ogTitle" placeholder="Override title for social sharing" [disabled]="syncOg" />
+            <input type="text" class="mt-input" [(ngModel)]="data.ogTitle" placeholder="Override title for social sharing" [disabled]="syncOg" aria-label="og:title" />
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:description</label>
-            <textarea class="mt-textarea" [(ngModel)]="data.ogDescription" placeholder="Override description for social sharing" rows="2" [disabled]="syncOg"></textarea>
+            <textarea class="mt-textarea" [(ngModel)]="data.ogDescription" placeholder="Override description for social sharing" rows="2" [disabled]="syncOg" aria-label="og:description"></textarea>
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:image</label>
-            <input type="url" class="mt-input" [(ngModel)]="data.ogImage" (ngModelChange)="onOgImageChange()" placeholder="https://example.com/image.jpg (1200x630 recommended)" />
+            <input type="url" class="mt-input" [(ngModel)]="data.ogImage" (ngModelChange)="onOgImageChange()" placeholder="https://example.com/image.jpg (1200x630 recommended)" aria-label="og:image" />
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:url</label>
-            <input type="url" class="mt-input" [(ngModel)]="data.ogUrl" placeholder="Page URL" [disabled]="syncOg" />
+            <input type="url" class="mt-input" [(ngModel)]="data.ogUrl" placeholder="Page URL" [disabled]="syncOg" aria-label="og:url" />
           </div>
           <div class="mt-field-row">
             <div class="mt-field">
               <label class="mt-field__label">og:type</label>
-              <select class="mt-select" [(ngModel)]="data.ogType">
+              <select class="mt-select" [(ngModel)]="data.ogType" aria-label="og:type">
                 @for (t of ogTypes; track t) {
                   <option [value]="t">{{ t }}</option>
                 }
@@ -147,7 +147,7 @@
             </div>
             <div class="mt-field">
               <label class="mt-field__label">og:site_name</label>
-              <input type="text" class="mt-input" [(ngModel)]="data.ogSiteName" placeholder="Your Brand" />
+              <input type="text" class="mt-input" [(ngModel)]="data.ogSiteName" placeholder="Your Brand" aria-label="og:site_name" />
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@
         <div class="mt-card__body">
           <div class="mt-field">
             <label class="mt-field__label">twitter:card</label>
-            <select class="mt-select" [(ngModel)]="data.twitterCard">
+            <select class="mt-select" [(ngModel)]="data.twitterCard" aria-label="twitter:card">
               @for (c of twitterCards; track c) {
                 <option [value]="c">{{ c }}</option>
               }
@@ -173,15 +173,15 @@
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:title</label>
-            <input type="text" class="mt-input" [(ngModel)]="data.twitterTitle" placeholder="Override title for Twitter" [disabled]="syncTwitter" />
+            <input type="text" class="mt-input" [(ngModel)]="data.twitterTitle" placeholder="Override title for Twitter" [disabled]="syncTwitter" aria-label="twitter:title" />
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:description</label>
-            <textarea class="mt-textarea" [(ngModel)]="data.twitterDescription" placeholder="Override description for Twitter" rows="2" [disabled]="syncTwitter"></textarea>
+            <textarea class="mt-textarea" [(ngModel)]="data.twitterDescription" placeholder="Override description for Twitter" rows="2" [disabled]="syncTwitter" aria-label="twitter:description"></textarea>
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:image</label>
-            <input type="url" class="mt-input" [(ngModel)]="data.twitterImage" placeholder="Override image for Twitter" [disabled]="syncTwitter" />
+            <input type="url" class="mt-input" [(ngModel)]="data.twitterImage" placeholder="Override image for Twitter" [disabled]="syncTwitter" aria-label="twitter:image" />
           </div>
         </div>
       </div>

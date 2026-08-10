@@ -82,7 +82,7 @@
           <div class="ir-control-group">
             <label class="ir-label">Scale</label>
             <div class="ir-slider-row">
-              <input type="range" min="1" max="300" step="1" [(ngModel)]="percentage" class="ir-range" />
+              <input type="range" min="1" max="300" step="1" [(ngModel)]="percentage" class="ir-range" aria-label="Scale" />
               <span class="ir-slider-value">{{ percentage }}%</span>
             </div>
             @if (images.length > 0) {
@@ -100,12 +100,12 @@
             <div class="ir-dims-row">
               <div class="ir-dim-field">
                 <label class="ir-label">Width (px)</label>
-                <input type="number" min="1" max="10000" [(ngModel)]="targetWidth" (ngModelChange)="onWidthChange()" class="ir-input" />
+                <input type="number" min="1" max="10000" [(ngModel)]="targetWidth" (ngModelChange)="onWidthChange()" class="ir-input" aria-label="Width (px)" />
               </div>
               <span class="ir-dims-x">×</span>
               <div class="ir-dim-field">
                 <label class="ir-label">Height (px)</label>
-                <input type="number" min="1" max="10000" [(ngModel)]="targetHeight" (ngModelChange)="onHeightChange()" class="ir-input" />
+                <input type="number" min="1" max="10000" [(ngModel)]="targetHeight" (ngModelChange)="onHeightChange()" class="ir-input" aria-label="Height (px)" />
               </div>
             </div>
             <label class="ir-checkbox-label">
@@ -139,7 +139,7 @@
         <!-- Output format -->
         <div class="ir-control-group">
           <label class="ir-label">Format</label>
-          <select [(ngModel)]="outputFormat" class="ir-select">
+          <select [(ngModel)]="outputFormat" class="ir-select" aria-label="Format">
             <option value="same">Same as original</option>
             <option value="jpeg">JPEG</option>
             <option value="png">PNG</option>
@@ -153,7 +153,7 @@
           <div class="ir-control-group">
             <label class="ir-label">Quality</label>
             <div class="ir-slider-row">
-              <input type="range" min="1" max="100" step="1" [(ngModel)]="quality" class="ir-range" />
+              <input type="range" min="1" max="100" step="1" [(ngModel)]="quality" class="ir-range" aria-label="Quality" />
               <span class="ir-slider-value">{{ quality }}%</span>
             </div>
           </div>

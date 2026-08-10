@@ -30,11 +30,11 @@
         <div class="btn-panel__body btn-settings">
           <div class="btn-field">
             <label>Button Text</label>
-            <input type="text" [(ngModel)]="buttonText" (ngModelChange)="onTextChange()" class="btn-input" />
+            <input type="text" [(ngModel)]="buttonText" (ngModelChange)="onTextChange()" class="btn-input" aria-label="Button Text" />
           </div>
           <div class="btn-field-row">
-            <div class="btn-field"><label>BG Color</label><input type="color" [(ngModel)]="bgColor" /></div>
-            <div class="btn-field"><label>Text Color</label><input type="color" [(ngModel)]="textColor" /></div>
+            <div class="btn-field"><label>BG Color</label><input type="color" [(ngModel)]="bgColor" aria-label="BG Color" /></div>
+            <div class="btn-field"><label>Text Color</label><input type="color" [(ngModel)]="textColor" aria-label="Text Color" /></div>
           </div>
           <div class="btn-field">
             <label for="btn-border-radius">Border Radius: {{ borderRadius }}px</label>
@@ -50,11 +50,11 @@
           </div>
           <div class="btn-field-row">
             <div class="btn-field"><label for="btn-border-width">Border Width: {{ borderWidth }}px</label><input id="btn-border-width" type="range" min="0" max="6" [(ngModel)]="borderWidth" /></div>
-            <div class="btn-field"><label>Border Color</label><input type="color" [(ngModel)]="borderColor" /></div>
+            <div class="btn-field"><label>Border Color</label><input type="color" [(ngModel)]="borderColor" aria-label="Border Color" /></div>
           </div>
           <div class="btn-field-row">
-            <div class="btn-field"><label>Hover BG</label><input type="color" [(ngModel)]="hoverBg" /></div>
-            <div class="btn-field"><label>Hover Text</label><input type="color" [(ngModel)]="hoverText" /></div>
+            <div class="btn-field"><label>Hover BG</label><input type="color" [(ngModel)]="hoverBg" aria-label="Hover BG" /></div>
+            <div class="btn-field"><label>Hover Text</label><input type="color" [(ngModel)]="hoverText" aria-label="Hover Text" /></div>
           </div>
         </div>
       </div>

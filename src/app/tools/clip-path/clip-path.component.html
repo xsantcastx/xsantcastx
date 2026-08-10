@@ -97,15 +97,15 @@
           <h2 class="cp-card__title">Circle Parameters</h2>
           <div class="cp-field">
             <label class="cp-label">Radius <span class="cp-label__val">{{ circleRadius }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="circleRadius" (input)="onCircleRadiusChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleRadius" (input)="onCircleRadiusChange($event)" aria-label="Radius">
           </div>
           <div class="cp-field">
             <label class="cp-label">Center X <span class="cp-label__val">{{ circleCx }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCx" (input)="onCircleCxChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCx" (input)="onCircleCxChange($event)" aria-label="Center X">
           </div>
           <div class="cp-field">
             <label class="cp-label">Center Y <span class="cp-label__val">{{ circleCy }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCy" (input)="onCircleCyChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="circleCy" (input)="onCircleCyChange($event)" aria-label="Center Y">
           </div>
         </div>
       }
@@ -116,19 +116,19 @@
           <h2 class="cp-card__title">Ellipse Parameters</h2>
           <div class="cp-field">
             <label class="cp-label">Radius X <span class="cp-label__val">{{ ellipseRx }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRx" (input)="onEllipseRxChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRx" (input)="onEllipseRxChange($event)" aria-label="Radius X">
           </div>
           <div class="cp-field">
             <label class="cp-label">Radius Y <span class="cp-label__val">{{ ellipseRy }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRy" (input)="onEllipseRyChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseRy" (input)="onEllipseRyChange($event)" aria-label="Radius Y">
           </div>
           <div class="cp-field">
             <label class="cp-label">Center X <span class="cp-label__val">{{ ellipseCx }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCx" (input)="onEllipseCxChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCx" (input)="onEllipseCxChange($event)" aria-label="Center X">
           </div>
           <div class="cp-field">
             <label class="cp-label">Center Y <span class="cp-label__val">{{ ellipseCy }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCy" (input)="onEllipseCyChange($event)">
+            <input type="range" class="cp-slider" min="0" max="100" [value]="ellipseCy" (input)="onEllipseCyChange($event)" aria-label="Center Y">
           </div>
         </div>
       }
@@ -139,23 +139,23 @@
           <h2 class="cp-card__title">Inset Parameters</h2>
           <div class="cp-field">
             <label class="cp-label">Top <span class="cp-label__val">{{ insetTop }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="50" [value]="insetTop" (input)="onInsetChange('top', $event)">
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetTop" (input)="onInsetChange('top', $event)" aria-label="Top">
           </div>
           <div class="cp-field">
             <label class="cp-label">Right <span class="cp-label__val">{{ insetRight }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRight" (input)="onInsetChange('right', $event)">
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRight" (input)="onInsetChange('right', $event)" aria-label="Right">
           </div>
           <div class="cp-field">
             <label class="cp-label">Bottom <span class="cp-label__val">{{ insetBottom }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="50" [value]="insetBottom" (input)="onInsetChange('bottom', $event)">
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetBottom" (input)="onInsetChange('bottom', $event)" aria-label="Bottom">
           </div>
           <div class="cp-field">
             <label class="cp-label">Left <span class="cp-label__val">{{ insetLeft }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="50" [value]="insetLeft" (input)="onInsetChange('left', $event)">
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetLeft" (input)="onInsetChange('left', $event)" aria-label="Left">
           </div>
           <div class="cp-field">
             <label class="cp-label">Border Radius <span class="cp-label__val">{{ insetRound }}%</span></label>
-            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRound" (input)="onInsetRoundChange($event)">
+            <input type="range" class="cp-slider" min="0" max="50" [value]="insetRound" (input)="onInsetRoundChange($event)" aria-label="Border Radius">
           </div>
         </div>
       }
@@ -165,11 +165,11 @@
         <h2 class="cp-card__title">Preview Colors</h2>
         <div class="cp-color-row">
           <label class="cp-label">Background</label>
-          <input type="color" class="cp-color-input" [value]="previewBgColor" (input)="onBgColorChange($event)">
+          <input type="color" class="cp-color-input" [value]="previewBgColor" (input)="onBgColorChange($event)" aria-label="Background">
         </div>
         <div class="cp-color-row">
           <label class="cp-label">Shape</label>
-          <input type="color" class="cp-color-input" [value]="shapeColor" (input)="onShapeColorChange($event)">
+          <input type="color" class="cp-color-input" [value]="shapeColor" (input)="onShapeColorChange($event)" aria-label="Shape">
         </div>
       </div>
 

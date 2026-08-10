@@ -65,12 +65,12 @@
           </div>
           <div class="gt-inline-control">
             <label class="gt-inline-control__label">Size</label>
-            <input type="range" min="16" max="128" step="1" [value]="fontSize" (input)="onFontSizeChange($event)" class="gt-slider" />
+            <input type="range" min="16" max="128" step="1" [value]="fontSize" (input)="onFontSizeChange($event)" class="gt-slider" aria-label="Size" />
             <span class="gt-slider-value">{{ fontSize }}px</span>
           </div>
           <div class="gt-inline-control">
             <label class="gt-inline-control__label">Weight</label>
-            <input type="range" min="100" max="900" step="100" [value]="fontWeight" (input)="onFontWeightChange($event)" class="gt-slider" />
+            <input type="range" min="100" max="900" step="100" [value]="fontWeight" (input)="onFontWeightChange($event)" class="gt-slider" aria-label="Weight" />
             <span class="gt-slider-value">{{ fontWeight }}</span>
           </div>
         </div>
@@ -124,7 +124,7 @@
                 <label class="gt-control-group__label">Angle</label>
                 <span class="gt-control-group__value">{{ angle }}&deg;</span>
               </div>
-              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="onAngleChange($event)" class="gt-slider" />
+              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="onAngleChange($event)" class="gt-slider" aria-label="Angle" />
             </div>
           }
           <div class="gt-control-group gt-control-group--inline">

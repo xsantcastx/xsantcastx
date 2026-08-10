@@ -71,7 +71,7 @@
                 maxlength="2"
                 placeholder="Xs"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="Text (1-2 characters)"
                 />
             </div>
           }
@@ -87,7 +87,7 @@
                 (ngModelChange)="onEmojiChange()"
                 maxlength="2"
                 placeholder="Paste an emoji here..."
-                autocomplete="off"
+                autocomplete="off" aria-label="Emoji"
                 />
             </div>
           }
@@ -105,7 +105,7 @@
                 (drop)="onDrop($event)"
                 (click)="fileInput.click()"
                 >
-                <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileSelect($event)" />
+                <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileSelect($event)" aria-label="Upload Image" />
                 @if (!uploadedFileName) {
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="fg-dropzone__icon"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   <span class="fg-dropzone__label">Drop image here</span>
@@ -137,8 +137,8 @@
           <div class="fg-option-row">
             <span class="fg-option-label">Background Color</span>
             <div class="fg-color-row">
-              <input type="color" class="fg-color-input" [(ngModel)]="bgColor" (ngModelChange)="onSettingChange()" />
-              <input type="text" class="fg-input fg-input--sm" [(ngModel)]="bgColor" (ngModelChange)="onSettingChange()" spellcheck="false" />
+              <input type="color" class="fg-color-input" [(ngModel)]="bgColor" (ngModelChange)="onSettingChange()" aria-label="Background Color picker" />
+              <input type="text" class="fg-input fg-input--sm" [(ngModel)]="bgColor" (ngModelChange)="onSettingChange()" spellcheck="false" aria-label="Background Color hex value" />
             </div>
           </div>
 
@@ -147,8 +147,8 @@
             <div class="fg-option-row">
               <span class="fg-option-label">Text Color</span>
               <div class="fg-color-row">
-                <input type="color" class="fg-color-input" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" />
-                <input type="text" class="fg-input fg-input--sm" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" spellcheck="false" />
+                <input type="color" class="fg-color-input" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" aria-label="Text Color picker" />
+                <input type="text" class="fg-input fg-input--sm" [(ngModel)]="textColor" (ngModelChange)="onSettingChange()" spellcheck="false" aria-label="Text Color hex value" />
               </div>
             </div>
           }
@@ -157,7 +157,7 @@
           @if (inputMode === 'text') {
             <div class="fg-option-row">
               <span class="fg-option-label">Font Size <span class="fg-badge">{{ fontSize }}%</span></span>
-              <input type="range" class="fg-range" [(ngModel)]="fontSize" (ngModelChange)="onSettingChange()" min="20" max="100" step="1" />
+              <input type="range" class="fg-range" [(ngModel)]="fontSize" (ngModelChange)="onSettingChange()" min="20" max="100" step="1" aria-label="Font Size" />
             </div>
           }
 
@@ -165,7 +165,7 @@
           @if (inputMode === 'text') {
             <div class="fg-option-row">
               <span class="fg-option-label">Font Family</span>
-              <select class="fg-select" [(ngModel)]="fontFamily" (ngModelChange)="onSettingChange()">
+              <select class="fg-select" [(ngModel)]="fontFamily" (ngModelChange)="onSettingChange()" aria-label="Font Family">
                 @for (f of fontFamilies; track f) {
                   <option [value]="f">{{ f }}</option>
                 }
@@ -176,7 +176,7 @@
           <!-- Border radius -->
           <div class="fg-option-row">
             <span class="fg-option-label">Border Radius <span class="fg-badge">{{ borderRadius === 0 ? 'Square' : borderRadius === 100 ? 'Circle' : borderRadius + '%' }}</span></span>
-            <input type="range" class="fg-range" [(ngModel)]="borderRadius" (ngModelChange)="onSettingChange()" min="0" max="100" step="1" />
+            <input type="range" class="fg-range" [(ngModel)]="borderRadius" (ngModelChange)="onSettingChange()" min="0" max="100" step="1" aria-label="Border Radius" />
           </div>
 
         </div>

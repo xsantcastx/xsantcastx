@@ -21,7 +21,7 @@
         <div class="tg-options">
           <div class="tg-field">
             <label class="tg-label">Property</label>
-            <select class="tg-select" [(ngModel)]="property">
+            <select class="tg-select" [(ngModel)]="property" aria-label="Property">
               @for (p of properties; track p) {
                 <option [value]="p">{{ p }}</option>
               }
@@ -29,15 +29,15 @@
           </div>
           <div class="tg-field">
             <label class="tg-label">Duration (s)</label>
-            <input class="tg-input" type="number" [(ngModel)]="duration" (ngModelChange)="onDurationChange()" min="0" max="10" step="0.1" />
+            <input class="tg-input" type="number" [(ngModel)]="duration" (ngModelChange)="onDurationChange()" min="0" max="10" step="0.1" aria-label="Duration (s)" />
           </div>
           <div class="tg-field">
             <label class="tg-label">Delay (s)</label>
-            <input class="tg-input" type="number" [(ngModel)]="delay" min="0" max="10" step="0.1" />
+            <input class="tg-input" type="number" [(ngModel)]="delay" min="0" max="10" step="0.1" aria-label="Delay (s)" />
           </div>
           <div class="tg-field">
             <label class="tg-label">Timing Function</label>
-            <select class="tg-select" [(ngModel)]="timingFunction">
+            <select class="tg-select" [(ngModel)]="timingFunction" aria-label="Timing Function">
               @for (tf of timingFunctions; track tf) {
                 <option [value]="tf">{{ tf }}</option>
               }
@@ -47,10 +47,10 @@
           @if (timingFunction==='cubic-bezier') {
             <div class="tg-cubic">
               <div class="tg-cubic-row">
-                <div class="tg-field tg-field--sm"><label class="tg-label">P1</label><input class="tg-input" type="number" [(ngModel)]="cubicP1" step="0.05" min="-1" max="2" /></div>
-                <div class="tg-field tg-field--sm"><label class="tg-label">P2</label><input class="tg-input" type="number" [(ngModel)]="cubicP2" step="0.05" min="-1" max="2" /></div>
-                <div class="tg-field tg-field--sm"><label class="tg-label">P3</label><input class="tg-input" type="number" [(ngModel)]="cubicP3" step="0.05" min="-1" max="2" /></div>
-                <div class="tg-field tg-field--sm"><label class="tg-label">P4</label><input class="tg-input" type="number" [(ngModel)]="cubicP4" step="0.05" min="-1" max="2" /></div>
+                <div class="tg-field tg-field--sm"><label class="tg-label">P1</label><input class="tg-input" type="number" [(ngModel)]="cubicP1" step="0.05" min="-1" max="2" aria-label="P1" /></div>
+                <div class="tg-field tg-field--sm"><label class="tg-label">P2</label><input class="tg-input" type="number" [(ngModel)]="cubicP2" step="0.05" min="-1" max="2" aria-label="P2" /></div>
+                <div class="tg-field tg-field--sm"><label class="tg-label">P3</label><input class="tg-input" type="number" [(ngModel)]="cubicP3" step="0.05" min="-1" max="2" aria-label="P3" /></div>
+                <div class="tg-field tg-field--sm"><label class="tg-label">P4</label><input class="tg-input" type="number" [(ngModel)]="cubicP4" step="0.05" min="-1" max="2" aria-label="P4" /></div>
               </div>
               <div class="tg-presets">
                 @for (p of ['Ease','Ease In','Ease Out','Ease In Out','Bounce','Smooth','Snappy']; track p) {

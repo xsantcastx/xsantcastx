@@ -57,8 +57,8 @@
           <div class="ac-color-field">
             <label class="ac-color-label">Text Color</label>
             <div class="ac-color-row">
-              <input type="color" class="ac-color-picker" [value]="textColor" (input)="onTextPickerChange($any($event.target).value)" />
-              <input type="text" class="ac-color-input" [class.ac-color-input--error]="textColorError" [value]="textColorInput" (input)="onTextColorInput($any($event.target).value)" placeholder="#e0e0e0" spellcheck="false" autocomplete="off" />
+              <input type="color" class="ac-color-picker" [value]="textColor" (input)="onTextPickerChange($any($event.target).value)" aria-label="Text Color picker" />
+              <input type="text" class="ac-color-input" [class.ac-color-input--error]="textColorError" [value]="textColorInput" (input)="onTextColorInput($any($event.target).value)" placeholder="#e0e0e0" spellcheck="false" autocomplete="off" aria-label="Text Color hex value" />
               <span class="ac-color-swatch" [style.background-color]="textColor"></span>
             </div>
           </div>
@@ -66,8 +66,8 @@
           <div class="ac-color-field">
             <label class="ac-color-label">Background Color</label>
             <div class="ac-color-row">
-              <input type="color" class="ac-color-picker" [value]="bgColor" (input)="onBgPickerChange($any($event.target).value)" />
-              <input type="text" class="ac-color-input" [class.ac-color-input--error]="bgColorError" [value]="bgColorInput" (input)="onBgColorInput($any($event.target).value)" placeholder="#0a0a1a" spellcheck="false" autocomplete="off" />
+              <input type="color" class="ac-color-picker" [value]="bgColor" (input)="onBgPickerChange($any($event.target).value)" aria-label="Background Color picker" />
+              <input type="text" class="ac-color-input" [class.ac-color-input--error]="bgColorError" [value]="bgColorInput" (input)="onBgColorInput($any($event.target).value)" placeholder="#0a0a1a" spellcheck="false" autocomplete="off" aria-label="Background Color hex value" />
               <span class="ac-color-swatch" [style.background-color]="bgColor"></span>
             </div>
           </div>
@@ -85,13 +85,13 @@
         <div class="ac-panel__body ac-font-grid">
           <div class="ac-font-field">
             <label class="ac-color-label">Font Size (px)</label>
-            <input type="number" class="ac-number-input" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" />
-            <input type="range" class="ac-range" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" />
+            <input type="number" class="ac-number-input" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" aria-label="Font Size (px)" />
+            <input type="range" class="ac-range" [value]="fontSize" (input)="onFontSizeChange($any($event.target).valueAsNumber)" min="8" max="120" step="1" aria-label="Font Size (px) slider" />
           </div>
           <div class="ac-font-field">
             <label class="ac-color-label">Font Weight</label>
-            <input type="number" class="ac-number-input" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" />
-            <input type="range" class="ac-range" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" />
+            <input type="number" class="ac-number-input" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" aria-label="Font Weight" />
+            <input type="range" class="ac-range" [value]="fontWeight" (input)="onFontWeightChange($any($event.target).valueAsNumber)" min="100" max="900" step="100" aria-label="Font Weight slider" />
           </div>
         </div>
       </div>

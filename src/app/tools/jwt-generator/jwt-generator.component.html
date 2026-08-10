@@ -89,7 +89,7 @@
               (ngModelChange)="updatePreview()"
               placeholder="e.g. https://auth.example.com"
               spellcheck="false"
-              autocomplete="off" />
+              autocomplete="off" aria-label="iss" />
           </div>
 
           <!-- Subject -->
@@ -102,7 +102,7 @@
               (ngModelChange)="updatePreview()"
               placeholder="e.g. user_123456"
               spellcheck="false"
-              autocomplete="off" />
+              autocomplete="off" aria-label="sub" />
           </div>
 
           <!-- Audience -->
@@ -115,7 +115,7 @@
               (ngModelChange)="updatePreview()"
               placeholder="e.g. https://api.example.com"
               spellcheck="false"
-              autocomplete="off" />
+              autocomplete="off" aria-label="aud" />
           </div>
 
           <!-- Expiration -->
@@ -224,7 +224,7 @@
                 [(ngModel)]="secret"
                 placeholder="Enter your HMAC secret key"
                 spellcheck="false"
-                autocomplete="off" />
+                autocomplete="off" aria-label="Secret Key" />
             </div>
           }
           @if (algorithm === 'none') {

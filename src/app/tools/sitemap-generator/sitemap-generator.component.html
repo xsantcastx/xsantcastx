@@ -104,7 +104,7 @@
                     [(ngModel)]="entry.loc"
                     (ngModelChange)="onUrlChange()"
                     placeholder="https://example.com/page"
-                    spellcheck="false"
+                    spellcheck="false" aria-label="URL"
                     />
                 </div>
                 <div class="smg-entry__options">
@@ -115,7 +115,7 @@
                       type="date"
                       class="smg-input smg-input--date"
                       [(ngModel)]="entry.lastmod"
-                      (ngModelChange)="onUrlChange()"
+                      (ngModelChange)="onUrlChange()" aria-label="Last Modified"
                       />
                   </div>
                   <!-- Change Frequency -->
@@ -124,7 +124,7 @@
                     <select
                       class="smg-select"
                       [(ngModel)]="entry.changefreq"
-                      (ngModelChange)="onUrlChange()"
+                      (ngModelChange)="onUrlChange()" aria-label="Frequency"
                       >
                       @for (freq of changefreqOptions; track freq) {
                         <option [value]="freq">{{ freq }}</option>
@@ -141,7 +141,7 @@
                       (input)="onPriorityChange(entry, $any($event.target).value)"
                       min="0"
                       max="1"
-                      step="0.1"
+                      step="0.1" aria-label="Priority"
                       />
                     <div class="smg-slider-labels">
                       <span>0.0</span>

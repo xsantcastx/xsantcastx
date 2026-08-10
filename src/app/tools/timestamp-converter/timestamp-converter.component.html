@@ -161,7 +161,7 @@
           <!-- Timezone -->
           <div class="tc-option-row">
             <span class="tc-option-label">Timezone</span>
-            <select class="tc-select" [(ngModel)]="selectedTimezone" (ngModelChange)="onTimezoneChange()">
+            <select class="tc-select" [(ngModel)]="selectedTimezone" (ngModelChange)="onTimezoneChange()" aria-label="Timezone">
               @for (tz of timezones; track tz) {
                 <option [value]="tz.value">{{ tz.label }}</option>
               }

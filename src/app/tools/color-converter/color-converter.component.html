@@ -84,7 +84,7 @@
                 (ngModelChange)="onHexInput()"
                 placeholder="#RRGGBB"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="HEX"
                 />
               <button class="cc-copy-btn" (click)="copyValue(hexString, 'hex')" [class.cc-copy-btn--copied]="copiedField === 'hex'" title="Copy HEX" aria-label="Copy HEX">
                 @if (copiedField !== 'hex') {
@@ -108,7 +108,7 @@
                 (ngModelChange)="onRgbInput()"
                 placeholder="R, G, B (0-255)"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="RGB"
                 />
               <button class="cc-copy-btn" (click)="copyValue(rgbString, 'rgb')" [class.cc-copy-btn--copied]="copiedField === 'rgb'" title="Copy RGB" aria-label="Copy RGB">
                 @if (copiedField !== 'rgb') {
@@ -132,7 +132,7 @@
                 (ngModelChange)="onHslInput()"
                 placeholder="H, S, L (0-360, 0-100, 0-100)"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="HSL"
                 />
               <button class="cc-copy-btn" (click)="copyValue(hslString, 'hsl')" [class.cc-copy-btn--copied]="copiedField === 'hsl'" title="Copy HSL" aria-label="Copy HSL">
                 @if (copiedField !== 'hsl') {
@@ -156,7 +156,7 @@
                 (ngModelChange)="onHsbInput()"
                 placeholder="H, S, B (0-360, 0-100, 0-100)"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="HSB"
                 />
               <button class="cc-copy-btn" (click)="copyValue(hsbString, 'hsb')" [class.cc-copy-btn--copied]="copiedField === 'hsb'" title="Copy HSB" aria-label="Copy HSB">
                 @if (copiedField !== 'hsb') {
@@ -180,7 +180,7 @@
                 (ngModelChange)="onCmykInput()"
                 placeholder="C, M, Y, K (0-100)"
                 spellcheck="false"
-                autocomplete="off"
+                autocomplete="off" aria-label="CMYK"
                 />
               <button class="cc-copy-btn" (click)="copyValue(cmykString, 'cmyk')" [class.cc-copy-btn--copied]="copiedField === 'cmyk'" title="Copy CMYK" aria-label="Copy CMYK">
                 @if (copiedField !== 'cmyk') {

@@ -103,7 +103,7 @@
           <!-- flex-direction -->
           <div class="fx-control-group">
             <label class="fx-control-group__label">flex-direction</label>
-            <select class="fx-select" [(ngModel)]="flexDirection">
+            <select class="fx-select" [(ngModel)]="flexDirection" aria-label="flex-direction">
               @for (opt of flexDirectionOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -113,7 +113,7 @@
           <!-- justify-content -->
           <div class="fx-control-group">
             <label class="fx-control-group__label">justify-content</label>
-            <select class="fx-select" [(ngModel)]="justifyContent">
+            <select class="fx-select" [(ngModel)]="justifyContent" aria-label="justify-content">
               @for (opt of justifyContentOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -123,7 +123,7 @@
           <!-- align-items -->
           <div class="fx-control-group">
             <label class="fx-control-group__label">align-items</label>
-            <select class="fx-select" [(ngModel)]="alignItems">
+            <select class="fx-select" [(ngModel)]="alignItems" aria-label="align-items">
               @for (opt of alignItemsOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -133,7 +133,7 @@
           <!-- align-content -->
           <div class="fx-control-group">
             <label class="fx-control-group__label">align-content</label>
-            <select class="fx-select" [(ngModel)]="alignContent">
+            <select class="fx-select" [(ngModel)]="alignContent" aria-label="align-content">
               @for (opt of alignContentOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -143,7 +143,7 @@
           <!-- flex-wrap -->
           <div class="fx-control-group">
             <label class="fx-control-group__label">flex-wrap</label>
-            <select class="fx-select" [(ngModel)]="flexWrap">
+            <select class="fx-select" [(ngModel)]="flexWrap" aria-label="flex-wrap">
               @for (opt of flexWrapOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
               }
@@ -163,7 +163,7 @@
               step="1"
               [value]="gap"
               (input)="onGapChange($event)"
-              class="fx-slider"
+              class="fx-slider" aria-label="gap"
               />
           </div>
         </div>
@@ -227,7 +227,7 @@
                 step="1"
                 [value]="selectedChild.flexGrow"
                 (input)="updateChildSlider('flexGrow', $event)"
-                class="fx-slider"
+                class="fx-slider" aria-label="flex-grow"
                 />
             </div>
             <!-- flex-shrink -->
@@ -243,7 +243,7 @@
                 step="1"
                 [value]="selectedChild.flexShrink"
                 (input)="updateChildSlider('flexShrink', $event)"
-                class="fx-slider"
+                class="fx-slider" aria-label="flex-shrink"
                 />
             </div>
             <!-- flex-basis -->
@@ -254,7 +254,7 @@
                 class="fx-text-input"
                 [value]="selectedChild.flexBasis"
                 (input)="updateChildField('flexBasis', $any($event.target).value)"
-                placeholder="auto, 100px, 50%..."
+                placeholder="auto, 100px, 50%..." aria-label="flex-basis"
                 />
             </div>
             <!-- order -->
@@ -270,13 +270,13 @@
                 step="1"
                 [value]="selectedChild.order"
                 (input)="updateChildSlider('order', $event)"
-                class="fx-slider"
+                class="fx-slider" aria-label="order"
                 />
             </div>
             <!-- align-self -->
             <div class="fx-control-group">
               <label class="fx-control-group__label">align-self</label>
-              <select class="fx-select" [value]="selectedChild.alignSelf" (change)="updateChildField('alignSelf', $any($event.target).value)">
+              <select class="fx-select" [value]="selectedChild.alignSelf" (change)="updateChildField('alignSelf', $any($event.target).value)" aria-label="align-self">
                 @for (opt of alignSelfOptions; track opt) {
                   <option [value]="opt">{{ opt }}</option>
                 }
