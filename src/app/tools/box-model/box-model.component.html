@@ -183,7 +183,7 @@
               <span class="bm-control-group__value">{{ contentWidth }}px</span>
             </div>
             <input type="range" min="0" max="600" step="1"
-              [value]="contentWidth" (input)="onDimensionChange('width', $event)" class="bm-slider" />
+              [value]="contentWidth" (input)="onDimensionChange('width', $event)" class="bm-slider" aria-label="Width" />
           </div>
           <div class="bm-control-group">
             <div class="bm-control-group__top">
@@ -191,7 +191,7 @@
               <span class="bm-control-group__value">{{ contentHeight }}px</span>
             </div>
             <input type="range" min="0" max="600" step="1"
-              [value]="contentHeight" (input)="onDimensionChange('height', $event)" class="bm-slider" />
+              [value]="contentHeight" (input)="onDimensionChange('height', $event)" class="bm-slider" aria-label="Height" />
           </div>
         </div>
       </div>
@@ -210,7 +210,7 @@
                 <span class="bm-control-group__value">{{ margin.top }}px</span>
               </div>
               <input type="range" min="0" max="100" step="1"
-                [value]="margin.top" (input)="onMarginChange('top', $event)" class="bm-slider" />
+                [value]="margin.top" (input)="onMarginChange('top', $event)" class="bm-slider" aria-label="All Sides" />
             </div>
           }
           @if (!shorthand) {
@@ -283,7 +283,7 @@
                 <span class="bm-control-group__value">{{ padding.top }}px</span>
               </div>
               <input type="range" min="0" max="100" step="1"
-                [value]="padding.top" (input)="onPaddingChange('top', $event)" class="bm-slider" />
+                [value]="padding.top" (input)="onPaddingChange('top', $event)" class="bm-slider" aria-label="All Sides" />
             </div>
           }
           @if (!shorthand) {

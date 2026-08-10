@@ -137,7 +137,7 @@
                 <label class="gg-control-group__label">Angle</label>
                 <span class="gg-control-group__value">{{ angle }}&deg;</span>
               </div>
-              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="updateAngle($event)" class="gg-slider" />
+              <input type="range" min="0" max="360" step="1" [value]="angle" (input)="updateAngle($event)" class="gg-slider" aria-label="Angle" />
             </div>
           }
 
@@ -159,7 +159,7 @@
                 <label class="gg-control-group__label">Position X</label>
                 <span class="gg-control-group__value">{{ radialPosX }}%</span>
               </div>
-              <input type="range" min="0" max="100" step="1" [value]="radialPosX" (input)="updateRadialPosX($event)" class="gg-slider" />
+              <input type="range" min="0" max="100" step="1" [value]="radialPosX" (input)="updateRadialPosX($event)" class="gg-slider" aria-label="Position X" />
             </div>
           }
 
@@ -170,7 +170,7 @@
                 <label class="gg-control-group__label">Position Y</label>
                 <span class="gg-control-group__value">{{ radialPosY }}%</span>
               </div>
-              <input type="range" min="0" max="100" step="1" [value]="radialPosY" (input)="updateRadialPosY($event)" class="gg-slider" />
+              <input type="range" min="0" max="100" step="1" [value]="radialPosY" (input)="updateRadialPosY($event)" class="gg-slider" aria-label="Position Y" />
             </div>
           }
 
@@ -181,7 +181,7 @@
                 <label class="gg-control-group__label">Start Angle</label>
                 <span class="gg-control-group__value">{{ conicAngle }}&deg;</span>
               </div>
-              <input type="range" min="0" max="360" step="1" [value]="conicAngle" (input)="updateConicAngle($event)" class="gg-slider" />
+              <input type="range" min="0" max="360" step="1" [value]="conicAngle" (input)="updateConicAngle($event)" class="gg-slider" aria-label="Start Angle" />
             </div>
           }
         </div>
@@ -247,7 +247,7 @@
             <div class="gg-control-group">
               <label class="gg-control-group__label">Color</label>
               <div class="gg-color-row">
-                <input type="color" [value]="activeStop.color" (input)="updateStopColor($event)" class="gg-color-input" />
+                <input type="color" [value]="activeStop.color" (input)="updateStopColor($event)" class="gg-color-input" aria-label="Color" />
                 <span class="gg-color-hex">{{ activeStop.color }}</span>
               </div>
             </div>
@@ -256,7 +256,7 @@
                 <label class="gg-control-group__label">Position</label>
                 <span class="gg-control-group__value">{{ activeStop.position }}%</span>
               </div>
-              <input type="range" min="0" max="100" step="1" [value]="activeStop.position" (input)="updateStopPosition($event)" class="gg-slider" />
+              <input type="range" min="0" max="100" step="1" [value]="activeStop.position" (input)="updateStopPosition($event)" class="gg-slider" aria-label="Position" />
             </div>
           </div>
         }

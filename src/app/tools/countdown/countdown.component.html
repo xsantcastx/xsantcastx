@@ -20,11 +20,11 @@
       <div class="cd2-form">
         <div class="cd2-field">
           <label class="cd2-label">Date</label>
-          <input class="cd2-input" type="date" [(ngModel)]="targetDate" />
+          <input class="cd2-input" type="date" [(ngModel)]="targetDate" aria-label="Date" />
         </div>
         <div class="cd2-field">
           <label class="cd2-label">Time</label>
-          <input class="cd2-input" type="time" [(ngModel)]="targetTime" />
+          <input class="cd2-input" type="time" [(ngModel)]="targetTime" aria-label="Time" />
         </div>
         <div class="cd2-actions">
           <button class="cd2-btn" (click)="start()" [disabled]="!targetDate">{{ running ? 'Restart' : 'Start' }}</button>

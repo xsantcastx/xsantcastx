@@ -21,11 +21,11 @@
         <div class="sps-options">
           <div class="sps-field">
             <label class="sps-label">Base (px)</label>
-            <input class="sps-input" type="number" [(ngModel)]="base" (ngModelChange)="generate()" min="0" />
+            <input class="sps-input" type="number" [(ngModel)]="base" (ngModelChange)="generate()" min="0" aria-label="Base (px)" />
           </div>
           <div class="sps-field">
             <label class="sps-label">Steps</label>
-            <input class="sps-input" type="number" [(ngModel)]="steps" (ngModelChange)="generate()" min="1" max="20" />
+            <input class="sps-input" type="number" [(ngModel)]="steps" (ngModelChange)="generate()" min="1" max="20" aria-label="Steps" />
           </div>
           <div class="sps-field">
             <label class="sps-label">{{ translate('tools.common.mode') }}</label>
@@ -37,7 +37,7 @@
           @if (mode==='geometric') {
             <div class="sps-field">
               <label class="sps-label">Ratio</label>
-              <input class="sps-input" type="number" [(ngModel)]="ratio" (ngModelChange)="generate()" min="1" max="4" step="0.1" />
+              <input class="sps-input" type="number" [(ngModel)]="ratio" (ngModelChange)="generate()" min="1" max="4" step="0.1" aria-label="Ratio" />
             </div>
           }
         </div>

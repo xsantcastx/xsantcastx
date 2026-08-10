@@ -44,7 +44,7 @@
             type="color"
             class="cbs-color-input"
             [value]="selectedColor"
-            (input)="onPickerChange($any($event.target).value)"
+            (input)="onPickerChange($any($event.target).value)" aria-label="Select Color picker"
             />
           <input
             type="text"
@@ -53,7 +53,7 @@
             (input)="onHexInput()"
             placeholder="#e74c3c"
             spellcheck="false"
-            maxlength="7"
+            maxlength="7" aria-label="Select Color hex value"
             />
         </div>
       </div>
@@ -100,7 +100,7 @@
             type="color"
             class="cbs-color-input"
             [value]="textColor"
-            (input)="onTextPickerChange($any($event.target).value)"
+            (input)="onTextPickerChange($any($event.target).value)" aria-label="Text Color picker"
             />
           <input
             type="text"
@@ -109,7 +109,7 @@
             (input)="onTextColorInput()"
             placeholder="#ffffff"
             spellcheck="false"
-            maxlength="7"
+            maxlength="7" aria-label="Text Color hex value"
             />
         </div>
       </div>
@@ -120,7 +120,7 @@
             type="color"
             class="cbs-color-input"
             [value]="bgColor"
-            (input)="onBgPickerChange($any($event.target).value)"
+            (input)="onBgPickerChange($any($event.target).value)" aria-label="Background Color picker"
             />
           <input
             type="text"
@@ -129,7 +129,7 @@
             (input)="onBgColorInput()"
             placeholder="#e74c3c"
             spellcheck="false"
-            maxlength="7"
+            maxlength="7" aria-label="Background Color hex value"
             />
         </div>
       </div>
@@ -139,7 +139,7 @@
           type="text"
           class="cbs-text-input"
           [(ngModel)]="sampleText"
-          placeholder="Enter sample text..."
+          placeholder="Enter sample text..." aria-label="Sample Text"
           />
       </div>
       <button class="cbs-btn" (click)="computeContrast()">Check Contrast</button>
@@ -202,7 +202,7 @@
       <div class="cbs-image-workspace">
         <div class="cbs-filter-bar">
           <label class="cbs-label">Filter</label>
-          <select class="cbs-select" [(ngModel)]="selectedFilter" (ngModelChange)="onFilterChange()">
+          <select class="cbs-select" [(ngModel)]="selectedFilter" (ngModelChange)="onFilterChange()" aria-label="Filter">
             @for (opt of filterOptions; track opt) {
               <option [value]="opt.key">{{ opt.label }}</option>
             }

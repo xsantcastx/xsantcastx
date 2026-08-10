@@ -141,7 +141,7 @@
                 <span class="cf-control-group__value">{{ dropShadow.x }}px</span>
               </div>
               <input type="range" min="-50" max="50" step="1"
-                [value]="dropShadow.x" (input)="onDropShadowChange('x', $event)" class="cf-slider" />
+                [value]="dropShadow.x" (input)="onDropShadowChange('x', $event)" class="cf-slider" aria-label="Offset X" />
             </div>
             <div class="cf-control-group">
               <div class="cf-control-group__top">
@@ -149,7 +149,7 @@
                 <span class="cf-control-group__value">{{ dropShadow.y }}px</span>
               </div>
               <input type="range" min="-50" max="50" step="1"
-                [value]="dropShadow.y" (input)="onDropShadowChange('y', $event)" class="cf-slider" />
+                [value]="dropShadow.y" (input)="onDropShadowChange('y', $event)" class="cf-slider" aria-label="Offset Y" />
             </div>
             <div class="cf-control-group">
               <div class="cf-control-group__top">
@@ -157,14 +157,14 @@
                 <span class="cf-control-group__value">{{ dropShadow.blur }}px</span>
               </div>
               <input type="range" min="0" max="50" step="1"
-                [value]="dropShadow.blur" (input)="onDropShadowChange('blur', $event)" class="cf-slider" />
+                [value]="dropShadow.blur" (input)="onDropShadowChange('blur', $event)" class="cf-slider" aria-label="Blur" />
             </div>
             <div class="cf-control-group">
               <div class="cf-control-group__top">
                 <label class="cf-control-group__label">Color</label>
                 <span class="cf-control-group__value cf-color-swatch" [style.background]="dropShadow.color"></span>
               </div>
-              <input type="color" [value]="dropShadow.color" (input)="onDropShadowChange('color', $event)" class="cf-color-input" />
+              <input type="color" [value]="dropShadow.color" (input)="onDropShadowChange('color', $event)" class="cf-color-input" aria-label="Color" />
             </div>
           </div>
         }

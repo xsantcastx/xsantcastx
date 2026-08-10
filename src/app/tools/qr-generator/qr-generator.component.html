@@ -102,15 +102,15 @@
           <div class="qr-panel__body qr-form-fields">
             <div class="qr-field">
               <label class="qr-field__label">To</label>
-              <input type="email" class="qr-input" [(ngModel)]="emailTo" (ngModelChange)="onInput()" placeholder="recipient@example.com" />
+              <input type="email" class="qr-input" [(ngModel)]="emailTo" (ngModelChange)="onInput()" placeholder="recipient@example.com" aria-label="To" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Subject</label>
-              <input type="text" class="qr-input" [(ngModel)]="emailSubject" (ngModelChange)="onInput()" placeholder="Email subject" />
+              <input type="text" class="qr-input" [(ngModel)]="emailSubject" (ngModelChange)="onInput()" placeholder="Email subject" aria-label="Subject" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Body</label>
-              <textarea class="qr-textarea qr-textarea--sm" [(ngModel)]="emailBody" (ngModelChange)="onInput()" placeholder="Email body text..."></textarea>
+              <textarea class="qr-textarea qr-textarea--sm" [(ngModel)]="emailBody" (ngModelChange)="onInput()" placeholder="Email body text..." aria-label="Body"></textarea>
             </div>
           </div>
         }
@@ -120,11 +120,11 @@
           <div class="qr-panel__body qr-form-fields">
             <div class="qr-field">
               <label class="qr-field__label">Network Name (SSID)</label>
-              <input type="text" class="qr-input" [(ngModel)]="wifi.ssid" (ngModelChange)="onInput()" placeholder="My WiFi Network" />
+              <input type="text" class="qr-input" [(ngModel)]="wifi.ssid" (ngModelChange)="onInput()" placeholder="My WiFi Network" aria-label="Network Name (SSID)" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Password</label>
-              <input type="text" class="qr-input" [(ngModel)]="wifi.password" (ngModelChange)="onInput()" placeholder="Network password" />
+              <input type="text" class="qr-input" [(ngModel)]="wifi.password" (ngModelChange)="onInput()" placeholder="Network password" aria-label="Password" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Encryption</label>
@@ -150,28 +150,28 @@
             <div class="qr-field-row">
               <div class="qr-field">
                 <label class="qr-field__label">First Name</label>
-                <input type="text" class="qr-input" [(ngModel)]="vcard.firstName" (ngModelChange)="onInput()" placeholder="John" />
+                <input type="text" class="qr-input" [(ngModel)]="vcard.firstName" (ngModelChange)="onInput()" placeholder="John" aria-label="First Name" />
               </div>
               <div class="qr-field">
                 <label class="qr-field__label">Last Name</label>
-                <input type="text" class="qr-input" [(ngModel)]="vcard.lastName" (ngModelChange)="onInput()" placeholder="Doe" />
+                <input type="text" class="qr-input" [(ngModel)]="vcard.lastName" (ngModelChange)="onInput()" placeholder="Doe" aria-label="Last Name" />
               </div>
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Phone</label>
-              <input type="tel" class="qr-input" [(ngModel)]="vcard.phone" (ngModelChange)="onInput()" placeholder="+1 555 123 4567" />
+              <input type="tel" class="qr-input" [(ngModel)]="vcard.phone" (ngModelChange)="onInput()" placeholder="+1 555 123 4567" aria-label="Phone" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Email</label>
-              <input type="email" class="qr-input" [(ngModel)]="vcard.email" (ngModelChange)="onInput()" placeholder="john@example.com" />
+              <input type="email" class="qr-input" [(ngModel)]="vcard.email" (ngModelChange)="onInput()" placeholder="john@example.com" aria-label="Email" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Organization</label>
-              <input type="text" class="qr-input" [(ngModel)]="vcard.organization" (ngModelChange)="onInput()" placeholder="Acme Inc." />
+              <input type="text" class="qr-input" [(ngModel)]="vcard.organization" (ngModelChange)="onInput()" placeholder="Acme Inc." aria-label="Organization" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Website</label>
-              <input type="url" class="qr-input" [(ngModel)]="vcard.url" (ngModelChange)="onInput()" placeholder="https://example.com" />
+              <input type="url" class="qr-input" [(ngModel)]="vcard.url" (ngModelChange)="onInput()" placeholder="https://example.com" aria-label="Website" />
             </div>
           </div>
         }
@@ -197,7 +197,7 @@
               max="500"
               step="10"
               [(ngModel)]="qrSize"
-              (ngModelChange)="onSettingsChange()"
+              (ngModelChange)="onSettingsChange()" aria-label="Size"
               />
           </div>
 
@@ -206,14 +206,14 @@
             <div class="qr-color-field">
               <label class="qr-option-label">Foreground</label>
               <div class="qr-color-picker">
-                <input type="color" [(ngModel)]="fgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" />
+                <input type="color" [(ngModel)]="fgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" aria-label="Foreground" />
                 <span class="qr-color-value">{{ fgColor }}</span>
               </div>
             </div>
             <div class="qr-color-field">
               <label class="qr-option-label">Background</label>
               <div class="qr-color-picker">
-                <input type="color" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" />
+                <input type="color" [(ngModel)]="bgColor" (ngModelChange)="onSettingsChange()" class="qr-color-input" aria-label="Background" />
                 <span class="qr-color-value">{{ bgColor }}</span>
               </div>
             </div>

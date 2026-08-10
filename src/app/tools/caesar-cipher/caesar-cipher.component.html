@@ -101,7 +101,7 @@
               max="25"
               [(ngModel)]="shift"
               (ngModelChange)="onShiftChange()"
-              class="cc2-slider"
+              class="cc2-slider" aria-label="Shift Amount"
               />
             <div class="cc2-shift-actions">
               <button class="cc2-btn-ghost cc2-btn-sm" [class.cc2-btn-ghost--active]="shift === 13" (click)="setROT13()">

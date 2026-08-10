@@ -169,7 +169,7 @@
               <label class="fp-control-group__label">Font Size</label>
               <span class="fp-control-group__value">{{ headingSize }}px</span>
             </div>
-            <input type="range" min="16" max="96" step="1" [value]="headingSize" (input)="updateHeadingSize($event)" class="fp-slider" />
+            <input type="range" min="16" max="96" step="1" [value]="headingSize" (input)="updateHeadingSize($event)" class="fp-slider" aria-label="Font Size" />
           </div>
 
           <div class="fp-control-group">
@@ -177,7 +177,7 @@
               <label class="fp-control-group__label">Font Weight</label>
               <span class="fp-control-group__value">{{ headingWeight }}</span>
             </div>
-            <input type="range" min="100" max="900" step="100" [value]="headingWeight" (input)="updateHeadingWeight($event)" class="fp-slider" />
+            <input type="range" min="100" max="900" step="100" [value]="headingWeight" (input)="updateHeadingWeight($event)" class="fp-slider" aria-label="Font Weight" />
           </div>
 
           <div class="fp-control-group">
@@ -185,7 +185,7 @@
               <label class="fp-control-group__label">Line Height</label>
               <span class="fp-control-group__value">{{ headingLineHeight }}</span>
             </div>
-            <input type="range" min="0.8" max="2.0" step="0.05" [value]="headingLineHeight" (input)="updateHeadingLineHeight($event)" class="fp-slider" />
+            <input type="range" min="0.8" max="2.0" step="0.05" [value]="headingLineHeight" (input)="updateHeadingLineHeight($event)" class="fp-slider" aria-label="Line Height" />
           </div>
 
           <div class="fp-control-group">
@@ -193,7 +193,7 @@
               <label class="fp-control-group__label">Letter Spacing</label>
               <span class="fp-control-group__value">{{ headingLetterSpacing }}em</span>
             </div>
-            <input type="range" min="-0.1" max="0.3" step="0.01" [value]="headingLetterSpacing" (input)="updateHeadingLetterSpacing($event)" class="fp-slider" />
+            <input type="range" min="-0.1" max="0.3" step="0.01" [value]="headingLetterSpacing" (input)="updateHeadingLetterSpacing($event)" class="fp-slider" aria-label="Letter Spacing" />
           </div>
         </div>
       </div>
@@ -210,7 +210,7 @@
               <label class="fp-control-group__label">Font Size</label>
               <span class="fp-control-group__value">{{ bodySize }}px</span>
             </div>
-            <input type="range" min="10" max="32" step="1" [value]="bodySize" (input)="updateBodySize($event)" class="fp-slider" />
+            <input type="range" min="10" max="32" step="1" [value]="bodySize" (input)="updateBodySize($event)" class="fp-slider" aria-label="Font Size" />
           </div>
 
           <div class="fp-control-group">
@@ -218,7 +218,7 @@
               <label class="fp-control-group__label">Font Weight</label>
               <span class="fp-control-group__value">{{ bodyWeight }}</span>
             </div>
-            <input type="range" min="100" max="900" step="100" [value]="bodyWeight" (input)="updateBodyWeight($event)" class="fp-slider" />
+            <input type="range" min="100" max="900" step="100" [value]="bodyWeight" (input)="updateBodyWeight($event)" class="fp-slider" aria-label="Font Weight" />
           </div>
 
           <div class="fp-control-group">
@@ -226,7 +226,7 @@
               <label class="fp-control-group__label">Line Height</label>
               <span class="fp-control-group__value">{{ bodyLineHeight }}</span>
             </div>
-            <input type="range" min="1.0" max="2.5" step="0.05" [value]="bodyLineHeight" (input)="updateBodyLineHeight($event)" class="fp-slider" />
+            <input type="range" min="1.0" max="2.5" step="0.05" [value]="bodyLineHeight" (input)="updateBodyLineHeight($event)" class="fp-slider" aria-label="Line Height" />
           </div>
 
           <div class="fp-control-group">
@@ -234,7 +234,7 @@
               <label class="fp-control-group__label">Letter Spacing</label>
               <span class="fp-control-group__value">{{ bodyLetterSpacing }}em</span>
             </div>
-            <input type="range" min="-0.05" max="0.2" step="0.005" [value]="bodyLetterSpacing" (input)="updateBodyLetterSpacing($event)" class="fp-slider" />
+            <input type="range" min="-0.05" max="0.2" step="0.005" [value]="bodyLetterSpacing" (input)="updateBodyLetterSpacing($event)" class="fp-slider" aria-label="Letter Spacing" />
           </div>
         </div>
       </div>

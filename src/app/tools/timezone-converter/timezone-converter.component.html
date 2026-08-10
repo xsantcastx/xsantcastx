@@ -21,15 +21,15 @@
         <div class="tz-form">
           <div class="tz-field">
             <label class="tz-label">Date</label>
-            <input class="tz-input" type="date" [(ngModel)]="inputDate" />
+            <input class="tz-input" type="date" [(ngModel)]="inputDate" aria-label="Date" />
           </div>
           <div class="tz-field">
             <label class="tz-label">Time</label>
-            <input class="tz-input" type="time" [(ngModel)]="inputTime" />
+            <input class="tz-input" type="time" [(ngModel)]="inputTime" aria-label="Time" />
           </div>
           <div class="tz-field">
             <label class="tz-label">From</label>
-            <select class="tz-select" [(ngModel)]="sourceTimezone">
+            <select class="tz-select" [(ngModel)]="sourceTimezone" aria-label="From">
               @for (tz of timezones; track tz) {
                 <option [value]="tz">{{ tz }}</option>
               }
@@ -37,7 +37,7 @@
           </div>
           <div class="tz-field">
             <label class="tz-label">To</label>
-            <select class="tz-select" [(ngModel)]="targetTimezone">
+            <select class="tz-select" [(ngModel)]="targetTimezone" aria-label="To">
               @for (tz of timezones; track tz) {
                 <option [value]="tz">{{ tz }}</option>
               }

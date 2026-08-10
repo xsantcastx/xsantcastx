@@ -48,7 +48,7 @@
       </div>
       <div class="ssl-input-bar__port">
         <label class="ssl-input-bar__port-label">Port</label>
-        <select class="ssl-input-bar__port-select" [(ngModel)]="port" [disabled]="scanning">
+        <select class="ssl-input-bar__port-select" [(ngModel)]="port" [disabled]="scanning" aria-label="Port">
           @for (p of availablePorts; track p) {
             <option [value]="p">{{ p }}</option>
           }

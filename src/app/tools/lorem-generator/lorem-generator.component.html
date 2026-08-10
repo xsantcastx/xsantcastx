@@ -69,7 +69,7 @@
                 [(ngModel)]="amount"
                 (ngModelChange)="onAmountChange()"
                 [min]="1"
-                [max]="maxAmount"
+                [max]="maxAmount" aria-label="Amount"
                 />
               <span class="lg-amount-hint">{{ modeLabel }} (1&ndash;{{ maxAmount }})</span>
             </div>

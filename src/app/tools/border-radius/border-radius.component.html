@@ -68,11 +68,11 @@
         <div class="br-preview-settings">
           <div class="br-inline-control">
             <label class="br-inline-control__label">Background</label>
-            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="br-color-input" />
+            <input type="color" [value]="previewBgColor" (input)="onPreviewBgChange($event)" class="br-color-input" aria-label="Background" />
           </div>
           <div class="br-inline-control">
             <label class="br-inline-control__label">Box Color</label>
-            <input type="color" [value]="previewBoxColor" (input)="onPreviewBoxColorChange($event)" class="br-color-input" />
+            <input type="color" [value]="previewBoxColor" (input)="onPreviewBoxColorChange($event)" class="br-color-input" aria-label="Box Color" />
           </div>
         </div>
       </div>
@@ -145,7 +145,7 @@
                 <span class="br-control-group__value">{{ corners.topLeft }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="sliderMax" step="1"
-                [value]="corners.topLeft" (input)="onCornerChange('topLeft', $event)" class="br-slider" />
+                [value]="corners.topLeft" (input)="onCornerChange('topLeft', $event)" class="br-slider" aria-label="Top Left" />
             </div>
             <!-- Top Right -->
             <div class="br-control-group">
@@ -154,7 +154,7 @@
                 <span class="br-control-group__value">{{ corners.topRight }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="sliderMax" step="1"
-                [value]="corners.topRight" (input)="onCornerChange('topRight', $event)" class="br-slider" />
+                [value]="corners.topRight" (input)="onCornerChange('topRight', $event)" class="br-slider" aria-label="Top Right" />
             </div>
             <!-- Bottom Right -->
             <div class="br-control-group">
@@ -163,7 +163,7 @@
                 <span class="br-control-group__value">{{ corners.bottomRight }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="sliderMax" step="1"
-                [value]="corners.bottomRight" (input)="onCornerChange('bottomRight', $event)" class="br-slider" />
+                [value]="corners.bottomRight" (input)="onCornerChange('bottomRight', $event)" class="br-slider" aria-label="Bottom Right" />
             </div>
             <!-- Bottom Left -->
             <div class="br-control-group">
@@ -172,7 +172,7 @@
                 <span class="br-control-group__value">{{ corners.bottomLeft }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="sliderMax" step="1"
-                [value]="corners.bottomLeft" (input)="onCornerChange('bottomLeft', $event)" class="br-slider" />
+                [value]="corners.bottomLeft" (input)="onCornerChange('bottomLeft', $event)" class="br-slider" aria-label="Bottom Left" />
             </div>
           </div>
         }
@@ -188,7 +188,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.topLeftH }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.topLeftH" (input)="onAdvancedCornerChange('topLeftH', $event)" class="br-slider" />
+                [value]="advancedCorners.topLeftH" (input)="onAdvancedCornerChange('topLeftH', $event)" class="br-slider" aria-label="Top Left H" />
             </div>
             <div class="br-control-group">
               <div class="br-control-group__top">
@@ -196,7 +196,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.topLeftV }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.topLeftV" (input)="onAdvancedCornerChange('topLeftV', $event)" class="br-slider" />
+                [value]="advancedCorners.topLeftV" (input)="onAdvancedCornerChange('topLeftV', $event)" class="br-slider" aria-label="Top Left V" />
             </div>
             <!-- Top Right H/V -->
             <div class="br-control-group">
@@ -205,7 +205,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.topRightH }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.topRightH" (input)="onAdvancedCornerChange('topRightH', $event)" class="br-slider" />
+                [value]="advancedCorners.topRightH" (input)="onAdvancedCornerChange('topRightH', $event)" class="br-slider" aria-label="Top Right H" />
             </div>
             <div class="br-control-group">
               <div class="br-control-group__top">
@@ -213,7 +213,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.topRightV }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.topRightV" (input)="onAdvancedCornerChange('topRightV', $event)" class="br-slider" />
+                [value]="advancedCorners.topRightV" (input)="onAdvancedCornerChange('topRightV', $event)" class="br-slider" aria-label="Top Right V" />
             </div>
             <!-- Bottom Right H/V -->
             <div class="br-control-group">
@@ -222,7 +222,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.bottomRightH }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.bottomRightH" (input)="onAdvancedCornerChange('bottomRightH', $event)" class="br-slider" />
+                [value]="advancedCorners.bottomRightH" (input)="onAdvancedCornerChange('bottomRightH', $event)" class="br-slider" aria-label="Bottom Right H" />
             </div>
             <div class="br-control-group">
               <div class="br-control-group__top">
@@ -230,7 +230,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.bottomRightV }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.bottomRightV" (input)="onAdvancedCornerChange('bottomRightV', $event)" class="br-slider" />
+                [value]="advancedCorners.bottomRightV" (input)="onAdvancedCornerChange('bottomRightV', $event)" class="br-slider" aria-label="Bottom Right V" />
             </div>
             <!-- Bottom Left H/V -->
             <div class="br-control-group">
@@ -239,7 +239,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.bottomLeftH }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.bottomLeftH" (input)="onAdvancedCornerChange('bottomLeftH', $event)" class="br-slider" />
+                [value]="advancedCorners.bottomLeftH" (input)="onAdvancedCornerChange('bottomLeftH', $event)" class="br-slider" aria-label="Bottom Left H" />
             </div>
             <div class="br-control-group">
               <div class="br-control-group__top">
@@ -247,7 +247,7 @@
                 <span class="br-control-group__value">{{ advancedCorners.bottomLeftV }}{{ unit }}</span>
               </div>
               <input type="range" min="0" [max]="advancedSliderMax" step="1"
-                [value]="advancedCorners.bottomLeftV" (input)="onAdvancedCornerChange('bottomLeftV', $event)" class="br-slider" />
+                [value]="advancedCorners.bottomLeftV" (input)="onAdvancedCornerChange('bottomLeftV', $event)" class="br-slider" aria-label="Bottom Left V" />
             </div>
           </div>
         }

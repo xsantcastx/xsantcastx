@@ -113,7 +113,7 @@
               step="1"
               [value]="rows"
               (input)="onRowsChange(+$any($event.target).value)"
-              class="gg-slider"
+              class="gg-slider" aria-label="Rows"
               />
           </div>
 
@@ -130,7 +130,7 @@
               step="1"
               [value]="columns"
               (input)="onColumnsChange(+$any($event.target).value)"
-              class="gg-slider"
+              class="gg-slider" aria-label="Columns"
               />
           </div>
 
@@ -147,7 +147,7 @@
               step="1"
               [value]="gap"
               (input)="onGapChange($event)"
-              class="gg-slider"
+              class="gg-slider" aria-label="gap"
               />
           </div>
         </div>
@@ -220,7 +220,7 @@
                     class="gg-areas-cell"
                     [value]="cell"
                     (input)="updateAreaCell(ri, ci, $any($event.target).value)"
-                    placeholder="."
+                    placeholder="." aria-label="Template Areas"
                     />
                 }
               }
@@ -282,7 +282,7 @@
                 class="gg-text-input"
                 [value]="selectedItem.label"
                 (input)="updateItemField('label', $any($event.target).value)"
-                placeholder="Item name"
+                placeholder="Item name" aria-label="Label"
                 />
             </div>
             <!-- Area Name (when areas enabled) -->
@@ -294,7 +294,7 @@
                   class="gg-text-input"
                   [value]="selectedItem.areaName"
                   (input)="updateItemField('areaName', $any($event.target).value)"
-                  placeholder="area-name"
+                  placeholder="area-name" aria-label="grid-area"
                   />
               </div>
             }
@@ -312,7 +312,7 @@
                   step="1"
                   [value]="selectedItem.colStart"
                   (input)="updateItemNumericField('colStart', $event)"
-                  class="gg-slider"
+                  class="gg-slider" aria-label="col-start"
                   />
               </div>
             }
@@ -330,7 +330,7 @@
                   step="1"
                   [value]="selectedItem.colSpan"
                   (input)="updateItemNumericField('colSpan', $event)"
-                  class="gg-slider"
+                  class="gg-slider" aria-label="col-span"
                   />
               </div>
             }
@@ -348,7 +348,7 @@
                   step="1"
                   [value]="selectedItem.rowStart"
                   (input)="updateItemNumericField('rowStart', $event)"
-                  class="gg-slider"
+                  class="gg-slider" aria-label="row-start"
                   />
               </div>
             }
@@ -366,7 +366,7 @@
                   step="1"
                   [value]="selectedItem.rowSpan"
                   (input)="updateItemNumericField('rowSpan', $event)"
-                  class="gg-slider"
+                  class="gg-slider" aria-label="row-span"
                   />
               </div>
             }

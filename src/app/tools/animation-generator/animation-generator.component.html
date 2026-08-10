@@ -74,15 +74,15 @@
         <div class="ag-preview-settings">
           <div class="ag-inline-control">
             <label class="ag-inline-control__label">Background</label>
-            <input type="color" [value]="previewBgColor" (input)="previewBgColor = $any($event.target).value" class="ag-color-input" />
+            <input type="color" [value]="previewBgColor" (input)="previewBgColor = $any($event.target).value" class="ag-color-input" aria-label="Background" />
           </div>
           <div class="ag-inline-control">
             <label class="ag-inline-control__label">Box Color</label>
-            <input type="color" [value]="previewBoxColor" (input)="previewBoxColor = $any($event.target).value" class="ag-color-input" />
+            <input type="color" [value]="previewBoxColor" (input)="previewBoxColor = $any($event.target).value" class="ag-color-input" aria-label="Box Color" />
           </div>
           <div class="ag-inline-control">
             <label class="ag-inline-control__label">Radius</label>
-            <input type="range" min="0" max="100" step="1" [value]="previewBorderRadius" (input)="previewBorderRadius = +$any($event.target).value" class="ag-slider" />
+            <input type="range" min="0" max="100" step="1" [value]="previewBorderRadius" (input)="previewBorderRadius = +$any($event.target).value" class="ag-slider" aria-label="Radius" />
             <span class="ag-slider-value">{{ previewBorderRadius }}px</span>
           </div>
         </div>
@@ -127,7 +127,7 @@
           <!-- Animation Name -->
           <div class="ag-control-group ag-control-group--full">
             <label class="ag-control-group__label">Animation Name</label>
-            <input type="text" class="ag-text-input" [(ngModel)]="animationName" placeholder="my-animation" />
+            <input type="text" class="ag-text-input" [(ngModel)]="animationName" placeholder="my-animation" aria-label="Animation Name" />
           </div>
 
           <!-- Duration -->
@@ -136,7 +136,7 @@
               <label class="ag-control-group__label">Duration</label>
               <span class="ag-control-group__value">{{ duration }}s</span>
             </div>
-            <input type="range" min="0.05" max="10" step="0.05" [value]="duration" (input)="onDurationChange($event)" class="ag-slider" />
+            <input type="range" min="0.05" max="10" step="0.05" [value]="duration" (input)="onDurationChange($event)" class="ag-slider" aria-label="Duration" />
           </div>
 
           <!-- Delay -->
@@ -145,14 +145,14 @@
               <label class="ag-control-group__label">Delay</label>
               <span class="ag-control-group__value">{{ delay }}s</span>
             </div>
-            <input type="range" min="0" max="5" step="0.1" [value]="delay" (input)="onDelayChange($event)" class="ag-slider" />
+            <input type="range" min="0" max="5" step="0.1" [value]="delay" (input)="onDelayChange($event)" class="ag-slider" aria-label="Delay" />
           </div>
 
           <!-- Timing Function -->
           <div class="ag-control-group">
             <label class="ag-control-group__label">Timing Function</label>
             <div class="ag-select-wrap">
-              <select class="ag-select" [ngModel]="timingFunction" (ngModelChange)="onTimingFunctionChange($event)">
+              <select class="ag-select" [ngModel]="timingFunction" (ngModelChange)="onTimingFunctionChange($event)" aria-label="Timing Function">
                 @for (tf of timingFunctions; track tf) {
                   <option [value]="tf">{{ tf }}</option>
                 }
@@ -164,7 +164,7 @@
           @if (timingFunction === 'cubic-bezier') {
             <div class="ag-control-group">
               <label class="ag-control-group__label">Cubic Bezier</label>
-              <input type="text" class="ag-text-input" [(ngModel)]="customCubicBezier" placeholder="0.25, 0.1, 0.25, 1.0" />
+              <input type="text" class="ag-text-input" [(ngModel)]="customCubicBezier" placeholder="0.25, 0.1, 0.25, 1.0" aria-label="Cubic Bezier" />
             </div>
           }
 
@@ -179,7 +179,7 @@
                 (ngModelChange)="onIterationCountChange($event)"
                 [disabled]="iterationCount === 'infinite'"
                 min="1"
-                max="100"
+                max="100" aria-label="Iteration Count"
                 />
               <button
                 type="button"
@@ -194,7 +194,7 @@
           <div class="ag-control-group">
             <label class="ag-control-group__label">Direction</label>
             <div class="ag-select-wrap">
-              <select class="ag-select" [ngModel]="direction" (ngModelChange)="onDirectionChange($event)">
+              <select class="ag-select" [ngModel]="direction" (ngModelChange)="onDirectionChange($event)" aria-label="Direction">
                 @for (dir of directions; track dir) {
                   <option [value]="dir">{{ dir }}</option>
                 }
@@ -210,7 +210,7 @@
           <span class="ag-card__label">Keyframes</span>
           @if (unusedPercents.length > 0) {
             <div class="ag-add-keyframe">
-              <select class="ag-select ag-select--sm" #addKfSelect>
+              <select class="ag-select ag-select--sm" #addKfSelect aria-label="Keyframes">
                 @for (p of unusedPercents; track p) {
                   <option [value]="p">{{ p }}%</option>
                 }
@@ -266,7 +266,7 @@
                 <label class="ag-control-group__label">Translate X</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.translateX }}px</span>
               </div>
-              <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateX" (input)="updateKeyframeField('translateX', $event)" class="ag-slider" />
+              <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateX" (input)="updateKeyframeField('translateX', $event)" class="ag-slider" aria-label="Translate X" />
             </div>
             <!-- Translate Y -->
             <div class="ag-control-group">
@@ -274,7 +274,7 @@
                 <label class="ag-control-group__label">Translate Y</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.translateY }}px</span>
               </div>
-              <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateY" (input)="updateKeyframeField('translateY', $event)" class="ag-slider" />
+              <input type="range" min="-200" max="200" step="1" [value]="activeKeyframe.translateY" (input)="updateKeyframeField('translateY', $event)" class="ag-slider" aria-label="Translate Y" />
             </div>
             <!-- Rotate -->
             <div class="ag-control-group">
@@ -282,7 +282,7 @@
                 <label class="ag-control-group__label">Rotate</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.rotate }}&deg;</span>
               </div>
-              <input type="range" min="-360" max="360" step="1" [value]="activeKeyframe.rotate" (input)="updateKeyframeField('rotate', $event)" class="ag-slider" />
+              <input type="range" min="-360" max="360" step="1" [value]="activeKeyframe.rotate" (input)="updateKeyframeField('rotate', $event)" class="ag-slider" aria-label="Rotate" />
             </div>
             <!-- Scale X -->
             <div class="ag-control-group">
@@ -290,7 +290,7 @@
                 <label class="ag-control-group__label">Scale X</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.scaleX }}</span>
               </div>
-              <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleX" (input)="updateKeyframeField('scaleX', $event)" class="ag-slider" />
+              <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleX" (input)="updateKeyframeField('scaleX', $event)" class="ag-slider" aria-label="Scale X" />
             </div>
             <!-- Scale Y -->
             <div class="ag-control-group">
@@ -298,7 +298,7 @@
                 <label class="ag-control-group__label">Scale Y</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.scaleY }}</span>
               </div>
-              <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleY" (input)="updateKeyframeField('scaleY', $event)" class="ag-slider" />
+              <input type="range" min="0" max="3" step="0.05" [value]="activeKeyframe.scaleY" (input)="updateKeyframeField('scaleY', $event)" class="ag-slider" aria-label="Scale Y" />
             </div>
             <!-- Opacity -->
             <div class="ag-control-group">
@@ -306,13 +306,13 @@
                 <label class="ag-control-group__label">Opacity</label>
                 <span class="ag-control-group__value">{{ activeKeyframe.opacity }}</span>
               </div>
-              <input type="range" min="0" max="1" step="0.01" [value]="activeKeyframe.opacity" (input)="updateKeyframeField('opacity', $event)" class="ag-slider" />
+              <input type="range" min="0" max="1" step="0.01" [value]="activeKeyframe.opacity" (input)="updateKeyframeField('opacity', $event)" class="ag-slider" aria-label="Opacity" />
             </div>
             <!-- Background Color -->
             <div class="ag-control-group ag-control-group--full">
               <label class="ag-control-group__label">Background Color</label>
               <div class="ag-color-row">
-                <input type="color" [value]="activeKeyframe.backgroundColor" (input)="updateKeyframeColor($event)" class="ag-color-input" />
+                <input type="color" [value]="activeKeyframe.backgroundColor" (input)="updateKeyframeColor($event)" class="ag-color-input" aria-label="Background Color" />
                 <span class="ag-color-hex">{{ activeKeyframe.backgroundColor }}</span>
               </div>
             </div>

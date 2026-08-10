@@ -59,15 +59,15 @@
         </h2>
         <div class="pb-field">
           <label class="pb-label">Width <span class="pb-label__val">{{ width }}px</span></label>
-          <input type="range" class="pb-slider" min="100" max="800" [(ngModel)]="width">
+          <input type="range" class="pb-slider" min="100" max="800" [(ngModel)]="width" aria-label="Width">
         </div>
         <div class="pb-field">
           <label class="pb-label">Height <span class="pb-label__val">{{ height }}px</span></label>
-          <input type="range" class="pb-slider" min="4" max="60" [(ngModel)]="height">
+          <input type="range" class="pb-slider" min="4" max="60" [(ngModel)]="height" aria-label="Height">
         </div>
         <div class="pb-field">
           <label class="pb-label">Border Radius <span class="pb-label__val">{{ borderRadius }}px</span></label>
-          <input type="range" class="pb-slider" min="0" max="30" [(ngModel)]="borderRadius">
+          <input type="range" class="pb-slider" min="0" max="30" [(ngModel)]="borderRadius" aria-label="Border Radius">
         </div>
       </div>
 
@@ -79,19 +79,19 @@
         </h2>
         <div class="pb-color-row">
           <label class="pb-label">Background</label>
-          <input type="color" class="pb-color-input" [(ngModel)]="bgColor">
-          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="bgColor">
+          <input type="color" class="pb-color-input" [(ngModel)]="bgColor" aria-label="Background color picker">
+          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="bgColor" aria-label="Background hex value">
         </div>
         <div class="pb-color-row">
           <label class="pb-label">Fill</label>
-          <input type="color" class="pb-color-input" [(ngModel)]="fillColor">
-          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="fillColor">
+          <input type="color" class="pb-color-input" [(ngModel)]="fillColor" aria-label="Fill color picker">
+          <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="fillColor" aria-label="Fill hex value">
         </div>
         @if (gradientFill) {
           <div class="pb-color-row">
             <label class="pb-label">Gradient End</label>
-            <input type="color" class="pb-color-input" [(ngModel)]="gradientColor">
-            <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="gradientColor">
+            <input type="color" class="pb-color-input" [(ngModel)]="gradientColor" aria-label="Gradient End color picker">
+            <input type="text" class="pb-text-input pb-text-input--color" [(ngModel)]="gradientColor" aria-label="Gradient End hex value">
           </div>
         }
       </div>
@@ -104,7 +104,7 @@
         </h2>
         <div class="pb-field">
           <label class="pb-label">Percentage <span class="pb-label__val">{{ fillPercentage }}%</span></label>
-          <input type="range" class="pb-slider" min="0" max="100" [(ngModel)]="fillPercentage">
+          <input type="range" class="pb-slider" min="0" max="100" [(ngModel)]="fillPercentage" aria-label="Percentage">
         </div>
         <div class="pb-toggle-row">
           <label class="pb-toggle">
@@ -121,7 +121,7 @@
         @if (animatedStripes) {
           <div class="pb-field">
             <label class="pb-label">Animation Speed <span class="pb-label__val">{{ animationSpeed }}s</span></label>
-            <input type="range" class="pb-slider" min="0.2" max="5" step="0.1" [(ngModel)]="animationSpeed">
+            <input type="range" class="pb-slider" min="0.2" max="5" step="0.1" [(ngModel)]="animationSpeed" aria-label="Animation Speed">
           </div>
         }
       </div>
