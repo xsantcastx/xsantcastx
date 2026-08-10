@@ -5,7 +5,7 @@ import { SITE_URL } from '../../seo.service';
   selector: 'app-embed-bar',
   template: `
     <div class="embed-bar">
-      <a [href]="siteUrl" target="_blank" rel="noopener" class="embed-bar__link">
+      <a [href]="siteUrl" target="_blank" rel="noopener noreferrer" class="embed-bar__link">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -13,7 +13,7 @@ import { SITE_URL } from '../../seo.service';
         </svg>
         Powered by <strong>xsantcastx</strong>
       </a>
-      <a [href]="siteUrl + '/tools'" target="_blank" rel="noopener" class="embed-bar__cta">
+      <a [href]="siteUrl + '/tools'" target="_blank" rel="noopener noreferrer" class="embed-bar__cta">
         Explore all tools
       </a>
     </div>

@@ -30,7 +30,7 @@
             </div>
             <div class="project-overlay">
               <div class="project-links">
-                <a [href]="project.liveUrl" target="_blank" rel="noopener" class="project-link live">
+                <a [href]="project.liveUrl" target="_blank" rel="noopener noreferrer" class="project-link live">
                   <i class="fas fa-external-link-alt" aria-hidden="true"></i>
                   <span>{{ translate('projects.live') }}</span>
                 </a>
@@ -38,7 +38,7 @@
                   <a
                     [href]="project.githubUrl"
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                     class="project-link github"
                     >
                     <i class="fab fa-github" aria-hidden="true"></i>
