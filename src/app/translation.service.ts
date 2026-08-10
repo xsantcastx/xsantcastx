@@ -671,6 +671,36 @@ export class TranslationService {
     'tools.tsPlayground.title2': { en: 'Playground', es: 'Tipos TS' },
     'tools.tsPlayground.subtitle': { en: 'Write TypeScript type definitions and see them explained. Explore utility types, generics, and conditional types interactively.', es: 'Escribe definiciones de tipos de TypeScript y consulta su explicación. Explora tipos utilitarios, genéricos y tipos condicionales de forma interactiva.' },
 
+    // Batch 9 — CSS generators (TranslationService was injected in an earlier
+    // pass, but their headers were still hardcoded English)
+    'tools.borderRadius.title': { en: 'Border Radius Generator', es: 'Generador de Border Radius' },
+    'tools.borderRadius.subtitle': { en: 'Visually design CSS border-radius with individual corner controls, advanced blob shapes, and one-click code export. No sign-up, runs entirely in your browser.', es: 'Diseña visualmente border-radius en CSS con controles por esquina, formas blob avanzadas y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.boxModel.title': { en: 'Box Model Visualizer', es: 'Visualizador del Modelo de Caja' },
+    'tools.boxModel.subtitle': { en: 'Interactive CSS box model diagram with live preview. Adjust margin, border, padding, and content dimensions to generate ready-to-use CSS code.', es: 'Diagrama interactivo del modelo de caja CSS con vista previa en vivo. Ajusta margin, border, padding y las dimensiones del contenido para generar código CSS listo para usar.' },
+
+    'tools.boxShadowGenerator.title': { en: 'Box Shadow Generator', es: 'Generador de Box Shadow' },
+    'tools.boxShadowGenerator.subtitle': { en: 'Visually design layered CSS box shadows with live preview and one-click code export. No sign-up, runs entirely in your browser.', es: 'Diseña visualmente sombras CSS en capas con vista previa en vivo y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.clipPath.title': { en: 'Clip-Path', es: 'Clip-Path' },
+    'tools.clipPath.title2': { en: 'Generator', es: 'Generador' },
+    'tools.clipPath.subtitle': { en: 'Visually design CSS clip-path shapes with drag handles, presets, and one-click code copy. 100% client-side.', es: 'Diseña visualmente formas clip-path en CSS con manejadores arrastrables, preajustes y copia de código con un clic. 100% en el cliente.' },
+
+    'tools.cssFilter.title': { en: 'CSS Filter Generator', es: 'Generador de Filtros CSS' },
+    'tools.cssFilter.subtitle': { en: 'Visually design CSS filters with live preview, presets, and one-click code export. Blur, brightness, contrast, grayscale, hue-rotate, and more. No sign-up, runs entirely in your browser.', es: 'Diseña visualmente filtros CSS con vista previa en vivo, preajustes y exportación de código con un clic. Blur, brightness, contrast, grayscale, hue-rotate y más. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.flexboxGenerator.title': { en: 'Flexbox Generator', es: 'Generador de Flexbox' },
+    'tools.flexboxGenerator.subtitle': { en: 'Visual CSS flexbox playground with live preview. Configure container and item properties, apply common layout presets, and export clean CSS code.', es: 'Laboratorio visual de flexbox CSS con vista previa en vivo. Configura las propiedades del contenedor y de los elementos, aplica preajustes de diseño comunes y exporta código CSS limpio.' },
+
+    'tools.gradientGenerator.title': { en: 'CSS Gradient Generator', es: 'Generador de Gradientes CSS' },
+    'tools.gradientGenerator.subtitle': { en: 'Create beautiful CSS gradients with a visual editor. Linear, radial and conic gradients with live preview and one-click code export. No sign-up, runs entirely in your browser.', es: 'Crea gradientes CSS atractivos con un editor visual. Gradientes lineales, radiales y cónicos con vista previa en vivo y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.gradientText.title': { en: 'Gradient Text Generator', es: 'Generador de Texto con Gradiente' },
+    'tools.gradientText.subtitle': { en: 'Apply stunning CSS gradient effects to text with live preview. Supports linear &amp; radial gradients, color stops, animation, and 10 curated presets.', es: 'Aplica efectos de gradiente CSS al texto con vista previa en vivo. Admite gradientes lineales &amp; radiales, paradas de color, animación y 10 preajustes curados.' },
+
+    'tools.gridGenerator.title': { en: 'CSS Grid Generator', es: 'Generador de CSS Grid' },
+    'tools.gridGenerator.subtitle': { en: 'Visual CSS Grid playground with live preview. Configure rows, columns, template tracks, grid areas, and per-item placement. Export clean CSS code instantly.', es: 'Laboratorio visual de CSS Grid con vista previa en vivo. Configura filas, columnas, pistas de plantilla, áreas de rejilla y la colocación de cada elemento. Exporta código CSS limpio al instante.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },
