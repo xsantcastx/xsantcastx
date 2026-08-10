@@ -1,16 +1,16 @@
 <div class="jt-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">JSON Tools</p>
-    <h1 class="tool-header__title">JSON Tree Viewer</h1>
-    <p class="tool-header__subtitle">Collapsible JSON tree viewer with type badges and search. Paste JSON to explore its structure.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.jsonTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.jsonTree.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.jsonTree.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -19,7 +19,7 @@
       <div class="jt-panel">
         <div class="jt-panel__header">
           <span class="jt-panel__title">JSON Input</span>
-          <button class="jt-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+          <button class="jt-btn-ghost" (click)="clearAll()" [disabled]="!input">{{ translate('tools.common.clear') }}</button>
         </div>
         <textarea class="jt-textarea" [(ngModel)]="input" (ngModelChange)="parse()" placeholder='{"key": "value", "array": [1,2,3]}' spellcheck="false"></textarea>
       </div>

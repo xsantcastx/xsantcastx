@@ -1,16 +1,16 @@
 <div class="hm-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Code Formatters</p>
-    <h1 class="tool-header__title">HTML Minifier <span class="tool-header__amp">&</span> Beautifier</h1>
-    <p class="tool-header__subtitle">Minify or beautify HTML, remove comments and whitespace, see size stats.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.codeFormatters') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.htmlMinifier.title') }} <span class="tool-header__amp">&</span> {{ translate('tools.htmlMinifier.title2') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.htmlMinifier.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -18,22 +18,22 @@
     <div class="hm-col">
       <div class="hm-panel">
         <div class="hm-panel__header">
-          <span class="hm-panel__title">Input</span>
+          <span class="hm-panel__title">{{ translate('tools.common.input') }}</span>
           <div class="hm-panel__actions">
             @if (inputSize) {
               <span class="hm-char-count">{{ formatBytes(inputSize) }}</span>
             }
-            <button class="hm-btn-ghost" (click)="clearAll()" [disabled]="!input">Clear</button>
+            <button class="hm-btn-ghost" (click)="clearAll()" [disabled]="!input">{{ translate('tools.common.clear') }}</button>
           </div>
         </div>
         <textarea class="hm-textarea" [(ngModel)]="input" (ngModelChange)="process()" placeholder="Paste HTML here..." spellcheck="false"></textarea>
       </div>
 
       <div class="hm-panel">
-        <div class="hm-panel__header"><span class="hm-panel__title">Options</span></div>
+        <div class="hm-panel__header"><span class="hm-panel__title">{{ translate('tools.common.options') }}</span></div>
         <div class="hm-options">
           <div class="hm-option-row">
-            <span class="hm-option-label">Mode</span>
+            <span class="hm-option-label">{{ translate('tools.common.mode') }}</span>
             <div class="hm-seg-ctrl">
               <button class="hm-seg-btn" [class.hm-seg-btn--active]="mode==='minify'" (click)="mode='minify'; process()">Minify</button>
               <button class="hm-seg-btn" [class.hm-seg-btn--active]="mode==='beautify'" (click)="mode='beautify'; process()">Beautify</button>
@@ -51,7 +51,7 @@
     <div class="hm-col">
       <div class="hm-panel hm-panel--output">
         <div class="hm-panel__header">
-          <span class="hm-panel__title">Output</span>
+          <span class="hm-panel__title">{{ translate('tools.common.output') }}</span>
           <div class="hm-panel__actions">
             @if (outputSize) {
               <span class="hm-char-count">{{ formatBytes(outputSize) }}</span>

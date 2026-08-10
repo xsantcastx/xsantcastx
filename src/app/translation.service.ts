@@ -339,6 +339,58 @@ export class TranslationService {
     'tools.diffChecker.title2': { en: 'Checker', es: 'Diferencias' },
     'tools.diffChecker.subtitle': { en: 'Compare two texts side-by-side with color-coded diffs. Find additions, deletions and changes instantly — no sign-up required.', es: 'Compara dos textos lado a lado con diferencias codificadas por color. Encuentra adiciones, eliminaciones y cambios al instante — sin registro.' },
 
+    // Batch 2 — JSON / data / minifier tools
+    'tools.jsonMinifier.title': { en: 'JSON Minifier', es: 'Minificador JSON' },
+    'tools.jsonMinifier.title2': { en: 'Compressor', es: 'Compresor' },
+    'tools.jsonMinifier.subtitle': { en: 'Minify, beautify, and optimize JSON instantly — remove whitespace, null values, empty strings, and more.', es: 'Minifica, embellece y optimiza JSON al instante — elimina espacios en blanco, valores nulos, cadenas vacías y más.' },
+
+    'tools.jsonDiff.title': { en: 'JSON Diff', es: 'Comparador JSON' },
+    'tools.jsonDiff.subtitle': { en: 'Compare two JSON objects and see added, removed, and changed keys highlighted with colors.', es: 'Compara dos objetos JSON y observa las claves añadidas, eliminadas y modificadas resaltadas con colores.' },
+
+    'tools.jsonToTs.title': { en: 'JSON', es: 'JSON' },
+    'tools.jsonToTs.title2': { en: 'to', es: 'a' },
+    'tools.jsonToTs.title3': { en: 'TypeScript', es: 'TypeScript' },
+    'tools.jsonToTs.subtitle': { en: 'Paste JSON on the left, get TypeScript interfaces on the right — handles nested objects, arrays, union types and nulls.', es: 'Pega JSON a la izquierda y obtén interfaces de TypeScript a la derecha — maneja objetos anidados, arreglos, tipos unión y nulos.' },
+
+    'tools.jsonPath.title': { en: 'JSON Path Finder', es: 'Buscador de Rutas JSON' },
+    'tools.jsonPath.subtitle': { en: 'Paste JSON and explore it as an interactive tree. Click any node to get its full path in dot and bracket notation.', es: 'Pega JSON y explóralo como un árbol interactivo. Haz clic en cualquier nodo para obtener su ruta completa en notación de punto y de corchetes.' },
+
+    'tools.jsonTree.title': { en: 'JSON Tree Viewer', es: 'Visor de Árbol JSON' },
+    'tools.jsonTree.subtitle': { en: 'Collapsible JSON tree viewer with type badges and search. Paste JSON to explore its structure.', es: 'Visor de árbol JSON plegable con etiquetas de tipo y búsqueda. Pega JSON para explorar su estructura.' },
+
+    'tools.jsonEscape.title': { en: 'JSON String Escape', es: 'Escape de Cadenas JSON' },
+    'tools.jsonEscape.title2': { en: 'Unescape', es: 'Desescape' },
+    'tools.jsonEscape.subtitle': { en: 'Escape and unescape strings for JSON — convert quotes, backslashes, newlines, tabs, and unicode characters to their JSON-safe equivalents. Live conversion, no sign-up required.', es: 'Escapa y desescapa cadenas para JSON — convierte comillas, barras invertidas, saltos de línea, tabulaciones y caracteres unicode a sus equivalentes seguros para JSON. Conversión en vivo, sin registro.' },
+
+    'tools.jsonSchema.title': { en: 'JSON Schema', es: 'Esquema JSON' },
+    'tools.jsonSchema.title2': { en: 'Generator', es: 'Generador' },
+    'tools.jsonSchema.subtitle': { en: 'Paste any JSON and instantly generate a valid JSON Schema (draft-07) with type detection, nested objects, arrays, and format inference.', es: 'Pega cualquier JSON y genera al instante un JSON Schema válido (draft-07) con detección de tipos, objetos anidados, arreglos e inferencia de formato.' },
+
+    'tools.csvJson.title': { en: 'CSV', es: 'CSV' },
+    'tools.csvJson.title2': { en: 'JSON', es: 'JSON' },
+    'tools.csvJson.title3': { en: 'Converter', es: 'Conversor' },
+    'tools.csvJson.subtitle': { en: 'Convert between CSV and JSON bidirectionally. Handles quoted fields, nested objects, multiple delimiters &mdash; all client-side, no data leaves your browser.', es: 'Convierte entre CSV y JSON de forma bidireccional. Maneja campos entrecomillados, objetos anidados y múltiples delimitadores &mdash; todo en el cliente, ningún dato sale de tu navegador.' },
+
+    'tools.yamlJson.title': { en: 'YAML', es: 'YAML' },
+    'tools.yamlJson.title2': { en: 'JSON Converter', es: 'Conversor JSON' },
+    'tools.yamlJson.subtitle': { en: 'Convert between YAML and JSON instantly — bidirectional conversion with syntax highlighting, no sign-up required.', es: 'Convierte entre YAML y JSON al instante — conversión bidireccional con resaltado de sintaxis, sin registro.' },
+
+    'tools.htmlEntities.title': { en: 'HTML Entity Encoder', es: 'Codificador de Entidades HTML' },
+    'tools.htmlEntities.title2': { en: 'Decoder', es: 'Decodificador' },
+    'tools.htmlEntities.subtitle': { en: 'Encode special HTML characters to entities and decode entities back to characters — named & numeric entity support, live conversion, no sign-up required.', es: 'Codifica caracteres HTML especiales a entidades y decodifica entidades de vuelta a caracteres — compatible con entidades con nombre y numéricas, conversión en vivo, sin registro.' },
+
+    'tools.htmlMinifier.title': { en: 'HTML Minifier', es: 'Minificador HTML' },
+    'tools.htmlMinifier.title2': { en: 'Beautifier', es: 'Embellecedor' },
+    'tools.htmlMinifier.subtitle': { en: 'Minify or beautify HTML, remove comments and whitespace, see size stats.', es: 'Minifica o embellece HTML, elimina comentarios y espacios en blanco, y consulta las estadísticas de tamaño.' },
+
+    'tools.cssMinifier.title': { en: 'CSS Minifier', es: 'Minificador CSS' },
+    'tools.cssMinifier.title2': { en: 'Beautifier', es: 'Embellecedor' },
+    'tools.cssMinifier.subtitle': { en: 'Minify or beautify CSS instantly — compress for production or format for readability, no sign-up required.', es: 'Minifica o embellece CSS al instante — comprime para producción o formatea para legibilidad, sin registro.' },
+
+    'tools.jsMinifier.title': { en: 'JavaScript Minifier', es: 'Minificador de JavaScript' },
+    'tools.jsMinifier.title2': { en: 'Beautifier', es: 'Embellecedor' },
+    'tools.jsMinifier.subtitle': { en: 'Minify or beautify JavaScript code with live processing.', es: 'Minifica o embellece código JavaScript con procesamiento en vivo.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },
