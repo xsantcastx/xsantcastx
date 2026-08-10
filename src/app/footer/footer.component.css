@@ -701,8 +701,12 @@ footer::after {
   }
 
   .modal-content { padding: clamp(1.4rem, 6vw, 2rem); }
-  .social-links { gap: 0.65rem; }
-  .social-links a { width: 40px; height: 40px; }
+  /* The mobile override used to shrink these orbs to 40x40 — below the WCAG
+     2.5.5 / iOS HIG 44px minimum, on the one breakpoint where a finger is the
+     only pointer. Keep the desktop 44px and buy the space back from the gap
+     instead; five 44px orbs plus 0.5rem gaps is 252px, comfortable at 375px. */
+  .social-links { gap: 0.5rem; }
+  .social-links a { width: 44px; height: 44px; }
 }
 
 /*
