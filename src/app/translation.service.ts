@@ -596,6 +596,64 @@ export class TranslationService {
     'tools.countdown.title': { en: 'Countdown Timer', es: 'Temporizador de Cuenta Regresiva' },
     'tools.countdown.subtitle': { en: 'Set a target date and time, watch the countdown live.', es: 'Fija una fecha y hora objetivo y observa la cuenta regresiva en vivo.' },
 
+    // Batch 7 — DevOps references, productivity and data tools
+    'tools.cronBuilder.title': { en: 'Cron Expression', es: 'Expresiones Cron' },
+    'tools.cronBuilder.title2': { en: 'Builder', es: 'Constructor' },
+    'tools.cronBuilder.subtitle': { en: 'Build, validate and preview cron schedules visually — see next run times instantly, no sign-up required.', es: 'Construye, valida y previsualiza programaciones cron de forma visual — consulta las próximas ejecuciones al instante, sin registro.' },
+
+    'tools.crontabRef.title': { en: 'Crontab Quick', es: 'Crontab Guía' },
+    'tools.crontabRef.title2': { en: 'Reference', es: 'Rápida' },
+    'tools.crontabRef.subtitle': { en: 'Visual cron syntax guide with 30+ expressions, category filters, search, and one-click copy. No sign-up required.', es: 'Guía visual de la sintaxis de cron con más de 30 expresiones, filtros por categoría, búsqueda y copia con un clic. Sin registro.' },
+
+    'tools.dataSize.title': { en: 'Data Size / Storage Calculator', es: 'Calculadora de Tamaño de Datos / Almacenamiento' },
+    'tools.dataSize.subtitle': { en: 'Convert between bytes, KB, MB, GB, TB, PB (binary &amp; decimal). Calculate transfer times and plan your storage capacity.', es: 'Convierte entre bytes, KB, MB, GB, TB y PB (binario &amp; decimal). Calcula tiempos de transferencia y planifica tu capacidad de almacenamiento.' },
+
+    'tools.dockerRef.title': { en: 'Docker Compose', es: 'Docker Compose' },
+    'tools.dockerRef.title2': { en: 'Reference', es: 'Referencia' },
+    'tools.dockerRef.subtitle': { en: 'Searchable, categorized Docker Compose directives with YAML examples. No sign-up required.', es: 'Directivas de Docker Compose categorizadas y consultables, con ejemplos en YAML. Sin registro.' },
+
+    'tools.emojiPicker.title': { en: 'Emoji Picker & Search', es: 'Selector y Buscador de Emojis' },
+    'tools.emojiPicker.subtitle': { en: 'Search 500+ emojis, copy as emoji, HTML entity, or Unicode codepoint. Click to copy instantly.', es: 'Busca entre más de 500 emojis y cópialos como emoji, entidad HTML o punto de código Unicode. Haz clic para copiar al instante.' },
+
+    'tools.encodingConverter.title': { en: 'Encoding Converter', es: 'Conversor de Codificación' },
+    'tools.encodingConverter.subtitle': { en: 'Convert text between UTF-8, ASCII, Latin-1, URL encoding, HTML entities, Unicode escapes, and more. Includes hex dump view and per-character breakdown — 100% client-side.', es: 'Convierte texto entre UTF-8, ASCII, Latin-1, codificación URL, entidades HTML, escapes Unicode y más. Incluye vista de volcado hexadecimal y desglose por carácter — 100% en el cliente.' },
+
+    'tools.gitReference.title': { en: 'Git Command', es: 'Comandos Git' },
+    'tools.gitReference.title2': { en: 'Reference', es: 'Referencia' },
+    'tools.gitReference.subtitle': { en: 'Searchable reference of 100+ Git commands with descriptions, usage examples, and common flags. Filter by category, copy commands, or switch to cheatsheet mode.', es: 'Referencia consultable de más de 100 comandos Git con descripciones, ejemplos de uso y banderas comunes. Filtra por categoría, copia comandos o cambia al modo chuleta.' },
+
+    'tools.groceryManager.title': { en: 'Grocery', es: 'Gestor de' },
+    'tools.groceryManager.title2': { en: 'Manager', es: 'Compras' },
+    'tools.groceryManager.subtitle': { en: 'Track the staples you always buy, get restock reminders based on how long ago you bought them, and see a running estimate of your bill. Everything stays in your browser — no sign-up.', es: 'Lleva el control de los productos que siempre compras, recibe recordatorios de reposición según hace cuánto los compraste y consulta una estimación continua de tu cuenta. Todo se queda en tu navegador — sin registro.' },
+
+    'tools.hexEditor.title': { en: 'Hex Viewer', es: 'Visor Hex' },
+    'tools.hexEditor.title2': { en: 'Editor', es: 'Editor' },
+    'tools.hexEditor.subtitle': { en: 'Upload files or paste text to view hex dumps with offset, hex bytes, and ASCII. Search hex patterns, convert between text and hex.', es: 'Sube archivos o pega texto para ver volcados hexadecimales con desplazamiento, bytes hex y ASCII. Busca patrones hex y convierte entre texto y hexadecimal.' },
+
+    'tools.keyboardShortcuts.title': { en: 'Keyboard Shortcuts', es: 'Atajos de Teclado' },
+    'tools.keyboardShortcuts.title2': { en: 'Reference', es: 'Referencia' },
+    'tools.keyboardShortcuts.subtitle': { en: 'Searchable reference of 200+ keyboard shortcuts for VS Code, Chrome DevTools, Git, Terminal, macOS &amp; Windows. Auto-detects your OS for Cmd vs Ctrl.', es: 'Referencia consultable de más de 200 atajos de teclado para VS Code, Chrome DevTools, Git, Terminal, macOS &amp; Windows. Detecta tu sistema operativo para elegir entre Cmd y Ctrl.' },
+
+    'tools.mockData.title': { en: 'Mock Data', es: 'Datos de Prueba' },
+    'tools.mockData.title2': { en: 'Generator', es: 'Generador' },
+    'tools.mockData.subtitle': { en: 'Generate random mock data instantly — names, emails, addresses, UUIDs & more. Export as JSON, CSV, or SQL INSERT. 100% client-side.', es: 'Genera datos de prueba aleatorios al instante — nombres, correos, direcciones, UUIDs y más. Exporta como JSON, CSV o SQL INSERT. 100% en el cliente.' },
+
+    'tools.pomodoro.title': { en: 'Pomodoro', es: 'Temporizador' },
+    'tools.pomodoro.title2': { en: 'Timer', es: 'Pomodoro' },
+    'tools.pomodoro.subtitle': { en: 'Stay focused with timed work sessions and breaks. 4 pomodoros earns a long break. No sign-up required.', es: 'Mantén la concentración con sesiones de trabajo y descansos cronometrados. Cada 4 pomodoros ganas un descanso largo. Sin registro.' },
+
+    'tools.regexCheatsheet.title': { en: 'Regex Cheatsheet', es: 'Chuleta de Regex' },
+    'tools.regexCheatsheet.subtitlePre': { en: 'Categorized regex reference with', es: 'Referencia de regex categorizada con' },
+    'tools.regexCheatsheet.subtitlePost': { en: '+ patterns. Search to find what you need.', es: '+ patrones. Busca para encontrar lo que necesitas.' },
+
+    'tools.regexGenerator.title': { en: 'Regex Pattern', es: 'Patrones Regex' },
+    'tools.regexGenerator.title2': { en: 'Generator', es: 'Generador' },
+    'tools.regexGenerator.subtitle': { en: 'Generate regex patterns from natural language, browse common patterns, and test them against sample text — no sign-up required.', es: 'Genera patrones de regex a partir de lenguaje natural, explora patrones comunes y pruébalos contra texto de ejemplo — sin registro.' },
+
+    'tools.snippetManager.title': { en: 'Code Snippet', es: 'Fragmentos de Código' },
+    'tools.snippetManager.title2': { en: 'Manager', es: 'Gestor' },
+    'tools.snippetManager.subtitle': { en: 'Save, organize, and search your code snippets locally. Syntax highlighting, tagging, and instant search — all in your browser.', es: 'Guarda, organiza y busca tus fragmentos de código localmente. Resaltado de sintaxis, etiquetado y búsqueda instantánea — todo en tu navegador.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },

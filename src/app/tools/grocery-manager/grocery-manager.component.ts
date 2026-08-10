@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { TranslationService } from '../../translation.service';
 
 /** Internal grocery categories — each mapped to a cosmic palette color in CSS. */
 type GroceryCategory =
@@ -47,6 +48,12 @@ type StockStatus = 'restock' | 'due' | 'soon' | 'stocked';
     imports: [ToolsSharedModule, FormsModule],
 })
 export class GroceryManagerComponent implements OnInit {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly STORAGE_KEY = 'gm-items-v1';
   private readonly PREFS_KEY = 'gm-prefs-v1';

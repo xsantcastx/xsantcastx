@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 type TimerMode = 'work' | 'shortBreak' | 'longBreak';
 type TimerState = 'idle' | 'running' | 'paused';
@@ -23,6 +24,12 @@ interface PomodoroSession {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class PomodoroComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Pomodoro Timer — timed work sessions and breaks to stay focused, right in your browser. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/pomodoro')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/pomodoro')}`;
 

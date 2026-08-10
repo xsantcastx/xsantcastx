@@ -6,6 +6,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 export interface Snippet {
   id: string;
@@ -26,6 +27,12 @@ type ViewMode = 'list' | 'create' | 'edit';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class SnippetManagerComponent implements OnInit, OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Code Snippet Manager — save, tag and search your snippets locally with syntax highlighting. Stays in your browser!')}&url=${encodeURIComponent(SITE_URL + '/tools/snippet-manager')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/snippet-manager')}`;
 

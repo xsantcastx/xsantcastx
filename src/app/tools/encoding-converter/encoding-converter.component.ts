@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface EncodingResult {
   label: string;
@@ -35,6 +36,12 @@ interface CharBreakdown {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class EncodingConverterComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Encoding Converter — convert text between UTF-8, ASCII, Latin-1, URL encoding, HTML entities and Unicode escapes. 100% client-side!')}&url=${encodeURIComponent(SITE_URL + '/tools/encoding-converter')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/encoding-converter')}`;
 
