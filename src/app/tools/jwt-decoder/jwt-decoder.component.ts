@@ -5,6 +5,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { TranslationService } from '../../translation.service';
 
 interface JwtClaim {
   key: string;
@@ -21,6 +22,12 @@ interface JwtClaim {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class JwtDecoderComponent implements OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
