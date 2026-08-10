@@ -22,8 +22,8 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.0.0',
-  buildDate: '2026-08-10',
+  version: '2.1.0',
+  buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
   /** Where the full story of this release lives */
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.1.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'Mobile navigation repaired — 44px tap targets, drawer sits flush under the header',
+      'Mobile performance — nine always-composited full-viewport layers down to five, all static',
+      'backdrop-filter disabled on mobile (was 300+ declarations, four stacked in the header alone)',
+      '/live and the header no longer overflow a 375px viewport',
+      'Every standalone control now meets the 44px touch minimum'
+    ]
+  },
   {
     version: '2.0.0',
     codename: 'Blueprint',
