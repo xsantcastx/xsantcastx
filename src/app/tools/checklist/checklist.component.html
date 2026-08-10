@@ -1,16 +1,16 @@
 <div class="cl-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">Productivity</p>
-    <h1 class="tool-header__title">Checklist Maker</h1>
-    <p class="tool-header__subtitle">Create checklists, check items off, and export as Markdown. Use templates for code review, deploy, or PR checklists.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.productivity') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.checklist.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.checklist.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -39,7 +39,7 @@
 
       <div class="cl-actions">
         <button class="cl-btn" (click)="copyMarkdown()" [disabled]="!items.length" [class.cl-btn--success]="copied">{{ copied ? 'Copied!' : 'Export Markdown' }}</button>
-        <button class="cl-btn-ghost" (click)="clearAll()" [disabled]="!items.length">Clear All</button>
+        <button class="cl-btn-ghost" (click)="clearAll()" [disabled]="!items.length">{{ translate('tools.common.clearAll') }}</button>
       </div>
     </div>
 

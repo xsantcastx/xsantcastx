@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 type ActiveTab = 'myip' | 'validate' | 'subnet' | 'reference';
 
@@ -26,6 +27,12 @@ interface SubnetResult {
     imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class IpLookupComponent implements OnInit, OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free IP Address Info — detect your public IP, validate IPv4/IPv6, and calculate subnets. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/ip-lookup')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/ip-lookup')}`;
 

@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface DeviceResolution {
   name: string;
@@ -23,6 +24,12 @@ type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class ScreenInfoComponent implements OnInit, OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Screen Resolution & Pixel Density tool — detect resolution, viewport, DPR and color depth, and calculate PPI. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/screen-info')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/screen-info')}`;
 
