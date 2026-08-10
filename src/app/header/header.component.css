@@ -421,17 +421,35 @@
   z-index: 998; /* Below menu but above content */
 }
 
+/* WCAG 2.5.5 / iOS HIG — the button itself is a 44×44 tap target. The three
+   bars are laid out in a 28×18 inner box so the glyph keeps its original look
+   while the hit area extends to the full square. It used to be a bare 32×20
+   button, which is far below the minimum and is the main reason the menu felt
+   impossible to open on a phone. */
 .hamburger {
   position: relative;
-  width: 32px;
-  height: 20px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
   border: none;
   background: none;
-  padding: 0;
+  padding: 13px 8px;
+  box-sizing: border-box;
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
   justify-content: space-between;
+  /* Kill the 300ms tap delay + the grey flash iOS paints over the button. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid var(--primary-color, #00ffcc);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .hamburger span {
@@ -454,8 +472,10 @@
   box-shadow: 0 0 12px rgba(0, 255, 204, 0.7), 0 0 24px rgba(123, 97, 255, 0.3);
 }
 
+/* Inner bar box is 18px tall (44 − 2×13 padding): bars sit at y=0/8/16, so the
+   X needs an 8px converge — not the 9px the old 20px-tall button used. */
 .hamburger.active span:nth-child(1) {
-  transform: translateY(9px) rotate(45deg);
+  transform: translateY(8px) rotate(45deg);
 }
 
 .hamburger.active span:nth-child(2) {
@@ -463,7 +483,7 @@
 }
 
 .hamburger.active span:nth-child(3) {
-  transform: translateY(-9px) rotate(-45deg);
+  transform: translateY(-8px) rotate(-45deg);
 }
 
 .nav-progress {
@@ -528,6 +548,20 @@
 
   .mobile-controls {
     display: inline-flex;
+    /* The backdrop is a positioned z-index:998 sibling inside the navbar's
+       stacking context, while .logo / .mobile-controls are static — so the
+       backdrop painted *on top of them* and swallowed every tap on the
+       hamburger and the EN/ES buttons while the drawer was open. (Closing
+       still worked, but only because the backdrop's own click handler happened
+       to close the menu — the X and the language toggle were dead.) Promote
+       both above the backdrop so they stay genuinely interactive. */
+    position: relative;
+    z-index: 999;
+  }
+
+  .navbar > .logo {
+    position: relative;
+    z-index: 999;
   }
 
   .mobile-backdrop {
@@ -548,7 +582,13 @@
 
   .nav-menu {
     position: fixed;
-    top: 80px; /* Fixed height to match navbar */
+    /* --nav-h is written by HeaderComponent.updateHeaderOffset() from the
+       navbar's *measured* offsetHeight, so it already accounts for the compact
+       state and for env(safe-area-inset-top) on notched devices (index.html
+       sets viewport-fit=cover, so that inset is real). The old hardcoded
+       `top: 80px` put the drawer underneath the header on any phone with a
+       notch, hiding the first nav link, and left a gap in compact mode. */
+    top: var(--nav-h, 80px);
     left: 0;
     right: 0;
     display: flex;
@@ -575,8 +615,14 @@
     border-right: 1px solid rgba(123, 97, 255, 0.12);
     border-bottom: 1px solid rgba(0, 255, 204, 0.15);
     z-index: 9999; /* Higher than navbar */
-    max-height: calc(100vh - 80px);
+    /* 100vh on mobile Safari/Chrome is the *large* viewport — it ignores the
+       URL bar, so the last links (Games / LIVE) sat behind browser chrome and
+       could not be tapped. 100dvh tracks the visible viewport; the vh line is
+       the fallback for browsers without dvh. */
+    max-height: calc(100vh - var(--nav-h, 80px));
+    max-height: calc(100dvh - var(--nav-h, 80px));
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     isolation: isolate;
   }
@@ -616,12 +662,22 @@
     visibility: visible;
   }
 
+  /* WCAG 2.5.5 — each drawer link is its own ≥44px row. `padding: 0.9rem 0` on
+     an inline anchor did not reliably produce a 44px hit box; a flex row with
+     an explicit min-height does. */
   .nav-menu a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
     font-size: 1.05rem;
     letter-spacing: 0.16em;
-    padding: 0.9rem 0;
+    padding: 0.75rem 0.5rem;
     width: 100%;
     text-align: center;
+    box-sizing: border-box;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .nav-menu a::after {
@@ -655,10 +711,8 @@
     padding: 0.35rem 0.6rem;
   }
 
-  .nav-menu {
-    top: 64px; /* Match smaller navbar height */
-    max-height: calc(100vh - 64px);
-  }
+  /* No `top` override needed — --nav-h is measured from the live navbar, so it
+     already reflects the 64px height set above plus any safe-area inset. */
 }
 
 @keyframes navAurora {
@@ -713,10 +767,6 @@
     font-size: 0.55rem;
     letter-spacing: 0.12em;
     padding: 0.24rem 0.5rem;
-  }
-
-  .nav-menu {
-    top: 64px;
   }
 
   .nav-menu a {
@@ -824,4 +874,23 @@
 @keyframes navDotBlink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.2; }
+}
+
+/* ─── Mobile drawer: LIVE pill needs the same 44px row as its siblings ─── */
+@media (max-width: 960px) {
+  .nav-menu .nav-live-link {
+    display: flex !important;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.72rem !important;
+    /* The pill already carries a border + glow; the perpetual box-shadow
+       keyframe is one more always-on animated layer inside a scrollable
+       drawer. Static on mobile. */
+    animation: none;
+  }
+
+  .nav-menu .nav-games-link {
+    min-height: 48px;
+  }
 }
