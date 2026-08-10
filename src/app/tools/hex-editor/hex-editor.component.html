@@ -208,11 +208,11 @@
               <div class="hx-search-results">
                 <span class="hx-search-count">{{ searchMatches.length }} match{{ searchMatches.length !== 1 ? 'es' : '' }}</span>
                 <div class="hx-search-nav">
-                  <button class="hx-btn-ghost hx-btn-sm" (click)="prevMatch()" [disabled]="searchMatches.length <= 1">
+                  <button type="button" class="hx-btn-ghost hx-btn-sm" aria-label="Previous match" (click)="prevMatch()" [disabled]="searchMatches.length <= 1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                   </button>
                   <span class="hx-search-pos">{{ currentMatchIndex + 1 }} / {{ searchMatches.length }}</span>
-                  <button class="hx-btn-ghost hx-btn-sm" (click)="nextMatch()" [disabled]="searchMatches.length <= 1">
+                  <button type="button" class="hx-btn-ghost hx-btn-sm" aria-label="Next match" (click)="nextMatch()" [disabled]="searchMatches.length <= 1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
                 </div>
