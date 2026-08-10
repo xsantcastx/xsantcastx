@@ -447,6 +447,56 @@ export class TranslationService {
     'tools.chmodCalculator.title2': { en: 'Calculator', es: 'Calculadora' },
     'tools.chmodCalculator.subtitle': { en: 'Interactive file permission calculator with numeric &amp; symbolic notation, presets, umask calculator, and ready-to-use commands.', es: 'Calculadora interactiva de permisos de archivos con notación numérica &amp; simbólica, preajustes, calculadora de umask y comandos listos para usar.' },
 
+    // Batch 4 — CSS / design-system / color tools
+    'tools.cssUnits.title': { en: 'CSS Units Converter', es: 'Conversor de Unidades CSS' },
+    'tools.cssUnits.subtitle': { en: 'Convert between px, rem, em, %, vw, vh, pt, cm, mm, and in — see all results at once with custom base font size and viewport dimensions.', es: 'Convierte entre px, rem, em, %, vw, vh, pt, cm, mm e in — consulta todos los resultados a la vez con tamaño de fuente base y dimensiones de viewport personalizados.' },
+
+    'tools.cssVariables.title': { en: 'CSS Custom Properties', es: 'Propiedades Personalizadas CSS' },
+    'tools.cssVariables.title2': { en: 'Generator', es: 'Generador' },
+    'tools.cssVariables.subtitle': { en: 'Build a design system with live preview. Export to CSS, SCSS, JSON, or Tailwind config.', es: 'Construye un sistema de diseño con vista previa en vivo. Exporta a CSS, SCSS, JSON o configuración de Tailwind.' },
+
+    'tools.mediaQuery.title': { en: 'Media Query', es: 'Media Query' },
+    'tools.mediaQuery.title2': { en: 'Builder', es: 'Constructor' },
+    'tools.mediaQuery.subtitle': { en: 'Visual media query generator with framework presets, live breakpoint detection, and one-click copy. 100% client-side.', es: 'Generador visual de media queries con preajustes de frameworks, detección de breakpoints en vivo y copia con un clic. 100% en el cliente.' },
+
+    'tools.scrollSnap.title': { en: 'Scroll Snap Builder', es: 'Constructor de Scroll Snap' },
+    'tools.scrollSnap.subtitle': { en: 'Build CSS scroll-snap layouts with a live preview. Configure direction, snap type, and alignment.', es: 'Construye diseños CSS con scroll-snap y vista previa en vivo. Configura dirección, tipo de anclaje y alineación.' },
+
+    'tools.transitionGenerator.title': { en: 'Transition Generator', es: 'Generador de Transiciones' },
+    'tools.transitionGenerator.subtitle': { en: 'Build CSS transitions with timing functions, cubic-bezier curves, and live preview.', es: 'Construye transiciones CSS con funciones de temporización, curvas cubic-bezier y vista previa en vivo.' },
+
+    'tools.buttonGenerator.title': { en: 'Button Generator', es: 'Generador de Botones' },
+    'tools.buttonGenerator.subtitle': { en: 'CSS button builder with 10 presets, hover states, and live preview.', es: 'Constructor de botones CSS con 10 preajustes, estados hover y vista previa en vivo.' },
+
+    'tools.animationGenerator.title': { en: 'CSS Animation Generator', es: 'Generador de Animaciones CSS' },
+    'tools.animationGenerator.subtitle': { en: 'Visually build CSS keyframe animations with live preview and one-click code export. No sign-up, runs entirely in your browser.', es: 'Construye visualmente animaciones CSS con keyframes, vista previa en vivo y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
+
+    'tools.designTokens.title': { en: 'Design Token', es: 'Tokens de Diseño' },
+    'tools.designTokens.title2': { en: 'Converter', es: 'Conversor' },
+    'tools.designTokens.subtitle': { en: 'Paste Figma Tokens JSON, convert to CSS custom properties, SCSS variables, Tailwind theme config or flat JSON instantly.', es: 'Pega el JSON de Figma Tokens y conviértelo al instante en propiedades personalizadas CSS, variables SCSS, configuración de tema de Tailwind o JSON plano.' },
+
+    'tools.spacingScale.title': { en: 'Spacing Scale Generator', es: 'Generador de Escalas de Espaciado' },
+    'tools.spacingScale.subtitle': { en: 'Generate consistent spacing scales (linear or geometric) with visual bars and CSS variable output.', es: 'Genera escalas de espaciado consistentes (lineales o geométricas) con barras visuales y salida en variables CSS.' },
+
+    'tools.colorShades.title': { en: 'Color Shades', es: 'Sombras de Color' },
+    'tools.colorShades.title2': { en: 'Tones', es: 'Tonos' },
+    'tools.colorShades.subtitle': { en: 'Enter a color and generate tints, shades, tones, and color harmonies. Export as CSS variables, Tailwind config, or SCSS.', es: 'Introduce un color y genera tintes, sombras, tonos y armonías de color. Exporta como variables CSS, configuración de Tailwind o SCSS.' },
+
+    'tools.colorName.title': { en: 'CSS Color Name Finder', es: 'Buscador de Nombres de Color CSS' },
+    'tools.colorName.subtitle': { en: 'Find the closest named CSS color from any hex value. Browse all 148 named colors.', es: 'Encuentra el color CSS con nombre más cercano a cualquier valor hex. Explora los 148 colores con nombre.' },
+
+    'tools.colorBlindness.title': { en: 'Color Blindness', es: 'Daltonismo' },
+    'tools.colorBlindness.title2': { en: 'Simulator', es: 'Simulador' },
+    'tools.colorBlindness.subtitle': { en: 'See how your colors appear under different types of color vision deficiency. Test contrast, simulate swatches, and apply filters to images.', es: 'Observa cómo se ven tus colores bajo distintos tipos de deficiencia de visión cromática. Prueba el contraste, simula muestras y aplica filtros a imágenes.' },
+
+    'tools.apcaContrast.title': { en: 'APCA Contrast', es: 'Contraste APCA' },
+    'tools.apcaContrast.title2': { en: 'WCAG 3', es: 'WCAG 3' },
+    'tools.apcaContrast.subtitle': { en: 'Compare WCAG 2.x contrast ratio with APCA (WCAG 3 draft) Lc value side by side. Font-size and weight aware compliance checking.', es: 'Compara lado a lado la relación de contraste WCAG 2.x con el valor Lc de APCA (borrador WCAG 3). Verificación de cumplimiento sensible al tamaño y grosor de la fuente.' },
+
+    'tools.apiRequestBuilder.title': { en: 'API Request', es: 'Peticiones de API' },
+    'tools.apiRequestBuilder.title2': { en: 'Builder', es: 'Constructor' },
+    'tools.apiRequestBuilder.subtitle': { en: 'Build, send and inspect HTTP requests directly from your browser — no backend, no sign-up.', es: 'Construye, envía e inspecciona peticiones HTTP directamente desde tu navegador — sin backend, sin registro.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },

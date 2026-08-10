@@ -5,13 +5,13 @@ import {
   ElementRef,
   OnDestroy,
   Renderer2,
-  ViewChild,
-} from '@angular/core';
+  ViewChild, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 interface KeyframePoint {
   percent: number;
@@ -41,6 +41,12 @@ interface AnimationPreset {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, DoCheck {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free CSS Animation Generator — build keyframe animations visually with live preview and one-click export. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/animation-generator')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/animation-generator')}`;
 

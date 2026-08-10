@@ -5,6 +5,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { SITE_URL } from '../../seo.service';
+import { TranslationService } from '../../translation.service';
 
 export interface MediaFeature {
   feature: string;
@@ -42,6 +43,12 @@ export interface PresetGroup {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class MediaQueryComponent implements OnInit, OnDestroy {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free CSS Media Query Builder — framework presets, live breakpoint detection and one-click copy. 100% client-side!')}&url=${encodeURIComponent(SITE_URL + '/tools/media-query')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/media-query')}`;
 
