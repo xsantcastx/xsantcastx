@@ -83,7 +83,7 @@
         <div class="gr-cheat-card" [attr.style]="'--entry-color: ' + getCategoryColor(entry.category)">
           <div class="gr-cheat-card__header">
             <code class="gr-cheat-card__cmd">{{ entry.command }}</code>
-            <button class="gr-cheat-card__copy" (click)="copyCommand(entry.command, $event)" [class.gr-cheat-card__copy--success]="isCopied(entry.command)" title="Copy command">
+            <button class="gr-cheat-card__copy" (click)="copyCommand(entry.command, $event)" [class.gr-cheat-card__copy--success]="isCopied(entry.command)" title="Copy command" aria-label="Copy command">
               @if (!isCopied(entry.command)) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               }
@@ -147,7 +147,7 @@
                   <span class="gr-detail__category" [style.color]="getCategoryColor(selectedCommand.category)">{{ getCategoryLabel(selectedCommand.category) }}</span>
                 </div>
               </div>
-              <button class="gr-detail__close" (click)="closeDetail()" title="Close">
+              <button class="gr-detail__close" (click)="closeDetail()" title="Close" aria-label="Close">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -160,7 +160,7 @@
                 <h3 class="gr-detail__label">Example</h3>
                 <div class="gr-detail__example">
                   <code>{{ selectedCommand.example }}</code>
-                  <button class="gr-detail__example-copy" (click)="copyCommand(selectedCommand.example)" [class.gr-detail__example-copy--success]="isCopied(selectedCommand.example)" title="Copy example">
+                  <button class="gr-detail__example-copy" (click)="copyCommand(selectedCommand.example)" [class.gr-detail__example-copy--success]="isCopied(selectedCommand.example)" title="Copy example" aria-label="Copy example">
                     @if (!isCopied(selectedCommand.example)) {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     }

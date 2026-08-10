@@ -33,7 +33,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       YAML &rarr; JSON
     </button>
-    <button class="yj-swap-btn" (click)="toggleDirection()" title="Swap direction">
+    <button class="yj-swap-btn" (click)="toggleDirection()" title="Swap direction" aria-label="Swap direction">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
     </button>
     <button class="yj-direction-btn" [class.yj-direction-btn--active]="direction === 'json-to-yaml'" (click)="direction !== 'json-to-yaml' && toggleDirection()">

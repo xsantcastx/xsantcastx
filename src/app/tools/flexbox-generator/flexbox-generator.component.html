@@ -40,7 +40,7 @@
         <div class="fx-card__header">
           <span class="fx-card__label">Live Preview</span>
           <div class="fx-preview-controls">
-            <button type="button" class="fx-icon-btn fx-icon-btn--danger" (click)="resetAll()" title="Reset all">
+            <button type="button" class="fx-icon-btn fx-icon-btn--danger" (click)="resetAll()" title="Reset all" aria-label="Reset all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
               </svg>
@@ -196,7 +196,7 @@
                 </span>
               </div>
               <div class="fx-child-item__actions" (click)="$event.stopPropagation()">
-                <button type="button" class="fx-icon-btn fx-icon-btn--xs fx-icon-btn--danger" [disabled]="children.length <= 1" (click)="removeChild(i)" title="Remove">
+                <button type="button" class="fx-icon-btn fx-icon-btn--xs fx-icon-btn--danger" [disabled]="children.length <= 1" (click)="removeChild(i)" title="Remove" aria-label="Remove">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
