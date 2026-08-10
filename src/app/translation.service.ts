@@ -391,6 +391,62 @@ export class TranslationService {
     'tools.jsMinifier.title2': { en: 'Beautifier', es: 'Embellecedor' },
     'tools.jsMinifier.subtitle': { en: 'Minify or beautify JavaScript code with live processing.', es: 'Minifica o embellece código JavaScript con procesamiento en vivo.' },
 
+    // Batch 3 — text / markdown / encoding tools
+    'tools.markdownEditor.title': { en: 'Markdown Preview', es: 'Vista Previa de Markdown' },
+    'tools.markdownEditor.title2': { en: 'Editor', es: 'Editor' },
+    'tools.markdownEditor.subtitle': { en: 'Write GitHub Flavored Markdown with a live HTML preview — no sign-up, fully client-side.', es: 'Escribe Markdown con sabor GitHub y una vista previa HTML en vivo — sin registro, totalmente en el cliente.' },
+
+    'tools.mdTableGenerator.title': { en: 'Markdown Table', es: 'Tabla Markdown' },
+    'tools.mdTableGenerator.title2': { en: 'Generator', es: 'Generador' },
+    'tools.mdTableGenerator.subtitle': { en: 'Visual table editor with live Markdown preview, CSV import, HTML export, and column alignment controls.', es: 'Editor visual de tablas con vista previa de Markdown en vivo, importación CSV, exportación HTML y controles de alineación de columnas.' },
+
+    'tools.htmlToMd.title': { en: 'HTML', es: 'HTML' },
+    'tools.htmlToMd.title2': { en: 'Markdown Converter', es: 'Conversor Markdown' },
+    'tools.htmlToMd.subtitle': { en: 'Convert between HTML and Markdown instantly — bidirectional, no sign-up, no external libraries.', es: 'Convierte entre HTML y Markdown al instante — bidireccional, sin registro, sin librerías externas.' },
+
+    'tools.sqlFormatter.title': { en: 'SQL Formatter', es: 'Formateador SQL' },
+    'tools.sqlFormatter.title2': { en: 'Beautifier', es: 'Embellecedor' },
+    'tools.sqlFormatter.subtitle': { en: 'Format, beautify, minify and syntax-highlight SQL instantly — supports PostgreSQL, MySQL and SQLite. No sign-up required.', es: 'Formatea, embellece, minifica y resalta la sintaxis de SQL al instante — compatible con PostgreSQL, MySQL y SQLite. Sin registro.' },
+
+    'tools.stringRepeater.title': { en: 'Text/String Repeater', es: 'Repetidor de Texto/Cadenas' },
+    'tools.stringRepeater.title2': { en: 'Multiplier', es: 'Multiplicador' },
+    'tools.stringRepeater.subtitle': { en: 'Repeat text N times with custom separators, reverse, shuffle, sort, number lines, wrap with prefix/suffix — no sign-up required.', es: 'Repite texto N veces con separadores personalizados, invierte, mezcla, ordena, numera líneas y envuelve con prefijo/sufijo — sin registro.' },
+
+    'tools.lineSorter.title': { en: 'Line Sorter', es: 'Ordenador de Líneas' },
+    'tools.lineSorter.subtitle': { en: 'Sort lines alphabetically, by length, numerically, or randomly. Remove duplicates and empty lines.', es: 'Ordena líneas alfabéticamente, por longitud, numéricamente o al azar. Elimina duplicados y líneas vacías.' },
+
+    'tools.binaryText.title': { en: 'Binary', es: 'Binario' },
+    'tools.binaryText.title2': { en: 'Text', es: 'Texto' },
+    'tools.binaryText.title3': { en: 'Converter', es: 'Conversor' },
+    'tools.binaryText.subtitle': { en: 'Convert between text and binary representation with per-character breakdown, separator options, and ASCII/UTF-8 support.', es: 'Convierte entre texto y representación binaria con desglose por carácter, opciones de separador y compatibilidad con ASCII/UTF-8.' },
+
+    'tools.baseConverter.title': { en: 'Number Base', es: 'Base Numérica' },
+    'tools.baseConverter.title2': { en: 'Converter', es: 'Conversor' },
+    'tools.baseConverter.subtitle': { en: 'Convert between Binary, Octal, Decimal, and Hexadecimal instantly with bit visualization and BigInt support.', es: 'Convierte entre binario, octal, decimal y hexadecimal al instante con visualización de bits y compatibilidad con BigInt.' },
+
+    'tools.caesarCipher.title': { en: 'ROT13', es: 'ROT13' },
+    'tools.caesarCipher.title2': { en: 'Caesar Cipher', es: 'Cifrado César' },
+    'tools.caesarCipher.subtitle': { en: 'Encode and decode text with ROT13 or any Caesar cipher shift (1-25). Live preview, brute-force all 26 rotations, preserves case and non-alpha characters.', es: 'Codifica y decodifica texto con ROT13 o cualquier desplazamiento del cifrado César (1-25). Vista previa en vivo, fuerza bruta sobre las 26 rotaciones, conserva mayúsculas y caracteres no alfabéticos.' },
+
+    'tools.morseCode.title': { en: 'Morse Code', es: 'Código Morse' },
+    'tools.morseCode.title2': { en: 'Translator', es: 'Traductor' },
+    'tools.morseCode.subtitle': { en: 'Encode text to Morse code and decode Morse back to text — play audio, visual display, speed control, no sign-up required.', es: 'Codifica texto a código Morse y decodifica Morse de vuelta a texto — reproduce audio, visualización, control de velocidad, sin registro.' },
+
+    'tools.hmacGenerator.title': { en: 'HMAC', es: 'HMAC' },
+    'tools.hmacGenerator.title2': { en: 'Generator', es: 'Generador' },
+    'tools.hmacGenerator.subtitle': { en: 'Generate HMAC signatures with SHA-1, SHA-256, SHA-384, and SHA-512. Verify API signatures, authenticate webhooks — all client-side, no data leaves your browser.', es: 'Genera firmas HMAC con SHA-1, SHA-256, SHA-384 y SHA-512. Verifica firmas de API y autentica webhooks — todo en el cliente, ningún dato sale de tu navegador.' },
+
+    'tools.asciiArt.title': { en: 'ASCII Art Generator', es: 'Generador de Arte ASCII' },
+    'tools.asciiArt.subtitle': { en: 'Type text and render it as ASCII art block letters. Supports A-Z, 0-9, and basic punctuation.', es: 'Escribe texto y conviértelo en letras de bloque de arte ASCII. Admite A-Z, 0-9 y puntuación básica.' },
+
+    'tools.aspectRatio.title': { en: 'Aspect Ratio', es: 'Relación de Aspecto' },
+    'tools.aspectRatio.title2': { en: 'Calculator', es: 'Calculadora' },
+    'tools.aspectRatio.subtitle': { en: 'Calculate simplified aspect ratios, lock dimensions, preview proportions, and get CSS output — with presets for social media and common resolutions.', es: 'Calcula relaciones de aspecto simplificadas, bloquea dimensiones, previsualiza proporciones y obtén la salida CSS — con preajustes para redes sociales y resoluciones comunes.' },
+
+    'tools.chmodCalculator.title': { en: 'Chmod', es: 'Chmod' },
+    'tools.chmodCalculator.title2': { en: 'Calculator', es: 'Calculadora' },
+    'tools.chmodCalculator.subtitle': { en: 'Interactive file permission calculator with numeric &amp; symbolic notation, presets, umask calculator, and ready-to-use commands.', es: 'Calculadora interactiva de permisos de archivos con notación numérica &amp; simbólica, preajustes, calculadora de umask y comandos listos para usar.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },
