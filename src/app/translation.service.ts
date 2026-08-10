@@ -654,6 +654,23 @@ export class TranslationService {
     'tools.snippetManager.title2': { en: 'Manager', es: 'Gestor' },
     'tools.snippetManager.subtitle': { en: 'Save, organize, and search your code snippets locally. Syntax highlighting, tagging, and instant search — all in your browser.', es: 'Guarda, organiza y busca tus fragmentos de código localmente. Resaltado de sintaxis, etiquetado y búsqueda instantánea — todo en tu navegador.' },
 
+    // Batch 8 — remaining CSS / TypeScript / utility tools
+    'tools.tailwindLookup.title': { en: 'Tailwind CSS', es: 'Tailwind CSS' },
+    'tools.tailwindLookup.title2': { en: 'Class', es: 'Clases' },
+    'tools.tailwindLookup.title3': { en: 'Lookup', es: 'Consulta de' },
+    'tools.tailwindLookup.subtitlePre': { en: 'Searchable reference of', es: 'Referencia consultable de' },
+    'tools.tailwindLookup.subtitlePost': { en: '+ Tailwind CSS utility classes. Search by class name or CSS property, filter by category, click to copy.', es: '+ clases utilitarias de Tailwind CSS. Busca por nombre de clase o propiedad CSS, filtra por categoría y haz clic para copiar.' },
+
+    'tools.timezoneConverter.title': { en: 'Timezone Converter', es: 'Conversor de Zonas Horarias' },
+    'tools.timezoneConverter.subtitle': { en: 'Convert times between 30+ timezones with a world clock display.', es: 'Convierte horas entre más de 30 zonas horarias con un reloj mundial.' },
+
+    'tools.transformPlayground.title': { en: 'CSS Transform Playground', es: 'Laboratorio de Transformaciones CSS' },
+    'tools.transformPlayground.subtitle': { en: 'Visually edit CSS transforms with translate, rotate, scale, and skew sliders.', es: 'Edita transformaciones CSS visualmente con deslizadores de translate, rotate, scale y skew.' },
+
+    'tools.tsPlayground.title': { en: 'TS Type', es: 'Laboratorio de' },
+    'tools.tsPlayground.title2': { en: 'Playground', es: 'Tipos TS' },
+    'tools.tsPlayground.subtitle': { en: 'Write TypeScript type definitions and see them explained. Explore utility types, generics, and conditional types interactively.', es: 'Escribe definiciones de tipos de TypeScript y consulta su explicación. Explora tipos utilitarios, genéricos y tipos condicionales de forma interactiva.' },
+
     // Tool card titles & descriptions
     'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
     'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },

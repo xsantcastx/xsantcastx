@@ -1,16 +1,16 @@
 <div class="tfm-page">
   <button class="back-link" (click)="goBack()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back to Tools
+    {{ translate('tools.common.backToTools') }}
   </button>
 
   <header class="tool-header">
-    <p class="tool-header__eyebrow">CSS Tools</p>
-    <h1 class="tool-header__title">CSS Transform Playground</h1>
-    <p class="tool-header__subtitle">Visually edit CSS transforms with translate, rotate, scale, and skew sliders.</p>
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.cssTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.transformPlayground.title') }}</h1>
+    <p class="tool-header__subtitle">{{ translate('tools.transformPlayground.subtitle') }}</p>
     <div class="tool-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on X</a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">Share on LinkedIn</a>
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareX') }}</a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn">{{ translate('tools.common.shareLinkedIn') }}</a>
     </div>
   </header>
 
@@ -19,7 +19,7 @@
       <div class="tfm-panel">
         <div class="tfm-panel__header">
           <span class="tfm-panel__title">Controls</span>
-          <button class="tfm-btn-ghost" (click)="resetAll()">Reset</button>
+          <button class="tfm-btn-ghost" (click)="resetAll()">{{ translate('tools.common.reset') }}</button>
         </div>
         <div class="tfm-panel__body tfm-controls">
           <div class="tfm-group">
@@ -51,7 +51,7 @@
 
     <div class="tfm-col tfm-col--right">
       <div class="tfm-panel">
-        <div class="tfm-panel__header"><span class="tfm-panel__title">Preview</span></div>
+        <div class="tfm-panel__header"><span class="tfm-panel__title">{{ translate('tools.common.preview') }}</span></div>
         <div class="tfm-panel__body tfm-preview-area">
           <div class="tfm-preview-box" [style.transform]="transformValue">
             Transform Me
