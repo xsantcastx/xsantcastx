@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 type ActiveTab = 'lookup' | 'reference';
 
@@ -29,6 +30,9 @@ interface DnsTypeOption {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class DnsLookupComponent implements OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free DNS Record Lookup — query A, AAAA, CNAME, MX, NS, TXT, SOA and SRV records over DNS-over-HTTPS. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/dns-lookup')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/dns-lookup')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private fetchControllers: AbortController[] = [];

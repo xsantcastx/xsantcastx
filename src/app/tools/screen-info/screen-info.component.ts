@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 interface DeviceResolution {
   name: string;
@@ -22,6 +23,9 @@ type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class ScreenInfoComponent implements OnInit, OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Screen Resolution & Pixel Density tool — detect resolution, viewport, DPR and color depth, and calculate PPI. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/screen-info')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/screen-info')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private resizeListener: (() => void) | null = null;

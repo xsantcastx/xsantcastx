@@ -5,6 +5,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 export interface Snippet {
   id: string;
@@ -25,6 +26,9 @@ type ViewMode = 'list' | 'create' | 'edit';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class SnippetManagerComponent implements OnInit, OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Code Snippet Manager — save, tag and search your snippets locally with syntax highlighting. Stays in your browser!')}&url=${encodeURIComponent(SITE_URL + '/tools/snippet-manager')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/snippet-manager')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;

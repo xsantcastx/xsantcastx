@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 interface SitemapUrl {
   loc: string;
@@ -19,6 +20,9 @@ interface SitemapUrl {
     imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class SitemapGeneratorComponent {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Sitemap XML Generator — build valid sitemap.xml with per-URL lastmod, changefreq and priority. Download instantly, no sign-up!')}&url=${encodeURIComponent(SITE_URL + '/tools/sitemap-generator')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/sitemap-generator')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private eggs = inject(EasterEggService);
 

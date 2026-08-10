@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { SITE_URL } from '../../seo.service';
 
 interface EncodingResult {
   label: string;
@@ -34,6 +35,9 @@ interface CharBreakdown {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class EncodingConverterComponent implements OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Encoding Converter — convert text between UTF-8, ASCII, Latin-1, URL encoding, HTML entities and Unicode escapes. 100% client-side!')}&url=${encodeURIComponent(SITE_URL + '/tools/encoding-converter')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/encoding-converter')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;

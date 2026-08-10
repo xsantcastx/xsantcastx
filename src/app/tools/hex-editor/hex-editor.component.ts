@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 type HexMode = 'file' | 'text-to-hex' | 'hex-to-text';
 
@@ -20,6 +21,9 @@ interface HexRow {
     imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class HexEditorComponent implements OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Hex Viewer & Editor — inspect files as hex dumps with offsets and ASCII, search hex patterns, convert text to hex. No upload, no sign-up!')}&url=${encodeURIComponent(SITE_URL + '/tools/hex-editor')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/hex-editor')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { SITE_URL } from '../../seo.service';
 
 interface HeaderEntry {
   key: string;
@@ -32,6 +33,9 @@ interface HistoryEntry {
     imports: [ToolsSharedModule, FormsModule]
 })
 export class ApiRequestBuilderComponent implements OnInit, OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free API Request Builder — compose, send and inspect HTTP requests right in the browser. No backend, no sign-up!')}&url=${encodeURIComponent(SITE_URL + '/tools/api-request-builder')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/api-request-builder')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 

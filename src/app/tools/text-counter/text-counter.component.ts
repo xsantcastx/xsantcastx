@@ -4,6 +4,7 @@ import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { DecimalPipe } from '@angular/common';
+import { SITE_URL } from '../../seo.service';
 
 interface WordFrequency {
   word: string;
@@ -24,6 +25,9 @@ interface CharFrequency {
     imports: [FormsModule, ToolsSharedModule, DecimalPipe]
 })
 export class TextCounterComponent implements OnDestroy {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Text Counter & Analyzer — live word count, character count, reading time and keyword density as you type. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/text-counter')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/text-counter')}`;
+
   private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 

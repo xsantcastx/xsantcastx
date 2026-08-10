@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { SITE_URL } from '../../seo.service';
 
 export interface DevicePreset {
   name: string;
@@ -28,6 +29,9 @@ export interface PreviewSlot {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class ResponsivePreviewComponent {
+  readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Responsive Preview — check any URL at every screen size, compare devices side-by-side and rotate orientation. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/responsive-preview')}`;
+  readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/responsive-preview')}`;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private readonly sanitizer = inject(DomSanitizer);
