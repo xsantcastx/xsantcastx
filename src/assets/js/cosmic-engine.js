@@ -1104,9 +1104,18 @@
           var outlet = document.querySelector('router-outlet');
           if (!outlet || outlet.dataset.fadeBound) return;
           outlet.dataset.fadeBound = '1';
-          var veil = document.createElement('div');
-          veil.className = 'cosmic-route-veil';
-          document.body.appendChild(veil);
+          // Perf: the bound-flag lives on the outlet, but hydration can swap the
+          // SSR <router-outlet> for a fresh one — the replacement carries no
+          // flag, so a SECOND veil was appended and the first was orphaned. Two
+          // full-viewport fixed z-index:9990 layers were confirmed live on
+          // /home. Reuse any veil already in the document instead of minting
+          // one per outlet.
+          var veil = document.querySelector('.cosmic-route-veil');
+          if (!veil) {
+            veil = document.createElement('div');
+            veil.className = 'cosmic-route-veil';
+            document.body.appendChild(veil);
+          }
           // The active component is the next sibling of router-outlet in Angular
           var lastComponent = outlet.nextElementSibling;
           var routeMo = new MutationObserver(function () {

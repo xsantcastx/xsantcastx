@@ -397,7 +397,15 @@ footer::after {
   z-index: 10000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  /* Perf: all three modals (crypto / PayPal / Stripe) live in the DOM on every
+     page. With only opacity:0 they stayed `visibility: visible`, so the
+     compositor kept three full-viewport z-index:10000 layers — each with an
+     8px backdrop-filter — alive and painted on every route, forever, for UI
+     nobody had opened. visibility:hidden takes them out of the paint and hit
+     test entirely; it is transitioned alongside opacity (visibility flips
+     discretely at the end of the timing function) so the fade still plays. */
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -405,6 +413,7 @@ footer::after {
 .donation-modal.show,
 .donation-modal.active {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
