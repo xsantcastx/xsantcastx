@@ -1,9 +1,11 @@
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
+import { DEV_LOG, DEV_LOG_CATEGORIES, DevLogEntry, DevLogCategory } from './dev-log';
+import { APP_VERSION, VERSION_HISTORY, VersionRelease } from '../version';
 
 /**
  * blueprint.component.ts — the public roadmap + project documentation page.
@@ -33,6 +35,21 @@ interface RoadmapItem {
   title: string;
   description: string;
   status: RoadmapStatus;
+  /**
+   * Optional link to the Dev Log entry telling the story of how this was
+   * built. Set it once the work ships — the card grows a "Read the story"
+   * link that jumps to the entry and expands it.
+   */
+  devLogId?: string;
+}
+
+/** The five panels of the Blueprint mini-site. */
+type BlueprintTab = 'overview' | 'roadmap' | 'devlog' | 'architecture' | 'contribute';
+
+interface TabDefinition {
+  key: BlueprintTab;
+  label: string;
+  hint: string;
 }
 
 interface RoadmapColumn {
@@ -80,15 +97,32 @@ const GITHUB_REPO = 'https://github.com/xsantcastx/xsantcastx';
   templateUrl: './blueprint.component.html',
   styleUrls: ['./blueprint.component.css']
 })
-export class BlueprintComponent {
+export class BlueprintComponent implements OnInit {
   private firestore = inject(Firestore);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly githubRepo = GITHUB_REPO;
   readonly githubIssues = `${GITHUB_REPO}/issues`;
+  readonly githubDiscussions = `${GITHUB_REPO}/discussions`;
   readonly prerenderedRoutes = PRERENDERED_ROUTES;
   readonly mcpToolCount = 14;
   readonly mcpInstall = 'npm install -g xsantcastx-mcp-server';
+
+  // ── Version ────────────────────────────────────────────────────────────────
+  readonly appVersion = APP_VERSION;
+  readonly versionHistory: VersionRelease[] = VERSION_HISTORY;
+  readonly angularVersion = 'Angular 21';
+
+  // ── Tabs — /blueprint behaves as a mini-site, not one long scroll ──────────
+  readonly tabs: TabDefinition[] = [
+    { key: 'overview',     label: 'Overview',     hint: 'version, stats and the full tool map' },
+    { key: 'roadmap',      label: 'Roadmap',      hint: 'now, next and later' },
+    { key: 'devlog',       label: 'Dev Log',      hint: 'what actually happened, written down' },
+    { key: 'architecture', label: 'Architecture', hint: 'the stack and the decisions behind it' },
+    { key: 'contribute',   label: 'Contribute',   hint: 'suggest, report, discuss' }
+  ];
+
+  activeTab: BlueprintTab = 'overview';
 
   // ── Section 1: the tool map ────────────────────────────────────────────────
   /**
@@ -158,7 +192,8 @@ export class BlueprintComponent {
         {
           title: 'Multi-language support (i18n)',
           description: 'Wiring every tool through TranslationService so the whole site reads in English and Spanish.',
-          status: 'building'
+          status: 'building',
+          devLogId: 'i18n-journey'
         },
         {
           title: 'Accessibility audit',
@@ -168,7 +203,8 @@ export class BlueprintComponent {
         {
           title: 'Security hardening',
           description: 'Dependency vulnerability sweep, tightened Firestore rules and a stricter Content-Security-Policy.',
-          status: 'building'
+          status: 'building',
+          devLogId: 'security-hardening'
         }
       ]
     },
@@ -277,6 +313,15 @@ export class BlueprintComponent {
   /** Which accordion panel is open. `null` = all collapsed. */
   openDecision: string | null = null;
 
+  // ── Dev Log ────────────────────────────────────────────────────────────────
+  readonly devLogCategories = DEV_LOG_CATEGORIES;
+  /** Newest first — sorted here so entry order in dev-log.ts can't break it. */
+  readonly devLog: DevLogEntry[] = [...DEV_LOG].sort((a, b) => b.date.localeCompare(a.date));
+  /** `null` = show everything. */
+  devLogFilter: DevLogCategory | null = null;
+  /** Ids of expanded entries — several can be open at once. */
+  expandedEntries = new Set<string>();
+
   // ── Section 4: latest updates ──────────────────────────────────────────────
   updates: UpdateItem[] = [
     {
@@ -336,6 +381,103 @@ export class BlueprintComponent {
   /** `data-tags` payload the cosmic engine reads to draw constellation lines. */
   tagList(tool: ToolDefinition): string {
     return tool.tags.join(',');
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
+  ngOnInit(): void {
+    // Deep links: /blueprint#devlog opens that tab directly, so a link shared
+    // in a thread lands where the sender meant it to.
+    if (!this.isBrowser) return;
+    const fragment = (window.location.hash || '').replace(/^#/, '');
+    if (!fragment) return;
+
+    // Either "#devlog" (a tab) or "#log-<entry-id>" (a specific entry).
+    if (fragment.startsWith('log-')) {
+      const entryId = fragment.slice(4);
+      if (this.devLog.some(e => e.id === entryId)) {
+        this.activeTab = 'devlog';
+        this.expandedEntries.add(entryId);
+      }
+      return;
+    }
+    if (this.tabs.some(t => t.key === fragment)) {
+      this.activeTab = fragment as BlueprintTab;
+    }
+  }
+
+  selectTab(tab: BlueprintTab): void {
+    this.activeTab = tab;
+    if (!this.isBrowser) return;
+    // replaceState, not a hash assignment — assigning location.hash makes the
+    // browser jump-scroll to any element with that id and adds a history entry
+    // per tab click, which turns Back into "cycle through five tabs".
+    window.history.replaceState(null, '', `#${tab}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Dev Log ────────────────────────────────────────────────────────────────
+
+  get filteredDevLog(): DevLogEntry[] {
+    if (!this.devLogFilter) return this.devLog;
+    return this.devLog.filter(e => e.category === this.devLogFilter);
+  }
+
+  setDevLogFilter(category: DevLogCategory | null): void {
+    this.devLogFilter = this.devLogFilter === category ? null : category;
+  }
+
+  countFor(category: DevLogCategory): number {
+    return this.devLog.filter(e => e.category === category).length;
+  }
+
+  toggleEntry(id: string): void {
+    if (this.expandedEntries.has(id)) {
+      this.expandedEntries.delete(id);
+    } else {
+      this.expandedEntries.add(id);
+    }
+  }
+
+  isExpanded(id: string): boolean {
+    return this.expandedEntries.has(id);
+  }
+
+  categoryMeta(category: DevLogCategory) {
+    return (
+      this.devLogCategories.find(c => c.key === category) ?? this.devLogCategories[0]
+    );
+  }
+
+  /** "2026-08-10" → "August 10, 2026". Parsed as UTC so the date never
+   *  slips a day for visitors west of Greenwich. */
+  formatDate(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return iso;
+    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
+    });
+  }
+
+  /** Jump from a roadmap card to the Dev Log entry that tells its story. */
+  openDevLogEntry(id: string): void {
+    this.activeTab = 'devlog';
+    this.devLogFilter = null;
+    this.expandedEntries.add(id);
+    if (!this.isBrowser) return;
+    window.history.replaceState(null, '', `#log-${id}`);
+    // Wait a frame so the devlog panel is laid out before measuring.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`log-${id}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
+  devLogTitle(id: string): string {
+    return this.devLog.find(e => e.id === id)?.title ?? '';
   }
 
   toggleDecision(id: string): void {

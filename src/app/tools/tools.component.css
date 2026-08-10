@@ -1051,7 +1051,9 @@ a.tool-card { text-decoration: none; color: inherit; }
   .galaxy__count { font-size: 0.6rem; }
 
   .star-system { min-height: 620px; }
-  .star-system__scene { height: 620px; transform: rotateX(14deg); }
+  /* C-4: transform removed — was dead, always overridden by the later ≤768px
+     block's rotateX(12deg) at equal specificity */
+  .star-system__scene { height: 620px; }
   .star-system__core { width: 86px; height: 86px; }
   .orbit-star__anchor { width: calc(26px * var(--star-size)); height: calc(26px * var(--star-size)); }
 
@@ -1110,10 +1112,10 @@ a.tool-card { text-decoration: none; color: inherit; }
     display: none;
   }
 
-  /* Fade every other orbit-star to near-invisible — halves perceived
-     star count in CSS without removing elements or touching TS. */
+  /* Hide every other orbit-star — removes from a11y tree and hit-testing
+     so there are no invisible tap/focus traps on mobile. */
   .orbit-star:nth-child(even) {
-    opacity: 0.08;
+    visibility: hidden;
   }
 
   /* Reduce star-system scene tilt — cheaper perspective at small viewport */

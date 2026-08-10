@@ -11,28 +11,138 @@
          spans and would break the background-clip gradient below. -->
     <h1 class="bp-hero__title">Blueprint</h1>
     <p class="bp-hero__sub">
-      The whole map — what has been built, what is being built, and what is still
-      only a thought. Nothing here is behind a login.
+      The public brain of this project — what has been built, what is being
+      built, what broke along the way, and what is still only a thought.
+      Nothing here is behind a login.
     </p>
     <p class="bp-tagline">a living chart of the xsantcastx universe</p>
 
-    <nav class="bp-jump" aria-label="Blueprint sections">
-      <a href="#built">Built</a>
-      <a href="#roadmap">Roadmap</a>
-      <a href="#architecture">Architecture</a>
-      <a href="#stats">Stats</a>
-      <a href="#suggest">Suggest</a>
-    </nav>
+    <p class="bp-hero__version">
+      <span class="bp-hero__version-tag">v{{ appVersion.version }}</span>
+      <span class="bp-hero__version-name">“{{ appVersion.codename }}”</span>
+      <span class="bp-hero__version-date">built {{ formatDate(appVersion.buildDate) }}</span>
+    </p>
   </header>
 
-  <!-- ═══ Section 1 — What We've Built ═══════════════════════════════════ -->
-  <section id="built" class="bp-section" aria-labelledby="bp-built-title">
+  <!-- ═══ Tab navigation ═════════════════════════════════════════════════ -->
+  <nav class="bp-tabs" role="tablist" aria-label="Blueprint sections">
+    @for (tab of tabs; track tab.key) {
+      <button
+        type="button"
+        role="tab"
+        class="bp-tab"
+        [class.is-active]="activeTab === tab.key"
+        [id]="'bp-tab-' + tab.key"
+        [attr.aria-selected]="activeTab === tab.key"
+        [attr.aria-controls]="'bp-panel-' + tab.key"
+        [attr.title]="tab.hint"
+        (click)="selectTab(tab.key)">
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  <!-- ═══ Panel: Overview ════════════════════════════════════════════════ -->
+  <section
+    class="bp-panel"
+    role="tabpanel"
+    id="bp-panel-overview"
+    aria-labelledby="bp-tab-overview"
+    [hidden]="activeTab !== 'overview'">
+
+    <!-- ── Version + stats ──────────────────────────────────────────────── -->
     <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        By The Numbers
+      </p>
+      <h2 class="bp-section__title section-title">Live Numbers</h2>
+      <p class="bp-section__tagline">
+        counted from the registry at build time, not from memory
+      </p>
+    </div>
+
+    <ul class="bp-stats">
+      <li class="bp-stat" style="--star-color:#4dffe0; --star-glow:rgba(0,255,204,0.6)">
+        <span class="bp-stat__num" [attr.data-counter]="totalTools">{{ totalTools }}</span>
+        <span class="bp-stat__label">Free tools</span>
+        <span class="bp-stat__note">all client-side, all free</span>
+      </li>
+      <li class="bp-stat" style="--star-color:#5fb6ff; --star-glow:rgba(80,180,255,0.6)">
+        <span class="bp-stat__num">{{ prerenderedRoutes }}+</span>
+        <span class="bp-stat__label">SSR-prerendered pages</span>
+        <span class="bp-stat__note">real HTML for every route</span>
+      </li>
+      <li class="bp-stat" style="--star-color:#7fd5a3; --star-glow:rgba(100,220,150,0.6)">
+        <span class="bp-stat__num">{{ mcpToolCount }}</span>
+        <span class="bp-stat__label">MCP tools for AI agents</span>
+        <code class="bp-stat__code">{{ mcpInstall }}</code>
+      </li>
+      <li class="bp-stat" style="--star-color:#c48bff; --star-glow:rgba(180,120,255,0.6)">
+        <span class="bp-stat__num">Open</span>
+        <span class="bp-stat__label">Built in public</span>
+        <a class="bp-link" [href]="githubRepo" target="_blank" rel="noopener noreferrer">
+          github.com/xsantcastx →
+        </a>
+      </li>
+    </ul>
+
+    <!-- ── Version panel ────────────────────────────────────────────────── -->
+    <div class="bp-version">
+      <div class="bp-version__now">
+        <p class="bp-version__eyebrow">Currently deployed</p>
+        <p class="bp-version__headline">
+          <span class="bp-version__num">v{{ appVersion.version }}</span>
+          <span class="bp-version__code">“{{ appVersion.codename }}”</span>
+        </p>
+        <dl class="bp-version__meta">
+          <div>
+            <dt>Build date</dt>
+            <dd>{{ formatDate(appVersion.buildDate) }}</dd>
+          </div>
+          <div>
+            <dt>Framework</dt>
+            <dd>{{ angularVersion }}</dd>
+          </div>
+          <div>
+            <dt>Tools</dt>
+            <dd>{{ totalTools }}</dd>
+          </div>
+          <div>
+            <dt>Prerendered routes</dt>
+            <dd>{{ prerenderedRoutes }}+</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="bp-version__history">
+        <p class="bp-version__eyebrow">Release history</p>
+        <ol class="bp-version__list">
+          @for (release of versionHistory; track release.version) {
+            <li class="bp-release" [class.is-current]="release.version === appVersion.version">
+              <div class="bp-release__hd">
+                <span class="bp-release__num">v{{ release.version }}</span>
+                <span class="bp-release__code">{{ release.codename }}</span>
+                <span class="bp-release__date">{{ formatDate(release.date) }}</span>
+              </div>
+              <ul class="bp-release__highlights">
+                @for (highlight of release.highlights; track highlight) {
+                  <li>{{ highlight }}</li>
+                }
+              </ul>
+            </li>
+          }
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── Tool map ─────────────────────────────────────────────────────── -->
+    <div class="section-header bp-section__hd bp-section__hd--spaced">
       <p class="bp-eyebrow">
         <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
         What We've Built
       </p>
-      <h2 id="bp-built-title" class="bp-section__title section-title">
+      <h2 class="bp-section__title section-title">
         {{ totalTools }}+ Free Developer Tools
       </h2>
       <p class="bp-section__tagline">
@@ -76,14 +186,20 @@
     </p>
   </section>
 
-  <!-- ═══ Section 2 — What's Next ════════════════════════════════════════ -->
-  <section id="roadmap" class="bp-section" aria-labelledby="bp-roadmap-title">
+  <!-- ═══ Panel: Roadmap ═════════════════════════════════════════════════ -->
+  <section
+    class="bp-panel"
+    role="tabpanel"
+    id="bp-panel-roadmap"
+    aria-labelledby="bp-tab-roadmap"
+    [hidden]="activeTab !== 'roadmap'">
+
     <div class="section-header bp-section__hd">
       <p class="bp-eyebrow">
         <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
         What's Next
       </p>
-      <h2 id="bp-roadmap-title" class="bp-section__title section-title">Public Roadmap</h2>
+      <h2 class="bp-section__title section-title">Public Roadmap</h2>
       <p class="bp-section__tagline">
         no private backlog — this is the actual order of work
       </p>
@@ -112,6 +228,16 @@
                   </span>
                 </div>
                 <p class="bp-item__desc">{{ item.description }}</p>
+
+                @if (item.devLogId) {
+                  <button
+                    type="button"
+                    class="bp-item__story"
+                    (click)="openDevLogEntry(item.devLogId)"
+                    [attr.aria-label]="'Read the dev log entry: ' + devLogTitle(item.devLogId)">
+                    ✦ Read the story →
+                  </button>
+                }
               </li>
             }
           </ul>
@@ -120,14 +246,121 @@
     </div>
   </section>
 
-  <!-- ═══ Section 3 — How It's Built ═════════════════════════════════════ -->
-  <section id="architecture" class="bp-section" aria-labelledby="bp-arch-title">
+  <!-- ═══ Panel: Dev Log ═════════════════════════════════════════════════ -->
+  <section
+    class="bp-panel"
+    role="tabpanel"
+    id="bp-panel-devlog"
+    aria-labelledby="bp-tab-devlog"
+    [hidden]="activeTab !== 'devlog'">
+
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        Dev Log
+      </p>
+      <h2 class="bp-section__title section-title">Build In Public</h2>
+      <p class="bp-section__tagline">
+        the problems, the decisions and the mistakes — written down while they were fresh
+      </p>
+    </div>
+
+    <!-- Category filter -->
+    <div class="bp-filters" role="group" aria-label="Filter dev log by category">
+      <button
+        type="button"
+        class="bp-filter"
+        [class.is-active]="devLogFilter === null"
+        [attr.aria-pressed]="devLogFilter === null"
+        (click)="setDevLogFilter(null)">
+        All <span class="bp-filter__count">{{ devLog.length }}</span>
+      </button>
+      @for (cat of devLogCategories; track cat.key) {
+        <button
+          type="button"
+          class="bp-filter"
+          [class.is-active]="devLogFilter === cat.key"
+          [attr.aria-pressed]="devLogFilter === cat.key"
+          [style.--star-color]="cat.color"
+          [style.--star-glow]="cat.glow"
+          (click)="setDevLogFilter(cat.key)">
+          {{ cat.label }} <span class="bp-filter__count">{{ countFor(cat.key) }}</span>
+        </button>
+      }
+    </div>
+
+    <ol class="bp-log">
+      @for (entry of filteredDevLog; track entry.id) {
+        <li
+          class="bp-log-entry"
+          [id]="'log-' + entry.id"
+          [class.is-open]="isExpanded(entry.id)"
+          [style.--star-color]="categoryMeta(entry.category).color"
+          [style.--star-glow]="categoryMeta(entry.category).glow">
+
+          <article>
+            <header class="bp-log-entry__hd">
+              <span class="bp-log-entry__orb" aria-hidden="true"></span>
+              <div class="bp-log-entry__meta">
+                <time class="bp-log-entry__date" [attr.datetime]="entry.date">
+                  {{ formatDate(entry.date) }}
+                </time>
+                <span class="bp-log-entry__cat">{{ categoryMeta(entry.category).label }}</span>
+              </div>
+            </header>
+
+            <h3 class="bp-log-entry__title">
+              <button
+                type="button"
+                class="bp-log-entry__toggle"
+                [attr.aria-expanded]="isExpanded(entry.id)"
+                [attr.aria-controls]="'log-body-' + entry.id"
+                (click)="toggleEntry(entry.id)">
+                <span>{{ entry.title }}</span>
+                <span class="bp-log-entry__chev" aria-hidden="true"></span>
+              </button>
+            </h3>
+
+            <p class="bp-log-entry__summary">{{ entry.summary }}</p>
+
+            <div
+              class="bp-log-entry__body"
+              [id]="'log-body-' + entry.id"
+              [hidden]="!isExpanded(entry.id)">
+              @for (para of entry.body; track $index) {
+                <p>{{ para }}</p>
+              }
+            </div>
+
+            <ul class="bp-log-entry__tags">
+              @for (tag of entry.tags; track tag) {
+                <li>{{ tag }}</li>
+              }
+            </ul>
+          </article>
+        </li>
+      }
+    </ol>
+
+    @if (filteredDevLog.length === 0) {
+      <p class="bp-log__empty">No entries in that category yet.</p>
+    }
+  </section>
+
+  <!-- ═══ Panel: Architecture ════════════════════════════════════════════ -->
+  <section
+    class="bp-panel"
+    role="tabpanel"
+    id="bp-panel-architecture"
+    aria-labelledby="bp-tab-architecture"
+    [hidden]="activeTab !== 'architecture'">
+
     <div class="section-header bp-section__hd">
       <p class="bp-eyebrow">
         <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
         How It's Built
       </p>
-      <h2 id="bp-arch-title" class="bp-section__title section-title">Architecture</h2>
+      <h2 class="bp-section__title section-title">Architecture</h2>
       <p class="bp-section__tagline">
         the machinery under the nebula, and why it was picked
       </p>
@@ -154,7 +387,7 @@
               type="button"
               class="bp-accordion__trigger"
               [attr.aria-expanded]="openDecision === decision.id"
-              [attr.aria-controls]="'bp-panel-' + decision.id"
+              [attr.aria-controls]="'bp-decision-' + decision.id"
               [id]="'bp-trigger-' + decision.id"
               (click)="toggleDecision(decision.id)">
               <span class="bp-accordion__q">{{ decision.question }}</span>
@@ -163,7 +396,7 @@
           </h3>
           <div
             class="bp-accordion__panel"
-            [id]="'bp-panel-' + decision.id"
+            [id]="'bp-decision-' + decision.id"
             role="region"
             [attr.aria-labelledby]="'bp-trigger-' + decision.id"
             [hidden]="openDecision !== decision.id">
@@ -174,79 +407,92 @@
     </div>
   </section>
 
-  <!-- ═══ Section 4 — Stats ══════════════════════════════════════════════ -->
-  <section id="stats" class="bp-section" aria-labelledby="bp-stats-title">
+  <!-- ═══ Panel: Contribute ══════════════════════════════════════════════ -->
+  <section
+    class="bp-panel"
+    role="tabpanel"
+    id="bp-panel-contribute"
+    aria-labelledby="bp-tab-contribute"
+    [hidden]="activeTab !== 'contribute'">
+
     <div class="section-header bp-section__hd">
       <p class="bp-eyebrow">
         <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
-        By The Numbers
+        Get Involved
       </p>
-      <h2 id="bp-stats-title" class="bp-section__title section-title">Live Numbers</h2>
-      <p class="bp-section__tagline">
-        counted from the registry at build time, not from memory
-      </p>
-    </div>
-
-    <ul class="bp-stats">
-      <li class="bp-stat" style="--star-color:#4dffe0; --star-glow:rgba(0,255,204,0.6)">
-        <span class="bp-stat__num" [attr.data-counter]="totalTools">{{ totalTools }}</span>
-        <span class="bp-stat__label">Free tools</span>
-        <span class="bp-stat__note">all client-side, all free</span>
-      </li>
-      <li class="bp-stat" style="--star-color:#5fb6ff; --star-glow:rgba(80,180,255,0.6)">
-        <span class="bp-stat__num">{{ prerenderedRoutes }}+</span>
-        <span class="bp-stat__label">SSR-prerendered pages</span>
-        <span class="bp-stat__note">real HTML for every route</span>
-      </li>
-      <li class="bp-stat" style="--star-color:#7fd5a3; --star-glow:rgba(100,220,150,0.6)">
-        <span class="bp-stat__num">{{ mcpToolCount }}</span>
-        <span class="bp-stat__label">MCP tools for AI agents</span>
-        <code class="bp-stat__code">{{ mcpInstall }}</code>
-      </li>
-      <li class="bp-stat" style="--star-color:#c48bff; --star-glow:rgba(180,120,255,0.6)">
-        <span class="bp-stat__num">Open</span>
-        <span class="bp-stat__label">Built in public</span>
-        <a class="bp-link" [href]="githubRepo" target="_blank" rel="noopener noreferrer">
-          github.com/xsantcastx →
-        </a>
-      </li>
-    </ul>
-
-    <div class="bp-updates">
-      <h3 class="bp-updates__title">Latest Updates</h3>
-      <ol class="bp-updates__list">
-        @for (update of updates; track update.title) {
-          <li class="bp-update">
-            <span class="bp-update__dot" aria-hidden="true"></span>
-            <div class="bp-update__body">
-              <span class="bp-update__date">{{ update.date }}</span>
-              <h4 class="bp-update__title">{{ update.title }}</h4>
-              <p class="bp-update__detail">{{ update.detail }}</p>
-            </div>
-          </li>
-        }
-      </ol>
-    </div>
-  </section>
-
-  <!-- ═══ Section 5 — Have an Idea? ══════════════════════════════════════ -->
-  <section id="suggest" class="bp-section bp-section--suggest" aria-labelledby="bp-suggest-title">
-    <div class="section-header bp-section__hd">
-      <p class="bp-eyebrow">
-        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
-        Have an Idea?
-      </p>
-      <h2 id="bp-suggest-title" class="bp-section__title section-title">Suggest a Tool</h2>
+      <h2 class="bp-section__title section-title">Contribute</h2>
       <p class="bp-section__tagline">
         the next star in this universe could be yours
       </p>
     </div>
 
+    <!-- How the AI team works -->
+    <div class="bp-ai">
+      <h3 class="bp-ai__title">
+        <span class="bp-ai__orb" aria-hidden="true"></span>
+        How the AI team works
+      </h3>
+      <p>
+        Most of the day-to-day work on this site — new tools, refactors,
+        accessibility fixes, dependency bumps — is done by autonomous AI agents
+        working from the same public roadmap you are reading. They pick up
+        scoped tasks, open branches, run the build and the type-checker, and
+        push commits.
+      </p>
+      <p>
+        Nothing merges without passing a production build, and every change
+        lands as an ordinary reviewable commit rather than a black box. The Dev
+        Log tab is where the interesting runs get written up, including the ones
+        that went sideways. If you want to see how the sausage is made, the git
+        history and that log are the same story told at two zoom levels.
+      </p>
+    </div>
+
+    <!-- Ways in -->
+    <ul class="bp-ways">
+      <li class="bp-way" style="--star-color:#c48bff; --star-glow:rgba(180,120,255,0.6)">
+        <span class="bp-way__icon" aria-hidden="true">◆</span>
+        <h3 class="bp-way__title">Read the code</h3>
+        <p class="bp-way__desc">
+          The whole site is on GitHub — Angular app, Cloud Functions, MCP
+          server and all.
+        </p>
+        <a class="bp-link" [href]="githubRepo" target="_blank" rel="noopener noreferrer">
+          Open the repo →
+        </a>
+      </li>
+      <li class="bp-way" style="--star-color:#ff6dd7; --star-glow:rgba(255,90,210,0.6)">
+        <span class="bp-way__icon" aria-hidden="true">⚑</span>
+        <h3 class="bp-way__title">Report a bug</h3>
+        <p class="bp-way__desc">
+          Something broken, wrong or subtly off? Issues are the fastest route
+          to getting it fixed.
+        </p>
+        <a class="bp-link" [href]="githubIssues" target="_blank" rel="noopener noreferrer">
+          Open an issue →
+        </a>
+      </li>
+      <li class="bp-way" style="--star-color:#7fd5a3; --star-glow:rgba(100,220,150,0.6)">
+        <span class="bp-way__icon" aria-hidden="true">✧</span>
+        <h3 class="bp-way__title">Join the discussion</h3>
+        <p class="bp-way__desc">
+          Argue with the roadmap, question an architecture decision, or just
+          say what you would build next.
+        </p>
+        <a class="bp-link" [href]="githubDiscussions" target="_blank" rel="noopener noreferrer">
+          Open discussions →
+        </a>
+      </li>
+    </ul>
+
+    <!-- Suggest a tool -->
     <div class="bp-suggest">
+      <h3 class="bp-suggest__title">Suggest a tool</h3>
+
       @if (suggestionStatus === 'success') {
         <div class="bp-suggest__done" data-success-burst role="status">
           <span class="bp-suggest__done-mark" aria-hidden="true">✦</span>
-          <h3>Thanks — we review every suggestion.</h3>
+          <h4>Thanks — we review every suggestion.</h4>
           <p>
             It landed. If you left an email we'll ping you when it ships; if not,
             watch this page — it will show up under <strong>Next</strong> first.
@@ -313,13 +559,6 @@
           </p>
         </form>
       }
-
-      <p class="bp-suggest__alt">
-        Or discuss it in the open —
-        <a class="bp-link" [href]="githubIssues" target="_blank" rel="noopener noreferrer">
-          open an issue on GitHub →
-        </a>
-      </p>
     </div>
   </section>
 
