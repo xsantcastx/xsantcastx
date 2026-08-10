@@ -171,7 +171,11 @@
   }
   </script>
 
-  <script src="https://www.google.com/recaptcha/api.js"></script>
+  <!-- reCAPTCHA is NOT loaded here on purpose. Firebase App Check's
+       ReCaptchaV3Provider injects its own api.js?render=<siteKey> tag when it
+       initializes; a bare api.js tag in <head> is render-blocking on every
+       route, has no ?render= param so App Check can't use it anyway, and
+       nothing in the app touches window.grecaptcha directly. -->
 
   <!--
     TODO: Google AdSense

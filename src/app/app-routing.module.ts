@@ -7,7 +7,6 @@ import { DonateComponent } from './donate/donate.component';
 import { LandingComponent } from './landing/landing.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { GamesComponent } from './games/games.component';
-import { GuestbookComponent } from './guestbook/guestbook.component';
 import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
@@ -166,7 +165,10 @@ const routes: Routes = [
     },
   {
       path: 'guestbook',
-      component: GuestbookComponent,
+      // loadChildren (not loadComponent) so that provideAuth()/provideDatabase()
+      // live inside the lazy chunk too — importing them here would pull
+      // @firebase/auth back into the eager bundle via this module.
+      loadChildren: () => import('./guestbook/guestbook.routes').then(m => m.GUESTBOOK_ROUTES),
       title: 'Guestbook — Sign the wall | xsantcastx',
       data: {
         description: 'Leave a message in the cosmic guestbook. A constellation of visitors who passed through.',

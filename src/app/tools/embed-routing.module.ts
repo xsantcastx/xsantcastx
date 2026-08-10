@@ -26,7 +26,7 @@ const routes: Routes = [
   { path: 'color-palette', loadComponent: () => import('./color-palette/color-palette.component').then(m => m.ColorPaletteComponent), data: { embed: true } },
   { path: 'contrast-checker', loadComponent: () => import('./contrast-checker/contrast-checker.component').then(m => m.ContrastCheckerComponent), data: { embed: true } },
   { path: 'image-compressor', loadComponent: () => import('./image-compressor/image-compressor.component').then(m => m.ImageCompressorComponent), data: { embed: true } },
-  { path: 'pdf-generator', loadComponent: () => import('./pdf-generator/pdf-generator.component').then(m => m.PdfGeneratorComponent), data: { embed: true } },
+  { path: 'pdf-generator', loadChildren: () => import('./pdf-generator/pdf-generator.routes').then(m => m.PDF_GENERATOR_ROUTES), data: { embed: true } },
   { path: 'gmail-deliverability-checker', loadComponent: () => import('./gmail-deliverability-checker/gmail-deliverability-checker.component').then(m => m.GmailDeliverabilityCheckerComponent), data: { embed: true } },
   { path: 'email-deliverability-auditor', loadComponent: () => import('./email-deliverability-auditor/email-deliverability-auditor.component').then(m => m.EmailDeliverabilityAuditorComponent), data: { embed: true } },
   { path: 'ssl-certificate-inspector', loadComponent: () => import('./ssl-certificate-inspector/ssl-certificate-inspector.component').then(m => m.SslCertificateInspectorComponent), data: { embed: true } },
