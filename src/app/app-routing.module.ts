@@ -177,6 +177,34 @@ const routes: Routes = [
       }
     },
   {
+      path: 'blueprint',
+      loadComponent: () => import('./blueprint/blueprint.component').then(m => m.BlueprintComponent),
+      title: 'Blueprint — Public Roadmap & Architecture | xsantcastx',
+      data: {
+        description: 'The open blueprint for xsantcastx.com — every free tool mapped by category, the public Now/Next/Later roadmap, the architecture behind it, and a form to suggest the next tool.',
+        keywords: 'public roadmap, open roadmap, developer tools roadmap, project documentation, architecture, build in public, suggest a tool, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/blueprint`,
+          url: `${SITE_URL}/blueprint`,
+          name: 'Blueprint — Public Roadmap & Architecture',
+          description: 'Public roadmap, tool map and architecture documentation for xsantcastx.com. See what is built, what is being built, and what is only an idea.',
+          inLanguage: 'en',
+          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'xsantcastx' },
+          author: { '@id': `${SITE_URL}/#person` },
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 2, name: 'Blueprint', item: `${SITE_URL}/blueprint` }
+            ]
+          }
+        }
+      }
+    },
+  {
     path: 'tools',
     loadChildren: () => import('./tools/tools.module').then(m => m.ToolsModule)
   },

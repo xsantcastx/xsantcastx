@@ -5,6 +5,7 @@
 /donate
 /live
 /guestbook
+/blueprint
 /tools
 /tools/box-shadow-generator
 /tools/char-map
