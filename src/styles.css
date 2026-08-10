@@ -1873,6 +1873,15 @@ summary:focus-visible {
     display: none;
   }
 
+  /* ── 7b. .particle-layer (app.component.html) is a ninth fixed
+     full-viewport layer running nebulaDrift forever. Its three tiny radial
+     gradients are already indistinguishable from the body::after starfield
+     behind it, so freeze the animation and let it paint once. ── */
+  .particle-layer {
+    animation: none;
+    will-change: auto;
+  }
+
   /* ── 8. Cursor trail / custom cursor: already touch-guarded in the engine,
      but make the layer removal declarative too so no stray element is left
      compositing. ── */
