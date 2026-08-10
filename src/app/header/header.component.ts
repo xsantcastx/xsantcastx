@@ -11,8 +11,9 @@
   PLATFORM_ID
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
 
@@ -37,8 +38,15 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
+  private keydownHandler?: (event: KeyboardEvent) => void;
+  private routerSub?: Subscription;
   private lastHeaderOffset = 96;
-  private bodyOverflowBackup: string | null = null;
+  private lastNavHeight = -1;
+  /** Scroll offset captured when the drawer locks the page, restored on unlock. */
+  private lockedScrollY = 0;
+  private isScrollLocked = false;
+  /** Above this width the drawer is not rendered — matches the CSS breakpoint. */
+  private static readonly MOBILE_NAV_BREAKPOINT = 960;
   // Perf: rAF throttle for scroll handler to prevent layout thrash on mobile
   private scrollRafId: number | null = null;
   // Perf: cache section offsets so scroll handler doesn't hit the DOM 5x per frame
@@ -88,6 +96,13 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       }
     });
     this.setupScrollListener();
+
+    // Mobile nav fix: the template closes the drawer on link click, but browser
+    // back/forward and any programmatic navigation bypassed that — the drawer
+    // stayed open (and the body stayed scroll-locked) over the new page.
+    this.routerSub = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => this.closeMobileMenu());
   }
 
   ngAfterViewInit(): void {
@@ -114,11 +129,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.resizeHandler = undefined;
     }
 
+    if (this.isBrowser && this.keydownHandler) {
+      window.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = undefined;
+    }
+
     if (this.scrollRafId !== null && this.isBrowser) {
       window.cancelAnimationFrame(this.scrollRafId);
       this.scrollRafId = null;
     }
 
+    this.routerSub?.unsubscribe();
     this.langSub?.unsubscribe();
     this.setBodyScrollLock(false);
   }
@@ -166,8 +187,37 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
         this.updateHeaderOffset();
         // Section offsets change with viewport size — recache.
         this.cacheSectionOffsets();
+        // Mobile nav fix: rotating to landscape (or resizing past the
+        // breakpoint) hides the drawer via CSS but left `mobileMenuOpen` true
+        // and the body scroll-locked — the page became unscrollable with no
+        // visible way to recover. Force it closed once the drawer no longer
+        // applies.
+        if (
+          this.mobileMenuOpen &&
+          window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT
+        ) {
+          this.ngZone.run(() => {
+            this.closeMobileMenu();
+            this.cdr.markForCheck();
+          });
+        }
       };
-      window.addEventListener('resize', this.resizeHandler!);
+      window.addEventListener('resize', this.resizeHandler!, { passive: true });
+    });
+
+    // Escape closes the drawer (WCAG 2.1.2 — no keyboard trap) and gives
+    // external keyboards / accessibility switches a way out.
+    this.ngZone.runOutsideAngular(() => {
+      this.keydownHandler = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape' || !this.mobileMenuOpen) {
+          return;
+        }
+        this.ngZone.run(() => {
+          this.closeMobileMenu();
+          this.cdr.markForCheck();
+        });
+      };
+      window.addEventListener('keydown', this.keydownHandler!);
     });
   }
 
@@ -280,6 +330,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     }
 
     const measuredHeight = this.navbarEl.offsetHeight;
+
+    // Mobile nav fix: publish the *measured* navbar height (which already
+    // includes the env(safe-area-inset-top) padding on notched devices) so the
+    // mobile drawer can sit flush under the bar. Previously .nav-menu hardcoded
+    // `top: 80px` / `top: 64px`, so on a notched phone (index.html sets
+    // viewport-fit=cover, which makes the inset non-zero) the drawer opened
+    // *underneath* the header and swallowed the first nav link — and in compact
+    // mode it left a 16px gap the backdrop showed through.
+    if (this.lastNavHeight !== measuredHeight) {
+      this.lastNavHeight = measuredHeight;
+      document.documentElement.style.setProperty('--nav-h', `${measuredHeight}px`);
+    }
+
     const buffer = measuredHeight <= 72 ? 12 : 20;
     const nextOffset = Math.round(measuredHeight + buffer);
 
@@ -380,6 +443,13 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.setBodyScrollLock(false);
   }
 
+  /**
+   * Mobile nav fix: `body { overflow: hidden }` alone does NOT stop scrolling in
+   * iOS Safari — the page keeps rubber-banding behind the drawer and taps land
+   * on whatever scrolled under it. The reliable cross-browser lock is to take
+   * the body out of flow at its current offset, then restore both the styles and
+   * the scroll position on unlock.
+   */
   private setBodyScrollLock(lock: boolean): void {
     if (!this.isBrowser) {
       return;
@@ -388,17 +458,32 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     const bodyStyle = document.body.style;
 
     if (lock) {
-      if (this.bodyOverflowBackup === null) {
-        this.bodyOverflowBackup = bodyStyle.overflow || '';
+      if (this.isScrollLocked) {
+        return;
       }
+      this.isScrollLocked = true;
+      this.lockedScrollY = window.scrollY || window.pageYOffset || 0;
+      bodyStyle.position = 'fixed';
+      bodyStyle.top = `-${this.lockedScrollY}px`;
+      bodyStyle.left = '0';
+      bodyStyle.right = '0';
+      bodyStyle.width = '100%';
       bodyStyle.overflow = 'hidden';
-    } else {
-      if (this.bodyOverflowBackup !== null) {
-        bodyStyle.overflow = this.bodyOverflowBackup;
-        this.bodyOverflowBackup = null;
-      } else {
-        bodyStyle.removeProperty('overflow');
-      }
+      return;
     }
+
+    if (!this.isScrollLocked) {
+      return;
+    }
+    this.isScrollLocked = false;
+    bodyStyle.removeProperty('position');
+    bodyStyle.removeProperty('top');
+    bodyStyle.removeProperty('left');
+    bodyStyle.removeProperty('right');
+    bodyStyle.removeProperty('width');
+    bodyStyle.removeProperty('overflow');
+    // `position: fixed` reset the document to scrollTop 0 — put the reader back
+    // where they were. `auto` (not `smooth`) so the restore is instantaneous.
+    window.scrollTo({ top: this.lockedScrollY, behavior: 'auto' });
   }
 }
