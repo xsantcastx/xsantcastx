@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { TranslationService } from '../../translation.service';
 
 type SortMode = 'alpha' | 'length' | 'numeric' | 'random';
 
@@ -15,6 +16,12 @@ type SortMode = 'alpha' | 'length' | 'numeric' | 'random';
     imports: [FormsModule, ToolsSharedModule]
 })
 export class LinesorterComponent {
+  private readonly translationService = inject(TranslationService);
+
+  translate(key: string): string {
+    return this.translationService.translate(key);
+  }
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private eggs = inject(EasterEggService);
 
