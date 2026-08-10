@@ -236,11 +236,26 @@ footer::after {
   letter-spacing: 0.04em;
 }
 
+/* Version badge — subtle but present on every page, and clickable through to
+   the Blueprint dev log so "what's deployed?" is one glance + one click. */
 .build-version {
+  display: inline-block;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.7rem;
   color: rgba(0, 255, 204, 0.45);
   letter-spacing: 0.14em;
+  text-decoration: none;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 204, 0.12);
+  transition: color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.build-version:hover,
+.build-version:focus-visible {
+  color: rgba(0, 255, 204, 0.95);
+  border-color: rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 18px -6px rgba(0, 255, 204, 0.7);
 }
 
 /* Star-orb social icons w/ category palette */
