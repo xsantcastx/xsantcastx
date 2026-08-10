@@ -39,6 +39,26 @@
         };
       }
 
+      // Trailing debounce for observers whose work is not frame-critical.
+      // rAF-throttling something that fires on every class change in the
+      // document still runs it up to 60x/s; a 250ms trailing edge runs it
+      // roughly twice during a burst of Angular renders.
+      function debounce(fn, ms) {
+        var t = null;
+        return function () {
+          if (t !== null) clearTimeout(t);
+          t = setTimeout(function () { t = null; fn(); }, ms);
+        };
+      }
+
+      // Single shared mobile check. Kept as a live query so rotating a tablet
+      // re-evaluates rather than latching whatever the first paint saw.
+      var mobileQuery = null;
+      try { mobileQuery = window.matchMedia('(max-width: 768px)'); } catch (e) {}
+      function isMobile() {
+        return !!(mobileQuery && mobileQuery.matches);
+      }
+
       // ─────────────────────────────────────────────────────────────
       // 1. CONSTELLATION CANVAS — drifting particles + connection lines
       // ─────────────────────────────────────────────────────────────
@@ -798,7 +818,14 @@
       // ─────────────────────────────────────────────────────────────
       // 8b. TYPE-ON HEADINGS — split text into chars and stagger-fade
       // ─────────────────────────────────────────────────────────────
-      if (!prefersReduced) {
+      // Mobile perf: this replaces every heading with one span per character,
+      // each animating `filter: blur(6px)` -> none. A single hero title is 20+
+      // simultaneously-blurring elements, and every heading on the page is a
+      // candidate — on a phone that is a burst of layout + filter work at
+      // exactly the moment the user is trying to scroll. Headings render
+      // normally on mobile; the effect stays on desktop where there is budget
+      // for it.
+      if (!prefersReduced && !isMobile()) {
         function typeOn(el) {
           if (el.dataset.typed) return;
           el.dataset.typed = '1';
@@ -868,15 +895,31 @@
       // ─────────────────────────────────────────────────────────────
       // 8c. SCROLL-LINKED HERO PARALLAX — title floats slower than scroll
       // ─────────────────────────────────────────────────────────────
-      if (!prefersReduced) {
-        function applyScrollParallax() {
+      // Mobile perf: this was the single worst scroll-path offender. It ran
+      // UNTHROTTLED on every scroll event, and each run wrote three custom
+      // properties onto documentElement. A custom-property mutation on :root
+      // invalidates style for every element that could inherit it — i.e. a
+      // full-document style recalc, several times per frame, on a page with
+      // 100+ cards. It is now rAF-coalesced, and skipped outright on mobile
+      // where the hero parallax is a depth effect nobody can perceive on a
+      // 390px-wide screen anyway.
+      if (!prefersReduced && !isMobile()) {
+        var parallaxQueued = false;
+        function writeScrollParallax() {
+          parallaxQueued = false;
           var y = window.scrollY || window.pageYOffset || 0;
-          document.documentElement.style.setProperty('--scroll-y', y + 'px');
-          document.documentElement.style.setProperty('--scroll-y-slow', (y * 0.5) + 'px');
-          document.documentElement.style.setProperty('--scroll-y-slower', (y * 0.3) + 'px');
+          var root = document.documentElement.style;
+          root.setProperty('--scroll-y', y + 'px');
+          root.setProperty('--scroll-y-slow', (y * 0.5) + 'px');
+          root.setProperty('--scroll-y-slower', (y * 0.3) + 'px');
+        }
+        function applyScrollParallax() {
+          if (parallaxQueued) return;
+          parallaxQueued = true;
+          requestAnimationFrame(writeScrollParallax);
         }
         window.addEventListener('scroll', applyScrollParallax, { passive: true });
-        applyScrollParallax();
+        writeScrollParallax();
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -907,7 +950,15 @@
             }.bind(null, cx, cy), 140);
           }
         }
-        var smo = new MutationObserver(rafThrottle(checkForSuccess));
+        // Perf: this observer watches EVERY class change in the whole document
+        // subtree. Angular flips classes constantly (routerLinkActive, form
+        // state) and the scroll-reveal observer above adds .cosmic-in-view as
+        // you scroll — which re-triggered this one, so scrolling was paying for
+        // a full-document querySelectorAll on top of everything else. Confetti
+        // is a celebration, not a frame-critical effect: a 250ms trailing
+        // debounce is imperceptible to the user and collapses a burst of
+        // renders into one scan.
+        var smo = new MutationObserver(debounce(checkForSuccess, 250));
         smo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
         checkForSuccess();
       }

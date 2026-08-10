@@ -109,8 +109,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (!this.isBrowser) return;
 
     this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
-    // Run one-shot measurements outside the zone so SSR hydration + initial paint
-    // don't pay a change-detection tax for a single CSS variable write.
+    // Measure synchronously. This used to be deferred to a single
+    // requestAnimationFrame, which browsers suspend while the document is
+    // hidden — a page opened in a background tab (or restored from one) would
+    // finish AfterViewInit with --nav-h never written. That was harmless when
+    // the variable was only an advisory offset, but the mobile drawer now
+    // positions off it: unset means the drawer falls back to `top: 80px`
+    // against a 64px navbar and floats 16px low over the page.
+    // offsetHeight forces one layout, which is acceptable exactly once, and the
+    // navbar's height comes from CSS rather than content so the value is stable
+    // before fonts settle.
+    this.updateHeaderOffset();
+    // Re-measure after the first paint in case a late layout pass (font swap,
+    // safe-area resolution) changes the bar height.
     this.ngZone.runOutsideAngular(() => {
       window.requestAnimationFrame(() => this.updateHeaderOffset());
     });

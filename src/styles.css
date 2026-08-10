@@ -1753,3 +1753,237 @@ summary:focus-visible {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE PERFORMANCE — collapse the always-on compositor layer stack
+   ════════════════════════════════════════════════════════════════════════════
+
+   WHY THIS BLOCK EXISTS
+
+   The cosmic backdrop is built from eight independent fixed, full-viewport
+   layers, most of them promoted to their own GPU texture and most of them
+   animating forever:
+
+     .matrix-background          gradient base                 (static)
+     .matrix-background::before  1600px sigil, mix-blend screen, will-change,
+                                 two simultaneous keyframes
+     .matrix-background::after   130% of viewport, blur(80px), mix-blend screen,
+                                 60s drift
+     body::before                130% of viewport, blur(55px), 34s drift,
+                                 will-change
+     body::after                 oversized starfield, 90s drift + 5s twinkle
+     .cosmic-pulsar              up to 980px, blur, mix-blend screen, animating
+                                 top/left (a LAYOUT property, every frame)
+     .cosmic-canvas              full viewport, mix-blend screen, rAF loop
+     .rune-whisper x4            will-change: opacity, transform — permanently
+
+   On a 1170x2532 phone at DPR 3 each full-viewport layer is roughly 47 MB of
+   GPU memory. Eight of them is ~380 MB, far past what a mobile GPU will hold,
+   so the compositor thrashes: evict, re-upload, repeat. Add a blur(80px)
+   two-pass Gaussian over a 130%-viewport surface and a mix-blend-mode that
+   forces the compositor to read back its own backdrop, and every scroll frame
+   is doing tens of milliseconds of work before a single pixel of content moves.
+   That is the lag — it is not the Angular app, it is the wallpaper.
+
+   WHAT THIS DOES
+
+   Collapses the stack to a small number of cheap, STATIC layers. The gradients
+   themselves are kept, because they are what the cosmic look actually is; what
+   goes away is the blur (radial gradients are already soft — the blur is
+   mostly redundant at phone scale), the blend modes, the will-change pins, and
+   the perpetual animation. The site still looks like the cosmos on a phone. It
+   just stops repainting it sixty times a second.
+
+   Per CLAUDE.md §7.2 this is not a "remove the animation" change with no
+   fallback — every element below keeps a painted static end state.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* ── 1. Sigil: a 1600px texture nobody can resolve on a 390px screen ──
+     Drawn at 0.55 stroke-opacity behind three other layers. Removing it costs
+     nothing visually and frees the single largest texture on the page. */
+  .matrix-background::before {
+    display: none;
+  }
+
+  /* ── 2. Arcane fog: keep the colour wash, drop the 80px Gaussian ──
+     inset:-15% also meant the layer was 1.3x the viewport in both axes, so the
+     blur was running over ~1.7x the pixels it appeared to cover. */
+  .matrix-background::after {
+    inset: 0;
+    filter: none;
+    mix-blend-mode: normal;
+    animation: none;
+    will-change: auto;
+    /* Slightly softened + dimmed to compensate for the missing blur, so the
+       gradient edges do not read as hard bands. */
+    opacity: 0.55;
+  }
+
+  /* ── 3. Nebula wash: same treatment ── */
+  body::before {
+    inset: 0;
+    filter: none;
+    animation: none;
+    will-change: auto;
+    opacity: 0.6;
+  }
+
+  /* ── 4. Starfield: keep the stars, stop moving them ──
+     A 90s translate loop over an oversized fixed layer plus a 5s opacity
+     twinkle is two perpetual animations for an effect that is nearly
+     imperceptible on a phone. */
+  body::after {
+    inset: 0;
+    animation: none;
+    will-change: auto;
+    transform: none;
+  }
+
+  /* ── 5. Pulsar: keep the signature orb, make it cheap ──
+     Supersedes the earlier lite-mode rule above (later source order wins).
+     The old mobile path still animated top/left, which is a LAYOUT property —
+     every frame invalidated layout for a blurred 980px element. Now it only
+     animates opacity/transform on the compositor, at a size a phone can hold. */
+  .cosmic-pulsar {
+    width: min(90vw, 420px);
+    height: min(90vw, 420px);
+    top: 50%;
+    left: 50%;
+    filter: none;
+    mix-blend-mode: normal;
+    opacity: 0.45;
+    animation: pulsarBeatMobile 12s ease-in-out infinite;
+    will-change: auto;
+  }
+
+  /* ── 6. Canvas: drop the blend mode ──
+     mix-blend-mode: screen on a full-viewport canvas forces the compositor off
+     its fast path and makes it read back the backdrop every frame. The
+     particles are additive-bright already; plain compositing looks the same
+     against a near-black backdrop. */
+  .cosmic-canvas {
+    mix-blend-mode: normal;
+    opacity: 0.75;
+  }
+
+  /* ── 7. Rune whispers: four permanently-promoted layers for a desktop
+     easter egg that is invisible for 34 of every 36 seconds. ── */
+  .rune-whisper {
+    display: none;
+  }
+
+  /* ── 8. Cursor trail / custom cursor: already touch-guarded in the engine,
+     but make the layer removal declarative too so no stray element is left
+     compositing. ── */
+  .cosmic-trail-layer,
+  .cosmic-cursor {
+    display: none !important;
+  }
+
+  /* ── 9. Route veil: the keyframe animates backdrop-filter 0 -> 8px -> 0 on a
+     full-viewport element on every single navigation. Fade the scrim only. ── */
+  .cosmic-route-veil.cosmic-route-veil--active {
+    animation: cosmicRouteVeilMobile 0.3s ease-out forwards;
+  }
+}
+
+/* Compositor-only pulsar beat for mobile — no filter, no layout properties. */
+@keyframes pulsarBeatMobile {
+  0%, 100% { opacity: 0.38; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 0.52; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+@keyframes cosmicRouteVeilMobile {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── 10. backdrop-filter is the other half of the problem ──
+   There are 300+ backdrop-filter declarations across the app (every glass
+   panel, every tool card, the header, the drawer, the modals). Each one makes
+   the compositor snapshot and blur the content behind it. Stacked — the header
+   alone had four overlapping — they are ruinous on mobile GPUs.
+
+   Every surface that uses backdrop-filter in this codebase also sets an rgba
+   background, so dropping the blur leaves a working translucent panel rather
+   than a broken one. The two surfaces where the blur was doing real
+   legibility work (the drawer and its backdrop) get their background opacity
+   raised below to compensate. */
+@media (max-width: 768px) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Compensate for the removed blur on the two surfaces that relied on it for
+   text legibility. Component styles are scoped with a host attribute, which
+   outranks a bare class selector — hence the app-header prefix. */
+@media (max-width: 960px) {
+  app-header .nav-menu {
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 0%, rgba(0, 255, 204, 0.1), transparent 60%),
+      radial-gradient(ellipse 55% 45% at 80% 100%, rgba(123, 97, 255, 0.12), transparent 60%),
+      rgba(6, 2, 18, 0.985);
+  }
+
+  app-header .mobile-backdrop {
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 30%, rgba(0, 255, 204, 0.07), transparent 70%),
+      rgba(3, 1, 10, 0.9);
+  }
+
+  /* The header bar itself was 58% opaque and leaned on an 18px backdrop blur to
+     stay readable over scrolling content. Without the blur that is a window
+     onto whatever is passing underneath, so raise the fill. */
+  app-header .navbar__glass {
+    background: rgba(8, 12, 26, 0.94);
+  }
+
+  app-header .navbar.is-compact .navbar__glass {
+    background: rgba(6, 10, 22, 0.97);
+  }
+}
+
+/* ── 11. Below-the-fold sections skip layout/paint until scrolled near ──
+   content-visibility: auto lets the browser skip layout, paint and compositing
+   for off-screen subtrees entirely. contain-intrinsic-size supplies a
+   placeholder height so the scrollbar does not jump as sections resolve.
+   Applied only to the long stacked marketing sections, never to anything the
+   engine measures on load. */
+@media (max-width: 768px) {
+  .hp-tools,
+  .hp-spotlight,
+  .hp-anchor,
+  .hp-live,
+  .hp-changelog,
+  .hp-sub,
+  .hp-footer-cta,
+  .tools-cta,
+  .live-preview {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 600px;
+  }
+
+  /* Cards get paint/layout containment so a change inside one card cannot
+     invalidate layout for the whole grid. */
+  .hp-tool-card,
+  .tool-card,
+  .skill-card,
+  .project-card {
+    contain: layout paint;
+  }
+}
+
+/* Reduced motion already has its own paths throughout the file; this keeps the
+   mobile overrides from reintroducing an animation on top of them. */
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .cosmic-pulsar {
+    animation: none;
+    opacity: 0.4;
+  }
+}
