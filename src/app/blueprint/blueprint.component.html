@@ -1,0 +1,326 @@
+<div class="bp-page">
+
+  <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
+  <header class="bp-hero">
+    <p class="bp-eyebrow">
+      <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+      Open Blueprint
+    </p>
+    <!-- No `.section-title` here on purpose: that class opts an element into the
+         cosmic engine's type-on system, which splits the heading into per-char
+         spans and would break the background-clip gradient below. -->
+    <h1 class="bp-hero__title">Blueprint</h1>
+    <p class="bp-hero__sub">
+      The whole map — what has been built, what is being built, and what is still
+      only a thought. Nothing here is behind a login.
+    </p>
+    <p class="bp-tagline">a living chart of the xsantcastx universe</p>
+
+    <nav class="bp-jump" aria-label="Blueprint sections">
+      <a href="#built">Built</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#stats">Stats</a>
+      <a href="#suggest">Suggest</a>
+    </nav>
+  </header>
+
+  <!-- ═══ Section 1 — What We've Built ═══════════════════════════════════ -->
+  <section id="built" class="bp-section" aria-labelledby="bp-built-title">
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        What We've Built
+      </p>
+      <h2 id="bp-built-title" class="bp-section__title section-title">
+        {{ totalTools }}+ Free Developer Tools
+      </h2>
+      <p class="bp-section__tagline">
+        every star below is a working tool — no sign-up, no upload, no limits
+      </p>
+    </div>
+
+    <div class="bp-constellations">
+      @for (group of visibleGroups; track group.label) {
+        <article
+          class="bp-galaxy"
+          [style.--star-color]="group.color"
+          [style.--star-glow]="group.glow">
+
+          <header class="bp-galaxy__hd">
+            <span class="bp-galaxy__orb" aria-hidden="true"></span>
+            <h3 class="bp-galaxy__name">{{ group.label }}</h3>
+            <span class="bp-galaxy__count">{{ group.tools.length }}</span>
+          </header>
+
+          <ul class="bp-galaxy__nodes">
+            @for (tool of group.tools; track tool.id) {
+              <li>
+                <a
+                  class="tool-card bp-node"
+                  [routerLink]="tool.route"
+                  [attr.data-tags]="tagList(tool)"
+                  [attr.title]="tool.description">
+                  <span class="bp-node__dot" aria-hidden="true"></span>
+                  <span class="bp-node__label">{{ tool.title }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </article>
+      }
+    </div>
+
+    <p class="bp-section__foot">
+      <a class="bp-link" routerLink="/tools">Browse the full galaxy map →</a>
+    </p>
+  </section>
+
+  <!-- ═══ Section 2 — What's Next ════════════════════════════════════════ -->
+  <section id="roadmap" class="bp-section" aria-labelledby="bp-roadmap-title">
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        What's Next
+      </p>
+      <h2 id="bp-roadmap-title" class="bp-section__title section-title">Public Roadmap</h2>
+      <p class="bp-section__tagline">
+        no private backlog — this is the actual order of work
+      </p>
+    </div>
+
+    <div class="bp-roadmap">
+      @for (column of roadmap; track column.key) {
+        <div
+          class="bp-column"
+          [style.--star-color]="column.color"
+          [style.--star-glow]="column.glow">
+
+          <header class="bp-column__hd">
+            <span class="bp-column__orb" aria-hidden="true"></span>
+            <h3 class="bp-column__name">{{ column.label }}</h3>
+            <span class="bp-column__blurb">{{ column.blurb }}</span>
+          </header>
+
+          <ul class="bp-column__list">
+            @for (item of column.items; track item.title) {
+              <li class="bp-item">
+                <div class="bp-item__top">
+                  <h4 class="bp-item__title">{{ item.title }}</h4>
+                  <span class="bp-badge" [class]="'bp-badge--' + item.status">
+                    {{ statusLabel(item.status) }}
+                  </span>
+                </div>
+                <p class="bp-item__desc">{{ item.description }}</p>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Section 3 — How It's Built ═════════════════════════════════════ -->
+  <section id="architecture" class="bp-section" aria-labelledby="bp-arch-title">
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        How It's Built
+      </p>
+      <h2 id="bp-arch-title" class="bp-section__title section-title">Architecture</h2>
+      <p class="bp-section__tagline">
+        the machinery under the nebula, and why it was picked
+      </p>
+    </div>
+
+    <ul class="bp-stack">
+      @for (card of stack; track card.name) {
+        <li
+          class="bp-stack__card"
+          [style.--star-color]="card.color"
+          [style.--star-glow]="card.glow">
+          <span class="bp-stack__icon" aria-hidden="true">{{ card.icon }}</span>
+          <h3 class="bp-stack__name">{{ card.name }}</h3>
+          <p class="bp-stack__detail">{{ card.detail }}</p>
+        </li>
+      }
+    </ul>
+
+    <div class="bp-accordion">
+      @for (decision of decisions; track decision.id) {
+        <div class="bp-accordion__item" [class.is-open]="openDecision === decision.id">
+          <h3 class="bp-accordion__heading">
+            <button
+              type="button"
+              class="bp-accordion__trigger"
+              [attr.aria-expanded]="openDecision === decision.id"
+              [attr.aria-controls]="'bp-panel-' + decision.id"
+              [id]="'bp-trigger-' + decision.id"
+              (click)="toggleDecision(decision.id)">
+              <span class="bp-accordion__q">{{ decision.question }}</span>
+              <span class="bp-accordion__chev" aria-hidden="true"></span>
+            </button>
+          </h3>
+          <div
+            class="bp-accordion__panel"
+            [id]="'bp-panel-' + decision.id"
+            role="region"
+            [attr.aria-labelledby]="'bp-trigger-' + decision.id"
+            [hidden]="openDecision !== decision.id">
+            <p>{{ decision.answer }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Section 4 — Stats ══════════════════════════════════════════════ -->
+  <section id="stats" class="bp-section" aria-labelledby="bp-stats-title">
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        By The Numbers
+      </p>
+      <h2 id="bp-stats-title" class="bp-section__title section-title">Live Numbers</h2>
+      <p class="bp-section__tagline">
+        counted from the registry at build time, not from memory
+      </p>
+    </div>
+
+    <ul class="bp-stats">
+      <li class="bp-stat" style="--star-color:#4dffe0; --star-glow:rgba(0,255,204,0.6)">
+        <span class="bp-stat__num" [attr.data-counter]="totalTools">{{ totalTools }}</span>
+        <span class="bp-stat__label">Free tools</span>
+        <span class="bp-stat__note">all client-side, all free</span>
+      </li>
+      <li class="bp-stat" style="--star-color:#5fb6ff; --star-glow:rgba(80,180,255,0.6)">
+        <span class="bp-stat__num">{{ prerenderedRoutes }}+</span>
+        <span class="bp-stat__label">SSR-prerendered pages</span>
+        <span class="bp-stat__note">real HTML for every route</span>
+      </li>
+      <li class="bp-stat" style="--star-color:#7fd5a3; --star-glow:rgba(100,220,150,0.6)">
+        <span class="bp-stat__num">{{ mcpToolCount }}</span>
+        <span class="bp-stat__label">MCP tools for AI agents</span>
+        <code class="bp-stat__code">{{ mcpInstall }}</code>
+      </li>
+      <li class="bp-stat" style="--star-color:#c48bff; --star-glow:rgba(180,120,255,0.6)">
+        <span class="bp-stat__num">Open</span>
+        <span class="bp-stat__label">Built in public</span>
+        <a class="bp-link" [href]="githubRepo" target="_blank" rel="noopener noreferrer">
+          github.com/xsantcastx →
+        </a>
+      </li>
+    </ul>
+
+    <div class="bp-updates">
+      <h3 class="bp-updates__title">Latest Updates</h3>
+      <ol class="bp-updates__list">
+        @for (update of updates; track update.title) {
+          <li class="bp-update">
+            <span class="bp-update__dot" aria-hidden="true"></span>
+            <div class="bp-update__body">
+              <span class="bp-update__date">{{ update.date }}</span>
+              <h4 class="bp-update__title">{{ update.title }}</h4>
+              <p class="bp-update__detail">{{ update.detail }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ Section 5 — Have an Idea? ══════════════════════════════════════ -->
+  <section id="suggest" class="bp-section bp-section--suggest" aria-labelledby="bp-suggest-title">
+    <div class="section-header bp-section__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        Have an Idea?
+      </p>
+      <h2 id="bp-suggest-title" class="bp-section__title section-title">Suggest a Tool</h2>
+      <p class="bp-section__tagline">
+        the next star in this universe could be yours
+      </p>
+    </div>
+
+    <div class="bp-suggest">
+      @if (suggestionStatus === 'success') {
+        <div class="bp-suggest__done" data-success-burst role="status">
+          <span class="bp-suggest__done-mark" aria-hidden="true">✦</span>
+          <h3>Thanks — we review every suggestion.</h3>
+          <p>
+            It landed. If you left an email we'll ping you when it ships; if not,
+            watch this page — it will show up under <strong>Next</strong> first.
+          </p>
+          <button type="button" class="bp-btn bp-btn--ghost" (click)="resetSuggestion()">
+            Suggest another
+          </button>
+        </div>
+      } @else {
+        <form class="bp-form" (ngSubmit)="submitSuggestion()" novalidate>
+          <div class="bp-field">
+            <label for="bp-name">Tool name</label>
+            <input
+              id="bp-name"
+              name="name"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="e.g. Regex Builder & Tester"
+              [(ngModel)]="suggestionName"
+              (ngModelChange)="resetSuggestion()" />
+          </div>
+
+          <div class="bp-field">
+            <label for="bp-desc">What should it do?</label>
+            <textarea
+              id="bp-desc"
+              name="description"
+              rows="4"
+              maxlength="1000"
+              placeholder="One or two sentences — what you'd paste in, and what you'd want back."
+              [(ngModel)]="suggestionDescription"
+              (ngModelChange)="resetSuggestion()"></textarea>
+          </div>
+
+          <div class="bp-field">
+            <label for="bp-email">
+              Email <span class="bp-field__opt">(optional — only to tell you when it ships)</span>
+            </label>
+            <input
+              id="bp-email"
+              name="email"
+              type="email"
+              maxlength="254"
+              autocomplete="email"
+              placeholder="you@example.com"
+              [(ngModel)]="suggestionEmail"
+              (ngModelChange)="resetSuggestion()" />
+          </div>
+
+          @if (suggestionStatus === 'error') {
+            <p class="bp-form__error" role="alert">{{ suggestionError }}</p>
+          }
+
+          <button
+            type="submit"
+            class="bp-btn cta-button"
+            [disabled]="suggestionStatus === 'loading'">
+            {{ suggestionStatus === 'loading' ? 'Sending…' : 'Send the idea →' }}
+          </button>
+
+          <p class="bp-form__trust">
+            🛡 Kept private — never sold, never added to a mailing list.
+          </p>
+        </form>
+      }
+
+      <p class="bp-suggest__alt">
+        Or discuss it in the open —
+        <a class="bp-link" [href]="githubIssues" target="_blank" rel="noopener noreferrer">
+          open an issue on GitHub →
+        </a>
+      </p>
+    </div>
+  </section>
+
+</div>
