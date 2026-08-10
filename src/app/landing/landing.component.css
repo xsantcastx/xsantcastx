@@ -659,56 +659,6 @@
   text-align: center;
 }
 
-/* Search */
-.hp-tools__search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: 0 0 auto;
-}
-
-.hp-tools__search-icon {
-  position: absolute;
-  left: 0.75rem;
-  font-size: 1.1rem;
-  color: rgba(200, 215, 240, 0.4);
-  pointer-events: none;
-  line-height: 1;
-}
-
-.hp-tools__search {
-  width: clamp(180px, 28vw, 280px);
-  padding: 0.7rem 3rem 0.7rem 2.2rem;
-  background: var(--surface-color);
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  color: var(--text-color);
-  font-size: 0.88rem;
-  font-family: var(--font-body);
-  outline: none;
-  transition: border-color 0.25s, box-shadow 0.25s;
-}
-
-.hp-tools__search::placeholder {
-  color: rgba(200, 215, 240, 0.35);
-}
-
-.hp-tools__search:focus {
-  border-color: var(--glass-border-strong);
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
-}
-
-.hp-tools__search-kbd {
-  position: absolute;
-  right: 0.75rem;
-  font-family: var(--font-heading);
-  font-size: 0.52rem;
-  letter-spacing: 0.08em;
-  color: rgba(200, 215, 240, 0.3);
-  pointer-events: none;
-}
-
 /* Category tabs */
 .hp-tools__cats {
   display: flex;
@@ -728,6 +678,16 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+/* B-3 — ensure ≥44px touch target on mobile without changing desktop sizing */
+@media (max-width: 768px) {
+  .hp-cat-btn {
+    min-height: 44px;
+    padding: 0.6rem 1.1rem;
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 .hp-cat-btn:hover {
@@ -1735,11 +1695,8 @@
   opacity: 0.75;
 }
 
-@media (max-width: 480px) {
-  .hp-cl-day__label { font-size: 0.65rem; }
-  .hp-cl-entries { padding-left: 1.5rem; }
-  .hp-cl-entry { flex-direction: column; gap: 0.4rem; }
-}
+/* (480px changelog rules merged into the single 480px block in the
+   responsive section below — C-4 consolidation) */
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1940,13 +1897,10 @@
     align-items: flex-start;
   }
 
-  .hp-tools__search {
-    width: 100%;
-  }
-
-  .hp-tools__search-wrap {
-    width: 100%;
-  }
+  /* changelog (merged from the former standalone 480px block — C-4) */
+  .hp-cl-day__label { font-size: 0.65rem; }
+  .hp-cl-entries { padding-left: 1.5rem; }
+  .hp-cl-entry { flex-direction: column; gap: 0.4rem; }
 
   .hp-sub-form {
     flex-direction: column;
@@ -1989,7 +1943,10 @@
     animation: none !important;
   }
 
-  .hc-card { opacity: 1; transform: none; }
+  /* B-5 — parked state: only the first card visible. All five at opacity 1
+     stack their semi-transparent glass backgrounds on top of each other. */
+  .hc-card { opacity: 0; visibility: hidden; transform: none; }
+  .hc-card:first-child { opacity: 1; visibility: visible; }
   .hp-lf-line { opacity: 1; }
 }
 
@@ -2224,7 +2181,14 @@
   height: clamp(220px, 38vmin, 320px);
   perspective: 1200px;
   isolation: isolate;
-  /* §1.1 — single light source; every layer derives highlights/shadows from these */
+  /* §1.1 — single light source; every layer derives highlights/shadows from these.
+     --sun-x/--sun-y dependents that CANNOT consume var() and must be updated
+     together if the sun moves:
+       - __moon background gradient (circle at 33% 30% — resolves against the
+         moon's own box, literal value approximates the sun direction)
+       - __limb sunlit-arc mask (linear-gradient 135deg)
+       - __sphere inset box-shadows (light offset 9px 7px / dark -14px -14px)
+       - __sphere-shadow conic wedge from-angle (see its comment for the math) */
   --sun-x: 30%;
   --sun-y: 27%;
 }
@@ -2247,7 +2211,7 @@
   inset: -18%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 38% 34%, rgba(150, 215, 255, 0.40) 0%, rgba(90, 150, 255, 0.16) 38%, transparent 66%),
+    radial-gradient(circle at calc(var(--sun-x) + 8%) calc(var(--sun-y) + 7%), rgba(150, 215, 255, 0.40) 0%, rgba(90, 150, 255, 0.16) 38%, transparent 66%),
     radial-gradient(circle at center, rgba(70, 130, 255, 0.16) 30%, rgba(123, 97, 255, 0.10) 56%, transparent 76%);
   filter: blur(14px);
   animation: planetGlowRest 7s ease-in-out infinite;
@@ -2262,7 +2226,7 @@
   inset: -4%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 38% 34%, rgba(160, 220, 255, 0.52) 0%, rgba(100, 160, 255, 0.22) 38%, transparent 66%),
+    radial-gradient(circle at calc(var(--sun-x) + 8%) calc(var(--sun-y) + 7%), rgba(160, 220, 255, 0.52) 0%, rgba(100, 160, 255, 0.22) 38%, transparent 66%),
     radial-gradient(circle at center, rgba(80, 140, 255, 0.22) 30%, rgba(123, 97, 255, 0.14) 56%, transparent 76%);
   filter: blur(18px);
   opacity: 0;
@@ -2609,25 +2573,29 @@
   margin: -98%;
   border-radius: 50%;
   transform: rotateX(74deg) rotateZ(-16deg);
-  /* conic wedge: dark band centred on the anti-sun direction (~210deg opposite
-     the ~30deg sun azimuth), spanning ~70deg either side */
+  /* conic wedge: planet shadow on the far (back) arc. Screen anti-sun is
+     down-right (~135deg in conic terms, sun up-left at 30%/27%); mirrored into
+     the visible back half across the ring's horizontal axis that's ~45deg,
+     plus 16deg compensating the ring's rotateZ(-16deg) → band centre ~61deg,
+     spanning ~70deg either side. (Old `from 140deg` version landed the band at
+     ~350deg — near the ring top, on the sun side — visually wrong.) */
   background: conic-gradient(
-    from 140deg at 50% 50%,
-    transparent 0deg,
-    rgba(1, 3, 12, 0.0) 140deg,
-    rgba(1, 3, 12, 0.55) 175deg,
-    rgba(1, 3, 12, 0.72) 210deg,
-    rgba(1, 3, 12, 0.55) 245deg,
-    rgba(1, 3, 12, 0.0) 280deg,
-    transparent 360deg
+    from 0deg at 50% 50%,
+    rgba(1, 3, 12, 0.0) 0deg,
+    rgba(1, 3, 12, 0.55) 26deg,
+    rgba(1, 3, 12, 0.72) 61deg,
+    rgba(1, 3, 12, 0.55) 96deg,
+    rgba(1, 3, 12, 0.0) 131deg,
+    transparent 131deg 360deg
   );
-  /* mask to the far (top) half of the ring only, same as ring--back */
+  /* annulus mask carves the ring band; clip-path keeps only the far (top)
+     half — composes with the mask without the `intersect` keyword, which
+     Safari <= 16 ignores (dropping the whole mask) */
   -webkit-mask:
-    radial-gradient(circle at 50% 50%, transparent 0 29.5%, #000 30.5% 49%, transparent 49.5%) intersect,
-    linear-gradient(to bottom, #000 0 52%, transparent 52%);
+    radial-gradient(circle at 50% 50%, transparent 0 29.5%, #000 30.5% 49%, transparent 49.5%);
           mask:
-    radial-gradient(circle at 50% 50%, transparent 0 29.5%, #000 30.5% 49%, transparent 49.5%) intersect,
-    linear-gradient(to bottom, #000 0 52%, transparent 52%);
+    radial-gradient(circle at 50% 50%, transparent 0 29.5%, #000 30.5% 49%, transparent 49.5%);
+  clip-path: inset(0 0 48% 0);
   pointer-events: none;
   z-index: 1;
 }
@@ -2744,6 +2712,17 @@
   .cosmic-planet__nightlights,
   .cosmic-planet__ring,
   .cosmic-planet__moon { animation: none !important; }
+  /* B-5 — parked state: without the orbit animation the moon's base rule lands
+     it at the sphere's center. Park it at the orbit's near point (the 0%
+     keyframe of planetMoonOrbit) instead. */
+  .cosmic-planet__moon {
+    left: 116%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.95;
+    filter: brightness(1);
+    z-index: 5;
+  }
   /* §3.3 glow cross-fade layers — static at resting opacity */
   .cosmic-planet__atmosphere         { animation: none !important; opacity: 0.85; }
   .cosmic-planet__atmosphere::after  { animation: none !important; opacity: 0; }
@@ -2764,7 +2743,9 @@
   .cosmic-planet__ring::after { animation: none !important; opacity: 0.35; }
 }
 
-@media (max-width: 640px) {
+/* C-4 — consolidated from the non-canonical 640px query to the canonical
+   768px breakpoint (641-768px now also get the compact planet sizing) */
+@media (max-width: 768px) {
   .hp-anchor { padding: clamp(2.5rem, 10vw, 3.5rem) var(--page-gutter); }
   .cosmic-planet { width: clamp(180px, 60vmin, 240px); height: clamp(180px, 60vmin, 240px); }
   .hp-anchor__whisper { font-size: 0.68rem; letter-spacing: 0.16em; }

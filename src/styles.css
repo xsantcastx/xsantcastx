@@ -358,7 +358,6 @@ body::before {
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
 }
 
 .cosmic-in-view {
@@ -510,7 +509,6 @@ body::before {
   transform: translateY(0.45em) scale(0.92);
   filter: blur(6px);
   animation: cosmicCharIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, opacity, filter;
 }
 
 @keyframes cosmicCharIn {
@@ -699,8 +697,15 @@ body::after {
     radial-gradient(1px 1px at 6% 88%, rgba(255, 255, 255, 0.5), transparent 100%),
     radial-gradient(1.5px 1.5px at 55% 10%, rgba(123, 97, 255, 0.7), transparent 100%);
   background-size: 520px 520px;
+  /* D-2 — drift via transform (compositor) instead of background-position
+     (which repainted the full viewport every frame for 90s loops). The layer
+     is oversized one tile right/bottom so the up-left translate never exposes
+     an edge; the translate distance is exact tile multiples so the loop wraps
+     seamlessly (the old -520/-780px background-position jumped every 90s —
+     -780 is 1.5 tiles). */
+  inset: 0 -520px -520px 0;
   animation: starfield 90s linear infinite, starTwinkle 5s ease-in-out infinite;
-  will-change: background-position, opacity;
+  will-change: transform, opacity;
 }
 
 main {
@@ -937,8 +942,8 @@ router-outlet + * {
 }
 
 @keyframes starfield {
-  0%   { background-position: 0 0; }
-  100% { background-position: -520px -780px; }
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-520px, -520px, 0); }
 }
 
 @keyframes starTwinkle {
@@ -1307,41 +1312,8 @@ body.flicker {
   background: rgba(0, 255, 204, 0.04);
 }
 
-.lp-card__live-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.18rem 0.5rem;
-  background: rgba(255, 0, 51, 0.12);
-  border: 1px solid #ff3355;
-  border-radius: 3px;
-  color: #ff8899; /* lightened from #ff3355 — 4.5:1 text contrast on dark glass */
-  font-family: var(--font-heading);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  box-shadow: 0 0 8px rgba(255, 51, 85, 0.25);
-  animation: lp-live-pulse 2s ease-in-out infinite;
-}
-
-.lp-card__live-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #ff3355;
-  box-shadow: 0 0 4px #ff3355;
-  animation: lp-dot-blink 1s ease-in-out infinite;
-}
-
-@keyframes lp-live-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(255, 51, 85, 0.25); }
-  50%       { box-shadow: 0 0 16px rgba(255, 51, 85, 0.5); }
-}
-
-@keyframes lp-dot-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.15; }
-}
+/* C-4: .lp-card__live-badge / .lp-card__live-dot and their keyframes removed —
+   no template or TS in src/ references them (dead since the landing rewrite) */
 
 .lp-card__label {
   font-family: var(--font-heading);
@@ -1483,26 +1455,7 @@ body.flicker {
   max-width: 500px;
 }
 
-.lp-text__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #ff8899; /* lightened from #ff3355 — 4.5:1 text contrast on dark glass */
-  margin: 0 0 0.75rem;
-}
-
-.lp-eyebrow-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ff3355;
-  box-shadow: 0 0 6px #ff3355;
-  animation: lp-dot-blink 1s ease-in-out infinite;
-}
+/* C-4: .lp-text__eyebrow / .lp-eyebrow-dot removed — unreferenced (dead) */
 
 .lp-text__title {
   font-size: clamp(2rem, 4.5vw, 3rem);
