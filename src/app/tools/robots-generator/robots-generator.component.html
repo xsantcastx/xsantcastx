@@ -293,7 +293,7 @@
                     <div class="rg-path-row">
                       <input type="text" class="rg-text-input" [(ngModel)]="rule.allow[pi]" placeholder="/path/" />
                       @if (rule.allow.length > 1) {
-                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeAllowPath(rule, pi)" title="Remove path">
+                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeAllowPath(rule, pi)" title="Remove path" aria-label="Remove path">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                       }
@@ -308,7 +308,7 @@
                     <div class="rg-path-row">
                       <input type="text" class="rg-text-input" [(ngModel)]="rule.disallow[pi]" placeholder="/private/" />
                       @if (rule.disallow.length > 1) {
-                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeDisallowPath(rule, pi)" title="Remove path">
+                        <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeDisallowPath(rule, pi)" title="Remove path" aria-label="Remove path">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                       }
@@ -341,7 +341,7 @@
                 <div class="rg-path-row">
                   <input type="text" class="rg-text-input" [(ngModel)]="sitemapUrls[si]" placeholder="https://example.com/sitemap.xml" />
                   @if (sitemapUrls.length > 1) {
-                    <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeSitemap(si)" title="Remove sitemap">
+                    <button class="rg-icon-btn rg-icon-btn--danger" (click)="removeSitemap(si)" title="Remove sitemap" aria-label="Remove sitemap">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   }

@@ -86,7 +86,7 @@
                 spellcheck="false"
                 autocomplete="off"
                 />
-              <button class="cc-copy-btn" (click)="copyValue(hexString, 'hex')" [class.cc-copy-btn--copied]="copiedField === 'hex'" title="Copy HEX">
+              <button class="cc-copy-btn" (click)="copyValue(hexString, 'hex')" [class.cc-copy-btn--copied]="copiedField === 'hex'" title="Copy HEX" aria-label="Copy HEX">
                 @if (copiedField !== 'hex') {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 }
@@ -110,7 +110,7 @@
                 spellcheck="false"
                 autocomplete="off"
                 />
-              <button class="cc-copy-btn" (click)="copyValue(rgbString, 'rgb')" [class.cc-copy-btn--copied]="copiedField === 'rgb'" title="Copy RGB">
+              <button class="cc-copy-btn" (click)="copyValue(rgbString, 'rgb')" [class.cc-copy-btn--copied]="copiedField === 'rgb'" title="Copy RGB" aria-label="Copy RGB">
                 @if (copiedField !== 'rgb') {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 }
@@ -134,7 +134,7 @@
                 spellcheck="false"
                 autocomplete="off"
                 />
-              <button class="cc-copy-btn" (click)="copyValue(hslString, 'hsl')" [class.cc-copy-btn--copied]="copiedField === 'hsl'" title="Copy HSL">
+              <button class="cc-copy-btn" (click)="copyValue(hslString, 'hsl')" [class.cc-copy-btn--copied]="copiedField === 'hsl'" title="Copy HSL" aria-label="Copy HSL">
                 @if (copiedField !== 'hsl') {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 }
@@ -158,7 +158,7 @@
                 spellcheck="false"
                 autocomplete="off"
                 />
-              <button class="cc-copy-btn" (click)="copyValue(hsbString, 'hsb')" [class.cc-copy-btn--copied]="copiedField === 'hsb'" title="Copy HSB">
+              <button class="cc-copy-btn" (click)="copyValue(hsbString, 'hsb')" [class.cc-copy-btn--copied]="copiedField === 'hsb'" title="Copy HSB" aria-label="Copy HSB">
                 @if (copiedField !== 'hsb') {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 }
@@ -182,7 +182,7 @@
                 spellcheck="false"
                 autocomplete="off"
                 />
-              <button class="cc-copy-btn" (click)="copyValue(cmykString, 'cmyk')" [class.cc-copy-btn--copied]="copiedField === 'cmyk'" title="Copy CMYK">
+              <button class="cc-copy-btn" (click)="copyValue(cmykString, 'cmyk')" [class.cc-copy-btn--copied]="copiedField === 'cmyk'" title="Copy CMYK" aria-label="Copy CMYK">
                 @if (copiedField !== 'cmyk') {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                 }

@@ -40,7 +40,7 @@
         <div class="ts-card__header">
           <span class="ts-card__label">Live Preview</span>
           <div class="ts-preview-controls">
-            <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="resetAll()" title="Reset all">
+            <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="resetAll()" title="Reset all" aria-label="Reset all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
               </svg>
@@ -127,22 +127,22 @@
                   Layer {{ i + 1 }}
                 </span>
                 <div class="ts-layer__actions">
-                  <button type="button" class="ts-icon-btn" (click)="moveLayerUp(i)" [disabled]="i === 0" title="Move up">
+                  <button type="button" class="ts-icon-btn" (click)="moveLayerUp(i)" [disabled]="i === 0" title="Move up" aria-label="Move up">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="18 15 12 9 6 15"/>
                     </svg>
                   </button>
-                  <button type="button" class="ts-icon-btn" (click)="moveLayerDown(i)" [disabled]="i === layers.length - 1" title="Move down">
+                  <button type="button" class="ts-icon-btn" (click)="moveLayerDown(i)" [disabled]="i === layers.length - 1" title="Move down" aria-label="Move down">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
-                  <button type="button" class="ts-icon-btn" (click)="duplicateLayer(i)" title="Duplicate">
+                  <button type="button" class="ts-icon-btn" (click)="duplicateLayer(i)" title="Duplicate" aria-label="Duplicate">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                     </svg>
                   </button>
-                  <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="removeLayer(i)" [disabled]="layers.length <= 1" title="Remove layer">
+                  <button type="button" class="ts-icon-btn ts-icon-btn--danger" (click)="removeLayer(i)" [disabled]="layers.length <= 1" title="Remove layer" aria-label="Remove layer">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>

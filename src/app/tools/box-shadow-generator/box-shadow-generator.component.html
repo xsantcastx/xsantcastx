@@ -41,17 +41,17 @@
           <span class="bs-card__label">Live Preview</span>
           <div class="bs-preview-controls">
             <!-- Undo / Redo -->
-            <button type="button" class="bs-icon-btn" [disabled]="!canUndo" (click)="undo()" title="Undo">
+            <button type="button" class="bs-icon-btn" [disabled]="!canUndo" (click)="undo()" title="Undo" aria-label="Undo">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-7.5"/>
               </svg>
             </button>
-            <button type="button" class="bs-icon-btn" [disabled]="!canRedo" (click)="redo()" title="Redo">
+            <button type="button" class="bs-icon-btn" [disabled]="!canRedo" (click)="redo()" title="Redo" aria-label="Redo">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.59"/>
               </svg>
             </button>
-            <button type="button" class="bs-icon-btn bs-icon-btn--danger" (click)="resetAll()" title="Reset all">
+            <button type="button" class="bs-icon-btn bs-icon-btn--danger" (click)="resetAll()" title="Reset all" aria-label="Reset all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
               </svg>
@@ -175,22 +175,22 @@
                 </span>
               </div>
               <div class="bs-layer-item__actions" (click)="$event.stopPropagation()">
-                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === 0" (click)="moveLayerUp(i)" title="Move up">
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === 0" (click)="moveLayerUp(i)" title="Move up" aria-label="Move up">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="18 15 12 9 6 15"/>
                   </svg>
                 </button>
-                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === layers.length - 1" (click)="moveLayerDown(i)" title="Move down">
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" [disabled]="i === layers.length - 1" (click)="moveLayerDown(i)" title="Move down" aria-label="Move down">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </button>
-                <button type="button" class="bs-icon-btn bs-icon-btn--xs" (click)="duplicateLayer(i)" title="Duplicate">
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs" (click)="duplicateLayer(i)" title="Duplicate" aria-label="Duplicate">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                   </svg>
                 </button>
-                <button type="button" class="bs-icon-btn bs-icon-btn--xs bs-icon-btn--danger" [disabled]="layers.length <= 1" (click)="removeLayer(i)" title="Delete">
+                <button type="button" class="bs-icon-btn bs-icon-btn--xs bs-icon-btn--danger" [disabled]="layers.length <= 1" (click)="removeLayer(i)" title="Delete" aria-label="Delete">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>

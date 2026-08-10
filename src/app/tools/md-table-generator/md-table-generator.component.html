@@ -96,13 +96,13 @@
                         class="mt-col-remove"
                         (click)="removeColumn(ci)"
                         [disabled]="cols <= 1"
-                        title="Remove column">
+                        title="Remove column" aria-label="Remove column">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                       </button>
                     </th>
                   }
                   <th class="mt-add-col-cell">
-                    <button class="mt-add-btn" (click)="addColumn()" [disabled]="cols >= MAX_SIZE" title="Add column">
+                    <button class="mt-add-btn" (click)="addColumn()" [disabled]="cols >= MAX_SIZE" title="Add column" aria-label="Add column">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
                   </th>
@@ -132,7 +132,7 @@
                         class="mt-row-remove"
                         (click)="removeRow(ri)"
                         [disabled]="body.length <= 1"
-                        title="Remove row">
+                        title="Remove row" aria-label="Remove row">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                       </button>
                     </td>

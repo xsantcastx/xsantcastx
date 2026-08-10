@@ -189,7 +189,7 @@
               <option [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
             }
           </select>
-          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('A')" title="Rotate">
+          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('A')" title="Rotate" aria-label="Rotate">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
           </button>
           <span class="rp-compare-dims">{{ getSlotWidth(slotA) }}&times;{{ getSlotHeight(slotA) }}</span>
@@ -222,7 +222,7 @@
               <option [value]="d.name">{{ d.name }} ({{ d.width }}&times;{{ d.height }})</option>
             }
           </select>
-          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('B')" title="Rotate">
+          <button class="rp-btn rp-btn--xs" (click)="toggleCompareRotate('B')" title="Rotate" aria-label="Rotate">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L21 9"/><path d="M20.49 15a9 9 0 01-14.85 3.36L3 15"/></svg>
           </button>
           <span class="rp-compare-dims">{{ getSlotWidth(slotB) }}&times;{{ getSlotHeight(slotB) }}</span>
