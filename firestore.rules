@@ -3,6 +3,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Owner identity ───────────────────────────────────────────────────────
+    // The /admin dashboard checks this same address client-side, but that check
+    // only decides what renders. This one decides what the database hands out,
+    // which is the check that actually matters: editing the constant in the
+    // bundle gets an attacker an empty dashboard, not somebody's email address.
+    //
+    // email_verified is required so that a provider which lets a user set an
+    // arbitrary unverified address cannot mint a token claiming to be the owner.
+    function isOwner() {
+      return request.auth != null
+             && request.auth.token.email == 'ogaitnas.9615@gmail.com'
+             && request.auth.token.email_verified == true;
+    }
+
     // ── Guestbook ────────────────────────────────────────────────────────────
     // Anyone can read; anyone can write (no auth required for guestbook)
     match /guestbook/{messageId} {
@@ -92,7 +106,10 @@ service cloud.firestore {
     // optional from the user's point of view but always present as a key (the
     // client sends '' when it's blank) so hasOnly() doesn't need to branch.
     match /blueprint-suggestions/{suggestionId} {
-      allow read: if false;
+      // Suggestions carry a submitter's email address, so the read is owner-only
+      // — this is the one collection on the site holding third-party contact
+      // details that was never meant to be public.
+      allow read: if isOwner();
       allow create: if request.resource.data.keys().hasOnly(['name', 'description', 'email', 'submittedAt', 'source'])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() >= 2
@@ -108,7 +125,37 @@ service cloud.firestore {
                     && request.resource.data.submittedAt.size() <= 40
                     && request.resource.data.source is string
                     && request.resource.data.source.size() <= 100;
-      allow update, delete: if false;
+      // Triage from /admin. The owner may set `review` and nothing else — the
+      // affectedKeys() check means this cannot be used to rewrite a submitter's
+      // words or address, only to file the suggestion.
+      allow update: if isOwner()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['review'])
+                    && request.resource.data.review in ['reviewed', 'accepted', 'rejected'];
+      allow delete: if false;
+    }
+
+    // ── Easter egg discovery counters ────────────────────────────────────────
+    // EasterEggService writes these as
+    //   setDoc(ref, { discoveries: increment(1), name }, { merge: true })
+    // so every write carries exactly those two keys.
+    //
+    // This collection had NO rule before the /admin dashboard needed to read it,
+    // which meant it fell through to the deny-all at the bottom of this file:
+    // every discovery write since the egg system shipped was rejected and the
+    // counts have been stuck at nothing. The service swallows the error, so it
+    // never surfaced. Adding the rule is what actually turns the counters on.
+    match /easter-eggs/{eggId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['discoveries', 'name'])
+                    && request.resource.data.discoveries == 1
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 100;
+      allow update: if request.resource.data.keys().hasOnly(['discoveries', 'name'])
+                    && request.resource.data.discoveries is number
+                    && request.resource.data.discoveries == resource.data.discoveries + 1
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 100;
+      allow delete: if false;
     }
 
     // ── Site stats (visit counter) ───────────────────────────────────────────
