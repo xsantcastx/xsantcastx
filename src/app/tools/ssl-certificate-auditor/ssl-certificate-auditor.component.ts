@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { UpperCasePipe } from '@angular/common';
 
@@ -48,6 +49,7 @@ interface CertificateResult {
     imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class SslCertificateAuditorComponent {
+  private readonly eggs = inject(EasterEggService);
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free SSL Certificate Auditor — instantly audit TLS certs, check expiry, CA chain & security flags. No sign-up needed 🔒')}&url=${encodeURIComponent(SITE_URL + '/tools/ssl-certificate-auditor')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/ssl-certificate-auditor')}`;
@@ -138,6 +140,11 @@ export class SslCertificateAuditorComponent {
     if (!this.isValidDomain(domain)) {
       this.error = 'Please enter a valid domain name (e.g. example.com).';
       return;
+    }
+
+    // Egg: auditing the certificate of the site you are standing on.
+    if (domain === 'xsantcastx.com' || domain.endsWith('.xsantcastx.com')) {
+      this.eggs.trigger('ssl-self');
     }
 
     this.loading = true;

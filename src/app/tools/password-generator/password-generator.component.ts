@@ -132,6 +132,10 @@ export class PasswordGeneratorComponent implements OnDestroy {
   generate() {
     if (!this.isBrowser) return;
 
+    // Egg: the maximum the slider allows. Checked in character mode only —
+    // a passphrase can cross 128 characters without being deliberate.
+    if (this.mode !== 'passphrase' && this.length >= 128) this.eggs.trigger('pw-fort-knox');
+
     const count = Math.max(1, Math.min(10, this.quantity || 1));
     this.generatedStrings = [];
 

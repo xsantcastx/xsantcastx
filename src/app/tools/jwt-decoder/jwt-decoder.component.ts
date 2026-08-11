@@ -6,6 +6,7 @@ import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface JwtClaim {
   key: string;
@@ -29,6 +30,7 @@ export class JwtDecoderComponent implements OnDestroy {
   }
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free JWT Decoder & Debugger — decode, inspect and debug JSON Web Tokens instantly. No sign-up required.')}&url=${encodeURIComponent(SITE_URL + '/tools/jwt-decoder')}`;
@@ -166,6 +168,10 @@ export class JwtDecoderComponent implements OnDestroy {
         if (!this.isExpired) {
           this.startCountdown(expMs);
         }
+
+        // Egg: a token that went stale more than two years ago.
+        const twoYears = 2 * 365 * 24 * 60 * 60 * 1000;
+        if (Date.now() - expMs > twoYears) this.eggs.trigger('jwt-expired');
       }
     } catch {
       this.decodeError = 'Failed to decode JWT payload. The payload segment is not valid Base64URL-encoded JSON.';

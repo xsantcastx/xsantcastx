@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.7.0',
+  version: '2.8.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Mobile Polish',
+  codename: 'Egg Hunt',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,17 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.8.0',
+    codename: 'Egg Hunt',
+    date: '2026-08-11',
+    highlights: [
+      '58 tools had been calling the easter egg service with IDs that were never in the registry — trigger() looks the ID up and returns early when it finds nothing, so every one of those calls was a silent no-op with no toast, no save and no count',
+      'Registering those IDs lights up 58 tools that had been shipping dead trigger code for months, and takes the registry from 71 eggs to 139',
+      '21 more tools wired with new unlock conditions, including Ouroboros for a regex that matches its own source, Monochrome Master for a single-hue palette, Fort Knox for a 128-character password and Hash Miner for a digest that lands on four leading zeros',
+      'JSON Tower and Regex Race were unreachable on /games — both were gated behind eggs that had no trigger anywhere in the app. Every game is now unlockable'
+    ]
+  },
   {
     version: '2.7.0',
     codename: 'Mobile Polish',

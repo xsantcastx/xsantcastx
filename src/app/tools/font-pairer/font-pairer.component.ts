@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 type StyleCategory = 'all' | 'modern' | 'classic' | 'playful' | 'minimal' | 'bold';
 type PreviewContext = 'hero' | 'article' | 'card';
@@ -26,6 +27,8 @@ interface FontPairing {
 })
 export class FontPairerComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
+  private shuffleCount = 0;
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -136,6 +139,10 @@ export class FontPairerComponent implements OnInit, OnDestroy {
   shufflePairing(): void {
     const available = this.filteredPairings;
     if (available.length <= 1) return;
+
+    // Egg: ten shuffles in one visit. Counted per component instance, so it
+    // resets on navigation rather than nagging across a whole session.
+    if (++this.shuffleCount === 10) this.eggs.trigger('font-disco');
     let next: FontPairing;
     do {
       next = available[Math.floor(Math.random() * available.length)];
