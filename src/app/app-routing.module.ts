@@ -205,6 +205,82 @@ const routes: Routes = [
       }
     },
   {
+      path: 'sponsors',
+      loadComponent: () => import('./sponsors/sponsors.component').then(m => m.SponsorsComponent),
+      title: 'Sponsor the Tools — Reach Developers Mid-Task | xsantcastx',
+      data: {
+        description: 'Sponsor a category of free developer tools on xsantcastx.com. One native slot per page, no ad network, no tracking scripts, honest disclosure. Direct deals only.',
+        keywords: 'sponsor developer tools, developer advertising, reach developers, dev tool sponsorship, indie advertising, sponsor a website, developer audience',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/sponsors`,
+          url: `${SITE_URL}/sponsors`,
+          name: 'Sponsor the Tools',
+          description: 'Sponsorship information for xsantcastx.com — placements, audience, packages and FAQ for advertisers.',
+          inLanguage: 'en',
+          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'xsantcastx' },
+          author: { '@id': `${SITE_URL}/#person` },
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 2, name: 'Sponsors', item: `${SITE_URL}/sponsors` }
+            ]
+          },
+          // No `offers` block here on purpose: the rate card is not public yet
+          // and Schema.org Offer requires a price. Add it once MEDIA_KIT in
+          // sponsors.component.ts carries real numbers.
+          mainEntity: {
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'How many sponsors run at once?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'One per placement, at most. A category is sold to a single sponsor for the month, so your card is not rotated against anyone else.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'Do you take ad network money instead?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'The slot is direct-deal only. No network scripts, no behavioural tracking, no auction.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'What do you track, and what do I get back?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Impressions and clicks, counted first-party with no cookies or cross-site identifiers. Both numbers are shared at the end of the month.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'Is the sponsor link followed?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'No. Every sponsor CTA ships rel="sponsored noopener noreferrer", per Google guidance.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'How do I get started?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Email xsantcastx@xsantcastx.com with your product and the category you want, and you will get current traffic, availability and a rate.'
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+  {
     path: 'tools',
     loadChildren: () => import('./tools/tools.module').then(m => m.ToolsModule)
   },
