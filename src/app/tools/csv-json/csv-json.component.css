@@ -54,3 +54,34 @@
 @media (max-width: 480px) {
   .cj-page { padding: 1.5rem 1rem 3rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .cj-back,
+  .cj-btn,
+  .cj-checkbox-row label,
+  .cj-code,
+  .cj-copy-btn,
+  .cj-label,
+  .cj-panel__title,
+  .cj-share-btn,
+  .cj-stat__label,
+  .cj-status,
+  .cj-table th,
+  .cj-table,
+  .cj-textarea,
+  .cj-toggle__btn {
+    font-size: 14px;
+  }
+
+  .cj-header__eyebrow {
+    font-size: 12px;
+  }
+}

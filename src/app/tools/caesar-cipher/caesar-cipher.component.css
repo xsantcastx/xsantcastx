@@ -611,3 +611,54 @@
     font-size: 0.62rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .cc2-brute-text,
+  .cc2-btn-ghost,
+  .cc2-btn-sm,
+  .cc2-btn-xs,
+  .cc2-code-pre code,
+  .cc2-option-hint,
+  .cc2-option-label,
+  .cc2-output-empty,
+  .cc2-panel__title,
+  .cc2-seg-btn,
+  .cc2-stat__label,
+  .cc2-status-bar,
+  .cc2-textarea,
+  .cc2-toggle__label,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .cc2-badge,
+  .cc2-char-count,
+  .cc2-stat__unit,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .cc2-page {
+    padding-top: 2.5rem;
+  }
+}
