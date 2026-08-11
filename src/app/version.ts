@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.11.0',
+  version: '2.12.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Waterfall',
+  codename: 'Stylesheet Drift',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.12.0',
+    codename: 'Stylesheet Drift',
+    date: '2026-08-11',
+    highlights: [
+      'Five tools rendered as essentially unstyled HTML — tailwind-lookup, box-model, csv-json, dns-lookup and robots-generator all shipped the same 56-line generic scaffold stylesheet (four were byte-identical once the class prefix is normalised) while their templates were written against a completely different vocabulary, leaving 81–98% of the classes each page used matching no rule at all',
+      'Four more tools had templates renamed without their stylesheets following: the whole SSL Certificate Inspector results area was unstyled because the CSS still targeted .cert-summary / .status-pill / .trust-chain, and hex-editor, sitemap-generator and the email auditor score gauge had the same drift on a smaller scale',
+      'Four labels showed HTML entities as literal text — Angular interpolation emits its result as a text node, so "Copy &lt;link&gt; Tags", "Copy HTML &lt;img&gt; Tag", "HTML &rarr; MD" and the responsive-preview device emoji were all displayed verbatim rather than decoded',
+      'The X and LinkedIn share buttons on 97 tool pages had lost their brand colors: 179 links use the short .share-btn--x / --li spellings, which no rule defined, and a plain class selector could not have won anyway against each component\'s own Angular-scoped .share-btn',
+      'A repo-wide scan for templates whose classes go unmatched by their own stylesheet now reports zero tools, down from nine'
+    ]
+  },
   {
     version: '2.11.0',
     codename: 'Waterfall',
