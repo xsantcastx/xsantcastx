@@ -35,7 +35,7 @@
           type="text"
           [(ngModel)]="pattern"
           (ngModelChange)="onInput()"
-          placeholder="Enter regex pattern…"
+          [placeholder]="translate('tools.regexTester.ph.pattern')"
           spellcheck="false"
           autocomplete="off"
           autocorrect="off"

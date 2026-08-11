@@ -86,7 +86,7 @@
                 [(ngModel)]="faviconEmoji"
                 (ngModelChange)="onEmojiChange()"
                 maxlength="2"
-                placeholder="Paste an emoji here..."
+                [placeholder]="translate('tools.faviconGenerator.ph.emoji')"
                 autocomplete="off" aria-label="Emoji"
                 />
             </div>

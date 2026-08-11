@@ -34,7 +34,7 @@
         class="cm-search__input"
         [(ngModel)]="searchQuery"
         (input)="onSearchInput()"
-        placeholder="Search by name, keyword, codepoint (e.g. 'arrow', 'U+2192', '&amp;rarr;')"
+        [placeholder]="translate('tools.charMap.ph.search')"
         aria-label="Search characters" />
       <button
         *ngIf="searchQuery"

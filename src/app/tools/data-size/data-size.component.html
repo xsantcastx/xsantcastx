@@ -51,7 +51,7 @@
               class="ds-input"
               [(ngModel)]="inputValue"
               (ngModelChange)="onInputChange()"
-              placeholder="e.g. 1024"
+              [placeholder]="translate('tools.dataSize.ph.eg1024')"
               autocomplete="off"
               min="0"
               />
@@ -155,7 +155,7 @@
                 class="ds-input"
                 [(ngModel)]="bandwidthFileSize"
                 (ngModelChange)="onBandwidthChange()"
-                placeholder="e.g. 700"
+                [placeholder]="translate('tools.dataSize.ph.eg700')"
                 min="0"
                 autocomplete="off"
                 />
@@ -179,7 +179,7 @@
                 class="ds-input"
                 [(ngModel)]="bandwidthSpeed"
                 (ngModelChange)="onBandwidthChange()"
-                placeholder="e.g. 100"
+                [placeholder]="translate('tools.dataSize.ph.eg100')"
                 min="0"
                 autocomplete="off"
                 />
@@ -228,7 +228,7 @@
               class="ds-input"
               [(ngModel)]="storageSizeValue"
               (ngModelChange)="onStoragePlanChange()"
-              placeholder="e.g. 256"
+              [placeholder]="translate('tools.dataSize.ph.eg256')"
               min="0"
               autocomplete="off"
               />

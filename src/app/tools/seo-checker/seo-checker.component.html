@@ -49,7 +49,7 @@
           <input
             type="text"
             class="sc-input"
-            placeholder="Enter your page title..."
+            [placeholder]="translate('tools.seoChecker.ph.title')"
             [value]="pageTitle"
             (input)="onTitleInput($any($event.target).value)" aria-label="Page Title"
             />
@@ -76,7 +76,7 @@
         <div class="sc-card__body">
           <textarea
             class="sc-textarea"
-            placeholder="Enter your meta description..."
+            [placeholder]="translate('tools.seoChecker.ph.description')"
             rows="4"
             [value]="metaDescription"
             (input)="onDescInput($any($event.target).value)" aria-label="Meta Description"
@@ -112,7 +112,7 @@
             <input
               type="text"
               class="sc-input"
-              placeholder="e.g. seo checker"
+              [placeholder]="translate('tools.seoChecker.ph.keyword')"
               [value]="focusKeyword"
               (input)="onKeywordInput($any($event.target).value)" aria-label="Focus Keyword"
               />

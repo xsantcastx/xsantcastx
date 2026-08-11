@@ -83,7 +83,7 @@
                 class="hg-textarea"
                 [(ngModel)]="textInput"
                 (ngModelChange)="onInput()"
-                placeholder="Paste or type text to hash&#10;&#10;e.g. Hello, World!"
+                [placeholder]="translate('tools.hashGenerator.ph.text')"
                 spellcheck="false"
                 autocomplete="off"
                 autocorrect="off"
@@ -181,7 +181,7 @@
                 class="hg-textarea hg-textarea--compact"
                 [(ngModel)]="compareHash1"
                 (ngModelChange)="onCompareInput()"
-                placeholder="Paste first hash here..."
+                [placeholder]="translate('tools.hashGenerator.ph.firstHash')"
                 spellcheck="false"
                 autocomplete="off" aria-label="Hash 1"
               ></textarea>
@@ -195,7 +195,7 @@
                 class="hg-textarea hg-textarea--compact"
                 [(ngModel)]="compareHash2"
                 (ngModelChange)="onCompareInput()"
-                placeholder="Paste second hash here..."
+                [placeholder]="translate('tools.hashGenerator.ph.secondHash')"
                 spellcheck="false"
                 autocomplete="off" aria-label="Hash 2"
               ></textarea>

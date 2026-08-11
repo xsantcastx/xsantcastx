@@ -54,7 +54,7 @@
             type="text"
             class="ssl-auditor__domain-input"
             [(ngModel)]="domainInput"
-            placeholder="e.g. github.com or https://github.com/org/repo"
+            [placeholder]="translate('tools.sslCertificateAuditor.ph.target')"
             [disabled]="loading"
             (keyup.enter)="checkCertificate()"
             autocomplete="off"

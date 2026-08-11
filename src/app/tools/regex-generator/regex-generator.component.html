@@ -38,7 +38,7 @@
         class="rxg-nl-input"
         [(ngModel)]="nlInput"
         (ngModelChange)="generateFromNL()"
-        placeholder="Describe what you want to match... e.g. 'email address', 'phone number', 'url'"
+        [placeholder]="translate('tools.regexGenerator.ph.describe')"
         spellcheck="false"
         autocomplete="off"
         />
@@ -164,7 +164,7 @@
             class="rxg-pattern-input"
             [(ngModel)]="testPattern"
             (ngModelChange)="runTest()"
-            placeholder="Enter regex pattern..."
+            [placeholder]="translate('tools.regexGenerator.ph.pattern')"
             spellcheck="false"
             autocomplete="off"
             />
@@ -190,7 +190,7 @@
             class="rxg-textarea"
             [(ngModel)]="testText"
             (ngModelChange)="runTest()"
-            placeholder="Paste or type text to test your regex against..."
+            [placeholder]="translate('tools.regexGenerator.ph.testText')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"
