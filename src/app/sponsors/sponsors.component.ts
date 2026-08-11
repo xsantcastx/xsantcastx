@@ -160,9 +160,9 @@ export class SponsorsComponent {
   /** What makes the slot worth buying — all structural, all verifiable. */
   readonly valueProps = [
     {
-      title: 'One slot per page',
+      title: 'One sponsor, not an auction',
       body:
-        'No ad network, no auction, no competing units. Your card is the only sponsored thing on the page.',
+        'A category is sold to a single sponsor for the month. Your card is never rotated against another sponsor\'s, and there is no bidding for the position.',
       color: '#4dffe0',
     },
     {
@@ -174,7 +174,7 @@ export class SponsorsComponent {
     {
       title: 'Native, not an iframe',
       body:
-        'The card is rendered by the site in the site\'s own design system. No third-party script, nothing for an ad blocker to strip.',
+        'Your card is rendered by the site itself, in the site\'s own design system. It loads no third-party script, so there is nothing for an ad blocker to strip.',
       color: '#7fd5a3',
     },
     {
@@ -285,8 +285,12 @@ export class SponsorsComponent {
       a: 'One per placement, at most. A category is sold to a single sponsor for the month — your card is not rotated against anyone else\'s.',
     },
     {
-      q: 'Do you take ad network money instead?',
-      a: 'The slot is direct-deal only. No network scripts, no behavioural tracking, no auction. That is the whole point of it.',
+      q: 'Is this slot sold through an ad network?',
+      a: 'No. This slot is direct-deal only — you email me, we agree a price, and I add your card in a commit. There is no network, no auction and no behavioural targeting involved in it.',
+    },
+    {
+      q: 'What else is on the page alongside my card?',
+      a: 'Being straight with you: tool pages also carry a Carbon Ads unit and an affiliate recommendation card, both labelled "Sponsored". Your card is the only slot sold directly and the only one whose category you choose, but it is not the only commercial thing on the page. If exclusivity matters for your campaign, ask — the other units can be turned off for a sponsored category.',
     },
     {
       q: 'What do you track, and what do I get back?',
@@ -294,7 +298,7 @@ export class SponsorsComponent {
     },
     {
       q: 'Will an ad blocker eat it?',
-      a: 'The card is part of the page, rendered by the same code as everything else, so there is no third-party request to block. It is not an ad unit in the technical sense.',
+      a: 'Your card is part of the page, rendered by the same code as everything else, and makes no third-party request — so there is nothing for a blocker to intercept.',
     },
     {
       q: 'Is the link followed?',

@@ -12,8 +12,8 @@
     <h1 class="sp-hero__title">Put your product in front of developers mid-task</h1>
     <p class="sp-hero__sub">
       {{ liveToolCount }} free developer tools across {{ categoryCount }} categories.
-      No sign-up, no paywall, no ad network. One sponsor slot per page — and it
-      could be yours.
+      No sign-up, no paywall, no interstitials. One direct-sold sponsor card per
+      page — and it could be yours.
     </p>
     <p class="sp-tagline">a single quiet card in a very busy universe</p>
 
@@ -70,7 +70,7 @@
         Why here
       </p>
       <h2 class="sp-section__title" id="sp-why-hd">What makes this slot different</h2>
-      <p class="sp-section__tagline">one card, no auction, no scripts</p>
+      <p class="sp-section__tagline">one card, one sponsor, no auction</p>
     </div>
 
     <div class="sp-value">
@@ -151,8 +151,15 @@
     <p class="sp-mock__caption">
       The slot sits after the user has their answer — never before it, never
       over it, never in a modal. It can be dismissed, and it stays dismissed.
+      Simplified for clarity: a real tool page also carries the units listed in
+      the FAQ below.
     </p>
 
+    <!-- Wide content scrolls inside its own container so the page body never
+         scrolls horizontally on mobile. tabindex makes the scroll region
+         keyboard-reachable, which a scrollable div otherwise is not. -->
+    <div class="sp-placements__scroll" tabindex="0" role="region"
+         aria-label="Bookable placements table, scrolls horizontally">
     <table class="sp-placements">
       <caption class="sp-placements__caption">Bookable placements and their reach</caption>
       <thead>
@@ -175,6 +182,7 @@
         }
       </tbody>
     </table>
+    </div>
     <p class="sp-placements__note">
       Tool counts come straight from the live tool registry, so they move as
       new tools ship. Slots are wired into the highest-traffic pages in each

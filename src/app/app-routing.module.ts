@@ -209,7 +209,7 @@ const routes: Routes = [
       loadComponent: () => import('./sponsors/sponsors.component').then(m => m.SponsorsComponent),
       title: 'Sponsor the Tools — Reach Developers Mid-Task | xsantcastx',
       data: {
-        description: 'Sponsor a category of free developer tools on xsantcastx.com. One native slot per page, no ad network, no tracking scripts, honest disclosure. Direct deals only.',
+        description: 'Sponsor a category of free developer tools on xsantcastx.com. A native card sold direct — one sponsor per category, no auction, no third-party script, honest disclosure.',
         keywords: 'sponsor developer tools, developer advertising, reach developers, dev tool sponsorship, indie advertising, sponsor a website, developer audience',
         ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
         jsonLd: {
@@ -245,10 +245,18 @@ const routes: Routes = [
               },
               {
                 '@type': 'Question',
-                name: 'Do you take ad network money instead?',
+                name: 'Is this slot sold through an ad network?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'The slot is direct-deal only. No network scripts, no behavioural tracking, no auction.'
+                  text: 'No. The slot is direct-deal only — no network, no auction and no behavioural targeting.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'What else is on the page alongside my card?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Tool pages also carry a Carbon Ads unit and an affiliate recommendation card, both labelled Sponsored. The sponsor slot is the only one sold directly and the only one whose category you choose.'
                 }
               },
               {
