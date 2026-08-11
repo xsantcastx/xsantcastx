@@ -52,6 +52,18 @@ export class SeoService {
     this.meta.updateTag({ name: 'description',  content: desc });
     if (keywords) this.meta.updateTag({ name: 'keywords', content: keywords });
 
+    // /embed/* is the same tool as /tools/*, chrome-less for iframing. Left
+    // indexable it competes with the real page for the same queries, so it is
+    // explicitly noindex — but still `follow`, so the outbound links keep
+    // passing signals. Every other route inherits the site default and has to
+    // be reset here, because Meta.updateTag mutates one shared <meta> element:
+    // without the else branch a single embed visit would leave the tag reading
+    // noindex for the rest of the session as the user navigates back out.
+    this.meta.updateTag({
+      name: 'robots',
+      content: (data['embed'] || data['noindex']) ? 'noindex, follow' : 'index, follow'
+    });
+
     // ── Open Graph ────────────────────────────────────────────────────────
     this.meta.updateTag({ property: 'og:title',         content: pageTitle });
     this.meta.updateTag({ property: 'og:description',   content: desc });
