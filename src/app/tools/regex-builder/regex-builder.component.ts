@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 /** One coloured span in the pattern's syntax-highlight overlay. */
 type TokenType =
@@ -82,6 +83,7 @@ const MAX_MATCHES = 5_000;
 export class RegexBuilderComponent implements OnInit, OnDestroy {
   private readonly translationService = inject(TranslationService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private readonly route = inject(ActivatedRoute);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -597,6 +599,7 @@ Second line with team@xsantcastx.dev in it.`;
     }
 
     this.highlightedTest = this.buildTestHighlight();
+    this.checkOuroboros();
 
     if (this.replaceMode) {
       try {
@@ -607,6 +610,20 @@ Second line with team@xsantcastx.dev in it.`;
         this.error = err instanceof Error ? err.message : 'Replacement failed';
       }
     }
+  }
+
+  /**
+   * Egg: a pattern that matches its own source text. Runs on a freshly built
+   * RegExp so a dangling `lastIndex` from the `g` flag cannot skew `test()`,
+   * and only for short patterns — a catastrophic backtracker fed its own source
+   * is exactly the input that would hang the tab.
+   */
+  private checkOuroboros(): void {
+    if (this.pattern.length < 2 || this.pattern.length > 120) return;
+    try {
+      const self = new RegExp(this.pattern, this.flagString.replace('g', ''));
+      if (self.test(this.pattern)) this.eggs.trigger('regex-ouroboros');
+    } catch { /* pattern already reported as invalid upstream */ }
   }
 
   private now(): number {

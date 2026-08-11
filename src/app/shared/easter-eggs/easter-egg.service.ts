@@ -167,6 +167,10 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'tz-same',            name: 'Same Time Zone',       description: 'Converted a time between two identical time zones',    tool: 'timezone-converter',        rarity: 'common',    icon: '🕐' },
   { id: 'ua-bot',             name: 'Beep Boop',            description: 'Parsed a user agent belonging to a bot',               tool: 'ua-parser',                 rarity: 'rare',      icon: '🤖' },
   { id: 'webhook-pong',       name: 'Pong',                 description: 'Sent a webhook payload containing "ping"',             tool: 'webhook-tester',            rarity: 'rare',      icon: '🏓' },
+
+  // ── Batch 9: newly wired tools ─────────────────────────────
+  { id: 'b64-decoder-ring',   name: 'Decoder Ring',         description: 'Base64-encoded the word "secret"',                     tool: 'base64-encoder',            rarity: 'common',    icon: '💍' },
+  { id: 'regex-ouroboros',    name: 'Ouroboros',            description: 'Wrote a regex that matches its own source',           tool: 'regex-builder',             rarity: 'legendary', icon: '🐍' },
 ];
 
 @Injectable({ providedIn: 'root' })
