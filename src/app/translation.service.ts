@@ -9,6 +9,10 @@ interface Translations {
   };
 }
 
+/** The languages the site actually ships copy for, and the only values `?lang=` honours. */
+export const SUPPORTED_LANGUAGES = ['en', 'es'] as const;
+export const DEFAULT_LANGUAGE = 'en';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -962,12 +966,43 @@ export class TranslationService {
   };
 
   constructor() {
-    const savedLanguage = (this.isBrowser ? localStorage.getItem('preferred-language') : null) || 'en';
-    this.currentLanguageSubject.next(savedLanguage);
+    // Precedence: ?lang= in the URL, then the saved preference, then English.
+    //
+    // The query param has to win. It is the only language signal a crawler can
+    // carry: Googlebot has no localStorage and never clicks the EN/ES toggle,
+    // so before this the ?lang=es URL that the hreflang annotations advertise
+    // rendered byte-identical English and Google would drop the alternate as a
+    // duplicate. It also makes the Spanish view linkable and shareable, which
+    // a localStorage-only preference never was.
+    const saved = this.isBrowser ? localStorage.getItem('preferred-language') : null;
+    const language = this.readLanguageFromUrl() ?? this.normalize(saved) ?? DEFAULT_LANGUAGE;
+    this.currentLanguageSubject.next(language);
+    this.reflectLanguageOnDocument(language);
+  }
+
+  /** `?lang=es` / `?lang=en`. Anything unsupported is ignored rather than trusted. */
+  private readLanguageFromUrl(): string | null {
+    if (!this.isBrowser) return null;
+    return this.normalize(new URLSearchParams(window.location.search).get('lang'));
+  }
+
+  private normalize(language: string | null): string | null {
+    return language && (SUPPORTED_LANGUAGES as readonly string[]).includes(language) ? language : null;
+  }
+
+  /**
+   * Keep <html lang> honest. It drives screen-reader pronunciation, and it is
+   * one of the signals Google cross-checks against an hreflang claim — a page
+   * serving Spanish while still declaring lang="en" undermines both.
+   */
+  private reflectLanguageOnDocument(language: string): void {
+    if (!this.isBrowser) return;
+    document.documentElement.lang = language;
   }
 
   setLanguage(language: string): void {
     this.currentLanguageSubject.next(language);
+    this.reflectLanguageOnDocument(language);
     if (this.isBrowser) localStorage.setItem('preferred-language', language);
   }
 
