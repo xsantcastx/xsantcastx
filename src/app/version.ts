@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.8.0',
+  version: '2.9.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Egg Hunt',
+  codename: 'Patron',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.9.0',
+    codename: 'Patron',
+    date: '2026-08-11',
+    highlights: [
+      'Sponsor slots are live on the ten highest-traffic tool pages — a single native card between the tool output and the related-tools rail, carrying a visible "Sponsored" badge, a rel="sponsored" link and a dismiss button that stays dismissed',
+      'Placements are keyed by tool category rather than by URL, so one booking covers every tool in that category — present and future — instead of a single page',
+      'New /sponsors page for advertisers: audience, placements with a mockup of the slot in context, packages, an open-slot grid and an FAQ',
+      'Traffic and pricing on /sponsors stay unpublished until real analytics back them — the page shows "on request" rather than an estimate, and the tool counts it does show are read live from the registry',
+      'The page also states plainly that tool pages carry a Carbon unit and an affiliate card alongside the sponsor slot, rather than claiming an exclusivity the pages do not have',
+      'Nothing changes visually anywhere until a deal is signed: with no sponsor booked, every slot renders nothing at all'
+    ]
+  },
   {
     version: '2.8.0',
     codename: 'Egg Hunt',
