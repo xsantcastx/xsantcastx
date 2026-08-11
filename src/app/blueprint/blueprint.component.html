@@ -244,6 +244,78 @@
         </div>
       }
     </div>
+
+    <!-- ═══ The Eclipse arc ═══════════════════════════════════════════════
+         Now/Next/Later above is this month. This is where all of it goes. -->
+    <div class="section-header bp-section__hd bp-arc__hd">
+      <p class="bp-eyebrow">
+        <span class="bp-eyebrow__pulse" aria-hidden="true"></span>
+        The Long Arc
+      </p>
+      <h2 class="bp-section__title section-title">Eclipse Realms Roadmap</h2>
+      <p class="bp-section__tagline">
+        six phases, from a whole Sun to the one that ends it
+      </p>
+    </div>
+
+    <ol class="bp-arc">
+      @for (phase of eclipsePhases; track phase.id) {
+        <li
+          class="bp-phase"
+          [attr.data-status]="phase.status"
+          [class.bp-phase--open]="isPhaseOpen(phase.id)"
+          [style.--phase-color]="phaseStatusOf(phase.status).color"
+          [style.--phase-glow]="phaseStatusOf(phase.status).glow">
+
+          <button
+            type="button"
+            class="bp-phase__hd"
+            (click)="togglePhase(phase.id)"
+            [attr.aria-expanded]="isPhaseOpen(phase.id)"
+            [attr.aria-controls]="'phase-body-' + phase.id">
+
+            <span class="bp-phase__orb" aria-hidden="true">{{ phase.numeral }}</span>
+
+            <span class="bp-phase__text">
+              <span class="bp-phase__name-row">
+                <span class="bp-phase__name">{{ phase.name }}</span>
+                <span class="bp-phase__badge">{{ phaseStatusOf(phase.status).label }}</span>
+                <span class="bp-phase__window">{{ phase.window }}</span>
+              </span>
+              <span class="bp-phase__premise">{{ phase.premise }}</span>
+            </span>
+
+            <span class="bp-phase__meter">
+              <span class="bp-phase__count">
+                {{ phaseProgress(phase).done }}/{{ phaseProgress(phase).total }}
+              </span>
+              <span class="bp-phase__track" aria-hidden="true">
+                <span class="bp-phase__fill" [style.width.%]="phaseProgress(phase).percent"></span>
+              </span>
+            </span>
+
+            <span class="bp-phase__chevron" aria-hidden="true">▾</span>
+          </button>
+
+          @if (isPhaseOpen(phase.id)) {
+            <div class="bp-phase__body" [id]="'phase-body-' + phase.id">
+              <p class="bp-phase__quote">{{ phase.quote }}</p>
+              <ul class="bp-phase__list">
+                @for (item of phase.items; track item.title) {
+                  <li class="bp-phase__item" [class.bp-phase__item--done]="item.done">
+                    <span class="bp-phase__mark" aria-hidden="true">{{ item.done ? '✦' : '◦' }}</span>
+                    <span class="bp-phase__item-text">
+                      <span class="bp-phase__item-title">{{ item.title }}</span>
+                      <span class="bp-phase__item-detail">{{ item.detail }}</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </li>
+      }
+    </ol>
   </section>
 
   <!-- ═══ Panel: Dev Log ═════════════════════════════════════════════════ -->

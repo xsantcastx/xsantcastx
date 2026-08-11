@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.13.0',
+  version: '2.14.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'The Arena',
+  codename: 'The Long Arc',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.14.0',
+    codename: 'The Long Arc',
+    date: '2026-08-11',
+    highlights: [
+      'The Roadmap tab gains a second view under Now/Next/Later: six Eclipse phases — Genesis, Awakening, Eclipse, Convergence, Godforge, Final Eclipse — answering where all of it is going rather than what is being worked on this month',
+      'Each phase expands to its items with a shipped/total meter, and the phase in progress starts open because that is the one a reader came to check',
+      'Status is honest by construction: gold means every item under it actually shipped, cyan is live work, muted is committed but not started, and violet "vision" means an intention with no date and no promise behind it',
+      'Phase III is marked in progress with five items and none of them done — including the account-backed progress the Firestore adapter is stubbed for, and error tracking, which nothing else should ship ahead of',
+      'The prose version lives in the repo at docs/ECLIPSE_REALMS_ROADMAP.md and the site renders from src/app/blueprint/eclipse-roadmap.ts, so the two cannot drift into different claims'
+    ]
+  },
   {
     version: '2.13.0',
     codename: 'The Arena',
