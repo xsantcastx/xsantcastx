@@ -26,7 +26,7 @@
             <button class="hm-btn-ghost" (click)="clearAll()" [disabled]="!input">{{ translate('tools.common.clear') }}</button>
           </div>
         </div>
-        <textarea class="hm-textarea" [(ngModel)]="input" (ngModelChange)="process()" placeholder="Paste HTML here..." spellcheck="false"></textarea>
+        <textarea class="hm-textarea" [(ngModel)]="input" (ngModelChange)="process()" [placeholder]="translate('tools.htmlMinifier.ph.input')" spellcheck="false"></textarea>
       </div>
 
       <div class="hm-panel">

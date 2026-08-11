@@ -101,7 +101,7 @@
             class="mde-textarea"
             [(ngModel)]="markdownInput"
             (ngModelChange)="onInput()"
-            placeholder="Write your markdown here...&#10;&#10;# Heading&#10;**Bold**, _italic_, ~~strikethrough~~&#10;- List item&#10;> Blockquote"
+            [placeholder]="translate('tools.markdownEditor.ph.input')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"

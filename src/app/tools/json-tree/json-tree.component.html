@@ -40,7 +40,7 @@
 
         @if (nodes.length) {
           <div class="jt-search">
-            <input class="jt-search-input" [(ngModel)]="searchTerm" placeholder="Search keys or values..." />
+            <input class="jt-search-input" [(ngModel)]="searchTerm" [placeholder]="translate('tools.jsonTree.ph.search')" />
           </div>
         }
 

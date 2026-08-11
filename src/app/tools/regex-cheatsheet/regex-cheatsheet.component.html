@@ -15,7 +15,7 @@
   </header>
 
   <div class="rc-search-bar">
-    <input class="rc-search-input" [(ngModel)]="searchTerm" (ngModelChange)="onSearch()" placeholder="Search patterns, descriptions, examples..." />
+    <input class="rc-search-input" [(ngModel)]="searchTerm" (ngModelChange)="onSearch()" [placeholder]="translate('tools.regexCheatsheet.ph.search')" />
   </div>
 
   <div class="rc-categories">
