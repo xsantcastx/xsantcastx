@@ -1082,6 +1082,20 @@ export class TranslationService {
     'tools.gridGenerator.ph.itemName': { en: 'Item name', es: 'Nombre del elemento' },
     'tools.charMap.ph.search': { en: 'Search by name, keyword, codepoint (e.g. \'arrow\', \'U+2192\', \'&rarr;\')', es: 'Busca por nombre, palabra clave o punto de código (ej. \'flecha\', \'U+2192\', \'&rarr;\')' },
     'tools.jwtDecoder.ph.token': { en: 'Paste your JWT token here...\n\ne.g. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U', es: 'Pega tu token JWT aquí...\n\nej. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U' },
+
+    // Tool input placeholders — batch
+    'tools.sslCertificateAuditor.ph.target': { en: 'e.g. github.com or https://github.com/org/repo', es: 'ej. github.com o https://github.com/org/repo' },
+    'tools.faviconGenerator.ph.emoji': { en: 'Paste an emoji here...', es: 'Pega un emoji aquí...' },
+    'tools.headingChecker.ph.input': { en: 'Paste HTML containing heading tags (h1-h6)...', es: 'Pega HTML que contenga etiquetas de encabezado (h1-h6)...' },
+    'tools.morseCode.ph.filter': { en: 'Filter by character or code...', es: 'Filtra por carácter o código...' },
+    'tools.textShadow.ph.preview': { en: 'Preview text', es: 'Texto de vista previa' },
+    'tools.cssMinifier.ph.input': { en: 'Paste or type your CSS here...\n\ne.g. .container { display: flex; gap: 1rem; }', es: 'Pega o escribe tu CSS aquí...\n\nej. .container { display: flex; gap: 1rem; }' },
+    'tools.keyboardShortcuts.ph.search': { en: 'Search by action (e.g. copy) or key (e.g. Ctrl+C)...', es: 'Busca por acción (ej. copiar) o tecla (ej. Ctrl+C)...' },
+    'tools.sqlFormatter.ph.input': { en: 'Paste or type your SQL here...\n\ne.g. SELECT * FROM users WHERE id = 1', es: 'Pega o escribe tu SQL aquí...\n\nej. SELECT * FROM users WHERE id = 1' },
+    'tools.emailDeliverabilityAuditor.ph.selector': { en: 'Custom selector', es: 'Selector personalizado' },
+    'tools.jsonSchema.ph.validate': { en: 'Paste JSON to validate against the generated schema...', es: 'Pega JSON para validarlo contra el esquema generado...' },
+    'tools.checklist.ph.newItem': { en: 'Type item and press Enter...', es: 'Escribe un elemento y pulsa Enter...' },
+    'tools.gradientText.ph.preview': { en: 'Enter preview text', es: 'Introduce el texto de vista previa' },
 };
 
   constructor() {

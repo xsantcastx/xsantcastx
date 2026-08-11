@@ -61,7 +61,7 @@
         <div class="gt-preview-settings">
           <div class="gt-inline-control gt-inline-control--wide">
             <label class="gt-inline-control__label">{{ translate('tools.common.text') }}</label>
-            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="gt-text-input" placeholder="Enter preview text" />
+            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="gt-text-input" [placeholder]="translate('tools.gradientText.ph.preview')" />
           </div>
           <div class="gt-inline-control">
             <label class="gt-inline-control__label">Size</label>
