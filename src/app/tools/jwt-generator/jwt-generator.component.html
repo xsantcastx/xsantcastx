@@ -100,7 +100,7 @@
               class="jg-input"
               [(ngModel)]="subject"
               (ngModelChange)="updatePreview()"
-              placeholder="e.g. user_123456"
+              [placeholder]="translate('tools.jwtGenerator.ph.subject')"
               spellcheck="false"
               autocomplete="off" aria-label="sub" />
           </div>
@@ -222,7 +222,7 @@
                 type="password"
                 class="jg-input jg-input--secret"
                 [(ngModel)]="secret"
-                placeholder="Enter your HMAC secret key"
+                [placeholder]="translate('tools.jwtGenerator.ph.secret')"
                 spellcheck="false"
                 autocomplete="off" aria-label="Secret Key" />
             </div>
