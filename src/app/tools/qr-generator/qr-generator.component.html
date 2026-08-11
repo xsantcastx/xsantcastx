@@ -106,11 +106,11 @@
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Subject</label>
-              <input type="text" class="qr-input" [(ngModel)]="emailSubject" (ngModelChange)="onInput()" placeholder="Email subject" aria-label="Subject" />
+              <input type="text" class="qr-input" [(ngModel)]="emailSubject" (ngModelChange)="onInput()" [placeholder]="translate('tools.qrGenerator.ph.emailSubject')" aria-label="Subject" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Body</label>
-              <textarea class="qr-textarea qr-textarea--sm" [(ngModel)]="emailBody" (ngModelChange)="onInput()" placeholder="Email body text..." aria-label="Body"></textarea>
+              <textarea class="qr-textarea qr-textarea--sm" [(ngModel)]="emailBody" (ngModelChange)="onInput()" [placeholder]="translate('tools.qrGenerator.ph.emailBody')" aria-label="Body"></textarea>
             </div>
           </div>
         }
@@ -120,11 +120,11 @@
           <div class="qr-panel__body qr-form-fields">
             <div class="qr-field">
               <label class="qr-field__label">Network Name (SSID)</label>
-              <input type="text" class="qr-input" [(ngModel)]="wifi.ssid" (ngModelChange)="onInput()" placeholder="My WiFi Network" aria-label="Network Name (SSID)" />
+              <input type="text" class="qr-input" [(ngModel)]="wifi.ssid" (ngModelChange)="onInput()" [placeholder]="translate('tools.qrGenerator.ph.wifiSsid')" aria-label="Network Name (SSID)" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Password</label>
-              <input type="text" class="qr-input" [(ngModel)]="wifi.password" (ngModelChange)="onInput()" placeholder="Network password" aria-label="Password" />
+              <input type="text" class="qr-input" [(ngModel)]="wifi.password" (ngModelChange)="onInput()" [placeholder]="translate('tools.qrGenerator.ph.wifiPassword')" aria-label="Password" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Encryption</label>
@@ -167,7 +167,7 @@
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Organization</label>
-              <input type="text" class="qr-input" [(ngModel)]="vcard.organization" (ngModelChange)="onInput()" placeholder="Acme Inc." aria-label="Organization" />
+              <input type="text" class="qr-input" [(ngModel)]="vcard.organization" (ngModelChange)="onInput()" [placeholder]="translate('tools.qrGenerator.ph.organization')" aria-label="Organization" />
             </div>
             <div class="qr-field">
               <label class="qr-field__label">Website</label>

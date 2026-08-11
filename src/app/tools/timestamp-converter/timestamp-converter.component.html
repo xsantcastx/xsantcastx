@@ -88,7 +88,7 @@
               class="tc-input"
               [(ngModel)]="timestampInput"
               (ngModelChange)="onTimestampInput()"
-              placeholder="Enter Unix timestamp, e.g. 1700000000"
+              [placeholder]="translate('tools.timestampConverter.ph.unix')"
               spellcheck="false"
               autocomplete="off"
               />
@@ -101,7 +101,7 @@
               class="tc-input"
               [(ngModel)]="dateInput"
               (ngModelChange)="onDateInput()"
-              placeholder="Enter date, e.g. 2024-01-15 14:30:00"
+              [placeholder]="translate('tools.timestampConverter.ph.date')"
               spellcheck="false"
               autocomplete="off"
               />

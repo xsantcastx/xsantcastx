@@ -15,7 +15,7 @@
   </header>
 
   <div class="jcs-toolbar">
-    <input type="text" class="jcs-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" placeholder="Search claims or algorithms..." />
+    <input type="text" class="jcs-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" [placeholder]="translate('tools.jwtCheatsheet.ph.search')" />
     <div class="jcs-tabs">
       <button class="jcs-tab" [class.jcs-tab--active]="activeTab === 'claims'" (click)="activeTab = 'claims'">Claims ({{ filteredClaims.length }})</button>
       <button class="jcs-tab" [class.jcs-tab--active]="activeTab === 'algorithms'" (click)="activeTab = 'algorithms'">Algorithms ({{ filteredAlgorithms.length }})</button>

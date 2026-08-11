@@ -70,7 +70,7 @@
             <textarea
               class="mt-textarea mt-textarea--csv"
               [(ngModel)]="csvInput"
-              placeholder="Paste CSV data here...&#10;&#10;Name,Role,Level&#10;Alice,Engineer,Senior&#10;Bob,Designer,Mid"
+              [placeholder]="translate('tools.mdTableGenerator.ph.csv')"
               spellcheck="false" aria-label="Delimiter"
             ></textarea>
             @if (errorMessage) {

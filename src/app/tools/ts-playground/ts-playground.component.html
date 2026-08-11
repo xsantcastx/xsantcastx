@@ -57,7 +57,7 @@
             type="text"
             [(ngModel)]="searchQuery"
             (ngModelChange)="onSearch()"
-            placeholder="Search types... (try 'any')"
+            [placeholder]="translate('tools.tsPlayground.ph.searchTypes')"
             spellcheck="false"
             autocomplete="off"
             />
@@ -195,7 +195,7 @@
             <textarea
               class="tsp-textarea"
               [(ngModel)]="playgroundInput"
-              placeholder="Write TypeScript type definitions here..."
+              [placeholder]="translate('tools.tsPlayground.ph.definitions')"
               spellcheck="false"
               autocomplete="off"
               autocorrect="off"

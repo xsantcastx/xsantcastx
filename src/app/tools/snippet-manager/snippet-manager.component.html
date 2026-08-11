@@ -55,7 +55,7 @@
             type="text"
             [(ngModel)]="searchQuery"
             (ngModelChange)="onSearchInput()"
-            placeholder="Search by title, tag, or language..."
+            [placeholder]="translate('tools.snippetManager.ph.search')"
             spellcheck="false"
             />
           @if (searchQuery) {
@@ -193,7 +193,7 @@
             id="smTitle"
             type="text"
             [(ngModel)]="formTitle"
-            placeholder="e.g. Debounce utility function"
+            [placeholder]="translate('tools.snippetManager.ph.title')"
             spellcheck="false"
             />
         </div>
@@ -214,7 +214,7 @@
             id="smTags"
             type="text"
             [(ngModel)]="formTags"
-            placeholder="e.g. utility, async, react"
+            [placeholder]="translate('tools.snippetManager.ph.tags')"
             spellcheck="false"
             />
         </div>
@@ -226,7 +226,7 @@
             id="smCode"
             [(ngModel)]="formCode"
             (ngModelChange)="updatePreview()"
-            placeholder="Paste or type your code here..."
+            [placeholder]="translate('tools.snippetManager.ph.code')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"

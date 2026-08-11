@@ -63,7 +63,7 @@
               class="ar-input"
               [(ngModel)]="width"
               (ngModelChange)="onInput('width')"
-              placeholder="e.g. 1920"
+              [placeholder]="translate('tools.aspectRatio.ph.width')"
               min="1"
               autocomplete="off"
               />
@@ -82,7 +82,7 @@
               class="ar-input"
               [(ngModel)]="height"
               (ngModelChange)="onInput('height')"
-              placeholder="e.g. 1080"
+              [placeholder]="translate('tools.aspectRatio.ph.height')"
               min="1"
               autocomplete="off"
               />
@@ -205,7 +205,7 @@
                 class="ar-input"
                 [(ngModel)]="targetWidth"
                 (ngModelChange)="onResCalcInput('width')"
-                placeholder="e.g. 1920"
+                [placeholder]="translate('tools.aspectRatio.ph.width')"
                 min="1"
                 autocomplete="off" aria-label="Target Width"
                 />
@@ -218,7 +218,7 @@
                 class="ar-input"
                 [(ngModel)]="targetHeight"
                 (ngModelChange)="onResCalcInput('height')"
-                placeholder="e.g. 1080"
+                [placeholder]="translate('tools.aspectRatio.ph.height')"
                 min="1"
                 autocomplete="off" aria-label="Target Height"
                 />

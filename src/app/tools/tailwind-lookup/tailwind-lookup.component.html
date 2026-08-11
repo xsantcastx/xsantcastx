@@ -32,7 +32,7 @@
         class="tw-search-input"
         type="text"
         [(ngModel)]="searchQuery"
-        placeholder="Search by class name or CSS property... e.g. flex, padding, 1rem"
+        [placeholder]="translate('tools.tailwindLookup.ph.search')"
         spellcheck="false"
         autocomplete="off"
         />

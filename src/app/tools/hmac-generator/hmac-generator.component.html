@@ -61,7 +61,7 @@
               [type]="showSecret ? 'text' : 'password'"
               [(ngModel)]="secretKey"
               (ngModelChange)="onSecretChange()"
-              placeholder="Enter your secret key..."
+              [placeholder]="translate('tools.hmacGenerator.ph.secret')"
               spellcheck="false"
               autocomplete="off"
               />
@@ -107,7 +107,7 @@
               class="hm-textarea"
               [(ngModel)]="messageInput"
               (ngModelChange)="onInput()"
-              placeholder="Enter message to sign with HMAC&#10;&#10;e.g. Hello, World!"
+              [placeholder]="translate('tools.hmacGenerator.ph.message')"
               spellcheck="false"
               autocomplete="off"
               autocorrect="off"

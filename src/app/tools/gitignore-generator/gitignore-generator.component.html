@@ -25,7 +25,7 @@
           </div>
         </div>
         <div class="gi-panel__body">
-          <input class="gi-search" type="text" [(ngModel)]="searchQuery" placeholder="Search technologies..." />
+          <input class="gi-search" type="text" [(ngModel)]="searchQuery" [placeholder]="translate('tools.gitignoreGenerator.ph.search')" />
           <div class="gi-tech-grid">
             @for (tech of filteredTechnologies; track tech) {
               <button
