@@ -26,7 +26,15 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-/** Named placement slots — keep this list short and stable. */
+/**
+ * Named placement slots — keep this list short and stable.
+ *
+ * The `tool-page:*` family is the in-content slot that sits between a tool's
+ * output and its related-tools rail. It is keyed by the tool's registry
+ * `category` rather than by tool id so that a sponsor buys an audience
+ * ("everyone using our CSS tools") instead of a single URL — one booking
+ * covers every tool in the category, present and future.
+ */
 export type SponsorPlacement =
   | 'tools-sidebar:ai'
   | 'tools-sidebar:networking'
@@ -37,7 +45,13 @@ export type SponsorPlacement =
   | 'tools-index:hero'
   | 'category-banner:performance'
   | 'category-banner:ai'
-  | 'category-banner:networking';
+  | 'category-banner:networking'
+  // In-content tool page slots, keyed by registry category:
+  | 'tool-page:css'          // 'CSS Tools' / 'CSS Generators'
+  | 'tool-page:code'         // 'Code Converters'
+  | 'tool-page:text'         // 'Text & Data'
+  | 'tool-page:security'     // 'Security Tools'
+  | 'tool-page:productivity'; // 'Productivity'
 
 export interface Sponsor {
   /** Stable unique id used for tracking + storage keys */
@@ -110,6 +124,11 @@ const HOUSE_INVENTORY: Sponsor[] = [
       'tools-sidebar:json',
       'tools-sidebar:design',
       'tools-index:hero',
+      'tool-page:css',
+      'tool-page:code',
+      'tool-page:text',
+      'tool-page:security',
+      'tool-page:productivity',
     ],
     startDate: '2026-01-01',
     endDate: '2099-12-31',

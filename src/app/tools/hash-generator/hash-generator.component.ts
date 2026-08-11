@@ -147,6 +147,13 @@ export class HashGeneratorComponent implements OnDestroy {
 
     this.hashResults = results;
     this.errorMessage = '';
+
+    // Egg: four leading zeros on any digest — the proof-of-work shape, stumbled
+    // into rather than mined. Compared lower-case so the uppercase toggle,
+    // which is applied above, cannot hide it.
+    if (results.some(r => r.hash.toLowerCase().startsWith('0000'))) {
+      this.eggs.trigger('hash-miner');
+    }
   }
 
   private async computeHash(algo: string, data: Uint8Array): Promise<string> {

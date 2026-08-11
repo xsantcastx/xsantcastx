@@ -767,3 +767,45 @@
   .gdc-page { padding: 1.25rem 1rem 3rem; }
   .gdc-score-row { flex-direction: column; align-items: flex-start; }
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .gdc-btn,
+  .gdc-code,
+  .gdc-config-group__title,
+  .gdc-field label,
+  .gdc-field textarea,
+  .gdc-field-hint,
+  .gdc-issue__desc,
+  .gdc-issue__fix,
+  .gdc-label,
+  .gdc-preset-btn,
+  .gdc-presets__label,
+  .gdc-radio-text em,
+  .gdc-radio-text strong,
+  .gdc-record-table th,
+  .gdc-record-table,
+  .gdc-record-type,
+  .gdc-slider-value,
+  .gdc-status-card__desc,
+  .gdc-status-card__state,
+  .gdc-step,
+  .gdc-tab,
+  .gdc-textarea,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .gdc-badge,
+  .gdc-step__num,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
