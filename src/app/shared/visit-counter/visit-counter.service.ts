@@ -2,6 +2,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Firestore, doc, runTransaction } from '@angular/fire/firestore';
 import { BehaviorSubject } from 'rxjs';
+import { whenAppCheckReady } from '../../app-check.bootstrap';
 
 export interface MilestoneEvent {
   count: number;
@@ -40,6 +41,14 @@ export class VisitCounterService {
     if (sessionStorage.getItem('visit-counted')) {
       return;
     }
+
+    // App Check now initializes on idle rather than at bootstrap, so this
+    // write — which fires from AppComponent.ngOnInit — would otherwise race
+    // ahead of it and go out without a token. Harmless while App Check
+    // enforcement is off, but it would silently break the counter the moment
+    // enforcement is switched on in the Firebase console. Waiting costs
+    // nothing here: the visit count is not on any rendering path.
+    await whenAppCheckReady();
 
     try {
       const ref = doc(this.firestore, 'site-stats', 'visits');

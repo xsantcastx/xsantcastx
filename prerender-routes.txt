@@ -6,6 +6,7 @@
 /live
 /guestbook
 /blueprint
+/sponsors
 /tools
 /tools/box-shadow-generator
 /tools/char-map
@@ -40,6 +41,7 @@
 /embed/meta-tag-generator
 /embed/env-validator
 /embed/font-pairer
+/tools/har-analyzer
 /tools/regex-builder
 /tools/cron-builder
 /tools/api-request-builder
@@ -50,6 +52,7 @@
 /tools/url-encoder
 /tools/sql-formatter
 /tools/base-converter
+/embed/har-analyzer
 /embed/regex-builder
 /embed/cron-builder
 /embed/api-request-builder

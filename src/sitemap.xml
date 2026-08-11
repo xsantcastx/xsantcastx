@@ -58,6 +58,13 @@
   </url>
 
   <url>
+    <loc>https://xsantcastx.com/sponsors</loc>
+    <lastmod>2026-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
     <loc>https://xsantcastx.com/tools</loc>
     <lastmod>2026-08-11</lastmod>
     <changefreq>weekly</changefreq>
@@ -213,6 +220,13 @@
 
   <url>
     <loc>https://xsantcastx.com/tools/font-pairer</loc>
+    <lastmod>2026-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://xsantcastx.com/tools/har-analyzer</loc>
     <lastmod>2026-08-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

@@ -6,6 +6,7 @@ import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 type IndentOption = '2' | '4' | 'tab';
 
@@ -24,6 +25,7 @@ interface ValidationResult {
 })
 export class JsonFormatterComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free JSON Formatter & Validator — format, minify, validate and repair JSON instantly. No sign-up 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools/json-formatter')}`;
@@ -146,6 +148,29 @@ export class JsonFormatterComponent implements OnDestroy {
     this.errorLine = null;
     this.errorColumn = null;
     this.highlightedHtml = this.sanitizer.bypassSecurityTrustHtml(this.highlight(pretty));
+
+    if (this.measureDepth(parsed) >= 10) this.eggs.trigger('json-inception');
+  }
+
+  /**
+   * Nesting depth of a parsed JSON value. Walked with an explicit stack rather
+   * than recursion — the input is attacker-shaped by definition here, and a
+   * deeply nested document would otherwise blow the call stack on a tool whose
+   * whole job is to survive weird JSON.
+   */
+  private measureDepth(value: unknown): number {
+    let max = 0;
+    const stack: { node: unknown; depth: number }[] = [{ node: value, depth: 0 }];
+
+    while (stack.length) {
+      const { node, depth } = stack.pop()!;
+      if (depth > max) max = depth;
+      if (node === null || typeof node !== 'object') continue;
+      for (const child of Object.values(node as Record<string, unknown>)) {
+        stack.push({ node: child, depth: depth + 1 });
+      }
+    }
+    return max;
   }
 
   minify() {

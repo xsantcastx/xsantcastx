@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { UpperCasePipe } from '@angular/common';
 
@@ -35,6 +36,8 @@ interface MetaTagData {
     imports: [ToolsSharedModule, FormsModule, UpperCasePipe]
 })
 export class MetaTagGeneratorComponent {
+  private readonly eggs = inject(EasterEggService);
+
   data: MetaTagData = {
     title: '',
     description: '',
@@ -85,6 +88,11 @@ export class MetaTagGeneratorComponent {
     if (this.syncTwitter) {
       this.data.twitterTitle = this.data.title;
     }
+
+    // Egg: naming the site after yourself. Reads the resolved OG title so it
+    // fires whether it was typed directly or synced across from the SEO title.
+    const og = (this.data.ogTitle || this.data.title).trim().toLowerCase();
+    if (og === 'xsantcastx') this.eggs.trigger('meta-ego');
   }
 
   onDescriptionChange(): void {
