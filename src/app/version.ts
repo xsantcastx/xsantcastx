@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.13.0',
+  version: '2.18.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Control Room',
+  codename: 'The Long Arc',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,70 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.18.0',
+    codename: 'The Long Arc',
+    date: '2026-08-11',
+    highlights: [
+      'The Roadmap tab gains a second view under Now/Next/Later: six Eclipse phases — Genesis, Awakening, Eclipse, Convergence, Godforge, Final Eclipse — answering where all of it is going rather than what is being worked on this month',
+      'Each phase expands to its items with a shipped/total meter, and the phase in progress starts open because that is the one a reader came to check',
+      'Status is honest by construction: gold means every item under it actually shipped, cyan is live work, muted is committed but not started, and violet "vision" means an intention with no date and no promise behind it',
+      'Phase III is marked in progress with five items and none of them done — including the account-backed progress the Firestore adapter is stubbed for, and error tracking, which nothing else should ship ahead of',
+      'The prose version lives in the repo at docs/ECLIPSE_REALMS_ROADMAP.md and the site renders from src/app/blueprint/eclipse-roadmap.ts, so the two cannot drift into different claims'
+    ]
+  },
+  {
+    version: '2.17.0',
+    codename: 'The Arena',
+    date: '2026-08-11',
+    highlights: [
+      '/games is now /arena — "Where Convergents prove their worth" — with a 301 in the hosting config so every external link and indexed URL lands on the new address instead of the SPA 404',
+      'Games became gates: each one is chained shut by a secret buried in a tool, and a gate inherits the rarity tier of the secret that opens it, so a red border in the Arena and a red drop toast are the same claim',
+      'Locked gates carry a chain glyph and are desaturated — you can see the shape of the prize but not its colour. Opened gates glow in their tier',
+      'New arena stats: gates opened, secrets found, and your rarest opened gate by name and tier (it reads "no gate opened yet" until you open one, rather than boasting about a card you have not earned)',
+      'The four hardcoded rarity colours on the old game cards are gone; the cards read the shared rarity table instead',
+      'Nav, sitemap and prerender list all moved with it, and no /games stub is emitted'
+    ]
+  },
+  {
+    version: '2.16.0',
+    codename: 'Five Realms',
+    date: '2026-08-11',
+    highlights: [
+      'The twelve registry categories are now grouped into five realms — Luminous (design), Umbral (security), Verge (code), Archivum (productivity) and Nexus (mail) — each with its own colour and a line from the Eclipse Realms codex',
+      '/tools gets a realm rail above the galaxy map: five chips with live tool counts (33 / 10 / 24 / 58 / 2), and picking one cuts the grid into realm sections with the realm header and its quote',
+      'Realm and category are two different cuts of the same list, so selecting one clears the other rather than intersecting into an empty result',
+      'Every tool page carries a realm badge beside its category eyebrow — added by one global rule keyed on a data-realm attribute, not by editing 126 templates',
+      'RealmService resolves route → tool → category → realm on each navigation and publishes it to CSS, clearing the variables again off a tool route so /home is never tinted by the last tool you opened',
+      'Realms agree with the energy split shipped in 2.14.0: Umbral and Verge feed Nox, the other three feed Aether'
+    ]
+  },
+  {
+    version: '2.15.0',
+    codename: 'Mythic',
+    date: '2026-08-11',
+    highlights: [
+      'Easter eggs now drop on a six-tier ladder — Mortal, Eclipsed, Sacred, Anomalous, Mythic, Singular — instead of a flat toast that looked the same whatever you found',
+      'All 139 registered eggs are tiered: 43 Mortal, 79 Eclipsed, 10 Sacred, 5 Anomalous and 2 Mythic (a hash with four leading zeros, and a regex that matches its own source)',
+      'Singular is not authored — it is awarded when the global discovery counter comes back at exactly 1, meaning nobody in the realm reached that egg before you',
+      'Sound is synthesised, not downloaded: a struck bell for Sacred, a detuned horn section for Anomalous, a sub-bass impact with a noise transient for Mythic, and a prismatic arpeggio over the impact for Singular — five cues, zero audio files, and no AudioContext at all until the first drop',
+      'Mythic and Singular take the screen: one white frame at 100ms, a dim veil, a centred card with a pulsing tier glow and an eighteen-shard particle burst',
+      'prefers-reduced-motion drops the flash, the burst and the pulse — the card still appears and still reads, it just holds still'
+    ]
+  },
+  {
+    version: '2.14.0',
+    codename: 'Wanderer',
+    date: '2026-08-11',
+    highlights: [
+      'The site remembers you now — XP, ten Eclipse Realms ranks from Wanderer to Eclipse Lord, and a progression readout in the header that expands into a panel',
+      'XP is earned from what you were already doing: 15 for the first use of a tool, 5 for a page you have not seen, 5 for a copy (rate-limited to once a minute), 25 for a share and 200 for an easter egg',
+      'A daily streak compounds 50 XP per consecutive day up to 600, and resets to one day on the first day you miss — the best streak is kept so the loss is visible',
+      'XP splits across the two energies of the lore: Aether from design and authoring tools, Nox from security and code tools, drawn as a seam on the header bar',
+      'Storage sits behind an adapter, so the Phase 2 move to per-account Firestore progress is a provider swap rather than a rewrite',
+      'Nothing is sent anywhere — progression lives entirely in localStorage on your own device'
+    ]
+  },
   {
     version: '2.13.0',
     codename: 'Control Room',
