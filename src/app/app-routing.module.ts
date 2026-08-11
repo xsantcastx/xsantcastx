@@ -205,6 +205,22 @@ const routes: Routes = [
       }
     },
   {
+      // Hidden owner-only dashboard. Not in the nav, not in prerender-routes.txt,
+      // not in the sitemap, Disallow'd in robots.txt and noindex'd here — four
+      // independent reasons it should never surface in search.
+      //
+      // loadChildren (not loadComponent) because admin.routes.ts calls
+      // provideAuth(); importing that from this file would drag @firebase/auth
+      // back into the eager bundle for every visitor.
+      path: 'admin',
+      loadChildren: () => import('./admin/admin.routes').then(m => m.ADMIN_ROUTES),
+      title: 'Control Room | xsantcastx',
+      data: {
+        noindex: true,
+        description: 'Private dashboard.'
+      }
+    },
+  {
     path: 'tools',
     loadChildren: () => import('./tools/tools.module').then(m => m.ToolsModule)
   },
