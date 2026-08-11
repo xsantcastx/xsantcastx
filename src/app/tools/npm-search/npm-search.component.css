@@ -699,3 +699,63 @@
     grid-template-columns: 65px 1fr 32px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .ns-back-to-results,
+  .ns-cmd-code,
+  .ns-cmd-copy,
+  .ns-cmd-label,
+  .ns-compare-cmd,
+  .ns-compare-pm,
+  .ns-error,
+  .ns-link-btn,
+  .ns-npm-link,
+  .ns-panel__title,
+  .ns-pkg-desc,
+  .ns-pkg-version,
+  .ns-pm-tab,
+  .ns-recent-clear,
+  .ns-recents__label,
+  .ns-result-desc,
+  .ns-result-score,
+  .ns-result-version,
+  .ns-score-name,
+  .ns-score-pct,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .ns-keyword-tag,
+  .ns-meta-label,
+  .ns-meta-value,
+  .ns-recent-tag,
+  .ns-result-meta-item,
+  .ns-results-count,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .ns-page {
+    padding-top: 2.5rem;
+  }
+}

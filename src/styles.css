@@ -2156,3 +2156,176 @@ summary:focus-visible {
     top: 0;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   The v2.1.0 pass fixed navigation and touch targets, but the site was still
+   reported as hard to use. A live audit at 375x812 found why: the type itself.
+   Text ran from 7.4px (.hp-lf__badge, 0.46rem) to 13.9px across every route —
+   199 feed rows at 11.5px on /live, 27 roadmap bullets at 11.2px on /blueprint,
+   every card description at 12.5-13.1px. None of these sizes are responsive;
+   they are hard-coded rem values that apply identically at 1920px and 375px,
+   where the same physical text has to survive a viewport a fifth as wide.
+
+   Two tiers, because one number does not fit both kinds of text:
+
+     Tier A — content and controls: 14px floor. Anything a user reads to make a
+     decision or taps to act: body copy, card names and descriptions, button and
+     tab labels, links, form labels.
+
+     Tier B — decorative micro-labels: 12px floor. Uppercase letter-spaced
+     category chips, counters, timestamps, "NEW" badges. These sit inside tight
+     pills and fixed flex rows; forcing them to 14px overflows the layout they
+     live in (verified — the /live feed row breaks). 12px is still a 62% jump
+     from 7.4px and leaves the geometry intact.
+
+   Why !important: the tool-page shell (.tool-header__*, .rt-*, .share-btn,
+   .aff-cta__*, .nl-capture__*) is copy-pasted into 121 per-tool stylesheets.
+   Angular's emulated encapsulation compiles those to [_ngcontent-x] compounds
+   at specificity (0,2,0), so an unscoped global class selector at (0,1,0) loses
+   every time. Raising specificity by nesting cannot reach (0,2,0) from global
+   scope without guessing at DOM structure. This block is mobile-only and
+   typography-only, so !important is scoped to exactly the cascade it must win.
+
+   Desktop is untouched — every rule is inside max-width: 768px.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── Tier A: content & controls → 14px ──────────────────────────────────── */
+
+  /* Global chrome present on every route */
+  .lang-btn,
+  .footer-mcp-link,
+  .footer-mcp-desc,
+  .donate-btn,
+  .cta-button,
+  .share-btn {
+    font-size: 14px !important;
+  }
+
+  /* Tool-page shell — duplicated across 121 per-tool stylesheets */
+  .back-link,
+  .rt-card__desc,
+  .related-tools__browse-link,
+  .aff-cta__desc,
+  .aff-cta__btn,
+  .nl-capture__sub,
+  .ecg__toggle,
+  .copy-btn,
+  .tool-desc,
+  .why-body,
+  .link-name {
+    font-size: 14px !important;
+  }
+
+  .rt-card__name,
+  .related-tools__title {
+    font-size: 15px !important;
+  }
+
+  /* The cookie banner's second line is a privacy disclosure — what is collected
+     and what is not. It rendered at 11.3px, which is the wrong size for the one
+     sentence on the site a user might read for legal rather than aesthetic
+     reasons. Treated as content, not fine print. */
+  .cookie-details small,
+  .cookie-banner small {
+    font-size: 14px;
+  }
+
+  /* The cosmic section eyebrow and tagline pair is shared by /contact,
+     /projects and /skills, and rendered at 11.2px and 11.5px. The tagline is a
+     full sentence, so it is content; the eyebrow is an uppercase label. */
+  .section-tagline,
+  .skills__tagline {
+    font-size: 14px !important;
+  }
+
+  /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
+  .section-eyebrow,
+  .skills__eyebrow,
+  .footer-eyebrow,
+  .build-version,
+  .adsense-label,
+  .carbon-ad-label,
+  .rt-tag,
+  .tool-header__eyebrow,
+  .tool-usage__label,
+  .tool-usage__count,
+  .aff-cta__sponsored,
+  .aff-cta__badge,
+  .link-label,
+  .hero-badge,
+  .inline-code {
+    font-size: 12px !important;
+  }
+
+  /* ── Remaining sub-44px controls the v2.1.0 sweep did not reach ─────────── */
+
+  /* Share buttons were 34-36px tall on every tool page. */
+  .share-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+
+  /* Native colour swatches render at their intrinsic 40px width regardless of
+     the min-height rule above, which only grows the vertical axis. */
+  input[type='color'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* The email address and GitHub URL on /contact are the primary action of the
+     card they sit in, not links inside a sentence, so the WCAG 2.5.5 prose
+     exemption does not cover them. They were 17px tall — they carry no class,
+     which is why the v2.1.0 sweep's explicit class list missed them. */
+  .method-info a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  /* The global 16px rule for form controls sits at specificity (0,0,1) and is
+     beaten by any component-authored class selector — .arb-method-select still
+     computed to 13.1px, which re-arms the iOS focus-zoom trap the rule exists
+     to prevent. This wins it back for every control. */
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='range']):not([type='color']),
+  textarea,
+  select {
+    font-size: max(16px, 1rem) !important;
+  }
+
+  /* Momentum scrolling for any pane that scrolls independently of the document.
+     Without it, older iOS Safari scrolls these panes without inertia, which is
+     the single most "not a real app" feeling on the site. overscroll-behavior
+     stops a flick inside the pane from chaining to the page behind it. */
+  .nav-menu,
+  .chat-messages,
+  .bot-messages,
+  .feed-panel,
+  .mission-grid,
+  .live-page {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Media must never be the thing that widens the page. height:auto is limited
+     to img/video, where it preserves the aspect ratio against the width cap.
+     svg and canvas only get the width cap: an inline icon sized by its own
+     component CSS keeps that size, and a canvas with height:auto would collapse
+     to zero because it has no intrinsic ratio to fall back on. */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  svg,
+  canvas,
+  iframe {
+    max-width: 100%;
+  }
+}

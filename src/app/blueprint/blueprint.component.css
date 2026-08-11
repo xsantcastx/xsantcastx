@@ -1430,3 +1430,64 @@
     transition: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   /blueprint is a reading page — a roadmap and a dev log — and it rendered its
+   27 roadmap bullets at 11.2px. Body copy is the one thing on this route that
+   has to be comfortable, so the li rule matters more here than anywhere else.
+   Tier A -> 14px, Tier B (release dates, galaxy counts, version chips) -> 12px.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Tier A — the page is primarily prose */
+  .bp-roadmap li,
+  .bp-release li,
+  .bp-panel li,
+  .bp-tab,
+  .bp-node__label,
+  .bp-stat__label,
+  .bp-stat__note,
+  .bp-release__code,
+  dd {
+    font-size: 14px;
+  }
+
+  li {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Tier B — dates, counts and version chips */
+  .bp-eyebrow,
+  .bp-version__eyebrow,
+  .bp-release__date,
+  .bp-galaxy__count,
+  .bp-hero__version-tag,
+  .bp-hero__version-name,
+  .bp-hero__version-date,
+  .bp-stat__code,
+  dt {
+    font-size: 12px;
+  }
+
+  /* .bp-version__meta dt is a compound at (0,1,1) and beats the bare dt above. */
+  .bp-version__meta dt {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bp-page {
+    padding-top: 2rem;
+  }
+}

@@ -1084,3 +1084,46 @@
     -webkit-overflow-scrolling: touch;
   }
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .btn-pem-toggle,
+  .empty-state__body,
+  .input-section__label,
+  .pem-label,
+  .pem-textarea,
+  .share-btn,
+  .ssl-auditor__copy-btn--outline,
+  .ssl-auditor__detail-label,
+  .ssl-auditor__detail-value--mono,
+  .ssl-auditor__expiry-label,
+  .ssl-auditor__expiry-until,
+  .ssl-auditor__flag-detail,
+  .ssl-auditor__flag-remediation,
+  .ssl-auditor__hero-org,
+  .ssl-auditor__label,
+  .ssl-auditor__loading-sub,
+  .ssl-auditor__pem-hint,
+  .ssl-auditor__pem-textarea,
+  .ssl-auditor__pem-toggle,
+  .ssl-auditor__san-item,
+  .ssl-auditor__san-name,
+  .ssl-auditor__sans-title,
+  .ssl-auditor__tab {
+    font-size: 14px;
+  }
+
+  .ssl-auditor__badge,
+  .ssl-auditor__flag-status-badge,
+  .ssl-auditor__tab-count,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
