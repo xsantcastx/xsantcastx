@@ -280,7 +280,7 @@ export class TranslationService {
     'tools.common.cat.seoTools': { en: 'SEO Tools', es: 'Herramientas SEO' },
     'tools.common.cat.testingTools': { en: 'Testing Tools', es: 'Herramientas de Pruebas' },
     'tools.common.cat.textAndDataTool': { en: 'Text &amp; Data Tool', es: 'Herramienta de Texto &amp; Datos' },
-    'tools.common.cat.textData': { en: 'Text &amp; Data', es: 'Texto &amp; Datos' },
+    'tools.common.cat.textData': { en: 'Text & Data', es: 'Texto & Datos' },
     'tools.common.cat.textGenerators': { en: 'Text Generators', es: 'Generadores de Texto' },
     'tools.common.cat.textTools': { en: 'Text Tools', es: 'Herramientas de Texto' },
     'tools.common.cat.textUtilities': { en: 'Text Utilities', es: 'Utilidades de Texto' },
@@ -1068,6 +1068,20 @@ export class TranslationService {
     'tools.lineSorter.ph.input': { en: 'Paste lines here...', es: 'Pega las líneas aquí...' },
     'tools.encodingConverter.ph.input': { en: 'Type or paste text to convert...', es: 'Escribe o pega el texto a convertir...' },
     'tools.apiRequestBuilder.ph.headerName': { en: 'Header name', es: 'Nombre de la cabecera' },
+
+    // Tool input placeholders — batch
+    'tools.cssUnits.ph.value': { en: 'e.g. 16', es: 'ej. 16' },
+    'tools.packageJson.ph.keyword': { en: 'Add keyword...', es: 'Anadir palabra clave...' },
+    'tools.gitignoreGenerator.ph.search': { en: 'Search technologies...', es: 'Buscar tecnologías...' },
+    'tools.gitReference.ph.search': { en: 'Search by command (e.g. rebase) or description (e.g. squash commits)...', es: 'Busca por comando (ej. rebase) o descripción (ej. combinar commits)...' },
+    'tools.jsMinifier.ph.input': { en: 'Paste JavaScript code here...', es: 'Pega código JavaScript aquí...' },
+    'tools.dockerRef.ph.search': { en: 'Search directives (e.g. image, volumes, depends_on)...', es: 'Busca directivas (ej. image, volumes, depends_on)...' },
+    'tools.htmlEntities.ph.search': { en: 'Search entities...', es: 'Buscar entidades...' },
+    'tools.pomodoro.ph.task': { en: 'What are you working on?', es: '¿En qué estás trabajando?' },
+    'tools.jwtCheatsheet.ph.search': { en: 'Search claims or algorithms...', es: 'Busca claims o algoritmos...' },
+    'tools.gridGenerator.ph.itemName': { en: 'Item name', es: 'Nombre del elemento' },
+    'tools.charMap.ph.search': { en: 'Search by name, keyword, codepoint (e.g. \'arrow\', \'U+2192\', \'&rarr;\')', es: 'Busca por nombre, palabra clave o punto de código (ej. \'flecha\', \'U+2192\', \'&rarr;\')' },
+    'tools.jwtDecoder.ph.token': { en: 'Paste your JWT token here...\n\ne.g. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U', es: 'Pega tu token JWT aquí...\n\nej. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U' },
 };
 
   constructor() {

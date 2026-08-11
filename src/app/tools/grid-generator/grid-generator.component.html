@@ -282,7 +282,7 @@
                 class="gg-text-input"
                 [value]="selectedItem.label"
                 (input)="updateItemField('label', $any($event.target).value)"
-                placeholder="Item name" aria-label="Label"
+                [placeholder]="translate('tools.gridGenerator.ph.itemName')" aria-label="Label"
                 />
             </div>
             <!-- Area Name (when areas enabled) -->

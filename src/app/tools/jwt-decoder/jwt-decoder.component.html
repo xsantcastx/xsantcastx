@@ -56,7 +56,7 @@
             class="jd-textarea"
             [(ngModel)]="jwtInput"
             (ngModelChange)="onInput()"
-            placeholder="Paste your JWT token here...&#10;&#10;e.g. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+            [placeholder]="translate('tools.jwtDecoder.ph.token')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"
