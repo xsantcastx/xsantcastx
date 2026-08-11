@@ -61,7 +61,7 @@
         <div class="ts-preview-settings">
           <div class="ts-inline-control ts-inline-control--grow">
             <label class="ts-inline-control__label">{{ translate('tools.common.text') }}</label>
-            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="ts-text-input" placeholder="Preview text" />
+            <input type="text" [value]="previewText" (input)="onPreviewTextChange($event)" class="ts-text-input" [placeholder]="translate('tools.textShadow.ph.preview')" />
           </div>
           <div class="ts-inline-control">
             <label class="ts-inline-control__label">Size</label>

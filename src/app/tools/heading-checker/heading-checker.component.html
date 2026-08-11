@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="hc-panel__body--code">
-        <textarea class="hc-textarea" [(ngModel)]="htmlInput" (ngModelChange)="onInput()" placeholder="Paste HTML containing heading tags (h1-h6)..." spellcheck="false"></textarea>
+        <textarea class="hc-textarea" [(ngModel)]="htmlInput" (ngModelChange)="onInput()" [placeholder]="translate('tools.headingChecker.ph.input')" spellcheck="false"></textarea>
       </div>
     </div>
 
