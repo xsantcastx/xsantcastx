@@ -174,6 +174,10 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'palette-monochrome', name: 'Monochrome Master',    description: 'Extracted a palette where every colour shares one hue', tool: 'color-palette',           rarity: 'epic',      icon: '🎨' },
   { id: 'gradient-rainbow-bridge', name: 'Rainbow Bridge',  description: 'Built a gradient with 8 or more colour stops',        tool: 'gradient-generator',        rarity: 'rare',      icon: '🌈' },
   { id: 'img-pixel-pincher',  name: 'Pixel Pincher',        description: 'Compressed an image below 1KB',                       tool: 'image-compressor',          rarity: 'epic',      icon: '🤏' },
+  { id: 'pw-fort-knox',       name: 'Fort Knox',            description: 'Generated a 128-character password',                  tool: 'password-generator',        rarity: 'rare',      icon: '🏰' },
+  { id: 'uuid-factory',       name: 'UUID Factory',         description: 'Generated 100 UUIDs in a single visit',               tool: 'uuid-generator',            rarity: 'rare',      icon: '🏭' },
+  { id: 'hash-miner',         name: 'Hash Miner',           description: 'Produced a hash starting with four zeros',            tool: 'hash-generator',            rarity: 'legendary', icon: '⛏️' },
+  { id: 'grocery-big-shop',   name: 'The Big Shop',         description: 'Checked out a cart of 20 or more items',              tool: 'grocery-manager',           rarity: 'rare',      icon: '🛒' },
 ];
 
 @Injectable({ providedIn: 'root' })
