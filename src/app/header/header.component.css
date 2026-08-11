@@ -929,3 +929,29 @@
     min-height: 48px;
   }
 }
+
+/* ── Progression readout ────────────────────────────────────────────────
+   Two instances live in the template: one in the navbar row (desktop) and one
+   inside the mobile drawer. Exactly one is ever visible. The navbar row already
+   measured 374.8px against a 375px viewport before this existed, so the desktop
+   instance has to leave at the drawer breakpoint rather than try to shrink. */
+.nav-xp {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.nav-xp--drawer {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .nav-xp {
+    display: none;
+  }
+
+  .nav-xp--drawer {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    align-self: flex-start;
+  }
+}
