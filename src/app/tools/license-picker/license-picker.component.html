@@ -19,7 +19,7 @@
       <div class="lp-panel">
         <div class="lp-panel__header"><span class="lp-panel__title">Licenses</span></div>
         <div class="lp-search">
-          <input class="lp-search-input" [(ngModel)]="searchTerm" placeholder="Search licenses..." />
+          <input class="lp-search-input" [(ngModel)]="searchTerm" [placeholder]="translate('tools.licensePicker.ph.search')" />
         </div>
         <div class="lp-list">
           @for (lic of filteredLicenses; track lic) {
@@ -65,7 +65,7 @@
           </div>
           <div class="lp-gen">
             <div class="lp-gen-fields">
-              <input class="lp-input" [(ngModel)]="authorName" placeholder="Author name" />
+              <input class="lp-input" [(ngModel)]="authorName" [placeholder]="translate('tools.licensePicker.ph.author')" />
               <input class="lp-input" [(ngModel)]="year" placeholder="Year" />
             </div>
             <pre class="lp-output"><code>{{ generatedBody }}</code></pre>

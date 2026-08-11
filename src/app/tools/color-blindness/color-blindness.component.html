@@ -139,7 +139,7 @@
           type="text"
           class="cbs-text-input"
           [(ngModel)]="sampleText"
-          placeholder="Enter sample text..." aria-label="Sample Text"
+          [placeholder]="translate('tools.colorBlindness.ph.sampleText')" aria-label="Sample Text"
           />
       </div>
       <button class="cbs-btn" (click)="computeContrast()">Check Contrast</button>

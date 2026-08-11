@@ -280,6 +280,7 @@ export class TranslationService {
     'tools.common.cat.seoTools': { en: 'SEO Tools', es: 'Herramientas SEO' },
     'tools.common.cat.testingTools': { en: 'Testing Tools', es: 'Herramientas de Pruebas' },
     'tools.common.cat.textAndDataTool': { en: 'Text &amp; Data Tool', es: 'Herramienta de Texto &amp; Datos' },
+    'tools.common.cat.textData': { en: 'Text &amp; Data', es: 'Texto &amp; Datos' },
     'tools.common.cat.textGenerators': { en: 'Text Generators', es: 'Generadores de Texto' },
     'tools.common.cat.textTools': { en: 'Text Tools', es: 'Herramientas de Texto' },
     'tools.common.cat.textUtilities': { en: 'Text Utilities', es: 'Utilidades de Texto' },
@@ -607,6 +608,10 @@ export class TranslationService {
     'tools.cronBuilder.title': { en: 'Cron Expression', es: 'Expresiones Cron' },
     'tools.cronBuilder.title2': { en: 'Builder', es: 'Constructor' },
     'tools.cronBuilder.subtitle': { en: 'Build, validate and preview cron schedules visually — see next run times instantly, no sign-up required.', es: 'Construye, valida y previsualiza programaciones cron de forma visual — consulta las próximas ejecuciones al instante, sin registro.' },
+
+    'tools.regexBuilder.title': { en: 'Regex Builder', es: 'Constructor de Regex' },
+    'tools.regexBuilder.title2': { en: '& Tester', es: '& Probador' },
+    'tools.regexBuilder.subtitle': { en: 'Build, test and debug regular expressions with live match highlighting, capture groups and a find-and-replace preview — everything runs in your browser.', es: 'Construye, prueba y depura expresiones regulares con resaltado de coincidencias en vivo, grupos de captura y vista previa de buscar y reemplazar — todo se ejecuta en tu navegador.' },
 
     'tools.crontabRef.title': { en: 'Crontab Quick', es: 'Crontab Guía' },
     'tools.crontabRef.title2': { en: 'Reference', es: 'Rápida' },
@@ -1011,7 +1016,31 @@ export class TranslationService {
     'tools.hexEditor.ph.textInput': { en: 'Type or paste text to convert to hex...', es: 'Escribe o pega el texto a convertir a hex...' },
     'tools.hexEditor.ph.hexInput': { en: 'Paste hex bytes to decode to text...\n\ne.g. 48 65 6C 6C 6F', es: 'Pega bytes hex para decodificar a texto...\n\nej. 48 65 6C 6C 6F' },
     'tools.hexEditor.ph.signature': { en: 'e.g. 4D 5A or FF D8 FF', es: 'ej. 4D 5A o FF D8 FF' },
-  };
+
+    // Tool input placeholders — batch
+    'tools.hashGenerator.ph.text': { en: 'Paste or type text to hash\n\ne.g. Hello, World!', es: 'Pega o escribe el texto a hashear\n\nej. Hola, Mundo!' },
+    'tools.hashGenerator.ph.firstHash': { en: 'Paste first hash here...', es: 'Pega el primer hash aquí...' },
+    'tools.hashGenerator.ph.secondHash': { en: 'Paste second hash here...', es: 'Pega el segundo hash aquí...' },
+    'tools.groceryManager.ph.search': { en: 'Search items…', es: 'Buscar artículos…' },
+    'tools.tsPlayground.ph.searchTypes': { en: 'Search types... (try \'any\')', es: 'Busca tipos... (prueba \'any\')' },
+    'tools.tsPlayground.ph.definitions': { en: 'Write TypeScript type definitions here...', es: 'Escribe definiciones de tipos TypeScript aquí...' },
+    'tools.timestampConverter.ph.unix': { en: 'Enter Unix timestamp, e.g. 1700000000', es: 'Introduce una marca de tiempo Unix, ej. 1700000000' },
+    'tools.timestampConverter.ph.date': { en: 'Enter date, e.g. 2024-01-15 14:30:00', es: 'Introduce una fecha, ej. 2024-01-15 14:30:00' },
+    'tools.stringRepeater.ph.text': { en: 'Type or paste text to repeat...\n\ne.g. Hello, World!', es: 'Escribe o pega el texto a repetir...\n\nej. Hola, Mundo!' },
+    'tools.stringRepeater.ph.separator': { en: 'Enter custom separator...', es: 'Introduce un separador personalizado...' },
+    'tools.regexTester.ph.pattern': { en: 'Enter regex pattern…', es: 'Introduce el patrón regex…' },
+    'tools.licensePicker.ph.search': { en: 'Search licenses...', es: 'Buscar licencias...' },
+    'tools.licensePicker.ph.author': { en: 'Author name', es: 'Nombre del autor' },
+    'tools.ipLookup.ph.address': { en: 'e.g. 192.168.1.1 or 2001:db8::1', es: 'ej. 192.168.1.1 o 2001:db8::1' },
+    'tools.ipLookup.ph.network': { en: 'e.g. 192.168.1.0', es: 'ej. 192.168.1.0' },
+    'tools.hmacGenerator.ph.secret': { en: 'Enter your secret key...', es: 'Introduce tu clave secreta...' },
+    'tools.hmacGenerator.ph.message': { en: 'Enter message to sign with HMAC\n\ne.g. Hello, World!', es: 'Introduce el mensaje a firmar con HMAC\n\nej. Hola, Mundo!' },
+    'tools.diffChecker.ph.original': { en: 'Paste or type original text here...', es: 'Pega o escribe el texto original aquí...' },
+    'tools.diffChecker.ph.modified': { en: 'Paste or type modified text here...', es: 'Pega o escribe el texto modificado aquí...' },
+    'tools.cssVariables.ph.name': { en: 'Variable name (e.g., primary-color)', es: 'Nombre de la variable (ej., primary-color)' },
+    'tools.cssVariables.ph.value': { en: 'Value (e.g., #00ffcc or 1rem)', es: 'Valor (ej., #00ffcc o 1rem)' },
+    'tools.colorBlindness.ph.sampleText': { en: 'Enter sample text...', es: 'Introduce un texto de ejemplo...' },
+};
 
   constructor() {
     const savedLanguage = (this.isBrowser ? localStorage.getItem('preferred-language') : null) || 'en';
