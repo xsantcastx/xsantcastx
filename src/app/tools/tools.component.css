@@ -1146,3 +1146,23 @@ a.tool-card { text-decoration: none; color: inherit; }
     animation: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   The galaxy map is how the whole tool catalogue is navigated, and its labels
+   read at 11.5px with the per-galaxy tool counts at 9.6px. Tier A -> 14px,
+   Tier B (counts, eyebrow, keyboard hint) -> 12px.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .galaxy__name,
+  .tools-cat-btn {
+    font-size: 14px;
+  }
+
+  .galaxy__count,
+  .tools-header__eyebrow,
+  .tools-search__kbd {
+    font-size: 12px;
+  }
+}
