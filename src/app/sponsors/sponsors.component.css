@@ -1,0 +1,914 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /sponsors — advertiser landing page.
+   Follows the cosmic design system (CLAUDE.md §2-§3): brand palette only,
+   glassy panels, star-orb accents, gradient cap lines, reduced-motion paths.
+   Deliberately calmer than /home — this page is read by someone deciding
+   whether to spend money, so legibility beats spectacle.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sp-page {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: calc(var(--header-offset) + 2rem) var(--page-gutter) clamp(4rem, 10vw, 7rem);
+  color: var(--text-color);
+  font-family: var(--font-body);
+}
+
+/* ─── Shared: eyebrow + tagline (CLAUDE.md §3.1) ────────────────────────── */
+
+.sp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+}
+
+.sp-eyebrow__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-color);
+  animation: spEyebrowPulse 3s ease-in-out infinite;
+}
+
+@keyframes spEyebrowPulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+.sp-tagline,
+.sp-section__tagline {
+  display: inline-block;
+  margin: 0;
+  padding: 0.4rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.05);
+  border: 1px solid rgba(0, 255, 204, 0.14);
+  font-size: 0.85rem;
+  color: rgba(214, 221, 235, 0.72);
+}
+
+/* ─── Hero ──────────────────────────────────────────────────────────────── */
+
+.sp-hero {
+  display: grid;
+  justify-items: center;
+  gap: 1.1rem;
+  text-align: center;
+  padding-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+
+.sp-hero__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5.5vw, 3.4rem);
+  line-height: 1.12;
+  max-width: 18ch;
+  background: linear-gradient(120deg, #eafff9 0%, var(--primary-color) 45%, var(--secondary-color) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sp-hero__sub {
+  margin: 0;
+  max-width: 58ch;
+  font-size: clamp(1rem, 2.2vw, 1.14rem);
+  line-height: 1.65;
+  color: rgba(214, 221, 235, 0.86);
+}
+
+.sp-hero__cta,
+.sp-final__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────── */
+
+.sp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px floor — CLAUDE.md mobile rules */
+  min-height: 44px;
+  padding: 0.75rem 1.6rem;
+  border-radius: 10px;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.25s ease,
+              border-color 0.25s ease, color 0.25s ease;
+}
+
+.sp-btn--primary {
+  background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
+  color: #050818;
+  box-shadow: 0 0 22px -6px rgba(0, 255, 204, 0.6);
+}
+
+.sp-btn--primary:hover,
+.sp-btn--primary:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 0 34px -6px rgba(0, 255, 204, 0.75);
+}
+
+.sp-btn--ghost {
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(234, 255, 249, 0.9);
+}
+
+.sp-btn--ghost:hover,
+.sp-btn--ghost:focus-visible {
+  border-color: rgba(0, 255, 204, 0.45);
+  color: #eafff9;
+}
+
+.sp-btn--tier {
+  width: 100%;
+  margin-top: auto;
+  background: transparent;
+  border: 1px solid var(--star-color, var(--primary-color));
+  color: var(--star-color, var(--primary-color));
+}
+
+.sp-btn--tier:hover,
+.sp-btn--tier:focus-visible {
+  background: var(--star-color, var(--primary-color));
+  color: #050818;
+}
+
+.sp-btn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+/* ─── Sections ──────────────────────────────────────────────────────────── */
+
+.sp-section {
+  position: relative;
+  padding: clamp(2.5rem, 6vw, 4rem) 0;
+}
+
+.sp-section + .sp-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.45) 50%, transparent);
+}
+
+.sp-section__hd {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  text-align: center;
+  margin-bottom: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+.sp-section__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3.6vw, 2.15rem);
+  line-height: 1.2;
+  color: #eafff9;
+}
+
+/* ─── Audience stats ────────────────────────────────────────────────────── */
+
+.sp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.1rem;
+}
+
+.sp-stat {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  padding: 1.6rem 1.2rem 1.4rem;
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sp-stat:hover {
+  border-color: color-mix(in srgb, var(--star-color) 40%, transparent);
+  box-shadow: 0 0 28px -8px var(--star-color);
+}
+
+/* Star-orb accent (CLAUDE.md §3.2, reduced to the essential layers) */
+.sp-stat__orb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #eafff9 0%, var(--star-color) 60%, rgba(8, 3, 24, 0.9) 100%);
+  box-shadow: 0 0 10px var(--star-color), 0 0 24px -6px var(--star-color);
+}
+
+.sp-stat__num {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  color: var(--star-color);
+}
+
+/* "on request" is prose, not a figure — tone it down so it never reads as a
+   number the sponsor can plan against. */
+.sp-stat__num.is-unset {
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  font-weight: 600;
+  font-style: italic;
+  color: rgba(214, 221, 235, 0.72);
+}
+
+.sp-stat__label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(234, 255, 249, 0.92);
+}
+
+.sp-stat__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+.sp-stats__note {
+  margin: 1.2rem auto 0;
+  max-width: 62ch;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.66);
+}
+
+.sp-stats__note span {
+  color: var(--primary-color);
+  margin-right: 0.35rem;
+}
+
+/* ─── Audience profile ──────────────────────────────────────────────────── */
+
+.sp-profile {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.1rem;
+  margin-top: 2rem;
+}
+
+.sp-profile__card {
+  padding: 1.4rem 1.35rem;
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 2px solid var(--star-color);
+}
+
+.sp-profile__title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--star-color);
+}
+
+.sp-profile__body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: rgba(214, 221, 235, 0.82);
+}
+
+/* ─── Value props ───────────────────────────────────────────────────────── */
+
+.sp-value {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.1rem;
+}
+
+.sp-value__card {
+  position: relative;
+  padding: 1.5rem 1.35rem 1.4rem;
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sp-value__card:hover {
+  border-color: color-mix(in srgb, var(--star-color) 40%, transparent);
+  box-shadow: 0 0 28px -8px var(--star-color);
+}
+
+.sp-value__dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-bottom: 0.9rem;
+  border-radius: 50%;
+  background: var(--star-color);
+  box-shadow: 0 0 10px var(--star-color);
+}
+
+.sp-value__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: #eafff9;
+}
+
+.sp-value__body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(214, 221, 235, 0.8);
+}
+
+/* ─── Placement mockup ──────────────────────────────────────────────────── */
+
+.sp-mock {
+  max-width: 620px;
+  margin: 0 auto;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(5, 8, 18, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+.sp-mock__chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sp-mock__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sp-mock__url {
+  margin-left: 0.6rem;
+  font-size: 0.72rem;
+  font-family: var(--font-body);
+  color: rgba(214, 221, 235, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-mock__body {
+  padding: 1.2rem;
+}
+
+.sp-mock__label {
+  margin: 0 0 0.55rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.38);
+}
+
+.sp-mock__label--accent {
+  color: #ff6dd7;
+}
+
+.sp-mock__block {
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sp-mock__block--tall {
+  height: 96px;
+  margin-bottom: 1.4rem;
+}
+
+.sp-mock__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.sp-mock__caption {
+  max-width: 58ch;
+  margin: 1.2rem auto 0;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: rgba(214, 221, 235, 0.66);
+}
+
+/* ─── Demo sponsor card ─────────────────────────────────────────────────────
+   Mirrors .sponsor-slot from sponsor-slot.component.css. Kept as its own
+   ruleset (rather than reusing the component) because the live component
+   renders nothing while the paid inventory is empty. If the real card's
+   layout changes, update this preview to match.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.sp-demo {
+  position: relative;
+  display: block;
+  margin: 0 0 1.4rem;
+  border-radius: 14px;
+  background: rgba(16, 22, 43, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid var(--sponsor-accent);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.sp-demo__inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 14px 12px;
+}
+
+.sp-demo__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--sponsor-accent);
+  flex-shrink: 0;
+}
+
+.sp-demo__body { min-width: 0; }
+
+.sp-demo__brand {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.55);
+}
+
+.sp-demo__headline {
+  margin: 2px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+  line-height: 1.35;
+}
+
+.sp-demo__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(214, 221, 235, 0.78);
+}
+
+.sp-demo__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--sponsor-accent);
+  color: var(--sponsor-accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sp-demo__dismiss {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: rgba(214, 221, 235, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sp-demo__badge {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.42);
+}
+
+/* ─── Placements table ──────────────────────────────────────────────────── */
+
+.sp-placements {
+  width: 100%;
+  margin: 2.2rem 0 0;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.sp-placements__caption {
+  padding-bottom: 0.9rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.45);
+}
+
+.sp-placements th,
+.sp-placements td {
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sp-placements thead th {
+  font-family: var(--font-heading);
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(214, 221, 235, 0.55);
+  font-weight: 600;
+}
+
+.sp-placements tbody th {
+  font-weight: 600;
+  color: #eafff9;
+}
+
+.sp-placements td {
+  color: rgba(214, 221, 235, 0.78);
+}
+
+.sp-placements__name {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sp-placements__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--star-color);
+  box-shadow: 0 0 9px var(--star-color);
+}
+
+.sp-placements__count {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--star-color);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sp-placements__note {
+  max-width: 62ch;
+  margin: 1.1rem auto 0;
+  text-align: center;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+/* ─── Pricing tiers ─────────────────────────────────────────────────────── */
+
+.sp-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+  align-items: stretch;
+}
+
+.sp-tier {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.8rem 1.5rem 1.6rem;
+  border-radius: 18px;
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.sp-tier:hover {
+  border-color: color-mix(in srgb, var(--star-color) 45%, transparent);
+  box-shadow: 0 0 32px -10px var(--star-glow);
+  transform: translateY(-3px);
+}
+
+.sp-tier.is-featured {
+  border-color: color-mix(in srgb, var(--star-color) 40%, transparent);
+  box-shadow: 0 0 30px -12px var(--star-glow);
+}
+
+.sp-tier__flag {
+  position: absolute;
+  top: -0.7rem;
+  left: 1.5rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--star-color);
+  color: #050818;
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sp-tier__name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  color: var(--star-color);
+}
+
+.sp-tier__price {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.sp-tier__amount {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #eafff9;
+}
+
+.sp-tier__per {
+  font-size: 0.85rem;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+.sp-tier__blurb {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(214, 221, 235, 0.72);
+}
+
+.sp-tier__features {
+  margin: 0.4rem 0 1.2rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sp-tier__features li {
+  position: relative;
+  padding-left: 1.3rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: rgba(214, 221, 235, 0.82);
+}
+
+.sp-tier__features li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: var(--star-color);
+  font-size: 0.75rem;
+}
+
+/* ─── Current sponsors ──────────────────────────────────────────────────── */
+
+.sp-logos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-logo {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 1.8rem 1rem;
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  text-align: center;
+  transition: border-color 0.25s ease;
+}
+
+.sp-logo:hover {
+  border-color: color-mix(in srgb, var(--star-color) 50%, transparent);
+}
+
+.sp-logo__mark {
+  font-size: 1.4rem;
+  color: var(--star-color);
+  opacity: 0.75;
+}
+
+.sp-logo__text {
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  color: rgba(234, 255, 249, 0.72);
+}
+
+.sp-logo__slot {
+  font-size: 0.76rem;
+  color: rgba(214, 221, 235, 0.5);
+}
+
+.sp-logos__note {
+  max-width: 58ch;
+  margin: 1.3rem auto 0;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.62);
+}
+
+/* ─── FAQ ───────────────────────────────────────────────────────────────── */
+
+.sp-faq {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.sp-faq__item {
+  border-radius: 12px;
+  background: rgba(10, 6, 26, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  transition: border-color 0.25s ease;
+}
+
+.sp-faq__item[open] {
+  border-color: rgba(0, 255, 204, 0.25);
+}
+
+.sp-faq__q {
+  /* 44px floor — CLAUDE.md mobile rules */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.9rem 1.1rem;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 0.94rem;
+  color: #eafff9;
+  list-style: none;
+}
+
+.sp-faq__q::-webkit-details-marker { display: none; }
+
+.sp-faq__q::before {
+  content: '✦';
+  color: var(--primary-color);
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.sp-faq__item[open] .sp-faq__q::before {
+  transform: rotate(90deg);
+}
+
+.sp-faq__q:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
+.sp-faq__a {
+  margin: 0;
+  padding: 0 1.1rem 1.1rem 2.8rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(214, 221, 235, 0.82);
+}
+
+/* ─── Closing CTA ───────────────────────────────────────────────────────── */
+
+.sp-final {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  padding: clamp(2.5rem, 6vw, 3.5rem) clamp(1.2rem, 4vw, 2.5rem);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.06), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.07), transparent 65%),
+    rgba(5, 8, 18, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sp-final__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3.6vw, 2.1rem);
+  color: #eafff9;
+}
+
+.sp-final__sub {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: rgba(214, 221, 235, 0.82);
+}
+
+.sp-final__mail {
+  margin: 0.3rem 0 0;
+  font-size: 0.86rem;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+.sp-final__mail a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.sp-final__mail a:hover,
+.sp-final__mail a:focus-visible {
+  text-decoration: underline;
+}
+
+/* ─── Mobile ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* The placement table can't shrink below its content — let it scroll in
+     its own container rather than pushing the page sideways. */
+  .sp-placements {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .sp-demo__inner {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'icon body dismiss'
+      'cta  cta  cta';
+  }
+  .sp-demo__icon    { grid-area: icon; }
+  .sp-demo__body    { grid-area: body; }
+  .sp-demo__cta     { grid-area: cta; justify-content: center; }
+  .sp-demo__dismiss { grid-area: dismiss; }
+
+  .sp-hero__cta .sp-btn,
+  .sp-final__cta .sp-btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* ─── Reduced motion (CLAUDE.md §7.2 — static end state, not "no animation") */
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-eyebrow__pulse {
+    animation: none;
+    opacity: 1;
+  }
+  .sp-btn,
+  .sp-tier,
+  .sp-stat,
+  .sp-value__card,
+  .sp-faq__item,
+  .sp-faq__q::before {
+    transition: none;
+  }
+  .sp-btn--primary:hover,
+  .sp-tier:hover {
+    transform: none;
+  }
+}
