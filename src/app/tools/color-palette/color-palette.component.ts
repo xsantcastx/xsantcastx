@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface PaletteColor {
   hex: string;
@@ -20,6 +21,7 @@ interface PaletteColor {
 })
 export class ColorPaletteComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
 
   imageUrl: string | null = null;
   palette: PaletteColor[] = [];
@@ -118,6 +120,7 @@ export class ColorPaletteComponent {
       ctx.drawImage(img, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height);
       this.palette = this.quantize(imageData.data, width * height);
+      this.checkPaletteEggs();
       this.extracting = false;
     };
     img.onerror = () => {
@@ -213,6 +216,30 @@ export class ColorPaletteComponent {
       r.toString(16).padStart(2, '0') +
       g.toString(16).padStart(2, '0') +
       b.toString(16).padStart(2, '0');
+  }
+
+  /**
+   * Two eggs read the extracted palette.
+   *
+   * The Void: every swatch is near-black, so the image was essentially a dark
+   * frame. Monochrome Master: every swatch sits within 15 degrees of the same
+   * hue. Greys are excluded from the hue test — their hue is arbitrary at low
+   * saturation, so a grey-heavy photo would otherwise pass as "one hue".
+   */
+  private checkPaletteEggs(): void {
+    if (this.palette.length < 3) return;
+
+    if (this.palette.every(c => c.hsl.l <= 12)) this.eggs.trigger('palette-void');
+
+    const hues = this.palette.filter(c => c.hsl.s >= 15).map(c => c.hsl.h);
+    if (hues.length >= 3) {
+      // Circular spread: hue wraps at 360, so 350 and 10 are 20 apart, not 340.
+      const spread = Math.max(...hues.map(a => Math.max(...hues.map(b => {
+        const d = Math.abs(a - b);
+        return Math.min(d, 360 - d);
+      }))));
+      if (spread <= 15) this.eggs.trigger('palette-monochrome');
+    }
   }
 
   getColorValue(color: PaletteColor): string {

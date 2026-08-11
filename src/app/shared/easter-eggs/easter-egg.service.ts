@@ -171,6 +171,9 @@ export const EASTER_EGGS: EasterEgg[] = [
   // ── Batch 9: newly wired tools ─────────────────────────────
   { id: 'b64-decoder-ring',   name: 'Decoder Ring',         description: 'Base64-encoded the word "secret"',                     tool: 'base64-encoder',            rarity: 'common',    icon: '💍' },
   { id: 'regex-ouroboros',    name: 'Ouroboros',            description: 'Wrote a regex that matches its own source',           tool: 'regex-builder',             rarity: 'legendary', icon: '🐍' },
+  { id: 'palette-monochrome', name: 'Monochrome Master',    description: 'Extracted a palette where every colour shares one hue', tool: 'color-palette',           rarity: 'epic',      icon: '🎨' },
+  { id: 'gradient-rainbow-bridge', name: 'Rainbow Bridge',  description: 'Built a gradient with 8 or more colour stops',        tool: 'gradient-generator',        rarity: 'rare',      icon: '🌈' },
+  { id: 'img-pixel-pincher',  name: 'Pixel Pincher',        description: 'Compressed an image below 1KB',                       tool: 'image-compressor',          rarity: 'epic',      icon: '🤏' },
 ];
 
 @Injectable({ providedIn: 'root' })
