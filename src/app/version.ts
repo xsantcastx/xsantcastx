@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.9.0',
+  version: '2.10.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Patron',
+  codename: 'Dead Weight',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.10.0',
+    codename: 'Dead Weight',
+    date: '2026-08-11',
+    highlights: [
+      'Stripe and the PayPal SDK no longer load on any page — PaymentService is injected by the footer, which sits on every route, and its constructor fetched both SDKs at startup, so roughly a megabyte of checkout JavaScript was downloaded on the home page and all 123 tool pages for a flow that only opens behind a click',
+      'Firebase App Check now initializes on the first idle callback instead of during bootstrap, taking reCAPTCHA (336 kB) off the startup path of every route; the three Firestore calls that fire before that window now wait for it, so the visit, changelog and tool-usage counters keep working if App Check enforcement is ever switched on',
+      'Google Analytics is fetched only after the visitor accepts the cookie banner — consent mode had been denying what gtag.js stored while still downloading it on every page',
+      'Carbon Ads and the AdSense slot wait until the unit is nearly scrolled into view instead of requesting during page load',
+      'Measured on /home at 4x CPU throttle over Slow 4G: third-party hosts contacted 12 → 4, third-party requests 27 → 8. LCP is unchanged, because the boot-curtain fix in 2.6.0 had already taken it off the main thread — this release is about bandwidth, CPU and privacy, not paint time'
+    ]
+  },
   {
     version: '2.9.0',
     codename: 'Patron',
