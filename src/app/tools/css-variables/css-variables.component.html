@@ -72,7 +72,7 @@
           <input
             [(ngModel)]="newName"
             type="text"
-            placeholder="Variable name (e.g., primary-color)"
+            [placeholder]="translate('tools.cssVariables.ph.name')"
             class="csv-input"
             (keyup.enter)="addVariable()"
             />
@@ -81,7 +81,7 @@
           <input
             [(ngModel)]="newValue"
             type="text"
-            placeholder="Value (e.g., #00ffcc or 1rem)"
+            [placeholder]="translate('tools.cssVariables.ph.value')"
             class="csv-input"
             (keyup.enter)="addVariable()"
             />
