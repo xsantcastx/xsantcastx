@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.4.0',
+  version: '2.5.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.5.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'New flagship tool — Regex Builder & Tester at /tools/regex-builder',
+      'Live match highlighting with capture groups, named groups and match offsets',
+      'Real-time syntax highlighting on the pattern itself, all six JavaScript flags with explanations, and a find-and-replace preview',
+      '14 presets that each load a sample so the pattern demonstrates itself, a six-section cheatsheet, and shareable permalinks that restore pattern, flags, test string and replacement',
+      'Code snippets for JavaScript, Python, Go, Java, PCRE and .NET, each with notes on how that engine differs from the JavaScript one doing the matching'
+    ]
+  },
   {
     version: '2.4.0',
     codename: 'Blueprint',
