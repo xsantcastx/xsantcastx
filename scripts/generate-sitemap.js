@@ -37,7 +37,7 @@ function metaFor(route) {
   if (route === '/contact')     return { changefreq: 'monthly', priority: '0.7' };
   if (route === '/donate')      return { changefreq: 'monthly', priority: '0.7' };
   if (route === '/live')        return { changefreq: 'daily',   priority: '0.7' };
-  if (route === '/games')       return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/arena')       return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/mcp')         return { changefreq: 'monthly', priority: '0.7' };
   if (route === '/guestbook')   return { changefreq: 'weekly',  priority: '0.6' };
   if (route === '/blueprint')   return { changefreq: 'weekly',  priority: '0.8' };

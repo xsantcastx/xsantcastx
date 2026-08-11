@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.12.0',
+  version: '2.13.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Five Realms',
+  codename: 'The Arena',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.13.0',
+    codename: 'The Arena',
+    date: '2026-08-11',
+    highlights: [
+      '/games is now /arena — "Where Convergents prove their worth" — with a 301 in the hosting config so every external link and indexed URL lands on the new address instead of the SPA 404',
+      'Games became gates: each one is chained shut by a secret buried in a tool, and a gate inherits the rarity tier of the secret that opens it, so a red border in the Arena and a red drop toast are the same claim',
+      'Locked gates carry a chain glyph and are desaturated — you can see the shape of the prize but not its colour. Opened gates glow in their tier',
+      'New arena stats: gates opened, secrets found, and your rarest opened gate by name and tier (it reads "no gate opened yet" until you open one, rather than boasting about a card you have not earned)',
+      'The four hardcoded rarity colours on the old game cards are gone; the cards read the shared rarity table instead',
+      'Nav, sitemap and prerender list all moved with it, and no /games stub is emitted'
+    ]
+  },
   {
     version: '2.12.0',
     codename: 'Five Realms',
