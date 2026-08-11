@@ -1146,3 +1146,53 @@ a.tool-card { text-decoration: none; color: inherit; }
     animation: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   The galaxy map is how the whole tool catalogue is navigated, and its labels
+   read at 11.5px with the per-galaxy tool counts at 9.6px. Tier A -> 14px,
+   Tier B (counts, eyebrow, keyboard hint) -> 12px.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .galaxy__name,
+  .tools-cat-btn {
+    font-size: 14px;
+  }
+
+  /* .galaxy__meta is a 141px absolutely-positioned label slot under each
+     galaxy. At 14px the 0.18em tracking costs 2.5px per character, so
+     "Productivity" needed 152px and spilled out of the slot — the widest label
+     is a single unbreakable word, so white-space: normal could not save it.
+     Tightening to 0.1em recovers ~13px and keeps the uppercase cosmic look. */
+  .galaxy__name {
+    letter-spacing: 0.1em;
+  }
+
+  .galaxy__count,
+  .tools-header__eyebrow,
+  .tools-search__kbd {
+    font-size: 12px;
+  }
+
+  /* The page tagline is a bare span inside .cosmic-tagline and was the last
+     sub-12px string on the route. */
+  .cosmic-tagline {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .tools-page {
+    padding-top: 3rem;
+  }
+}

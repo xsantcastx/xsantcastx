@@ -698,3 +698,62 @@
     width: 100%;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .rt-btn-ghost,
+  .rt-btn-sm,
+  .rt-error-bar,
+  .rt-error-bar__msg,
+  .rt-explain-desc,
+  .rt-explain-token,
+  .rt-flag__key,
+  .rt-flag__name,
+  .rt-group-name,
+  .rt-group-value,
+  .rt-match-idx,
+  .rt-match-pos,
+  .rt-match-value,
+  .rt-no-matches,
+  .rt-panel__title,
+  .rt-patterns-lib__label,
+  .rt-preview,
+  .rt-preview-empty,
+  .rt-textarea,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .rt-char-count,
+  .rt-chip,
+  .rt-chip__icon,
+  .rt-count-badge,
+  .rt-count-badge--sm,
+  .rt-panel__title-badge,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .rt-page {
+    padding-top: 2.5rem;
+  }
+}

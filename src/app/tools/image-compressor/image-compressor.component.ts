@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface CompressedImage {
   file: File;
@@ -26,6 +27,7 @@ interface CompressedImage {
 })
 export class ImageCompressorComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
 
   images: CompressedImage[] = [];
   quality = 80;
@@ -149,6 +151,11 @@ export class ImageCompressorComponent implements OnDestroy {
       entry.previewUrl = URL.createObjectURL(blob);
       entry.outputName = this.buildOutputName(entry.file);
       entry.status = 'done';
+
+      // The two size eggs stack: anything under 1KB is also under 10KB, so a
+      // really aggressive compression unlocks the pair in one run.
+      if (blob.size > 0 && blob.size < 10 * 1024) this.eggs.trigger('img-tiny');
+      if (blob.size > 0 && blob.size < 1024) this.eggs.trigger('img-pixel-pincher');
     } catch {
       entry.status = 'error';
       entry.errorMsg = 'Compression failed.';

@@ -219,6 +219,49 @@ footer::after {
 
 .footer-mcp-desc { color: var(--text-muted); }
 
+/* ─── Sponsors link strip ────────────────────────────────
+   Same strip as the MCP row but a step quieter: violet instead of the brand
+   cyan, and no glow, so it reads as a footnote for advertisers rather than
+   competing with the product links above it. */
+
+.footer-sponsors {
+  padding: 0.85rem var(--page-gutter);
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+}
+
+.footer-sponsors-link {
+  /* 44px tap target on touch without inflating the row on desktop */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--secondary-color);
+  text-decoration: none;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+.footer-sponsors-link:hover,
+.footer-sponsors-link:focus-visible {
+  color: #a48bff;
+  text-shadow: 0 0 14px rgba(140, 110, 255, 0.6);
+}
+
+.footer-sponsors-sep { color: rgba(255, 255, 255, 0.2); }
+
+.footer-sponsors-desc { color: var(--text-muted); opacity: 0.85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-sponsors-link { transition: none; }
+}
+
 /* ─── Footer info / socials ──────────────────────────── */
 
 .footer-info {
@@ -765,4 +808,18 @@ footer::after {
 */
 .amount-btn[aria-pressed="true"] {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   The copyright line is the one piece of text that renders on every route, so
+   it was the last sub-14px string left site-wide after the rest of the pass.
+   The rule is a compound at (0,2,0) and would beat a global override, so it is
+   raised here in the component sheet where it is declared.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .footer-info p {
+    font-size: 14px;
+  }
 }

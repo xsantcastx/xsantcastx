@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 
 type EmailProvider = 'gmail' | 'sendgrid' | 'aws-ses' | 'mailchimp' | 'custom';
@@ -45,6 +46,7 @@ interface ValidationStatus {
 })
 export class GmailDeliverabilityCheckerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
 
   // Inputs
   domainName = '';
@@ -171,6 +173,11 @@ export class GmailDeliverabilityCheckerComponent {
     if (!this.isValidDomain(domain)) {
       this.error = 'Please enter a valid domain name (e.g. example.com).';
       return;
+    }
+
+    // Egg: pointing the Gmail deliverability checker at Gmail itself.
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+      this.eggs.trigger('gmail-self');
     }
 
     this.isScanning = true;

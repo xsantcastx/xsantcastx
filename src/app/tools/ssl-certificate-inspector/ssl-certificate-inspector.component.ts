@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
@@ -70,6 +71,7 @@ interface ScanResult {
     imports: [ToolsSharedModule, FormsModule, DatePipe]
 })
 export class SslCertificateInspectorComponent implements OnInit, OnDestroy {
+  private readonly eggs = inject(EasterEggService);
   private paramSub?: Subscription;
 
   domain = '';
@@ -152,6 +154,12 @@ export class SslCertificateInspectorComponent implements OnInit, OnDestroy {
     if (!cleanDomain) {
       this.error = 'Please enter a valid domain name.';
       return;
+    }
+
+    // Egg: pointing a public certificate API at your own machine. Fires on the
+    // attempt, because the scan itself is always going to fail.
+    if (/^(localhost|127\.0\.0\.1|\[?::1\]?|0\.0\.0\.0)$/.test(cleanDomain)) {
+      this.eggs.trigger('ssl-localhost');
     }
     this.domain = cleanDomain;
     this.error = '';
