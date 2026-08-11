@@ -255,17 +255,17 @@ export class TranslationService {
     'tools.common.cat.cssUtilities': { en: 'CSS Utilities', es: 'Utilidades CSS' },
     'tools.common.cat.dataTools': { en: 'Data Tools', es: 'Herramientas de Datos' },
     'tools.common.cat.dataUtilities': { en: 'Data Utilities', es: 'Utilidades de Datos' },
-    'tools.common.cat.dateAndTime': { en: 'Date &amp; Time', es: 'Fecha &amp; Hora' },
+    'tools.common.cat.dateAndTime': { en: 'Date & Time', es: 'Fecha & Hora' },
     'tools.common.cat.designSystems': { en: 'Design Systems', es: 'Sistemas de Diseño' },
     'tools.common.cat.designTools': { en: 'Design Tools', es: 'Herramientas de Diseño' },
     'tools.common.cat.developerReferences': { en: 'Developer References', es: 'Referencias para Desarrolladores' },
     'tools.common.cat.developerTools': { en: 'Developer Tools', es: 'Herramientas de Desarrollo' },
-    'tools.common.cat.deviceAndDisplay': { en: 'Device &amp; Display', es: 'Dispositivo &amp; Pantalla' },
+    'tools.common.cat.deviceAndDisplay': { en: 'Device & Display', es: 'Dispositivo & Pantalla' },
     'tools.common.cat.devopsTools': { en: 'DevOps Tools', es: 'Herramientas DevOps' },
     'tools.common.cat.devopsUtilities': { en: 'DevOps Utilities', es: 'Utilidades DevOps' },
     'tools.common.cat.funTools': { en: 'Fun Tools', es: 'Herramientas Divertidas' },
     'tools.common.cat.generators': { en: 'Generators', es: 'Generadores' },
-    'tools.common.cat.imageAndMedia': { en: 'Image &amp; Media', es: 'Imagen &amp; Medios' },
+    'tools.common.cat.imageAndMedia': { en: 'Image & Media', es: 'Imagen & Medios' },
     'tools.common.cat.jsonTools': { en: 'JSON Tools', es: 'Herramientas JSON' },
     'tools.common.cat.legal': { en: 'Legal', es: 'Legal' },
     'tools.common.cat.markdownTools': { en: 'Markdown Tools', es: 'Herramientas Markdown' },
@@ -279,7 +279,7 @@ export class TranslationService {
     'tools.common.cat.seoTool': { en: 'SEO Tool', es: 'Herramienta SEO' },
     'tools.common.cat.seoTools': { en: 'SEO Tools', es: 'Herramientas SEO' },
     'tools.common.cat.testingTools': { en: 'Testing Tools', es: 'Herramientas de Pruebas' },
-    'tools.common.cat.textAndDataTool': { en: 'Text &amp; Data Tool', es: 'Herramienta de Texto &amp; Datos' },
+    'tools.common.cat.textAndDataTool': { en: 'Text & Data Tool', es: 'Herramienta de Texto & Datos' },
     'tools.common.cat.textData': { en: 'Text & Data', es: 'Texto & Datos' },
     'tools.common.cat.textGenerators': { en: 'Text Generators', es: 'Generadores de Texto' },
     'tools.common.cat.textTools': { en: 'Text Tools', es: 'Herramientas de Texto' },
@@ -289,9 +289,9 @@ export class TranslationService {
     'tools.common.cat.utilityTools': { en: 'Utility Tools', es: 'Herramientas Utilitarias' },
     'tools.common.cat.writingTools': { en: 'Writing Tools', es: 'Herramientas de Escritura' },
     'tools.common.cat.cssGenerators': { en: 'CSS Generators', es: 'Generadores CSS' },
-    'tools.common.cat.dnsAndEmailTools': { en: 'DNS &amp; Email Tools', es: 'Herramientas de DNS &amp; Correo' },
+    'tools.common.cat.dnsAndEmailTools': { en: 'DNS & Email Tools', es: 'Herramientas de DNS & Correo' },
     'tools.common.cat.emailDnsSecurity': { en: 'Email · DNS · Security', es: 'Correo · DNS · Seguridad' },
-    'tools.common.cat.securityAndDevtools': { en: 'Security &amp; DevTools', es: 'Seguridad &amp; DevTools' },
+    'tools.common.cat.securityAndDevtools': { en: 'Security & DevTools', es: 'Seguridad & DevTools' },
     'tools.common.cat.securityNetworking': { en: 'Security / Networking', es: 'Seguridad / Redes' },
     'tools.common.cat.svgTools': { en: 'SVG Tools', es: 'Herramientas SVG' },
     'tools.common.cat.typographyTool': { en: 'Typography Tool', es: 'Herramienta de Tipografía' },
@@ -327,7 +327,7 @@ export class TranslationService {
     'tools.caseConverter.subtitle': { en: 'Convert text between UPPERCASE, camelCase, snake_case, kebab-case and more — all conversions at once, no sign-up required.', es: 'Convierte texto entre MAYÚSCULAS, camelCase, snake_case, kebab-case y más — todas las conversiones a la vez, sin registro.' },
 
     'tools.colorConverter.title': { en: 'Color Converter', es: 'Conversor de Color' },
-    'tools.colorConverter.subtitle': { en: 'Convert between HEX, RGB, HSL, HSB/HSV, and CMYK color formats with live preview, color harmonies, tints &amp; shades.', es: 'Convierte entre los formatos de color HEX, RGB, HSL, HSB/HSV y CMYK con vista previa en vivo, armonías de color, tintes &amp; sombras.' },
+    'tools.colorConverter.subtitle': { en: 'Convert between HEX, RGB, HSL, HSB/HSV, and CMYK color formats with live preview, color harmonies, tints & shades.', es: 'Convierte entre los formatos de color HEX, RGB, HSL, HSB/HSV y CMYK con vista previa en vivo, armonías de color, tintes & sombras.' },
 
     'tools.colorPicker.title': { en: 'Color Picker', es: 'Selector de Color' },
     'tools.colorPicker.subtitle': { en: 'Advanced color picker with RGB/HSL sliders, hex input, and color history.', es: 'Selector de color avanzado con deslizadores RGB/HSL, entrada hex e historial de colores.' },
@@ -453,7 +453,7 @@ export class TranslationService {
 
     'tools.chmodCalculator.title': { en: 'Chmod', es: 'Chmod' },
     'tools.chmodCalculator.title2': { en: 'Calculator', es: 'Calculadora' },
-    'tools.chmodCalculator.subtitle': { en: 'Interactive file permission calculator with numeric &amp; symbolic notation, presets, umask calculator, and ready-to-use commands.', es: 'Calculadora interactiva de permisos de archivos con notación numérica &amp; simbólica, preajustes, calculadora de umask y comandos listos para usar.' },
+    'tools.chmodCalculator.subtitle': { en: 'Interactive file permission calculator with numeric & symbolic notation, presets, umask calculator, and ready-to-use commands.', es: 'Calculadora interactiva de permisos de archivos con notación numérica & simbólica, preajustes, calculadora de umask y comandos listos para usar.' },
 
     // Batch 4 — CSS / design-system / color tools
     'tools.cssUnits.title': { en: 'CSS Units Converter', es: 'Conversor de Unidades CSS' },
@@ -548,7 +548,7 @@ export class TranslationService {
     'tools.imageResizer.title': { en: 'Image Resizer', es: 'Redimensionador de Imágenes' },
     'tools.imageResizer.subtitle': { en: 'Resize images by percentage, exact dimensions, or social media presets. All processing happens in your browser — nothing is uploaded.', es: 'Redimensiona imágenes por porcentaje, dimensiones exactas o preajustes de redes sociales. Todo el procesamiento ocurre en tu navegador — no se sube nada.' },
 
-    'tools.charMap.title': { en: 'Special Characters &amp; Symbols Map', es: 'Mapa de Caracteres Especiales &amp; Símbolos' },
+    'tools.charMap.title': { en: 'Special Characters & Symbols Map', es: 'Mapa de Caracteres Especiales & Símbolos' },
     'tools.charMap.subtitle': { en: 'Browse 400+ Unicode characters across 8 categories. Click any glyph to copy it as a character, HTML entity, or Unicode codepoint — all client-side, no sign-up.', es: 'Explora más de 400 caracteres Unicode en 8 categorías. Haz clic en cualquier glifo para copiarlo como carácter, entidad HTML o punto de código Unicode — todo en el cliente, sin registro.' },
 
     'tools.checklist.title': { en: 'Checklist Maker', es: 'Creador de Listas de Verificación' },
@@ -618,7 +618,7 @@ export class TranslationService {
     'tools.crontabRef.subtitle': { en: 'Visual cron syntax guide with 30+ expressions, category filters, search, and one-click copy. No sign-up required.', es: 'Guía visual de la sintaxis de cron con más de 30 expresiones, filtros por categoría, búsqueda y copia con un clic. Sin registro.' },
 
     'tools.dataSize.title': { en: 'Data Size / Storage Calculator', es: 'Calculadora de Tamaño de Datos / Almacenamiento' },
-    'tools.dataSize.subtitle': { en: 'Convert between bytes, KB, MB, GB, TB, PB (binary &amp; decimal). Calculate transfer times and plan your storage capacity.', es: 'Convierte entre bytes, KB, MB, GB, TB y PB (binario &amp; decimal). Calcula tiempos de transferencia y planifica tu capacidad de almacenamiento.' },
+    'tools.dataSize.subtitle': { en: 'Convert between bytes, KB, MB, GB, TB, PB (binary & decimal). Calculate transfer times and plan your storage capacity.', es: 'Convierte entre bytes, KB, MB, GB, TB y PB (binario & decimal). Calcula tiempos de transferencia y planifica tu capacidad de almacenamiento.' },
 
     'tools.dockerRef.title': { en: 'Docker Compose', es: 'Docker Compose' },
     'tools.dockerRef.title2': { en: 'Reference', es: 'Referencia' },
@@ -644,7 +644,7 @@ export class TranslationService {
 
     'tools.keyboardShortcuts.title': { en: 'Keyboard Shortcuts', es: 'Atajos de Teclado' },
     'tools.keyboardShortcuts.title2': { en: 'Reference', es: 'Referencia' },
-    'tools.keyboardShortcuts.subtitle': { en: 'Searchable reference of 200+ keyboard shortcuts for VS Code, Chrome DevTools, Git, Terminal, macOS &amp; Windows. Auto-detects your OS for Cmd vs Ctrl.', es: 'Referencia consultable de más de 200 atajos de teclado para VS Code, Chrome DevTools, Git, Terminal, macOS &amp; Windows. Detecta tu sistema operativo para elegir entre Cmd y Ctrl.' },
+    'tools.keyboardShortcuts.subtitle': { en: 'Searchable reference of 200+ keyboard shortcuts for VS Code, Chrome DevTools, Git, Terminal, macOS & Windows. Auto-detects your OS for Cmd vs Ctrl.', es: 'Referencia consultable de más de 200 atajos de teclado para VS Code, Chrome DevTools, Git, Terminal, macOS & Windows. Detecta tu sistema operativo para elegir entre Cmd y Ctrl.' },
 
     'tools.mockData.title': { en: 'Mock Data', es: 'Datos de Prueba' },
     'tools.mockData.title2': { en: 'Generator', es: 'Generador' },
@@ -708,14 +708,14 @@ export class TranslationService {
     'tools.gradientGenerator.subtitle': { en: 'Create beautiful CSS gradients with a visual editor. Linear, radial and conic gradients with live preview and one-click code export. No sign-up, runs entirely in your browser.', es: 'Crea gradientes CSS atractivos con un editor visual. Gradientes lineales, radiales y cónicos con vista previa en vivo y exportación de código con un clic. Sin registro, se ejecuta enteramente en tu navegador.' },
 
     'tools.gradientText.title': { en: 'Gradient Text Generator', es: 'Generador de Texto con Gradiente' },
-    'tools.gradientText.subtitle': { en: 'Apply stunning CSS gradient effects to text with live preview. Supports linear &amp; radial gradients, color stops, animation, and 10 curated presets.', es: 'Aplica efectos de gradiente CSS al texto con vista previa en vivo. Admite gradientes lineales &amp; radiales, paradas de color, animación y 10 preajustes curados.' },
+    'tools.gradientText.subtitle': { en: 'Apply stunning CSS gradient effects to text with live preview. Supports linear & radial gradients, color stops, animation, and 10 curated presets.', es: 'Aplica efectos de gradiente CSS al texto con vista previa en vivo. Admite gradientes lineales & radiales, paradas de color, animación y 10 preajustes curados.' },
 
     'tools.gridGenerator.title': { en: 'CSS Grid Generator', es: 'Generador de CSS Grid' },
     'tools.gridGenerator.subtitle': { en: 'Visual CSS Grid playground with live preview. Configure rows, columns, template tracks, grid areas, and per-item placement. Export clean CSS code instantly.', es: 'Laboratorio visual de CSS Grid con vista previa en vivo. Configura filas, columnas, pistas de plantilla, áreas de rejilla y la colocación de cada elemento. Exporta código CSS limpio al instante.' },
 
     // Batch 10 — email/security/SVG tools with headers still hardcoded
     'tools.emailDeliverabilityAuditor.title': { en: 'Email Deliverability Auditor', es: 'Auditor de Entregabilidad de Correo' },
-    'tools.emailDeliverabilityAuditor.subtitle': { en: 'Audit SPF, DKIM, DMARC &amp; MX records and get instant fix suggestions for email delivery — runs entirely in your browser via DNS-over-HTTPS.', es: 'Audita los registros SPF, DKIM, DMARC &amp; MX y obtén sugerencias de corrección al instante para la entrega de correo — se ejecuta enteramente en tu navegador mediante DNS-over-HTTPS.' },
+    'tools.emailDeliverabilityAuditor.subtitle': { en: 'Audit SPF, DKIM, DMARC & MX records and get instant fix suggestions for email delivery — runs entirely in your browser via DNS-over-HTTPS.', es: 'Audita los registros SPF, DKIM, DMARC & MX y obtén sugerencias de corrección al instante para la entrega de correo — se ejecuta enteramente en tu navegador mediante DNS-over-HTTPS.' },
 
     'tools.fontPairer.title': { en: 'Font Pairer', es: 'Combinador de Fuentes' },
     'tools.fontPairer.subtitle': { en: 'Discover beautiful font combinations with live preview. Browse curated heading + body pairings, customize sizes, and copy CSS or Google Fonts link tags instantly.', es: 'Descubre combinaciones de fuentes atractivas con vista previa en vivo. Explora parejas curadas de titular + cuerpo, personaliza tamaños y copia al instante el CSS o las etiquetas link de Google Fonts.' },
@@ -723,7 +723,7 @@ export class TranslationService {
     'tools.gmailDeliverabilityChecker.title': { en: 'Gmail Deliverability Checker', es: 'Verificador de Entregabilidad en Gmail' },
     'tools.gmailDeliverabilityChecker.subtitle': { en: 'Diagnose email delivery issues and auto-generate SPF, DKIM, DMARC DNS record fixes instantly — no backend required.', es: 'Diagnostica problemas de entrega de correo y genera automáticamente las correcciones de registros DNS SPF, DKIM y DMARC al instante — sin necesidad de backend.' },
 
-    'tools.metaTagGenerator.title': { en: 'Open Graph &amp; Meta Tag Generator', es: 'Generador de Open Graph &amp; Meta Etiquetas' },
+    'tools.metaTagGenerator.title': { en: 'Open Graph & Meta Tag Generator', es: 'Generador de Open Graph & Meta Etiquetas' },
     'tools.metaTagGenerator.subtitle': { en: 'Generate perfect Open Graph, Twitter Card, and SEO meta tags with live social sharing previews. No sign-up, runs entirely in your browser.', es: 'Genera meta etiquetas Open Graph, Twitter Card y SEO perfectas con vistas previas en vivo para redes sociales. Sin registro, se ejecuta enteramente en tu navegador.' },
 
     'tools.progressBar.title': { en: 'Progress Bar', es: 'Barras de Progreso' },
@@ -736,7 +736,7 @@ export class TranslationService {
     'tools.sslCertificateInspector.title': { en: 'SSL Certificate Inspector', es: 'Inspector de Certificados SSL' },
     'tools.sslCertificateInspector.subtitle': { en: 'Inspect SSL/TLS certificates, visualize chain of trust, and audit CA reputation instantly.', es: 'Inspecciona certificados SSL/TLS, visualiza la cadena de confianza y audita la reputación de la CA al instante.' },
 
-    'tools.svgPathEditor.title': { en: 'SVG Path Visualizer &amp; Editor', es: 'Visualizador &amp; Editor de Rutas SVG' },
+    'tools.svgPathEditor.title': { en: 'SVG Path Visualizer & Editor', es: 'Visualizador & Editor de Rutas SVG' },
     'tools.svgPathEditor.subtitle': { en: 'Paste, visualize, edit, and optimize SVG paths in your browser. Drag control points, see live measurements, and copy minified output — 100% client-side.', es: 'Pega, visualiza, edita y optimiza rutas SVG en tu navegador. Arrastra los puntos de control, consulta medidas en vivo y copia la salida minificada — 100% en el cliente.' },
 
     'tools.textShadow.title': { en: 'Text Shadow Generator', es: 'Generador de Text Shadow' },
