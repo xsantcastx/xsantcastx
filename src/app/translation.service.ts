@@ -1040,6 +1040,20 @@ export class TranslationService {
     'tools.cssVariables.ph.name': { en: 'Variable name (e.g., primary-color)', es: 'Nombre de la variable (ej., primary-color)' },
     'tools.cssVariables.ph.value': { en: 'Value (e.g., #00ffcc or 1rem)', es: 'Valor (ej., #00ffcc o 1rem)' },
     'tools.colorBlindness.ph.sampleText': { en: 'Enter sample text...', es: 'Introduce un texto de ejemplo...' },
+
+    // Tool input placeholders — batch
+    'tools.page.ph.search': { en: 'Search tools...', es: 'Buscar herramientas...' },
+    'tools.htmlMinifier.ph.input': { en: 'Paste HTML here...', es: 'Pega HTML aquí...' },
+    'tools.regexCheatsheet.ph.search': { en: 'Search patterns, descriptions, examples...', es: 'Busca patrones, descripciones, ejemplos...' },
+    'tools.base64Encoder.ph.decode': { en: 'Paste Base64 string to decode…', es: 'Pega la cadena Base64 a decodificar…' },
+    'tools.uaParser.ph.input': { en: 'Paste a user agent string or your current UA is auto-detected...', es: 'Pega una cadena de user agent o se detectará automáticamente la tuya...' },
+    'tools.screenInfo.ph.diagonal': { en: 'e.g. 15.6', es: 'ej. 15.6' },
+    'tools.jsonTree.ph.search': { en: 'Search keys or values...', es: 'Busca claves o valores...' },
+    'tools.uuidGenerator.ph.validate': { en: 'Paste a UUID or ULID to validate...', es: 'Pega un UUID o ULID para validar...' },
+    'tools.mimeLookup.ph.search': { en: 'Search by extension (.png) or MIME type (image/png)...', es: 'Busca por extensión (.png) o tipo MIME (image/png)...' },
+    'tools.caseConverter.ph.input': { en: 'Paste or type text to convert\n\ne.g. the quick brown fox jumps over the lazy dog', es: 'Pega o escribe el texto a convertir\n\nej. el veloz murciélago hindú comía feliz cardillo y kiwi' },
+    'tools.markdownEditor.ph.input': { en: 'Write your markdown here...\n\n# Heading\n**Bold**, _italic_, ~~strikethrough~~\n- List item\n> Blockquote', es: 'Escribe tu markdown aquí...\n\n# Encabezado\n**Negrita**, _cursiva_, ~~tachado~~\n- Elemento de lista\n> Cita' },
+    'tools.httpStatus.ph.search': { en: 'Search by code (e.g. 404) or name (e.g. Not Found)...', es: 'Busca por código (ej. 404) o nombre (ej. Not Found)...' },
 };
 
   constructor() {
