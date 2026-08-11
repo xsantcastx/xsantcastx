@@ -33,7 +33,7 @@
           </div>
         </div>
         <div class="lsr-panel__body">
-          <textarea class="lsr-textarea" [(ngModel)]="input" (ngModelChange)="process()" placeholder="Paste lines here..." spellcheck="false"></textarea>
+          <textarea class="lsr-textarea" [(ngModel)]="input" (ngModelChange)="process()" [placeholder]="translate('tools.lineSorter.ph.input')" spellcheck="false"></textarea>
         </div>
       </div>
 

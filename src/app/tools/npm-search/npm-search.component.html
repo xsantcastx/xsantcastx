@@ -33,7 +33,7 @@
         [(ngModel)]="query"
         (ngModelChange)="onQueryChange()"
         (keydown.enter)="search()"
-        placeholder="Search npm packages... e.g. react, lodash, express"
+        [placeholder]="translate('tools.npmSearch.ph.search')"
         spellcheck="false"
         autocomplete="off"
         />

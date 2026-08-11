@@ -63,7 +63,7 @@
             class="ev-textarea"
             [(ngModel)]="envInput"
             (ngModelChange)="onInput()"
-            placeholder="Paste your .env file content here...&#10;&#10;# Example&#10;APP_NAME=MyApp&#10;DB_HOST=localhost&#10;API_KEY=sk_live_xxxxx"
+            [placeholder]="translate('tools.envValidator.ph.input')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"
