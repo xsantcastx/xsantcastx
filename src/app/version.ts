@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.10.0',
+  version: '2.11.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Wanderer',
+  codename: 'Mythic',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.11.0',
+    codename: 'Mythic',
+    date: '2026-08-11',
+    highlights: [
+      'Easter eggs now drop on a six-tier ladder — Mortal, Eclipsed, Sacred, Anomalous, Mythic, Singular — instead of a flat toast that looked the same whatever you found',
+      'All 139 registered eggs are tiered: 43 Mortal, 79 Eclipsed, 10 Sacred, 5 Anomalous and 2 Mythic (a hash with four leading zeros, and a regex that matches its own source)',
+      'Singular is not authored — it is awarded when the global discovery counter comes back at exactly 1, meaning nobody in the realm reached that egg before you',
+      'Sound is synthesised, not downloaded: a struck bell for Sacred, a detuned horn section for Anomalous, a sub-bass impact with a noise transient for Mythic, and a prismatic arpeggio over the impact for Singular — five cues, zero audio files, and no AudioContext at all until the first drop',
+      'Mythic and Singular take the screen: one white frame at 100ms, a dim veil, a centred card with a pulsing tier glow and an eighteen-shard particle burst',
+      'prefers-reduced-motion drops the flash, the burst and the pulse — the card still appears and still reads, it just holds still'
+    ]
+  },
   {
     version: '2.10.0',
     codename: 'Wanderer',
