@@ -40,6 +40,16 @@
 
   <!-- Canonical: set dynamically per route by SeoService -->
 
+  <!-- hreflang: these are the homepage's pair, and act as the fallback for the
+       SPA shell (index.csr.html) where no route has resolved yet. SeoService
+       rewrites all three per route on every NavigationEnd, so prerendered pages
+       ship their own self-referential set rather than inheriting the homepage's.
+       Targets are /home, not /, because / is a 301 to /home and an hreflang
+       pointing at a redirect is discarded. -->
+  <link rel="alternate" hreflang="en"        href="https://xsantcastx.com/home">
+  <link rel="alternate" hreflang="es"        href="https://xsantcastx.com/home?lang=es">
+  <link rel="alternate" hreflang="x-default" href="https://xsantcastx.com/home">
+
   <!-- Favicons -->
   <link rel="icon"           type="image/svg+xml" href="favicon.svg">
   <link rel="shortcut icon"  type="image/svg+xml" href="favicon.svg">
