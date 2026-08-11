@@ -613,13 +613,22 @@ Second line with team@xsantcastx.dev in it.`;
   }
 
   /**
-   * Egg: a pattern that matches its own source text. Runs on a freshly built
-   * RegExp so a dangling `lastIndex` from the `g` flag cannot skew `test()`,
-   * and only for short patterns — a catastrophic backtracker fed its own source
-   * is exactly the input that would hang the tab.
+   * Egg: a pattern that matches its own source text.
+   *
+   * The metacharacter requirement is what makes this worth anything. Any plain
+   * literal matches its own source — /xyz/ finds "xyz" in the string "xyz" —
+   * so without it the egg would fire the moment anyone typed a word, which is
+   * a tautology rather than a discovery. Requiring at least one metacharacter
+   * means the pattern has to actually be a regex that happens to describe its
+   * own notation.
+   *
+   * Runs on a freshly built RegExp so a dangling `lastIndex` from the `g` flag
+   * cannot skew test(), and only for short patterns — a catastrophic
+   * backtracker fed its own source is exactly the input that would hang the tab.
    */
   private checkOuroboros(): void {
     if (this.pattern.length < 2 || this.pattern.length > 120) return;
+    if (!/[\\[\]().*+?{}^$|]/.test(this.pattern)) return;
     try {
       const self = new RegExp(this.pattern, this.flagString.replace('g', ''));
       if (self.test(this.pattern)) this.eggs.trigger('regex-ouroboros');
