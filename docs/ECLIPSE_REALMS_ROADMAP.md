@@ -23,7 +23,7 @@ If something slips, it moves backwards here. The point of a public roadmap is lo
 
 ---
 
-## Phase I — Genesis · Complete · v1.0 – v2.9
+## Phase I — Genesis · Complete · v1.0 – v2.13
 
 > *In the beginning, there was the Sun — whole, silent, and dreaming.*
 
@@ -35,7 +35,7 @@ If something slips, it moves backwards here. The point of a public roadmap is lo
 - ✦ **Blueprint, dev log and public roadmap.** The order of work, in public, with cards that move backwards when that is what happened.
 - ✦ **Accessibility and mobile passes.** Every control has an accessible name, every standalone control clears 44px, and the drawer works on a notched phone.
 
-## Phase II — Awakening · Complete · v2.10 – v2.13
+## Phase II — Awakening · Complete · v2.14 – v2.18
 
 > *The soul remembers both.*
 

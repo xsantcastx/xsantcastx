@@ -924,6 +924,31 @@ button.cta-button {
 }
 .share-btn--linkedin:hover { box-shadow: 0 6px 20px rgba(10,102,194,0.4); }
 
+/* Short aliases used by the tool pages (`share-btn--x` / `share-btn--li`).
+   Tool components define their own scoped `.share-btn` base, which resolves to
+   `.share-btn[_ngcontent-*]` (0,2,0) and outranks a bare `.share-btn--x` (0,1,0).
+   Qualifying with the element name lifts these to (0,2,1) so the brand colors win
+   regardless of stylesheet order. Every usage in the app is an `<a>`. */
+a.share-btn.share-btn--x {
+  background: #000;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+a.share-btn.share-btn--x:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+
+a.share-btn.share-btn--li {
+  background: #0a66c2;
+  color: #fff;
+  border-color: rgba(10, 102, 194, 0.45);
+}
+a.share-btn.share-btn--li:hover {
+  box-shadow: 0 6px 20px rgba(10, 102, 194, 0.4);
+  color: #fff;
+}
+
 /* ===== App shell ===== */
 app-root {
   display: block;

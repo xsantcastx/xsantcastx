@@ -55,7 +55,7 @@ export const ECLIPSE_ROADMAP: EclipsePhase[] = [
     premise: 'A world, and things in it worth using.',
     quote: 'In the beginning, there was the Sun — whole, silent, and dreaming.',
     status: 'completed',
-    window: 'v1.0 – v2.9',
+    window: 'v1.0 – v2.13',
     items: [
       { title: '126 tools, all client-side', detail: 'Every tool runs in the tab. Nothing is uploaded, so there is no server to pay for and no queue to wait in.', done: true },
       { title: 'The cosmic engine', detail: 'Constellation canvas, cursor pulsar, scroll reveal, magnetic CTAs, click ripples — 22 systems, all SSR-safe and all with a reduced-motion path.', done: true },
@@ -71,7 +71,7 @@ export const ECLIPSE_ROADMAP: EclipsePhase[] = [
     premise: 'The site starts remembering who is using it.',
     quote: 'The soul remembers both.',
     status: 'completed',
-    window: 'v2.10 – v2.13',
+    window: 'v2.14 – v2.18',
     items: [
       { title: 'XP and ten ranks', detail: 'Wanderer through Eclipse Lord, earned from tool use, page visits, copies, shares and secrets.', done: true },
       { title: 'Daily streak', detail: 'Compounds 50 XP a day to a 600 cap, resets on the first day missed, and keeps your best so the loss is visible.', done: true },

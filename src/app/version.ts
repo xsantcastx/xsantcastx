@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.14.0',
+  version: '2.18.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'The Long Arc',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.14.0',
+    version: '2.18.0',
     codename: 'The Long Arc',
     date: '2026-08-11',
     highlights: [
@@ -47,7 +47,7 @@ export const VERSION_HISTORY: VersionRelease[] = [
     ]
   },
   {
-    version: '2.13.0',
+    version: '2.17.0',
     codename: 'The Arena',
     date: '2026-08-11',
     highlights: [
@@ -60,7 +60,7 @@ export const VERSION_HISTORY: VersionRelease[] = [
     ]
   },
   {
-    version: '2.12.0',
+    version: '2.16.0',
     codename: 'Five Realms',
     date: '2026-08-11',
     highlights: [
@@ -69,11 +69,11 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'Realm and category are two different cuts of the same list, so selecting one clears the other rather than intersecting into an empty result',
       'Every tool page carries a realm badge beside its category eyebrow — added by one global rule keyed on a data-realm attribute, not by editing 126 templates',
       'RealmService resolves route → tool → category → realm on each navigation and publishes it to CSS, clearing the variables again off a tool route so /home is never tinted by the last tool you opened',
-      'Realms agree with the energy split shipped in 2.10.0: Umbral and Verge feed Nox, the other three feed Aether'
+      'Realms agree with the energy split shipped in 2.14.0: Umbral and Verge feed Nox, the other three feed Aether'
     ]
   },
   {
-    version: '2.11.0',
+    version: '2.15.0',
     codename: 'Mythic',
     date: '2026-08-11',
     highlights: [
@@ -86,7 +86,7 @@ export const VERSION_HISTORY: VersionRelease[] = [
     ]
   },
   {
-    version: '2.10.0',
+    version: '2.14.0',
     codename: 'Wanderer',
     date: '2026-08-11',
     highlights: [
@@ -96,6 +96,56 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'XP splits across the two energies of the lore: Aether from design and authoring tools, Nox from security and code tools, drawn as a seam on the header bar',
       'Storage sits behind an adapter, so the Phase 2 move to per-account Firestore progress is a provider swap rather than a rewrite',
       'Nothing is sent anywhere — progression lives entirely in localStorage on your own device'
+    ]
+  },
+  {
+    version: '2.13.0',
+    codename: 'Control Room',
+    date: '2026-08-11',
+    highlights: [
+      'Owner-only dashboard at /admin — engagement, easter-egg discovery, tool suggestions, CI runs and commit history on one page, gated on Firebase Auth and locked to a single verified email in firestore.rules',
+      'The easter-egg counters have never recorded anything: the collection has no rule at all, so every discovery write falls through to the deny-all and is rejected, and the service catches the error and returns — all 139 eggs have been counting nothing, including the 58 that 2.8.0 had just finished wiring up',
+      'Blueprint tool suggestions are readable for the first time — the collection was write-only, so every suggestion submitted through the form had landed somewhere nobody could open — and can now be triaged as reviewed, accepted or rejected without being editable',
+      'Builds emit assets/build-stats.json (prerender route count, sitemap URL count, bundle size), so the dashboard reports measured numbers rather than placeholders',
+      'The route is hidden four ways over: absent from the nav and the sitemap, noindex in its route data, and disallowed in robots.txt — and its prerendered shell renders two words and no panel markup'
+    ]
+  },
+  {
+    version: '2.12.0',
+    codename: 'Stylesheet Drift',
+    date: '2026-08-11',
+    highlights: [
+      'Five tools rendered as essentially unstyled HTML — tailwind-lookup, box-model, csv-json, dns-lookup and robots-generator all shipped the same 56-line generic scaffold stylesheet (four were byte-identical once the class prefix is normalised) while their templates were written against a completely different vocabulary, leaving 81–98% of the classes each page used matching no rule at all',
+      'Four more tools had templates renamed without their stylesheets following: the whole SSL Certificate Inspector results area was unstyled because the CSS still targeted .cert-summary / .status-pill / .trust-chain, and hex-editor, sitemap-generator and the email auditor score gauge had the same drift on a smaller scale',
+      'Four labels showed HTML entities as literal text — Angular interpolation emits its result as a text node, so "Copy &lt;link&gt; Tags", "Copy HTML &lt;img&gt; Tag", "HTML &rarr; MD" and the responsive-preview device emoji were all displayed verbatim rather than decoded',
+      'The X and LinkedIn share buttons on 97 tool pages had lost their brand colors: 179 links use the short .share-btn--x / --li spellings, which no rule defined, and a plain class selector could not have won anyway against each component\'s own Angular-scoped .share-btn',
+      'A repo-wide scan for templates whose classes go unmatched by their own stylesheet now reports zero tools, down from nine'
+    ]
+  },
+  {
+    version: '2.11.0',
+    codename: 'Waterfall',
+    date: '2026-08-11',
+    highlights: [
+      'New flagship tool — HAR File Analyzer & Network Waterfall at /tools/har-analyzer, filling the gap left by Google\'s abandoned HAR Analyzer',
+      'Drag in a .har and get a request waterfall segmented by queueing, DNS, TCP, TLS, TTFB and download, with DOMContentLoaded and load drawn across every row',
+      'Parsing runs in a Web Worker that keeps the capture off the main thread — a 100 MB export never freezes the tab, and only a few hundred KB of analysis crosses back',
+      'Core Web Vitals are reconstructed and honestly labelled: TTFB, DCL and load are measured, FCP and LCP are bounded estimates with their method stated, and CLS is reported as underivable rather than invented',
+      'Findings call out uncompressed text, weak cache lifetimes, slow server waits, oversized images, redirects, HTTP/1.x and third-party weight — each one filters the table down to the offenders',
+      'Privacy redaction strips cookies, credential headers, request and response bodies and token-shaped query parameters, in the URL as well as the header list, then exports a HAR that is safe to attach to a ticket',
+      'Share a link that carries a compressed analysis digest rather than the capture itself, or export the whole thing as a Markdown report'
+    ]
+  },
+  {
+    version: '2.10.0',
+    codename: 'Dead Weight',
+    date: '2026-08-11',
+    highlights: [
+      'Stripe and the PayPal SDK no longer load on any page — PaymentService is injected by the footer, which sits on every route, and its constructor fetched both SDKs at startup, so roughly a megabyte of checkout JavaScript was downloaded on the home page and all 123 tool pages for a flow that only opens behind a click',
+      'Firebase App Check now initializes on the first idle callback instead of during bootstrap, taking reCAPTCHA (336 kB) off the startup path of every route; the three Firestore calls that fire before that window now wait for it, so the visit, changelog and tool-usage counters keep working if App Check enforcement is ever switched on',
+      'Google Analytics is fetched only after the visitor accepts the cookie banner — consent mode had been denying what gtag.js stored while still downloading it on every page',
+      'Carbon Ads and the AdSense slot wait until the unit is nearly scrolled into view instead of requesting during page load',
+      'Measured on /home at 4x CPU throttle over Slow 4G: third-party hosts contacted 12 → 4, third-party requests 27 → 8. LCP is unchanged, because the boot-curtain fix in 2.6.0 had already taken it off the main thread — this release is about bandwidth, CPU and privacy, not paint time'
     ]
   },
   {
