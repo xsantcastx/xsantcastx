@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.5.0',
+  version: '2.6.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
@@ -34,6 +34,17 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.6.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'Every indexable URL used to answer with a 301 to a trailing-slash copy of itself while its canonical tag pointed at the un-slashed form — all 138 sitemap entries were redirects, which Search Console files as "Page with redirect" instead of indexing',
+      'hreflang for English and Spanish, emitted per route so each page points at its own pair rather than the homepage, with ?lang= finally switching the language for real (it had only ever read localStorage, so the Spanish URL served English to every crawler)',
+      'The 125 /embed/* pages are no longer blocked in robots.txt and told to index at the same time — they carry a noindex the crawler can actually reach, so they stop competing with the real tool pages',
+      'The boot splash now lifts from CSS instead of waiting on JavaScript: the hero heading had been sitting behind an opaque curtain for 18 seconds of measured LCP render delay on throttled mobile'
+    ]
+  },
   {
     version: '2.5.0',
     codename: 'Blueprint',

@@ -214,7 +214,33 @@ body::before {
   transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.7s ease;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  animation: cosmicBootIn 0.8s ease-out;
+  /*
+   * The curtain lifts on the compositor's clock, not the main thread's.
+   *
+   * This is an opaque, fixed, inset-0, z-index-9999 layer over the whole
+   * viewport, and it used to be removed only by cosmic-engine.js adding
+   * .cosmic-boot--dismissed on a 750ms timer. That made the paint of every
+   * page hostage to the main thread: measured on throttled mobile against
+   * the production build, the hero <h1> — the LCP element, already present
+   * in the prerendered HTML and ready to paint — sat covered for 18.2s of
+   * render delay while the engine's timer waited behind ~1.4MB of
+   * third-party JS. LCP 18.6s, FCP 10.4s, both scoring 0.
+   *
+   * A CSS animation runs off the main thread, so the curtain now clears on
+   * its own by 1.5s no matter how starved JS is. The timings are lined up
+   * with the engine: hold through 50% (750ms, exactly when the JS dismissal
+   * fires), then fade out, leaving the star-flare its 0.7s to finish when
+   * the main thread is healthy. `forwards` + visibility:hidden keeps it
+   * clear if the engine never runs at all.
+   */
+  animation: cosmicBootCurtain 1.5s ease-out forwards;
+}
+
+@keyframes cosmicBootCurtain {
+  0%   { opacity: 0; visibility: visible; }
+  15%  { opacity: 1; }
+  50%  { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
 }
 
 .cosmic-boot__star {
