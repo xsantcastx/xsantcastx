@@ -51,6 +51,13 @@
         ]
       },
       {
+        "//": "Prerendered routes are served at clean URLs (/home, /blueprint, /tools/x) which do NOT match the *.html glob above — header globs match the REQUEST path, not the resolved file. Without this they fell through to Firebase's default max-age=3600, so a deploy stayed invisible for an hour and the site looked like it had not shipped. !(*.*) matches only extensionless final segments, so content-hashed js/css/font/image assets keep their immutable year-long cache.",
+        "source": "**/!(*.*)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
         "source": "/@(sitemap.xml|robots.txt)",
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=86400" }
