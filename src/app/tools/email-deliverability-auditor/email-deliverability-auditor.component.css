@@ -834,3 +834,48 @@
   display: flex;
   justify-content: flex-end;
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .eda-breakdown-label,
+  .eda-breakdown-row,
+  .eda-breakdown-value,
+  .eda-copy-btn,
+  .eda-corrected__label,
+  .eda-corrected__value,
+  .eda-error,
+  .eda-field label,
+  .eda-fix__snippet,
+  .eda-fix__title,
+  .eda-gauge__max,
+  .eda-issue,
+  .eda-label,
+  .eda-mx-ips,
+  .eda-mx-priority,
+  .eda-mx-record,
+  .eda-record-raw__label,
+  .eda-record-raw__value,
+  .eda-score-info p,
+  .eda-share-text,
+  .eda-share-url,
+  .eda-suggestion,
+  .eda-tab,
+  .share-btn,
+  .tool-error {
+    font-size: 14px;
+  }
+
+  .eda-badge,
+  .eda-chip,
+  .eda-policy-badge,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}

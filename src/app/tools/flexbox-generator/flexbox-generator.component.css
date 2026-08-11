@@ -527,3 +527,50 @@
   .fx-controls-grid { grid-template-columns: 1fr; }
   .fx-presets-grid { grid-template-columns: 1fr; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .fx-btn,
+  .fx-btn--sm,
+  .fx-card__label,
+  .fx-child-item__detail,
+  .fx-child-item__name,
+  .fx-code-pre,
+  .fx-control-group__label,
+  .fx-control-group__value,
+  .fx-preset-btn__desc,
+  .fx-preset-btn__name,
+  .fx-preview-item,
+  .fx-select,
+  .fx-text-input,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .fx-page {
+    padding-top: 2.5rem;
+  }
+}

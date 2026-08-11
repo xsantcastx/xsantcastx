@@ -708,6 +708,31 @@ interface WhyCard {
         grid-template-columns: 1fr;
       }
     }
+
+    /* Mobile typography floor — v2.3.0. The install snippets and terminal
+       transcript are the substance of this page and rendered at 12-13.1px.
+       Code stays a step below prose so the monospace blocks still fit their
+       lines at 375px without wrapping mid-command. */
+    @media (max-width: 768px) {
+      .tool-desc,
+      .why-body,
+      .link-name {
+        font-size: 14px;
+      }
+
+      code,
+      .pre-code,
+      .cmd,
+      .out {
+        font-size: 13px;
+      }
+
+      .inline-code,
+      .link-label,
+      .hero-badge {
+        font-size: 12px;
+      }
+    }
   `]
 })
 export class McpComponent implements OnInit {
