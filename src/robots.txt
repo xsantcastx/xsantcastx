@@ -1,6 +1,9 @@
+# /embed/* and /404 are kept OUT of the index by a `noindex` meta tag, not by a
+# Disallow rule. A disallowed URL is never fetched, so the crawler never reads
+# the noindex on it — and Google will still index a blocked URL it finds linked
+# from elsewhere, listing it without a description. Allowing the crawl is what
+# actually gets these pages dropped.
 User-agent: *
 Allow: /
-Disallow: /embed/
-Disallow: /404
 
 Sitemap: https://xsantcastx.com/sitemap.xml

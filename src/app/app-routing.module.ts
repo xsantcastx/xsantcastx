@@ -218,6 +218,9 @@ const routes: Routes = [
       component: NotFoundComponent,
       title: '404 — Page Not Found | xsantcastx',
       data: {
+        // Firebase serves the SPA shell with a 200 for unknown paths, so this
+        // renders as a soft 404 that Google would otherwise be free to index.
+        noindex: true,
         description: 'The page you are looking for does not exist. Browse free developer tools or return to the homepage.',
         keywords: '404, page not found, xsantcastx'
       }
