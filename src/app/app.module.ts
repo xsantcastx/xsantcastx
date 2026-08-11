@@ -39,6 +39,7 @@ import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effec
 import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { GamesComponent } from './games/games.component';
+import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { McpComponent } from './mcp/mcp.component';
 
 
@@ -72,7 +73,10 @@ import { McpComponent } from './mcp/mcp.component';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    CommonModule
+    CommonModule,
+    // Standalone — imported here so the (non-standalone) HeaderComponent can
+    // use <app-xp-bar> without the module graph moving around it.
+    XpBarComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),

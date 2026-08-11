@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.9.0',
+  version: '2.10.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Patron',
+  codename: 'Wanderer',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.10.0',
+    codename: 'Wanderer',
+    date: '2026-08-11',
+    highlights: [
+      'The site remembers you now — XP, ten Eclipse Realms ranks from Wanderer to Eclipse Lord, and a progression readout in the header that expands into a panel',
+      'XP is earned from what you were already doing: 15 for the first use of a tool, 5 for a page you have not seen, 5 for a copy (rate-limited to once a minute), 25 for a share and 200 for an easter egg',
+      'A daily streak compounds 50 XP per consecutive day up to 600, and resets to one day on the first day you miss — the best streak is kept so the loss is visible',
+      'XP splits across the two energies of the lore: Aether from design and authoring tools, Nox from security and code tools, drawn as a seam on the header bar',
+      'Storage sits behind an adapter, so the Phase 2 move to per-account Firestore progress is a provider swap rather than a rewrite',
+      'Nothing is sent anywhere — progression lives entirely in localStorage on your own device'
+    ]
+  },
   {
     version: '2.9.0',
     codename: 'Patron',
