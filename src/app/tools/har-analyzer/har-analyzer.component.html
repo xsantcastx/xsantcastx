@@ -1,0 +1,599 @@
+<div class="ha-page">
+
+  <!-- Back -->
+  <button class="back-link" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    {{ translate('tools.common.backToTools') }}
+  </button>
+
+  <!-- Header -->
+  <header class="tool-header">
+    <p class="tool-header__eyebrow">{{ translate('tools.common.cat.networkTools') }}</p>
+    <h1 class="tool-header__title">{{ translate('tools.harAnalyzer.title') }} <span class="tool-header__amp">{{ translate('tools.harAnalyzer.title2') }}</span></h1>
+    <p class="tool-header__subtitle">{{ translate('tools.harAnalyzer.subtitle') }}</p>
+    <div class="tool-header__share">
+      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--x">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        {{ translate('tools.common.shareX') }}
+      </a>
+      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--li">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        {{ translate('tools.common.shareLinkedIn') }}
+      </a>
+    </div>
+    <app-tool-usage-counter [toolSlug]="'har-analyzer'"></app-tool-usage-counter>
+  </header>
+
+  <!-- Sponsored: Carbon Ads -->
+  <app-carbon-ad></app-carbon-ad>
+
+  <!-- ── Dropzone ── -->
+  @if (status === 'idle' || status === 'error') {
+    <section
+      class="ha-drop"
+      [class.ha-drop--active]="dragActive"
+      [class.ha-drop--error]="status === 'error'"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)">
+
+      <input
+        #fileInput
+        type="file"
+        class="ha-drop__input"
+        accept=".har,.json,application/json"
+        aria-label="Choose a HAR file to analyse"
+        (change)="onFileSelected($event)">
+
+      <div class="ha-drop__inner"
+           role="button"
+           tabindex="0"
+           [attr.aria-label]="translate('tools.harAnalyzer.drop.choose')"
+           (click)="fileInput.click()"
+           (keydown)="onDropzoneKeydown($event, fileInput)">
+        <span class="ha-drop__orb" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </span>
+        <p class="ha-drop__title">{{ translate('tools.harAnalyzer.drop.title') }}</p>
+        <p class="ha-drop__hint">{{ translate('tools.harAnalyzer.drop.hint') }}</p>
+        <span class="ha-drop__cta">{{ translate('tools.harAnalyzer.drop.choose') }}</span>
+      </div>
+
+      <div class="ha-drop__foot">
+        <button class="ha-btn ha-btn--ghost" type="button" (click)="loadSample()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          {{ translate('tools.harAnalyzer.drop.sample') }}
+        </button>
+        <p class="ha-drop__privacy">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          {{ translate('tools.harAnalyzer.drop.privacy') }}
+        </p>
+      </div>
+
+      @if (status === 'error') {
+        <p class="ha-error" role="alert">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ errorMessage }}
+        </p>
+      }
+    </section>
+
+    <!-- How to capture a HAR — the question every first-time user asks. -->
+    <section class="ha-panel ha-howto">
+      <h2 class="ha-panel__title">{{ translate('tools.harAnalyzer.howto.title') }}</h2>
+      <div class="ha-howto__grid">
+        <div class="ha-howto__step">
+          <span class="ha-howto__browser">Chrome / Edge</span>
+          <ol><li>Open DevTools → <strong>Network</strong></li><li>Tick <strong>Preserve log</strong>, reload the page</li><li>Click the <strong>⭳</strong> export icon → <em>Export HAR</em></li></ol>
+        </div>
+        <div class="ha-howto__step">
+          <span class="ha-howto__browser">Firefox</span>
+          <ol><li>Open DevTools → <strong>Network</strong></li><li>Reload the page</li><li>Right-click any row → <strong>Save All As HAR</strong></li></ol>
+        </div>
+        <div class="ha-howto__step">
+          <span class="ha-howto__browser">Safari</span>
+          <ol><li>Enable the Develop menu in Settings → Advanced</li><li>Web Inspector → <strong>Network</strong>, reload</li><li>Click <strong>Export</strong> in the toolbar</li></ol>
+        </div>
+      </div>
+      <p class="ha-howto__note">{{ translate('tools.harAnalyzer.howto.note') }}</p>
+    </section>
+  }
+
+  <!-- ── Loading ── -->
+  @if (status === 'loading') {
+    <section class="ha-panel ha-loading" aria-live="polite">
+      <p class="ha-loading__phase">{{ progressPhase }}<span class="ha-loading__dots" aria-hidden="true"></span></p>
+      <div class="ha-loading__track" role="progressbar" [attr.aria-valuenow]="progressPct" aria-valuemin="0" aria-valuemax="100">
+        <div class="ha-loading__fill" [style.width.%]="progressPct"></div>
+      </div>
+      <p class="ha-loading__file">{{ fileName }} · {{ formatBytes(fileSize) }}</p>
+    </section>
+  }
+
+  <!-- ── Results ── -->
+  @if (status === 'ready' && analysis) {
+
+    <!-- File bar -->
+    <section class="ha-filebar">
+      <div class="ha-filebar__id">
+        <span class="ha-filebar__name" [title]="fileName">{{ fileName }}</span>
+        <span class="ha-filebar__meta">
+          {{ analysis.summary.pageTitle }}
+          @if (analysis.summary.creator !== '—') { · {{ analysis.summary.creator }} }
+        </span>
+      </div>
+      <div class="ha-filebar__actions">
+        <button class="ha-btn ha-btn--ghost" type="button" (click)="copySummary()">
+          {{ copiedField === 'summary' ? translate('tools.common.copiedExclaim') : translate('tools.harAnalyzer.action.copySummary') }}
+        </button>
+        <button class="ha-btn ha-btn--ghost" type="button" (click)="downloadReport()">
+          {{ translate('tools.harAnalyzer.action.report') }}
+        </button>
+        @if (!snapshotMode) {
+          <button class="ha-btn ha-btn--ghost" type="button" (click)="downloadRedacted()" [disabled]="redacting">
+            {{ redacting ? translate('tools.harAnalyzer.action.redacting') : translate('tools.harAnalyzer.action.redact') }}
+          </button>
+        }
+        <button class="ha-btn ha-btn--ghost" type="button" (click)="copyShareUrl()" [disabled]="shareBuilding">
+          {{ copiedField === 'share' ? translate('tools.harAnalyzer.action.linkCopied') : (shareBuilding ? translate('tools.harAnalyzer.action.building') : translate('tools.harAnalyzer.action.share')) }}
+        </button>
+        <button class="ha-btn ha-btn--ghost" type="button" (click)="reset()">
+          {{ translate('tools.harAnalyzer.action.newFile') }}
+        </button>
+      </div>
+    </section>
+
+    @if (snapshotMode) {
+      <p class="ha-notice ha-notice--info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        {{ translate('tools.harAnalyzer.notice.snapshot') }}
+      </p>
+    }
+
+    @if (analysis.summary.truncatedEntries > 0) {
+      <p class="ha-notice ha-notice--warn">
+        {{ translate('tools.harAnalyzer.notice.truncated1') }} {{ analysis.summary.totalRequests }} {{ translate('tools.harAnalyzer.notice.truncated2') }} {{ analysis.summary.truncatedEntries }}.
+      </p>
+    }
+
+    @if (shareTooLarge) {
+      <p class="ha-notice ha-notice--warn">{{ translate('tools.harAnalyzer.notice.shareTooLarge') }}</p>
+    }
+
+    @if (redactionReport) {
+      <p class="ha-notice ha-notice--ok">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ translate('tools.harAnalyzer.redaction.done') }}
+        {{ redactionReport.headersRemoved }} {{ translate('tools.harAnalyzer.redaction.headers') }},
+        {{ redactionReport.cookiesRemoved }} {{ translate('tools.harAnalyzer.redaction.cookies') }},
+        {{ redactionReport.requestBodiesRemoved + redactionReport.responseBodiesRemoved }} {{ translate('tools.harAnalyzer.redaction.bodies') }},
+        {{ redactionReport.queryParamsRedacted }} {{ translate('tools.harAnalyzer.redaction.params') }}.
+        <span class="ha-notice__sub">{{ formatBytes(redactionReport.bytesBefore) }} → {{ formatBytes(redactionReport.bytesAfter) }}</span>
+      </p>
+    }
+
+    <!-- ── Summary stats ── -->
+    <section class="ha-stats">
+      <div class="ha-stat">
+        <span class="ha-stat__num">{{ analysis.summary.totalRequests }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.requests') }}</span>
+      </div>
+      <div class="ha-stat">
+        <span class="ha-stat__num">{{ formatBytes(analysis.summary.totalTransferSize) }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.transferred') }}</span>
+        <span class="ha-stat__sub">{{ formatBytes(analysis.summary.totalContentSize) }} {{ translate('tools.harAnalyzer.stat.uncompressed') }}</span>
+      </div>
+      <div class="ha-stat">
+        <span class="ha-stat__num">{{ formatMs(analysis.summary.totalSpan) }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.span') }}</span>
+      </div>
+      <div class="ha-stat">
+        <span class="ha-stat__num">{{ formatMs(analysis.onLoad) }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.load') }}</span>
+        <span class="ha-stat__sub">DCL {{ formatMs(analysis.domContentLoaded) }}</span>
+      </div>
+      <div class="ha-stat" [class.ha-stat--bad]="analysis.summary.failedRequests > 0">
+        <span class="ha-stat__num">{{ analysis.summary.failedRequests }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.failed') }}</span>
+        <span class="ha-stat__sub">{{ analysis.summary.redirects }} {{ translate('tools.harAnalyzer.stat.redirects') }}</span>
+      </div>
+      <div class="ha-stat">
+        <span class="ha-stat__num">{{ analysis.summary.uniqueDomains }}</span>
+        <span class="ha-stat__label">{{ translate('tools.harAnalyzer.stat.domains') }}</span>
+        <span class="ha-stat__sub">{{ analysis.summary.thirdPartyRequests }} {{ translate('tools.harAnalyzer.stat.thirdParty') }}</span>
+      </div>
+    </section>
+
+    <!-- ── Core Web Vitals ── -->
+    <section class="ha-panel">
+      <div class="ha-panel__header">
+        <h2 class="ha-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          {{ translate('tools.harAnalyzer.vitals.title') }}
+        </h2>
+      </div>
+      <p class="ha-panel__lede">{{ translate('tools.harAnalyzer.vitals.lede') }}</p>
+      <div class="ha-vitals">
+        @for (v of analysis.vitals; track v.id) {
+          <div class="ha-vital" [class]="'ha-vital--' + v.rating">
+            <div class="ha-vital__top">
+              <span class="ha-vital__label">{{ v.label }}</span>
+              <span class="ha-vital__badge" [class]="'ha-vital__badge--' + v.source">{{ v.source }}</span>
+            </div>
+            <span class="ha-vital__value">{{ formatVital(v) }}</span>
+            @if (v.value !== null) {
+              <div class="ha-vital__gauge" aria-hidden="true">
+                <span class="ha-vital__needle" [style.left.%]="v.value <= v.poorAbove ? (v.value / v.poorAbove) * 90 : 95"></span>
+              </div>
+              <span class="ha-vital__thresholds">
+                {{ translate('tools.harAnalyzer.vitals.good') }} &lt; {{ v.unit === 'ms' ? formatMs(v.goodBelow) : v.goodBelow }}
+              </span>
+            }
+            <p class="ha-vital__method">{{ v.method }}</p>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- ── Breakdown charts ── -->
+    <div class="ha-split">
+      <section class="ha-panel">
+        <div class="ha-panel__header">
+          <h2 class="ha-panel__title">{{ translate('tools.harAnalyzer.byType.title') }}</h2>
+        </div>
+        <div class="ha-bars">
+          @for (t of analysis.byType; track t.type) {
+            <button class="ha-bar-row" type="button" (click)="toggleType(t.type)" [class.ha-bar-row--active]="isTypeActive(t.type)">
+              <span class="ha-bar-row__label">
+                <span class="ha-dot" [attr.data-type]="t.type" aria-hidden="true"></span>
+                {{ t.label }}
+              </span>
+              <span class="ha-bar-row__track">
+                <span class="ha-bar-row__fill" [attr.data-type]="t.type" [style.width.%]="barPct(t.transferSize, maxTypeBytes)"></span>
+              </span>
+              <span class="ha-bar-row__value">{{ formatBytes(t.transferSize) }}</span>
+              <span class="ha-bar-row__count">{{ t.count }}</span>
+            </button>
+          }
+        </div>
+        <p class="ha-panel__foot">{{ translate('tools.harAnalyzer.byType.foot') }}</p>
+      </section>
+
+      <section class="ha-panel">
+        <div class="ha-panel__header">
+          <h2 class="ha-panel__title">{{ translate('tools.harAnalyzer.byDomain.title') }}</h2>
+        </div>
+        <div class="ha-bars">
+          @for (d of topDomains; track d.domain) {
+            <button class="ha-bar-row" type="button" (click)="domainFilter = d.domain; applyFilters()">
+              <span class="ha-bar-row__label">
+                {{ d.domain }}
+                @if (d.thirdParty) { <span class="ha-tag ha-tag--3p">3P</span> }
+              </span>
+              <span class="ha-bar-row__track">
+                <span class="ha-bar-row__fill ha-bar-row__fill--domain" [style.width.%]="barPct(d.transferSize, maxDomainBytes)"></span>
+              </span>
+              <span class="ha-bar-row__value">{{ formatBytes(d.transferSize) }}</span>
+              <span class="ha-bar-row__count">{{ d.count }}</span>
+            </button>
+          }
+        </div>
+        <p class="ha-panel__foot">
+          {{ translate('tools.harAnalyzer.byDomain.foot') }} <strong>{{ analysis.summary.primaryDomain }}</strong>.
+        </p>
+      </section>
+    </div>
+
+    <!-- ── Findings ── -->
+    @if (analysis.findings.length) {
+      <section class="ha-panel">
+        <div class="ha-panel__header">
+          <h2 class="ha-panel__title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+            {{ translate('tools.harAnalyzer.findings.title') }}
+          </h2>
+          <span class="ha-panel__count">{{ analysis.findings.length }}</span>
+        </div>
+        <ul class="ha-findings">
+          @for (f of analysis.findings; track f.id) {
+            <li class="ha-finding" [class]="'ha-finding--' + f.severity">
+              <div class="ha-finding__head">
+                <span class="ha-finding__sev">{{ f.severity }}</span>
+                <h3 class="ha-finding__title">{{ f.title }}</h3>
+                @if (f.savingsBytes) {
+                  <span class="ha-finding__savings">~{{ formatBytes(f.savingsBytes) }} {{ translate('tools.harAnalyzer.findings.recoverable') }}</span>
+                }
+              </div>
+              <p class="ha-finding__detail">{{ f.detail }}</p>
+              <button class="ha-finding__link" type="button" (click)="focusFinding(f.requestIndices)">
+                {{ translate('tools.harAnalyzer.findings.show') }} {{ f.requestIndices.length }} {{ translate('tools.harAnalyzer.findings.requests') }} →
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <!-- ── Requests + waterfall ── -->
+    <section class="ha-panel ha-panel--flush" id="ha-requests">
+      <div class="ha-panel__header">
+        <h2 class="ha-panel__title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="7" y1="12" x2="21" y2="12"/><line x1="5" y1="18" x2="16" y2="18"/></svg>
+          {{ translate('tools.harAnalyzer.table.title') }}
+        </h2>
+        <span class="ha-panel__count">{{ filtered.length }} / {{ analysis.summary.totalRequests }}</span>
+      </div>
+
+      <!-- Filters -->
+      <div class="ha-filters">
+        <div class="ha-filters__row">
+          <label class="ha-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="ha-visually-hidden">{{ translate('tools.harAnalyzer.filter.search') }}</span>
+            <input type="search" [(ngModel)]="search" (ngModelChange)="applyFilters()"
+                   [placeholder]="translate('tools.harAnalyzer.filter.searchPh')">
+          </label>
+
+          <label class="ha-field">
+            <span class="ha-visually-hidden">{{ translate('tools.harAnalyzer.filter.status') }}</span>
+            <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" aria-label="Filter by status code">
+              <option value="all">{{ translate('tools.harAnalyzer.filter.allStatus') }}</option>
+              <option value="2xx">2xx</option>
+              <option value="3xx">3xx</option>
+              <option value="4xx">4xx</option>
+              <option value="5xx">5xx</option>
+              <option value="failed">{{ translate('tools.harAnalyzer.filter.failed') }}</option>
+            </select>
+          </label>
+
+          <label class="ha-field">
+            <span class="ha-visually-hidden">{{ translate('tools.harAnalyzer.filter.domain') }}</span>
+            <select [(ngModel)]="domainFilter" (ngModelChange)="applyFilters()" aria-label="Filter by domain">
+              <option value="all">{{ translate('tools.harAnalyzer.filter.allDomains') }}</option>
+              @for (d of domains; track d) { <option [value]="d">{{ d }}</option> }
+            </select>
+          </label>
+
+          @if (hasActiveFilters) {
+            <button class="ha-btn ha-btn--ghost" type="button" (click)="resetFilters()">
+              {{ translate('tools.harAnalyzer.filter.reset') }}
+            </button>
+          }
+        </div>
+
+        <div class="ha-filters__row ha-filters__row--chips">
+          @for (t of allTypes; track t) {
+            <button class="ha-chip" type="button" [attr.data-type]="t"
+                    [class.ha-chip--on]="isTypeActive(t)"
+                    [attr.aria-pressed]="isTypeActive(t)"
+                    (click)="toggleType(t)">
+              <span class="ha-dot" [attr.data-type]="t" aria-hidden="true"></span>
+              {{ typeLabelFor(t) }}
+            </button>
+          }
+          <span class="ha-filters__divider" aria-hidden="true"></span>
+          <label class="ha-toggle">
+            <input type="checkbox" [(ngModel)]="onlyThirdParty" (ngModelChange)="applyFilters()">
+            {{ translate('tools.harAnalyzer.filter.thirdParty') }}
+          </label>
+          <label class="ha-toggle">
+            <input type="checkbox" [(ngModel)]="onlySlow" (ngModelChange)="applyFilters()">
+            {{ translate('tools.harAnalyzer.filter.slow') }}
+          </label>
+          <label class="ha-toggle">
+            <input type="checkbox" [(ngModel)]="hideCached" (ngModelChange)="applyFilters()">
+            {{ translate('tools.harAnalyzer.filter.hideCached') }}
+          </label>
+        </div>
+      </div>
+
+      <!-- Waterfall legend -->
+      <div class="ha-legend" aria-hidden="true">
+        @for (p of phaseLegend; track p.key) {
+          <span class="ha-legend__item"><span class="ha-legend__swatch" [attr.data-phase]="p.key"></span>{{ p.label }}</span>
+        }
+      </div>
+
+      <!-- Table -->
+      <div class="ha-tablewrap" [style.--ha-dcl]="dclPctCss" [style.--ha-load]="loadPctCss">
+        <table class="ha-table">
+          <thead>
+            <tr>
+              <th scope="col" class="ha-th ha-th--name">
+                <button type="button" (click)="sortBy('name')">{{ translate('tools.harAnalyzer.col.name') }} <span aria-hidden="true">{{ sortIndicator('name') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--num">
+                <button type="button" (click)="sortBy('status')">{{ translate('tools.harAnalyzer.col.status') }} <span aria-hidden="true">{{ sortIndicator('status') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--type">
+                <button type="button" (click)="sortBy('type')">{{ translate('tools.harAnalyzer.col.type') }} <span aria-hidden="true">{{ sortIndicator('type') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--domain">
+                <button type="button" (click)="sortBy('domain')">{{ translate('tools.harAnalyzer.col.domain') }} <span aria-hidden="true">{{ sortIndicator('domain') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--num">
+                <button type="button" (click)="sortBy('transferSize')">{{ translate('tools.harAnalyzer.col.size') }} <span aria-hidden="true">{{ sortIndicator('transferSize') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--num">
+                <button type="button" (click)="sortBy('duration')">{{ translate('tools.harAnalyzer.col.time') }} <span aria-hidden="true">{{ sortIndicator('duration') }}</span></button>
+              </th>
+              <th scope="col" class="ha-th ha-th--wf">
+                <button type="button" class="ha-th__wfbtn" (click)="sortBy('startOffset')">
+                  {{ translate('tools.harAnalyzer.col.waterfall') }} <span aria-hidden="true">{{ sortIndicator('startOffset') }}</span>
+                </button>
+                <span class="ha-ruler" aria-hidden="true">
+                  @for (tick of rulerTicks; track tick.pct) {
+                    <span class="ha-ruler__tick" [style.left.%]="tick.pct">{{ tick.label }}</span>
+                  }
+                  @if (analysis.domContentLoaded !== null) {
+                    <span class="ha-ruler__marker ha-ruler__marker--dcl" [style.left.%]="markerPct(analysis.domContentLoaded)" title="DOMContentLoaded">DCL</span>
+                  }
+                  @if (analysis.onLoad !== null) {
+                    <span class="ha-ruler__marker ha-ruler__marker--load" [style.left.%]="markerPct(analysis.onLoad)" title="Load event">Load</span>
+                  }
+                </span>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of visibleRows; track row.index) {
+              <tr class="ha-row"
+                  [class.ha-row--open]="expandedIndex === row.index"
+                  [class.ha-row--cached]="row.fromCache"
+                  (click)="toggleRow(row)">
+                <td class="ha-td ha-td--name">
+                  <button class="ha-row__toggle" type="button" [attr.aria-expanded]="expandedIndex === row.index" [attr.aria-label]="'Details for ' + row.name">
+                    <span class="ha-chevron" [class.ha-chevron--open]="expandedIndex === row.index" aria-hidden="true">›</span>
+                  </button>
+                  <span class="ha-dot" [attr.data-type]="row.type" aria-hidden="true"></span>
+                  <span class="ha-row__name" [title]="row.url">{{ row.name }}</span>
+                  @if (row.thirdParty) { <span class="ha-tag ha-tag--3p">3P</span> }
+                  @if (row.fromCache) { <span class="ha-tag ha-tag--cache">cache</span> }
+                </td>
+                <td class="ha-td ha-td--num">
+                  <span class="ha-status" [class]="'ha-status--' + row.statusClass">{{ row.status || '—' }}</span>
+                </td>
+                <td class="ha-td ha-td--type">{{ typeLabelFor(row.type) }}</td>
+                <td class="ha-td ha-td--domain" [title]="row.domain">{{ row.domain }}</td>
+                <td class="ha-td ha-td--num">{{ row.sizeLabel }}</td>
+                <td class="ha-td ha-td--num">{{ row.timeLabel }}</td>
+                <td class="ha-td ha-wf">
+                  <span class="ha-wf__bar" [style.left.%]="row.leftPct" [style.width.%]="row.widthPct" [title]="row.timeLabel">
+                    @for (seg of row.segments; track seg.key) {
+                      <span class="ha-wf__seg" [attr.data-phase]="seg.key" [style.width.%]="seg.pct"></span>
+                    }
+                  </span>
+                </td>
+              </tr>
+
+              @if (expandedIndex === row.index) {
+                <tr class="ha-detailrow">
+                  <td class="ha-detailcell" colspan="7">
+                    <div class="ha-detail">
+                      <p class="ha-detail__url"><span class="ha-detail__method">{{ row.method }}</span> {{ row.url }}</p>
+
+                      <div class="ha-detail__tabs" role="tablist">
+                        <button type="button" role="tab" [attr.aria-selected]="detailTab === 'headers'" [class.ha-detail__tab--on]="detailTab === 'headers'" class="ha-detail__tab" (click)="detailTab = 'headers'; $event.stopPropagation()">{{ translate('tools.harAnalyzer.detail.headers') }}</button>
+                        <button type="button" role="tab" [attr.aria-selected]="detailTab === 'body'" [class.ha-detail__tab--on]="detailTab === 'body'" class="ha-detail__tab" (click)="detailTab = 'body'; $event.stopPropagation()">{{ translate('tools.harAnalyzer.detail.body') }}</button>
+                        <button type="button" role="tab" [attr.aria-selected]="detailTab === 'timing'" [class.ha-detail__tab--on]="detailTab === 'timing'" class="ha-detail__tab" (click)="detailTab = 'timing'; $event.stopPropagation()">{{ translate('tools.harAnalyzer.detail.timing') }}</button>
+                      </div>
+
+                      @if (snapshotMode) {
+                        <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.snapshot') }}</p>
+                      } @else if (detailLoading) {
+                        <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.loading') }}</p>
+                      } @else if (detail) {
+
+                        @if (detailTab === 'headers') {
+                          <div class="ha-detail__cols">
+                            <div>
+                              <h4 class="ha-detail__h">{{ translate('tools.harAnalyzer.detail.reqHeaders') }} <span>({{ detail.requestHeaders.length }})</span></h4>
+                              <dl class="ha-kv">
+                                @for (h of detail.requestHeaders; track $index) {
+                                  <div class="ha-kv__row"><dt>{{ h.name }}</dt><dd>{{ h.value }}</dd></div>
+                                }
+                                @if (!detail.requestHeaders.length) { <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.none') }}</p> }
+                              </dl>
+                            </div>
+                            <div>
+                              <h4 class="ha-detail__h">{{ translate('tools.harAnalyzer.detail.resHeaders') }} <span>({{ detail.responseHeaders.length }})</span></h4>
+                              <dl class="ha-kv">
+                                @for (h of detail.responseHeaders; track $index) {
+                                  <div class="ha-kv__row"><dt>{{ h.name }}</dt><dd>{{ h.value }}</dd></div>
+                                }
+                                @if (!detail.responseHeaders.length) { <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.none') }}</p> }
+                              </dl>
+                            </div>
+                          </div>
+
+                          @if (detail.queryString.length) {
+                            <h4 class="ha-detail__h">{{ translate('tools.harAnalyzer.detail.query') }}</h4>
+                            <dl class="ha-kv">
+                              @for (q of detail.queryString; track $index) {
+                                <div class="ha-kv__row"><dt>{{ q.name }}</dt><dd>{{ q.value }}</dd></div>
+                              }
+                            </dl>
+                          }
+                        }
+
+                        @if (detailTab === 'body') {
+                          @if (detail.postData) {
+                            <h4 class="ha-detail__h">{{ translate('tools.harAnalyzer.detail.payload') }} <span>{{ detail.postDataMime }}</span></h4>
+                            <pre class="ha-code">{{ detail.postData }}</pre>
+                          }
+                          <h4 class="ha-detail__h">{{ translate('tools.harAnalyzer.detail.response') }} <span>{{ detail.bodyMime }}</span></h4>
+                          @if (detail.bodyBinary) {
+                            <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.binary') }}</p>
+                          } @else if (detail.bodyPreview) {
+                            <pre class="ha-code">{{ detail.bodyPreview }}</pre>
+                            @if (detail.bodyTruncated) {
+                              <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.truncated') }}</p>
+                            }
+                          } @else {
+                            <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.noBody') }}</p>
+                          }
+                        }
+
+                        @if (detailTab === 'timing') {
+                          @if (detail.timingUnavailable) {
+                            <p class="ha-detail__empty">{{ translate('tools.harAnalyzer.detail.noTiming') }}</p>
+                          } @else {
+                            <ul class="ha-phases">
+                              @for (p of phaseLegend; track p.key) {
+                                <li class="ha-phases__row">
+                                  <span class="ha-legend__swatch" [attr.data-phase]="p.key" aria-hidden="true"></span>
+                                  <span class="ha-phases__label">{{ p.label }}</span>
+                                  <span class="ha-phases__track">
+                                    <span class="ha-phases__fill" [attr.data-phase]="p.key"
+                                          [style.width.%]="barPct($any(detail.phases)[p.key], row.duration)"></span>
+                                  </span>
+                                  <span class="ha-phases__value">{{ formatMs($any(detail.phases)[p.key]) }}</span>
+                                </li>
+                              }
+                            </ul>
+                          }
+                          <dl class="ha-kv ha-kv--compact">
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.protocol') }}</dt><dd>{{ row.protocol || '—' }}</dd></div>
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.serverIp') }}</dt><dd>{{ row.serverIP || '—' }}</dd></div>
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.priority') }}</dt><dd>{{ row.priority || '—' }}</dd></div>
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.initiator') }}</dt><dd>{{ row.initiator || '—' }}</dd></div>
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.startedAt') }}</dt><dd>{{ formatMs(row.startOffset) }}</dd></div>
+                            <div class="ha-kv__row"><dt>{{ translate('tools.harAnalyzer.detail.contentSize') }}</dt><dd>{{ formatBytes(row.contentSize) }}</dd></div>
+                          </dl>
+                        }
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+
+            @if (!filtered.length) {
+              <tr><td class="ha-empty" colspan="7">{{ translate('tools.harAnalyzer.table.empty') }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (filtered.length > visibleLimit) {
+        <div class="ha-more">
+          <button class="ha-btn ha-btn--ghost" type="button" (click)="showMore()">
+            {{ translate('tools.harAnalyzer.table.showMore') }} ({{ filtered.length - visibleLimit }} {{ translate('tools.harAnalyzer.table.remaining') }})
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+  <app-embed-code-generator toolSlug="har-analyzer" toolName="HAR File Analyzer"></app-embed-code-generator>
+
+  <app-newsletter-capture [source]="'tool_page_inline'" [toolSlug]="'har-analyzer'"></app-newsletter-capture>
+
+  <app-affiliate-cta [category]="'DevOps'" [toolSlug]="'har-analyzer'"></app-affiliate-cta>
+
+  <app-related-tools [currentToolId]="'har-analyzer'"></app-related-tools>
+
+</div>
