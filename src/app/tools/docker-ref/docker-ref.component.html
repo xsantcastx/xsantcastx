@@ -65,7 +65,7 @@
               <input
                 type="text"
                 class="docker-search-input"
-                placeholder="Search directives (e.g. image, volumes, depends_on)..."
+                [placeholder]="translate('tools.dockerRef.ph.search')"
                 [(ngModel)]="searchQuery"
                 (input)="onSearchInput()">
             </div>

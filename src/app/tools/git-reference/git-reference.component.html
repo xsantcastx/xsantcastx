@@ -35,7 +35,7 @@
         type="text"
         [(ngModel)]="searchQuery"
         (ngModelChange)="onSearchInput()"
-        placeholder="Search by command (e.g. rebase) or description (e.g. squash commits)..."
+        [placeholder]="translate('tools.gitReference.ph.search')"
         spellcheck="false"
         autocomplete="off"
         autocorrect="off"

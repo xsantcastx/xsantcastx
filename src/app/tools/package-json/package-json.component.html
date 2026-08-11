@@ -65,7 +65,7 @@
         <div class="pj-panel__header"><span class="pj-panel__title">Keywords</span></div>
         <div class="pj-keywords">
           <div class="pj-kw-input-row">
-            <input class="pj-input" [(ngModel)]="newKeyword" (keyup.enter)="addKeyword()" placeholder="Add keyword..." />
+            <input class="pj-input" [(ngModel)]="newKeyword" (keyup.enter)="addKeyword()" [placeholder]="translate('tools.packageJson.ph.keyword')" />
             <button class="pj-btn-ghost" (click)="addKeyword()">Add</button>
           </div>
           @if (keywords.length) {
