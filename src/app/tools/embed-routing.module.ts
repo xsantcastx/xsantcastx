@@ -39,6 +39,7 @@ const routes: Routes = [
   { path: 'meta-tag-generator', loadComponent: () => import('./meta-tag-generator/meta-tag-generator.component').then(m => m.MetaTagGeneratorComponent), data: { embed: true } },
   { path: 'env-validator', loadComponent: () => import('./env-validator/env-validator.component').then(m => m.EnvValidatorComponent), data: { embed: true } },
   { path: 'font-pairer', loadComponent: () => import('./font-pairer/font-pairer.component').then(m => m.FontPairerComponent), data: { embed: true } },
+  { path: 'regex-builder', loadComponent: () => import('./regex-builder/regex-builder.component').then(m => m.RegexBuilderComponent), data: { embed: true } },
   { path: 'cron-builder', loadComponent: () => import('./cron-builder/cron-builder.component').then(m => m.CronBuilderComponent), data: { embed: true } },
   { path: 'api-request-builder', loadComponent: () => import('./api-request-builder/api-request-builder.component').then(m => m.ApiRequestBuilderComponent), data: { embed: true } },
   { path: 'json-to-ts', loadComponent: () => import('./json-to-ts/json-to-ts.component').then(m => m.JsonToTsComponent), data: { embed: true } },
