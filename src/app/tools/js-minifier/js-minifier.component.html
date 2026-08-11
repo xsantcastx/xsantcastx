@@ -29,7 +29,7 @@
         </div>
       </div>
       <div class="jsm-panel__body--code">
-        <textarea class="jsm-textarea" [(ngModel)]="input" (ngModelChange)="onInput()" placeholder="Paste JavaScript code here..." spellcheck="false"></textarea>
+        <textarea class="jsm-textarea" [(ngModel)]="input" (ngModelChange)="onInput()" [placeholder]="translate('tools.jsMinifier.ph.input')" spellcheck="false"></textarea>
       </div>
     </div>
 

@@ -19,11 +19,11 @@
       <div class="ogp-panel">
         <div class="ogp-panel__header"><span class="ogp-panel__title">OG Tags</span></div>
         <div class="ogp-form">
-          <div class="ogp-field"><label class="ogp-label">Title</label><input class="ogp-input" [(ngModel)]="ogTitle" (ngModelChange)="onTitleChange()" placeholder="My Awesome Page" aria-label="Title" /></div>
-          <div class="ogp-field"><label class="ogp-label">Description</label><textarea class="ogp-input ogp-input--area" [(ngModel)]="ogDescription" placeholder="A brief description of your page..." rows="3" aria-label="Description"></textarea></div>
+          <div class="ogp-field"><label class="ogp-label">Title</label><input class="ogp-input" [(ngModel)]="ogTitle" (ngModelChange)="onTitleChange()" [placeholder]="translate('tools.ogImagePreview.ph.title')" aria-label="Title" /></div>
+          <div class="ogp-field"><label class="ogp-label">Description</label><textarea class="ogp-input ogp-input--area" [(ngModel)]="ogDescription" [placeholder]="translate('tools.ogImagePreview.ph.description')" rows="3" aria-label="Description"></textarea></div>
           <div class="ogp-field"><label class="ogp-label">Image URL</label><input class="ogp-input" [(ngModel)]="ogImage" placeholder="https://example.com/image.jpg" aria-label="Image URL" /></div>
           <div class="ogp-field"><label class="ogp-label">Page URL</label><input class="ogp-input" [(ngModel)]="ogUrl" placeholder="https://example.com/page" aria-label="Page URL" /></div>
-          <div class="ogp-field"><label class="ogp-label">Site Name</label><input class="ogp-input" [(ngModel)]="ogSiteName" placeholder="My Website" aria-label="Site Name" /></div>
+          <div class="ogp-field"><label class="ogp-label">Site Name</label><input class="ogp-input" [(ngModel)]="ogSiteName" [placeholder]="translate('tools.ogImagePreview.ph.siteName')" aria-label="Site Name" /></div>
           <div class="ogp-actions">
             <button class="ogp-btn-ghost" (click)="clearAll()">{{ translate('tools.common.clear') }}</button>
           </div>

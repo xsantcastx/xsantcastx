@@ -54,7 +54,7 @@
             class="sr-textarea"
             [(ngModel)]="textInput"
             (ngModelChange)="onInput()"
-            placeholder="Type or paste text to repeat...&#10;&#10;e.g. Hello, World!"
+            [placeholder]="translate('tools.stringRepeater.ph.text')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"
@@ -121,7 +121,7 @@
                 class="sr-text-input"
                 [(ngModel)]="customSeparator"
                 (ngModelChange)="onOptionChange()"
-                placeholder="Enter custom separator..." aria-label="Separator"
+                [placeholder]="translate('tools.stringRepeater.ph.separator')" aria-label="Separator"
                 />
             }
           </div>

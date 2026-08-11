@@ -57,7 +57,7 @@
             class="cm-textarea"
             [(ngModel)]="cssInput"
             (ngModelChange)="onInput()"
-            placeholder="Paste or type your CSS here...&#10;&#10;e.g. .container { display: flex; gap: 1rem; }"
+            [placeholder]="translate('tools.cssMinifier.ph.input')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"

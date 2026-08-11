@@ -264,7 +264,7 @@
                       class="section-input"
                       [value]="section.name"
                       (input)="updateSectionName(section.id, $any($event.target).value)"
-                      placeholder="Section name"
+                      [placeholder]="translate('tools.pdfGenerator.ph.sectionName')"
                       aria-label="Section name"
                       />
                     <input
@@ -272,7 +272,7 @@
                       class="section-input section-input--sub"
                       [value]="section.subtitle"
                       (input)="updateSectionSubtitle(section.id, $any($event.target).value)"
-                      placeholder="Section subtitle (optional)"
+                      [placeholder]="translate('tools.pdfGenerator.ph.sectionSubtitle')"
                       aria-label="Section subtitle"
                       />
                   </div>
@@ -397,7 +397,7 @@
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.name"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'name', $any($event.target).value)"
-                            placeholder="Product name" aria-label="Name" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.productName')" aria-label="Name" />
                         </div>
                         <div class="product-editor__field product-editor__field--full">
                           <label class="editor-field-label">Short description</label>
@@ -431,49 +431,49 @@
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.sku"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'sku', $any($event.target).value)"
-                            placeholder="e.g. CHR-001" aria-label="SKU" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.sku')" aria-label="SKU" />
                         </div>
                         <div class="product-editor__field">
                           <label class="editor-field-label">Category</label>
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.category"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'category', $any($event.target).value)"
-                            placeholder="e.g. Rings" aria-label="Category" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.category')" aria-label="Category" />
                         </div>
                         <div class="product-editor__field">
                           <label class="editor-field-label">Dimensions</label>
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.dimensions"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'dimensions', $any($event.target).value)"
-                            placeholder="e.g. 12 × 8 cm" aria-label="Dimensions" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.dimensions')" aria-label="Dimensions" />
                         </div>
                         <div class="product-editor__field">
                           <label class="editor-field-label">Materials</label>
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.materials"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'materials', $any($event.target).value)"
-                            placeholder="e.g. 18k Gold" aria-label="Materials" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.material')" aria-label="Materials" />
                         </div>
                         <div class="product-editor__field">
                           <label class="editor-field-label">Colors</label>
                           <input type="text" class="editor-field-input"
                             [value]="expandedProduct!.colors"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'colors', $any($event.target).value)"
-                            placeholder="e.g. Rose Gold" aria-label="Colors" />
+                            [placeholder]="translate('tools.pdfGenerator.ph.finish')" aria-label="Colors" />
                         </div>
                         <div class="product-editor__field product-editor__field--full">
                           <label class="editor-field-label">Long description</label>
                           <textarea class="editor-field-input editor-field-input--textarea" rows="3"
                             [value]="expandedProduct!.longDescription"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'longDescription', $any($event.target).value)"
-                          placeholder="Extended product description…" aria-label="Long description"></textarea>
+                          [placeholder]="translate('tools.pdfGenerator.ph.longDescription')" aria-label="Long description"></textarea>
                         </div>
                         <div class="product-editor__field product-editor__field--full">
                           <label class="editor-field-label">Notes</label>
                           <textarea class="editor-field-input editor-field-input--textarea" rows="2"
                             [value]="expandedProduct!.notes"
                             (input)="updateProductField(expandedSection!.id, expandedProduct!.id, 'notes', $any($event.target).value)"
-                          placeholder="Internal or customer notes…" aria-label="Notes"></textarea>
+                          [placeholder]="translate('tools.pdfGenerator.ph.notes')" aria-label="Notes"></textarea>
                         </div>
                       </div>
                     </div>
@@ -619,13 +619,13 @@
         <!-- Brand -->
         <div class="config-group">
           <label class="config-label" for="pdf-brand">{{ translate('tools.pdf.brand') }}</label>
-          <input id="pdf-brand" type="text" class="config-input" [(ngModel)]="config.brand" (ngModelChange)="onConfigChange()" placeholder="e.g. Pandora" maxlength="40" />
+          <input id="pdf-brand" type="text" class="config-input" [(ngModel)]="config.brand" (ngModelChange)="onConfigChange()" [placeholder]="translate('tools.pdfGenerator.ph.brand')" maxlength="40" />
         </div>
 
         <!-- Title -->
         <div class="config-group">
           <label class="config-label" for="pdf-title">{{ translate('tools.pdf.doc.title') }}</label>
-          <input id="pdf-title" type="text" class="config-input" [(ngModel)]="config.title" (ngModelChange)="onConfigChange()" placeholder="e.g. Spring Collection 2025" maxlength="80" />
+          <input id="pdf-title" type="text" class="config-input" [(ngModel)]="config.title" (ngModelChange)="onConfigChange()" [placeholder]="translate('tools.pdfGenerator.ph.collection')" maxlength="80" />
         </div>
 
         <!-- Subtitle -->

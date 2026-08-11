@@ -58,7 +58,7 @@
             class="tc-textarea"
             [(ngModel)]="textInput"
             (ngModelChange)="onInput()"
-            placeholder="Paste or type text to convert&#10;&#10;e.g. the quick brown fox jumps over the lazy dog"
+            [placeholder]="translate('tools.caseConverter.ph.input')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"

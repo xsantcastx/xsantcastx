@@ -124,7 +124,7 @@
               class="il-input"
               [(ngModel)]="validateInput"
               (ngModelChange)="onValidateInput()"
-              placeholder="e.g. 192.168.1.1 or 2001:db8::1"
+              [placeholder]="translate('tools.ipLookup.ph.address')"
               spellcheck="false"
               autocomplete="off"
               />
@@ -176,7 +176,7 @@
                   type="text"
                   class="il-input"
                   [(ngModel)]="subnetIp"
-                  placeholder="e.g. 192.168.1.0"
+                  [placeholder]="translate('tools.ipLookup.ph.network')"
                   spellcheck="false"
                   autocomplete="off"
                   />

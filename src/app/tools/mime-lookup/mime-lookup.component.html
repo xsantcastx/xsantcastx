@@ -15,7 +15,7 @@
   </header>
 
   <div class="ml-search-bar">
-    <input type="text" class="ml-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" placeholder="Search by extension (.png) or MIME type (image/png)..." />
+    <input type="text" class="ml-search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" [placeholder]="translate('tools.mimeLookup.ph.search')" />
     <span class="ml-count">{{ filteredMimeTypes.length }} results</span>
   </div>
 

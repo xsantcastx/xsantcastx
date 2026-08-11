@@ -59,7 +59,7 @@
               class="mt-input"
               [(ngModel)]="data.title"
               (ngModelChange)="onTitleChange()"
-              placeholder="My Awesome Page - Brand Name" aria-label="Page Title"
+              [placeholder]="translate('tools.metaTagGenerator.ph.title')" aria-label="Page Title"
               />
             @if (titleWarning) {
               <span class="mt-field__hint">Title exceeds recommended {{ titleMaxLength }} characters for SEO.</span>
@@ -78,7 +78,7 @@
               class="mt-textarea"
               [(ngModel)]="data.description"
               (ngModelChange)="onDescriptionChange()"
-              placeholder="A brief description of your page content for search engines..."
+              [placeholder]="translate('tools.metaTagGenerator.ph.description')"
               rows="3" aria-label="Meta Description"
             ></textarea>
             @if (descriptionWarning) {
@@ -122,11 +122,11 @@
         <div class="mt-card__body">
           <div class="mt-field">
             <label class="mt-field__label">og:title</label>
-            <input type="text" class="mt-input" [(ngModel)]="data.ogTitle" placeholder="Override title for social sharing" [disabled]="syncOg" aria-label="og:title" />
+            <input type="text" class="mt-input" [(ngModel)]="data.ogTitle" [placeholder]="translate('tools.metaTagGenerator.ph.ogTitle')" [disabled]="syncOg" aria-label="og:title" />
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:description</label>
-            <textarea class="mt-textarea" [(ngModel)]="data.ogDescription" placeholder="Override description for social sharing" rows="2" [disabled]="syncOg" aria-label="og:description"></textarea>
+            <textarea class="mt-textarea" [(ngModel)]="data.ogDescription" [placeholder]="translate('tools.metaTagGenerator.ph.ogDescription')" rows="2" [disabled]="syncOg" aria-label="og:description"></textarea>
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:image</label>
@@ -134,7 +134,7 @@
           </div>
           <div class="mt-field">
             <label class="mt-field__label">og:url</label>
-            <input type="url" class="mt-input" [(ngModel)]="data.ogUrl" placeholder="Page URL" [disabled]="syncOg" aria-label="og:url" />
+            <input type="url" class="mt-input" [(ngModel)]="data.ogUrl" [placeholder]="translate('tools.metaTagGenerator.ph.pageUrl')" [disabled]="syncOg" aria-label="og:url" />
           </div>
           <div class="mt-field-row">
             <div class="mt-field">
@@ -147,7 +147,7 @@
             </div>
             <div class="mt-field">
               <label class="mt-field__label">og:site_name</label>
-              <input type="text" class="mt-input" [(ngModel)]="data.ogSiteName" placeholder="Your Brand" aria-label="og:site_name" />
+              <input type="text" class="mt-input" [(ngModel)]="data.ogSiteName" [placeholder]="translate('tools.metaTagGenerator.ph.siteName')" aria-label="og:site_name" />
             </div>
           </div>
         </div>
@@ -173,15 +173,15 @@
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:title</label>
-            <input type="text" class="mt-input" [(ngModel)]="data.twitterTitle" placeholder="Override title for Twitter" [disabled]="syncTwitter" aria-label="twitter:title" />
+            <input type="text" class="mt-input" [(ngModel)]="data.twitterTitle" [placeholder]="translate('tools.metaTagGenerator.ph.twitterTitle')" [disabled]="syncTwitter" aria-label="twitter:title" />
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:description</label>
-            <textarea class="mt-textarea" [(ngModel)]="data.twitterDescription" placeholder="Override description for Twitter" rows="2" [disabled]="syncTwitter" aria-label="twitter:description"></textarea>
+            <textarea class="mt-textarea" [(ngModel)]="data.twitterDescription" [placeholder]="translate('tools.metaTagGenerator.ph.twitterDescription')" rows="2" [disabled]="syncTwitter" aria-label="twitter:description"></textarea>
           </div>
           <div class="mt-field">
             <label class="mt-field__label">twitter:image</label>
-            <input type="url" class="mt-input" [(ngModel)]="data.twitterImage" placeholder="Override image for Twitter" [disabled]="syncTwitter" aria-label="twitter:image" />
+            <input type="url" class="mt-input" [(ngModel)]="data.twitterImage" [placeholder]="translate('tools.metaTagGenerator.ph.twitterImage')" [disabled]="syncTwitter" aria-label="twitter:image" />
           </div>
         </div>
       </div>

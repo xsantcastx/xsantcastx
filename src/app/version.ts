@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.2.1',
+  version: '2.4.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
@@ -34,6 +34,28 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.4.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'Every input placeholder in every tool is now translated — 122 strings across 71 templates that a Spanish visitor previously read in English',
+      'Placeholders that carry no language are deliberately left alone: colour notation like "R, G, B (0-255)", CSS and SVG syntax samples, example.com URLs and SPF/DKIM records',
+      'The grocery list keeps its per-language name examples, because those describe what to type into that field rather than the interface language',
+      'Fixed 15 labels that showed a literal "&amp;" instead of "&" — six category eyebrows and nine tool titles stored an HTML entity that interpolation escaped a second time'
+    ]
+  },
+  {
+    version: '2.3.0',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'Public roadmap re-cut against what is actually being worked on — Now is mobile polish, i18n expansion and Blueprint content',
+      'Accessibility audit and security hardening left the Now column because both shipped (2.2.0 and the 2026-08-08 dependency sweep)',
+      'Every Now card links to the Dev Log entry telling its story',
+      'Liquid Glass CSS Studio dropped from Next'
+    ]
+  },
   {
     version: '2.2.1',
     codename: 'Blueprint',
