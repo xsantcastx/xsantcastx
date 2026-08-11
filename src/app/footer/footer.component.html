@@ -158,7 +158,13 @@
 
         <!-- PayPal Button Container -->
         <div class="payment-section">
-          @if (!isPayPalReady) {
+          @if (paypalSdkLoading) {
+            <div class="processing">
+              <i class="fas fa-spinner fa-spin"></i>
+              {{ translate('footer.processing') }}
+            </div>
+          }
+          @if (!isPayPalReady && !paypalSdkLoading) {
             <div class="loading-message">
               {{ translate('footer.processing') }}
             </div>
@@ -249,7 +255,13 @@
 
         <!-- Stripe Payment Section -->
         <div class="payment-section">
-          @if (!isStripeReady && !stripeProcessing) {
+          @if (stripeSdkLoading && !stripeProcessing) {
+            <div class="processing">
+              <i class="fas fa-spinner fa-spin"></i>
+              {{ translate('footer.processing') }}
+            </div>
+          }
+          @if (!isStripeReady && !stripeSdkLoading && !stripeProcessing) {
             <div class="loading-message">
               {{ translate('footer.stripe.notReady') }}
             </div>
