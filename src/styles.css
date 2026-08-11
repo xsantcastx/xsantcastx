@@ -2329,3 +2329,35 @@ summary:focus-visible {
     max-width: 100%;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   REALM BADGE
+   RealmService writes data-realm and --realm-* onto <html> on every tool
+   route. All 126 tool pages already share <header class="tool-header"> with a
+   category eyebrow, so this single rule puts a realm badge beside every tool
+   title without touching a single tool template.
+   ════════════════════════════════════════════════════════════════════════ */
+html[data-realm] .tool-header__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+html[data-realm] .tool-header__eyebrow::after {
+  content: var(--realm-name);
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  color: var(--realm-color);
+  border: 1px solid color-mix(in srgb, var(--realm-color) 45%, transparent);
+  background: color-mix(in srgb, var(--realm-color) 10%, transparent);
+  box-shadow: 0 0 14px -4px var(--realm-glow);
+  /* Deliberately quiet — it labels the page, it does not compete with the
+     title sitting directly underneath it. */
+  opacity: 0.85;
+}

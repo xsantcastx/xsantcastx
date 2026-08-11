@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.11.0',
+  version: '2.12.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Mythic',
+  codename: 'Five Realms',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.12.0',
+    codename: 'Five Realms',
+    date: '2026-08-11',
+    highlights: [
+      'The twelve registry categories are now grouped into five realms — Luminous (design), Umbral (security), Verge (code), Archivum (productivity) and Nexus (mail) — each with its own colour and a line from the Eclipse Realms codex',
+      '/tools gets a realm rail above the galaxy map: five chips with live tool counts (33 / 10 / 24 / 58 / 2), and picking one cuts the grid into realm sections with the realm header and its quote',
+      'Realm and category are two different cuts of the same list, so selecting one clears the other rather than intersecting into an empty result',
+      'Every tool page carries a realm badge beside its category eyebrow — added by one global rule keyed on a data-realm attribute, not by editing 126 templates',
+      'RealmService resolves route → tool → category → realm on each navigation and publishes it to CSS, clearing the variables again off a tool route so /home is never tinted by the last tool you opened',
+      'Realms agree with the energy split shipped in 2.10.0: Umbral and Verge feed Nox, the other three feed Aether'
+    ]
+  },
   {
     version: '2.11.0',
     codename: 'Mythic',
