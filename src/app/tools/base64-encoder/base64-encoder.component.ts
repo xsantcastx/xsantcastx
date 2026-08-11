@@ -5,6 +5,7 @@ import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 type ToolMode = 'encode' | 'decode';
 
@@ -22,6 +23,7 @@ export class Base64EncoderComponent implements OnDestroy {
   }
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Base64 Encoder & Decoder — encode text, files, URL-safe Base64. No sign-up 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools/base64-encoder')}`;
@@ -110,11 +112,22 @@ export class Base64EncoderComponent implements OnDestroy {
       this.output = result;
       this.outputCharCount = result.length;
       this.errorMessage = '';
+      this.checkEasterEggs(input);
     } catch {
       this.output = '';
       this.outputCharCount = 0;
       this.errorMessage = 'Encoding failed — unexpected error.';
     }
+  }
+
+  /**
+   * Two eggs live on the encoder. Both read the *plaintext* rather than the
+   * Base64 output, so they fire the same way whether or not URL-safe mode is on.
+   */
+  private checkEasterEggs(input: string) {
+    const normalised = input.trim().toLowerCase();
+    if (normalised === 'xsantcastx') this.eggs.trigger('b64-mirror');
+    if (normalised === 'secret') this.eggs.trigger('b64-decoder-ring');
   }
 
   // ── Decode ─────────────────────────────────────────────────────────────────

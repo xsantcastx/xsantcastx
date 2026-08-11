@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 
 type Framework = 'react-tsx' | 'react-jsx' | 'vue3' | 'angular';
@@ -32,6 +33,7 @@ interface A11yStatus {
 })
 export class SvgToCodeComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
 
   svgInput = '';
   componentName = 'MyIcon';
@@ -168,6 +170,11 @@ export class SvgToCodeComponent {
     this.generatedCode = this.buildComponent(svgToProcess, this.componentName);
     this.a11yStatus = this.computeA11yStatus(this.generatedCode);
     this.activeTab = 'output';
+
+    // Egg: a genuinely detailed icon. Counts opening tags on the source rather
+    // than the generated component, so the framework choice cannot change it.
+    const elementCount = (svgToProcess.match(/<[a-zA-Z][a-zA-Z0-9-]*[\s>/]/g) ?? []).length;
+    if (elementCount >= 50) this.eggs.trigger('svg-code');
   }
 
   getFrameworkLabel(): string {

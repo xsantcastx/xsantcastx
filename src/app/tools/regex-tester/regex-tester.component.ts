@@ -6,6 +6,7 @@ import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 
 interface MatchResult {
   index: number;
@@ -42,6 +43,7 @@ export class RegexTesterComponent implements OnDestroy {
   }
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Regex Tester — live match highlighting, capture groups & plain-English explanations. No sign-up 🔥')}&url=${encodeURIComponent(SITE_URL + '/tools/regex-tester')}`;
@@ -191,6 +193,13 @@ export class RegexTesterComponent implements OnDestroy {
     this.matches = this.collectMatches(regex);
     this.highlightedHtml = this.sanitizer.bypassSecurityTrustHtml(this.buildHighlightedHtml());
     this.explainTokens = this.explainRegex(this.pattern);
+
+    // Egg: both lookahead (?= / ?!) and lookbehind (?<= / ?<!) in one pattern.
+    // Checked only after the RegExp compiled, so it cannot fire on a typo that
+    // happens to contain the right characters.
+    if (/\(\?[=!]/.test(this.pattern) && /\(\?<[=!]/.test(this.pattern)) {
+      this.eggs.trigger('regex-master');
+    }
   }
 
   private collectMatches(regex: RegExp): MatchResult[] {

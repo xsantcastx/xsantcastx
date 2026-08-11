@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy } from '@angular/core';
+import { Component, HostListener, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { User } from '@angular/fire/auth';
 import { Subscription } from 'rxjs';
@@ -7,6 +7,7 @@ import { CatalogCloudService, CloudCatalog } from './catalog-cloud.service';
 import { AuthServiceService } from '../../auth-service.service';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import {
   BadgeType, CatalogPdfConfig, ColumnCount, DEFAULT_FIELD_CONFIGS,
   FieldConfig, FieldKey, Product, ProductImage, ProductSection, ProductStringFields
@@ -30,6 +31,7 @@ export interface PreviewPage {
     imports: [FormsModule, ToolsSharedModule]
 })
 export class PdfGeneratorComponent implements OnDestroy {
+  private readonly eggs = inject(EasterEggService);
 
   // ─── State ────────────────────────────────────────────────────────────────
 
@@ -707,6 +709,11 @@ export class PdfGeneratorComponent implements OnDestroy {
 
   async generate(): Promise<void> {
     if (!this.hasProducts) return;
+
+    // Egg: a genuinely large catalogue. Checked before generation so it still
+    // fires on the attempt even if the PDF render itself fails.
+    if (this.totalProducts >= 20) this.eggs.trigger('pdf-catalog');
+
     this.generating = true;
     this.error = '';
     try {

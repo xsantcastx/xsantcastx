@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../translation.service';
 
@@ -55,6 +56,7 @@ export class GroceryManagerComponent implements OnInit {
   }
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly eggs = inject(EasterEggService);
   private readonly STORAGE_KEY = 'gm-items-v1';
   private readonly PREFS_KEY = 'gm-prefs-v1';
 
@@ -239,6 +241,10 @@ export class GroceryManagerComponent implements OnInit {
 
   /** Bulk: everything in the cart is bought → stamp + clear. */
   checkoutCart(): void {
+    // Egg: a proper weekly shop rather than a top-up run. Read before the loop
+    // empties the cart.
+    if (this.cartItems.length >= 20) this.eggs.trigger('grocery-big-shop');
+
     const today = this.todayISO();
     this.cartItems.forEach(i => {
       i.lastPurchased = today;
