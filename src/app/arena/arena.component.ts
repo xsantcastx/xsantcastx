@@ -1,41 +1,55 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { EasterEggService, EASTER_EGGS, EasterEgg } from '../shared/easter-eggs/easter-egg.service';
+import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import {
+  EclipseRarity,
+  RarityDefinition,
+  rarityOf,
+  tierForEgg,
+} from '../shared/rarity/rarity.model';
 
-export interface GameCard {
+export interface ArenaGame {
   id: string;
   title: string;
   description: string;
   icon: string;
+  /** The egg that opens this gate. */
   unlockEggId: string;
   unlockHint: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
   locked: boolean;
+  /**
+   * Derived, never authored: a game inherits the tier of the egg that unlocks
+   * it. That way the ladder means one thing across the whole site — a red
+   * border on an arena card and a red drop toast are the same claim.
+   */
+  tier: EclipseRarity;
+  rarity: RarityDefinition;
 }
 
+/** The registry, before tiers are resolved from the egg ladder. */
+type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity'>;
+
 @Component({
-  selector: 'app-games',
-  templateUrl: './games.component.html',
-  styleUrls: ['./games.component.css'],
+  selector: 'app-arena',
+  templateUrl: './arena.component.html',
+  styleUrls: ['./arena.component.css'],
   standalone: false
 })
-export class GamesComponent implements OnInit {
+export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 
   totalEggs = EASTER_EGGS.length;
   foundCount = 0;
 
-  readonly games: GameCard[] = [
+  private readonly seeds: GameSeed[] = [
     {
       id: 'shadow-puzzle',
       title: 'Shadow Puzzle',
       description: 'Stack and match shadow layers to recreate a target design. How few layers can you use?',
       icon: '👤',
       unlockEggId: 'shadow-lord',
-      unlockHint: 'Unlock by creating a box shadow with 5+ layers in the Box Shadow Generator',
-      rarity: 'rare',
-      locked: true
+      unlockHint: 'Create a box shadow with 5+ layers in the Box Shadow Generator',
     },
     {
       id: 'regex-race',
@@ -43,9 +57,7 @@ export class GamesComponent implements OnInit {
       description: 'Write the shortest regex that matches all green strings but none of the red ones. Race the clock.',
       icon: '🧙',
       unlockEggId: 'regex-master',
-      unlockHint: 'Unlock by writing a regex with both lookahead and lookbehind in the Regex Tester',
-      rarity: 'epic',
-      locked: true
+      unlockHint: 'Write a regex with both lookahead and lookbehind in the Regex Tester',
     },
     {
       id: 'json-tower',
@@ -53,9 +65,7 @@ export class GamesComponent implements OnInit {
       description: 'How deep can you nest? Build the deepest valid JSON structure without breaking the formatter.',
       icon: '🌀',
       unlockEggId: 'json-inception',
-      unlockHint: 'Unlock by formatting JSON nested 10+ levels deep in the JSON Formatter',
-      rarity: 'rare',
-      locked: true
+      unlockHint: 'Format JSON nested 10+ levels deep in the JSON Formatter',
     },
     {
       id: 'uuid-lottery',
@@ -63,9 +73,7 @@ export class GamesComponent implements OnInit {
       description: 'Generate UUIDs until you hit a lucky pattern. Leaderboard tracks your streak.',
       icon: '🎰',
       unlockEggId: 'uuid-lucky',
-      unlockHint: 'Unlock by generating a UUID starting with "000" in the UUID Generator',
-      rarity: 'epic',
-      locked: true
+      unlockHint: 'Generate a UUID starting with "000" in the UUID Generator',
     },
     {
       id: 'color-memory',
@@ -73,9 +81,7 @@ export class GamesComponent implements OnInit {
       description: 'Match hex colors to their names from memory. Progressively harder palettes.',
       icon: '🎨',
       unlockEggId: 'color-void',
-      unlockHint: 'Unlock by converting pure black #000000 in the Color Converter',
-      rarity: 'common',
-      locked: true
+      unlockHint: 'Convert pure black #000000 in the Color Converter',
     },
     {
       id: 'chmod-chess',
@@ -83,9 +89,7 @@ export class GamesComponent implements OnInit {
       description: 'Navigate a filesystem grid using only permission changes. Reach root without hitting 000.',
       icon: '👑',
       unlockEggId: 'chmod-god',
-      unlockHint: 'Unlock by setting file permissions to 777 in the Chmod Calculator',
-      rarity: 'rare',
-      locked: true
+      unlockHint: 'Set file permissions to 777 in the Chmod Calculator',
     },
     {
       id: 'hash-hunt',
@@ -93,9 +97,7 @@ export class GamesComponent implements OnInit {
       description: 'Find inputs that produce hashes matching a given prefix. Proof-of-work for fun.',
       icon: '🌌',
       unlockEggId: 'hash-meaning',
-      unlockHint: 'Unlock by hashing the number "42" in the Hash Generator',
-      rarity: 'rare',
-      locked: true
+      unlockHint: 'Hash the number "42" in the Hash Generator',
     },
     {
       id: 'css-golf',
@@ -103,17 +105,28 @@ export class GamesComponent implements OnInit {
       description: 'Recreate a target UI with the fewest CSS characters. Par or better wins a badge.',
       icon: '⛳',
       unlockEggId: 'css-important',
-      unlockHint: 'Unlock by minifying CSS with 5+ !important declarations in the CSS Minifier',
-      rarity: 'rare',
-      locked: true
-    }
+      unlockHint: 'Minify CSS with 5+ !important declarations in the CSS Minifier',
+    },
   ];
+
+  /**
+   * Built once in the field initialiser so the template has real tiers to
+   * render during prerender — a server-rendered card shows the right border
+   * colour and the locked state, and hydration only flips what the visitor has
+   * actually unlocked.
+   */
+  games: ArenaGame[] = this.seeds.map(seed => {
+    const tier = tierForEgg(
+      seed.unlockEggId,
+      EASTER_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
+    );
+    return { ...seed, locked: true, tier, rarity: rarityOf(tier) };
+  });
 
   async ngOnInit(): Promise<void> {
     if (!this.isBrowser) return;
     await this.eggs.init();
     this.foundCount = this.eggs.foundCount;
-    // Resolve locked state based on discovered easter eggs
     for (const game of this.games) {
       game.locked = !this.eggs.isFound(game.unlockEggId);
     }
@@ -124,6 +137,19 @@ export class GamesComponent implements OnInit {
   }
 
   get progressPercent(): number {
-    return Math.round((this.foundCount / this.totalEggs) * 100);
+    return this.totalEggs > 0 ? Math.round((this.foundCount / this.totalEggs) * 100) : 0;
+  }
+
+  /**
+   * The rarest gate you have actually opened. Null until you open one — an
+   * arena stat that reports your best locked card would be meaningless.
+   */
+  get rarestUnlocked(): ArenaGame | null {
+    return this.games
+      .filter(g => !g.locked)
+      .reduce<ArenaGame | null>(
+        (best, g) => (!best || g.rarity.weight > best.rarity.weight ? g : best),
+        null
+      );
   }
 }

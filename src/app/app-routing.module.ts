@@ -6,7 +6,7 @@ import { ContactComponent } from './contact/contact.component';
 import { DonateComponent } from './donate/donate.component';
 import { LandingComponent } from './landing/landing.component';
 import { NotFoundComponent } from './not-found/not-found.component';
-import { GamesComponent } from './games/games.component';
+import { ArenaComponent } from './arena/arena.component';
 import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
@@ -154,14 +154,22 @@ const routes: Routes = [
       }
     },
   {
-      path: 'games',
-      component: GamesComponent,
-      title: 'Games & Easter Eggs — Unlock Hidden Games | xsantcastx',
+      path: 'arena',
+      component: ArenaComponent,
+      title: 'The Arena — Where Convergents Prove Their Worth | xsantcastx',
       data: {
-        description: 'Use tools to discover Easter eggs and unlock hidden mini-games. 106 secrets across 135 tools.',
-        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games',
+        description: 'Eight gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 139 secrets across the five realms.',
+        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, arena',
         ogImage: `${SITE_URL}/assets/og/og-default.jpg`
       }
+    },
+  {
+      // /games was the old address. The permanent redirect that search engines
+      // and external links need is the 301 in firebase.json — this entry only
+      // covers in-app navigation, where no HTTP request is made at all.
+      path: 'games',
+      redirectTo: 'arena',
+      pathMatch: 'full'
     },
   {
       path: 'guestbook',

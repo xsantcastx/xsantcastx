@@ -1196,3 +1196,171 @@ a.tool-card { text-decoration: none; color: inherit; }
     padding-top: 3rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   REALMS
+   The registry's twelve categories are an inventory; the five realms are the
+   world. The rail is a second cut of the same list, and selecting one switches
+   the grid into realm sections with the realm's line from the codex.
+   ════════════════════════════════════════════════════════════════════════════ */
+.realm-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 1.6rem;
+}
+
+.realm-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 6, 26, 0.55);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.realm-chip:hover,
+.realm-chip--active {
+  border-color: var(--realm-color);
+  box-shadow: 0 0 26px -10px var(--realm-glow);
+}
+
+.realm-chip--active {
+  background: color-mix(in srgb, var(--realm-color) 10%, rgba(10, 6, 26, 0.55));
+}
+
+/* The realm marker reuses the site's star-orb formula so a realm reads as a
+   body in the same cosmos, not a UI chip that wandered in. */
+.realm-chip__orb {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.3) 20%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(circle at 50% 50%, var(--realm-color) 0%, rgba(8, 3, 24, 0.92) 88%);
+  box-shadow: 0 0 10px var(--realm-glow);
+}
+
+.realm-chip__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.realm-chip__name {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #eafff9;
+}
+
+.realm-chip__domain {
+  font-size: 0.68rem;
+  color: #7d918c;
+}
+
+.realm-chip__count {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.72rem;
+  color: var(--realm-color);
+  opacity: 0.9;
+}
+
+/* ── Realm sections in the grid ── */
+.realm-section {
+  margin: 0 0 2.6rem;
+}
+
+.realm-section__head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0 0 0.9rem;
+  margin: 0 0 1.2rem;
+}
+
+/* The gradient cap line under every cosmic section header. */
+.realm-section__head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--realm-color), transparent 70%);
+  opacity: 0.5;
+}
+
+.realm-section__orb {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin-top: 0.2rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 44%),
+    radial-gradient(circle at 50% 50%, var(--realm-color) 0%, rgba(8, 3, 24, 0.92) 88%);
+  box-shadow: 0 0 16px var(--realm-glow);
+}
+
+.realm-section__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.realm-section__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 0.25rem;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: clamp(1.05rem, 2.4vw, 1.4rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--realm-color);
+}
+
+.realm-section__domain {
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7d918c;
+}
+
+.realm-section__quote {
+  margin: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #b9cdc7;
+  opacity: 0.85;
+}
+
+.realm-section__count {
+  flex: none;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 1.2rem;
+  color: var(--realm-color);
+  opacity: 0.6;
+}
+
+@media (max-width: 560px) {
+  .realm-chip__domain {
+    display: none;
+  }
+
+  .realm-section__count {
+    display: none;
+  }
+}

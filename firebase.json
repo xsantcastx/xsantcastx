@@ -71,6 +71,12 @@
         "source": "/",
         "destination": "/home",
         "type": 301
+      },
+      {
+        "//": "/games became /arena in 2.17.0. This is the redirect that matters — the Angular redirectTo route only fires for in-app navigation, where no HTTP request is made, so without this entry every external link and every indexed /games URL would 404 against the SPA fallback.",
+        "source": "/games",
+        "destination": "/arena",
+        "type": 301
       }
     ],
     "rewrites": [
