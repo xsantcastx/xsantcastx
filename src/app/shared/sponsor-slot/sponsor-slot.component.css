@@ -162,6 +162,23 @@
   pointer-events: none;
 }
 
+/* Touch — the CTA and dismiss are standalone controls, so they have to clear
+   the 44px minimum on a phone. Kept off pointer devices so the card stays as
+   compact as the affiliate/carbon units it sits alongside. */
+@media (hover: none) and (pointer: coarse) {
+  .sponsor-slot__cta {
+    min-height: 44px;
+  }
+
+  .sponsor-slot__dismiss {
+    width: 44px;
+    height: 44px;
+    /* Pull the larger hit area back into the card's visual rhythm so the
+       header row doesn't grow with it. */
+    margin: -9px -9px 0 0;
+  }
+}
+
 /* Reduced motion — drop the lift on hover */
 @media (prefers-reduced-motion: reduce) {
   .sponsor-slot,
