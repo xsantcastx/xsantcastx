@@ -1191,3 +1191,131 @@
     min-height: 44px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   /live was the least readable route on the site. The mission feed — the whole
+   point of the page — rendered 199 rows of .entry-text at 11.5px with 200
+   timestamps at 10.4px and 114 tool badges at 8.8px, and .metric-label sat at
+   0.48rem (7.7px).
+
+   .feed-entry is a nowrap flex row of [ts][dot][badge][text] where ts and badge
+   are flex-shrink: 0, so at 375px the text column had roughly 180px to work
+   with. Raising the type without changing that geometry would push the row
+   past the viewport. The row therefore wraps on mobile: the meta cluster
+   (timestamp, dot, badge) holds the first line and the message takes the full
+   width beneath it, which is also the conventional shape for a log on a narrow
+   screen. Same treatment for the chat rows.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Let the message claim a full-width line instead of a ~180px column. */
+  .feed-entry {
+    flex-wrap: wrap;
+    row-gap: 0.2rem;
+    padding: 0.45rem 0;
+  }
+
+  .entry-text {
+    flex: 1 0 100%;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .entry-detail {
+    flex: 1 0 100%;
+    font-size: 14px;
+  }
+
+  /* Meta cluster stays on its own line above the message. */
+  .entry-ts {
+    font-size: 12px;
+    margin-top: 0;
+  }
+
+  .entry-tool-badge {
+    font-size: 12px;
+    padding: 0.1rem 0.4rem;
+  }
+
+  /* Chat rows have the same shape problem. */
+  .msg-text,
+  .bot-text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .msg-name,
+  .bot-name,
+  .bot-ts,
+  .bot-icon {
+    font-size: 12px;
+  }
+
+  /* Panel furniture and status chrome. */
+  .metric-label,
+  .exec-label,
+  .bot-count,
+  .feed-count,
+  .panel-label,
+  .progress-pct,
+  .tool-row-count,
+  .status-item,
+  .live-badge,
+  .username-edit-hint,
+  .username-display,
+  .chat-viewer-eye {
+    font-size: 12px;
+  }
+
+  .tool-row-name,
+  .exec-tool,
+  .cursor-prompt,
+  .mission-name {
+    font-size: 14px;
+  }
+
+  /* The send button read at 8.8px — it is the only control in the chat
+     composer and needs to look like one. */
+  .chat-send-btn {
+    font-size: 14px;
+  }
+
+  /* Two per-type rules are compound selectors at (0,2,0) and beat the single
+     class rules above, which left 96 system entries at 11.5px and every
+     system chat name at 9.9px. Matching their specificity rather than
+     reaching for !important. */
+  .entry-system .entry-text {
+    font-size: 14px;
+  }
+
+  .msg-system .msg-name {
+    font-size: 12px;
+  }
+
+  /* Tool badges carry real MCP tool names — mcp__Claude_Browser__
+     read_console_messages measures 409px, wider than the 375px viewport. With
+     flex-shrink: 0 and the default min-width: auto the badge refused to
+     narrow, and an ancestor's overflow: hidden clipped it mid-word, so the
+     name was unreadable and the numeric overflow probe never saw it (it
+     discounts anything inside a clipping ancestor). Let it shrink and end in
+     an ellipsis instead. */
+  .entry-tool-badge {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The header clearance was applied twice: globally by main's padding-top and
+     again here, leaving 76px of dead space between the navbar and the LIVE
+     badge — with the 64px navbar above it, 152px of an 812px screen was gone
+     before any content. main already reserves the room; the mobile block above
+     unpins the paired height: calc(100vh - offset), so dropping the duplicate
+     is self-contained. */
+  .live-page {
+    padding-top: 0;
+  }
+}
