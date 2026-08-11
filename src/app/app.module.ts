@@ -37,7 +37,7 @@ import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { GamesComponent } from './games/games.component';
+import { ArenaComponent } from './arena/arena.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
 import { McpComponent } from './mcp/mcp.component';
@@ -64,7 +64,7 @@ import { McpComponent } from './mcp/mcp.component';
     EmbedBarComponent,
     MilestoneEffectComponent,
     CommandPaletteComponent,
-    GamesComponent,
+    ArenaComponent,
     McpComponent
   ],
   bootstrap: [AppComponent],

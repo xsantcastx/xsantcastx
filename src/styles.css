@@ -2032,8 +2032,8 @@ summary:focus-visible {
    35px tall.
 
    Scope note: WCAG 2.5.5 explicitly exempts targets inside a sentence, so
-   inline prose links (the email address on /contact, "the tools section" on
-   /games) are deliberately left alone — padding them to 44px would wreck the
+   inline prose links (the email address on /contact, "the tools" link on
+   /arena) are deliberately left alone — padding them to 44px would wreck the
    line boxes of the paragraphs they live in. Everything that is a standalone
    control gets the full target.
    ════════════════════════════════════════════════════════════════════════════ */

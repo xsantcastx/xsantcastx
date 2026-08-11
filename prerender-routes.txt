@@ -188,7 +188,7 @@
 /tools/image-resizer
 /embed/image-resizer
 /mcp
-/games
+/arena
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor
