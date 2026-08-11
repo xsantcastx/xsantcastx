@@ -5,6 +5,8 @@
   },
   "hosting": {
     "public": "dist/xsantcastx/browser",
+    "//trailingSlash": "Prerendering emits every route as <route>/index.html. With this key absent, Hosting falls back to its default 'trailing slashes only for directory index files' behaviour and 301s /home -> /home/, /tools/box-shadow-generator -> /tools/box-shadow-generator/, and so on for all 137 sitemap URLs. Every canonical tag SeoService writes omits the slash, so each canonical pointed at a URL that redirected — the sitemap advertised 137 redirects and Search Console files those as 'Page with redirect' instead of indexing them. false serves <route>/index.html at /route with no redirect and 301s the /route/ form back to /route, so canonical, sitemap and served URL finally agree. Safe here because no route exists as both <route>.html and <route>/index.html (that pair is what triggers the superstatic infinite-redirect bug).",
+    "trailingSlash": false,
     "ignore": [
       "firebase.json",
       "**/.*",
