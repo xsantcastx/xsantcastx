@@ -1054,6 +1054,20 @@ export class TranslationService {
     'tools.caseConverter.ph.input': { en: 'Paste or type text to convert\n\ne.g. the quick brown fox jumps over the lazy dog', es: 'Pega o escribe el texto a convertir\n\nej. el veloz murciélago hindú comía feliz cardillo y kiwi' },
     'tools.markdownEditor.ph.input': { en: 'Write your markdown here...\n\n# Heading\n**Bold**, _italic_, ~~strikethrough~~\n- List item\n> Blockquote', es: 'Escribe tu markdown aquí...\n\n# Encabezado\n**Negrita**, _cursiva_, ~~tachado~~\n- Elemento de lista\n> Cita' },
     'tools.httpStatus.ph.search': { en: 'Search by code (e.g. 404) or name (e.g. Not Found)...', es: 'Busca por código (ej. 404) o nombre (ej. Not Found)...' },
+
+    // Tool input placeholders — batch
+    'tools.mdTableGenerator.ph.csv': { en: 'Paste CSV data here...\n\nName,Role,Level\nAlice,Engineer,Senior\nBob,Designer,Mid', es: 'Pega datos CSV aquí...\n\nNombre,Puesto,Nivel\nAlicia,Ingeniera,Senior\nBeto,Disenador,Medio' },
+    'tools.colorName.ph.search': { en: 'Search colors...', es: 'Buscar colores...' },
+    'tools.npmSearch.ph.search': { en: 'Search npm packages... e.g. react, lodash, express', es: 'Busca paquetes npm... ej. react, lodash, express' },
+    'tools.crontabRef.ph.search': { en: 'Search expressions...', es: 'Buscar expresiones...' },
+    'tools.emojiPicker.ph.search': { en: 'Search emojis...', es: 'Buscar emojis...' },
+    'tools.asciiArt.ph.input': { en: 'Type something...', es: 'Escribe algo...' },
+    'tools.jsonPath.ph.search': { en: 'Search keys, values, or paths...', es: 'Busca claves, valores o rutas...' },
+    'tools.tailwindLookup.ph.search': { en: 'Search by class name or CSS property... e.g. flex, padding, 1rem', es: 'Busca por nombre de clase o propiedad CSS... ej. flex, padding, 1rem' },
+    'tools.envValidator.ph.input': { en: 'Paste your .env file content here...\n\n# Example\nAPP_NAME=MyApp\nDB_HOST=localhost\nAPI_KEY=sk_live_xxxxx', es: 'Pega el contenido de tu archivo .env aquí...\n\n# Ejemplo\nAPP_NAME=MiApp\nDB_HOST=localhost\nAPI_KEY=sk_live_xxxxx' },
+    'tools.lineSorter.ph.input': { en: 'Paste lines here...', es: 'Pega las líneas aquí...' },
+    'tools.encodingConverter.ph.input': { en: 'Type or paste text to convert...', es: 'Escribe o pega el texto a convertir...' },
+    'tools.apiRequestBuilder.ph.headerName': { en: 'Header name', es: 'Nombre de la cabecera' },
 };
 
   constructor() {

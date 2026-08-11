@@ -59,7 +59,7 @@
           <input
             class="cr-search__input"
             type="text"
-            placeholder="Search expressions..."
+            [placeholder]="translate('tools.crontabRef.ph.search')"
             [(ngModel)]="searchQuery"
             (input)="onSearchInput()"
             />

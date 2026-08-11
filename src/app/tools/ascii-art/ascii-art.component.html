@@ -23,7 +23,7 @@
         </div>
       </div>
       <div class="aa-input-wrap">
-        <input class="aa-input" [(ngModel)]="input" (ngModelChange)="generate()" placeholder="Type something..." maxlength="20" />
+        <input class="aa-input" [(ngModel)]="input" (ngModelChange)="generate()" [placeholder]="translate('tools.asciiArt.ph.input')" maxlength="20" />
         <span class="aa-hint">Max 20 characters</span>
       </div>
     </div>
