@@ -2223,13 +2223,34 @@ summary:focus-visible {
     font-size: 15px !important;
   }
 
+  /* The cookie banner's second line is a privacy disclosure — what is collected
+     and what is not. It rendered at 11.3px, which is the wrong size for the one
+     sentence on the site a user might read for legal rather than aesthetic
+     reasons. Treated as content, not fine print. */
+  .cookie-details small,
+  .cookie-banner small {
+    font-size: 14px;
+  }
+
+  /* The cosmic section eyebrow and tagline pair is shared by /contact,
+     /projects and /skills, and rendered at 11.2px and 11.5px. The tagline is a
+     full sentence, so it is content; the eyebrow is an uppercase label. */
+  .section-tagline,
+  .skills__tagline {
+    font-size: 14px !important;
+  }
+
   /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
+  .section-eyebrow,
+  .skills__eyebrow,
+  .footer-eyebrow,
   .build-version,
   .adsense-label,
   .carbon-ad-label,
   .rt-tag,
   .tool-header__eyebrow,
   .tool-usage__label,
+  .tool-usage__count,
   .aff-cta__sponsored,
   .aff-cta__badge,
   .link-label,
@@ -2254,6 +2275,17 @@ summary:focus-visible {
   input[type='color'] {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  /* The email address and GitHub URL on /contact are the primary action of the
+     card they sit in, not links inside a sentence, so the WCAG 2.5.5 prose
+     exemption does not cover them. They were 17px tall — they carry no class,
+     which is why the v2.1.0 sweep's explicit class list missed them. */
+  .method-info a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
   }
 
   /* The global 16px rule for form controls sits at specificity (0,0,1) and is
