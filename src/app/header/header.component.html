@@ -44,11 +44,18 @@
     <a routerLink="/tools" routerLinkActive="active" (click)="closeMobileMenu()">Tools</a>
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
-    <a routerLink="/games" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">🕹️ Games</a>
+    <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
     <a routerLink="/live" routerLinkActive="active" class="nav-live-link" (click)="closeMobileMenu()">
       <span class="nav-live-dot"></span>LIVE
     </a>
+    <!-- Drawer copy of the progression readout. The header row is already at
+         ~375px on a small phone, so the navbar instance is hidden below the
+         drawer breakpoint and this one takes over. -->
+    <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
   </nav>
+
+  <!-- Progression readout — rank, split Aether/Nox bar, streak -->
+  <app-xp-bar class="nav-xp"></app-xp-bar>
 
   <!-- Desktop Language Toggle -->
   <div class="language-toggle desktop-only">

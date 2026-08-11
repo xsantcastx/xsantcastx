@@ -35,9 +35,10 @@ import { AdsenseComponent } from './shared/adsense/adsense.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
-import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { GamesComponent } from './games/games.component';
+import { ArenaComponent } from './arena/arena.component';
+import { XpBarComponent } from './shared/gamification/xp-bar.component';
+import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
 import { McpComponent } from './mcp/mcp.component';
 
 
@@ -61,9 +62,8 @@ import { McpComponent } from './mcp/mcp.component';
     NotFoundComponent,
     EmbedBarComponent,
     MilestoneEffectComponent,
-    EggDiscoveryComponent,
     CommandPaletteComponent,
-    GamesComponent,
+    ArenaComponent,
     McpComponent
   ],
   bootstrap: [AppComponent],
@@ -71,7 +71,11 @@ import { McpComponent } from './mcp/mcp.component';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    CommonModule
+    CommonModule,
+    // Standalone — imported here so the (non-standalone) HeaderComponent and
+    // AppComponent templates can use them without the module graph moving.
+    XpBarComponent,
+    AchievementDropComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),

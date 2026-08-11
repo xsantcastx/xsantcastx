@@ -52,6 +52,29 @@ CSS vars on a card or orb:
 
 Brand globals: `--primary-color: #00ffcc`, `--secondary-color: #7b61ff`, `--highlight-color: #ff00ff`.
 
+### Realm palette (Eclipse Realms layer)
+
+The five realms group the twelve registry categories into a world. These are the **only** realm colors — `RealmService` writes the active one to `<html>` as `--realm-color` / `--realm-glow` / `--realm-name` on every tool route.
+
+| Realm | Covers | Color | Glow | Energy |
+|---|---|---|---|---|
+| **Luminous** | CSS Tools, CSS, CSS Generators, SVG Tools | `#E8D44D` gold | `rgba(232, 212, 77, 0.6)` | Aether |
+| **Umbral** | Security Tools | `#8B2252` wine | `rgba(139, 34, 82, 0.7)` | Nox |
+| **Verge** | Code Converters, DevOps, Reference | `#00d4ff` cyan | `rgba(0, 212, 255, 0.6)` | Nox |
+| **Archivum** | Productivity, Text & Data, SEO Tools | `#C9A84C` brass | `rgba(201, 168, 76, 0.6)` | Aether |
+| **Nexus** | Email Tools | `#10B981` emerald | `rgba(16, 185, 129, 0.6)` | Aether |
+
+### Rarity palette (drop ladder)
+
+| Tier | Color | Screen effect |
+|---|---|---|
+| **Mortal** | `#e8ecf1` white | corner toast |
+| **Eclipsed** | `#5fb6ff` blue | corner toast |
+| **Sacred** | `#a48bff` violet | corner toast + bell |
+| **Anomalous** | `#C9A84C` brass | corner toast + horn |
+| **Mythic** | `#ff2d4d` red | white flash, veil, centered card, particle burst, bass impact |
+| **Singular** | `#ff6dd7` magenta | as Mythic, plus a prismatic arpeggio — first-in-realm only |
+
 ---
 
 ## 3. Repeating patterns — copy these when building new sections
