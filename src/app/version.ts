@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.10.0',
+  version: '2.11.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Dead Weight',
+  codename: 'Waterfall',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,20 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.11.0',
+    codename: 'Waterfall',
+    date: '2026-08-11',
+    highlights: [
+      'New flagship tool — HAR File Analyzer & Network Waterfall at /tools/har-analyzer, filling the gap left by Google\'s abandoned HAR Analyzer',
+      'Drag in a .har and get a request waterfall segmented by queueing, DNS, TCP, TLS, TTFB and download, with DOMContentLoaded and load drawn across every row',
+      'Parsing runs in a Web Worker that keeps the capture off the main thread — a 100 MB export never freezes the tab, and only a few hundred KB of analysis crosses back',
+      'Core Web Vitals are reconstructed and honestly labelled: TTFB, DCL and load are measured, FCP and LCP are bounded estimates with their method stated, and CLS is reported as underivable rather than invented',
+      'Findings call out uncompressed text, weak cache lifetimes, slow server waits, oversized images, redirects, HTTP/1.x and third-party weight — each one filters the table down to the offenders',
+      'Privacy redaction strips cookies, credential headers, request and response bodies and token-shaped query parameters, in the URL as well as the header list, then exports a HAR that is safe to attach to a ticket',
+      'Share a link that carries a compressed analysis digest rather than the capture itself, or export the whole thing as a Markdown report'
+    ]
+  },
   {
     version: '2.10.0',
     codename: 'Dead Weight',
