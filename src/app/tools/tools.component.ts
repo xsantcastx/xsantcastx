@@ -7,6 +7,7 @@ import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
 import { TOOLS_REGISTRY, ToolDefinition, getCategories, getAllTags, getRelatedTools } from './tools-registry';
 import { FormsModule } from '@angular/forms';
+import { REALMS, REALM_ORDER, RealmDefinition, RealmId, realmForCategory } from '../shared/realms/realm.model';
 
 export interface ToolCard {
   id: string;
@@ -18,6 +19,12 @@ export interface ToolCard {
   category: string;
   icon: string; // SVG inner markup
   iconSafe?: SafeHtml; // pre-sanitized <svg> wrapper, built once per language (set by ToolsComponent)
+}
+
+/** One realm section in the grouped grid: the realm, and the tools inside it. */
+export interface RealmGroup {
+  realm: RealmDefinition;
+  tools: ToolCard[];
 }
 
 export interface Galaxy {
@@ -90,6 +97,11 @@ export class ToolsComponent implements OnInit, OnDestroy {
 
   readonly categories = ['All', 'CSS Tools', 'Email Tools', 'Security Tools', 'Code Converters', 'Productivity'];
 
+  /** The five realms, for the realm rail. */
+  readonly realms = REALMS;
+  /** Selected realm, or null. Drives the grouped grid. */
+  activeRealm: RealmId | null = null;
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -114,6 +126,8 @@ export class ToolsComponent implements OnInit, OnDestroy {
       if (params['q']) {
         this.searchQuery = params['q'];
       }
+      const realm = params['realm'];
+      this.activeRealm = REALM_ORDER.includes(realm) ? realm : null;
     });
   }
 
@@ -138,11 +152,36 @@ export class ToolsComponent implements OnInit, OnDestroy {
   setCategory(cat: string): void {
     this.activeCategory = cat;
     this.activeTag = null;
+    // Category and realm are two different cuts of the same list — picking one
+    // clears the other rather than intersecting into a confusing empty set.
+    this.activeRealm = null;
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tag: null, category: cat === 'All' ? null : cat },
+      queryParams: { tag: null, realm: null, category: cat === 'All' ? null : cat },
       queryParamsHandling: 'merge'
     });
+  }
+
+  /** Toggle a realm. Selecting one switches to the realm-grouped grid. */
+  setRealm(id: RealmId): void {
+    const next = this.activeRealm === id ? null : id;
+    this.activeRealm = next;
+    this.activeCategory = 'All';
+    this.activeTag = null;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tag: null, category: null, realm: next },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  isRealmActive(id: RealmId): boolean {
+    return this.activeRealm === id;
+  }
+
+  /** How many tools a realm holds, for the rail counters. */
+  realmCount(realm: RealmDefinition): number {
+    return this.tools.filter(t => realmForCategory(t.category).id === realm.id).length;
   }
 
   translate(key: string): string {
@@ -187,16 +226,17 @@ export class ToolsComponent implements OnInit, OnDestroy {
 
   get filteredTools(): ToolCard[] {
     const q = this.searchQuery.toLowerCase().trim();
-    const key = `${this._tools.length}|${this.activeCategory}|${this.activeTag ?? ''}|${q}`;
+    const key = `${this._tools.length}|${this.activeCategory}|${this.activeTag ?? ''}|${this.activeRealm ?? ''}|${q}`;
     if (key === this._filteredKey) {
       return this._filteredCache;
     }
     const tag = this.activeTag?.toLowerCase();
     this._filteredCache = this._tools.filter(t => {
       const matchCat = this.activeCategory === 'All' || t.category === this.activeCategory;
+      const matchRealm = !this.activeRealm || realmForCategory(t.category).id === this.activeRealm;
       const matchTag = !tag || t.tags.some(tg => tg.toLowerCase() === tag);
       const matchQ = !q || t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some(tg => tg.toLowerCase().includes(q)) || t.category.toLowerCase().includes(q);
-      return matchCat && matchTag && matchQ;
+      return matchCat && matchRealm && matchTag && matchQ;
     });
     this._filteredKey = key;
     return this._filteredCache;
@@ -210,9 +250,39 @@ export class ToolsComponent implements OnInit, OnDestroy {
 
   /** Determine which cosmic view to render */
   get currentView(): CosmicView {
-    if (this.searchQuery?.trim() || this.activeTag) return 'search';
+    if (this.searchQuery?.trim() || this.activeTag || this.activeRealm) return 'search';
     if (this.activeCategory && this.activeCategory !== 'All') return 'stars';
     return 'galaxies';
+  }
+
+  // Same memo trick as filteredTools: the template reads realmGroups and each
+  // group's length several times per change-detection pass, and regrouping 126
+  // tools on every read is exactly the cost the _filteredCache exists to avoid.
+  private _groupCache: RealmGroup[] = [];
+  private _groupKey = ' ';
+
+  /**
+   * The filtered list cut into realm sections, in codex order. Empty realms are
+   * dropped so a search never leaves a header standing over nothing.
+   */
+  get realmGroups(): RealmGroup[] {
+    const tools = this.filteredTools;
+    const key = `${this._filteredKey}|${tools.length}`;
+    if (key === this._groupKey) return this._groupCache;
+
+    const byRealm = new Map<RealmId, ToolCard[]>();
+    for (const tool of tools) {
+      const id = realmForCategory(tool.category).id;
+      const list = byRealm.get(id);
+      if (list) list.push(tool);
+      else byRealm.set(id, [tool]);
+    }
+
+    this._groupCache = REALMS
+      .map(realm => ({ realm, tools: byRealm.get(realm.id) ?? [] }))
+      .filter(g => g.tools.length > 0);
+    this._groupKey = key;
+    return this._groupCache;
   }
 
   /** Galaxies — one per category that has at least one tool */
@@ -330,10 +400,11 @@ export class ToolsComponent implements OnInit, OnDestroy {
   clearAll(): void {
     this.activeTag = null;
     this.activeCategory = 'All';
+    this.activeRealm = null;
     this.searchQuery = '';
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tag: null, category: null, q: null },
+      queryParams: { tag: null, category: null, realm: null, q: null },
       queryParamsHandling: 'merge'
     });
   }

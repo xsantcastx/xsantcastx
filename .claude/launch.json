@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["-y", "serve", "dist/xsantcastx/browser", "-l", "4300"],
       "port": 4300
+    },
+    {
+      "name": "eclipse-phase3-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "serve", "dist/xsantcastx/browser", "-l", "4310"],
+      "port": 4310
     }
   ]
 }

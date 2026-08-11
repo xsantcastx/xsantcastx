@@ -6,6 +6,8 @@ import { SeoService } from './seo.service';
 import { EmbedService } from './shared/embed.service';
 import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
+import { XpWiringService } from './shared/gamification/xp-wiring.service';
+import { RealmService } from './shared/realms/realm.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
@@ -22,6 +24,8 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly embed = inject(EmbedService);
   private visitCounter = inject(VisitCounterService);
   private eggTriggers = inject(GlobalEggTriggersService);
+  private xpWiring = inject(XpWiringService);
+  private realms = inject(RealmService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -55,6 +59,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
+
+    // Progression: hydrate XP from localStorage, settle the daily streak and
+    // subscribe the ledger to route changes, copies and egg discoveries.
+    this.xpWiring.init();
+
+    // Realm tinting: resolve every route to a realm and publish it to CSS.
+    this.realms.init();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {
