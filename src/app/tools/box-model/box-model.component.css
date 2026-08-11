@@ -54,3 +54,34 @@
 @media (max-width: 480px) {
   .bm-page { padding: 1.5rem 1rem 3rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bm-back,
+  .bm-btn,
+  .bm-checkbox-row label,
+  .bm-code,
+  .bm-copy-btn,
+  .bm-label,
+  .bm-panel__title,
+  .bm-share-btn,
+  .bm-stat__label,
+  .bm-status,
+  .bm-table th,
+  .bm-table,
+  .bm-textarea,
+  .bm-toggle__btn {
+    font-size: 14px;
+  }
+
+  .bm-header__eyebrow {
+    font-size: 12px;
+  }
+}

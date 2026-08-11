@@ -649,3 +649,55 @@
     flex-direction: column;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .fg-browser-address,
+  .fg-browser-tab__label,
+  .fg-btn,
+  .fg-btn-ghost,
+  .fg-btn-sm,
+  .fg-code-pre code,
+  .fg-dropzone--has-file .fg-dropzone__label,
+  .fg-dropzone__hint,
+  .fg-dropzone__label,
+  .fg-input--sm,
+  .fg-option-label,
+  .fg-panel__title,
+  .fg-seg-btn,
+  .fg-select,
+  .fg-size-card__label,
+  .fg-size-card__purpose,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .fg-badge,
+  .fg-char-count,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .fg-page {
+    padding-top: 2.5rem;
+  }
+}

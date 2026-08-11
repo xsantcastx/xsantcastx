@@ -77,3 +77,35 @@
   background: var(--surface-strong);
 }
 .share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .dl-back,
+  .dl-btn,
+  .dl-checkbox-row label,
+  .dl-code,
+  .dl-copy-btn,
+  .dl-label,
+  .dl-panel__title,
+  .dl-share-btn,
+  .dl-stat__label,
+  .dl-status,
+  .dl-table th,
+  .dl-table,
+  .dl-textarea,
+  .dl-toggle__btn,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .dl-header__eyebrow {
+    font-size: 12px;
+  }
+}
