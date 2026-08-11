@@ -196,6 +196,8 @@
   .hx-page {
     padding-top: 2.5rem;
   }
+}
+
 /* ══════════════════════════════════════════════════════════════
    Gap-fill: classes the template uses that had no rules.
    `.hx-panel__title` is the template's name for what the older
