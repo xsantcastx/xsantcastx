@@ -161,36 +161,6 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
-   ════════════════════════════════════════════════════════════════════════════
-   Every selector below declares a fixed font-size at top level, so it resolved
-   the same on a 375px phone as on a 1920px monitor. Content and controls are
-   floored at 14px, decorative micro-labels at 12px. Selectors that already had
-   a mobile-specific size were left as authored.
-   ════════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  .back-link,
-  .share-btn,
-  .smg-btn-ghost,
-  .smg-btn-primary,
-  .smg-btn-secondary,
-  .smg-btn-sm,
-  .smg-code-pre,
-  .smg-entry__index,
-  .smg-field__label,
-  .smg-input,
-  .smg-input--date,
-  .smg-output-empty,
-  .smg-panel__label {
-    font-size: 14px;
-  }
-
-  .tool-header__eyebrow {
-    font-size: 12px;
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
    HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
    ════════════════════════════════════════════════════════════════════════════
    Global styles.css already reserves room for the fixed navbar with
@@ -202,5 +172,215 @@
 @media (max-width: 768px) {
   .smg-page {
     padding-top: 2.5rem;
+  }
+/* ══════════════════════════════════════════════════════════════
+   Gap-fill: classes the template uses that had no rules.
+   `.smg-panel__title` is the template's name for what the older
+   markup called `.smg-panel__label` — both are styled identically.
+   ══════════════════════════════════════════════════════════════ */
+
+.tool-header__amp { color: var(--primary-color); }
+
+.smg-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.smg-panel__title svg { color: var(--primary-color); }
+
+.smg-col--left,
+.smg-col--right { min-width: 0; }
+
+.smg-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 190px;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.smg-textarea::placeholder { color: var(--text-muted); opacity: 0.45; }
+.smg-textarea:focus { background: rgba(0, 255, 204, 0.02); }
+
+.smg-url-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.14rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.12);
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+/* ── Priority slider ───────────────────────────────────────── */
+.smg-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+.smg-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+}
+.smg-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+}
+.smg-slider:focus-visible { box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.2); }
+
+.smg-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.2rem;
+  font-family: monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ── Status bar ────────────────────────────────────────────── */
+.smg-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.smg-status-bar--valid {
+  border-color: rgba(0, 255, 204, 0.3);
+  background: rgba(0, 255, 204, 0.06);
+  color: var(--primary-color);
+}
+.smg-status-bar--invalid {
+  border-color: rgba(255, 77, 106, 0.32);
+  background: rgba(255, 77, 106, 0.07);
+  color: var(--error-color, #ff4d6a);
+}
+.smg-status-error { word-break: break-word; }
+
+/* ── Stats bar ─────────────────────────────────────────────── */
+.smg-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.smg-stat { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+
+.smg-stat__label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.smg-stat__value {
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+.smg-stat__value--cyan { color: var(--primary-color); }
+.smg-stat__value--danger { color: var(--error-color, #ff4d6a); }
+
+.smg-stat__unit {
+  font-family: var(--font-body);
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.smg-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: var(--glass-border);
+}
+
+@media (max-width: 640px) {
+  .smg-stats { gap: 0.75rem; }
+  .smg-stat-divider { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolves
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels (uppercase + tracked) at 12px.
+
+   Regenerated so the list matches the class names the template actually emits
+   -- the previous copy still named selectors that had been renamed away.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .share-btn,
+  .smg-btn-ghost,
+  .smg-btn-primary,
+  .smg-btn-secondary,
+  .smg-btn-sm,
+  .smg-code-pre,
+  .smg-entry__index,
+  .smg-input,
+  .smg-input--date,
+  .smg-output-empty,
+  .smg-slider-labels,
+  .smg-stat__unit,
+  .smg-stat__value,
+  .smg-status-bar,
+  .smg-textarea,
+  .smg-url-count {
+    font-size: 14px;
+  }
+
+  .smg-field__label,
+  .smg-panel__label,
+  .smg-panel__title,
+  .smg-stat__label,
+  .tool-header__eyebrow {
+    font-size: 12px;
   }
 }

@@ -184,12 +184,187 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
    ════════════════════════════════════════════════════════════════════════════
-   Every selector below declares a fixed font-size at top level, so it resolved
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .hx-page {
+    padding-top: 2.5rem;
+  }
+/* ══════════════════════════════════════════════════════════════
+   Gap-fill: classes the template uses that had no rules.
+   `.hx-panel__title` is the template's name for what the older
+   markup called `.hx-panel__label` — both are styled identically.
+   ══════════════════════════════════════════════════════════════ */
+
+.tool-header__amp { color: var(--primary-color); }
+
+.hx-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hx-panel__title svg { color: var(--primary-color); }
+
+.hx-col--left,
+.hx-col--right { min-width: 0; }
+
+.hx-panel__body--input { padding: 0; }
+
+.hx-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 150px;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.hx-textarea::placeholder { color: var(--text-muted); opacity: 0.45; }
+.hx-textarea:focus { background: rgba(0, 255, 204, 0.02); }
+
+/* ── Search ────────────────────────────────────────────────── */
+.hx-search-body { padding: 1rem; }
+
+.hx-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hx-search-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+
+.hx-search-count {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.hx-search-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hx-search-pos {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  min-width: 52px;
+  text-align: center;
+}
+
+.hx-search-no-results {
+  margin-top: 0.7rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* ── Status bar ────────────────────────────────────────────── */
+.hx-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.hx-status-bar--invalid {
+  border-color: rgba(255, 77, 106, 0.32);
+  background: rgba(255, 77, 106, 0.07);
+  color: var(--error-color, #ff4d6a);
+}
+.hx-status-error { word-break: break-word; }
+
+/* ── Stats bar ─────────────────────────────────────────────── */
+.hx-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.hx-stat { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+
+.hx-stat__label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hx-stat__value {
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+.hx-stat__value--cyan { color: var(--primary-color); }
+.hx-stat__value--truncate {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hx-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: var(--glass-border);
+}
+
+@media (max-width: 640px) {
+  .hx-stats { gap: 0.75rem; }
+  .hx-stat-divider { display: none; }
+  .hx-stat__value--truncate { max-width: 110px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolves
    the same on a 375px phone as on a 1920px monitor. Content and controls are
-   floored at 14px, decorative micro-labels at 12px. Selectors that already had
-   a mobile-specific size were left as authored.
+   floored at 14px, decorative micro-labels (uppercase + tracked) at 12px.
+
+   Regenerated so the list matches the class names the template actually emits
+   -- the previous copy still named selectors that had been renamed away.
    ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .back-link,
@@ -206,28 +381,21 @@
   .hx-dump-row,
   .hx-file-size,
   .hx-mode-btn,
-  .hx-panel__label,
+  .hx-search-count,
   .hx-search-input,
+  .hx-search-no-results,
+  .hx-search-pos,
+  .hx-stat__value,
+  .hx-status-bar,
+  .hx-textarea,
   .share-btn {
     font-size: 14px;
   }
 
+  .hx-panel__label,
+  .hx-panel__title,
+  .hx-stat__label,
   .tool-header__eyebrow {
     font-size: 12px;
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
-   ════════════════════════════════════════════════════════════════════════════
-   Global styles.css already reserves room for the fixed navbar with
-   main { padding-top: var(--header-offset) }. The page padding below re-added
-   the same offset, so it landed twice — first content sat at 192px under a
-   64px navbar, spending 16% of an 812px screen on empty space. The design
-   spacing is kept; only the duplicated offset is dropped.
-   ════════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  .hx-page {
-    padding-top: 2.5rem;
   }
 }

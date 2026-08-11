@@ -2,7 +2,7 @@
   --transition-speed: 0.2s;
 }
 
-/* ============================================================
+/* =====================================================
    PAGE LAYOUT
    ============================================================ */
 .ssl-inspector-page {
@@ -15,7 +15,7 @@
   box-sizing: border-box;
 }
 
-/* ============================================================
+/* =====================================================
    BACK LINK
    ============================================================ */
 .back-link {
@@ -37,7 +37,7 @@
   color: var(--text-color);
 }
 
-/* ============================================================
+/* =====================================================
    TOOL HEADER
    ============================================================ */
 .tool-header {
@@ -105,7 +105,7 @@
   color: var(--text-color);
 }
 
-/* ============================================================
+/* =====================================================
    DOMAIN INPUT BAR
    ============================================================ */
 .ssl-input-bar {
@@ -126,7 +126,7 @@
   flex-wrap: wrap;
 }
 
-.ssl-input-bar__field-wrap {
+.ssl-input-bar__field {
   position: relative;
   flex: 1 1 260px;
   min-width: 0;
@@ -166,7 +166,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 18%, transparent);
 }
 
-.ssl-input-bar__port-wrap {
+.ssl-input-bar__port {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -179,7 +179,7 @@
   white-space: nowrap;
 }
 
-.ssl-input-bar__port {
+.ssl-input-bar__port-select {
   width: 80px;
   padding: 0.65rem 0.75rem;
   background: var(--surface-strong);
@@ -192,9 +192,10 @@
   text-align: center;
   transition: border-color var(--transition-speed) ease;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
-.ssl-input-bar__port:focus {
+.ssl-input-bar__port-select:focus {
   border-color: var(--primary-color);
 }
 
@@ -231,11 +232,13 @@
 .ssl-input-bar__btn--loading {
   pointer-events: none;
 }
-
-/* ============================================================
+/* =====================================================
    ERROR
    ============================================================ */
-.tool-error {
+.ssl-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   background: color-mix(in srgb, var(--highlight-color) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--highlight-color) 40%, transparent);
   border-radius: var(--radius-md);
@@ -244,30 +247,32 @@
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
 }
+.ssl-error svg { flex-shrink: 0; }
 
-/* ============================================================
+/* =====================================================
    LOADING STATE
    ============================================================ */
 .ssl-loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.625rem;
-  padding: 3rem 1rem;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
   color: var(--text-muted);
-  font-size: 0.9375rem;
+  font-size: 0.9rem;
 }
 
-@keyframes spin {
+@keyframes sslSpin {
   to { transform: rotate(360deg); }
 }
 
-.spin {
-  animation: spin 0.9s linear infinite;
-  color: var(--primary-color);
+.ssl-spin {
+  animation: sslSpin 0.9s linear infinite;
+  color: currentColor;
 }
 
-/* ============================================================
+/* =====================================================
    RESULTS GRID
    ============================================================ */
 .ssl-results {
@@ -276,218 +281,208 @@
   gap: 1.5rem;
 }
 
-/* ============================================================
-   GLASS CARD (shared base)
+/* =====================================================
+   SECTION CARD
    ============================================================ */
-.glass-card {
+.ssl-section {
   background: var(--surface-color);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: 1.25rem 1.4rem 1.4rem;
   box-shadow: var(--shadow-soft);
 }
 
-.glass-card__title {
-  font-family: var(--font-heading);
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin: 0 0 1.125rem;
+.ssl-section__title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
+.ssl-section__title svg { color: var(--primary-color); flex-shrink: 0; }
 
-.glass-card__title svg {
-  color: var(--primary-color);
-  flex-shrink: 0;
-}
-
-/* ============================================================
+/* =====================================================
    CERTIFICATE SUMMARY CARD
    ============================================================ */
-.cert-summary {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem 1.5rem;
-  align-items: start;
-}
-
-.cert-summary__domain {
-  font-family: var(--font-heading);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-color);
-  margin: 0 0 0.375rem;
-  word-break: break-all;
-}
-
-.cert-summary__issuer {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  margin: 0 0 0.875rem;
-}
-
-.cert-summary__meta {
+.ssl-summary-card {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  justify-content: space-between;
+  gap: 1.75rem;
   flex-wrap: wrap;
+  background: var(--surface-color);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow-soft);
 }
 
-.cert-summary__score {
+.ssl-summary-card__left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.ssl-summary-card__right {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  border: 3px solid var(--primary-color);
-  background: var(--surface-strong);
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 
-.cert-summary__score-value {
+.ssl-summary-card__domain {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   font-family: var(--font-heading);
-  font-size: 1.75rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  line-height: 1;
+  color: var(--text-color);
+  word-break: break-all;
+}
+.ssl-summary-card__domain svg { color: var(--primary-color); flex-shrink: 0; }
+
+.ssl-summary-card__port-badge {
+  font-family: monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.14rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.12);
+  border: 1px solid rgba(0, 255, 204, 0.28);
   color: var(--primary-color);
 }
 
-.cert-summary__score-label {
-  font-size: 0.625rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.ssl-summary-card__scanned {
+  font-size: 0.74rem;
   color: var(--text-muted);
-  margin-top: 0.125rem;
+  opacity: 0.8;
 }
 
-.cert-summary__score--good .cert-summary__score-value,
-.cert-summary__score--good {
-  border-color: var(--secondary-color);
-  color: var(--secondary-color);
-}
-
-.cert-summary__score--warn .cert-summary__score-value,
-.cert-summary__score--warn {
-  border-color: var(--highlight-color);
-  color: var(--highlight-color);
-}
-
-.cert-summary__score--bad {
-  border-color: color-mix(in srgb, var(--highlight-color) 70%, var(--text-muted));
-}
-
-/* ============================================================
-   EXPIRY BADGE
-   ============================================================ */
-.expiry-badge {
+/* Expiry urgency chip — colors supplied by the --green/--yellow/--red modifiers */
+.ssl-summary-card__expiry {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.8125rem;
+  align-self: flex-start;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
   font-weight: 600;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+.ssl-summary-card__expiry svg { flex-shrink: 0; }
+.ssl-summary-card__expiry strong { font-weight: 700; }
+
+.ssl-expiry--green {
+  background: rgba(127, 213, 163, 0.1);
+  border-color: rgba(127, 213, 163, 0.35);
+  color: #7fd5a3;
+}
+.ssl-expiry--yellow {
+  background: rgba(255, 198, 105, 0.1);
+  border-color: rgba(255, 198, 105, 0.35);
+  color: #ffc669;
+}
+.ssl-expiry--red {
+  background: rgba(255, 77, 106, 0.1);
+  border-color: rgba(255, 77, 106, 0.38);
+  color: var(--error-color, #ff4d6a);
 }
 
-.expiry-badge--green {
-  background: color-mix(in srgb, var(--secondary-color) 14%, transparent);
-  border-color: color-mix(in srgb, var(--secondary-color) 35%, transparent);
-  color: var(--secondary-color);
+.ssl-summary-card__statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
 }
 
-.expiry-badge--yellow {
-  background: color-mix(in srgb, var(--highlight-color) 14%, transparent);
-  border-color: color-mix(in srgb, var(--highlight-color) 35%, transparent);
-  color: var(--highlight-color);
-}
-
-.expiry-badge--red {
-  background: color-mix(in srgb, var(--highlight-color) 20%, transparent);
-  border-color: color-mix(in srgb, var(--highlight-color) 50%, transparent);
-  color: var(--highlight-color);
-}
-
-/* ============================================================
-   STATUS PILL
-   ============================================================ */
-.status-pill {
+.ssl-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--surface-strong, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--glass-border);
-  background: var(--surface-strong);
   color: var(--text-muted);
 }
+.ssl-status-pill svg { color: var(--primary-color); flex-shrink: 0; }
 
-.status-pill--ok {
-  color: var(--secondary-color);
-  background: color-mix(in srgb, var(--secondary-color) 10%, transparent);
-  border-color: color-mix(in srgb, var(--secondary-color) 30%, transparent);
-}
-
-.status-pill--warn {
-  color: var(--highlight-color);
-  background: color-mix(in srgb, var(--highlight-color) 10%, transparent);
-  border-color: color-mix(in srgb, var(--highlight-color) 30%, transparent);
-}
-
-.status-pill--bad {
-  color: var(--highlight-color);
-  background: color-mix(in srgb, var(--highlight-color) 15%, transparent);
-  border-color: color-mix(in srgb, var(--highlight-color) 45%, transparent);
-}
-
-.status-pill__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   TRUST CHAIN VISUALIZATION
+/* =====================================================
+   SCORE RING
    ============================================================ */
-.trust-chain {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-}
-
-.trust-chain__node {
+.ssl-score-ring {
   position: relative;
+  display: grid;
+  place-items: center;
+  width: 100px;
+  height: 100px;
+  color: var(--primary-color);
+}
+.ssl-score-ring svg {
+  display: block;
+  transition: color 0.3s ease;
+}
+.ssl-score-ring circle { transition: stroke-dashoffset 0.6s ease; }
+
+.ssl-score--high { color: #7fd5a3; }
+.ssl-score--mid  { color: #ffc669; }
+.ssl-score--low  { color: var(--error-color, #ff4d6a); }
+
+.ssl-score-ring__label {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.05rem;
+  pointer-events: none;
 }
 
-.trust-chain__connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  padding-top: 0.25rem;
+.ssl-score-ring__value {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: currentColor;
+  align-self: center;
 }
 
-.trust-chain__dot {
-  width: 14px;
-  height: 14px;
+.ssl-score-ring__max {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  align-self: center;
 }
-/* ============================================================
+
+.ssl-health-label {
+  font-family: var(--font-heading);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: center;
+  /* inline [style.color] from the component supplies the health hue */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssl-spin { animation: none; }
+  .ssl-score-ring circle { transition: none; }
+}
+
+/* =====================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
@@ -506,8 +501,9 @@
   .tool-header__subtitle {
     font-size: 0.875rem;
   }
-  .trust-chain__node {
-    gap: 0.75rem;
+  .ssl-summary-card {
+    gap: 1.25rem;
+    padding: 1.15rem 1.15rem;
   }
 }
 
@@ -522,32 +518,49 @@
     gap: 0.4rem;
     flex-wrap: wrap;
   }
-  .trust-chain__node {
-    gap: 0.6rem;
+  .ssl-input-bar__inner {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .status-pill {
-    font-size: 0.72rem;
+  .ssl-input-bar__btn {
+    justify-content: center;
+  }
+  .ssl-summary-card__right {
+    align-self: center;
+  }
+  .ssl-summary-card__domain {
+    font-size: 1.05rem;
+  }
+  .ssl-status-pill {
+    font-size: 0.68rem;
     padding: 0.18rem 0.5rem;
   }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
    ════════════════════════════════════════════════════════════════════════════
-   Every selector below declares a fixed font-size at top level, so it resolved
+   Every selector below declares a fixed font-size at top level, so it resolves
    the same on a 375px phone as on a 1920px monitor. Content and controls are
-   floored at 14px, decorative micro-labels at 12px. Selectors that already had
-   a mobile-specific size were left as authored.
+   floored at 14px, decorative micro-labels (uppercase + tracked) at 12px.
+
+   Regenerated so the list matches the class names the template actually emits
+   -- the previous copy still named selectors that had been renamed away.
    ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .back-link,
-  .cert-summary__score-label,
   .share-btn,
-  .ssl-input-bar__port-label {
+  .ssl-input-bar__port-label,
+  .ssl-score-ring__max,
+  .ssl-status-pill,
+  .ssl-summary-card__expiry,
+  .ssl-summary-card__port-badge,
+  .ssl-summary-card__scanned {
     font-size: 14px;
   }
 
-  .expiry-badge,
+  .ssl-health-label,
+  .ssl-section__title,
   .tool-header__eyebrow {
     font-size: 12px;
   }

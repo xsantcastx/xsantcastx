@@ -1,4 +1,4 @@
-/* ============================================================
+/* =====================================================
    Email Deliverability Auditor — Component Styles
    ============================================================ */
 
@@ -107,7 +107,7 @@
   margin-bottom: 1.25rem;
 }
 
-/* ============================================================
+/* =====================================================
    Hero Input Section
    ============================================================ */
 .eda-hero-input {
@@ -221,7 +221,7 @@
   to { transform: rotate(360deg); }
 }
 
-/* ============================================================
+/* =====================================================
    Score Card
    ============================================================ */
 .eda-score-card {
@@ -391,7 +391,7 @@
   flex-shrink: 0;
 }
 
-/* ============================================================
+/* =====================================================
    Skeleton Loaders
    ============================================================ */
 .eda-skeleton-wrap {
@@ -412,7 +412,7 @@
   50% { opacity: 1; }
 }
 
-/* ============================================================
+/* =====================================================
    Results Panels
    ============================================================ */
 .eda-results {
@@ -645,7 +645,7 @@
 .eda-mx-hostname { font-weight: 600; color: var(--text-color); }
 .eda-mx-ips { font-size: 0.78rem; color: var(--text-muted); font-family: monospace; }
 
-/* ============================================================
+/* =====================================================
    Fixes Panel
    ============================================================ */
 .eda-fixes-panel {
@@ -702,7 +702,7 @@
   white-space: pre-wrap;
 }
 
-/* ============================================================
+/* =====================================================
    Share Panel
    ============================================================ */
 .eda-share-panel {
@@ -743,7 +743,7 @@
   outline: none;
 }
 
-/* ============================================================
+/* =====================================================
    Responsive
    ============================================================ */
 @media (max-width: 768px) {
@@ -763,7 +763,7 @@
   }
 }
 
-/* ============================================================
+/* =====================================================
    Audit Button (additional selector)
    ============================================================ */
 .eda-audit-btn {
@@ -834,36 +834,134 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.eda-field--domain   { flex: 1 1 240px; min-width: 0; }
+.eda-field--selector { flex: 0 1 160px; min-width: 0; }
+.eda-field--dropdown { flex: 0 1 170px; min-width: 0; }
+
+/* ── Score gauge ───────────────────────────────────────────── */
+.eda-score-gauge-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eda-score-gauge {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.eda-gauge-svg {
+  transform: rotate(-90deg);
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.eda-gauge-track {
+  fill: none;
+  stroke: var(--surface-strong);
+  stroke-width: 10;
+}
+
+.eda-gauge-fill {
+  fill: none;
+  stroke: var(--secondary-color);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+}
+
+.eda-score--high .eda-gauge-fill { stroke: var(--secondary-color); }
+.eda-score--mid  .eda-gauge-fill { stroke: var(--primary-color); }
+.eda-score--low  .eda-gauge-fill { stroke: var(--highlight-color); }
+
+.eda-gauge-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.eda-gauge-number {
+  font-family: var(--font-heading);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-color);
+}
+
+.eda-gauge-unit {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── Score info ────────────────────────────────────────────── */
+.eda-score-title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.eda-score-domain {
+  margin: 0 0 0.85rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  word-break: break-all;
+}
+
+.eda-score-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+@media (max-width: 640px) {
+  .eda-score-gauge,
+  .eda-gauge-svg { width: 100px; height: 100px; }
+  .eda-gauge-number { font-size: 1.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eda-gauge-fill { transition: none; }
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
-   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
    ════════════════════════════════════════════════════════════════════════════
-   Every selector below declares a fixed font-size at top level, so it resolved
+   Every selector below declares a fixed font-size at top level, so it resolves
    the same on a 375px phone as on a 1920px monitor. Content and controls are
-   floored at 14px, decorative micro-labels at 12px. Selectors that already had
-   a mobile-specific size were left as authored.
+   floored at 14px, decorative micro-labels (uppercase + tracked) at 12px.
+
+   Regenerated so the list matches the class names the template actually emits
+   -- the previous copy still named selectors that had been renamed away.
    ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .back-link,
-  .eda-breakdown-label,
   .eda-breakdown-row,
   .eda-breakdown-value,
   .eda-copy-btn,
-  .eda-corrected__label,
   .eda-corrected__value,
   .eda-error,
-  .eda-field label,
   .eda-fix__snippet,
-  .eda-fix__title,
+  .eda-gauge-unit,
   .eda-gauge__max,
   .eda-issue,
-  .eda-label,
   .eda-mx-ips,
   .eda-mx-priority,
   .eda-mx-record,
-  .eda-record-raw__label,
   .eda-record-raw__value,
+  .eda-score-domain,
   .eda-score-info p,
-  .eda-share-text,
   .eda-share-url,
   .eda-suggestion,
   .eda-tab,
@@ -873,8 +971,15 @@
   }
 
   .eda-badge,
+  .eda-breakdown-label,
   .eda-chip,
+  .eda-corrected__label,
+  .eda-field label,
+  .eda-fix__title,
+  .eda-label,
   .eda-policy-badge,
+  .eda-record-raw__label,
+  .eda-share-text,
   .tool-header__eyebrow {
     font-size: 12px;
   }
