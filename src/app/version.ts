@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.2.0',
+  version: '2.2.1',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Blueprint',
@@ -34,6 +34,16 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.2.1',
+    codename: 'Blueprint',
+    date: '2026-08-11',
+    highlights: [
+      'Hero carousel is visible on mobile again — it had been a 210px black void directly under the header on every phone',
+      'Cause: Angular scopes @keyframes names per component, but did not rewrite the animation reference inside the <=768px media query, so it pointed at a keyframes name that did not exist and the cards never left opacity: 0',
+      'Mobile now reuses the desktop keyframes and flattens the 3D tilt with transform: none !important, so there is only one keyframes name left to scope'
+    ]
+  },
   {
     version: '2.2.0',
     codename: 'Blueprint',

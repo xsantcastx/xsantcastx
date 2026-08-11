@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
       "port": 4200
+    },
+    {
+      "name": "xsantcastx-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "serve", "dist/xsantcastx/browser", "-l", "4300"],
+      "port": 4300
     }
   ]
 }
