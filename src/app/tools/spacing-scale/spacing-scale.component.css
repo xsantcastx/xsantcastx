@@ -35,3 +35,46 @@
 .sps-step__px { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-color); text-align: right; }
 .sps-step__rem { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: var(--text-muted); text-align: right; }
 @media (max-width: 768px) { .sps-layout { grid-template-columns: 1fr; } .sps-step { grid-template-columns: 70px 1fr 50px 70px; } }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .share-btn,
+  .sps-btn-ghost,
+  .sps-code code,
+  .sps-input,
+  .sps-label,
+  .sps-panel__title,
+  .sps-seg-btn,
+  .sps-step__label,
+  .sps-step__px,
+  .sps-step__rem {
+    font-size: 14px;
+  }
+
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sps-page {
+    padding-top: 2.5rem;
+  }
+}

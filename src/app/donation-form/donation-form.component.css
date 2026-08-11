@@ -179,3 +179,23 @@ textarea:focus {
     justify-content: center;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   A wallet address is copied character by character when the copy button is
+   missed, so it is the last string on the site that should be shrunk. It also
+   has to survive 375px without forcing the page wider, hence the explicit
+   break-all rather than a larger step up.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .wallet-address {
+    font-size: 14px;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  .wallet-label {
+    font-size: 12px;
+  }
+}

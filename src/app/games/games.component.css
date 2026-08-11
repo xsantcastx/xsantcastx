@@ -422,3 +422,23 @@
     font-size: 0.92rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   Card descriptions carried the gameplay hints at 12.8px and the rarity chips
+   sat at 10.4px. Tier A -> 14px, Tier B (rarity chips, step numerals) -> 12px.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .gp-card__desc,
+  .gp-progress-label,
+  .gp-locked-label {
+    font-size: 14px;
+  }
+
+  .gp-card__rarity,
+  .gp-how-step__num,
+  .gp-eyebrow {
+    font-size: 12px;
+  }
+}

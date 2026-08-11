@@ -766,3 +766,17 @@ footer::after {
 .amount-btn[aria-pressed="true"] {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   The copyright line is the one piece of text that renders on every route, so
+   it was the last sub-14px string left site-wide after the rest of the pass.
+   The rule is a compound at (0,2,0) and would beat a global override, so it is
+   raised here in the component sheet where it is declared.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .footer-info p {
+    font-size: 14px;
+  }
+}

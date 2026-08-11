@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.6.0',
+  version: '2.7.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Blueprint',
+  codename: 'Mobile Polish',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.7.0',
+    codename: 'Mobile Polish',
+    date: '2026-08-11',
+    highlights: [
+      'Mobile type is readable — text ran from 7.4px to 13.9px on every route because the sizes were fixed rem values that resolved the same at 375px as at 1920px',
+      'Two tiers: content and controls floored at 14px, decorative micro-labels at 12px, applied across the global shell, eight routes and all 126 tool pages',
+      'The /live mission feed no longer squeezes its messages into a 180px column — rows wrap so the message gets the full width, and tool badges truncate instead of clipping mid-word',
+      'Reclaimed the header clearance that was applied twice on 116 pages: first content sat at 192px under a 64px navbar, and now sits at 116px',
+      'Momentum scrolling on every independently scrolling pane, and the last sub-44px controls (share buttons, colour swatches, the contact email and GitHub links) now meet the touch minimum'
+    ]
+  },
   {
     version: '2.6.0',
     codename: 'Blueprint',

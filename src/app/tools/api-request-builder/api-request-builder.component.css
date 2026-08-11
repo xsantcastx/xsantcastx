@@ -706,3 +706,55 @@
   background: var(--surface-strong);
 }
 .share-btn:hover { opacity: 0.85; transform: translateY(-1px); color: var(--text-color); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .arb-btn-ghost,
+  .arb-btn-sm,
+  .arb-code,
+  .arb-empty-hint,
+  .arb-empty-state,
+  .arb-error-panel,
+  .arb-header-input,
+  .arb-history-empty,
+  .arb-history-method,
+  .arb-history-url,
+  .arb-method-select,
+  .arb-panel__title,
+  .arb-seg-btn,
+  .arb-status-text,
+  .arb-status-time,
+  .arb-textarea,
+  .arb-url-input,
+  .back-link,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .arb-history-meta,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .arb-page {
+    padding-top: 2.5rem;
+  }
+}
