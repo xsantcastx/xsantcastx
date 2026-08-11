@@ -525,9 +525,23 @@
 
 /* ─── Placements table ──────────────────────────────────────────────────── */
 
+/* The table keeps real table semantics; the wrapper does the scrolling so the
+   page body never scrolls sideways on a narrow viewport. */
+.sp-placements__scroll {
+  margin-top: 2.2rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sp-placements__scroll:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
 .sp-placements {
   width: 100%;
-  margin: 2.2rem 0 0;
+  min-width: 480px;
+  margin: 0;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
@@ -867,14 +881,6 @@
 /* ─── Mobile ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  /* The placement table can't shrink below its content — let it scroll in
-     its own container rather than pushing the page sideways. */
-  .sp-placements {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
   .sp-demo__inner {
     grid-template-columns: auto 1fr auto;
     grid-template-areas:
