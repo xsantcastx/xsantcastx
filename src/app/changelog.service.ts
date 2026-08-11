@@ -1,8 +1,9 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Firestore, collection, query, orderBy, limit, collectionData } from '@angular/fire/firestore';
-import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, of, from } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
+import { whenAppCheckReady } from './app-check.bootstrap';
 
 export interface ChangelogEntry {
   id?: string;
@@ -33,8 +34,18 @@ export class ChangelogService {
 
     const col = collection(this.firestore, 'changelog');
     const q = query(col, orderBy('date', 'desc'), limit(50));
+    // Cold — the Firestore listener attaches on subscribe, not here. Building
+    // it eagerly keeps every AngularFire call inside this synchronous
+    // injection context while still deferring the actual network work below.
+    const entries$ = collectionData(q, { idField: 'id' });
 
-    return collectionData(q, { idField: 'id' }).pipe(
+    // App Check initializes on idle now rather than at bootstrap (see
+    // app-check.bootstrap.ts), and this read fires from the landing page's
+    // ngOnInit. Waiting for App Check keeps the query token-bearing if
+    // enforcement is ever switched on in the Firebase console; the changelog
+    // renders below the fold, so the delay is not user-visible.
+    return from(whenAppCheckReady()).pipe(
+      switchMap(() => entries$),
       map((entries: any[]) => this.groupByDay(entries)),
       catchError((err: any) => {
         // permission-denied (rules not deployed) and SDK-instance-mismatch

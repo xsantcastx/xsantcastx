@@ -19,7 +19,6 @@ import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fi
 import { provideFunctions, getFunctions } from '@angular/fire/functions';
 import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
-import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
 import { DonationFormComponent } from './donation-form/donation-form.component';
 import { DonationFeedComponent } from './donation-feed/donation-feed.component';
@@ -84,32 +83,14 @@ import { McpComponent } from './mcp/mcp.component';
     ...(isBrowserEnv ? [
       provideAnalytics(() => getAnalytics()),
       providePerformance(() => getPerformance()),
-      provideAppCheck(() => {
-        const siteKey = environment.appCheck?.siteKey ?? '';
-        const rawDebugToken = environment.appCheck?.debugToken;
-        const debugToken =
-          rawDebugToken && rawDebugToken !== 'undefined' && rawDebugToken !== 'null'
-            ? rawDebugToken
-            : undefined;
-        const globalScope = globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: unknown; __xsantcastxAppCheck?: ReturnType<typeof initializeAppCheck> };
-
-        if (!siteKey || siteKey.startsWith('REPLACE_WITH')) {
-          console.warn('[AppModule] Firebase App Check site key is not configured. Update environment.appCheck.siteKey before deploying.');
-        }
-
-        if (debugToken) {
-          globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'auto' ? true : debugToken;
-        }
-
-        if (!globalScope.__xsantcastxAppCheck) {
-          globalScope.__xsantcastxAppCheck = initializeAppCheck(getApp(), {
-            provider: new ReCaptchaV3Provider(siteKey),
-            isTokenAutoRefreshEnabled: true
-          });
-        }
-
-        return globalScope.__xsantcastxAppCheck;
-      }),
+      // App Check is deliberately NOT provided here any more.
+      // provideAppCheck() runs during root-injector creation, and
+      // ReCaptchaV3Provider reacts by pulling ~333 kB of reCAPTCHA into every
+      // page load — including the 123 tool pages that show no captcha. It now
+      // initializes on the first idle callback instead; see
+      // app-check.bootstrap.ts for the rationale and for the consumers that
+      // await it before issuing Firebase traffic.
+      //
       // Firebase Analytics automatic tracking services (browser only)
       ScreenTrackingService,
       UserTrackingService

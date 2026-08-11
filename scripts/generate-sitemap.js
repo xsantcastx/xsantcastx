@@ -51,6 +51,11 @@ function shouldInclude(route) {
   if (route.startsWith('/embed/')) return false;
   if (route === '/embed') return false;
   if (route === '/404') return false;
+  // /admin is the owner-only dashboard. It is deliberately absent from
+  // prerender-routes.txt, so this line is defence against a future edit that
+  // adds it there for some other reason — the sitemap is a public document and
+  // must never advertise the route.
+  if (route === '/admin' || route.startsWith('/admin/')) return false;
   return true;
 }
 
@@ -71,6 +76,65 @@ ${urls}
 
 </urlset>
 `;
+}
+
+/**
+ * Measure the built bundle so /admin can show real numbers instead of a
+ * "connect something" placeholder.
+ *
+ * Returns null when dist/ is absent, which is the normal case on the `prebuild`
+ * run (dist has just been deleted) and in `ng serve`. The dashboard reports
+ * that honestly rather than rendering a zero, and the `postbuild` run — which
+ * happens after the bundle exists — overwrites this with the real figures.
+ */
+function measureBundle() {
+  const browserDir = path.join(ROOT, 'dist', 'xsantcastx', 'browser');
+  if (!fs.existsSync(browserDir)) return null;
+
+  const js = fs.readdirSync(browserDir).filter(f => f.endsWith('.js'));
+  if (!js.length) return null;
+
+  const kb = file => Math.round(fs.statSync(path.join(browserDir, file)).size / 1024);
+  const main = js.find(f => /^main[.-]/.test(f));
+
+  return {
+    mainKb: main ? kb(main) : 0,
+    totalJsKb: js.reduce((sum, f) => sum + kb(f), 0),
+    chunks: js.length
+  };
+}
+
+/**
+ * Build-time facts the /admin dashboard reads at runtime.
+ *
+ * Written into src/assets so the `prebuild` run seeds a copy that the Angular
+ * asset pipeline picks up, and into dist/ directly so the `postbuild` run —
+ * the only one that can actually see the bundle — gets the real byte counts
+ * into the deployed artifact.
+ */
+function writeBuildStats(totalRoutes, sitemapUrls) {
+  const stats = {
+    generatedAt: new Date().toISOString(),
+    prerenderRoutes: totalRoutes,
+    sitemapUrls,
+    bundle: measureBundle()
+  };
+  const json = JSON.stringify(stats, null, 2) + '\n';
+
+  const srcAssets = path.join(ROOT, 'src', 'assets');
+  if (fs.existsSync(srcAssets)) {
+    fs.writeFileSync(path.join(srcAssets, 'build-stats.json'), json);
+  }
+
+  const distAssets = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'assets');
+  if (fs.existsSync(distAssets)) {
+    fs.writeFileSync(path.join(distAssets, 'build-stats.json'), json);
+  }
+
+  console.log(
+    `[generate-sitemap] build-stats: ${totalRoutes} prerender routes, ` +
+    `${sitemapUrls} sitemap URLs, bundle ${stats.bundle ? stats.bundle.totalJsKb + ' kB' : 'not measured'}`
+  );
 }
 
 function main() {
@@ -94,6 +158,11 @@ function main() {
     fs.writeFileSync(OUT_DIST, xml);
     console.log(`[generate-sitemap] mirrored → ${path.relative(ROOT, OUT_DIST)}`);
   }
+
+  // Count every non-blank line, not just the sitemap-eligible ones — the
+  // /embed routes are prerendered too, so this is the real SSR route count.
+  const totalRoutes = raw.split('\n').map(s => s.trim()).filter(Boolean).length;
+  writeBuildStats(totalRoutes, unique.length);
 }
 
 main();
