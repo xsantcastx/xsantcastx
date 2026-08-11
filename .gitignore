@@ -102,6 +102,13 @@ Thumbs.db
 # angular.json lists it as an asset; prebuild ensures it does on a fresh clone.
 src/sitemap.xml
 
+# Build facts for the /admin dashboard — written by the same script as the sitemap,
+# on both prebuild and postbuild. Same reasoning: regenerated every build, so
+# committing it only produces rebase conflicts. /admin reports it as missing
+# when absent rather than rendering a zero.
+src/assets/build-stats.json
+dist-preview/
+
 # Pipeline run artifacts (JSON outputs, logs) — generated tool source files are NOT ignored
 runs/
 
