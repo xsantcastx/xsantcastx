@@ -1,0 +1,297 @@
+<div class="sp-page">
+
+  <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
+  <header class="sp-hero">
+    <p class="sp-eyebrow">
+      <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+      Sponsor the tools
+    </p>
+    <!-- No `.section-title` here on purpose: that class opts an element into
+         the cosmic engine's type-on system, which splits the heading into
+         per-char spans and would break the background-clip gradient. -->
+    <h1 class="sp-hero__title">Put your product in front of developers mid-task</h1>
+    <p class="sp-hero__sub">
+      {{ liveToolCount }} free developer tools across {{ categoryCount }} categories.
+      No sign-up, no paywall, no interstitials. One direct-sold sponsor card per
+      page — and it could be yours.
+    </p>
+    <p class="sp-tagline">a single quiet card in a very busy universe</p>
+
+    <div class="sp-hero__cta">
+      <a class="sp-btn sp-btn--primary" [href]="bookingMailto">Become a sponsor</a>
+      <a class="sp-btn sp-btn--ghost" routerLink="/tools">See the tools</a>
+    </div>
+  </header>
+
+  <!-- ═══ Audience numbers ═══════════════════════════════════════════════ -->
+  <section class="sp-section sp-section--stats" aria-labelledby="sp-audience-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        The audience
+      </p>
+      <h2 class="sp-section__title" id="sp-audience-hd">Who you would be reaching</h2>
+      <p class="sp-section__tagline">real numbers, handed over directly</p>
+    </div>
+
+    <div class="sp-stats">
+      @for (stat of audienceStats; track stat.label) {
+        <div class="sp-stat" [style.--star-color]="stat.color">
+          <span class="sp-stat__orb" aria-hidden="true"></span>
+          <p class="sp-stat__num" [class.is-unset]="stat.value === null">{{ formatStat(stat) }}</p>
+          <p class="sp-stat__label">{{ stat.label }}</p>
+          <p class="sp-stat__hint">{{ stat.hint }}</p>
+        </div>
+      }
+    </div>
+
+    @if (!hasPublishedAudienceNumbers) {
+      <p class="sp-stats__note">
+        <span aria-hidden="true">✦</span>
+        {{ sourceNote }}
+      </p>
+    }
+
+    <div class="sp-profile">
+      @for (p of audienceProfile; track p.title) {
+        <article class="sp-profile__card" [style.--star-color]="p.color">
+          <h3 class="sp-profile__title">{{ p.title }}</h3>
+          <p class="sp-profile__body">{{ p.body }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Why sponsor ════════════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-why-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Why here
+      </p>
+      <h2 class="sp-section__title" id="sp-why-hd">What makes this slot different</h2>
+      <p class="sp-section__tagline">one card, one sponsor, no auction</p>
+    </div>
+
+    <div class="sp-value">
+      @for (v of valueProps; track v.title) {
+        <article class="sp-value__card" [style.--star-color]="v.color">
+          <span class="sp-value__dot" aria-hidden="true"></span>
+          <h3 class="sp-value__title">{{ v.title }}</h3>
+          <p class="sp-value__body">{{ v.body }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Placements ═════════════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-placements-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Placements
+      </p>
+      <h2 class="sp-section__title" id="sp-placements-hd">Where your card appears</h2>
+      <p class="sp-section__tagline">between the answer and the next thing they click</p>
+    </div>
+
+    <!-- Mockup of a real tool page, showing the slot in context. This is a
+         static preview, not the live SponsorSlotComponent, because the paid
+         inventory is empty — but the card markup mirrors it one-for-one. -->
+    <div class="sp-mock" role="img"
+         aria-label="Mockup of a tool page: the tool output, then a sponsored card, then the related tools list.">
+      <div class="sp-mock__chrome" aria-hidden="true">
+        <span class="sp-mock__dot"></span>
+        <span class="sp-mock__dot"></span>
+        <span class="sp-mock__dot"></span>
+        <span class="sp-mock__url">xsantcastx.com/tools/box-shadow-generator</span>
+      </div>
+
+      <div class="sp-mock__body" aria-hidden="true">
+        <p class="sp-mock__label">Tool output</p>
+        <div class="sp-mock__block sp-mock__block--tall"></div>
+
+        <p class="sp-mock__label sp-mock__label--accent">Your slot</p>
+        <!-- Mirrors .sponsor-slot from sponsor-slot.component.css -->
+        <aside class="sp-demo" style="--sponsor-accent: #ff6dd7">
+          <div class="sp-demo__inner">
+            <div class="sp-demo__icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M9 12l2 2 4-4"></path>
+              </svg>
+            </div>
+            <div class="sp-demo__body">
+              <p class="sp-demo__brand">Your brand</p>
+              <p class="sp-demo__headline">Your one-line pitch goes here</p>
+              <p class="sp-demo__desc">Up to about 110 characters of plain, useful description — no exclamation marks required.</p>
+            </div>
+            <span class="sp-demo__cta">Your CTA</span>
+            <span class="sp-demo__dismiss">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </span>
+          </div>
+          <span class="sp-demo__badge">Sponsored</span>
+        </aside>
+
+        <p class="sp-mock__label">Related tools</p>
+        <div class="sp-mock__row">
+          <div class="sp-mock__block"></div>
+          <div class="sp-mock__block"></div>
+          <div class="sp-mock__block"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sp-mock__caption">
+      The slot sits after the user has their answer — never before it, never
+      over it, never in a modal. It can be dismissed, and it stays dismissed.
+      Simplified for clarity: a real tool page also carries the units listed in
+      the FAQ below.
+    </p>
+
+    <!-- Wide content scrolls inside its own container so the page body never
+         scrolls horizontally on mobile. tabindex makes the scroll region
+         keyboard-reachable, which a scrollable div otherwise is not. -->
+    <div class="sp-placements__scroll" tabindex="0" role="region"
+         aria-label="Bookable placements table, scrolls horizontally">
+    <table class="sp-placements">
+      <caption class="sp-placements__caption">Bookable placements and their reach</caption>
+      <thead>
+        <tr>
+          <th scope="col">Placement</th>
+          <th scope="col">Where it renders</th>
+          <th scope="col">Tools covered</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of placements; track p.placement) {
+          <tr [style.--star-color]="p.color">
+            <th scope="row" class="sp-placements__name">
+              <span class="sp-placements__dot" aria-hidden="true"></span>
+              {{ p.name }}
+            </th>
+            <td>{{ p.where }}</td>
+            <td class="sp-placements__count">{{ p.toolCount }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    </div>
+    <p class="sp-placements__note">
+      Tool counts come straight from the live tool registry, so they move as
+      new tools ship. Slots are wired into the highest-traffic pages in each
+      category first.
+    </p>
+  </section>
+
+  <!-- ═══ Pricing ════════════════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-pricing-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Packages
+      </p>
+      <h2 class="sp-section__title" id="sp-pricing-hd">What it costs</h2>
+      <p class="sp-section__tagline">no contracts longer than the deal itself</p>
+    </div>
+
+    <div class="sp-tiers">
+      @for (tier of tiers; track tier.id) {
+        <article
+          class="sp-tier"
+          [class.is-featured]="tier.featured"
+          [style.--star-color]="tier.color"
+          [style.--star-glow]="tier.glow">
+          @if (tier.featured) {
+            <span class="sp-tier__flag">Most useful</span>
+          }
+          <h3 class="sp-tier__name">{{ tier.name }}</h3>
+          <p class="sp-tier__price">
+            <span class="sp-tier__amount">{{ formatPrice(tier) }}</span>
+            @if (priceSuffix(tier)) {
+              <span class="sp-tier__per">{{ priceSuffix(tier) }}</span>
+            }
+          </p>
+          <p class="sp-tier__blurb">{{ tier.blurb }}</p>
+          <ul class="sp-tier__features">
+            @for (f of tier.features; track f) {
+              <li>{{ f }}</li>
+            }
+          </ul>
+          <a class="sp-btn sp-btn--tier" [href]="bookingMailto">Enquire</a>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Current sponsors ═══════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-current-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Current sponsors
+      </p>
+      <h2 class="sp-section__title" id="sp-current-hd">Every slot is open</h2>
+      <p class="sp-section__tagline">the constellation is waiting for its first star</p>
+    </div>
+
+    <ul class="sp-logos">
+      @for (slot of placements; track slot.placement) {
+        <li class="sp-logo" [style.--star-color]="slot.color">
+          <span class="sp-logo__mark" aria-hidden="true">✦</span>
+          <span class="sp-logo__text">Your logo here</span>
+          <span class="sp-logo__slot">{{ slot.name }}</span>
+        </li>
+      }
+    </ul>
+    <p class="sp-logos__note">
+      No paid sponsor has run yet — you would be the first, and the page will
+      say so honestly either way.
+    </p>
+  </section>
+
+  <!-- ═══ FAQ ════════════════════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-faq-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Questions
+      </p>
+      <h2 class="sp-section__title" id="sp-faq-hd">Before you email</h2>
+      <p class="sp-section__tagline">the things every advertiser asks first</p>
+    </div>
+
+    <div class="sp-faq">
+      @for (faq of faqs; track faq.q) {
+        <details class="sp-faq__item">
+          <summary class="sp-faq__q">{{ faq.q }}</summary>
+          <p class="sp-faq__a">{{ faq.a }}</p>
+        </details>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Closing CTA ════════════════════════════════════════════════════ -->
+  <section class="sp-final" aria-labelledby="sp-final-hd">
+    <h2 class="sp-final__title" id="sp-final-hd">Want the slot?</h2>
+    <p class="sp-final__sub">
+      Email me with your product and the category you want. You will get current
+      traffic, what is available, and a price — usually the same day.
+    </p>
+    <div class="sp-final__cta">
+      <a class="sp-btn sp-btn--primary" [href]="bookingMailto">Become a sponsor</a>
+      <a class="sp-btn sp-btn--ghost" routerLink="/contact">Use the contact form</a>
+    </div>
+    <p class="sp-final__mail">
+      or write directly to
+      <a [href]="'mailto:' + contactEmail">{{ contactEmail }}</a>
+    </p>
+  </section>
+
+</div>
