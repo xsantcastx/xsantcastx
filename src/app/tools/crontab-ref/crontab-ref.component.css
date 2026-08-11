@@ -500,3 +500,52 @@
   .cr-tabs { gap: 0.35rem; }
   .cr-tab { padding: 0.45rem 0.75rem; font-size: 0.76rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .cr-card__copy-hint,
+  .cr-card__desc,
+  .cr-card__next,
+  .cr-diagram__hint,
+  .cr-diagram__label,
+  .cr-info-card__def,
+  .cr-table code,
+  .cr-table th,
+  .cr-table,
+  .cr-wc-card__desc,
+  .cr-wc-card__example code,
+  .cr-wc-card__example span,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .cr-card__badge,
+  .cr-cat-btn,
+  .cr-result-count,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .cr-page {
+    padding-top: 2.5rem;
+  }
+}

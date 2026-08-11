@@ -414,3 +414,39 @@
   .spe-cmd__input { width: 56px; }
   .tool-header__title { font-size: 1.4rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .share-btn,
+  .spe-cmd,
+  .spe-cmd__input,
+  .spe-cmd__label,
+  .spe-copy-btn,
+  .spe-error,
+  .spe-help,
+  .spe-info dt,
+  .spe-label,
+  .spe-minified,
+  .spe-panel__title,
+  .spe-precision,
+  .spe-preset-btn,
+  .spe-presets__label,
+  .spe-textarea,
+  .spe-vt-btn,
+  .spe-vt-btn--toggle,
+  .spe-zoom {
+    font-size: 14px;
+  }
+
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}

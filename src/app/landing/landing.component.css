@@ -2826,3 +2826,67 @@
   will-change: transform;
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0
+   ════════════════════════════════════════════════════════════════════════════
+   /home held the smallest type on the site: .hp-lf__badge at 0.46rem resolves
+   to 7.4px, and 71 elements sat under 12px. These sizes are fixed rem values,
+   so a phone rendered exactly what a 1920px monitor did in a fifth the width.
+
+   Tier A (content and controls) -> 14px, Tier B (decorative uppercase
+   micro-labels: category chips, counters, timestamps, badges) -> 12px. Rules
+   live in the component sheet so Angular scopes them to the same
+   [_ngcontent-x] specificity as the declarations above and later-wins applies
+   without !important.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
+  .hp-lf__badge,
+  .hp-cl-day__new-badge,
+  .hp-cl-day__label,
+  .hp-cl-day__count,
+  .hp-cl-entry__badge,
+  .hp-live__mc-label,
+  .hp-live__clock,
+  .hp-live__pill,
+  .hp-live__eyebrow,
+  .hp-live-badge,
+  .hc-card__cat,
+  .hc-card__num,
+  .hp-tool-card__cat,
+  .hp-spotlight__cat,
+  .hp-spotlight__label,
+  .hp-hero__eyebrow,
+  .hp-section-eyebrow,
+  .hp-stat__label {
+    font-size: 12px;
+  }
+
+  /* ── Tier A: content and controls → 14px ────────────────────────────────── */
+  .hc-card__desc,
+  .hc-card__cta,
+  .hp-tool-card__desc,
+  .hp-tool-card__cta,
+  .hp-cl-entry__details,
+  .hp-section-tagline,
+  .hp-anchor__whisper,
+  .hp-hero__carousel-hint,
+  .hp-lf__text,
+  .hp-sp__title,
+  .hp-sp__prompt,
+  .hp-live__cursor {
+    font-size: 14px;
+  }
+
+  .hc-card__name,
+  .hp-tool-card__name {
+    font-size: 15px;
+  }
+
+  /* The stat bar is flex-wrap: nowrap, so a 12px label that used to be 11.5px
+     no longer fits four abreast at 375px. Let it wrap rather than clip. */
+  .hp-stat {
+    flex-wrap: wrap;
+  }
+}

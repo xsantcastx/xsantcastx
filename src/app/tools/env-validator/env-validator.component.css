@@ -685,3 +685,54 @@
     font-size: 0.75rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .ev-btn-ghost,
+  .ev-btn-sm,
+  .ev-example-pre code,
+  .ev-filter-tab,
+  .ev-gitignore-pre code,
+  .ev-issue__line,
+  .ev-issue__severity,
+  .ev-lines-body,
+  .ev-output-empty,
+  .ev-output-hint,
+  .ev-panel__title,
+  .ev-stat__label,
+  .ev-status-bar,
+  .ev-textarea,
+  .share-btn {
+    font-size: 14px;
+  }
+
+  .ev-char-count,
+  .ev-filter-count,
+  .ev-line-num,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HEADER CLEARANCE DEDUPE — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Global styles.css already reserves room for the fixed navbar with
+   main { padding-top: var(--header-offset) }. The page padding below re-added
+   the same offset, so it landed twice — first content sat at 192px under a
+   64px navbar, spending 16% of an 812px screen on empty space. The design
+   spacing is kept; only the duplicated offset is dropped.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .ev-page {
+    padding-top: 2.5rem;
+  }
+}

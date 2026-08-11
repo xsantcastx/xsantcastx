@@ -980,3 +980,42 @@
     padding: 0.25rem 0.5rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE TYPOGRAPHY FLOOR — v2.3.0 (generated)
+   ════════════════════════════════════════════════════════════════════════════
+   Every selector below declares a fixed font-size at top level, so it resolved
+   the same on a 375px phone as on a 1920px monitor. Content and controls are
+   floored at 14px, decorative micro-labels at 12px. Selectors that already had
+   a mobile-specific size were left as authored.
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .back-link,
+  .share-btn,
+  .stc-action-btn,
+  .stc-batch-banner,
+  .stc-batch-banner__exit,
+  .stc-batch-item__name,
+  .stc-code,
+  .stc-download-zip-btn,
+  .stc-dropzone__secondary,
+  .stc-label,
+  .stc-panel__title,
+  .stc-preview-size-label,
+  .stc-radio,
+  .stc-stat-group__title,
+  .stc-stat-row,
+  .stc-stat-value,
+  .stc-textarea,
+  .stc-toggle__hint,
+  .stc-toggle__text code,
+  .stc-toggle__text {
+    font-size: 14px;
+  }
+
+  .stc-a11y-badge,
+  .stc-badge,
+  .tool-header__eyebrow {
+    font-size: 12px;
+  }
+}
