@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { FormsModule } from '@angular/forms';
 import { NgClass, TitleCasePipe } from '@angular/common';
 
@@ -84,6 +85,7 @@ export interface AuditResults {
     imports: [ToolsSharedModule, FormsModule, NgClass, TitleCasePipe]
 })
 export class EmailDeliverabilityAuditorComponent implements OnInit, OnDestroy {
+  private readonly eggs = inject(EasterEggService);
   private paramSub?: Subscription;
 
   domain = '';
@@ -261,6 +263,12 @@ export class EmailDeliverabilityAuditorComponent implements OnInit, OnDestroy {
     }
     const domain = this.normalizeDomain(this.domain);
     this.domain = domain;
+
+    // Egg: auditing whether Santa's mail would land in the inbox.
+    if (/santa|christmas|xmas|northpole|north-pole/i.test(domain)) {
+      this.eggs.trigger('email-santa');
+    }
+
     this.error = '';
     this.loading = true;
     this.results = null;
