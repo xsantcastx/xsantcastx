@@ -593,6 +593,15 @@
     right: 0;
     display: flex;
     flex-direction: column;
+    /* The 1100px rule sets flex-wrap: wrap, which is right for the horizontal
+       nav between 960px and 1100px and wrong for the drawer below it. A column
+       that wraps does not scroll: once the content passes max-height it starts
+       a SECOND COLUMN outside the 375px panel instead of overflowing into the
+       overflow-y: auto below. Adding the XP bar as a tenth child crossed that
+       threshold and threw it off-screen to x=424. nowrap restores the intent —
+       taller-than-the-drawer content scrolls, which is what the overflow-y and
+       overscroll-behavior on this rule were always written for. */
+    flex-wrap: nowrap;
     gap: 1.2rem;
     padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
     background:
@@ -931,13 +940,35 @@
 }
 
 /* ── Progression readout ────────────────────────────────────────────────
-   Two instances live in the template: one in the navbar row (desktop) and one
-   inside the mobile drawer. Exactly one is ever visible. The navbar row already
-   measured 374.8px against a 375px viewport before this existed, so the desktop
-   instance has to leave at the drawer breakpoint rather than try to shrink. */
+   Two instances live in the template: one for desktop, one inside the mobile
+   drawer. Exactly one is ever visible.
+
+   The desktop instance is taken OUT of the navbar's flex row and docked under
+   the bar instead. That is not a style choice — the row has no horizontal room
+   to give. Measured on this build at 1600x900 with the bar removed entirely,
+   .nav-menu's children already overflow their container and the LIVE link
+   already paints over the EN/ES toggle (LIVE right edge 1558 against a toggle
+   starting at 1433); the same holds at 1280. A flex sibling in that row shifts
+   the collision around rather than fitting into it. Docked, the row measures
+   byte-for-byte identical to having no XP bar at all, and the readout keeps a
+   full 44px target that is always inside the viewport.
+
+   The pre-existing nav overflow is tracked separately — do not "fix" it by
+   shrinking this element, which is not what is consuming the space. */
 .nav-xp {
   display: inline-flex;
   flex: 0 0 auto;
+}
+
+@media (min-width: 961px) {
+  .nav-xp {
+    position: absolute;
+    top: 100%;
+    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
+    margin-top: 8px;
+    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
+    z-index: 5;
+  }
 }
 
 .nav-xp--drawer {
