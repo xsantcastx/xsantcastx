@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.12.0',
+  version: '2.13.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Stylesheet Drift',
+  codename: 'Control Room',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.13.0',
+    codename: 'Control Room',
+    date: '2026-08-11',
+    highlights: [
+      'Owner-only dashboard at /admin — engagement, easter-egg discovery, tool suggestions, CI runs and commit history on one page, gated on Firebase Auth and locked to a single verified email in firestore.rules',
+      'The easter-egg counters have never recorded anything: the collection has no rule at all, so every discovery write falls through to the deny-all and is rejected, and the service catches the error and returns — all 139 eggs have been counting nothing, including the 58 that 2.8.0 had just finished wiring up',
+      'Blueprint tool suggestions are readable for the first time — the collection was write-only, so every suggestion submitted through the form had landed somewhere nobody could open — and can now be triaged as reviewed, accepted or rejected without being editable',
+      'Builds emit assets/build-stats.json (prerender route count, sitemap URL count, bundle size), so the dashboard reports measured numbers rather than placeholders',
+      'The route is hidden four ways over: absent from the nav and the sitemap, noindex in its route data, and disallowed in robots.txt — and its prerendered shell renders two words and no panel markup'
+    ]
+  },
   {
     version: '2.12.0',
     codename: 'Stylesheet Drift',
