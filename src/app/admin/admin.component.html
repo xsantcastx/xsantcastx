@@ -1,0 +1,534 @@
+<div class="adm">
+
+  <!-- ── Gate: nothing below renders until the owner is confirmed ───────── -->
+
+  <div class="adm-gate" *ngIf="gate !== 'ok'">
+    <div class="adm-gate__card">
+
+      <ng-container *ngIf="gate === 'checking'">
+        <div class="adm-gate__spinner" aria-hidden="true"></div>
+        <p class="adm-gate__msg">Restoring session…</p>
+      </ng-container>
+
+      <ng-container *ngIf="gate === 'signed-out'">
+        <div class="adm-gate__mark" aria-hidden="true">⬢</div>
+        <h1 class="adm-gate__title">Control Room</h1>
+        <p class="adm-gate__msg">
+          This dashboard is restricted to the owner account.
+          Sign in to continue.
+        </p>
+        <button type="button" class="adm-gate__btn" (click)="signIn()">
+          Sign in with Google
+        </button>
+        <p class="adm-gate__err" *ngIf="signInError">{{ signInError }}</p>
+        <a class="adm-gate__back" routerLink="/home">← Back to the site</a>
+      </ng-container>
+
+      <ng-container *ngIf="gate === 'denied'">
+        <div class="adm-gate__mark adm-gate__mark--deny" aria-hidden="true">⬢</div>
+        <h1 class="adm-gate__title">Not your console</h1>
+        <p class="adm-gate__msg">
+          <strong>{{ user?.email }}</strong> is signed in, but this dashboard
+          only opens for the owner account.
+        </p>
+        <button type="button" class="adm-gate__btn adm-gate__btn--ghost" (click)="signOutNow()">
+          Sign out
+        </button>
+        <a class="adm-gate__back" routerLink="/home">← Back to the site</a>
+      </ng-container>
+
+    </div>
+  </div>
+
+  <!-- ── Dashboard ──────────────────────────────────────────────────────── -->
+
+  <ng-container *ngIf="gate === 'ok'">
+
+    <header class="adm-head">
+      <div>
+        <p class="adm-eyebrow"><span class="adm-eyebrow__dot"></span> Control Room</p>
+        <h1 class="adm-title">Mission Control</h1>
+        <p class="adm-sub">Engagement, activity and system health for xsantcastx.com</p>
+      </div>
+      <div class="adm-head__right">
+        <span class="adm-who">{{ user?.email }}</span>
+        <button type="button" class="adm-signout" (click)="signOutNow()">Sign out</button>
+      </div>
+    </header>
+
+    <!-- ── 1. Overview ─────────────────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-overview">
+      <h2 class="adm-sec__title" id="sec-overview">Real-time overview</h2>
+
+      <div class="adm-grid adm-grid--stats">
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Active now</p>
+          <ng-container [ngSwitch]="activeNow.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(activeNow.data) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">viewers on /live in the last 5 min</p>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Total visits</p>
+          <ng-container [ngSwitch]="totalVisits.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(totalVisits.data) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">all-time, site-stats counter</p>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Tool opens</p>
+          <ng-container [ngSwitch]="topTools.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(totalToolUses) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">across {{ toolsWithUsage }} tools, session-deduped</p>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Version</p>
+          <p class="adm-stat__num adm-stat__num--sm">{{ version.version }}</p>
+          <p class="adm-stat__foot">“{{ version.codename }}” · {{ version.buildDate }} · {{ releaseCount }} releases</p>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Tools</p>
+          <p class="adm-stat__num">{{ num(liveTools) }}</p>
+          <p class="adm-stat__foot">{{ categories }} categories · {{ comingSoon }} coming soon</p>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Routes prerendered</p>
+          <ng-container [ngSwitch]="build.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(build.data?.prerenderRoutes) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">
+            <ng-container *ngIf="build.state === 'ready'">{{ num(build.data?.sitemapUrls) }} in sitemap.xml</ng-container>
+            <ng-container *ngIf="build.state !== 'ready'">needs a production build</ng-container>
+          </p>
+        </article>
+
+      </div>
+
+      <p class="adm-note adm-note--inline" *ngIf="build.state === 'unavailable'">{{ build.note }}</p>
+    </section>
+
+    <!-- ── 2. Engagement ───────────────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-engage">
+      <h2 class="adm-sec__title" id="sec-engage">Engagement</h2>
+
+      <div class="adm-grid adm-grid--wide">
+
+        <article class="adm-card adm-card--span2">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Top tools by usage</h3>
+            <span class="adm-card__tag" *ngIf="topTools.state === 'ready'">live data</span>
+          </header>
+
+          <ng-container [ngSwitch]="topTools.state">
+
+            <div *ngSwitchCase="'loading'" class="adm-bars">
+              <div class="adm-bar" *ngFor="let i of [1,2,3,4,5,6,7,8]">
+                <span class="adm-skel adm-skel--line"></span>
+              </div>
+            </div>
+
+            <div *ngSwitchCase="'ready'" class="adm-bars">
+              <div class="adm-bar" *ngFor="let b of topTools.data; trackBy: trackBar">
+                <div class="adm-bar__meta">
+                  <span class="adm-bar__label" [title]="b.label">{{ b.label }}</span>
+                  <span class="adm-bar__value">{{ num(b.value) }}</span>
+                </div>
+                <div class="adm-bar__track">
+                  <div class="adm-bar__fill" [style.width.%]="b.pct"></div>
+                </div>
+                <span class="adm-bar__sub">{{ b.sub }}</span>
+              </div>
+            </div>
+
+            <p *ngSwitchCase="'empty'" class="adm-empty">
+              No tool has been opened yet, or the <code>tool-usage</code> counters
+              have not started writing. Visit any tool page once and this fills in.
+            </p>
+
+            <p *ngSwitchDefault class="adm-empty">
+              Could not read <code>tool-usage</code>. The collection is public-read,
+              so this usually means the rules have not been deployed yet.
+            </p>
+
+          </ng-container>
+        </article>
+
+        <article class="adm-card adm-card--setup">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Page views · sessions · bounce</h3>
+            <span class="adm-card__tag adm-card__tag--todo">connect GA4</span>
+          </header>
+          <p class="adm-note">{{ pageViews.note }}</p>
+          <a class="adm-link" href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer">
+            Open Google Analytics →
+          </a>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ── 3. Gamification ─────────────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-game">
+      <h2 class="adm-sec__title" id="sec-game">Gamification</h2>
+
+      <div class="adm-grid">
+        <article class="adm-card adm-card--setup adm-card--span3">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">XP · levels · achievements · streaks</h3>
+            <span class="adm-card__tag adm-card__tag--todo">awaiting accounts</span>
+          </header>
+          <p class="adm-note">{{ gamification.note }}</p>
+          <ul class="adm-pending">
+            <li>XP leaderboard — top 10 by lifetime XP</li>
+            <li>Achievement distribution — most and least earned</li>
+            <li>Average level reached</li>
+            <li>Active streaks and longest streak</li>
+            <li>Level funnel — headcount per level, to find the drop-off</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── 4. Easter eggs & games ──────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-eggs">
+      <h2 class="adm-sec__title" id="sec-eggs">Easter eggs &amp; games</h2>
+
+      <div class="adm-grid adm-grid--wide">
+
+        <article class="adm-card">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Discovery rate</h3>
+          </header>
+          <div class="adm-ring">
+            <svg viewBox="0 0 64 64" class="adm-ring__svg" aria-hidden="true">
+              <circle class="adm-ring__track" cx="32" cy="32" r="26"></circle>
+              <circle class="adm-ring__fill" cx="32" cy="32" r="26"
+                      [attr.stroke-dashoffset]="eggRingOffset"></circle>
+            </svg>
+            <div class="adm-ring__mid">
+              <span class="adm-ring__pct">{{ eggUnlockRate }}%</span>
+              <span class="adm-ring__cap">found</span>
+            </div>
+          </div>
+          <p class="adm-stat__foot adm-stat__foot--center">
+            {{ eggsFound }} of {{ eggsTotal }} eggs discovered at least once ·
+            {{ num(eggDiscoveryTotal) }} total discoveries
+          </p>
+        </article>
+
+        <article class="adm-card adm-card--span2">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Eggs by discoveries</h3>
+            <span class="adm-card__tag" *ngIf="eggs.state === 'ready'">live data</span>
+          </header>
+
+          <ng-container [ngSwitch]="eggs.state">
+
+            <div *ngSwitchCase="'loading'" class="adm-eggs">
+              <span class="adm-skel adm-skel--line" *ngFor="let i of [1,2,3,4,5,6]"></span>
+            </div>
+
+            <ul *ngSwitchCase="'ready'" class="adm-eggs">
+              <li class="adm-egg" *ngFor="let e of eggs.data; trackBy: trackEgg"
+                  [class.adm-egg--cold]="e.discoveries === 0">
+                <span class="adm-egg__icon" aria-hidden="true">{{ e.icon }}</span>
+                <span class="adm-egg__name">{{ e.name }}</span>
+                <span class="adm-egg__rarity" [attr.data-rarity]="e.rarity">{{ e.rarity }}</span>
+                <span class="adm-egg__count">{{ num(e.discoveries) }}</span>
+              </li>
+            </ul>
+
+            <p *ngSwitchDefault class="adm-empty">
+              Could not read <code>easter-eggs</code>. Deploy the updated
+              firestore.rules — the collection had no rule before this release,
+              so every read and every discovery write was being denied.
+            </p>
+
+          </ng-container>
+        </article>
+
+      </div>
+
+      <div class="adm-grid">
+        <article class="adm-card adm-card--setup adm-card--span3">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Games played</h3>
+            <span class="adm-card__tag adm-card__tag--todo">not instrumented</span>
+          </header>
+          <p class="adm-note">
+            The games on /games do not write a play counter. The cheapest fix is to
+            call the existing <code>ToolUsageService.recordUsage()</code> with a
+            <code>game-*</code> slug on each game's start handler — it already has a
+            Firestore rule, a session dedupe and a counter, so the plays would show
+            up in the table above with no new collection.
+          </p>
+          <a class="adm-link" routerLink="/games">Open /games →</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── 5. Blueprint & community ────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-community">
+      <h2 class="adm-sec__title" id="sec-community">Blueprint &amp; community</h2>
+
+      <div class="adm-grid adm-grid--wide">
+
+        <article class="adm-card adm-card--span2">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Tool suggestions</h3>
+            <span class="adm-card__tag" *ngIf="suggestions.state === 'ready'">
+              {{ suggestions.data?.length }} received
+            </span>
+          </header>
+
+          <ng-container [ngSwitch]="suggestions.state">
+
+            <div *ngSwitchCase="'loading'" class="adm-sugs">
+              <span class="adm-skel adm-skel--block" *ngFor="let i of [1,2,3]"></span>
+            </div>
+
+            <ul *ngSwitchCase="'ready'" class="adm-sugs">
+              <li class="adm-sug" *ngFor="let s of suggestions.data; trackBy: trackSuggestion"
+                  [attr.data-review]="s.review || 'new'">
+                <div class="adm-sug__top">
+                  <h4 class="adm-sug__name">{{ s.name }}</h4>
+                  <span class="adm-sug__badge" [attr.data-review]="s.review || 'new'">
+                    {{ s.review || 'new' }}
+                  </span>
+                </div>
+                <p class="adm-sug__desc">{{ s.description }}</p>
+                <p class="adm-sug__meta">
+                  <span *ngIf="s.email">{{ s.email }} · </span>{{ ago(s.submittedAt) }}
+                </p>
+                <div class="adm-sug__acts">
+                  <button type="button" class="adm-chip adm-chip--ok"
+                          [disabled]="busySuggestion === s.id"
+                          (click)="review(s, 'accepted')">Accept</button>
+                  <button type="button" class="adm-chip"
+                          [disabled]="busySuggestion === s.id"
+                          (click)="review(s, 'reviewed')">Reviewed</button>
+                  <button type="button" class="adm-chip adm-chip--no"
+                          [disabled]="busySuggestion === s.id"
+                          (click)="review(s, 'rejected')">Reject</button>
+                </div>
+              </li>
+            </ul>
+
+            <p *ngSwitchCase="'empty'" class="adm-empty">
+              No suggestions yet. The form lives at the bottom of
+              <a routerLink="/blueprint">/blueprint</a>.
+            </p>
+
+            <p *ngSwitchDefault class="adm-empty">
+              Could not read <code>blueprint-suggestions</code>. This collection is
+              owner-only in firestore.rules — deploy the updated rules with
+              <code>firebase deploy --only firestore:rules</code>.
+            </p>
+
+          </ng-container>
+        </article>
+
+        <div class="adm-stack">
+
+          <article class="adm-card adm-card--stat">
+            <p class="adm-stat__label">Guestbook signatures</p>
+            <ng-container [ngSwitch]="guestbookCount.state">
+              <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+              <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(guestbookCount.data) }}</p>
+              <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+            </ng-container>
+            <p class="adm-stat__foot"><a class="adm-link" routerLink="/guestbook">Open /guestbook →</a></p>
+          </article>
+
+          <article class="adm-card">
+            <header class="adm-card__head">
+              <h3 class="adm-card__title">Recent dev log</h3>
+            </header>
+            <ng-container [ngSwitch]="changelogEntries.state">
+              <div *ngSwitchCase="'loading'" class="adm-list">
+                <span class="adm-skel adm-skel--line" *ngFor="let i of [1,2,3]"></span>
+              </div>
+              <ul *ngSwitchCase="'ready'" class="adm-list">
+                <li *ngFor="let e of changelogEntries.data">
+                  <span class="adm-list__main">{{ e.title }}</span>
+                  <span class="adm-list__side">{{ e.date }}</span>
+                </li>
+              </ul>
+              <p *ngSwitchDefault class="adm-empty adm-empty--sm">
+                Nothing in the <code>changelog</code> collection. Releases are
+                tracked in version.ts instead.
+              </p>
+            </ng-container>
+          </article>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── 6. SEO health ───────────────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-seo">
+      <h2 class="adm-sec__title" id="sec-seo">SEO health</h2>
+
+      <div class="adm-grid adm-grid--wide">
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">URLs in sitemap</p>
+          <ng-container [ngSwitch]="build.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(build.data?.sitemapUrls) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">
+            regenerated every build ·
+            <a class="adm-link" href="/sitemap.xml" target="_blank" rel="noopener noreferrer">view →</a>
+          </p>
+        </article>
+
+        <article class="adm-card adm-card--setup adm-card--span2">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Indexed pages &amp; search queries</h3>
+            <span class="adm-card__tag adm-card__tag--todo">connect GSC</span>
+          </header>
+          <p class="adm-note">{{ seo.note }}</p>
+          <a class="adm-link" href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer">
+            Open Search Console →
+          </a>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ── 7. System health ────────────────────────────────────────────── -->
+
+    <section class="adm-sec" aria-labelledby="sec-health">
+      <h2 class="adm-sec__title" id="sec-health">System health</h2>
+
+      <div class="adm-grid adm-grid--wide">
+
+        <article class="adm-card">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Bundle</h3>
+          </header>
+          <ng-container [ngSwitch]="build.state">
+            <div *ngSwitchCase="'loading'" class="adm-list">
+              <span class="adm-skel adm-skel--line" *ngFor="let i of [1,2,3]"></span>
+            </div>
+            <ng-container *ngSwitchCase="'ready'">
+              <ul class="adm-list" *ngIf="build.data?.bundle; else noBundle">
+                <li><span class="adm-list__main">main.js</span><span class="adm-list__side">{{ build.data?.bundle?.mainKb }} kB</span></li>
+                <li><span class="adm-list__main">total JS</span><span class="adm-list__side">{{ num(build.data?.bundle?.totalJsKb) }} kB</span></li>
+                <li><span class="adm-list__main">chunks</span><span class="adm-list__side">{{ build.data?.bundle?.chunks }}</span></li>
+                <li><span class="adm-list__main">measured</span><span class="adm-list__side">{{ ago(build.data?.generatedAt) }}</span></li>
+              </ul>
+              <ng-template #noBundle>
+                <p class="adm-empty adm-empty--sm">
+                  Build stats were written, but no <code>dist/</code> was present to
+                  measure — the sitemap script also runs as <code>prebuild</code>,
+                  before the bundle exists. The postbuild run fills this in.
+                </p>
+              </ng-template>
+            </ng-container>
+            <p *ngSwitchDefault class="adm-empty adm-empty--sm">{{ build.note }}</p>
+          </ng-container>
+        </article>
+
+        <article class="adm-card">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Last CI runs</h3>
+            <a class="adm-card__tag adm-card__tag--link" [href]="actionsUrl" target="_blank" rel="noopener noreferrer">Actions →</a>
+          </header>
+          <ng-container [ngSwitch]="ciRuns.state">
+            <div *ngSwitchCase="'loading'" class="adm-list">
+              <span class="adm-skel adm-skel--line" *ngFor="let i of [1,2,3,4,5]"></span>
+            </div>
+            <ul *ngSwitchCase="'ready'" class="adm-list adm-list--runs">
+              <li *ngFor="let r of ciRuns.data; trackBy: trackRun">
+                <span class="adm-dot" [attr.data-tone]="ciTone(r)" aria-hidden="true"></span>
+                <a class="adm-list__main" [href]="r.url" target="_blank" rel="noopener noreferrer">{{ r.name }}</a>
+                <span class="adm-list__side">{{ r.branch }} · {{ ago(r.date) }}</span>
+              </li>
+            </ul>
+            <p *ngSwitchDefault class="adm-empty adm-empty--sm">{{ ciRuns.note }}</p>
+          </ng-container>
+        </article>
+
+        <article class="adm-card">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Recent commits</h3>
+            <a class="adm-card__tag adm-card__tag--link" [href]="repoUrl" target="_blank" rel="noopener noreferrer">Repo →</a>
+          </header>
+          <ng-container [ngSwitch]="commits.state">
+            <div *ngSwitchCase="'loading'" class="adm-list">
+              <span class="adm-skel adm-skel--line" *ngFor="let i of [1,2,3,4,5]"></span>
+            </div>
+            <ul *ngSwitchCase="'ready'" class="adm-list adm-list--commits">
+              <li *ngFor="let c of commits.data; trackBy: trackCommit">
+                <code class="adm-sha">{{ c.sha }}</code>
+                <a class="adm-list__main" [href]="c.url" target="_blank" rel="noopener noreferrer"
+                   [title]="c.message">{{ c.message }}</a>
+                <span class="adm-list__side">{{ ago(c.date) }}</span>
+              </li>
+            </ul>
+            <p *ngSwitchDefault class="adm-empty adm-empty--sm">{{ commits.note }}</p>
+          </ng-container>
+        </article>
+
+        <article class="adm-card adm-card--stat">
+          <p class="adm-stat__label">Last build activity</p>
+          <ng-container [ngSwitch]="lastActivity.state">
+            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
+            <p *ngSwitchCase="'ready'" class="adm-stat__num adm-stat__num--sm">{{ ago(lastActivity.data) }}</p>
+            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
+          </ng-container>
+          <p class="adm-stat__foot">newest entry in the /live activity feed</p>
+        </article>
+
+        <article class="adm-card adm-card--setup adm-card--span2">
+          <header class="adm-card__head">
+            <h3 class="adm-card__title">Firebase usage &amp; dependency audit</h3>
+            <span class="adm-card__tag adm-card__tag--todo">console only</span>
+          </header>
+          <p class="adm-note">
+            Read/write quotas are not exposed to the client SDK — they live in the
+            Firebase console. <code>npm audit</code> is a build-time check with no
+            browser-readable output; the CI job is the right place to surface it.
+          </p>
+          <div class="adm-linkrow">
+            <a class="adm-link" href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer">Firebase console →</a>
+            <a class="adm-link" [href]="actionsUrl" target="_blank" rel="noopener noreferrer">CI logs →</a>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <footer class="adm-foot">
+      <span>xsantcastx control room · v{{ version.version }}</span>
+      <a class="adm-link" routerLink="/home">← Back to the site</a>
+    </footer>
+
+  </ng-container>
+
+</div>
