@@ -339,13 +339,14 @@
   23%, 100%{ opacity: 0; transform: rotateY(-22deg) scale(0.92) translateZ(-40px); }
 }
 
-/* §2.1 — Mobile cross-fade variant: opacity only, no 3D transforms.
-   Same 25s duration / 5s-per-card slot so JS animation-delay calc is unchanged. */
-@keyframes hcCardCycleFade {
-  0%, 2%    { opacity: 0; }
-  7%, 17%   { opacity: 1; }
-  22%, 100% { opacity: 0; }
-}
+/* NOTE: there is deliberately no separate mobile "fade-only" @keyframes here.
+   Angular's emulated encapsulation rewrites @keyframes names to
+   `_ngcontent-<id>_<name>` and rewrites the matching `animation` shorthands —
+   but it silently failed to rewrite the one inside the <=768px media query,
+   leaving it pointing at an undefined name so the cards never left their base
+   `opacity: 0` (a dead 210px void at the top of every mobile page). Mobile now
+   reuses hcCardCycle and flattens it with `transform: none !important`, which
+   beats the animation in the cascade. One keyframes name, no scoping to fumble. */
 
 .hc-card__top {
   display: flex;
@@ -2008,13 +2009,15 @@
   }
 
   /* ── Hero carousel: cross-fade only on mobile (opacity, no rotateY/translateX).
-        All 5 cards remain in DOM, stacked absolutely; hcCardCycleFade drives the
-        same 25s / 5s-per-card rhythm so JS assumptions are unchanged. ── */
+        All 5 cards remain in DOM, stacked absolutely. Inherit hcCardCycle (and
+        its per-card animation-delay) from the base rule rather than declaring a
+        mobile-only animation — see the note by @keyframes hcCardCycle for why a
+        second keyframes name broke here. `transform: none !important` outranks
+        the animation in the cascade, so the 3D tilt is dropped and only the
+        opacity channel animates: same compositor cost as a fade-only keyframe. ── */
   .hc-card {
-    animation: hcCardCycleFade 25s ease-in-out infinite;
-    animation-delay: calc(var(--ci, 0) * 5s); /* shorthand resets delay — restore per-card stagger so cards cycle */
     will-change: opacity;
-    transform: none !important;  /* cancel 3D transforms */
+    transform: none !important;  /* cancel 3D transforms — !important beats the animation */
   }
 
   /* ── Non-essential infinite animations: keep blink/progress for UI context,
