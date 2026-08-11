@@ -613,6 +613,9 @@ export class TranslationService {
     'tools.cronBuilder.title2': { en: 'Builder', es: 'Constructor' },
     'tools.cronBuilder.subtitle': { en: 'Build, validate and preview cron schedules visually — see next run times instantly, no sign-up required.', es: 'Construye, valida y previsualiza programaciones cron de forma visual — consulta las próximas ejecuciones al instante, sin registro.' },
 
+    'tools.regexBuilder.ph.pattern': { en: 'Type a pattern — e.g. \\b\\w+@\\w+\\.\\w{2,}\\b', es: 'Escribe un patrón — ej. \\b\\w+@\\w+\\.\\w{2,}\\b' },
+    'tools.regexBuilder.ph.testText': { en: 'Paste the text you want to match against…', es: 'Pega el texto contra el que quieres buscar coincidencias…' },
+    'tools.regexBuilder.ph.replacement': { en: 'Use $1, $&, $<name> to reference captures', es: 'Usa $1, $&, $<name> para referenciar capturas' },
     'tools.regexBuilder.title': { en: 'Regex Builder', es: 'Constructor de Regex' },
     'tools.regexBuilder.title2': { en: '& Tester', es: '& Probador' },
     'tools.regexBuilder.subtitle': { en: 'Build, test and debug regular expressions with live match highlighting, capture groups and a find-and-replace preview — everything runs in your browser.', es: 'Construye, prueba y depura expresiones regulares con resaltado de coincidencias en vivo, grupos de captura y vista previa de buscar y reemplazar — todo se ejecuta en tu navegador.' },
