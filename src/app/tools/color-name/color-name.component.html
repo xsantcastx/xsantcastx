@@ -58,7 +58,7 @@
           <span class="cn-panel__title">All Named Colors ({{ filteredColors.length }})</span>
         </div>
         <div class="cn-panel__body">
-          <input type="text" [(ngModel)]="searchQuery" class="cn-search" placeholder="Search colors..." />
+          <input type="text" [(ngModel)]="searchQuery" class="cn-search" [placeholder]="translate('tools.colorName.ph.search')" />
           <div class="cn-color-grid">
             @for (c of filteredColors; track c) {
               <button class="cn-color-tile" [style.background]="c.hex" [title]="c.name + ' ' + c.hex" (click)="selectColor(c)">

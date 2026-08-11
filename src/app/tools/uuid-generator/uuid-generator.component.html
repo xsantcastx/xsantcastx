@@ -140,7 +140,7 @@
             class="ug-textarea ug-textarea--validator"
             [(ngModel)]="validatorInput"
             (ngModelChange)="onValidatorInput()"
-            placeholder="Paste a UUID or ULID to validate..."
+            [placeholder]="translate('tools.uuidGenerator.ph.validate')"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"

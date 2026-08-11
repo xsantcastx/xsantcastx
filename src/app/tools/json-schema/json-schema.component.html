@@ -135,7 +135,7 @@
             <textarea
               class="jsc-textarea jsc-textarea--sm"
               [(ngModel)]="validateInput"
-              placeholder="Paste JSON to validate against the generated schema..."
+              [placeholder]="translate('tools.jsonSchema.ph.validate')"
               spellcheck="false"
               autocomplete="off"
               autocorrect="off"

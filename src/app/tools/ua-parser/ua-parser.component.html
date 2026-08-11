@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="ua-panel__body">
-        <textarea class="ua-textarea" [(ngModel)]="uaString" (ngModelChange)="onInput()" placeholder="Paste a user agent string or your current UA is auto-detected..." spellcheck="false"></textarea>
+        <textarea class="ua-textarea" [(ngModel)]="uaString" (ngModelChange)="onInput()" [placeholder]="translate('tools.uaParser.ph.input')" spellcheck="false"></textarea>
       </div>
     </div>
 

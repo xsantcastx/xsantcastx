@@ -35,7 +35,7 @@
         type="text"
         [(ngModel)]="searchQuery"
         (ngModelChange)="onSearchInput()"
-        placeholder="Search by code (e.g. 404) or name (e.g. Not Found)..."
+        [placeholder]="translate('tools.httpStatus.ph.search')"
         spellcheck="false"
         autocomplete="off"
         autocorrect="off"

@@ -32,7 +32,7 @@
           <span class="cl-panel__title">Add Item</span>
         </div>
         <div class="cl-add-row">
-          <input class="cl-input" [(ngModel)]="newItemText" (keyup.enter)="addItem()" placeholder="Type item and press Enter..." />
+          <input class="cl-input" [(ngModel)]="newItemText" (keyup.enter)="addItem()" [placeholder]="translate('tools.checklist.ph.newItem')" />
           <button class="cl-btn" (click)="addItem()" [disabled]="!newItemText.trim()">Add</button>
         </div>
       </div>

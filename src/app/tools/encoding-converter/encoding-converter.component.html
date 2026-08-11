@@ -50,7 +50,7 @@
     <div class="ec-card__body">
       <textarea
         class="ec-textarea"
-        placeholder="Type or paste text to convert..."
+        [placeholder]="translate('tools.encodingConverter.ph.input')"
         rows="4"
         [(ngModel)]="textInput"
         (input)="onInput()" aria-label="Input Text"

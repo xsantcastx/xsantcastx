@@ -140,7 +140,7 @@
                 class="si-input"
                 [(ngModel)]="diagonalInches"
                 (ngModelChange)="onDiagonalChange()"
-                placeholder="e.g. 15.6"
+                [placeholder]="translate('tools.screenInfo.ph.diagonal')"
                 min="1"
                 max="100"
                 step="0.1"
