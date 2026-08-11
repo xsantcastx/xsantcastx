@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.7.0',
+  version: '2.8.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
-  codename: 'Mobile Polish',
+  codename: 'Control Room',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.8.0',
+    codename: 'Control Room',
+    date: '2026-08-11',
+    highlights: [
+      'Owner-only dashboard at /admin — engagement, easter-egg discovery, tool suggestions, CI and commit history on one page, gated on Firebase Auth and locked to a single verified email in firestore.rules',
+      'The easter-egg counters were never recording: the collection had no rule at all, so every discovery write fell through to the deny-all and was rejected, and the service swallowed the error — 15 eggs have been silently counting nothing since the system shipped',
+      'Blueprint tool suggestions are readable for the first time — they were write-only, so every suggestion submitted to date had landed somewhere nobody could open — and can now be triaged as reviewed, accepted or rejected',
+      'Builds emit assets/build-stats.json (prerender route count, sitemap URL count, bundle size), so the dashboard reports measured numbers rather than placeholders',
+      'The route is hidden four ways over: absent from the nav and the sitemap, not prerendered, noindex in its route data, and disallowed in robots.txt'
+    ]
+  },
   {
     version: '2.7.0',
     codename: 'Mobile Polish',
