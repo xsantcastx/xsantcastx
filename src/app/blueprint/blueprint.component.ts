@@ -190,21 +190,22 @@ export class BlueprintComponent implements OnInit {
       glow: 'rgba(0, 255, 204, 0.6)',
       items: [
         {
-          title: 'Multi-language support (i18n)',
-          description: 'Wiring every tool through TranslationService so the whole site reads in English and Spanish.',
+          title: 'Mobile polish',
+          description: 'Runtime profiling on real phones — frame rate under throttled scroll, layout shift, and the composited-layer budget the static pass could not verify.',
+          status: 'building',
+          devLogId: 'mobile-performance'
+        },
+        {
+          title: 'i18n expansion',
+          description: 'Filling in titleKey and descriptionKey on every registry entry so the /tools grid stops being bilingual in patches.',
           status: 'building',
           devLogId: 'i18n-journey'
         },
         {
-          title: 'Accessibility audit',
-          description: 'Labelled controls, real buttons, focus order and reduced-motion paths across all 126 tools.',
-          status: 'building'
-        },
-        {
-          title: 'Security hardening',
-          description: 'Dependency vulnerability sweep, tightened Firestore rules and a stricter Content-Security-Policy.',
+          title: 'Blueprint content',
+          description: 'Writing the Dev Log out properly and keeping this roadmap honest — including moving cards backwards when that is what happened.',
           status: 'building',
-          devLogId: 'security-hardening'
+          devLogId: 'open-roadmap'
         }
       ]
     },
@@ -226,18 +227,13 @@ export class BlueprintComponent implements OnInit {
           status: 'planned'
         },
         {
-          title: 'Liquid Glass CSS Studio',
-          description: 'Design frosted-glass surfaces with layered blur, tint and refraction — copy the CSS out.',
+          title: 'Sponsored tool slots',
+          description: 'Clearly-labelled sponsorships on individual tool pages to keep the lights on without ads.',
           status: 'planned'
         },
         {
           title: 'Pro tier',
           description: 'Optional paid tier via LemonSqueezy for heavier limits and saved workspaces. Free tools stay free.',
-          status: 'planned'
-        },
-        {
-          title: 'Sponsored tool slots',
-          description: 'Clearly-labelled sponsorships on individual tool pages to keep the lights on without ads.',
           status: 'planned'
         }
       ]
