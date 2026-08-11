@@ -1160,9 +1160,24 @@ a.tool-card { text-decoration: none; color: inherit; }
     font-size: 14px;
   }
 
+  /* .galaxy__meta is a 141px absolutely-positioned label slot under each
+     galaxy. At 14px the 0.18em tracking costs 2.5px per character, so
+     "Productivity" needed 152px and spilled out of the slot — the widest label
+     is a single unbreakable word, so white-space: normal could not save it.
+     Tightening to 0.1em recovers ~13px and keeps the uppercase cosmic look. */
+  .galaxy__name {
+    letter-spacing: 0.1em;
+  }
+
   .galaxy__count,
   .tools-header__eyebrow,
   .tools-search__kbd {
+    font-size: 12px;
+  }
+
+  /* The page tagline is a bare span inside .cosmic-tagline and was the last
+     sub-12px string on the route. */
+  .cosmic-tagline {
     font-size: 12px;
   }
 }
