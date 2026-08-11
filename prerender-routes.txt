@@ -40,6 +40,7 @@
 /embed/meta-tag-generator
 /embed/env-validator
 /embed/font-pairer
+/tools/regex-builder
 /tools/cron-builder
 /tools/api-request-builder
 /tools/json-to-ts
@@ -49,6 +50,7 @@
 /tools/url-encoder
 /tools/sql-formatter
 /tools/base-converter
+/embed/regex-builder
 /embed/cron-builder
 /embed/api-request-builder
 /embed/json-to-ts
