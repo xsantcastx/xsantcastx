@@ -31,6 +31,8 @@ export class UuidGeneratorComponent implements OnDestroy {
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
+  /** Cumulative across this visit, so ten batches of ten count as well as one batch of 100. */
+  private uuidsThisSession = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free UUID/GUID Generator — v1, v4, ULID, bulk generation, validator. No sign-up required!')}&url=${encodeURIComponent(SITE_URL + '/tools/uuid-generator')}`;
@@ -110,6 +112,9 @@ export class UuidGeneratorComponent implements OnDestroy {
     if (this.generatedUuids.some(u => u.replace(/-/g, '').toLowerCase().startsWith('000'))) {
       this.eggs.trigger('uuid-lucky');
     }
+
+    this.uuidsThisSession += this.generatedUuids.length;
+    if (this.uuidsThisSession >= 100) this.eggs.trigger('uuid-factory');
   }
 
   // ── UUID v4 (random) ────────────────────────────────────────────────────────

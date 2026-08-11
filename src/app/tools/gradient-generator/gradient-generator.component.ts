@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SITE_URL } from '../../seo.service';
 import { TranslationService } from '../../translation.service';
 import { ToolsSharedModule } from '../../shared/tools-shared.module';
+import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { NgStyle } from '@angular/common';
 
 export type GradientType = 'linear' | 'radial' | 'conic';
@@ -34,6 +35,8 @@ export class GradientGeneratorComponent {
   radialPosX = 50;
   radialPosY = 50;
   conicAngle = 0;
+
+  private readonly eggs = inject(EasterEggService);
 
   stops: ColorStop[] = [];
   activeStopIndex = 0;
@@ -165,6 +168,21 @@ export class GradientGeneratorComponent {
 
   addNewStop(): void {
     this.addStop('#ffffff');
+    this.checkGradientEggs();
+  }
+
+  /**
+   * Deliberately not called from addStop() — the constructor seeds two stops
+   * through it, and this.eggs is a field initializer that has not necessarily
+   * run by then. Every caller here is a user action instead.
+   */
+  private checkGradientEggs(): void {
+    if (this.stops.length >= 8) this.eggs.trigger('gradient-rainbow-bridge');
+
+    const colors = this.stops.map(s => s.color.toLowerCase());
+    if (colors.length >= 2 && colors.every(c => c === colors[0])) {
+      this.eggs.trigger('gradient-mono');
+    }
   }
 
   private getNextPosition(): number {
@@ -195,6 +213,7 @@ export class GradientGeneratorComponent {
     const stop = this.activeStop;
     if (!stop) return;
     stop.color = (event.target as HTMLInputElement).value;
+    this.checkGradientEggs();
   }
 
   updateStopPosition(event: Event): void {

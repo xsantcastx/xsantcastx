@@ -1,4 +1,4 @@
-import { Injectable, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, inject, Injector, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Analytics, logEvent, setUserProperties, setUserId } from '@angular/fire/analytics';
 import { ConsentService } from './consent.service';
@@ -21,25 +21,78 @@ export interface UserProperties {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  // null on server (Analytics not provided); canTrack() guards all call sites
-  private analytics = inject(Analytics, { optional: true }) as Analytics;
+  private injector = inject(Injector);
   private consentService = inject(ConsentService);
   private debugService = inject(AnalyticsDebugService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
+  private analyticsRef: Analytics | null = null;
+  private analyticsResolved = false;
+
   constructor() {
     // Initialize consent service to set up gtag
     this.consentService;
-    
-    // Set initial user properties if browser
+
+    // Deferred, not called inline: setInitialUserProperties() ends up in
+    // canTrack(), and resolving Analytics is what makes AngularFire call
+    // getAnalytics() and pull in gtag.js (~150 kB). HeaderComponent is
+    // app-shell mounted and injects this service, so doing that in the
+    // constructor put a third-party script on the critical path of every
+    // route. Nothing here is time-sensitive — the properties are attached to
+    // events, and no event can fire before the user has interacted.
     if (this.isBrowser) {
-      this.setInitialUserProperties();
+      this.whenIdle(() => this.setInitialUserProperties());
     }
   }
 
+  /**
+   * Resolve AngularFire's Analytics instance on first real use.
+   *
+   * This used to be a constructor `inject(Analytics)`, which meant merely
+   * constructing AnalyticsService booted Firebase Analytics. AngularFire's
+   * provideAnalytics() registers a plain useFactory, so the instance is only
+   * created when the token is actually injected — deferring that injection
+   * defers gtag.js with it.
+   *
+   * Typed as Analytics rather than Analytics|null to match the previous
+   * `inject(Analytics, {optional: true}) as Analytics` field — it is genuinely
+   * null on the server and before consent, which is why every call site sits
+   * behind canTrack()'s `!!this.analytics`.
+   */
+  private get analytics(): Analytics {
+    if (!this.analyticsResolved) {
+      this.analyticsResolved = true;
+      this.analyticsRef = this.isBrowser
+        ? this.injector.get(Analytics, null)
+        : null;
+    }
+    return this.analyticsRef as Analytics;
+  }
+
+  /**
+   * Consent is checked BEFORE `this.analytics`, and the order matters: the
+   * analytics getter has the side effect of booting Firebase Analytics. With
+   * the old ordering, a visitor who never accepted the cookie banner still
+   * paid for gtag.js on every page — consent mode denied what it *stored*,
+   * not what it *downloaded*. Now the script is only fetched once the user
+   * has actually opted in.
+   */
   private canTrack(): boolean {
-    return this.isBrowser && !!this.analytics && this.consentService.hasConsent();
+    return this.isBrowser && this.consentService.hasConsent() && !!this.analytics;
+  }
+
+  /** Run work in the first idle window, or shortly after on older browsers. */
+  private whenIdle(work: () => void): void {
+    const idle = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    }).requestIdleCallback;
+
+    if (typeof idle === 'function') {
+      idle(() => work(), { timeout: 2500 });
+    } else {
+      window.setTimeout(work, 1500);
+    }
   }
 
   /**

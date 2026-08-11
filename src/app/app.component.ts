@@ -6,6 +6,7 @@ import { SeoService } from './seo.service';
 import { EmbedService } from './shared/embed.service';
 import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
+import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
     selector: 'app-root',
@@ -43,6 +44,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.seo.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
+
+    // Queue Firebase App Check for the first idle window. Initializing it at
+    // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
+    // route; see app-check.bootstrap.ts.
+    scheduleAppCheck();
 
     // Track site visit and trigger milestone celebration if applicable
     this.visitCounter.recordVisit();

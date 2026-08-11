@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.8.0',
+  version: '2.13.0',
   buildDate: '2026-08-11',
   /** Each major release gets a codename */
   codename: 'Control Room',
@@ -35,15 +35,77 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.8.0',
+    version: '2.13.0',
     codename: 'Control Room',
     date: '2026-08-11',
     highlights: [
-      'Owner-only dashboard at /admin — engagement, easter-egg discovery, tool suggestions, CI and commit history on one page, gated on Firebase Auth and locked to a single verified email in firestore.rules',
-      'The easter-egg counters were never recording: the collection had no rule at all, so every discovery write fell through to the deny-all and was rejected, and the service swallowed the error — 15 eggs have been silently counting nothing since the system shipped',
-      'Blueprint tool suggestions are readable for the first time — they were write-only, so every suggestion submitted to date had landed somewhere nobody could open — and can now be triaged as reviewed, accepted or rejected',
+      'Owner-only dashboard at /admin — engagement, easter-egg discovery, tool suggestions, CI runs and commit history on one page, gated on Firebase Auth and locked to a single verified email in firestore.rules',
+      'The easter-egg counters have never recorded anything: the collection has no rule at all, so every discovery write falls through to the deny-all and is rejected, and the service catches the error and returns — all 139 eggs have been counting nothing, including the 58 that 2.8.0 had just finished wiring up',
+      'Blueprint tool suggestions are readable for the first time — the collection was write-only, so every suggestion submitted through the form had landed somewhere nobody could open — and can now be triaged as reviewed, accepted or rejected without being editable',
       'Builds emit assets/build-stats.json (prerender route count, sitemap URL count, bundle size), so the dashboard reports measured numbers rather than placeholders',
-      'The route is hidden four ways over: absent from the nav and the sitemap, not prerendered, noindex in its route data, and disallowed in robots.txt'
+      'The route is hidden four ways over: absent from the nav and the sitemap, noindex in its route data, and disallowed in robots.txt — and its prerendered shell renders two words and no panel markup'
+    ]
+  },
+  {
+    version: '2.12.0',
+    codename: 'Stylesheet Drift',
+    date: '2026-08-11',
+    highlights: [
+      'Five tools rendered as essentially unstyled HTML — tailwind-lookup, box-model, csv-json, dns-lookup and robots-generator all shipped the same 56-line generic scaffold stylesheet (four were byte-identical once the class prefix is normalised) while their templates were written against a completely different vocabulary, leaving 81–98% of the classes each page used matching no rule at all',
+      'Four more tools had templates renamed without their stylesheets following: the whole SSL Certificate Inspector results area was unstyled because the CSS still targeted .cert-summary / .status-pill / .trust-chain, and hex-editor, sitemap-generator and the email auditor score gauge had the same drift on a smaller scale',
+      'Four labels showed HTML entities as literal text — Angular interpolation emits its result as a text node, so "Copy &lt;link&gt; Tags", "Copy HTML &lt;img&gt; Tag", "HTML &rarr; MD" and the responsive-preview device emoji were all displayed verbatim rather than decoded',
+      'The X and LinkedIn share buttons on 97 tool pages had lost their brand colors: 179 links use the short .share-btn--x / --li spellings, which no rule defined, and a plain class selector could not have won anyway against each component\'s own Angular-scoped .share-btn',
+      'A repo-wide scan for templates whose classes go unmatched by their own stylesheet now reports zero tools, down from nine'
+    ]
+  },
+  {
+    version: '2.11.0',
+    codename: 'Waterfall',
+    date: '2026-08-11',
+    highlights: [
+      'New flagship tool — HAR File Analyzer & Network Waterfall at /tools/har-analyzer, filling the gap left by Google\'s abandoned HAR Analyzer',
+      'Drag in a .har and get a request waterfall segmented by queueing, DNS, TCP, TLS, TTFB and download, with DOMContentLoaded and load drawn across every row',
+      'Parsing runs in a Web Worker that keeps the capture off the main thread — a 100 MB export never freezes the tab, and only a few hundred KB of analysis crosses back',
+      'Core Web Vitals are reconstructed and honestly labelled: TTFB, DCL and load are measured, FCP and LCP are bounded estimates with their method stated, and CLS is reported as underivable rather than invented',
+      'Findings call out uncompressed text, weak cache lifetimes, slow server waits, oversized images, redirects, HTTP/1.x and third-party weight — each one filters the table down to the offenders',
+      'Privacy redaction strips cookies, credential headers, request and response bodies and token-shaped query parameters, in the URL as well as the header list, then exports a HAR that is safe to attach to a ticket',
+      'Share a link that carries a compressed analysis digest rather than the capture itself, or export the whole thing as a Markdown report'
+    ]
+  },
+  {
+    version: '2.10.0',
+    codename: 'Dead Weight',
+    date: '2026-08-11',
+    highlights: [
+      'Stripe and the PayPal SDK no longer load on any page — PaymentService is injected by the footer, which sits on every route, and its constructor fetched both SDKs at startup, so roughly a megabyte of checkout JavaScript was downloaded on the home page and all 123 tool pages for a flow that only opens behind a click',
+      'Firebase App Check now initializes on the first idle callback instead of during bootstrap, taking reCAPTCHA (336 kB) off the startup path of every route; the three Firestore calls that fire before that window now wait for it, so the visit, changelog and tool-usage counters keep working if App Check enforcement is ever switched on',
+      'Google Analytics is fetched only after the visitor accepts the cookie banner — consent mode had been denying what gtag.js stored while still downloading it on every page',
+      'Carbon Ads and the AdSense slot wait until the unit is nearly scrolled into view instead of requesting during page load',
+      'Measured on /home at 4x CPU throttle over Slow 4G: third-party hosts contacted 12 → 4, third-party requests 27 → 8. LCP is unchanged, because the boot-curtain fix in 2.6.0 had already taken it off the main thread — this release is about bandwidth, CPU and privacy, not paint time'
+    ]
+  },
+  {
+    version: '2.9.0',
+    codename: 'Patron',
+    date: '2026-08-11',
+    highlights: [
+      'Sponsor slots are live on the ten highest-traffic tool pages — a single native card between the tool output and the related-tools rail, carrying a visible "Sponsored" badge, a rel="sponsored" link and a dismiss button that stays dismissed',
+      'Placements are keyed by tool category rather than by URL, so one booking covers every tool in that category — present and future — instead of a single page',
+      'New /sponsors page for advertisers: audience, placements with a mockup of the slot in context, packages, an open-slot grid and an FAQ',
+      'Traffic and pricing on /sponsors stay unpublished until real analytics back them — the page shows "on request" rather than an estimate, and the tool counts it does show are read live from the registry',
+      'The page also states plainly that tool pages carry a Carbon unit and an affiliate card alongside the sponsor slot, rather than claiming an exclusivity the pages do not have',
+      'Nothing changes visually anywhere until a deal is signed: with no sponsor booked, every slot renders nothing at all'
+    ]
+  },
+  {
+    version: '2.8.0',
+    codename: 'Egg Hunt',
+    date: '2026-08-11',
+    highlights: [
+      '58 tools had been calling the easter egg service with IDs that were never in the registry — trigger() looks the ID up and returns early when it finds nothing, so every one of those calls was a silent no-op with no toast, no save and no count',
+      'Registering those IDs lights up 58 tools that had been shipping dead trigger code for months, and takes the registry from 71 eggs to 139',
+      '21 more tools wired with new unlock conditions, including Ouroboros for a regex that matches its own source, Monochrome Master for a single-hue palette, Fort Knox for a 128-character password and Hash Miner for a digest that lands on four leading zeros',
+      'JSON Tower and Regex Race were unreachable on /games — both were gated behind eggs that had no trigger anywhere in the app. Every game is now unlockable'
     ]
   },
   {
