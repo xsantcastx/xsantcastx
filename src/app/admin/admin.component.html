@@ -369,16 +369,6 @@
 
         <div class="adm-stack">
 
-          <article class="adm-card adm-card--stat">
-            <p class="adm-stat__label">Guestbook signatures</p>
-            <ng-container [ngSwitch]="guestbookCount.state">
-              <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
-              <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(guestbookCount.data) }}</p>
-              <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
-            </ng-container>
-            <p class="adm-stat__foot"><a class="adm-link" routerLink="/guestbook">Open /guestbook →</a></p>
-          </article>
-
           <article class="adm-card">
             <header class="adm-card__head">
               <h3 class="adm-card__title">Recent dev log</h3>

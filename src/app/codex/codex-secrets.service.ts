@@ -162,7 +162,15 @@ export class CodexSecretsService {
       const raw = localStorage.getItem(SECRETS_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        this.ledger = parsed as SecretLedger;
+        // Drop ids the registry no longer knows. `foundCount` is the number of
+        // keys in here and the Codex shows it against SECRETS.length, so a
+        // secret that has since been retired — /guestbook went with the
+        // portfolio in the full migration — would otherwise keep counting and
+        // read as "13 of 12 found" for anyone who had already tripped it.
+        const known = new Set(SECRETS.map(s => s.id));
+        this.ledger = Object.fromEntries(
+          Object.entries(parsed as SecretLedger).filter(([id]) => known.has(id))
+        );
       }
     } catch {
       this.ledger = {};

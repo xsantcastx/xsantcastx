@@ -63,7 +63,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // ── 3. Gamification ────────────────────────────────────────────────────
   gamification: Panel<null> = unavailablePanel(
-    'XP, levels, achievements and streaks are per-account, and the site has no accounts yet — only anonymous Firebase Auth on /guestbook. These fill in when Phase 2 ships a users/{uid}/progress document.'
+    'XP, levels, achievements and streaks are per-account, and the site has no accounts yet — only the owner Google sign-in on /admin. These fill in when Phase 2 ships a users/{uid}/progress document.'
   );
 
   // ── 4. Easter eggs & games ─────────────────────────────────────────────
@@ -74,7 +74,6 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // ── 5. Blueprint & community ───────────────────────────────────────────
   suggestions: Panel<Suggestion[]> = loadingPanel();
-  guestbookCount: Panel<number> = loadingPanel();
   changelogEntries: Panel<any[]> = loadingPanel();
   busySuggestion = '';
 
@@ -122,7 +121,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     // authState() is an AngularFire observable; subscribing outside an
     // injection context is what produces the NG0203 warnings elsewhere in
-    // this repo, so mirror the guestbook's runInInjectionContext wrapper.
+    // this repo, so it is wrapped in runInInjectionContext.
     runInInjectionContext(this.appRef.injector, () => {
       this.sub = authState(this.auth).subscribe(user => {
         this.user = user;
@@ -203,7 +202,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.data.activeViewers(force).then(v => this.settle('activeNow', v));
     this.data.totalVisits(force).then(v => this.settle('totalVisits', v));
     this.data.lastActivityAt(force).then(v => this.settle('lastActivity', v));
-    this.data.guestbookCount(force).then(v => this.settle('guestbookCount', v));
 
     this.data.buildStats().then(stats => {
       this.build = stats
@@ -268,7 +266,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   /** Numbers-with-null: null means the read failed, 0 is a real zero. */
-  private settle(key: 'activeNow' | 'totalVisits' | 'guestbookCount' | 'lastActivity', value: any): void {
+  private settle(key: 'activeNow' | 'totalVisits' | 'lastActivity', value: any): void {
     (this as any)[key] = value === null || value === undefined
       ? { state: 'error', data: null }
       : { state: 'ready', data: value };

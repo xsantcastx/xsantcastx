@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.43.0',
+  version: '2.44.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Gold Per Second',
+  codename: 'The Purge',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,23 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.44.0',
+    codename: 'The Purge',
+    date: '2026-08-12',
+    highlights: [
+      'The last six portfolio pages are gone: Skills, Projects, Contact, About, Services and the Guestbook. They described a freelancer for hire, and The Godforge is a product, so they were deleted rather than restyled',
+      'Deleting them orphaned four more files that went with them — contact.service.ts and email.service.ts (only the contact form called them), portfolio.service.ts (only the skills page), and realtime-dbservice.service.ts, whose every method read or wrote the guestbook node of the Realtime Database',
+      'shared/components.ts went too. It was already dead: a barrel re-exporting nine components that had not existed for several releases, which only survived because nothing imported it',
+      'Old links still work. Each deleted path redirects to the nearest surviving surface — /skills and /services to /tools, /projects to /blueprint, the rest to /home — with matching 301s in firebase.json, since the in-app redirects alone never see an HTTP request',
+      'The drawer stopped pointing at deleted pages: Quests and Sponsors take the two MORE slots that Services and Contact held. The footer keeps a plain mailto, because a product still needs a way to be reached',
+      "The 404 was the last page painted in the old cosmic cyan; it now uses the Eclipse purple, matching everywhere else",
+      'Swept out what the deletions exposed: five nav runes, 23 translation keys across both languages, three RouteTitles entries, and an analytics trackCTAClick() whose signature was hire_me / download_resume / view_portfolio',
+      'The Codex secret pointing at /guestbook is retired, and the secrets ledger now prunes ids the registry no longer knows — without that, anyone who had already found it would have read as 13 of 12',
+      'The admin dashboard stops counting guestbook signatures with a full getDocs() over a collection nothing writes to any more',
+      'Net: 3,298 lines deleted, four fewer prerendered routes, sitemap down from 149 to 145 URLs, and @angular/fire/database out of the build entirely'
+    ]
+  },
   {
     version: '2.43.0',
     codename: 'Gold Per Second',

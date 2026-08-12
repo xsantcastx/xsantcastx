@@ -7,7 +7,7 @@ import { adminGuard } from './admin.guard';
 import { AdminDataService } from './admin-data.service';
 
 /**
- * /admin is lazy for the same reason /guestbook is: provideAuth() drags in
+ * /admin is lazy because provideAuth() drags in
  * @firebase/auth (~428 kB) plus its re2js dependency (~265 kB), and neither
  * belongs in the initial bundle for a route one person will ever open.
  *
