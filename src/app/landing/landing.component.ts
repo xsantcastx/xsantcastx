@@ -6,6 +6,9 @@ import { ChangelogService, ChangelogDay } from '../changelog.service';
 import { Subscription } from 'rxjs';
 import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
 import { TranslationService } from '../translation.service';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { AdsenseComponent } from '../shared/adsense/adsense.component';
 
 export interface Tool {
   id: string;
@@ -46,7 +49,8 @@ interface HeroCarouselCard {
   selector: 'app-landing',
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [FormsModule, RouterModule, AdsenseComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
