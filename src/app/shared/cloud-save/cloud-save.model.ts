@@ -133,6 +133,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     label: 'trophy case',
     merge: mergePreference,
   },
+  {
+    key: 'eclipse-combo',
+    collection: 'progress',
+    doc: 'combo',
+    label: 'combo record',
+    // `{ version, best }` — a high-water mark, so the structural max is exactly
+    // right. The live run is deliberately not persisted and so never syncs:
+    // a combo is a rhythm being held, and there is no honest way to store
+    // "mid-run" or to hand one device a streak the other earned.
+  },
 ];
 
 /** How many runs the Realm Rush board keeps. Mirrors BOARD_SIZE in its component. */

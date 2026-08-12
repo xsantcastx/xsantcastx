@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.30.0',
+  version: '2.32.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Eternal Archive',
+  codename: 'Unbroken',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,37 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.32.0',
+    codename: 'Unbroken',
+    date: '2026-08-12',
+    highlights: [
+      'The Forge Flame counts combos. Consecutive strikes stack a multiplier beside the ember, and ten rungs escalate from a purple "COMBO x10!" through ON FIRE, UNSTOPPABLE and GODFORGE AWAKENS to THE FIRST SUN SHATTERS at x9,999',
+      'The strike itself pitches up as the ladder climbs — same anvil, struck harder — and the upper rungs each add a channel rather than just volume: an overtone, a decay tail, a bass impact under a high ring, and finally an ascending arpeggio onto a held chord',
+      'The screen escalates with it. Purple along the viewport edges from x50, a hard shake at x100, the ember doubling at x250, a full vignette from x500, a bright frame at x1,000 and a whiteout into flooding purple at x5,000',
+      'Two seconds of silence ends a run. Against the existing 500ms strike cooldown that leaves 1.5s of slack per strike and caps the rate at two a second — which is what makes x9,999 mean something: 83 minutes of unbroken rhythm, and one missed beat puts it back to zero',
+      'At exactly x666 the screen inverts for a fifth of a second, a detuned rumble rolls under a chain, and THE NAMELESS STIRS. Once, ever — the achievement is the gate, so a second run past it passes in silence',
+      'Eight new achievements, from Rapid Strike at x10 to First Sun Shatter at the cap, the only ones on the wall priced in time held rather than in a thing done',
+      'Every screen-level effect is switched off under prefers-reduced-motion — the counter, the shouts and all eight achievements remain, so the ladder is fully collectable without a single flash',
+      'Fixed a floater that could swallow a strike: the "+1" rising off the ember is a sibling of the button with pointer events on, and at two strikes a second there is always one crossing the target',
+      'Fixed the reduced-motion floater fade, which had never once run — Angular scopes @keyframes per component but leaves an animation reference inside a @media block unscoped, so it pointed at a name that did not exist'
+    ]
+  },
+  {
+    version: '2.31.0',
+    codename: 'The Command Bar',
+    date: '2026-08-12',
+    highlights: [
+      'The navbar is no longer a portfolio header. The Void sigil and "The Godforge" open it, the five realms, the Arena, the Codex, the War Table and the Market run down the middle, and your own standing — quests, Gold, rank and XP — closes it. The rotating buzzword pill, the "Services / Projects / About / Contact" scroll links and the personal wordmark are gone',
+      'Realms is a dropdown that goes somewhere: each of the five links straight into /tools filtered by that realm, painted in its own accent, and the menu stays in the DOM when closed so crawlers still follow all six routes',
+      'The mobile drawer is a tome rather than a slide-out — chapter headings ruled in gold, realm cards carrying their accent on the left edge, and a drawn rune per hall. Quests, Gold and the XP bar sit at the top of it, where a frontispiece would be',
+      'Every icon in the bar is drawn in CSS: the Void sigil, the crossed blades on the quest sword, the Gold coin, the Essence shard, the streak ember, the keeper bust and the hamburger. No emoji anywhere — a colour-font glyph renders differently on every platform and cannot take the bar\'s palette, which matters because four purchasable cosmetic themes re-point it',
+      'The bar compacts from 56px to 48px on the way down and returns to full height on the way up, with a deadband so a jittery trackpad cannot oscillate it',
+      'The forge core on the homepage now reads ember → gold → purple → void: the eclipse bloom lives in the haze and the outer rim rather than inside the shaft, which keeps the well reading as a furnace instead of a nebula orb',
+      'The footer closes on the same mark the bar opens with — sigil, wordmark, the six halls, and "Forged by xsantcastx" under a gold hairline',
+      'Touch targets stay at 44px on touch devices; the 38px compaction that lets the controls sit in a 56px row is scoped to fine pointers only'
+    ]
+  },
   {
     version: '2.30.0',
     codename: 'The Eternal Archive',

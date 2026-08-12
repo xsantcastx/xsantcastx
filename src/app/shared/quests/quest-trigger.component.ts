@@ -36,7 +36,13 @@ import { QuestBoard, QuestService } from './quest.service';
       [attr.aria-expanded]="open"
       aria-haspopup="dialog"
       [attr.aria-label]="label">
-      <span class="qt__icon" aria-hidden="true">&#9876;&#65039;</span>
+      <!-- Crossed blades, drawn. An emoji here rendered as a different icon on
+           every platform and as a colour-font glyph that ignored the bar's
+           palette entirely. -->
+      <span class="qt__icon" aria-hidden="true">
+        <span class="qt__blade"></span>
+        <span class="qt__blade"></span>
+      </span>
       @if (badgeCount > 0) {
         <span class="qt__badge" aria-hidden="true">{{ badgeCount }}</span>
       }
@@ -60,7 +66,30 @@ import { QuestBoard, QuestService } from './quest.service';
       border-color: rgba(139, 92, 246, 0.45);
       box-shadow: 0 0 20px -8px rgba(139, 92, 246, .7);
     }
-    .qt__icon { font-size: 17px; line-height: 1; }
+    .qt__icon { position: relative; display: block; width: 18px; height: 18px; }
+
+    /* Steel blade, gold hilt, and a crossguard at the join. The guard is what
+       stops this reading as a plain X — without it the icon was the same
+       shape as the Void sigil in the same bar, at the same size. */
+    .qt__blade {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 17px; height: 2px;
+      margin: -1px 0 0 -8.5px;
+      border-radius: 1px 1px 1px 0;
+      background: linear-gradient(90deg, #C9A84C 0%, #C9A84C 26%, #e9eef7 30%, #ffffff 100%);
+    }
+    /* Crossguard: a short perpendicular bar at the hilt end. */
+    .qt__blade::after {
+      content: '';
+      position: absolute;
+      left: 4px; top: -2.5px;
+      width: 2px; height: 7px;
+      border-radius: 1px;
+      background: #C9A84C;
+    }
+    .qt__blade:nth-child(1) { transform: rotate(45deg); }
+    .qt__blade:nth-child(2) { transform: rotate(-45deg); }
 
     /* A reward is waiting — the only state that earns a standing animation. */
     .qt__trigger--ready { border-color: rgba(201, 168, 76, .6); animation: qtPulse 2.8s ease-in-out infinite; }

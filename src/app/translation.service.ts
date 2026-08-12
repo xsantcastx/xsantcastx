@@ -28,6 +28,40 @@ export class TranslationService {
     'nav.about': { en: 'About', es: 'Acerca de' },
     'nav.contact': { en: 'Contact', es: 'Contacto' },
 
+    // ── The Godforge command bar ─────────────────────────────────────────
+    // Realm *names* are deliberately absent: they come from REALMS in
+    // realm.model.ts and are proper nouns in the lore, untranslated in both
+    // languages exactly as the tools page already renders them.
+    'gfnav.realms':       { en: 'Realms',        es: 'Reinos' },
+    'gfnav.realmsHd':     { en: 'The Five Realms', es: 'Los cinco reinos' },
+    'gfnav.allArtifacts': { en: 'All Artifacts', es: 'Todos los artefactos' },
+    'gfnav.arena':        { en: 'Arena',         es: 'Arena' },
+    'gfnav.codex':        { en: 'Codex',         es: 'Codice' },
+    'gfnav.warTable':     { en: 'War Table',     es: 'Mesa de guerra' },
+    'gfnav.market':       { en: 'Market',        es: 'Mercado' },
+    'gfnav.quests':       { en: 'Quests',        es: 'Misiones' },
+    'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },
+    'gfnav.live':         { en: 'Live',          es: 'En vivo' },
+    'gfnav.mcp':          { en: 'MCP Server',    es: 'Servidor MCP' },
+    'gfnav.sponsors':     { en: 'Sponsors',      es: 'Patrocinadores' },
+    'gfnav.hallsHd':      { en: 'The Halls',     es: 'Las salas' },
+    'gfnav.keeperLabel':  { en: 'Your Forge — rank, inventory and achievements', es: 'Tu forja: rango, inventario y logros' },
+    'gfnav.menuLabel':    { en: 'Open the tome', es: 'Abrir el tomo' },
+    'gfnav.tomeMark':     { en: 'every tool you use earns you power', es: 'cada herramienta que usas te da poder' },
+
+    'gfnav.hint.tools':    { en: '125 artifacts, five realms',      es: '125 artefactos, cinco reinos' },
+    'gfnav.hint.arena':    { en: 'Games forged in the eclipse',     es: 'Juegos forjados en el eclipse' },
+    'gfnav.hint.codex':    { en: 'Fragments of a broken sun',       es: 'Fragmentos de un sol roto' },
+    'gfnav.hint.warTable': { en: 'What is being built, and why',    es: 'Que se construye, y por que' },
+    'gfnav.hint.market':   { en: 'Spend gold, sharpen the forge',   es: 'Gasta oro, afila la forja' },
+    'gfnav.hint.quests':   { en: 'Daily, weekly and epic trials',   es: 'Pruebas diarias, semanales y epicas' },
+    'gfnav.hint.keeper':   { en: 'Your rank and everything you own', es: 'Tu rango y todo lo que posees' },
+    'gfnav.hint.live':     { en: 'Watch the forge burn in real time', es: 'Mira la forja arder en tiempo real' },
+    'gfnav.hint.mcp':      { en: 'Tools for AI agents',             es: 'Herramientas para agentes de IA' },
+    'gfnav.hint.sponsors': { en: 'Back the forge',                  es: 'Apoya la forja' },
+
+    'gffoot.forgedBy':    { en: 'Forged by xsantcastx',            es: 'Forjado por xsantcastx' },
+
     // Hero Section
     'hero.title.line1': { en: 'xsantcastx', es: 'xsantcastx' },
     'hero.title.line2': { en: 'Development Studio', es: 'Estudio de Desarrollo' },
@@ -1056,6 +1090,8 @@ export class TranslationService {
     'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
     'godforge.hero.cta':       { en: 'Enter the Forge',                            es: 'Entra en la forja' },
     'godforge.hero.ctaLive':   { en: 'Watch Live Work',                            es: 'Ver el trabajo en vivo' },
+    'godforge.hero.orExplore': { en: 'or explore',                                 es: 'o explora' },
+    'godforge.hero.theCodex':  { en: 'The Codex',                                  es: 'el Codice' },
 
     'godforge.pulse.artifacts': { en: 'Artifacts Forged',   es: 'Artefactos forjados' },
     'godforge.pulse.paths':     { en: 'Paths Prerendered',  es: 'Caminos prerenderizados' },
