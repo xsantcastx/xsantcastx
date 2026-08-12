@@ -19,20 +19,20 @@
 .gi-panel__body--code { padding: 0; }
 
 .gi-search { width: 100%; padding: 0.5rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-family: var(--font-body); font-size: 0.82rem; outline: none; margin-bottom: 0.75rem; box-sizing: border-box; }
-.gi-search:focus { border-color: rgba(0, 255, 204, 0.4); }
+.gi-search:focus { border-color: rgba(139, 92, 246, 0.4); }
 
 .gi-tech-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .gi-tech-chip { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.5rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s ease; min-width: 80px; }
-.gi-tech-chip:hover { border-color: rgba(0, 255, 204, 0.3); }
-.gi-tech-chip--active { background: color-mix(in srgb, var(--primary-color) 12%, transparent); border-color: rgba(0, 255, 204, 0.4); }
+.gi-tech-chip:hover { border-color: rgba(139, 92, 246, 0.3); }
+.gi-tech-chip--active { background: color-mix(in srgb, var(--primary-color) 12%, transparent); border-color: rgba(139, 92, 246, 0.4); }
 .gi-tech-chip__name { font-size: 0.8rem; font-weight: 600; color: var(--text-color); }
 .gi-tech-chip--active .gi-tech-chip__name { color: var(--primary-color); }
 .gi-tech-chip__cat { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
 .gi-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.gi-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
+.gi-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(139,92,246,0.25); }
 .gi-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
-.gi-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(0, 255, 204, 0.35) !important; }
+.gi-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(139, 92, 246, 0.35) !important; }
 
 .gi-code { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; background: transparent; }
 .gi-code code { font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; color: var(--primary-color); display: block; white-space: pre-wrap; word-break: break-all; }

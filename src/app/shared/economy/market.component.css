@@ -99,7 +99,7 @@
   margin: 3px 0 0;
   font: 600 15px/1 'Orbitron', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .mk__doubled {
@@ -117,7 +117,7 @@
   font-size: 13px; color: #cfc4ff;
 }
 .mk__running strong { color: #c48bff; }
-.mk__running-timer { font-variant-numeric: tabular-nums; color: #eafff9; }
+.mk__running-timer { font-variant-numeric: tabular-nums; color: #F2ECFF; }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────── */
 
@@ -137,7 +137,7 @@
   cursor: pointer;
   transition: border-color .25s ease, color .25s ease, box-shadow .25s ease;
 }
-.mk__tab:hover { color: #eafff9; border-color: rgba(255, 255, 255, .2); }
+.mk__tab:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .2); }
 .mk__tab--active[data-currency='gold'] {
   color: #ffd97a;
   border-color: rgba(201, 168, 76, .55);
@@ -148,7 +148,7 @@
   border-color: rgba(164, 139, 255, .55);
   box-shadow: 0 0 24px -8px rgba(164, 139, 255, .85);
 }
-.mk__tab:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.mk__tab:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 .mk__tab-icon { font-size: 15px; }
 
 /* ── Panels ───────────────────────────────────────────────────────────── */
@@ -187,7 +187,7 @@
   margin: 0 0 18px;
   font-size: 13px; line-height: 1.6; color: #9fb4ae;
 }
-.mk__panel-note strong { color: #eafff9; }
+.mk__panel-note strong { color: #F2ECFF; }
 
 /* ── The two Gold ladders ─────────────────────────────────────────────── */
 
@@ -210,7 +210,7 @@
 .mk__row-body { display: grid; gap: 3px; min-width: 0; }
 .mk__row-name {
   font: 600 14px/1.2 'Orbitron', system-ui, sans-serif;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 .mk__row-owned {
   margin-left: 7px; padding: 2px 7px;
@@ -219,7 +219,7 @@
   color: #ffd97a; font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
-.mk__row-effect { font-size: 13px; color: #4dffe0; }
+.mk__row-effect { font-size: 13px; color: #A78BFA; }
 .mk__row-flavour { font-size: 12px; font-style: italic; color: #6d817c; }
 
 /* ── Cards (enchantments and cosmetics) ───────────────────────────────── */
@@ -248,8 +248,8 @@
 .mk__card--owned { border-color: rgba(201, 168, 76, .38); }
 
 .mk__card-icon { font-size: 26px; line-height: 1; }
-.mk__card-name { margin: 0; font: 600 15px/1.2 'Orbitron', system-ui, sans-serif; color: #eafff9; }
-.mk__card-effect { margin: 0; font-size: 13px; color: #4dffe0; }
+.mk__card-name { margin: 0; font: 600 15px/1.2 'Orbitron', system-ui, sans-serif; color: #F2ECFF; }
+.mk__card-effect { margin: 0; font-size: 13px; color: #A78BFA; }
 .mk__card--essence .mk__card-effect { color: #c48bff; }
 .mk__card-flavour { margin: 0 0 6px; font-size: 12px; font-style: italic; line-height: 1.5; color: #6d817c; }
 .mk__card-timer { margin: 0; font-size: 12px; color: #ffd97a; font-variant-numeric: tabular-nums; }
@@ -287,7 +287,7 @@
   font: 700 16px/1.2 'Orbitron', system-ui, sans-serif;
   color: var(--relic-color);
 }
-.mk__relic-effect { margin: 0; font-size: 13px; color: #eafff9; }
+.mk__relic-effect { margin: 0; font-size: 13px; color: #F2ECFF; }
 .mk__relic-lore {
   margin: 4px 0 8px;
   padding-left: 12px;
@@ -330,7 +330,7 @@
 }
 /* The satisfying part: it gives under the finger, and springs back. */
 .mk__buy:active:not(:disabled) { transform: scale(.94); }
-.mk__buy:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.mk__buy:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 .mk__buy:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.6); }
 
 .mk__buy-cost {
@@ -390,20 +390,20 @@
   background: var(--swatch);
   box-shadow: 0 0 8px var(--swatch);
 }
-.mk__variant:hover { color: #eafff9; border-color: rgba(255, 255, 255, .26); }
+.mk__variant:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .26); }
 .mk__variant--on {
   border-color: var(--swatch);
-  color: #eafff9;
+  color: #F2ECFF;
   box-shadow: 0 0 18px -8px var(--swatch);
 }
-.mk__variant:focus-visible { outline: 2px solid #4dffe0; outline-offset: 2px; }
+.mk__variant:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
 
 /* ── Footer ───────────────────────────────────────────────────────────── */
 
 .mk__foot { margin-top: 34px; text-align: center; }
 .mk__whisper { margin: 0 0 10px; font-size: 12.5px; font-style: italic; color: #6d817c; }
 .mk__links { margin: 0; font-size: 13px; color: #6d817c; }
-.mk__links a { color: #4dffe0; text-decoration: none; }
+.mk__links a { color: #A78BFA; text-decoration: none; }
 .mk__links a:hover { text-decoration: underline; }
 
 /* ── Mobile: the Market is a full-width surface, not a narrowed desktop one.

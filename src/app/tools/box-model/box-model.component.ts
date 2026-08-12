@@ -52,10 +52,10 @@ export class BoxModelComponent {
   padding: SideValues = { top: 16, right: 16, bottom: 16, left: 16 };
 
   border: BorderValues = {
-    top:    { width: 2, style: 'solid', color: '#00ffcc' },
-    right:  { width: 2, style: 'solid', color: '#00ffcc' },
-    bottom: { width: 2, style: 'solid', color: '#00ffcc' },
-    left:   { width: 2, style: 'solid', color: '#00ffcc' }
+    top:    { width: 2, style: 'solid', color: '#8B5CF6' },
+    right:  { width: 2, style: 'solid', color: '#8B5CF6' },
+    bottom: { width: 2, style: 'solid', color: '#8B5CF6' },
+    left:   { width: 2, style: 'solid', color: '#8B5CF6' }
   };
 
   contentWidth = 200;
@@ -75,10 +75,10 @@ export class BoxModelComponent {
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
       padding: { top: 0, right: 0, bottom: 0, left: 0 },
       border: {
-        top:    { width: 0, style: 'none', color: '#00ffcc' },
-        right:  { width: 0, style: 'none', color: '#00ffcc' },
-        bottom: { width: 0, style: 'none', color: '#00ffcc' },
-        left:   { width: 0, style: 'none', color: '#00ffcc' }
+        top:    { width: 0, style: 'none', color: '#8B5CF6' },
+        right:  { width: 0, style: 'none', color: '#8B5CF6' },
+        bottom: { width: 0, style: 'none', color: '#8B5CF6' },
+        left:   { width: 0, style: 'none', color: '#8B5CF6' }
       },
       width: 200, height: 150, boxSizing: 'content-box'
     },
@@ -99,10 +99,10 @@ export class BoxModelComponent {
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
       padding: { top: 64, right: 32, bottom: 64, left: 32 },
       border: {
-        top:    { width: 0, style: 'none', color: '#00ffcc' },
-        right:  { width: 0, style: 'none', color: '#00ffcc' },
-        bottom: { width: 4, style: 'solid', color: '#00ffcc' },
-        left:   { width: 0, style: 'none', color: '#00ffcc' }
+        top:    { width: 0, style: 'none', color: '#8B5CF6' },
+        right:  { width: 0, style: 'none', color: '#8B5CF6' },
+        bottom: { width: 4, style: 'solid', color: '#8B5CF6' },
+        left:   { width: 0, style: 'none', color: '#8B5CF6' }
       },
       width: 400, height: 300, boxSizing: 'border-box'
     },
@@ -111,10 +111,10 @@ export class BoxModelComponent {
       margin: { top: 8, right: 8, bottom: 8, left: 8 },
       padding: { top: 12, right: 24, bottom: 12, left: 24 },
       border: {
-        top:    { width: 2, style: 'solid', color: '#00ffcc' },
-        right:  { width: 2, style: 'solid', color: '#00ffcc' },
-        bottom: { width: 2, style: 'solid', color: '#00ffcc' },
-        left:   { width: 2, style: 'solid', color: '#00ffcc' }
+        top:    { width: 2, style: 'solid', color: '#8B5CF6' },
+        right:  { width: 2, style: 'solid', color: '#8B5CF6' },
+        bottom: { width: 2, style: 'solid', color: '#8B5CF6' },
+        left:   { width: 2, style: 'solid', color: '#8B5CF6' }
       },
       width: 120, height: 40, boxSizing: 'border-box'
     },
@@ -159,10 +159,10 @@ export class BoxModelComponent {
       margin: { top: 0, right: 32, bottom: 24, left: 0 },
       padding: { top: 8, right: 16, bottom: 24, left: 48 },
       border: {
-        top:    { width: 1, style: 'solid', color: '#00ffcc' },
-        right:  { width: 1, style: 'solid', color: '#00ffcc' },
+        top:    { width: 1, style: 'solid', color: '#8B5CF6' },
+        right:  { width: 1, style: 'solid', color: '#8B5CF6' },
         bottom: { width: 4, style: 'solid', color: '#ff6bcb' },
-        left:   { width: 1, style: 'solid', color: '#00ffcc' }
+        left:   { width: 1, style: 'solid', color: '#8B5CF6' }
       },
       width: 250, height: 120, boxSizing: 'content-box'
     }
@@ -274,10 +274,10 @@ export class BoxModelComponent {
     this.margin = { top: 16, right: 16, bottom: 16, left: 16 };
     this.padding = { top: 16, right: 16, bottom: 16, left: 16 };
     this.border = {
-      top:    { width: 2, style: 'solid', color: '#00ffcc' },
-      right:  { width: 2, style: 'solid', color: '#00ffcc' },
-      bottom: { width: 2, style: 'solid', color: '#00ffcc' },
-      left:   { width: 2, style: 'solid', color: '#00ffcc' }
+      top:    { width: 2, style: 'solid', color: '#8B5CF6' },
+      right:  { width: 2, style: 'solid', color: '#8B5CF6' },
+      bottom: { width: 2, style: 'solid', color: '#8B5CF6' },
+      left:   { width: 2, style: 'solid', color: '#8B5CF6' }
     };
     this.contentWidth = 200;
     this.contentHeight = 150;

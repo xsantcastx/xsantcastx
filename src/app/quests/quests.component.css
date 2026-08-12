@@ -28,7 +28,7 @@
 .quests-title {
   margin: 0 0 12px;
   font: 700 clamp(28px, 5vw, 44px)/1.15 'Orbitron', system-ui, sans-serif;
-  background: linear-gradient(90deg, #4dffe0, #7b61ff, #ff6dd7);
+  background: linear-gradient(90deg, #A78BFA, #7b61ff, #ff6dd7);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
@@ -38,8 +38,8 @@
   margin: 0 0 26px;
   padding: 7px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 255, 204, 0.14);
-  background: rgba(0, 255, 204, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.14);
+  background: rgba(139, 92, 246, 0.05);
   font-size: 14px; color: #9fb4ae;
 }
 
@@ -54,7 +54,7 @@
 .quests-stats dd {
   margin: 4px 0 0;
   font: 700 clamp(20px, 4vw, 28px)/1 'Orbitron', system-ui, sans-serif;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 /* ── Sections ───────────────────────────────────────────────────────────── */
@@ -65,7 +65,7 @@
   padding: 26px 20px;
   border-radius: 18px;
   background:
-    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.05), transparent 65%),
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(139, 92, 246, 0.05), transparent 65%),
     radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.06), transparent 65%),
     rgba(5, 8, 18, 0.55);
 }
@@ -73,7 +73,7 @@
 .quests-section::after {
   content: ''; position: absolute; left: 0; right: 0; height: 1px;
 }
-.quests-section::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.45) 50%, transparent); }
+.quests-section::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.45) 50%, transparent); }
 .quests-section::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.45) 50%, transparent); }
 
 .quests-section--epic::before { background: linear-gradient(90deg, transparent, rgba(255, 45, 77, 0.5) 50%, transparent); }
@@ -85,7 +85,7 @@
 .quests-section__title {
   margin: 0;
   font: 700 clamp(18px, 3vw, 24px)/1 'Orbitron', system-ui, sans-serif;
-  color: #eafff9; letter-spacing: .04em;
+  color: #F2ECFF; letter-spacing: .04em;
 }
 .quests-section__timer {
   font: 600 12px/1 'Orbitron', system-ui, sans-serif;
@@ -111,7 +111,7 @@
   font: 600 14px/1 'Orbitron', system-ui, sans-serif;
   color: #c6d4d0; text-align: left;
 }
-.quests-history__toggle:hover { color: #4dffe0; }
+.quests-history__toggle:hover { color: #A78BFA; }
 
 .quests-history__chevron { transition: transform .25s ease; color: #7b61ff; }
 .quests-history__chevron--open { transform: rotate(90deg); }
@@ -145,7 +145,7 @@
 .quests-history__type {
   font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #6d817c;
 }
-.quests-history__xp { font: 600 12px/1 'Orbitron', system-ui, sans-serif; color: #4dffe0; }
+.quests-history__xp { font: 600 12px/1 'Orbitron', system-ui, sans-serif; color: #A78BFA; }
 
 .quests-history__empty { margin: 12px 0 0; font-style: italic; font-size: 13px; color: #6d817c; }
 
@@ -162,12 +162,12 @@
   display: block; width: fit-content; margin: 0 auto;
   min-height: 44px; padding: 13px 26px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.07);
-  color: #4dffe0; text-decoration: none;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.07);
+  color: #A78BFA; text-decoration: none;
   font: 600 13px/1 'Orbitron', system-ui, sans-serif;
 }
-.quests-cta:hover { background: rgba(0, 255, 204, 0.14); }
+.quests-cta:hover { background: rgba(139, 92, 246, 0.14); }
 
 @media (max-width: 640px) {
   .quests-page { padding: 100px 14px 60px; }

@@ -15,7 +15,7 @@ const routes: Routes = [
       data: {
         description: 'The Godforge — free browser tools for developers and designers. CSS Box Shadow Generator, Email Deliverability Auditor, SSL Inspector, SVG to Code & more. No sign-up.',
         keywords: 'free developer tools, free browser tools, css box shadow generator, email deliverability checker, ssl certificate checker, svg to react component, pdf generator, color palette, developer utilities',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@graph': [
@@ -47,7 +47,7 @@ const routes: Routes = [
       data: {
         description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more. Full-stack expertise for modern web and mobile applications.',
         keywords: 'angular, react, typescript, nodejs, firebase, full stack skills, web developer skills',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'WebPage', name: 'Skills — The Godforge',
           url: `${SITE_URL}/skills`,
@@ -66,7 +66,7 @@ const routes: Routes = [
       data: {
         description: 'Portfolio of real-world projects: e-commerce platforms, web applications, and developer tools built with Angular, Firebase, and TypeScript.',
         keywords: 'portfolio, web projects, angular projects, firebase projects, case studies, web applications',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Projects — The Godforge',
           url: `${SITE_URL}/projects`,
@@ -85,7 +85,7 @@ const routes: Routes = [
       data: {
         description: 'Get in touch for freelance web development, project collaboration, or consulting. Based in Spain, working globally.',
         keywords: 'hire developer, freelance web development, contact, project consultation',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact — The Godforge',
           url: `${SITE_URL}/contact`,
@@ -100,7 +100,7 @@ const routes: Routes = [
       data: {
         description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.',
         keywords: 'donate, support developer, open source, sponsorship',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'WebPage', name: 'Fuel the Forge — The Godforge',
           url: `${SITE_URL}/donate`,
@@ -115,7 +115,7 @@ const routes: Routes = [
       data: {
         description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
         keywords: 'watch ai work live, claude ai real time, ai mission control, live coding stream, ai development feed',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'WebPage', name: 'Watch Live — AI Mission Control',
           url: `${SITE_URL}/live`,
@@ -134,7 +134,7 @@ const routes: Routes = [
       data: {
         description: 'A local MCP server with 14 developer tools: JSON formatting, UUID generation, Base64, JWT decoding, regex, hashing, color contrast, and cron expression tools.',
         keywords: 'mcp server, model context protocol, claude tools, ai developer tools, json formatter mcp, uuid generator mcp, base64 mcp, jwt decoder mcp, regex mcp, hash generator mcp',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
@@ -154,7 +154,7 @@ const routes: Routes = [
       data: {
         description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
         keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, arena',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`
       }
     },
 
@@ -178,7 +178,7 @@ const routes: Routes = [
       data: {
         description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, mastery for all 128 tools, and clues to every secret still hidden.',
         keywords: 'achievements, developer tools achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -217,7 +217,7 @@ const routes: Routes = [
       data: {
         description: 'Leave a message in the cosmic guestbook. A constellation of visitors who passed through.',
         keywords: 'guestbook, visitors, leave a message, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-default.jpg`
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`
       }
     },
   {
@@ -227,7 +227,7 @@ const routes: Routes = [
       data: {
         description: 'Three daily quests drawn from thirty, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by using the tools you already use.',
         keywords: 'daily quests, missions, developer tools, gamification, eclipse realms, xp, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -245,7 +245,7 @@ const routes: Routes = [
       data: {
         description: 'Ten forge and hammer upgrades bought with Gold, four enchantments and five permanent artifacts bought with Eclipse Essence, and five cosmetics. The forge earns while the tab is open.',
         keywords: 'godforge market, idle game, gold, eclipse essence, upgrades, artifacts, cosmetics, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -263,7 +263,7 @@ const routes: Routes = [
       data: {
         description: 'The open blueprint for xsantcastx.com — every free tool mapped by category, the public Now/Next/Later roadmap, the architecture behind it, and a form to suggest the next tool.',
         keywords: 'public roadmap, open roadmap, developer tools roadmap, project documentation, architecture, build in public, suggest a tool, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -307,7 +307,7 @@ const routes: Routes = [
       data: {
         description: 'Sponsor a category of free developer tools on xsantcastx.com. A native card sold direct — one sponsor per category, no auction, no third-party script, honest disclosure.',
         keywords: 'sponsor developer tools, developer advertising, reach developers, dev tool sponsorship, indie advertising, sponsor a website, developer audience',
-        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',

@@ -11,7 +11,7 @@
 }
 .cp-energies__item--aether { color: #C9A84C; }
 .cp-energies__item--nox    { color: #a48bff; }
-.cp-energies__item--exit   { color: #4dffe0; }
+.cp-energies__item--exit   { color: #A78BFA; }
 
 .cp-controls-note { font-size: 0.8rem; margin-bottom: 1.4rem; }
 
@@ -72,7 +72,7 @@
   height: 14px;
   margin: -7px 0 0 -7px;
   border-radius: 50%;
-  background: #eafff9;
+  background: #F2ECFF;
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
   transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -87,7 +87,7 @@
   border-radius: 16px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 60% at 85% 85%, rgba(0, 255, 204, 0.10), transparent 70%),
+    radial-gradient(ellipse 60% 60% at 85% 85%, rgba(139, 92, 246, 0.10), transparent 70%),
     radial-gradient(ellipse 60% 60% at 15% 15%, rgba(140, 110, 255, 0.10), transparent 70%),
     linear-gradient(160deg, rgba(10, 15, 30, 0.9), rgba(6, 9, 20, 0.95));
 }
@@ -126,10 +126,10 @@
 }
 
 .cp-pad__btn:hover, .cp-pad__btn:focus-visible {
-  border-color: rgba(0, 255, 204, 0.5);
-  background: rgba(0, 255, 204, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.1);
 }
-.cp-pad__btn:active { background: rgba(0, 255, 204, 0.18); }
+.cp-pad__btn:active { background: rgba(139, 92, 246, 0.18); }
 
 .cp-pad__btn--up    { grid-column: 2; grid-row: 1; }
 .cp-pad__btn--left  { grid-column: 1; grid-row: 2; }

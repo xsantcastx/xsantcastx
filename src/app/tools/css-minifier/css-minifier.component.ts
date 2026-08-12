@@ -185,7 +185,7 @@ body {
 .navbar__logo {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #00ffcc;
+  color: #8B5CF6;
   text-decoration: none;
 }
 
@@ -198,7 +198,7 @@ body {
 }
 
 .navbar__links a:hover {
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 
 /* Card Component */
@@ -212,7 +212,7 @@ body {
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.08);
 }
 
 /* Button */
@@ -221,7 +221,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 1.2rem;
-  background: #00ffcc;
+  background: #8B5CF6;
   color: #000;
   border: none;
   border-radius: 8px;

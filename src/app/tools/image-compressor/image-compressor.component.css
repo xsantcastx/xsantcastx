@@ -93,13 +93,13 @@
   transition: border-color 0.2s, background 0.2s;
 }
 .ic-upload:hover {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.025);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.025);
 }
 .ic-upload.is-active {
   border-color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.05);
-  box-shadow: 0 0 30px -12px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.05);
+  box-shadow: 0 0 30px -12px rgba(139, 92, 246, 0.2);
 }
 
 .ic-upload__input {
@@ -203,7 +203,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -241,14 +241,14 @@
   white-space: nowrap;
 }
 .cp-toggle-btn:hover:not(.is-active):not([disabled]) {
-  border-color: rgba(0, 255, 204, 0.28);
+  border-color: rgba(139, 92, 246, 0.28);
   color: var(--text-color);
 }
 .cp-toggle-btn.is-active {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 .cp-toggle-btn[disabled] {
   opacity: 0.35;
@@ -277,14 +277,14 @@
   font-size: 0.73rem;
 }
 .ic-btn--primary {
-  background: rgba(0, 255, 204, 0.12);
-  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 .ic-btn--primary:hover:not([disabled]) {
-  background: rgba(0, 255, 204, 0.2);
-  border-color: rgba(0, 255, 204, 0.65);
-  box-shadow: 0 0 14px -6px rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.65);
+  box-shadow: 0 0 14px -6px rgba(139, 92, 246, 0.3);
 }
 .ic-btn--ghost {
   background: var(--surface-color);
@@ -292,7 +292,7 @@
   color: var(--text-muted);
 }
 .ic-btn--ghost:hover:not([disabled]) {
-  border-color: rgba(0, 255, 204, 0.28);
+  border-color: rgba(139, 92, 246, 0.28);
   color: var(--text-color);
 }
 .ic-btn--danger {
@@ -352,7 +352,7 @@
   transition: border-color 0.2s, transform 0.2s;
 }
 .ic-card:hover {
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
   transform: translateY(-2px);
 }
 
@@ -461,9 +461,9 @@
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.25);
 }
 .ic-savings-badge--neg {
   background: rgba(255, 107, 107, 0.08);

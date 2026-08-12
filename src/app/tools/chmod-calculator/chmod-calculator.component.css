@@ -261,7 +261,7 @@
 
 .ch-checkbox input:checked ~ .ch-checkbox__mark {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.5);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 .ch-checkbox input:checked ~ .ch-checkbox__mark::after {
@@ -269,7 +269,7 @@
 }
 
 .ch-checkbox:hover .ch-checkbox__mark {
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 /* ── Numeric Input ─────────────────────────────────────────── */
@@ -312,8 +312,8 @@
 }
 
 .ch-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.015);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .ch-input--mono {
@@ -364,13 +364,13 @@
 }
 
 .ch-preset:hover {
-  border-color: rgba(0, 255, 204, 0.25);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ch-preset--active {
   background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .ch-preset__value {
@@ -583,7 +583,7 @@
 
 .ch-perm-tag--active {
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 
@@ -612,12 +612,12 @@
 }
 .ch-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .ch-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .ch-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .ch-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

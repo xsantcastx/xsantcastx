@@ -193,10 +193,10 @@
   color: var(--text-color);
 }
 .gg-type-btn.is-active {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 
 /* ─── CONTROLS GRID ──────────────────────────────────── */
@@ -332,10 +332,10 @@
   color: var(--text-color);
 }
 .gg-toggle-btn.is-active {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 
 /* ─── CODE BLOCK ─────────────────────────────────────── */
@@ -386,14 +386,14 @@
   font-size: 0.73rem;
 }
 .gg-btn--primary {
-  background: rgba(0, 255, 204, 0.12);
-  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 .gg-btn--primary:hover:not([disabled]) {
-  background: rgba(0, 255, 204, 0.2);
-  border-color: rgba(0, 255, 204, 0.65);
-  box-shadow: 0 0 14px -6px rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.65);
+  box-shadow: 0 0 14px -6px rgba(139, 92, 246, 0.3);
 }
 
 /* ─── ICON BUTTONS ───────────────────────────────────── */
@@ -482,7 +482,7 @@
 }
 .gg-stop-marker.is-active {
   border-color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
 }
 .gg-stop-marker__dot {
   width: 8px;
