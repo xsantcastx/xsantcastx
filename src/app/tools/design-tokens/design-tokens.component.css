@@ -158,7 +158,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .dt-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -203,10 +203,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.dt-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.dt-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .dt-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -264,12 +264,12 @@
 }
 .dt-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .dt-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .dt-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .dt-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -312,7 +312,7 @@
 
 .dt-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -374,7 +374,7 @@
 
 /* ── Token Preview ─────────────────────────────────────────── */
 .dt-panel--preview {
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
 }
 
 .dt-token-count {
@@ -413,7 +413,7 @@
   border-bottom: none;
 }
 .dt-preview-item:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .dt-preview-type {

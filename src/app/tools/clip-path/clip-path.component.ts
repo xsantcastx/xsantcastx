@@ -74,7 +74,7 @@ export class ClipPathComponent implements AfterViewInit {
 
   // Preview
   previewBgColor = '#1a1a2e';
-  shapeColor = '#00ffcc';
+  shapeColor = '#8B5CF6';
   previewSize = 400;
 
   // Drag state

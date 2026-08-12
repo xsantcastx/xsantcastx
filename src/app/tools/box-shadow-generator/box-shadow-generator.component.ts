@@ -70,8 +70,8 @@ export class BoxShadowGeneratorComponent {
     {
       name: 'Neon Glow',
       layers: [
-        { horizontalOffset: 0, verticalOffset: 0, blurRadius: 15, spreadRadius: 3, color: '#00ffcc', opacity: 0.6, inset: false },
-        { horizontalOffset: 0, verticalOffset: 0, blurRadius: 40, spreadRadius: 10, color: '#00ffcc', opacity: 0.3, inset: false }
+        { horizontalOffset: 0, verticalOffset: 0, blurRadius: 15, spreadRadius: 3, color: '#8B5CF6', opacity: 0.6, inset: false },
+        { horizontalOffset: 0, verticalOffset: 0, blurRadius: 40, spreadRadius: 10, color: '#8B5CF6', opacity: 0.3, inset: false }
       ]
     },
     {

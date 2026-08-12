@@ -158,7 +158,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .jsc-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -193,7 +193,7 @@
 .jsc-option-hint code {
   font-family: 'Fira Code', monospace;
   font-size: 0.7rem;
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
   color: var(--primary-color);
@@ -217,7 +217,7 @@
   color: rgba(214, 221, 235, 0.3);
 }
 .jsc-name-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* ── Toggle ────────────────────────────────────────────────── */
@@ -259,7 +259,7 @@
 
 .jsc-toggle input:checked ~ .jsc-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .jsc-toggle input:checked ~ .jsc-toggle__track .jsc-toggle__thumb {
   left: 20px;
@@ -341,12 +341,12 @@
 }
 .jsc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .jsc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .jsc-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .jsc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -373,7 +373,7 @@
 
 .jsc-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -454,7 +454,7 @@
 
 .jsc-validation-banner--pass {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 

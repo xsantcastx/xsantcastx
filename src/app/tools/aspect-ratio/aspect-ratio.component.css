@@ -156,12 +156,12 @@
 }
 .ar-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .ar-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .ar-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .ar-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -218,8 +218,8 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .ar-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ar-input-unit {
@@ -248,7 +248,7 @@
   gap: 0.4rem;
   padding: 0.6rem 1.1rem;
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border-top: 1px solid rgba(0, 255, 204, 0.15);
+  border-top: 1px solid rgba(139, 92, 246, 0.15);
   font-size: 0.73rem;
   color: var(--primary-color);
   line-height: 1.4;
@@ -302,12 +302,12 @@
 }
 .ar-preset-btn:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.3);
-  background: rgba(0, 255, 204, 0.04);
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.04);
 }
 .ar-preset-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -389,7 +389,7 @@
   gap: 0.6rem;
   padding: 0.65rem 0.85rem;
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-md);
 }
 
@@ -411,7 +411,7 @@
 
 /* ── Result panel ──────────────────────────────────────────── */
 .ar-panel--result {
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
 }
 
 .ar-result-body {
@@ -431,7 +431,7 @@
 }
 
 .ar-preview-box {
-  border: 2px solid rgba(0, 255, 204, 0.35);
+  border: 2px solid rgba(139, 92, 246, 0.35);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
   display: flex;
@@ -439,7 +439,7 @@
   justify-content: center;
   transition: width 0.3s ease, height 0.3s ease;
   position: relative;
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.08), inset 0 0 20px rgba(0, 255, 204, 0.03);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.08), inset 0 0 20px rgba(139, 92, 246, 0.03);
 }
 
 .ar-preview-label {
@@ -447,7 +447,7 @@
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--primary-color);
-  text-shadow: 0 0 12px rgba(0, 255, 204, 0.3);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
 }
 
 .ar-preview-dimensions {
@@ -476,7 +476,7 @@
 }
 .ar-result-row:last-child { border-bottom: none; }
 .ar-result-row:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ar-result-row__label {
@@ -497,7 +497,7 @@
 .ar-result-row__value--primary {
   color: var(--primary-color);
   font-size: 1.1rem;
-  text-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+  text-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
 }
 
 .ar-result-row__copy {
@@ -529,7 +529,7 @@
 }
 .ar-css-row:last-child { border-bottom: none; }
 .ar-css-row:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ar-css-label {
@@ -547,10 +547,10 @@
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
   font-size: 0.82rem;
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.05);
+  background: rgba(139, 92, 246, 0.05);
   padding: 0.35rem 0.6rem;
   border-radius: 6px;
-  border: 1px solid rgba(0, 255, 204, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.1);
   word-break: break-all;
 }
 

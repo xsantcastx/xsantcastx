@@ -410,10 +410,10 @@
   color: var(--text-color);
 }
 .ts-toggle-btn.is-active {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.08);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 
 /* ─── CODE BLOCK ─────────────────────────────────────── */
@@ -438,7 +438,7 @@
   padding: 0.45rem 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border-strong);
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   color: var(--primary-color);
   font-size: 0.82rem;
   font-weight: 700;
@@ -448,7 +448,7 @@
   font-family: var(--font-body);
 }
 .ts-copy-btn:hover {
-  background: rgba(0, 255, 204, 0.15);
+  background: rgba(139, 92, 246, 0.15);
 }
 
 /* ─── ICON BUTTONS ───────────────────────────────────── */
@@ -511,7 +511,7 @@
 }
 .ts-preset-item:hover {
   border-color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .ts-preset-preview {

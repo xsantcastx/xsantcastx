@@ -46,7 +46,7 @@ export class ColorConverterComponent implements OnDestroy {
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/color-converter')}`;
 
   // Input
-  hexInput = '#00FFCC';
+  hexInput = '#8B5CF6';
   rgbInput = '';
   hslInput = '';
   hsbInput = '';
@@ -55,7 +55,7 @@ export class ColorConverterComponent implements OnDestroy {
 
   // Parsed color
   formats: ColorFormats = {
-    hex: '#00FFCC',
+    hex: '#8B5CF6',
     rgb: { r: 0, g: 255, b: 204 },
     hsl: { h: 168, s: 100, l: 50 },
     hsb: { h: 168, s: 100, b: 100 },
@@ -74,7 +74,7 @@ export class ColorConverterComponent implements OnDestroy {
   copiedField = '';
 
   constructor(private router: Router) {
-    this.updateFromHex('#00FFCC');
+    this.updateFromHex('#8B5CF6');
   }
 
   ngOnDestroy() {

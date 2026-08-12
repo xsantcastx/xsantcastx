@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Cron Expression Builder — Component Styles
-   Cyberpunk theme: cyan #00ffcc, purple var(--info-color)
+   Cyberpunk theme: cyan #8B5CF6, purple var(--info-color)
    ══════════════════════════════════════════════════════════════ */
 
 .cb-page {
@@ -25,7 +25,7 @@
   margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -35,7 +35,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 
@@ -210,7 +210,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  color: #00ffcc;
+  color: #8B5CF6;
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
   font-size: 1.6rem;
   font-weight: 700;
@@ -222,10 +222,10 @@
   box-sizing: border-box;
 }
 .cb-text-input::placeholder {
-  color: rgba(0, 255, 204, 0.2);
+  color: rgba(139, 92, 246, 0.2);
 }
 .cb-text-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .cb-field-labels {
@@ -279,17 +279,17 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300ffcc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B5CF6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   padding-right: 2.2rem;
 }
 .cb-select:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.08);
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.08);
 }
 .cb-select:hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .cb-select option {
   background: #1a1a2e;
@@ -317,21 +317,21 @@
   white-space: nowrap;
 }
 .cb-preset-btn:hover {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.3);
-  background: color-mix(in srgb, #00ffcc 5%, transparent);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.3);
+  background: color-mix(in srgb, #8B5CF6 5%, transparent);
 }
 .cb-preset-btn--active {
-  background: color-mix(in srgb, #00ffcc 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
-  color: #00ffcc;
+  background: color-mix(in srgb, #8B5CF6 12%, transparent);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #8B5CF6;
   font-weight: 600;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
 }
 
 /* ── Expression display ────────────────────────────────────── */
 .cb-panel--expression {
-  border-color: rgba(0, 255, 204, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .cb-expression-display {
@@ -339,16 +339,16 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem 1rem 0.75rem;
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.03) 0%, rgba(123, 97, 255, 0.03) 100%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(123, 97, 255, 0.03) 100%);
 }
 
 .cb-expression-code {
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
   font-size: clamp(1.4rem, 3vw, 2rem);
   font-weight: 700;
-  color: #00ffcc;
+  color: #8B5CF6;
   letter-spacing: 0.12em;
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.25), 0 0 40px rgba(0, 255, 204, 0.08);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.25), 0 0 40px rgba(139, 92, 246, 0.08);
 }
 
 .cb-expression-fields {
@@ -421,7 +421,7 @@
   transition: border-color 0.2s ease;
 }
 .cb-run-item:hover {
-  border-color: rgba(0, 255, 204, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .cb-run-index {
@@ -477,23 +477,23 @@
 }
 .cb-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .cb-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .cb-btn-ghost--success {
-  color: #00ffcc !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  color: #8B5CF6 !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .cb-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
 
 /* ── Cyberpunk glow accents ────────────────────────────────── */
 .cb-panel--expression .cb-panel__header {
-  background: linear-gradient(90deg, rgba(0, 255, 204, 0.04) 0%, rgba(123, 97, 255, 0.04) 100%);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.04) 0%, rgba(123, 97, 255, 0.04) 100%);
 }
 
 .cb-panel--runs .cb-panel__header {
-  background: linear-gradient(90deg, rgba(123, 97, 255, 0.04) 0%, rgba(0, 255, 204, 0.04) 100%);
+  background: linear-gradient(90deg, rgba(123, 97, 255, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%);
 }
 
 .cb-panel--description .cb-panel__header {

@@ -57,7 +57,7 @@ export class CssFilterComponent {
 
   filters: { [key: string]: number } = {};
 
-  dropShadow: DropShadow = { x: 0, y: 0, blur: 0, color: '#00ffcc' };
+  dropShadow: DropShadow = { x: 0, y: 0, blur: 0, color: '#8B5CF6' };
   dropShadowEnabled = false;
 
   readonly presets: FilterPreset[] = [
@@ -119,7 +119,7 @@ export class CssFilterComponent {
     for (const config of this.filterConfigs) {
       this.filters[config.key] = config.default;
     }
-    this.dropShadow = { x: 0, y: 0, blur: 0, color: '#00ffcc' };
+    this.dropShadow = { x: 0, y: 0, blur: 0, color: '#8B5CF6' };
     this.dropShadowEnabled = false;
   }
 
@@ -142,7 +142,7 @@ export class CssFilterComponent {
       this.filters[key] = preset.values[key];
     }
     this.dropShadowEnabled = false;
-    this.dropShadow = { x: 0, y: 0, blur: 0, color: '#00ffcc' };
+    this.dropShadow = { x: 0, y: 0, blur: 0, color: '#8B5CF6' };
   }
 
   toggleBeforeAfter(): void {

@@ -13,12 +13,12 @@
  */
 
 :host {
-  --ag-bg: #0a0f1e;
+  --ag-bg: #0a0a0f;
   --ag-panel: rgba(12, 18, 34, 0.72);
   --ag-line: rgba(255, 255, 255, 0.08);
   --ag-text: #e8ecf1;
   --ag-dim: #8fa0b8;
-  --ag-cyan: #4dffe0;
+  --ag-cyan: #A78BFA;
   --ag-gold: #C9A84C;
   --ag-violet: #a48bff;
   --ag-rose: #ff6dd7;
@@ -43,7 +43,7 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 55% 40% at 18% 8%, rgba(0, 255, 204, 0.09), transparent 68%),
+    radial-gradient(ellipse 55% 40% at 18% 8%, rgba(139, 92, 246, 0.09), transparent 68%),
     radial-gradient(ellipse 50% 45% at 84% 24%, rgba(140, 110, 255, 0.10), transparent 68%);
 }
 
@@ -98,9 +98,9 @@
   gap: 0.45rem;
   margin: 0.9rem 0 0;
   padding: 0.35rem 0.85rem;
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.06);
+  background: rgba(139, 92, 246, 0.06);
   font-size: 0.8rem;
   color: var(--ag-cyan);
   letter-spacing: 0.03em;
@@ -166,20 +166,20 @@
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
 .ag-btn:hover, .ag-btn:focus-visible {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.09);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.09);
 }
 .ag-btn:active { transform: translateY(1px); }
 .ag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .ag-btn--primary {
-  border-color: rgba(0, 255, 204, 0.42);
-  background: linear-gradient(120deg, rgba(0, 255, 204, 0.16), rgba(140, 110, 255, 0.16));
-  color: #eafff9;
+  border-color: rgba(139, 92, 246, 0.42);
+  background: linear-gradient(120deg, rgba(139, 92, 246, 0.16), rgba(140, 110, 255, 0.16));
+  color: #F2ECFF;
 }
 .ag-btn--primary:hover, .ag-btn--primary:focus-visible {
   border-color: var(--ag-cyan);
-  box-shadow: 0 0 22px -6px rgba(0, 255, 204, 0.6);
+  box-shadow: 0 0 22px -6px rgba(139, 92, 246, 0.6);
 }
 
 .ag-btn--ghost { background: transparent; color: var(--ag-dim); }
@@ -235,7 +235,7 @@
 .ag-end {
   margin-top: 1.25rem;
   text-align: center;
-  border: 1px solid rgba(0, 255, 204, 0.28);
+  border: 1px solid rgba(139, 92, 246, 0.28);
   border-radius: 18px;
   background: var(--ag-panel);
   padding: clamp(1.25rem, 5vw, 2rem);

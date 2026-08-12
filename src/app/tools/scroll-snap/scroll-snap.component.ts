@@ -34,7 +34,7 @@ export class ScrollSnapComponent {
   padding = 0;
   copied = false;
 
-  readonly colors = ['#00ffcc', '#7b61ff', '#ff4d6a', '#ff9f43', '#00b4d8', '#e879f9', '#34d399', '#f472b6'];
+  readonly colors = ['#8B5CF6', '#7b61ff', '#ff4d6a', '#ff9f43', '#00b4d8', '#e879f9', '#34d399', '#f472b6'];
 
   constructor(private router: Router) {}
 

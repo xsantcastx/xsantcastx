@@ -306,7 +306,7 @@
 .gg-areas-cell:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.15);
 }
 
 /* ─── SELECT ─────────────────────────────────────────── */
@@ -485,14 +485,14 @@
   font-size: 0.73rem;
 }
 .gg-btn--primary {
-  background: rgba(0, 255, 204, 0.12);
-  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 .gg-btn--primary:hover:not([disabled]) {
-  background: rgba(0, 255, 204, 0.2);
-  border-color: rgba(0, 255, 204, 0.65);
-  box-shadow: 0 0 14px -6px rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.65);
+  box-shadow: 0 0 14px -6px rgba(139, 92, 246, 0.3);
 }
 .gg-btn[disabled] {
   opacity: 0.35;
@@ -589,8 +589,8 @@
   text-align: left;
 }
 .gg-preset-btn:hover {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.04);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .gg-preset-btn__name {

@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.27.0',
+  version: '2.29.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Character Sheet',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.27.0',
+    version: '2.29.0',
     codename: 'Character Sheet',
     date: '2026-08-12',
     highlights: [
@@ -49,6 +49,32 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'Time in the Forge is a new lifetime counter on IdleService. The existing minutesToday is an *allowance* — how much of today the forge will still pay for — and reading it as time spent would tell someone who has been here nine hours that they have been here thirty minutes',
       '"Self-Aware" (Eclipsed, +25 XP) drops the first time you open your own sheet, paid at the same rate as The Archivist and for the same reason: a page reachable from the navbar should not pay what a four-leading-zero hash pays',
       'The mobile drawer could not reach its own top. The 1100px rule sets justify-content: flex-end for the wrapped desktop row, and that leaked into the drawer, where a column taller than its box puts all of the overflow past the START edge — which a scroll container cannot reach. It reported scrollHeight 747 against clientHeight 747 while ~300px of links sat above y=0. Measured at 375×812, the first four links were at y=-234 through y=-8 and untappable. flex-start restores it: 1069 against 747, and all fifteen links pass a hit test',
+    ]
+  },
+  {
+    version: '2.28.0',
+    codename: 'Eclipse',
+    date: '2026-08-12',
+    highlights: [
+      'The forge is violet. The brand accent moved from cyan to eclipse purple across every surface — around 2,300 colour references in 250 files, from card borders and button glows to the nebula wash behind the whole site',
+      'The Verge realm keeps its cyan, because that is what the boundary between light and shadow is meant to look like. Gold stays on the forge, the artifacts and the achievements; crimson stays on Umbral',
+      'Sharing a link no longer shows a flat placeholder. The social preview is a new 1200x630 image — an eclipsed sun ringed in violet fire over a constellation, with the forge ember burning along its lower limb',
+      'Every page pointed at one of four different preview images, two of which had already been deleted and were returning 404s to Twitter and Discord. All 152 references now point at the one image that exists',
+      'The preview was also advertised as an SVG with a JPEG listed underneath it as a fallback. og:image is not a fallback list, and Facebook, LinkedIn, Discord and iMessage all reject SVG outright — which is why the preview looked broken in exactly the places people share links',
+      'The page background dropped to a deeper near-black, and the browser chrome colour on mobile follows it'
+    ]
+  },
+  {
+    version: '2.27.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The initial JavaScript download is 38% smaller — 480 kB to 297 kB gzipped — with no visible change to the site',
+      'The Firestore SDK was the single largest thing on the page and nothing on first paint used it; it now downloads on demand, the first time something actually reads or writes the database',
+      'Firebase Auth was riding along in the initial bundle too, pulled in statically by the Analytics and Functions wrappers rather than by anything that signs a user in',
+      'Nine pages — home, skills, projects, contact, donate, live, mcp, arena and the 404 — were bundled into every visit regardless of where you landed. Each is now fetched only when you open it, which matters most on tool pages, where the search traffic arrives',
+      'Deleted twelve components and services left over from an old crypto-portfolio scaffold, plus two byte-identical copies of the social-share image',
+      'Bundle budgets now fail the build if the initial download creeps back up'
     ]
   },
   {

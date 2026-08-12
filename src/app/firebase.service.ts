@@ -1,70 +1,60 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, setDoc, onSnapshot, addDoc, query, orderBy, limit } from '@angular/fire/firestore';
-import { User } from 'firebase/auth';
 import { Observable } from 'rxjs';
-import { Transaction, Wallet } from './models/crypto.models';
+import { LazyFirestoreService } from './shared/lazy-firestore.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FirebaseService {
-  private firestore: Firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
 
-  constructor() { }
-
-  // Create a new user document in Firestore
-  async createUser(user: User) {
-    if (!user) return;
-
-    const userRef = doc(this.firestore, `users/${user.uid}`);
-    const userData = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL
-    };
-
-    return setDoc(userRef, userData, { merge: true });
-  }
-
-  // Get user's wallet in real-time
-  getWallet(userId: string): Observable<Wallet[]> {
-    const walletCollection = collection(this.firestore, `users/${userId}/wallet`);
-    return new Observable(observer => {
-      const unsubscribe = onSnapshot(walletCollection, (snapshot) => {
-        const wallets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
-        observer.next(wallets);
-      });
-      return () => unsubscribe();
-    });
-  }
-
-  // Get user's transactions in real-time
-  getTransactions(userId: string): Observable<Transaction[]> {
-    const transactionsCollection = collection(this.firestore, `users/${userId}/transactions`);
-    return new Observable(observer => {
-      const unsubscribe = onSnapshot(transactionsCollection, (snapshot) => {
-        const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        observer.next(transactions);
-      });
-      return () => unsubscribe();
-    });
-  }
-
-  addDonation(donation: { message: string, createdAt: Date }) {
-    const donationsCollection = collection(this.firestore, 'donations');
-    return addDoc(donationsCollection, donation);
+  async addDonation(donation: { message: string, createdAt: Date }) {
+    const handle = await this.lazyFirestore.get();
+    if (!handle) return;
+    const { db, api } = handle;
+    return api.addDoc(api.collection(db, 'donations'), donation);
   }
 
   getDonations(): Observable<{ message: string, createdAt: any }[]> {
-    const donationsCollection = collection(this.firestore, 'donations');
-    const q = query(donationsCollection, orderBy('createdAt', 'desc'), limit(20));
     return new Observable(observer => {
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const donations = snapshot.docs.map(doc => doc.data() as { message: string, createdAt: any });
-        observer.next(donations);
+      let unsubscribe: (() => void) | null = null;
+      let torndown = false;
+
+      this.lazyFirestore.get().then(handle => {
+        if (!handle || torndown) return;
+        const { db, api } = handle;
+
+        const q = api.query(
+          api.collection(db, 'donations'),
+          api.orderBy('createdAt', 'desc'),
+          api.limit(20)
+        );
+
+        // Raw-SDK callbacks fire outside the Angular zone — re-enter it so the
+        // donation feed repaints when a new donation lands.
+        unsubscribe = api.onSnapshot(
+          q,
+          snapshot => {
+            const donations = snapshot.docs.map(d => d.data() as { message: string, createdAt: any });
+            this.lazyFirestore.runInZone(() => observer.next(donations));
+          },
+          err => {
+            // permission-denied is what a blocked App Check token looks like
+            // downstream (routine on localhost, where the debug-token exchange
+            // 403s). Degrade to an empty feed rather than letting the SDK log
+            // an uncaught snapshot error — same convention as ChangelogService.
+            if (err?.code !== 'permission-denied') {
+              console.warn('[FirebaseService] donation feed degraded:', err);
+            }
+            this.lazyFirestore.runInZone(() => observer.next([]));
+          }
+        );
       });
-      return () => unsubscribe();
+
+      return () => {
+        torndown = true;
+        unsubscribe?.();
+      };
     });
   }
 }

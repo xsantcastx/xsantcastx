@@ -165,7 +165,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .arb-url-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Headers ───────────────────────────────────────────────── */
@@ -194,7 +194,7 @@
   transition: border-color 0.2s ease;
 }
 .arb-header-input:focus {
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
 }
 .arb-header-input::placeholder {
   color: rgba(214, 221, 235, 0.3);
@@ -248,7 +248,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .arb-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Segmented control ─────────────────────────────────────── */
@@ -270,10 +270,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.arb-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.arb-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .arb-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -318,7 +318,7 @@
   color: var(--text-color);
 }
 .arb-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -341,12 +341,12 @@
 }
 .arb-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .arb-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .arb-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .arb-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -396,13 +396,13 @@
 
 .arb-status-bar--loading {
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
   color: var(--text-muted);
 }
 
 .arb-status-bar--success {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 

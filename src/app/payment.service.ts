@@ -2,7 +2,7 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../environments/environment';
-import { Functions, httpsCallable } from '@angular/fire/functions';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 
 // PayPal SDK types
 declare var paypal: any;
@@ -25,7 +25,6 @@ export interface DonationAmount {
   providedIn: 'root'
 })
 export class PaymentService {
-  private functions = inject(Functions);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private stripe: any;
   private paypalLoaded = new BehaviorSubject<boolean>(false);
@@ -254,7 +253,12 @@ export class PaymentService {
       console.log('Creating Stripe checkout session for amount:', amount);
       
       // Call Firebase Cloud Function to create a Stripe Checkout session
-      const createCheckoutSession = httpsCallable(this.functions, 'stripe-createCheckoutSession');
+      // Loaded on demand: @angular/fire/functions statically imports
+      // @angular/fire/auth, which dragged the whole auth SDK into the initial
+      // chunk for a call only made when someone opens Stripe checkout.
+      const fns = await import('firebase/functions');
+      const app = getApps().length ? getApp() : initializeApp(environment.firebase);
+      const createCheckoutSession = fns.httpsCallable(fns.getFunctions(app), 'stripe-createCheckoutSession');
       const response = await createCheckoutSession({ amount, currency: 'usd' });
       
       const data = response.data as any;

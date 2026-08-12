@@ -54,8 +54,8 @@
   align-items: center;
   padding: 0.75rem 0.85rem;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(0, 255, 204, 0.24);
-  background: rgba(0, 255, 204, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.24);
+  background: rgba(139, 92, 246, 0.08);
 }
 
 .wallet-address {
@@ -72,8 +72,8 @@
   gap: 0.4rem;
   padding: 0.6rem 1rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 255, 204, 0.32);
-  background: rgba(0, 255, 204, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  background: rgba(139, 92, 246, 0.12);
   color: var(--primary-color);
   font-size: 0.78rem;
   letter-spacing: 0.12em;
@@ -84,7 +84,7 @@
 
 .copy-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 255, 204, 0.25);
+  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.25);
 }
 
 .copy-feedback {
@@ -103,7 +103,7 @@
   padding: 1rem;
   border-radius: var(--radius-md);
   background: rgba(4, 8, 18, 0.45);
-  border: 1px dashed rgba(0, 255, 204, 0.25);
+  border: 1px dashed rgba(139, 92, 246, 0.25);
 }
 
 .wallet-visual img {
@@ -133,7 +133,7 @@ textarea {
 textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.18);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
 }
 
 .cta-button {
@@ -146,8 +146,8 @@ textarea:focus {
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   text-align: center;
-  background: rgba(0, 255, 204, 0.12);
-  border: 1px solid rgba(0, 255, 204, 0.28);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.28);
   color: var(--primary-color);
 }
 

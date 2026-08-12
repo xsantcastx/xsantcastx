@@ -19,7 +19,7 @@
 
 .btn-presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .btn-preset-chip { padding: 0.35rem 0.7rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.btn-preset-chip:hover { border-color: rgba(0, 255, 204, 0.3); color: var(--primary-color); }
+.btn-preset-chip:hover { border-color: rgba(139, 92, 246, 0.3); color: var(--primary-color); }
 
 .btn-settings { display: flex; flex-direction: column; gap: 0.75rem; }
 .btn-field { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -28,14 +28,14 @@
 .btn-field input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--glass-border); border-radius: var(--radius-md); background: var(--surface-strong); cursor: pointer; }
 .btn-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .btn-input { width: 100%; padding: 0.5rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-family: var(--font-body); font-size: 0.82rem; outline: none; box-sizing: border-box; }
-.btn-input:focus { border-color: rgba(0, 255, 204, 0.4); }
+.btn-input:focus { border-color: rgba(139, 92, 246, 0.4); }
 
 .btn-preview-area { display: flex; align-items: center; justify-content: center; min-height: 160px; background: var(--surface-strong); border-radius: var(--radius-md); }
 .btn-live-preview { font-family: var(--font-body); cursor: pointer; transition: all 0.2s ease; }
 
 .btn-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.btn-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
-.btn-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(0, 255, 204, 0.35) !important; }
+.btn-btn-ghost:hover { color: var(--text-color); border-color: rgba(139,92,246,0.25); }
+.btn-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(139, 92, 246, 0.35) !important; }
 
 .btn-code { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; background: transparent; }
 .btn-code code { font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; color: var(--primary-color); display: block; white-space: pre-wrap; }
