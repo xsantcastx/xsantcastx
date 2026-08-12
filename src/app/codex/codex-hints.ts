@@ -223,6 +223,10 @@ export const EGG_HINTS: Record<string, string> = {
   'rune-word-scholar': 'Three words held at once. The runes each one takes do not come back.',
   'rune-void-voice': 'Something in the table does not want to be found. Keep striking anyway.',
   'rune-breath-of-void': 'Six runes. One of them is the one that does not want to be found, and one of them you will need twice.',
+
+  // ── Lore Scrolls ── the hints point at the anvil without naming the odds.
+  'scroll-lore-hunter': 'The anvil turns up more than metal. The better the rune, the likelier the page.',
+  'scroll-full-codex': 'Twenty-four of them can be worked for. The twenty-fifth is blank, and only one rune has ever read it.',
 };
 
 /**
