@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostBinding, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import {
@@ -7,6 +7,8 @@ import {
   rarityOf,
   tierForEgg,
 } from '../shared/rarity/rarity.model';
+import { ARENA_PLAYABLE, formatScore, playableById } from './games/arena-game.model';
+import { ArenaScoresService } from './games/arena-scores.service';
 
 export interface ArenaGame {
   id: string;
@@ -18,11 +20,15 @@ export interface ArenaGame {
   unlockHint: string;
   locked: boolean;
   /**
-   * Whether the gate leads anywhere yet. Opening a gate that has no game behind
-   * it used to render an "Enter →" button wired to nothing at all, which read
-   * as a broken site rather than as unfinished work.
+   * Where "Enter" leads, or null for a gate that is still flavour text. The
+   * distinction is drawn on the card: an unplayable gate says so rather than
+   * offering a button that does nothing.
    */
-  playable: boolean;
+  route: string | null;
+  /** Formatted personal best, empty when the gate has never been finished. */
+  bestLabel: string;
+  /** True for a playable gate the visitor has never finished — the NEW badge. */
+  isNew: boolean;
   /**
    * Derived, never authored: a game inherits the tier of the egg that unlocks
    * it. That way the ladder means one thing across the whole site — a red
@@ -32,11 +38,8 @@ export interface ArenaGame {
   rarity: RarityDefinition;
 }
 
-/** The registry, before tiers are resolved from the egg ladder. */
-type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'playable'>;
-
-/** Gate ids that have a game built behind them. Everything else is still forge work. */
-const BUILT_GAMES = new Set<string>(['color-memory']);
+/** The registry, before tiers and progress are resolved. */
+type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLabel' | 'isNew'>;
 
 @Component({
   selector: 'app-arena',
@@ -44,14 +47,29 @@ const BUILT_GAMES = new Set<string>(['color-memory']);
   styleUrls: ['./arena.component.css'],
   standalone: false
 })
-export class ArenaComponent implements OnInit, OnDestroy {
+export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 
   totalEggs = EASTER_EGGS.length;
   foundCount = 0;
 
+  private readonly scores = inject(ArenaScoresService);
+
+  /**
+   * The playable gates come first. Every entry in `ARENA_PLAYABLE` leads to a
+   * real game; the ones after it are still flavour, and the card says so rather
+   * than offering an "Enter" that goes nowhere.
+   */
   private readonly seeds: GameSeed[] = [
+    ...ARENA_PLAYABLE.map(g => ({
+      id: g.id,
+      title: g.title,
+      description: g.description,
+      icon: g.icon,
+      unlockEggId: g.unlockEggId,
+      unlockHint: g.unlockHint,
+    })),
     {
       id: 'shadow-puzzle',
       title: 'Shadow Puzzle',
@@ -83,14 +101,6 @@ export class ArenaComponent implements OnInit, OnDestroy {
       icon: '🎰',
       unlockEggId: 'uuid-lucky',
       unlockHint: 'Generate a UUID starting with "000" in the UUID Generator',
-    },
-    {
-      id: 'color-memory',
-      title: 'Color Memory',
-      description: 'Match the Eclipse Fragments — pair every colour in the dark before the light fades.',
-      icon: '🎨',
-      unlockEggId: 'color-void',
-      unlockHint: 'Convert pure black #000000 in the Color Converter',
     },
     {
       id: 'chmod-chess',
@@ -129,58 +139,41 @@ export class ArenaComponent implements OnInit, OnDestroy {
       seed.unlockEggId,
       EASTER_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
     );
-    return { ...seed, locked: true, playable: BUILT_GAMES.has(seed.id), tier, rarity: rarityOf(tier) };
+    return {
+      ...seed,
+      locked: true,
+      tier,
+      rarity: rarityOf(tier),
+      route: playableById(seed.id)?.route ?? null,
+      // Filled in on hydration. The server has no ledger to read, so a
+      // prerendered card shows no score and no badge rather than a wrong one.
+      bestLabel: '',
+      isNew: false,
+    };
   });
 
   async ngOnInit(): Promise<void> {
     if (!this.isBrowser) return;
+    this.scores.init();
     await this.eggs.init();
     this.foundCount = this.eggs.foundCount;
+
     for (const game of this.games) {
       game.locked = !this.eggs.isFound(game.unlockEggId);
+
+      const playable = playableById(game.id);
+      if (!playable) continue;
+      const best = this.scores.best(game.id);
+      game.bestLabel = best > 0 ? formatScore(playable.scoreKind, best) : '';
+      // NEW means never finished a run — and only worth saying on a gate the
+      // visitor can actually walk through.
+      game.isNew = !game.locked && this.scores.isNew(game.id);
     }
   }
 
-  ngOnDestroy(): void {
-    // never leave the page scroll-locked if the visitor navigates away mid-game
-    this.lockScroll(false);
-  }
-
-  /**
-   * The global `routeFadeIn` animation runs with `fill: forwards`, so every
-   * routed host keeps a transform and is therefore its own stacking context.
-   * A fixed overlay inside one cannot out-rank the z-index:1000 header on its
-   * own — the host has to be lifted instead.
-   */
-  @HostBinding('class.ar-game-open')
-  get gameOpen(): boolean {
-    return this.activeGameId !== null;
-  }
-
-  /** id of the gate currently open in the overlay, or null */
-  activeGameId: string | null = null;
-  /** id of an opened gate whose game is not built yet */
-  soonGameId: string | null = null;
-
-  enter(game: ArenaGame): void {
-    if (game.locked) return;
-    if (!game.playable) {
-      this.soonGameId = game.id;
-      return;
-    }
-    this.soonGameId = null;
-    this.activeGameId = game.id;
-    this.lockScroll(true);
-  }
-
-  closeGame(): void {
-    this.activeGameId = null;
-    this.lockScroll(false);
-  }
-
-  private lockScroll(locked: boolean): void {
-    if (!this.isBrowser) return;
-    document.body.style.overflow = locked ? 'hidden' : '';
+  /** Playable gates, for the count in the hero. */
+  get playableCount(): number {
+    return this.games.filter(g => g.route).length;
   }
 
   get unlockedCount(): number {

@@ -1,0 +1,307 @@
+/*
+ * arena-game.css — shared chrome for every Arena game.
+ *
+ * Loaded through `styleUrls` by the shell and by each game, so Angular scopes a
+ * copy per component. That is the point: a game owns its look without importing
+ * a global stylesheet that any other page could disturb.
+ *
+ * Keyframes are declared at the top level only. Angular's emulated
+ * encapsulation rewrites `@keyframes` names and the `animation` shorthands that
+ * reference them, but it misses shorthands nested inside `@media` — a rule
+ * there keeps the raw name, matches nothing, and the animation silently never
+ * runs. Media queries below therefore only ever set `animation: none`.
+ */
+
+:host {
+  --ag-bg: #0a0f1e;
+  --ag-panel: rgba(12, 18, 34, 0.72);
+  --ag-line: rgba(255, 255, 255, 0.08);
+  --ag-text: #e8ecf1;
+  --ag-dim: #8fa0b8;
+  --ag-cyan: #4dffe0;
+  --ag-gold: #C9A84C;
+  --ag-violet: #a48bff;
+  --ag-rose: #ff6dd7;
+  --ag-danger: #ff2d4d;
+  display: block;
+  background: var(--ag-bg);
+  color: var(--ag-text);
+  min-height: 100vh;
+}
+
+.ag-page {
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2.5rem) clamp(0.85rem, 4vw, 2rem) 4rem;
+}
+
+/* Two washes behind the page so a flat dark rectangle never reads as "dead". */
+.ag-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 55% 40% at 18% 8%, rgba(0, 255, 204, 0.09), transparent 68%),
+    radial-gradient(ellipse 50% 45% at 84% 24%, rgba(140, 110, 255, 0.10), transparent 68%);
+}
+
+.ag-page > * { position: relative; z-index: 1; }
+
+/* ── header ───────────────────────────────────────────────── */
+
+.ag-back {
+  display: inline-block;
+  color: var(--ag-dim);
+  text-decoration: none;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 0.25rem;
+  min-height: 44px;
+  line-height: 1.8;
+  transition: color 0.2s ease;
+}
+.ag-back:hover, .ag-back:focus-visible { color: var(--ag-cyan); }
+
+.ag-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.ag-icon { font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1; }
+
+.ag-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 6vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(94deg, var(--ag-cyan), var(--ag-violet) 55%, var(--ag-rose));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ag-lore {
+  margin: 0.5rem 0 0;
+  color: var(--ag-dim);
+  font-size: clamp(0.9rem, 2.6vw, 1.02rem);
+  font-style: italic;
+  max-width: 60ch;
+}
+
+.ag-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.9rem 0 0;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.06);
+  font-size: 0.8rem;
+  color: var(--ag-cyan);
+  letter-spacing: 0.03em;
+}
+
+.ag-best__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ag-cyan);
+  box-shadow: 0 0 8px var(--ag-cyan);
+}
+
+/* ── locked gate ──────────────────────────────────────────── */
+
+.ag-gate {
+  margin: 2.5rem auto 0;
+  max-width: 30rem;
+  padding: 2.2rem 1.5rem;
+  text-align: center;
+  border: 1px solid var(--ag-line);
+  border-radius: 18px;
+  background: var(--ag-panel);
+}
+
+.ag-gate__chain { color: var(--ag-dim); opacity: 0.75; margin-bottom: 0.5rem; }
+.ag-gate__title { margin: 0 0 0.6rem; font-size: 1.15rem; font-weight: 600; }
+.ag-gate__hint {
+  margin: 0 0 1.5rem;
+  color: var(--ag-dim);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.ag-gate__alt {
+  display: block;
+  margin-top: 1rem;
+  color: var(--ag-dim);
+  font-size: 0.82rem;
+  text-decoration: none;
+  min-height: 44px;
+  line-height: 44px;
+}
+.ag-gate__alt:hover { color: var(--ag-cyan); }
+
+/* ── shared controls ──────────────────────────────────────── */
+
+.ag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid var(--ag-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ag-text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.ag-btn:hover, .ag-btn:focus-visible {
+  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(0, 255, 204, 0.09);
+}
+.ag-btn:active { transform: translateY(1px); }
+.ag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ag-btn--primary {
+  border-color: rgba(0, 255, 204, 0.42);
+  background: linear-gradient(120deg, rgba(0, 255, 204, 0.16), rgba(140, 110, 255, 0.16));
+  color: #eafff9;
+}
+.ag-btn--primary:hover, .ag-btn--primary:focus-visible {
+  border-color: var(--ag-cyan);
+  box-shadow: 0 0 22px -6px rgba(0, 255, 204, 0.6);
+}
+
+.ag-btn--ghost { background: transparent; color: var(--ag-dim); }
+
+/* ── HUD: the stat row above a playfield ──────────────────── */
+
+.ag-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.ag-stat {
+  flex: 1 1 5.5rem;
+  min-width: 5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--ag-line);
+  border-radius: 12px;
+  background: var(--ag-panel);
+  text-align: center;
+}
+
+.ag-stat__num {
+  display: block;
+  font-size: clamp(1.05rem, 4vw, 1.35rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.ag-stat__label {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ag-dim);
+}
+
+.ag-stat--warn .ag-stat__num { color: var(--ag-danger); }
+.ag-stat--good .ag-stat__num { color: var(--ag-cyan); }
+
+/* ── panels & end cards ───────────────────────────────────── */
+
+.ag-panel {
+  border: 1px solid var(--ag-line);
+  border-radius: 18px;
+  background: var(--ag-panel);
+  padding: clamp(1rem, 4vw, 1.75rem);
+}
+
+.ag-end {
+  margin-top: 1.25rem;
+  text-align: center;
+  border: 1px solid rgba(0, 255, 204, 0.28);
+  border-radius: 18px;
+  background: var(--ag-panel);
+  padding: clamp(1.25rem, 5vw, 2rem);
+  animation: agRise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ag-end--lost { border-color: rgba(255, 45, 77, 0.35); }
+
+.ag-end__title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.15rem, 4.5vw, 1.6rem);
+  font-weight: 700;
+}
+
+.ag-end__line { margin: 0.3rem 0; color: var(--ag-dim); font-size: 0.92rem; }
+
+.ag-end__xp {
+  display: inline-block;
+  margin: 0.9rem 0 0.2rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--ag-gold);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.ag-end__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+.ag-intro { text-align: center; }
+.ag-intro__body {
+  margin: 0 auto 1.5rem;
+  max-width: 46ch;
+  color: var(--ag-dim);
+  line-height: 1.7;
+  font-size: 0.94rem;
+}
+
+/* Visually hidden but reachable by a screen reader. */
+.ag-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes agRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes agPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-end { animation: none; }
+}
