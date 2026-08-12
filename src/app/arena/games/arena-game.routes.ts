@@ -93,4 +93,21 @@ export const ARENA_GAME_ROUTES: Routes = [
       ),
     },
   },
+  {
+    path: 'arena/convergents-path',
+    loadComponent: () =>
+      import('./convergents-path/convergents-path.component')
+        .then(m => m.ConvergentsPathComponent),
+    title: "The Convergent's Path — Walk between Light and Shadow | The Arena",
+    data: {
+      description: 'A procedurally generated maze with a twist: collect Aether and Nox in equal measure. Lean too far toward either and the realm collapses. Keyboard, swipe or on-screen pad.',
+      keywords: 'maze game, procedural maze, puzzle game, balance game, browser game, free game',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: gameJsonLd(
+        "The Convergent's Path",
+        'convergents-path',
+        'A free browser maze game — collect Aether and Nox in balance and find the way out.'
+      ),
+    },
+  },
 ];
