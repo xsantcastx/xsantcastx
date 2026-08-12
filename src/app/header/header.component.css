@@ -1,1235 +1,698 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   THE GODFORGE COMMAND BAR
+   Glass on void, a purple seam along the bottom, and nothing that is not
+   a way somewhere.
+
+   Colour rule: the accent is var(--primary-color), never a literal
+   #8B5CF6. Four purchasable cosmetic themes re-point that variable
+   (html[data-cos-theme="…"] in styles.css) and a hardcoded hex would
+   silently opt this bar out of all of them.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 :host {
-  position: relative;
-  display: block;
-  width: 100%;
-  max-width: 100vw; /* Never exceed viewport */
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  --gfnav-h: 56px;
+  --gfnav-h-compact: 48px;
+  --gfnav-void: 10, 10, 15;          /* #0a0a0f, as channels for rgba() */
+  --gfnav-gold: #C9A84C;
+  --gfnav-ink: #f0f0f0;
+  --gfnav-ink-dim: rgba(240, 240, 240, 0.62);
+  --gfnav-seam: color-mix(in srgb, var(--primary-color) 55%, transparent);
+  --gfnav-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.navbar {
-  --nav-height: 80px;
-  --nav-padding-x: clamp(1.2rem, 3.4vw, 3.2rem);
-  --scroll-progress: 0%;
+/* ── The bar ───────────────────────────────────────────────────────────── */
+
+.gfnav {
   position: fixed;
   inset: 0 0 auto 0;
-  height: var(--nav-height);
-  padding: 0 var(--nav-padding-x);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: clamp(1rem, 3vw, 4rem);
-  /* NOTE: backdrop-filter (the glass blur) lives on .navbar__glass, NOT here.
-     A backdrop-filter on the navbar would make it the containing block for its
-     position:fixed children (the mobile menu + backdrop), confining their
-     inset:0 to the 64px navbar box instead of the viewport — which made the
-     mobile menu impossible to use. Keep the navbar free of containing-block
-     triggers (backdrop-filter/filter/transform/perspective/will-change). */
-  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.25);
-  transition: height 0.35s ease, padding 0.35s ease;
   z-index: 1000;
-  overflow: visible; /* Allow menu to overflow */
-  width: 100%; /* Full width */
-  max-width: 100vw; /* Never exceed viewport */
-  box-sizing: border-box; /* Include padding in width */
+  /* viewport-fit=cover: the notch inset is real padding, and --nav-h is
+     measured after it lands so the drawer can sit flush under the bar. */
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid var(--gfnav-seam);
+  box-shadow:
+    0 0 18px -6px color-mix(in srgb, var(--primary-color) 55%, transparent),
+    0 10px 34px -28px rgba(0, 0, 0, 0.9);
+  transition: box-shadow 0.3s var(--gfnav-ease), border-color 0.3s var(--gfnav-ease);
 }
 
-.navbar::before {
-  content: '';
-  position: absolute;
-  left: var(--nav-padding-x);
-  right: var(--nav-padding-x);
-  top: 2px;
-  height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(139, 92, 246, 0.55) 45%, rgba(123, 97, 255, 0.45) 55%, rgba(255, 255, 255, 0) 100%);
-  opacity: 0.35;
-  filter: blur(0.5px);
-  pointer-events: none;
-  transform: translateX(-35%);
-  animation: navAurora 14s ease-in-out infinite;
-}
-
-.navbar::after {
-  content: '';
-  position: absolute;
-  inset: auto var(--nav-padding-x) 0;
-  height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.32), rgba(123, 97, 255, 0.24));
-  opacity: 0.65;
-  pointer-events: none;
-}
-
-/* Glass layer: carries the navbar's background blur as a child so the navbar
-   itself does NOT become a containing block for its fixed-position descendants.
-   See the note in .navbar above. */
-.navbar__glass {
+/* Glass is a CHILD, not a filter on .gfnav: backdrop-filter makes an element
+   a containing block, which would pin the fixed drawer and backdrop inside
+   the bar instead of over the viewport. */
+.gfnav__glass {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: rgba(10, 15, 30, 0.58);
-  backdrop-filter: saturate(140%) blur(18px);
-  -webkit-backdrop-filter: saturate(140%) blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(var(--gfnav-void), 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   pointer-events: none;
-  transition: background 0.4s ease, border-color 0.4s ease;
 }
 
-.navbar.is-compact {
-  --nav-height: 64px;
-  --nav-padding-x: clamp(0.85rem, 2.4vw, 2.1rem);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
-
-.navbar.is-compact .navbar__glass {
-  background: rgba(8, 12, 24, 0.9);
-  border-bottom-color: rgba(139, 92, 246, 0.22);
-}
-
-.logo {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  /* native <button> resets — the logo is a real button for keyboard/AT support */
-  -webkit-appearance: none;
-  appearance: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  gap: clamp(0.55rem, 1.6vw, 1.2rem);
-  padding: 0.25rem clamp(0.85rem, 2.1vw, 1.15rem) 0.25rem clamp(0.45rem, 1.4vw, 0.75rem);
-  border-radius: 999px;
-  cursor: pointer;
-  background: rgba(12, 18, 34, 0.44);
-  border: 1px solid rgba(139, 92, 246, 0.14);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
-  transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
-}
-
-.logo:hover,
-.logo:focus-visible {
-  background: rgba(12, 18, 34, 0.66);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-  transform: translateY(-1px);
-}
-
-/* The component-scoped `.logo` rule outranks the global button:focus-visible
-   ring (Angular appends a host attribute), so restate it here. WCAG 2.4.7. */
-.logo:focus-visible {
-  outline: 2px solid var(--primary-color, #8B5CF6);
-  outline-offset: 3px;
-}
-
-.logo-mark {
+.gfnav__row {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.6vw, 1.5rem);
+  height: var(--gfnav-h);
+  padding-inline: clamp(0.75rem, 2.5vw, 1.75rem);
+  transition: height 0.28s var(--gfnav-ease);
+}
+
+.gfnav--compact .gfnav__row { height: var(--gfnav-h-compact); }
+.gfnav--compact { box-shadow: 0 0 22px -6px color-mix(in srgb, var(--primary-color) 70%, transparent); }
+
+/* Reading progress, hairline along the seam. */
+.gfnav__progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 1px;
+  width: var(--scroll-progress, 0%);
+  background: linear-gradient(90deg, var(--gfnav-gold), var(--primary-color));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary-color) 60%, transparent);
+  pointer-events: none;
+}
+
+/* ── The mark ──────────────────────────────────────────────────────────── */
+
+.gfnav__brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: clamp(2.4rem, 4.2vw, 3.1rem);
-  height: clamp(2.4rem, 4.2vw, 3.1rem);
-  border-radius: 18px;
-  padding: clamp(0.25rem, 0.7vw, 0.4rem);
-  background: radial-gradient(120% 120% at 50% 20%, rgba(139, 92, 246, 0.26) 0%, rgba(12, 18, 34, 0.72) 55%, rgba(12, 18, 34, 0.96) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 18px 28px rgba(0, 0, 0, 0.32);
-  overflow: hidden;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  text-decoration: none;
+  min-height: 44px;
 }
 
-.logo-mark::after {
-  content: '';
-  position: absolute;
-  inset: 14%;
-  border-radius: 14px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.32), transparent 65%);
-  opacity: 0.55;
-  pointer-events: none;
-  mix-blend-mode: screen;
+/* Void X sigil — CSS-drawn, no emoji and no image request. Two crossed bars
+   in a squared well, with a faint purple bloom behind them. */
+.gfnav__sigil {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  transition: filter 0.25s var(--gfnav-ease), transform 0.25s var(--gfnav-ease);
 }
 
-.logo-mark img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 16px rgba(139, 92, 246, 0.25)) drop-shadow(0 12px 30px rgba(123, 97, 255, 0.28));
-  transition: transform 0.4s ease;
+/* The painted Void X medallion, which the two crossed bars here stood in for.
+   The plate that framed them is gone with them: the art carries its own ring
+   and nebula, and a squared border around a circular sigil reads as a sticker.
+   The halo is a drop-shadow so it traces the medallion, not a 32px box. */
+.gfnav__sigil-art {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--primary-color) 55%, transparent));
 }
 
-.logo:hover .logo-mark img,
-.logo:focus-visible .logo-mark img {
+.gfnav__brand:hover .gfnav__sigil,
+.gfnav__brand:focus-visible .gfnav__sigil {
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--primary-color) 90%, transparent))
+          brightness(1.12);
   transform: scale(1.05);
 }
 
-.logo-lockup {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(0.18rem, 0.7vw, 0.38rem);
-}
-
-.logo-lockup .nav-glitch {
-  line-height: 1;
-  letter-spacing: clamp(0.1em, 0.8vw, 0.14em);
-}
-
-.logo-lockup .nav-buzzword {
-  align-self: flex-start;
-  font-size: clamp(0.6rem, 0.85vw, 0.78rem);
-  letter-spacing: clamp(0.18em, 0.9vw, 0.24em);
-  padding: 0.32rem 0.75rem;
-  margin: 0;
-}
-
-.navbar.is-compact .logo {
-  padding: 0.18rem clamp(0.7rem, 1.8vw, 0.95rem) 0.18rem clamp(0.4rem, 1vw, 0.65rem);
-  gap: clamp(0.45rem, 1.2vw, 0.95rem);
-  border-color: rgba(139, 92, 246, 0.18);
-}
-
-.navbar.is-compact .logo-mark {
-  width: clamp(2.1rem, 3.2vw, 2.6rem);
-  height: clamp(2.1rem, 3.2vw, 2.6rem);
-  padding: clamp(0.18rem, 0.55vw, 0.32rem);
-}
-
-.navbar.is-compact .logo-lockup .nav-glitch {
-  letter-spacing: clamp(0.08em, 0.7vw, 0.12em);
-}
-
-.navbar.is-compact .logo-lockup .nav-buzzword {
-  padding: 0.26rem 0.65rem;
-}
-
-.logo .nav-buzzword {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 0.3rem 0.74rem;
-  border-radius: 999px;
-  font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: clamp(0.6rem, 0.85vw, 0.78rem);
-  letter-spacing: clamp(0.18em, 0.9vw, 0.24em);
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: rgba(237, 246, 255, 0.88);
-  background: linear-gradient(120deg, rgba(139, 92, 246, 0.22), rgba(123, 97, 255, 0.28));
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25), 0 14px 26px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: transform 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease;
-}
-
-.logo .nav-buzzword::before {
-  content: '>>';
-  font-size: 0.68em;
-  letter-spacing: 0.3em;
-  opacity: 0.68;
-  color: rgba(139, 92, 246, 0.85);
-}
-
-.navbar.is-compact .logo .nav-buzzword {
-  padding: 0.26rem 0.62rem;
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.22), 0 10px 20px rgba(0, 0, 0, 0.26);
-}
-
-.nav-buzzword[data-swap='true'],
-.nav-buzzword[data-swap='false'] {
-  animation: navWordSwap 0.65s cubic-bezier(0.65, 0.05, 0.36, 1);
-}
-
-.logo:hover .nav-buzzword,
-.logo:focus-visible .nav-buzzword {
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.3), 0 16px 32px rgba(0, 0, 0, 0.32);
-  transform: translateY(-1px);
-}
-
-@keyframes navWordSwap {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.92);
-    filter: blur(3px);
-  }
-  45% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.04);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: none;
-  }
-}
-.nav-glitch {
-  font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: clamp(1.35rem, 2vw, 1.8rem);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 8px 18px rgba(139, 92, 246, 0.28));
-  cursor: pointer;
-  transition: transform 0.4s ease, letter-spacing 0.4s ease, filter 0.4s ease;
-}
-
-.navbar.is-compact .nav-glitch {
-  letter-spacing: 0.08em;
-  transform: translateY(-2px) scale(0.94);
-  filter: drop-shadow(0 6px 15px rgba(139, 92, 246, 0.3));
-}
-
-.nav-menu {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(1.1rem, 3vw, 2.5rem);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.nav-menu a::before {
-  content: '';
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.85) 0%, rgba(139, 92, 246, 0.1) 60%, transparent 100%);
-  transform: translate(-50%, 0) scale(0.45);
-  opacity: 0;
-  transition: transform 0.35s ease, opacity 0.35s ease;
-  pointer-events: none;
-}
-
-.navbar.is-compact .nav-menu a::before {
-  top: -12px;
-}
-
-.nav-menu a {
-  position: relative;
-  padding: 0.35rem 0.7rem;
-  font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: clamp(0.82rem, 0.95vw, 0.95rem);
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(237, 246, 255, 0.85);
-  text-decoration: none;
-  transition: color 0.3s ease, transform 0.3s ease;
-  white-space: nowrap;
-}
-
-.nav-menu a::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.35rem;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.35s ease;
-  opacity: 0.9;
-}
-
-.nav-menu a:hover,
-.nav-menu a.active {
-  color: var(--primary-color);
-}
-
-.nav-menu a:hover::before,
-.nav-menu a.active::before {
-  opacity: 1;
-  transform: translate(-50%, 0) scale(1);
-}
-
-.nav-menu a.active::after,
-.nav-menu a:hover::after {
-  transform: scaleX(1);
-}
-
-.language-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.lang-btn {
-  background: transparent;
-  border: none;
-  color: rgba(224, 247, 250, 0.75);
-  font-size: 0.75rem;
+.gfnav__wordmark {
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
   font-weight: 600;
-  letter-spacing: 0.16em;
-  /* WCAG 2.5.5 — minimum 44x44px touch target */
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0.6rem 1rem;
-  border-radius: 999px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.25s ease, color 0.25s ease;
+  letter-spacing: 0.015em;
+  color: var(--gfnav-ink);
+  white-space: nowrap;
+  transition: color 0.25s var(--gfnav-ease);
 }
+.gfnav__brand:hover .gfnav__wordmark { color: var(--primary-color); }
 
-.lang-btn.active {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05));
-  color: var(--primary-color);
-}
+/* ── Centre row ────────────────────────────────────────────────────────── */
 
-.lang-btn:not(.active):hover {
-  color: #ffffff;
-}
-
-.desktop-only {
-  display: inline-flex;
-}
-
-.mobile-controls {
-  display: none;
+.gfnav__centre {
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-left: auto;
+  gap: clamp(0.15rem, 0.9vw, 0.6rem);
+  margin-inline: auto;
+  min-width: 0;
 }
 
-.mobile-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(139, 92, 246, 0.08), transparent 70%),
-    radial-gradient(ellipse 50% 45% at 50% 80%, rgba(123, 97, 255, 0.1), transparent 70%),
-    rgba(4, 2, 12, 0.82);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
-  z-index: 998; /* Below menu but above content */
-}
-
-/* WCAG 2.5.5 / iOS HIG — the button itself is a 44×44 tap target. The three
-   bars are laid out in a 28×18 inner box so the glyph keeps its original look
-   while the hit area extends to the full square. It used to be a bare 32×20
-   button, which is far below the minimum and is the main reason the menu felt
-   impossible to open on a phone. */
-.hamburger {
+.gfnav__link {
   position: relative;
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  flex: 0 0 auto;
-  border: none;
-  background: none;
-  padding: 13px 8px;
-  box-sizing: border-box;
-  cursor: pointer;
   display: inline-flex;
-  flex-direction: column;
-  justify-content: space-between;
-  /* Kill the 300ms tap delay + the grey flash iOS paints over the button. */
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hamburger:focus-visible {
-  outline: 2px solid var(--primary-color, #8B5CF6);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
-.hamburger span {
-  display: block;
-  height: 2px;
-  width: 100%;
-  background: rgba(224, 247, 250, 0.85);
-  border-radius: 999px;
-  transition: transform 0.35s ease, opacity 0.3s ease, background 0.35s ease, box-shadow 0.35s ease;
-}
-
-.hamburger:hover span,
-.hamburger:focus-visible span {
-  background: rgba(139, 92, 246, 0.95);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
-}
-
-.hamburger.active span {
-  background: rgba(139, 92, 246, 1);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.7), 0 0 24px rgba(123, 97, 255, 0.3);
-}
-
-/* Inner bar box is 18px tall (44 − 2×13 padding): bars sit at y=0/8/16, so the
-   X needs an 8px converge — not the 9px the old 20px-tall button used. */
-.hamburger.active span:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
-}
-
-.hamburger.active span:nth-child(2) {
-  opacity: 0;
-}
-
-.hamburger.active span:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
-}
-
-.nav-progress {
-  position: absolute;
-  left: var(--nav-padding-x);
-  right: var(--nav-padding-x);
-  bottom: 0;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.nav-progress::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: var(--scroll-progress);
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  transition: width 0.2s ease-out;
-}
-
-.navbar.is-compact .nav-progress {
-  opacity: 1;
-}
-
-@media (max-width: 1280px) {
-  .navbar {
-    gap: clamp(0.75rem, 2.5vw, 2.5rem);
-  }
-
-  .nav-menu {
-    gap: clamp(0.85rem, 2.2vw, 1.75rem);
-  }
-
-  .nav-menu a {
-    font-size: clamp(0.78rem, 1.1vw, 0.88rem);
-    letter-spacing: 0.09em;
-    padding-inline: 0.45rem;
-  }
-}
-
-@media (max-width: 1100px) {
-  .nav-menu {
-    flex-wrap: wrap;
-    column-gap: 1.1rem;
-    row-gap: 0.45rem;
-    justify-content: flex-end;
-  }
-
-  .desktop-only {
-    margin-left: auto;
-  }
-}
-
-@media (max-width: 960px) {
-  .desktop-only {
-    display: none;
-  }
-
-  .mobile-controls {
-    display: inline-flex;
-    /* The backdrop is a positioned z-index:998 sibling inside the navbar's
-       stacking context, while .logo / .mobile-controls are static — so the
-       backdrop painted *on top of them* and swallowed every tap on the
-       hamburger and the EN/ES buttons while the drawer was open. (Closing
-       still worked, but only because the backdrop's own click handler happened
-       to close the menu — the X and the language toggle were dead.) Promote
-       both above the backdrop so they stay genuinely interactive. */
-    position: relative;
-    z-index: 999;
-  }
-
-  .navbar > .logo {
-    position: relative;
-    z-index: 999;
-  }
-
-  .mobile-backdrop {
-    display: block;
-  }
-
-  .mobile-backdrop.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .navbar {
-    gap: 0.75rem; /* Reduce gap on mobile */
-    --nav-padding-x: clamp(0.75rem, 4vw, 1.2rem); /* Reduce padding on mobile */
-    padding-left: var(--nav-padding-x);
-    padding-right: var(--nav-padding-x);
-  }
-
-  .nav-menu {
-    position: fixed;
-    /* --nav-h is written by HeaderComponent.updateHeaderOffset() from the
-       navbar's *measured* offsetHeight, so it already accounts for the compact
-       state and for env(safe-area-inset-top) on notched devices (index.html
-       sets viewport-fit=cover, so that inset is real). The old hardcoded
-       `top: 80px` put the drawer underneath the header on any phone with a
-       notch, hiding the first nav link, and left a gap in compact mode. */
-    top: var(--nav-h, 80px);
-    left: 0;
-    right: 0;
-    display: flex;
-    flex-direction: column;
-    /* The 1100px rule sets flex-wrap: wrap, which is right for the horizontal
-       nav between 960px and 1100px and wrong for the drawer below it. A column
-       that wraps does not scroll: once the content passes max-height it starts
-       a SECOND COLUMN outside the 375px panel instead of overflowing into the
-       overflow-y: auto below. Adding the XP bar as a tenth child crossed that
-       threshold and threw it off-screen to x=424. nowrap restores the intent —
-       taller-than-the-drawer content scrolls, which is what the overflow-y and
-       overscroll-behavior on this rule were always written for. */
-    flex-wrap: nowrap;
-    /* The same 1100px rule also sets justify-content: flex-end, and that leaks
-       into the drawer exactly the way flex-wrap did — with the same shape of
-       consequence and a worse failure mode.
-
-       A column flex container whose content is taller than its box does not
-       distribute the overflow: with flex-end it puts *all* of it past the START
-       edge, and content overflowing a scroll container's start edge is
-       unreachable. scrollHeight reports 747 against a clientHeight of 747, so
-       the panel believes it has nothing to scroll while ~300px of links sit
-       above y=0. Measured on a 375×812 viewport with the drawer open: the first
-       four links were at y=-234 through y=-8 and `elementFromPoint` at their
-       centres returned null or the backdrop.
-
-       The list has been over the threshold for a while — adding "Your Forge"
-       as a fifteenth child pushed one more link over the edge rather than
-       causing it. flex-start is the intent for a drawer anyway: it reads top
-       down, and anything past the fold is now genuinely scrollable. */
-    justify-content: flex-start;
-    gap: 1.2rem;
-    padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
-    background:
-      radial-gradient(ellipse 60% 40% at 20% 0%, rgba(139, 92, 246, 0.12), transparent 60%),
-      radial-gradient(ellipse 55% 45% at 80% 100%, rgba(123, 97, 255, 0.14), transparent 60%),
-      rgba(8, 3, 22, 0.88);
-    backdrop-filter: blur(28px) saturate(1.1);
-    -webkit-backdrop-filter: blur(28px) saturate(1.1);
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
-    transition: opacity 0.35s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.35s ease;
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
-    box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.55),
-      0 0 32px -8px rgba(139, 92, 246, 0.25);
-    border-left: 1px solid rgba(139, 92, 246, 0.12);
-    border-right: 1px solid rgba(123, 97, 255, 0.12);
-    border-bottom: 1px solid rgba(139, 92, 246, 0.15);
-    z-index: 9999; /* Higher than navbar */
-    /* 100vh on mobile Safari/Chrome is the *large* viewport — it ignores the
-       URL bar, so the last links (Games / LIVE) sat behind browser chrome and
-       could not be tapped. 100dvh tracks the visible viewport; the vh line is
-       the fallback for browsers without dvh. */
-    max-height: calc(100vh - var(--nav-h, 80px));
-    max-height: calc(100dvh - var(--nav-h, 80px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    isolation: isolate;
-  }
-
-  /* Cosmic gradient cap line at the top of the menu — matches every cosmic section */
-  .nav-menu::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.55) 50%, transparent);
-    pointer-events: none;
-  }
-
-  /* Faint drifting starfield baked into the menu backdrop */
-  .nav-menu::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      radial-gradient(1.5px 1.5px at 12% 28%, rgba(139, 92, 246, 0.55), transparent 100%),
-      radial-gradient(1px 1px at 36% 72%, rgba(255, 255, 255, 0.45), transparent 100%),
-      radial-gradient(1.5px 1.5px at 58% 22%, rgba(123, 97, 255, 0.55), transparent 100%),
-      radial-gradient(1px 1px at 78% 64%, rgba(255, 109, 215, 0.45), transparent 100%),
-      radial-gradient(1.5px 1.5px at 92% 32%, rgba(0, 200, 255, 0.5), transparent 100%);
-    background-size: 360px 360px;
-    opacity: 0.6;
-    pointer-events: none;
-    z-index: -1;
-    border-radius: inherit;
-  }
-
-  .nav-menu.mobile-open {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-    visibility: visible;
-  }
-
-  /* WCAG 2.5.5 — each drawer link is its own ≥44px row. `padding: 0.9rem 0` on
-     an inline anchor did not reliably produce a 44px hit box; a flex row with
-     an explicit min-height does. */
-  .nav-menu a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-    font-size: 1.05rem;
-    letter-spacing: 0.16em;
-    padding: 0.75rem 0.5rem;
-    width: 100%;
-    text-align: center;
-    box-sizing: border-box;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .nav-menu a::after {
-    bottom: -0.5rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .navbar {
-    --nav-height: 64px;
-    --nav-padding-x: clamp(0.75rem, 4vw, 1.2rem);
-    gap: 0.75rem;
-    padding-top: max(env(safe-area-inset-top), 0px); /* Account for notch */
-    height: calc(var(--nav-height) + max(env(safe-area-inset-top), 0px));
-  }
-
-  .nav-glitch {
-    font-size: clamp(1.15rem, 5.5vw, 1.45rem);
-  }
-
-  .mobile-controls .language-toggle {
-    display: inline-flex;
-  }
-
-  .language-toggle {
-    padding: 0.3rem;
-  }
-
-  .lang-btn {
-    font-size: 0.7rem;
-    padding: 0.35rem 0.6rem;
-  }
-
-  /* No `top` override needed — --nav-h is measured from the live navbar, so it
-     already reflects the 64px height set above plus any safe-area inset. */
-}
-
-@keyframes navAurora {
-  0% { transform: translateX(-35%); opacity: 0.12; }
-  35% { transform: translateX(20%); opacity: 0.55; }
-  70% { transform: translateX(60%); opacity: 0.45; }
-  100% { transform: translateX(120%); opacity: 0.15; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .navbar,
-  .logo,
-  .logo-mark img,
-  .nav-menu a,
-  .nav-buzzword,
-  .nav-progress,
-  .hamburger span {
-    transition: none !important;
-  }
-
-  .navbar::before,
-  .nav-buzzword[data-swap='true'],
-  .nav-buzzword[data-swap='false'] {
-    animation: none !important;
-  }
-}
-
-
-
-
-
-
-
-@media (max-width: 560px) {
-  .logo {
-    gap: 0.4rem;
-    padding: 0.15rem 0.65rem 0.15rem 0.35rem;
-  }
-
-  .logo-mark {
-    width: 2rem;
-    height: 2rem;
-    padding: 0.18rem;
-  }
-
-  .logo-lockup .nav-glitch {
-    font-size: clamp(1.1rem, 5vw, 1.3rem);
-    letter-spacing: 0.08em;
-  }
-
-  .logo .nav-buzzword {
-    font-size: 0.55rem;
-    letter-spacing: 0.12em;
-    padding: 0.24rem 0.5rem;
-  }
-
-  .nav-menu a {
-    font-size: 0.95rem;
-    letter-spacing: 0.14em;
-  }
-}
-
-/* At 375px (iPhone SE) the logo lockup + EN/ES + hamburger came to ~380px of
-   intrinsic width inside a 375px viewport, so the row overflowed and the
-   hamburger's right edge sat ~4px off-screen. The logo is the only flexible
-   part — the controls are all at their 44px touch minimum and must not shrink.
-   Letting the lockup shrink and clip keeps the tap targets whole. */
-@media (max-width: 600px) {
-  .logo {
-    min-width: 0;
-    flex: 0 1 auto;
-    overflow: hidden;
-  }
-
-  .logo-lockup {
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .logo-lockup .nav-glitch {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: clip;
-    white-space: nowrap;
-  }
-
-  .mobile-controls {
-    flex: 0 0 auto;
-  }
-}
-
-@media (max-width: 420px) {
-  .navbar {
-    gap: 0.5rem; /* Even smaller gap */
-    --nav-padding-x: clamp(0.5rem, 5vw, 0.9rem); /* Even smaller padding */
-    padding-left: var(--nav-padding-x);
-    padding-right: var(--nav-padding-x);
-  }
-
-  .logo {
-    padding: 0.15rem 0.5rem 0.15rem 0.35rem; /* Reduce logo padding */
-    gap: 0.35rem;
-  }
-
-  .logo-mark {
-    width: 1.85rem;
-    height: 1.85rem;
-  }
-
-  /* At 375px the row (14.4 + 183 logo + 8 gap + 155 controls + 14.4) came to
-     374.8px against a 375px viewport — it fit, but with 0.2px to spare, so a
-     font swap or a wider locale clipped the wordmark's last letter. Shaving the
-     wordmark buys ~14px of real headroom. */
-  .logo-lockup .nav-glitch {
-    font-size: clamp(0.92rem, 4.1vw, 1.12rem);
-    letter-spacing: 0.06em;
-  }
-
-  .logo .nav-buzzword {
-    display: none;
-  }
-
-  .mobile-controls {
-    gap: 0.5rem;
-  }
-
-  .language-toggle {
-    padding: 0.25rem;
-    gap: 0.3rem;
-  }
-
-  .lang-btn {
-    font-size: 0.65rem;
-    padding: 0.3rem 0.5rem;
-  }
-}
-@supports not (overflow: clip) {
-  .navbar {
-    overflow: hidden;
-  }
-}
-
-/* ─── LIVE nav indicator ─────────────────────────────────────── */
-
-.nav-live-link {
-  display: inline-flex !important;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.28rem 0.75rem !important;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 51, 85, 0.35) !important;
-  background: rgba(255, 51, 85, 0.07);
-  color: #ff3355 !important;
-  font-size: 0.62rem !important;
-  letter-spacing: 0.16em !important;
+  min-height: 44px;
+  padding: 0 clamp(0.4rem, 0.9vw, 0.72rem);
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gfnav-ink);
+  text-decoration: none;
   white-space: nowrap;
-  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s !important;
-  animation: navLivePulse 2.4s ease-in-out infinite;
+  cursor: pointer;
+  transition: color 0.22s var(--gfnav-ease), background-color 0.22s var(--gfnav-ease);
 }
 
-.nav-live-link:hover,
-.nav-live-link.active {
-  background: rgba(255, 51, 85, 0.14) !important;
-  border-color: rgba(255, 51, 85, 0.6) !important;
-  box-shadow: 0 0 14px rgba(255, 51, 85, 0.25) !important;
-  color: #ff5577 !important;
+.gfnav__link:hover,
+.gfnav__link:focus-visible,
+.gfnav__link.is-active {
+  color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 9%, transparent);
 }
 
-/* Override the ::after underline for this specific link */
-.nav-live-link::after {
-  display: none !important;
+/* Underseam on the active hall. */
+.gfnav__link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-color);
 }
 
-.nav-live-link::before {
-  display: none !important;
+.gfnav__count {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 5px;
+  border-radius: 999px;
+  color: var(--gfnav-gold);
+  background: color-mix(in srgb, var(--gfnav-gold) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gfnav-gold) 34%, transparent);
 }
 
-@keyframes navLivePulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(255, 51, 85, 0.15); }
-  50%       { box-shadow: 0 0 14px rgba(255, 51, 85, 0.35); }
+.gfnav__caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.75;
+  transition: transform 0.22s var(--gfnav-ease);
 }
+.gfnav__realms-btn.is-active .gfnav__caret { transform: rotate(180deg); }
 
-.nav-live-dot {
+/* LIVE — a pulse rather than a word's worth of colour. */
+.gfnav__link--live { letter-spacing: 0.08em; }
+.gfnav__live-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ff3355;
-  box-shadow: 0 0 5px #ff3355;
-  flex-shrink: 0;
-  animation: navDotBlink 1.1s ease-in-out infinite;
+  background: #ff4d6a;
+  box-shadow: 0 0 8px #ff4d6a;
+  animation: gfnavLive 2s ease-in-out infinite;
 }
-
-@keyframes navDotBlink {
+@keyframes gfnavLive {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.2; }
+  50%      { opacity: 0.35; }
 }
 
-/* ─── Mobile drawer: LIVE pill needs the same 44px row as its siblings ─── */
-@media (max-width: 960px) {
-  .nav-menu .nav-live-link {
-    display: flex !important;
-    justify-content: center;
-    min-height: 48px;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.72rem !important;
-    /* The pill already carries a border + glow; the perpetual box-shadow
-       keyframe is one more always-on animated layer inside a scrollable
-       drawer. Static on mobile. */
-    animation: none;
-  }
+/* ── Realms dropdown ───────────────────────────────────────────────────── */
 
-  .nav-menu .nav-games-link,
-  .nav-menu .nav-codex-link {
-    min-height: 48px;
-  }
+.gfnav__realms { position: relative; }
 
-  /* In the drawer there is horizontal room, so the badge sits on the trailing
-     edge of the row rather than tucked against the label. */
-  .nav-menu .nav-codex-link {
-    display: flex !important;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-  }
+.gfnav__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  width: 268px;
+  padding: 0.5rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 26%, transparent);
+  background: rgba(var(--gfnav-void), 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 30px -10px color-mix(in srgb, var(--primary-color) 70%, transparent),
+    0 24px 60px -30px rgba(0, 0, 0, 0.95);
+  /* Hidden, not removed: these are real crawlable routes into the filter. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.2s var(--gfnav-ease), transform 0.2s var(--gfnav-ease), visibility 0.2s;
 }
 
-/* ── Codex nav link ─────────────────────────────────────────────────────
-   The badge is a counter, not a call to action: it is deliberately quieter
-   than the LIVE pill next to it, because a number that never stops being
-   incomplete should not also be the loudest thing in the bar. */
-.nav-codex-link {
+.gfnav__menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.gfnav__menu-hd {
+  margin: 0.25rem 0.55rem 0.45rem;
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gfnav-ink-dim);
+}
+
+.gfnav__realm {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  transition: background-color 0.2s var(--gfnav-ease), border-color 0.2s var(--gfnav-ease);
+}
+
+.gfnav__realm:hover,
+.gfnav__realm:focus-visible {
+  background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 12%, transparent);
+  border-left-color: var(--realm-color, var(--primary-color));
+}
+
+.gfnav__realm-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--realm-color, var(--primary-color));
+  box-shadow: 0 0 10px var(--realm-glow, var(--primary-color));
+}
+
+.gfnav__realm-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+.gfnav__realm-name {
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gfnav-ink);
+}
+
+.gfnav__realm-domain {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--gfnav-ink-dim);
+}
+
+.gfnav__realm--all {
+  justify-content: center;
+  margin-top: 0.3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 0;
+  border-radius: 0 0 10px 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gfnav-gold);
+}
+.gfnav__realm--all:hover { border-left-color: transparent; background: color-mix(in srgb, var(--gfnav-gold) 12%, transparent); }
+
+/* ── Status rail ───────────────────────────────────────────────────────── */
+
+.gfnav__status {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.25rem, 0.7vw, 0.5rem);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* The three shared components ship 44px controls sized for the old dock
+   under the bar, which is 4px taller than a 56px row can seat comfortably.
+   Compact them to 38px — but ONLY where the pointer is a mouse. On touch
+   the 44px minimum is the standard this site already holds itself to (the
+   mobile rescue pass audited every standalone control against it), and a
+   38px tap target in a 48px bar is exactly the regression that audit
+   existed to prevent. */
+@media (hover: hover) and (pointer: fine) {
+  .gfnav__quests ::ng-deep .qt__trigger,
+  .gfnav__gold ::ng-deep .cr__chip,
+  .gfnav__xp ::ng-deep .xpb__trigger {
+    min-height: 38px;
+    height: 38px;
+  }
+  .gfnav__quests ::ng-deep .qt__trigger { width: 38px; }
+  .gfnav__keeper,
+  .gfnav__lang-btn { min-height: 38px; height: 38px; }
+  .gfnav__keeper { width: 38px; }
+}
+
+.gfnav__keeper {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--gfnav-void), 0.55);
+  text-decoration: none;
+  transition: border-color 0.25s var(--gfnav-ease), box-shadow 0.25s var(--gfnav-ease);
+}
+.gfnav__keeper:hover,
+.gfnav__keeper:focus-visible,
+.gfnav__keeper.is-active {
+  border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
+  box-shadow: 0 0 20px -8px var(--primary-color);
+}
+
+/* Keeper glyph — a CSS bust: a head over shoulders, no emoji. */
+.gfnav__keeper-glyph {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+.gfnav__keeper-glyph::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: var(--gfnav-ink);
+}
+.gfnav__keeper-glyph::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 14px;
+  height: 7px;
+  translate: -50% 0;
+  border-radius: 7px 7px 0 0;
+  background: var(--gfnav-ink);
+}
+.gfnav__keeper:hover .gfnav__keeper-glyph::before,
+.gfnav__keeper:hover .gfnav__keeper-glyph::after { background: var(--primary-color); }
+
+/* Language */
+.gfnav__lang {
   display: inline-flex;
   align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--gfnav-void), 0.55);
+  overflow: hidden;
+}
+.gfnav__lang-btn {
+  min-width: 30px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gfnav-ink-dim);
+  transition: color 0.2s var(--gfnav-ease), background-color 0.2s var(--gfnav-ease);
+}
+.gfnav__lang-btn.is-active {
+  color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+}
+.gfnav__lang-btn:hover { color: var(--gfnav-ink); }
+
+/* Hamburger — 44px hit area, drawn bars. */
+/* The bars are absolutely positioned rather than stacked with margins: in a
+   grid/flex stack the distance between bar centres depends on how the box
+   resolves its rows, and the open-state rotation then meets at a chevron
+   instead of crossing. Fixed offsets make the X exact — bars sit 7px apart,
+   so ±7px brings the outer two onto the centre line before they rotate. */
+.gfnav__burger {
+  display: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(var(--gfnav-void), 0.55);
+  cursor: pointer;
+  transition: border-color 0.25s var(--gfnav-ease), box-shadow 0.25s var(--gfnav-ease);
+}
+.gfnav__burger span {
+  position: absolute;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  margin-left: -9px;
+  border-radius: 2px;
+  background: var(--gfnav-ink);
+  transition: transform 0.28s var(--gfnav-ease), opacity 0.2s var(--gfnav-ease), background-color 0.25s var(--gfnav-ease);
+}
+.gfnav__burger span:nth-child(1) { top: 14px; }
+.gfnav__burger span:nth-child(2) { top: 21px; }
+.gfnav__burger span:nth-child(3) { top: 28px; }
+.gfnav__burger:hover { border-color: color-mix(in srgb, var(--primary-color) 50%, transparent); }
+.gfnav__burger:hover span { background: var(--primary-color); }
+.gfnav__burger.is-open {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 18px -6px var(--primary-color);
+}
+.gfnav__burger.is-open span { background: var(--primary-color); }
+.gfnav__burger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.gfnav__burger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0.3); }
+.gfnav__burger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── The tome (mobile drawer) ──────────────────────────────────────────── */
+
+.gftome__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 0%, color-mix(in srgb, var(--primary-color) 16%, transparent), transparent 68%),
+    rgba(4, 3, 10, 0.82);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.32s var(--gfnav-ease), visibility 0.32s;
+}
+.gftome__backdrop.is-open { opacity: 1; visibility: visible; }
+
+.gftome {
+  position: fixed;
+  /* Off the measured bar height, which already includes the notch inset.
+     A hardcoded top opened the drawer *under* the header on notched phones. */
+  top: var(--nav-h, 56px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 999;
+  /* dvh, not vh: 100vh is the LARGE viewport on mobile, so the last links
+     sat behind the URL bar with no way to reach them. */
+  height: calc(100dvh - var(--nav-h, 56px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 0%, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 70%),
+    radial-gradient(ellipse 70% 40% at 50% 100%, color-mix(in srgb, var(--gfnav-gold) 7%, transparent), transparent 70%),
+    rgba(var(--gfnav-void), 0.97);
+  border-top: 1px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.36s var(--gfnav-ease), visibility 0.36s;
+}
+.gftome.is-open { transform: translateX(0); visibility: visible; }
+
+.gftome__inner {
+  padding: 1.1rem clamp(1rem, 5vw, 1.6rem) calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
   gap: 0.4rem;
 }
 
-.nav-codex-badge {
-  font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  padding: 3px 6px;
-  border-radius: 999px;
-  color: #A78BFA;
-  background: rgba(139, 92, 246, 0.09);
-  border: 1px solid rgba(139, 92, 246, 0.24);
-  white-space: nowrap;
-}
-
-.nav-codex-link:hover .nav-codex-badge,
-.nav-codex-link.active .nav-codex-badge {
-  color: #F2ECFF;
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.5);
-}
-
-/* ── Nav row fit, 960px → 1440px ────────────────────────────────────────
-   The desktop row was already over-full before the Codex link existed: at
-   1280px .nav-menu measured 855px of content in a 660px box, which is why the
-   LIVE pill painted over the EN/ES toggle. The Codex link would have taken it
-   to 944px.
-
-   The space is not being consumed by the links themselves — it is gap and
-   padding. Ten links carry 252px of gap and 224px of horizontal padding
-   between them at 1280px. Tightening both, dropping the badge, and easing the
-   letter-spacing brings the row to ~620px, i.e. inside its container for the
-   first time. Above 1440px nothing changes; there is room to be airy there.
-
-   This does NOT touch the progression readout — see the note below. That
-   element was never what was consuming the space. */
-@media (min-width: 961px) {
-  /* The original `clamp(1.1rem, 3vw, 2.5rem)` grew the gap with the viewport,
-     so the row got *worse* as the screen got wider: nine gaps came to 360px at
-     1512px against 126px at 1280px. Capping it removes 210px there. */
-  .nav-menu { gap: clamp(0.4rem, 1.1vw, 1.25rem); }
-
-  .nav-menu a {
-    padding: 0.35rem 0.25rem;
-    letter-spacing: 0.06em;
-  }
-}
-
-/* The row is still over-full below ~1440px even with the gap capped — see the
-   note under the progression readout; ten links do not fit and the LIVE pill
-   has painted over the EN/ES toggle since before the Codex existed. The Codex
-   link is therefore placed mid-row in the template (after Tools, before
-   Blueprint) rather than at the end, so it sits well clear of that zone
-   instead of joining it.
-
-   The badge is the one part of the link that can be dropped without losing
-   anything: it restates a number the page itself leads with. */
-@media (min-width: 961px) and (max-width: 1440px) {
-  .nav-codex-badge { display: none; }
-}
-
-/* ── Progression readout ────────────────────────────────────────────────
-   Two instances live in the template: one for desktop, one inside the mobile
-   drawer. Exactly one is ever visible.
-
-   The desktop instance is taken OUT of the navbar's flex row and docked under
-   the bar instead. That is not a style choice — the row has no horizontal room
-   to give. Measured on this build at 1600x900 with the bar removed entirely,
-   .nav-menu's children already overflow their container and the LIVE link
-   already paints over the EN/ES toggle (LIVE right edge 1558 against a toggle
-   starting at 1433); the same holds at 1280. A flex sibling in that row shifts
-   the collision around rather than fitting into it. Docked, the row measures
-   byte-for-byte identical to having no XP bar at all, and the readout keeps a
-   full 44px target that is always inside the viewport.
-
-   The pre-existing nav overflow is tracked separately — do not "fix" it by
-   shrinking this element, which is not what is consuming the space. */
-.nav-xp {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-
-@media (min-width: 961px) {
-  .nav-xp {
-    position: absolute;
-    top: 100%;
-    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
-    margin-top: 8px;
-    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
-    z-index: 5;
-  }
-}
-
-.nav-xp--drawer {
-  display: none;
-}
-
-/* The nav row has no spare width at 1280px, so the Quests link is drawer-only.
-   On desktop the docked sword is the way in, and its panel links to /quests. */
-@media (min-width: 961px) {
-  .nav-quests-link {
-    display: none;
-  }
-}
-
-/* ── Quest dock ──────────────────────────────────────────────────────────────
-   The sword and the XP bar share one docked cluster on desktop, so the pair
-   costs the nav row exactly as much as the XP bar alone used to: nothing. */
-.nav-dock {
-  display: inline-flex;
+.gftome__standing {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.gftome__xp { display: block; margin-bottom: 0.5rem; }
+.gftome__xp ::ng-deep .xpb,
+.gftome__xp ::ng-deep .xpb__trigger { width: 100%; }
+
+.gftome__hd {
+  margin: 1rem 0 0.35rem;
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gfnav-ink-dim);
+}
+/* Gold rule under each chapter heading — the tome's ruled line. */
+.gftome__hd::after {
+  content: '';
+  display: block;
+  margin-top: 0.4rem;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gfnav-gold) 55%, transparent), transparent);
 }
 
-@media (min-width: 961px) {
-  .nav-dock {
-    position: absolute;
-    top: 100%;
-    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
-    margin-top: 8px;
-    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
-    z-index: 5;
-  }
+.gftome__realms { display: flex; flex-direction: column; gap: 0.3rem; }
 
-  /* The dock now owns the positioning the XP bar used to do for itself. */
-  .nav-xp {
-    position: static;
-    margin-top: 0;
-  }
-
-  .nav-quests--mobile {
-    display: none;
-  }
-}
-
-@media (max-width: 960px) {
-  .nav-dock {
-    display: none;
-  }
-
-  .nav-quests--mobile {
-    display: inline-flex;
-  }
-}
-
-@media (max-width: 960px) {
-  .nav-xp {
-    display: none;
-  }
-
-  .nav-xp--drawer {
-    display: inline-flex;
-    margin-top: 0.75rem;
-    align-self: flex-start;
-  }
-}
-
-/* ── Godforge wallet ─────────────────────────────────────────────────────────
-   Gold and Essence join the docked cluster rather than the nav row, for exactly
-   the reason the XP bar and the quest sword are there: at 1280px .nav-menu
-   already measures more content than its box, and a flex sibling added to that
-   row moves the collision with the EN/ES toggle around rather than fitting
-   into it. Docked, the wallet costs the row nothing.
-
-   Same reasoning puts the Market *link* behind the drawer on desktop, matching
-   .nav-quests-link — on a wide screen the coin chips are the way in, and they
-   are always visible. */
-.nav-coins {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-
-.nav-coins--drawer {
-  display: none;
-}
-
-@media (min-width: 961px) {
-  .nav-market-link {
-    display: none;
-  }
-}
-
-/* ── The Forge sigil ─────────────────────────────────────────────────────────
-   Same split as the Market and the Quests links, for the same reason: at 1280px
-   .nav-menu already measures more content than its box, so the row gets the
-   drawer copy and the dock gets the control. */
-.nav-forge {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  /* The 44px touch minimum the 2.1.0 mobile pass established for every
-     standalone control, met here rather than relying on the emoji's own box. */
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid rgba(167, 139, 250, 0.28);
-  background:
-    radial-gradient(circle at 34% 28%, rgba(242, 236, 255, 0.3) 0%, rgba(255, 255, 255, 0) 46%),
-    radial-gradient(circle at 50% 50%, rgba(232, 117, 42, 0.32) 0%, rgba(8, 3, 24, 0.92) 86%);
-  box-shadow: 0 0 14px -4px rgba(232, 117, 42, 0.7);
+.gftome__realm {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'dot name' 'dot domain';
+  align-items: center;
+  column-gap: 0.7rem;
+  min-height: 52px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border-left: 2px solid var(--realm-color, var(--primary-color));
+  background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 7%, transparent);
   text-decoration: none;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.gftome__realm:active { background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 16%, transparent); }
+.gftome__realm-dot {
+  grid-area: dot;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--realm-color, var(--primary-color));
+  box-shadow: 0 0 10px var(--realm-glow, var(--primary-color));
+}
+.gftome__realm-name {
+  grid-area: name;
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 1rem; font-weight: 600;
+  color: var(--gfnav-ink);
+}
+.gftome__realm-domain { grid-area: domain; font-size: 0.72rem; color: var(--gfnav-ink-dim); }
+
+.gftome__links { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.gftome__link {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'glyph name' 'glyph hint';
+  align-items: center;
+  column-gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background-color 0.2s var(--gfnav-ease);
+}
+.gftome__link.is-active,
+.gftome__link:active { background: color-mix(in srgb, var(--primary-color) 12%, transparent); }
+
+/* A small drawn rune per hall — a rotated square with a purple core. */
+.gftome__link-glyph {
+  grid-area: glyph;
+  position: relative;
+  width: 16px; height: 16px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 55%, transparent);
+  border-radius: 3px;
+  rotate: 45deg;
+}
+.gftome__link-glyph::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 1px;
+  background: var(--primary-color);
+  opacity: 0.55;
+}
+.gftome__link.is-active .gftome__link-glyph::after { opacity: 1; box-shadow: 0 0 8px var(--primary-color); }
+
+.gftome__link-name {
+  grid-area: name;
+  font-size: 0.95rem; font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--gfnav-ink);
+}
+.gftome__link.is-active .gftome__link-name { color: var(--primary-color); }
+.gftome__link-hint { grid-area: hint; font-size: 0.72rem; color: var(--gfnav-ink-dim); }
+
+/* Only shown where the bar's own toggle is hidden. */
+.gftome__lang {
+  display: none;
+  align-self: center;
+  margin-top: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--gfnav-void), 0.55);
+  overflow: hidden;
 }
 
-.nav-forge:hover,
-.nav-forge.active {
-  border-color: rgba(167, 139, 250, 0.65);
-  box-shadow: 0 0 22px -5px rgba(167, 139, 250, 0.85);
-  transform: translateY(-1px);
+.gftome__mark {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 0.72rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: rgba(240, 240, 240, 0.4);
 }
 
-.nav-forge:focus-visible {
-  outline: 2px solid #A78BFA;
+/* ── Focus ─────────────────────────────────────────────────────────────── */
+
+.gfnav a:focus-visible,
+.gfnav button:focus-visible,
+.gftome a:focus-visible {
+  outline: 2px solid var(--primary-color);
   outline-offset: 3px;
+  border-radius: 8px;
 }
 
-.nav-forge__sigil {
-  font-size: 17px;
-  line-height: 1;
-  color: #ffd0a8;
+/* ── Breakpoints ───────────────────────────────────────────────────────── */
+
+/* Narrow desktop: the row is tight at 1280px. Drop the hints before the
+   halls — LIVE and the language toggle earn their space last. */
+@media (max-width: 1240px) {
+  .gfnav__link { padding-inline: 0.4rem; font-size: 0.76rem; }
+  .gfnav__centre { gap: 0.1rem; }
 }
 
-@media (min-width: 961px) {
-  .nav-forge-link {
-    display: none;
-  }
+@media (max-width: 1100px) {
+  .gfnav__link--live { display: none; }
+  .gfnav__count { display: none; }
 }
 
+/* Drawer breakpoint — matches MOBILE_NAV_BREAKPOINT in the component. */
 @media (max-width: 960px) {
-  .nav-forge {
-    display: none;
-  }
+  .gfnav__centre { display: none; }
+  .gfnav__burger { display: grid; }
+  .gfnav__xp { display: none; }          /* the tome carries the full bar */
+  .gfnav__keeper { display: none; }      /* reachable as a hall in the tome */
 }
+
+@media (max-width: 720px) {
+  :host { --gfnav-h: 48px; --gfnav-h-compact: 44px; }
+  .gfnav__wordmark { font-size: 0.95rem; }
+  .gfnav__lang { display: none; }        /* language lives in the tome below */
+  .gftome__lang { display: inline-flex; }
+}
+
+@media (max-width: 400px) {
+  .gfnav__gold ::ng-deep .cr__chip--essence { display: none; }
+  .gfnav__wordmark { font-size: 0.88rem; }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-forge {
-    transition: none;
-  }
-
-  .nav-forge:hover,
-  .nav-forge.active {
-    transform: none;
-  }
-}
-
-@media (max-width: 960px) {
-  .nav-coins {
-    display: none;
-  }
-
-  .nav-coins--drawer {
-    display: inline-flex;
-    margin-top: 0.75rem;
-    align-self: flex-start;
-  }
+  .gfnav,
+  .gfnav__row,
+  .gfnav__menu,
+  .gftome,
+  .gftome__backdrop,
+  .gfnav__burger span,
+  .gfnav__link,
+  .gfnav__sigil,
+  .gfnav__keeper { transition: none; }
+  .gfnav__live-dot { animation: none; opacity: 1; }
+  /* Static end state, not "no drawer": it still opens, it just does not slide. */
+  .gftome { transform: translateX(0); display: none; }
+  .gftome.is-open { display: block; }
 }

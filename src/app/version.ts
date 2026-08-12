@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.31.0',
+  version: '2.32.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'The True Face',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.31.0',
+    version: '2.32.0',
     codename: 'The True Face',
     date: '2026-08-12',
     highlights: [
@@ -45,6 +45,21 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'The icons are lit rather than pasted. The Flame breathes, the rank you hold glows while the ranks above it stay dark stone, and the rarity ladder escalates from an inert Mortal to a Singular that cycles through the whole spectrum — every one of them holding a static end state when the visitor asks for reduced motion',
       'Ranks read as progress at a glance: the Codex path shows all ten sigils with the earned ones lit and the rest greyed, and the Forge Keeper crest carries the painted sigil inside the ring whose point count already encoded the rank',
     ],
+  },
+  {
+    version: '2.31.0',
+    codename: 'The Command Bar',
+    date: '2026-08-12',
+    highlights: [
+      'The navbar is no longer a portfolio header. The Void sigil and "The Godforge" open it, the five realms, the Arena, the Codex, the War Table and the Market run down the middle, and your own standing — quests, Gold, rank and XP — closes it. The rotating buzzword pill, the "Services / Projects / About / Contact" scroll links and the personal wordmark are gone',
+      'Realms is a dropdown that goes somewhere: each of the five links straight into /tools filtered by that realm, painted in its own accent, and the menu stays in the DOM when closed so crawlers still follow all six routes',
+      'The mobile drawer is a tome rather than a slide-out — chapter headings ruled in gold, realm cards carrying their accent on the left edge, and a drawn rune per hall. Quests, Gold and the XP bar sit at the top of it, where a frontispiece would be',
+      'Every icon in the bar is drawn in CSS: the Void sigil, the crossed blades on the quest sword, the Gold coin, the Essence shard, the streak ember, the keeper bust and the hamburger. No emoji anywhere — a colour-font glyph renders differently on every platform and cannot take the bar\'s palette, which matters because four purchasable cosmetic themes re-point it',
+      'The bar compacts from 56px to 48px on the way down and returns to full height on the way up, with a deadband so a jittery trackpad cannot oscillate it',
+      'The forge core on the homepage now reads ember → gold → purple → void: the eclipse bloom lives in the haze and the outer rim rather than inside the shaft, which keeps the well reading as a furnace instead of a nebula orb',
+      'The footer closes on the same mark the bar opens with — sigil, wordmark, the six halls, and "Forged by xsantcastx" under a gold hairline',
+      'Touch targets stay at 44px on touch devices; the 38px compaction that lets the controls sit in a 56px row is scoped to fine pointers only'
+    ]
   },
   {
     version: '2.30.0',

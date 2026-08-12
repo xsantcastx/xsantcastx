@@ -70,6 +70,13 @@
           {{ translate('godforge.hero.ctaLive') }}
         </a>
       </div>
+
+      <!-- The quiet second door. Deliberately not a button: a visitor who is
+           not ready to pick a tool yet still has somewhere to go. -->
+      <p class="gf-hero__aside">
+        {{ translate('godforge.hero.orExplore') }}
+        <a routerLink="/codex" class="gf-hero__aside-link">{{ translate('godforge.hero.theCodex') }}</a>
+      </p>
     </div>
 
     <div class="hp-hero__scroll-hint" aria-hidden="true">

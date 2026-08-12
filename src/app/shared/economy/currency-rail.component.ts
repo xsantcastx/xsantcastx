@@ -68,9 +68,10 @@ import { formatCurrency, formatRate } from './economy.model';
       text-decoration: none;
       transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
     }
-    /* Fixed box, not intrinsic: the chip must not resize while the PNG decodes,
-       or the whole header row shifts on first paint. */
-    .cr__icon { width: 18px; height: 18px; display: block; }
+    /* The painted Gold coin and Essence shard, which the CSS-drawn pair here
+       was standing in for. Fixed box, not intrinsic: the chip must not resize
+       while the PNG decodes, or the whole header row shifts on first paint. */
+    .cr__icon { width: 18px; height: 18px; display: block; flex-shrink: 0; }
     .cr__val {
       font: 700 12px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: .02em;
