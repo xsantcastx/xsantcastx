@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.23.0',
+  version: '2.23.1',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Ambient Forge',
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.23.1',
+    codename: 'Ambient Forge',
+    date: '2026-08-12',
+    highlights: [
+      'Browser tabs read as a platform rather than a personal site — the default title is "xsantcastx · The Godforge", and every named page follows "<Page> · xsantcastx": The Five Realms, The War Table, The Arena, The Codex, Mission Control, Sponsors, MCP Server',
+      'The phrase "Full-Stack Developer" is gone from every title, meta description, Open Graph tag and structured-data block outside the tool pages, along with the portfolio framing that came with it',
+      'The 128 individual tool titles are deliberately untouched: their keyword phrasing is what those pages rank on, and a title is the strongest on-page signal there is. /tools itself was renamed on request and did give up its keywords — the meta description still carries them',
+      'The route-title map had been carrying nine unused entries with copy like "About Me - Experience & Skills" and "Resume - Professional Experience"; the dead keys are deleted and the four live ones now read as platform pages',
+      'Every prerendered page had been shipping the same generic og:title and twitter:title — SeoService read the title back off the document and beat the title strategy to it during prerender. It now reads the route\'s own title, through the same branding helper the strategy uses so the two cannot drift apart',
+      'Fixed a corrupted line on /about that was rendering a fragment of a code-edit payload — literal `", "oldString": "` followed by a stray "Santiago - Full-Stack Developer" — as visible page text'
+    ]
+  },
   {
     version: '2.23.0',
     codename: 'Ambient Forge',
