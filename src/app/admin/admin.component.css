@@ -1,7 +1,7 @@
 /**
  * /admin — the control room.
  *
- * Deliberately NOT cosmic. The public site is cyan (#00ffcc) on a nebula
+ * Deliberately NOT cosmic. The public site is cyan (#8B5CF6) on a nebula
  * backdrop with 22+ animated systems; this page is amber (#f59e0b) on a flat
  * near-black, with no ambient motion at all. The colour is the tell: if the
  * screen is warm, you are looking at private data. That distinction is worth
@@ -12,7 +12,7 @@
  */
 
 :host {
-  --adm-bg: #0a0f1e;
+  --adm-bg: #0a0a0f;
   --adm-panel: rgba(23, 20, 14, 0.55);
   --adm-panel-solid: #12151f;
   --adm-line: rgba(245, 158, 11, 0.14);

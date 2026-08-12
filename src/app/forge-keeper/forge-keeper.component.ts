@@ -521,12 +521,12 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
   /** The realm colour the sigil and the identity card border wear. */
   get affinityColor(): string {
-    if (this.isBalanced) return '#4dffe0';
+    if (this.isBalanced) return '#A78BFA';
     return this.aetherPercent > 55 ? '#E8D44D' : '#8B2252';
   }
 
   get affinityGlow(): string {
-    if (this.isBalanced) return 'rgba(0, 255, 204, 0.6)';
+    if (this.isBalanced) return 'rgba(167, 139, 250, 0.6)';
     return this.aetherPercent > 55 ? 'rgba(232, 212, 77, 0.6)' : 'rgba(139, 34, 82, 0.75)';
   }
 
@@ -543,7 +543,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   /** The ten tiles, in reading order. */
   get stats(): StatTile[] {
     return [
-      { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#4dffe0' },
+      { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#A78BFA' },
       { label: 'Tools Mastered', value: String(this.toolsMastered),            note: 'Expert or above',   icon: '❖', color: '#a48bff' },
       { label: 'Achievements',  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: 'fragments found', icon: '🏆', color: '#C9A84C' },
       { label: 'Quests',        value: formatCurrency(this.questsCompleted),    note: 'completed',         icon: '⚔️', color: '#ff6dd7' },

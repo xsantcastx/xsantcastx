@@ -164,7 +164,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .cm-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Primary action buttons ────────────────────────────────── */
@@ -207,7 +207,7 @@
   color: var(--text-color);
 }
 .cm-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -230,12 +230,12 @@
 }
 .cm-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .cm-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .cm-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .cm-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -284,7 +284,7 @@
 }
 
 /* ── Syntax highlight token colors ────────────────────────── */
-:host ::ng-deep .cm-selector { color: #00ffcc; }      /* cyan — selectors */
+:host ::ng-deep .cm-selector { color: #8B5CF6; }      /* cyan — selectors */
 :host ::ng-deep .cm-property { color: #b48ead; }      /* purple — properties */
 :host ::ng-deep .cm-value    { color: #d6ddeb; }      /* white — values */
 :host ::ng-deep .cm-comment  { color: #6272a4; }      /* muted — comments */

@@ -89,9 +89,9 @@
   margin-bottom: 1.5rem;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   font-size: 0.78rem;
-  color: rgba(0, 255, 204, 0.8);
+  color: rgba(139, 92, 246, 0.8);
   line-height: 1.5;
 }
 
@@ -192,7 +192,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .ev-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Primary action buttons ────────────────────────────────── */
@@ -235,12 +235,12 @@
   color: var(--text-color);
 }
 .ev-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
 .ev-btn--success {
-  border-color: rgba(0, 255, 204, 0.4) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
   color: var(--primary-color) !important;
 }
 
@@ -263,12 +263,12 @@
 }
 .ev-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .ev-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .ev-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .ev-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -295,7 +295,7 @@
 
 .ev-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -384,11 +384,11 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.ev-filter-tab:hover { color: var(--text-color); border-color: rgba(0, 255, 204, 0.2); }
+.ev-filter-tab:hover { color: var(--text-color); border-color: rgba(139, 92, 246, 0.2); }
 
 .ev-filter-tab--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }

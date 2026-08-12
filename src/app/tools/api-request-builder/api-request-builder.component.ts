@@ -326,7 +326,7 @@ export class ApiRequestBuilderComponent implements OnInit, OnDestroy {
 
   get methodColor(): string {
     const colors: Record<string, string> = {
-      GET: '#00ffcc',
+      GET: '#8B5CF6',
       POST: '#7b61ff',
       PUT: '#ffb86c',
       PATCH: '#ff79c6',
@@ -334,7 +334,7 @@ export class ApiRequestBuilderComponent implements OnInit, OnDestroy {
       HEAD: '#6272a4',
       OPTIONS: '#8be9fd',
     };
-    return colors[this.httpMethod] || '#00ffcc';
+    return colors[this.httpMethod] || '#8B5CF6';
   }
 
   formatTimestamp(ts: number): string {

@@ -28,7 +28,7 @@
   opacity: 0.12;
 }
 
-.gp-hero__glow--cyan  { background: #00ffcc; top: -10rem; left: -10rem; }
+.gp-hero__glow--cyan  { background: #8B5CF6; top: -10rem; left: -10rem; }
 .gp-hero__glow--purple { background: #8b5cf6; top: -10rem; right: -10rem; }
 
 .gp-hero__inner {
@@ -45,7 +45,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent, #00ffcc);
+  color: var(--color-accent, #8B5CF6);
   margin-bottom: 1rem;
 }
 
@@ -53,7 +53,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-accent, #00ffcc);
+  background: var(--color-accent, #8B5CF6);
   animation: gp-pulse 2s ease-in-out infinite;
 }
 
@@ -98,7 +98,7 @@
 
 .gp-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00ffcc, #8b5cf6);
+  background: linear-gradient(90deg, #8B5CF6, #8b5cf6);
   border-radius: 3px;
   transition: width 0.6s ease;
 }
@@ -135,7 +135,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.15em;
-  color: var(--color-accent, #00ffcc);
+  color: var(--color-accent, #8B5CF6);
   margin-bottom: 0.5rem;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .gp-how-step p a {
-  color: var(--color-accent, #00ffcc);
+  color: var(--color-accent, #8B5CF6);
   text-decoration: none;
 }
 
@@ -198,12 +198,12 @@
 }
 
 .gp-card--unlocked {
-  border-color: rgba(0,255,204,0.2);
+  border-color: rgba(139,92,246,0.2);
 }
 
 .gp-card--unlocked:hover {
   transform: translateY(-2px);
-  border-color: rgba(0,255,204,0.4);
+  border-color: rgba(139,92,246,0.4);
 }
 
 .gp-card--locked {
@@ -276,12 +276,12 @@
   right: 12px;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: linear-gradient(120deg, #4dffe0, #a48bff);
+  background: linear-gradient(120deg, #A78BFA, #a48bff);
   color: #06101c;
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.14em;
-  box-shadow: 0 0 16px -4px rgba(0, 255, 204, 0.9);
+  box-shadow: 0 0 16px -4px rgba(139, 92, 246, 0.9);
 }
 
 .ar-card__best {
@@ -322,7 +322,7 @@
   font-size: clamp(1.4rem, 4vw, 2rem);
   font-weight: 700;
   line-height: 1;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .ar-stat__of {
@@ -403,7 +403,7 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  background: linear-gradient(135deg, #00ffcc, #8b5cf6);
+  background: linear-gradient(135deg, #8B5CF6, #8b5cf6);
   color: #000;
   border: none;
   border-radius: 6px;

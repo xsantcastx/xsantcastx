@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Docker Compose Reference — Component Styles
-   Cyberpunk theme: cyan #00ffcc, purple var(--info-color)
+   Cyberpunk theme: cyan #8B5CF6, purple var(--info-color)
    ══════════════════════════════════════════════════════════════ */
 
 .docker-page {
@@ -25,7 +25,7 @@
   margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -35,7 +35,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 
@@ -145,8 +145,8 @@
 }
 
 .docker-tab--active {
-  color: #00ffcc;
-  border-bottom-color: #00ffcc;
+  color: #8B5CF6;
+  border-bottom-color: #8B5CF6;
 }
 
 .docker-tab__count {
@@ -156,11 +156,11 @@
   min-width: 1.75rem;
   height: 1.5rem;
   padding: 0 0.35rem;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 
 /* ── Panel Container ───────────────────────────────────────── */
@@ -208,8 +208,8 @@
 
 .docker-search-input:focus {
   outline: none;
-  border-color: #00ffcc;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+  border-color: #8B5CF6;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
 }
 
 .docker-search-input::placeholder {
@@ -260,7 +260,7 @@
 .docker-filter-btn--active {
   background: var(--info-color);
   border-color: var(--info-color);
-  color: #0a0f1e;
+  color: #0a0a0f;
 }
 
 /* Result Meta */
@@ -275,7 +275,7 @@
 .docker-result-meta__clear button {
   background: none;
   border: none;
-  color: #00ffcc;
+  color: #8B5CF6;
   font-size: 0.8rem;
   cursor: pointer;
   text-decoration: underline;
@@ -304,14 +304,14 @@
 }
 
 .docker-directive-card:hover {
-  border-color: #00ffcc;
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.1);
+  border-color: #8B5CF6;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.1);
 }
 
 .docker-directive-card--selected {
-  border-color: #00ffcc;
-  box-shadow: 0 0 24px rgba(0, 255, 204, 0.15);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: #8B5CF6;
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .docker-directive-header {
@@ -334,7 +334,7 @@
   font-family: var(--font-mono);
   font-size: 1rem;
   font-weight: 600;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin: 0;
   transition: color 0.2s ease;
 }
@@ -351,7 +351,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #0a0f1e;
+  color: #0a0a0f;
 }
 
 .docker-directive-description {
@@ -378,8 +378,8 @@
 }
 
 .docker-copy-btn:hover {
-  border-color: #00ffcc;
-  color: #00ffcc;
+  border-color: #8B5CF6;
+  color: #8B5CF6;
 }
 
 .docker-copy-btn--copied {
@@ -474,8 +474,8 @@
 .docker-templates-intro {
   margin-bottom: 2rem;
   padding: 1.25rem;
-  background: rgba(0, 255, 204, 0.05);
-  border: 1px solid rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.1);
   border-radius: 10px;
 }
 
@@ -509,14 +509,14 @@
 }
 
 .docker-template-card:hover {
-  border-color: #00ffcc;
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.1);
+  border-color: #8B5CF6;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.1);
 }
 
 .docker-template-card--expanded {
-  border-color: #00ffcc;
-  box-shadow: 0 0 24px rgba(0, 255, 204, 0.15);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: #8B5CF6;
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .docker-template-header {
@@ -540,7 +540,7 @@
 
 .docker-template-card:hover .docker-template-name,
 .docker-template-card--expanded .docker-template-name {
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 
 .docker-template-description {
@@ -591,7 +591,7 @@
   font-family: var(--font-mono);
   font-size: 1.1rem;
   font-weight: 600;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin: 0;
 }
 
@@ -611,8 +611,8 @@
 }
 
 .docker-detail-close:hover {
-  border-color: #00ffcc;
-  color: #00ffcc;
+  border-color: #8B5CF6;
+  color: #8B5CF6;
 }
 
 .docker-detail-content {
@@ -724,17 +724,17 @@
 }
 
 .docker-code-block::-webkit-scrollbar-track {
-  background: rgba(0, 255, 204, 0.05);
+  background: rgba(139, 92, 246, 0.05);
   border-radius: 3px;
 }
 
 .docker-code-block::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.2);
   border-radius: 3px;
 }
 
 .docker-code-block::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.3);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

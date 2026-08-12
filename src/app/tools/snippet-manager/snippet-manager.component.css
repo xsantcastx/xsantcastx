@@ -166,7 +166,7 @@
   box-sizing: border-box;
 }
 .sm-search-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 .sm-search-input::placeholder {
   color: rgba(214, 221, 235, 0.28);
@@ -210,7 +210,7 @@
   min-width: 140px;
 }
 .sm-filter-select:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 .sm-filter-select option {
   background: var(--surface-strong);
@@ -252,7 +252,7 @@
   color: var(--text-color);
 }
 .sm-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -275,7 +275,7 @@
 }
 .sm-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .sm-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -357,7 +357,7 @@
   transition: border-color 0.2s ease;
 }
 .sm-card:hover {
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
 }
 
 .sm-card__header {
@@ -423,7 +423,7 @@
   align-items: center;
   padding: 0.12rem 0.5rem;
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 600;
@@ -557,7 +557,7 @@
   box-sizing: border-box;
 }
 .sm-field__input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 .sm-field__input::placeholder {
   color: rgba(214, 221, 235, 0.28);
@@ -584,7 +584,7 @@
   padding-right: 2rem;
 }
 .sm-field__select:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 .sm-field__select option {
   background: var(--surface-strong);
@@ -611,8 +611,8 @@
   tab-size: 2;
 }
 .sm-code-textarea:focus {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.015);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.015);
 }
 .sm-code-textarea::placeholder {
   color: rgba(214, 221, 235, 0.28);
@@ -656,13 +656,13 @@
 
 .sm-toast--copy {
   background: color-mix(in srgb, var(--primary-color) 15%, var(--surface-strong));
-  border: 1px solid rgba(0, 255, 204, 0.3);
+  border: 1px solid rgba(139, 92, 246, 0.3);
   color: var(--primary-color);
 }
 
 .sm-toast--success {
   background: color-mix(in srgb, var(--primary-color) 12%, var(--surface-strong));
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
   position: relative;
   bottom: auto;

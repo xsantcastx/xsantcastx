@@ -117,7 +117,7 @@ export class SponsorsComponent {
       value: null,
       suffix: '+',
       hint: 'Shared from the live dashboard on request',
-      color: '#4dffe0',
+      color: '#A78BFA',
     },
     {
       label: 'Monthly tool sessions',
@@ -141,7 +141,7 @@ export class SponsorsComponent {
       title: 'Front-end & full-stack developers',
       body:
         'They land here mid-task — building a shadow, debugging a regex, formatting a payload. High intent, low patience for anything that gets in the way.',
-      color: '#4dffe0',
+      color: '#A78BFA',
     },
     {
       title: 'Designers who write CSS',
@@ -163,7 +163,7 @@ export class SponsorsComponent {
       title: 'One sponsor, not an auction',
       body:
         'A category is sold to a single sponsor for the month. Your card is never rotated against another sponsor\'s, and there is no bidding for the position.',
-      color: '#4dffe0',
+      color: '#A78BFA',
     },
     {
       title: 'Category targeting',
@@ -192,7 +192,7 @@ export class SponsorsComponent {
       name: 'CSS & design tools',
       where: 'In-content, below the generator output',
       categories: ['CSS Tools', 'CSS Generators', 'CSS'],
-      color: '#4dffe0',
+      color: '#A78BFA',
       toolCount: 0,
     },
     {
@@ -245,8 +245,8 @@ export class SponsorsComponent {
         'Your accent colour on the card',
         'Impression + click counts shared monthly',
       ],
-      color: '#4dffe0',
-      glow: 'rgba(0, 255, 204, 0.6)',
+      color: '#A78BFA',
+      glow: 'rgba(139, 92, 246, 0.6)',
     },
     {
       id: 'network',

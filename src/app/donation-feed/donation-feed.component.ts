@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FirebaseService } from '../firebase.service';
 
@@ -7,7 +7,8 @@ import { FirebaseService } from '../firebase.service';
   selector: 'app-donation-feed',
   templateUrl: './donation-feed.component.html',
   styleUrls: ['./donation-feed.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [CommonModule]
 })
 export class DonationFeedComponent implements OnInit, OnDestroy {
   private firebaseService = inject(FirebaseService);

@@ -68,7 +68,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(0, 255, 204, 0.12);
+  background: rgba(139, 92, 246, 0.12);
   color: var(--primary-color);
   font-weight: 700;
   font-size: 0.85rem;
@@ -137,8 +137,8 @@
 }
 .embed-tool-card__copy {
   padding: 6px 12px;
-  background: rgba(0, 255, 204, 0.1);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 6px;
   color: var(--primary-color);
   font-size: 0.78rem;
@@ -148,7 +148,7 @@
   font-family: var(--font-body);
 }
 .embed-tool-card__copy:hover {
-  background: rgba(0, 255, 204, 0.18);
+  background: rgba(139, 92, 246, 0.18);
 }
 .embed-tool-card__preview-link {
   font-size: 0.78rem;
@@ -183,8 +183,8 @@
   top: 10px;
   right: 10px;
   padding: 5px 12px;
-  background: rgba(0, 255, 204, 0.15);
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 6px;
   color: var(--primary-color);
   font-size: 0.75rem;
@@ -194,7 +194,7 @@
   transition: background 150ms ease;
 }
 .embed-code-block__copy:hover {
-  background: rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.25);
 }
 
 /* ── Params Table ── */
@@ -224,7 +224,7 @@
   color: var(--text-muted);
 }
 .embed-params-row code {
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;

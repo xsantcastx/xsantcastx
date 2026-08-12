@@ -21,7 +21,7 @@
  */
 
 .fk {
-  --fk-ink: #eafff9;
+  --fk-ink: #F2ECFF;
   --fk-dim: #9fb4ae;
   --fk-faint: #7d918c;
   --fk-panel: rgba(6, 4, 18, 0.62);
@@ -35,8 +35,8 @@
   --fk-heat-4: #fff4d6;
 
   /* Overridden from the component with the dominant realm's colour. */
-  --fk-affinity: #4dffe0;
-  --fk-affinity-glow: rgba(0, 255, 204, 0.6);
+  --fk-affinity: #A78BFA;
+  --fk-affinity-glow: rgba(167, 139, 250, 0.6);
 
   position: relative;
   max-width: 1120px;
@@ -271,7 +271,7 @@
   font-size: 13px; line-height: 1.55; color: var(--fk-dim);
 }
 .fk-id__save--cloud {
-  border-color: rgba(0, 255, 204, .28);
+  border-color: rgba(167, 139, 250, .28);
   color: var(--fk-ink);
 }
 
@@ -285,7 +285,7 @@
 }
 
 .fk-stat {
-  --stat: #4dffe0;
+  --stat: #A78BFA;
   position: relative;
   display: grid; gap: 2px;
   padding: 14px 14px 12px;
@@ -408,7 +408,7 @@
 .fk-affinity__num-raw { font-size: 12px; color: var(--fk-faint); }
 
 .fk-affinity__realm {
-  --realm: #4dffe0;
+  --realm: #A78BFA;
   margin: 0; padding: 10px 14px;
   border-radius: 12px;
   border-left: 2px solid var(--realm);
@@ -438,7 +438,7 @@
   border-color: color-mix(in srgb, var(--fk-affinity) 55%, transparent);
   box-shadow: 0 0 24px -8px var(--fk-affinity-glow);
 }
-.fk-inv__tab:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.fk-inv__tab:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 .fk-inv__tab-icon { font-size: 14px; }
 .fk-inv__tab-count { font-variant-numeric: tabular-nums; opacity: .72; }
 
@@ -500,9 +500,9 @@
 .fk-inv__owned { font-size: 12px; }
 .fk-inv__equipped {
   padding: 2px 8px; border-radius: 999px;
-  background: rgba(0, 255, 204, 0.09);
-  border: 1px solid rgba(0, 255, 204, 0.28);
-  font-size: 11px; color: #4dffe0;
+  background: rgba(167, 139, 250, 0.09);
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  font-size: 11px; color: #A78BFA;
 }
 
 .fk-inv__effect { margin: 0 0 5px; font-size: 13px; line-height: 1.5; color: var(--fk-dim); }
@@ -548,7 +548,7 @@
   border-color: color-mix(in srgb, var(--fk-affinity) 55%, transparent);
   box-shadow: 0 0 22px -9px var(--fk-affinity-glow);
 }
-.fk-case__customise:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.fk-case__customise:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 
 .fk-case__slots {
   display: grid;
@@ -615,7 +615,7 @@
   font-size: 12px; cursor: pointer;
 }
 .fk-case__reset:hover { color: var(--fk-ink); border-color: rgba(255, 255, 255, .26); }
-.fk-case__reset:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.fk-case__reset:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 
 .fk-case__picker-grid {
   display: grid;
@@ -645,7 +645,7 @@
   background: color-mix(in srgb, var(--tier) 11%, rgba(10, 6, 26, 0.5));
 }
 .fk-case__pick:disabled { opacity: .38; cursor: not-allowed; }
-.fk-case__pick:focus-visible { outline: 2px solid #4dffe0; outline-offset: 2px; }
+.fk-case__pick:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
 .fk-case__pick-icon { grid-row: 1 / span 2; font-size: 20px; }
 .fk-case__pick-name { font-size: 12px; color: var(--fk-ink); }
 .fk-case__pick-tier {
@@ -749,8 +749,8 @@
 .fk-mastery { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
 
 .fk-mastery__row {
-  --realm: #4dffe0;
-  --mastery: #4dffe0;
+  --realm: #A78BFA;
+  --mastery: #A78BFA;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(10, 6, 26, 0.5);
@@ -771,7 +771,7 @@
   text-decoration: none;
   color: inherit;
 }
-.fk-mastery__link:focus-visible { outline: 2px solid #4dffe0; outline-offset: -2px; border-radius: 12px; }
+.fk-mastery__link:focus-visible { outline: 2px solid #A78BFA; outline-offset: -2px; border-radius: 12px; }
 
 .fk-mastery__icon { grid-area: icon; font-size: 24px; }
 .fk-mastery__body { grid-area: body; display: grid; gap: 2px; min-width: 0; }
@@ -842,7 +842,7 @@
   box-shadow: 0 0 28px -12px var(--fk-affinity-glow);
   transform: translateY(-2px);
 }
-.fk-link:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.fk-link:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 .fk-link__icon { grid-row: 1 / span 2; font-size: 26px; }
 .fk-link__name {
   font: 600 14px/1.2 'Orbitron', system-ui, sans-serif;

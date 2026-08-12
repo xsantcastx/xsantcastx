@@ -1,6 +1,6 @@
-import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { LazyFirestoreService } from '../lazy-firestore.service';
 
 export interface NewsletterSubscription {
   email: string;
@@ -13,14 +13,8 @@ export interface NewsletterSubscription {
 export class NewsletterService {
   private readonly COLLECTION = 'newsletter_subscribers';
   private readonly STORAGE_KEY = 'xs_newsletter_subscribed';
-  private isBrowser: boolean;
-
-  constructor(
-    private firestore: Firestore,
-    @Inject(PLATFORM_ID) platformId: Object
-  ) {
-    this.isBrowser = isPlatformBrowser(platformId);
-  }
+  private lazyFirestore = inject(LazyFirestoreService);
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   /** Check if user already subscribed (via in-memory/sessionStorage flag) */
   isAlreadySubscribed(): boolean {
@@ -47,7 +41,13 @@ export class NewsletterService {
       throw new Error('Please enter a valid email address.');
     }
 
-    const col = collection(this.firestore, this.COLLECTION);
+    const handle = await this.lazyFirestore.get();
+    if (!handle) {
+      throw new Error('The signal could not reach the network. Try again in a moment.');
+    }
+    const { db, api } = handle;
+
+    const col = api.collection(db, this.COLLECTION);
     const data: NewsletterSubscription = {
       email: trimmed,
       subscribedAt: new Date().toISOString(),
@@ -55,7 +55,7 @@ export class NewsletterService {
       ...(toolSlug ? { toolSlug } : {})
     };
 
-    await addDoc(col, data);
+    await api.addDoc(col, data);
     this.markSubscribed();
   }
 }

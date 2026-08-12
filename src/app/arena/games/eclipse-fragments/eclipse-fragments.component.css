@@ -40,13 +40,13 @@
 }
 
 .ef-diff__btn:hover, .ef-diff__btn:focus-visible {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .ef-diff__btn--on {
   border-color: var(--ag-cyan);
-  background: rgba(0, 255, 204, 0.1);
-  box-shadow: 0 0 20px -8px rgba(0, 255, 204, 0.8);
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 20px -8px rgba(139, 92, 246, 0.8);
 }
 
 .ef-diff__name { display: block; font-weight: 600; font-size: 0.92rem; }
@@ -116,7 +116,7 @@
 
 .ef-tile:hover .ef-tile__face--back,
 .ef-tile:focus-visible .ef-tile__face--back {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--ag-cyan);
 }
 
@@ -127,7 +127,7 @@
     radial-gradient(circle at 50% 55%, var(--frag) 0%, rgba(8, 3, 24, 0.92) 96%);
   border-color: rgba(255, 255, 255, 0.22);
   box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.45);
-  color: #0a0f1e;
+  color: #0a0a0f;
 }
 
 .ef-tile__glyph {
