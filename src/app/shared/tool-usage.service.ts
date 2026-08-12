@@ -1,11 +1,13 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { LazyFirestoreService } from './lazy-firestore.service';
+import { CACHE_TTL, FirestoreCacheService } from './firestore-cache.service';
 import { whenAppCheckReady } from '../app-check.bootstrap';
 
 @Injectable({ providedIn: 'root' })
 export class ToolUsageService {
   private lazyFirestore = inject(LazyFirestoreService);
+  private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private tracked = new Set<string>();
 
@@ -38,6 +40,14 @@ export class ToolUsageService {
         await api.setDoc(ref, { count: api.increment(1) }, { merge: true });
         sessionStorage.setItem(sessionKey, '1');
         this.tracked.add(toolSlug);
+
+        // This visit is now in the server's count but not in whatever is
+        // cached, so nudge the cached copy rather than spending a read to go
+        // and find out a number we already know has gone up by one.
+        const known = this.cache.getStale<number>(cacheKey(toolSlug));
+        if (known !== null) {
+          this.cache.set(cacheKey(toolSlug), known + 1, CACHE_TTL.counters);
+        }
       } catch (err) {
         console.error('[ToolUsageService] increment failed:', err);
       }
@@ -46,20 +56,29 @@ export class ToolUsageService {
     return this.getCount(toolSlug);
   }
 
-  /** Read the current usage count for a tool. */
+  /**
+   * The current usage count for a tool.
+   *
+   * Cached for an hour. This is rendered as "N people used this" under a tool,
+   * which is a social-proof decoration — it does not need to be the number as of
+   * this millisecond, and reading it fresh on every one of 126 tool pages was
+   * paying a document read per page view to move a figure by one.
+   */
   async getCount(toolSlug: string): Promise<number> {
     if (!this.isBrowser) return 0;
-    // Same reasoning as recordUsage() — reads are enforced too, and this is
-    // also reachable directly, not only through recordUsage().
-    await whenAppCheckReady();
-    try {
+    return this.cache.through(cacheKey(toolSlug), CACHE_TTL.counters, async () => {
+      // Same reasoning as recordUsage() — reads are enforced too, and this is
+      // also reachable directly, not only through recordUsage().
+      await whenAppCheckReady();
       const handle = await this.lazyFirestore.get();
       if (!handle) return 0;
       const { db, api } = handle;
       const snap = await api.getDoc(api.doc(db, 'tool-usage', toolSlug));
-      return snap.exists() ? (snap.data()['count'] ?? 0) : 0;
-    } catch {
-      return 0;
-    }
+      return snap.exists() ? ((snap.data()['count'] as number) ?? 0) : 0;
+    }).catch(() => 0);
   }
+}
+
+function cacheKey(toolSlug: string): string {
+  return `tool-usage/${toolSlug}`;
 }
