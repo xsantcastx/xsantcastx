@@ -155,6 +155,20 @@ export const EGG_TIERS: Record<string, EclipseRarity> = {
   'combo-forge-frenzy': 'eclipsed',
   'combo-rapid-strike': 'mortal',
 
+  // ── The Rune Forge ── the drop table's own ladder, transposed onto the wall.
+  // The two Mythic rungs are the two that cannot be reached by persistence
+  // alone: both require the 0.05% rune, and the legacy `rarity` field on their
+  // registry lines tops out at Anomalous, so without these two entries they
+  // would sit alongside "held three artifacts".
+  'rune-complete-set': 'mythic',
+  'rune-void-voice': 'mythic',
+  'rune-breath-of-void': 'mythic',
+  'rune-word-scholar': 'anomalous',
+  'rune-master': 'sacred',
+  'rune-first-word': 'sacred',
+  'rune-collector': 'eclipsed',
+  'rune-first': 'mortal',
+
   // ── Mythic ── three eggs that take real intent to reach.
   'hash-miner': 'mythic',          // a digest with four leading zeros
   'regex-ouroboros': 'mythic',     // a regex that matches its own source

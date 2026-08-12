@@ -2681,3 +2681,87 @@ body.gf-art-route .rune-whisper,
 body.gf-art-route .particle-layer {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE RUNE FORGE — screen-level flare
+   ═══════════════════════════════════════════════════════════════════════
+
+   The top three rungs of the rune ladder take over the viewport. That has to
+   happen out here rather than inside the component, for the same reason the
+   Flame and the quest drawer are siblings of <main>: `router-outlet + *` keeps
+   a transform from routeFadeIn, which makes every routed page a containing
+   block, so a `position: fixed` layer authored inside the Rune Forge would be
+   laid out against the page's box and not against the screen.
+
+   <html> is above the outlet, so its ::after is free to be fixed. The
+   component writes `data-rune-flare` for the duration of the reveal and clears
+   it afterwards.
+
+   `pointer-events: none` throughout: the flare is weather, never a target.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+html[data-rune-flare]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  pointer-events: none;
+}
+
+/* Legendary — the edges of the screen catch light. The centre stays clear so
+   the rune card, which is what you are actually reading, is not washed out. */
+html[data-rune-flare='legendary']::after {
+  background: radial-gradient(
+    ellipse 120% 90% at 50% 50%,
+    transparent 55%,
+    rgba(255, 154, 90, 0.28) 100%
+  );
+  animation: runeFlareEdge 4.2s ease-out forwards;
+}
+
+/* Mythic — a full flash that decays into a red wash. */
+html[data-rune-flare='mythic']::after {
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 40%, rgba(255, 45, 77, 0.45) 100%),
+    rgba(255, 45, 77, 0.16);
+  animation: runeFlareFlash 5.6s ease-out forwards;
+}
+
+/* Singular — the Void. The screen inverts, holds, and comes back. Three
+   seconds is a long time to take a page away from someone, which is the point:
+   it happens roughly once in two thousand strikes. */
+html[data-rune-flare='singular']::after {
+  background: rgba(230, 220, 255, 0.1);
+  backdrop-filter: invert(1) hue-rotate(180deg);
+  -webkit-backdrop-filter: invert(1) hue-rotate(180deg);
+  animation: runeFlareVoid 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes runeFlareEdge {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes runeFlareFlash {
+  0%   { opacity: 0; }
+  4%   { opacity: 1; }
+  14%  { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+
+@keyframes runeFlareVoid {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* The flare is decoration on top of an event the page already states in text —
+   the rune card names the tier, the rune and the odds. Removing it costs a
+   reduced-motion visitor nothing they cannot read. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-rune-flare]::after {
+    display: none;
+  }
+}
