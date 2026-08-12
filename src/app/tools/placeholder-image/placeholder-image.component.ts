@@ -49,7 +49,7 @@ export class PlaceholderImageComponent implements OnDestroy {
 
   // Colors
   bgColor = '#1a1a2e';
-  textColor = '#00ffcc';
+  textColor = '#8B5CF6';
 
   // Text
   customText = '';

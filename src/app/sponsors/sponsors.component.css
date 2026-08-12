@@ -48,8 +48,8 @@
   margin: 0;
   padding: 0.4rem 1.1rem;
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.05);
-  border: 1px solid rgba(0, 255, 204, 0.14);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.14);
   font-size: 0.85rem;
   color: rgba(214, 221, 235, 0.72);
 }
@@ -70,7 +70,7 @@
   font-size: clamp(2rem, 5.5vw, 3.4rem);
   line-height: 1.12;
   max-width: 18ch;
-  background: linear-gradient(120deg, #eafff9 0%, var(--primary-color) 45%, var(--secondary-color) 100%);
+  background: linear-gradient(120deg, #F2ECFF 0%, var(--primary-color) 45%, var(--secondary-color) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -114,13 +114,13 @@
 .sp-btn--primary {
   background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
   color: #050818;
-  box-shadow: 0 0 22px -6px rgba(0, 255, 204, 0.6);
+  box-shadow: 0 0 22px -6px rgba(139, 92, 246, 0.6);
 }
 
 .sp-btn--primary:hover,
 .sp-btn--primary:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 0 34px -6px rgba(0, 255, 204, 0.75);
+  box-shadow: 0 0 34px -6px rgba(139, 92, 246, 0.75);
 }
 
 .sp-btn--ghost {
@@ -131,8 +131,8 @@
 
 .sp-btn--ghost:hover,
 .sp-btn--ghost:focus-visible {
-  border-color: rgba(0, 255, 204, 0.45);
-  color: #eafff9;
+  border-color: rgba(139, 92, 246, 0.45);
+  color: #F2ECFF;
 }
 
 .sp-btn--tier {
@@ -168,7 +168,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.45) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.45) 50%, transparent);
 }
 
 .sp-section__hd {
@@ -184,7 +184,7 @@
   font-family: var(--font-heading);
   font-size: clamp(1.5rem, 3.6vw, 2.15rem);
   line-height: 1.2;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 /* ─── Audience stats ────────────────────────────────────────────────────── */
@@ -217,7 +217,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #eafff9 0%, var(--star-color) 60%, rgba(8, 3, 24, 0.9) 100%);
+  background: radial-gradient(circle at 32% 28%, #F2ECFF 0%, var(--star-color) 60%, rgba(8, 3, 24, 0.9) 100%);
   box-shadow: 0 0 10px var(--star-color), 0 0 24px -6px var(--star-color);
 }
 
@@ -333,7 +333,7 @@
   margin: 0 0 0.5rem;
   font-family: var(--font-heading);
   font-size: 1rem;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .sp-value__body {
@@ -572,7 +572,7 @@
 
 .sp-placements tbody th {
   font-weight: 600;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .sp-placements td {
@@ -677,7 +677,7 @@
   font-family: var(--font-heading);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .sp-tier__per {
@@ -786,7 +786,7 @@
 }
 
 .sp-faq__item[open] {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .sp-faq__q {
@@ -799,7 +799,7 @@
   cursor: pointer;
   font-family: var(--font-heading);
   font-size: 0.94rem;
-  color: #eafff9;
+  color: #F2ECFF;
   list-style: none;
 }
 
@@ -841,7 +841,7 @@
   padding: clamp(2.5rem, 6vw, 3.5rem) clamp(1.2rem, 4vw, 2.5rem);
   border-radius: 20px;
   background:
-    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.06), transparent 65%),
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(139, 92, 246, 0.06), transparent 65%),
     radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.07), transparent 65%),
     rgba(5, 8, 18, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -851,7 +851,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: clamp(1.5rem, 3.6vw, 2.1rem);
-  color: #eafff9;
+  color: #F2ECFF;
 }
 
 .sp-final__sub {

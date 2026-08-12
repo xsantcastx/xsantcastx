@@ -154,8 +154,8 @@
   transition: border-color 0.2s ease;
 }
 .csh-hex-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
 }
 .csh-hex-input::placeholder {
   color: rgba(214, 221, 235, 0.28);
@@ -186,12 +186,12 @@
 
 .csh-btn--primary {
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 .csh-btn--primary:hover {
   background: color-mix(in srgb, var(--primary-color) 25%, transparent);
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
 }
 
 .csh-btn--ghost {
@@ -203,7 +203,7 @@
 }
 .csh-btn--ghost:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .csh-btn--sm {
@@ -213,7 +213,7 @@
 
 .csh-btn--copied {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 /* -- Segmented control ------------------------------------------------ */
@@ -234,10 +234,10 @@
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.csh-seg-btn:hover { color: var(--text-color); border-color: rgba(0, 255, 204, 0.2); }
+.csh-seg-btn:hover { color: var(--text-color); border-color: rgba(139, 92, 246, 0.2); }
 .csh-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -260,7 +260,7 @@
   height: 64px;
   border-radius: var(--radius-md);
   border: 2px solid var(--glass-border);
-  box-shadow: 0 0 24px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
   flex-shrink: 0;
 }
 
@@ -276,7 +276,7 @@
   font-weight: 700;
   color: var(--primary-color);
   letter-spacing: 0.02em;
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.25);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
 }
 
 .csh-preview__label {
@@ -371,7 +371,7 @@
   transform: scale(1.05);
   z-index: 2;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
-              0 0 0 2px rgba(0, 255, 204, 0.3);
+              0 0 0 2px rgba(139, 92, 246, 0.3);
   border-radius: 6px;
 }
 

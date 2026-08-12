@@ -135,7 +135,7 @@ interface Drop {
     }
     .ad__kind { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #7d918c; }
 
-    .ad__name { margin: 0 0 .2rem; font: 700 15px/1.25 'Orbitron', system-ui, sans-serif; color: #eafff9; }
+    .ad__name { margin: 0 0 .2rem; font: 700 15px/1.25 'Orbitron', system-ui, sans-serif; color: #F2ECFF; }
     .ad__desc { margin: 0 0 .35rem; font-size: 12px; line-height: 1.45; color: #b9cdc7; }
     .ad__flavour { margin: 0 0 .6rem; font-size: 11px; font-style: italic; color: var(--tier); opacity: .85; }
 

@@ -55,7 +55,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   flex-shrink: 0;
 }
@@ -104,7 +104,7 @@
 
 .nl-capture__input:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
 }
 
 .nl-capture__btn {

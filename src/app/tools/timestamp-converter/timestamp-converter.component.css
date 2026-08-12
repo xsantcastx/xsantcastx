@@ -120,7 +120,7 @@
   height: 8px;
   border-radius: 50%;
   background: var(--primary-color);
-  box-shadow: 0 0 8px var(--primary-color), 0 0 16px rgba(0, 255, 204, 0.3);
+  box-shadow: 0 0 8px var(--primary-color), 0 0 16px rgba(139, 92, 246, 0.3);
   animation: tc-pulse 2s ease-in-out infinite;
 }
 
@@ -260,7 +260,7 @@
   font-size: 0.88rem;
 }
 .tc-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Quick buttons bar ─────────────────────────────────────── */
@@ -298,9 +298,9 @@
 }
 .tc-quick-btn:hover {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.1);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -349,10 +349,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.tc-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.tc-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .tc-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -378,7 +378,7 @@
 }
 .tc-select:hover,
 .tc-select:focus {
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
 }
 .tc-select option {
   background: #1a1a2e;
@@ -404,7 +404,7 @@
 }
 .tc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .tc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -432,7 +432,7 @@
 
 .tc-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -481,7 +481,7 @@
   transition: background 0.15s ease;
 }
 .tc-result-row:last-child { border-bottom: none; }
-.tc-result-row:hover { background: rgba(0, 255, 204, 0.02); }
+.tc-result-row:hover { background: rgba(139, 92, 246, 0.02); }
 
 .tc-result-label {
   display: block;
@@ -522,7 +522,7 @@
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
   font-size: 0.82rem;
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.06);
+  background: rgba(139, 92, 246, 0.06);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   word-break: break-all;
@@ -551,8 +551,8 @@
 }
 .tc-copy-btn:hover {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.05);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.05);
 }
 
 /* ── Responsive ────────────────────────────────────────────── */

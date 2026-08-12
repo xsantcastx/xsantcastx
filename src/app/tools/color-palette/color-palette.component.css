@@ -108,13 +108,13 @@
   transition: border-color 0.2s, background 0.2s;
 }
 .cp-upload:hover {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.025);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.025);
 }
 .cp-upload.is-active {
   border-color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.05);
-  box-shadow: 0 0 30px -12px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.05);
+  box-shadow: 0 0 30px -12px rgba(139, 92, 246, 0.2);
 }
 
 .cp-upload__input {
@@ -196,9 +196,9 @@
   transition: all 0.15s;
 }
 .cp-reupload:hover {
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 /* ─── CONTROLS ───────────────────────────────────────── */
@@ -248,14 +248,14 @@
   text-align: center;
 }
 .cp-toggle-btn:hover:not(.is-active) {
-  border-color: rgba(0, 255, 204, 0.28);
+  border-color: rgba(139, 92, 246, 0.28);
   color: var(--text-color);
 }
 .cp-toggle-btn.is-active {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 
 /* ─── SWATCHES ───────────────────────────────────────── */
@@ -339,9 +339,9 @@
   font-family: var(--font-body);
 }
 .cp-export-btn:hover {
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

@@ -142,7 +142,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .txc-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Ghost/small buttons -------------------------------------- */
@@ -164,7 +164,7 @@
 }
 .txc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .txc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -189,8 +189,8 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .txc-stat-card:hover {
-  border-color: rgba(0, 255, 204, 0.2);
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.05);
+  border-color: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.05);
 }
 
 .txc-stat-card--wide {
@@ -266,11 +266,11 @@
 }
 .txc-tab:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
 }
 .txc-tab--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -372,7 +372,7 @@
 }
 .txc-show-more:hover {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 /* -- Responsive ----------------------------------------------- */

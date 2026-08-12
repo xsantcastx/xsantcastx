@@ -36,8 +36,8 @@ These are the only star/glow colors used. **Always re-use this palette** when in
 
 | Category / use | Color | Glow |
 |---|---|---|
-| CSS Tools / CSS / primary brand | `#4dffe0` cyan | `rgba(0, 255, 204, 0.6)` |
-| CSS Generators | `#6affe0` teal | `rgba(0, 220, 220, 0.6)` |
+| CSS Tools / CSS / primary brand | `#A78BFA` violet | `rgba(139, 92, 246, 0.6)` |
+| CSS Generators | `#C4B5FD` light violet | `rgba(196, 181, 253, 0.6)` |
 | Email Tools | `#ff6dd7` magenta | `rgba(255, 90, 210, 0.6)` |
 | Security Tools | `#a48bff` violet | `rgba(140, 110, 255, 0.6)` |
 | Code Converters | `#5fb6ff` blue | `rgba(80, 180, 255, 0.6)` |
@@ -50,13 +50,13 @@ CSS vars on a card or orb:
 
 ```css
 .something[data-category="..."] {
-  --star-color: #4dffe0;
-  --star-glow: rgba(0, 255, 204, 0.6);
+  --star-color: #A78BFA;
+  --star-glow: rgba(139, 92, 246, 0.6);
   --star-inner: #eafff9;
 }
 ```
 
-Brand globals: `--primary-color: #00ffcc`, `--secondary-color: #7b61ff`, `--highlight-color: #ff00ff`.
+Brand globals: `--primary-color: #8B5CF6`, `--secondary-color: #7b61ff`, `--highlight-color: #ff00ff`.
 
 ### Forge palette (Eclipse Realms, v2.19.0)
 
@@ -111,7 +111,7 @@ The five realms group the twelve registry categories into a world. These are the
 <p class="hp-section-tagline">a one-line tagline that frames what's below in cosmic language</p>
 ```
 
-The pulse dot uses `hpEyebrowPulse` (3s ease-in-out infinite). Tagline pill is a rounded `999px` pill with `rgba(0, 255, 204, 0.05)` bg and `rgba(0, 255, 204, 0.14)` border.
+The pulse dot uses `hpEyebrowPulse` (3s ease-in-out infinite). Tagline pill is a rounded `999px` pill with `rgba(139, 92, 246, 0.05)` bg and `rgba(139, 92, 246, 0.14)` border.
 
 **Tagline tone:** poetic + cosmic — `"new stars born this week in the xsantcastx universe"`, `"a constellation of crafts I orbit through every project"`, `"a signal flare into the universe — drop one and I'll catch it"`. Avoid corporate phrasing.
 
@@ -160,7 +160,7 @@ For "section" containers (not the global bg) — dual radial nebula washes + gra
 .section-foo {
   position: relative;
   background:
-    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.06), transparent 65%),
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(139, 92, 246, 0.06), transparent 65%),
     radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.07), transparent 65%),
     rgba(5, 8, 18, 0.55);
   backdrop-filter: blur(8px);
@@ -168,7 +168,7 @@ For "section" containers (not the global bg) — dual radial nebula washes + gra
 
 .section-foo::before, .section-foo::after {
   content: ''; position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.5) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5) 50%, transparent);
 }
 .section-foo::before { top: -1px; }
 .section-foo::after  { bottom: -1px; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
@@ -229,6 +229,16 @@ A single inline script runs five interactive systems. **All SSR-safe** with `typ
   - **Budgets**: added to the production config. Note **Angular budgets measure the RAW bundle, not gzip** — a "300kb initial" budget fails instantly against 1.13 MB raw. Set as ratchets on today's actuals: initial warn 1200kb / fail 1400kb, anyComponentStyle warn 70kb / fail 100kb (`landing.component.css` is 60.1 kB built, the largest). They already earned their keep once: merging 83 commits of upstream work into this branch tripped both, which is exactly the signal they exist to give.
   - **Not done — `/embed/*` prerendering stays.** The 128 embed routes look like free dist weight (10 MB of 47 MB), but hosting is static: `firebase.json` rewrites `**` to `/index.csr.html` and there is no SSR server. Un-prerendering them would serve Googlebot the CSR shell, which carries `<meta name="robots" content="index, follow">` — while `src/robots.txt` deliberately *allows* crawling these URLs precisely so the crawler can read the `noindex` that only the prerendered HTML contains (see the comment at the top of robots.txt). Dropping the prerender would silently undo that and blank the iframe until JS boots. Revisit only if a real SSR target is added.
   - **Next lever, if more is wanted**: the app shell is now the bulk of what remains eager — quest drawer, XP bar, forge flame, currency rail and achievement drop all mount on every route. Deferring those behind an idle callback (the pattern `app-check.bootstrap.ts` already uses) is the obvious next cut.
+
+- **Eclipse purple + Godforge OG — v2.28.0 "Eclipse"** (latest): the brand accent moved from cyan to `#8B5CF6`, and the social preview was rebuilt from scratch.
+  - **The accent was never `#00d4ff`.** That is the *Verge realm* colour and it stayed. The site's actual brand accent was `#00ffcc`, and it was hardcoded, not tokenised: 526 `#00ffcc` + 1,737 `rgba(0, 255, 204, …)` + 3 `rgb(…)` across **203 files**. `--primary-color` existed but most of the tool CSS never used it. Shifted wholesale to `#8B5CF6` / `rgba(139, 92, 246, …)`, preserving each author's alpha and spacing style. The two colours are textually disjoint, so the Verge accent was never at risk from the replace.
+  - **Four spellings survive a naive find-and-replace** and each needed its own pass: URL-encoded hex inside SVG data URIs (`%2300ffcc`, in four `background-image` chevrons), 8-digit hex with baked alpha (`#00ffcc50`), the `rgb(0,255,204)` form inside a data-URI sigil, and `rgba(0, 210, 255, …)` where only the *hex* spelling of that colour had been replaced. Grep for the hex alone and you will believe you are done while four categories of reference still paint cyan.
+  - **A blanket hex replace makes things look worse before better.** `--star-glow` was written as `rgba(0,255,204,…)` and `--star-color` as `#4dffe0`, so pass one turned every tool card into cyan text inside a violet halo. The category ramp needed its own pass: `#4dffe0` → `#A78BFA`, `#6affe0` → `#C4B5FD`, plus the paired glows and the cyan-white specular stops. **Lesson: a colour and its glow are usually written in different notations — shift them together or not at all.**
+  - **Deliberately left cyan/teal**: the Verge realm (`#00d4ff`, boundary energy — explicitly kept), Code Converters (`#5fb6ff`, blue), and roughly 50 low-count teals that are tool *content* rather than chrome — gradient-generator presets, syntax-theme colours, the named-CSS-colour reference data. Recolouring those would corrupt tool output. The `.cosmic-planet` is also untouched: its blue is a documented sun-variable lighting model, not a brand token.
+  - **Known adjacency**: CSS Tools is now `#A78BFA` and Security Tools is still `#a48bff` — near-identical. The categories are labelled in text on every card and separated by realm section, so this is cosmetic, but the categorical ramp is worth rebalancing if the galaxy map ever relies on colour alone.
+  - **The link preview was broken in the places people actually share.** `index.html` advertised an SVG `og:image` with a JPEG listed underneath as a "fallback" — but **`og:image` is not a fallback list**. Facebook, LinkedIn, Discord and iMessage reject `image/svg+xml` outright, and crawlers that read both tags treat them as a gallery. Separately, `tools-routing.module.ts` still pointed at `og-tools.jpg` and `og-pdf-generator.jpg`, which v2.27.0 had deleted — those routes were serving 404s to every scraper. All **152** references now resolve to one 1200×630 JPEG.
+  - **New `src/assets/og/og-godforge.jpg`** (123 kB): an eclipsed sun with a violet corona and the forge ember burning along its lower limb, over a seeded constellation, with the wordmark running violet→gold. Authored as HTML in `scripts/og/og-godforge.html` and rendered through headless Chromium at exactly 1200×630 (the repo has Playwright but no ImageMagick or `sharp`); the starfield uses a fixed-seed LCG so re-renders are stable. `og-default.jpg` and `og-cosmic.svg` are deleted.
+  - **Live-chat names may still render cyan.** `.msg-name` colours come from `color` fields persisted in Firestore, not from code. `USER_COLORS` is now cyan-free so new messages are violet; historical rows keep what they were written with. Not fixable in the repo.
 
 ## 6. Roadmap — what's next (prioritized)
 

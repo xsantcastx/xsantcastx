@@ -108,7 +108,7 @@
 
 .htm-direction-label--active {
   color: var(--primary-color);
-  text-shadow: 0 0 12px rgba(0, 255, 204, 0.35);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
 }
 
 .htm-direction-toggle {
@@ -125,9 +125,9 @@
   transition: all 0.25s ease;
 }
 .htm-direction-toggle:hover {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
   background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
   transform: rotate(180deg);
 }
 
@@ -215,7 +215,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .htm-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Primary action buttons ----------------------------------- */
@@ -250,10 +250,10 @@
 .htm-btn--primary {
   background: var(--primary-color);
   color: #000;
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
 }
 .htm-btn--primary:not(:disabled):hover {
-  box-shadow: 0 0 28px rgba(0, 255, 204, 0.3);
+  box-shadow: 0 0 28px rgba(139, 92, 246, 0.3);
 }
 
 /* -- Ghost/small buttons -------------------------------------- */
@@ -275,12 +275,12 @@
 }
 .htm-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .htm-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .htm-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .htm-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

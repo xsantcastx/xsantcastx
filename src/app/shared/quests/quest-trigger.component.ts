@@ -57,8 +57,8 @@ import { QuestBoard, QuestService } from './quest.service';
     }
     .qt__trigger:hover,
     .qt__trigger--open {
-      border-color: rgba(0, 255, 204, 0.45);
-      box-shadow: 0 0 20px -8px rgba(0, 255, 204, .7);
+      border-color: rgba(139, 92, 246, 0.45);
+      box-shadow: 0 0 20px -8px rgba(139, 92, 246, .7);
     }
     .qt__icon { font-size: 17px; line-height: 1; }
 

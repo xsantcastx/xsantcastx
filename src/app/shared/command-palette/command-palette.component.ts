@@ -158,10 +158,10 @@ interface ScoredResult {
         width: 100%;
         max-width: 640px;
         background: var(--surface-strong, rgba(18, 26, 52, 0.95));
-        border: 1px solid var(--glass-border-strong, rgba(0, 255, 204, 0.25));
+        border: 1px solid var(--glass-border-strong, rgba(139, 92, 246, 0.25));
         border-radius: var(--radius-lg, 20px);
         box-shadow: var(--shadow-strong, 0 26px 80px -30px rgba(0, 0, 0, 0.85)),
-          0 0 0 1px rgba(0, 255, 204, 0.05);
+          0 0 0 1px rgba(139, 92, 246, 0.05);
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -179,7 +179,7 @@ interface ScoredResult {
         background: rgba(0, 0, 0, 0.18);
       }
       .cp-search-icon {
-        color: var(--primary-color, #00ffcc);
+        color: var(--primary-color, #8B5CF6);
         flex-shrink: 0;
         opacity: 0.85;
       }
@@ -192,7 +192,7 @@ interface ScoredResult {
         font-size: 1rem;
         font-family: inherit;
         padding: 0.25rem 0;
-        caret-color: var(--primary-color, #00ffcc);
+        caret-color: var(--primary-color, #8B5CF6);
       }
       .cp-input::placeholder {
         color: var(--text-muted, rgba(214, 221, 235, 0.55));
@@ -222,13 +222,13 @@ interface ScoredResult {
         min-height: 0;
         overflow-y: auto;
         scrollbar-width: thin;
-        scrollbar-color: rgba(0, 255, 204, 0.3) transparent;
+        scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
       }
       .cp-results-wrap::-webkit-scrollbar {
         width: 8px;
       }
       .cp-results-wrap::-webkit-scrollbar-thumb {
-        background: rgba(0, 255, 204, 0.25);
+        background: rgba(139, 92, 246, 0.25);
         border-radius: 4px;
       }
       .cp-list {
@@ -249,10 +249,10 @@ interface ScoredResult {
       .cp-item--active {
         background: linear-gradient(
           135deg,
-          rgba(0, 255, 204, 0.12),
+          rgba(139, 92, 246, 0.12),
           rgba(123, 97, 255, 0.08)
         );
-        border-color: rgba(0, 255, 204, 0.3);
+        border-color: rgba(139, 92, 246, 0.3);
         transform: translateX(2px);
       }
       .cp-item__icon {
@@ -260,12 +260,12 @@ interface ScoredResult {
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        background: rgba(0, 255, 204, 0.07);
-        border: 1px solid rgba(0, 255, 204, 0.15);
+        background: rgba(139, 92, 246, 0.07);
+        border: 1px solid rgba(139, 92, 246, 0.15);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary-color, #00ffcc);
+        color: var(--primary-color, #8B5CF6);
       }
       .cp-item__body {
         flex: 1;
@@ -313,7 +313,7 @@ interface ScoredResult {
         font-family: var(--font-heading, 'Orbitron', sans-serif);
         font-size: 2rem;
         font-weight: 700;
-        color: var(--primary-color, #00ffcc);
+        color: var(--primary-color, #8B5CF6);
         opacity: 0.4;
         margin-bottom: 0.5rem;
       }

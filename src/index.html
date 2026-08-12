@@ -13,7 +13,7 @@
   <meta name="keywords" content="free browser tools, free developer tools, css box shadow generator, email deliverability checker, gmail deliverability, ssl certificate checker, svg to react component, pdf catalog generator, color palette extractor, wcag contrast checker, image compressor, developer utilities, xsantcastx">
   <meta name="author" content="xsantcastx">
   <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#07090f">
+  <meta name="theme-color" content="#0a0a0f">
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website">
@@ -21,16 +21,16 @@
   <meta property="og:title"       content="The Godforge — Free Developer Tools Forged in the Eclipse">
   <meta property="og:description" content="Free online tools: CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor & more. No sign-up required.">
   <meta property="og:url"         content="https://xsantcastx.com">
-  <meta property="og:image"            content="https://xsantcastx.com/assets/og/og-cosmic.svg">
-  <meta property="og:image:type"       content="image/svg+xml">
-  <meta property="og:image:width"      content="1200">
-  <meta property="og:image:height"     content="630">
-  <meta property="og:image:alt"        content="The Godforge — a cosmic constellation of free browser tools">
-  <!-- Fallback for crawlers that don't render SVG (Facebook, older WhatsApp) -->
-  <meta property="og:image"            content="https://xsantcastx.com/assets/og/og-default.jpg">
+  <!-- One raster image, no SVG. The previous pair advertised an SVG first with a
+       JPEG fallback, but og:image is not a fallback list — Facebook, LinkedIn,
+       Discord and iMessage all reject image/svg+xml outright, and the crawlers
+       that do read the second tag treated the pair as a gallery. A single
+       1200x630 JPEG is the only thing every scraper agrees on. -->
+  <meta property="og:image"            content="https://xsantcastx.com/assets/og/og-godforge.jpg">
   <meta property="og:image:type"       content="image/jpeg">
   <meta property="og:image:width"      content="1200">
   <meta property="og:image:height"     content="630">
+  <meta property="og:image:alt"        content="The Godforge — an eclipsed sun ringed in violet fire over a field of stars">
   <meta property="og:locale"           content="en_US">
 
   <!-- Twitter Card -->
@@ -39,8 +39,8 @@
   <meta name="twitter:creator"     content="@xsantcastx">
   <meta name="twitter:title"       content="The Godforge — Free Developer Tools Forged in the Eclipse">
   <meta name="twitter:description" content="Free CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code Converter & more — runs entirely in your browser. No sign-up.">
-  <meta name="twitter:image"       content="https://xsantcastx.com/assets/og/og-cosmic.svg">
-  <meta name="twitter:image:alt"   content="The Godforge — a cosmic constellation of free browser tools">
+  <meta name="twitter:image"       content="https://xsantcastx.com/assets/og/og-godforge.jpg">
+  <meta name="twitter:image:alt"   content="The Godforge — an eclipsed sun ringed in violet fire over a field of stars">
 
   <!-- Canonical: set dynamically per route by SeoService -->
 
@@ -231,7 +231,7 @@
     class="arcane-seal"
     aria-label="Arcane seal — click to peek behind the veil"
     title="whispers…"
-    onclick="(function(){var b=document.body;b.classList.toggle('ritual-open');if(b.classList.contains('ritual-open')){console.log('%c✦ The veil parts. ✦','color:#00ffcc;font-family:Orbitron;font-size:16px;text-shadow:0 0 12px #00ffcc');}})()"
+    onclick="(function(){var b=document.body;b.classList.toggle('ritual-open');if(b.classList.contains('ritual-open')){console.log('%c✦ The veil parts. ✦','color:#8B5CF6;font-family:Orbitron;font-size:16px;text-shadow:0 0 12px #8B5CF6');}})()"
   ></button>
   <script>
     // ░▒▓█ easter eggs █▓▒░
@@ -251,7 +251,7 @@
           ''
         ].join('\n');
         console.log('%c' + banner,
-          'color:#00ffcc;font-family:Menlo,monospace;line-height:1.4;text-shadow:0 0 8px rgba(0,255,204,0.4)');
+          'color:#8B5CF6;font-family:Menlo,monospace;line-height:1.4;text-shadow:0 0 8px rgba(139,92,246,0.4)');
       } catch (e) {}
 
       // Konami code → ritual mode

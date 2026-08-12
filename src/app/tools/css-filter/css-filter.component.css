@@ -166,7 +166,7 @@
   height: 240px;
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(135deg, #ff006e 0%, #fb5607 20%, #ffbe0b 40%, #00ffcc 60%, #3a86ff 80%, #8338ec 100%);
+    linear-gradient(135deg, #ff006e 0%, #fb5607 20%, #ffbe0b 40%, #8B5CF6 60%, #3a86ff 80%, #8338ec 100%);
   box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.4);
   transition: filter 0.15s ease;
 }
@@ -276,8 +276,8 @@
 }
 
 .cf-slider.is-modified {
-  background: linear-gradient(90deg, rgba(0, 255, 204, 0.15), rgba(0, 255, 204, 0.05));
-  border-color: rgba(0, 255, 204, 0.25);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 /* Thumb — WebKit */
@@ -291,16 +291,16 @@
   border: 2px solid var(--surface-color);
   cursor: pointer;
   box-shadow:
-    0 0 8px rgba(0, 255, 204, 0.35),
-    0 0 0 3px rgba(0, 255, 204, 0.1);
+    0 0 8px rgba(139, 92, 246, 0.35),
+    0 0 0 3px rgba(139, 92, 246, 0.1);
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
 .cf-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
   box-shadow:
-    0 0 14px rgba(0, 255, 204, 0.5),
-    0 0 0 4px rgba(0, 255, 204, 0.15);
+    0 0 14px rgba(139, 92, 246, 0.5),
+    0 0 0 4px rgba(139, 92, 246, 0.15);
 }
 
 /* Thumb — Firefox */
@@ -312,8 +312,8 @@
   border: 2px solid var(--surface-color);
   cursor: pointer;
   box-shadow:
-    0 0 8px rgba(0, 255, 204, 0.35),
-    0 0 0 3px rgba(0, 255, 204, 0.1);
+    0 0 8px rgba(139, 92, 246, 0.35),
+    0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .cf-slider::-moz-range-track {
@@ -367,10 +367,10 @@
   color: var(--text-color);
 }
 .cf-toggle-btn.is-active {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.08);
-  box-shadow: 0 0 12px -6px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 12px -6px rgba(139, 92, 246, 0.2);
 }
 
 /* ─── CODE BLOCK ─────────────────────────────────────── */
@@ -395,7 +395,7 @@
   padding: 0.45rem 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border-strong);
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   color: var(--primary-color);
   font-size: 0.82rem;
   font-weight: 700;
@@ -405,7 +405,7 @@
   font-family: var(--font-body);
 }
 .cf-copy-btn:hover {
-  background: rgba(0, 255, 204, 0.15);
+  background: rgba(139, 92, 246, 0.15);
 }
 
 /* ─── ICON BUTTONS ───────────────────────────────────── */
@@ -464,8 +464,8 @@
 }
 .cf-preset-item:hover {
   border-color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.04);
-  box-shadow: 0 0 16px -8px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.04);
+  box-shadow: 0 0 16px -8px rgba(139, 92, 246, 0.2);
 }
 
 .cf-preset-icon {

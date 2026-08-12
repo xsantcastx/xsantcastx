@@ -22,22 +22,22 @@
 .lsr-option-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
 .lsr-seg-ctrl { display: flex; gap: 0.35rem; }
 .lsr-seg-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.42rem 0.8rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-body); font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.lsr-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
-.lsr-seg-btn--active { background: color-mix(in srgb, #00ffcc 12%, transparent); border-color: rgba(0,255,204,0.4); color: #00ffcc; font-weight: 600; }
+.lsr-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
+.lsr-seg-btn--active { background: color-mix(in srgb, #8B5CF6 12%, transparent); border-color: rgba(139,92,246,0.4); color: #8B5CF6; font-weight: 600; }
 .lsr-toggle { display: flex; align-items: center; gap: 0.7rem; cursor: pointer; user-select: none; }
 .lsr-toggle input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
 .lsr-toggle__track { position: relative; flex-shrink: 0; width: 38px; height: 20px; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: 999px; transition: background 0.2s ease, border-color 0.2s ease; }
 .lsr-toggle__thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text-muted); border-radius: 999px; transition: left 0.2s ease, background 0.2s ease; }
-.lsr-toggle input:checked ~ .lsr-toggle__track { background: color-mix(in srgb, #00ffcc 20%, transparent); border-color: rgba(0,255,204,0.45); }
-.lsr-toggle input:checked ~ .lsr-toggle__track .lsr-toggle__thumb { left: 20px; background: #00ffcc; }
+.lsr-toggle input:checked ~ .lsr-toggle__track { background: color-mix(in srgb, #8B5CF6 20%, transparent); border-color: rgba(139,92,246,0.45); }
+.lsr-toggle input:checked ~ .lsr-toggle__track .lsr-toggle__thumb { left: 20px; background: #8B5CF6; }
 .lsr-toggle__label { font-size: 0.82rem; color: var(--text-color); }
 .lsr-char-count { font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .lsr-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.lsr-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
+.lsr-btn-ghost:hover:not(:disabled) { color: var(--text-color); border-color: rgba(139,92,246,0.25); }
 .lsr-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
-.lsr-btn-ghost--success { color: #00ffcc !important; border-color: rgba(0,255,204,0.35) !important; }
+.lsr-btn-ghost--success { color: #8B5CF6 !important; border-color: rgba(139,92,246,0.35) !important; }
 .lsr-code-pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; background: transparent; }
-.lsr-code-pre code { font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; color: #00ffcc; display: block; white-space: pre-wrap; word-break: break-all; }
+.lsr-code-pre code { font-family: 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.65; color: #8B5CF6; display: block; white-space: pre-wrap; word-break: break-all; }
 .lsr-output-empty { min-height: 320px; display: flex; align-items: center; justify-content: center; color: rgba(214,221,235,0.3); font-size: 0.82rem; }
 .lsr-panel--output .lsr-panel__body { min-height: 320px; }
 @media (max-width: 768px) { .lsr-layout { grid-template-columns: 1fr; } }
