@@ -548,6 +548,11 @@
 
 .gftome__pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.4rem; }
 
+/* The cloud save control brings its own top rule and spacing — it was built for
+   the progression panel, which separates it from the stats the same way. This
+   only has to give it the drawer's own inline rhythm. */
+.gftome__cloud { margin-bottom: 0.6rem; }
+
 .gftome__section {
   margin: 1.35rem 0 0.4rem;
   font-family: var(--font-lore, ui-serif, Georgia, serif);
@@ -772,21 +777,27 @@
 
 /* ── Breakpoints ───────────────────────────────────────────────────────── */
 
-/* The row carries a lockup, seven halls and four status controls. Shed the
-   least load-bearing pieces first as it narrows, rather than letting the
-   halls collide with the pills the way the old bar did at 1280px. */
+/* The row carries a lockup, seven halls and five status controls — the fifth
+   being cloud save, which is why the two thresholds below moved out.
+
+   Each of these widths was originally set to the point where the returning
+   piece *just* fits, so the row had ~1px of headroom at 1011px and 1121px with
+   a seven-figure gold balance. Adding a control to the row spent that headroom
+   twice over, and the symptom is the one this bar has had before: the last item
+   in the group is pushed under its neighbour and stops taking clicks. So the
+   keeper glyph and the essence pill now come back later, and the two pieces
+   chosen are the ones with somewhere else to be — the glyph duplicates the rank
+   pill's destination, and essence is on the Market page it links to. */
 @media (max-width: 1380px) {
   .gfpill--rank .gfpill__rank-title { display: none; }
 }
 @media (max-width: 1240px) {
   .gfnav__hall { font-size: 0.68rem; padding-inline: 0.32rem; }
   .gfnav__creed { display: none; }
+  .gfnav__keeper { display: none; }   /* the rank pill already goes there */
 }
 @media (max-width: 1120px) {
   .gfnav__count { display: none; }
-  .gfnav__keeper { display: none; }   /* the rank pill already goes there */
-}
-@media (max-width: 1010px) {
   .gfpill--essence { display: none; }
 }
 
@@ -814,10 +825,55 @@
   .gfpill__val { font-size: 0.64rem; }
 }
 
-/* Very narrow: the wallet moves out of the bar entirely and lives in the
-   tome, where it is already rendered at full size. */
-@media (max-width: 360px) {
-  .gfnav__standing .gfpill--essence { display: none; }
+/* Very narrow: the wallet and the standing move out of the bar entirely and
+   live in the tome, where all three are already rendered at full size.
+
+   These sheds used to start at 360px, which was 20px of overflow too late. The
+   row is `flex-shrink: 0` throughout, so nothing here compresses — it just runs
+   off the right edge, silently, taking the hamburger with it. Measured at 375px
+   before cloud save was added to the row: the burger's right edge sat at 395 in
+   a 375px viewport, i.e. the primary mobile nav control was already being
+   clipped, and the essence pill it was queued behind did not drop until 360.
+
+   Each threshold below is the width at which the remaining controls stop
+   fitting between the lockup and the right padding, measured rather than
+   guessed. What survives longest is the pair with nowhere else to go on a
+   phone: the hamburger, and the cloud chip — the tome carries the wallet, the
+   rank and the keeper link, and the bottom tab bar carries /forge-keeper. */
+/* One threshold for all three, and 560px rather than the 360px it used to be,
+   because the number that decides this is not the pill count — it is how wide
+   the gold odometer gets.
+
+   The odometer renders one column per digit of the real balance, so the wallet
+   pill is the only item in this row whose width depends on how long somebody has
+   been playing. Measured with a seven-figure balance and every pill shown, the
+   row needs ~516px before it stops clipping the burger; at 481px it overflowed
+   by 35. A threshold set against a fresh save's `0` — as these were — tests the
+   one balance that is guaranteed to fit and passes every width, which is why
+   this kept coming back.
+
+   So below 560px the bar carries the lockup, the wallet, cloud save and the
+   burger, and nothing else. The tome renders the essence and rank pills at full
+   size the moment it opens, /forge-keeper is a permanent bottom tab, and gold
+   stays in the bar because it is the number people are watching. */
+@media (max-width: 560px) {
+  .gfnav__standing .gfpill--essence,
+  .gfnav__standing .gfpill--rank { display: none; }
+}
+/* The last thing to go, and the threshold is measured rather than picked: with
+   the wallet in the row and a seven-figure balance in the odometer, the contents
+   need 365px; without the wallet they need 266px. So 364px is the widest
+   viewport at which the wallet has to leave, and it deliberately lands just
+   under 375px — the iPhone SE/8/X width — so the most common phone in portrait
+   keeps its gold.
+
+   360px Androids drop it and read the balance in the tome, which is the trade
+   this threshold is making. Past eight figures the same arithmetic runs out
+   again at 375px; if that ever matters, the fix is a container query on the row
+   rather than another viewport breakpoint, because what is actually being
+   measured here is the row's own free space and not the window's. */
+@media (max-width: 364px) {
+  .gfnav__standing app-gold-ticker { display: none; }
 }
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
