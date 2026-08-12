@@ -194,6 +194,7 @@
 /arena/color-memory
 /arena/realm-rush
 /arena/shadow-cipher
+/arena/forge-strike
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor

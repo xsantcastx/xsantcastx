@@ -77,4 +77,20 @@ export const ARENA_GAME_ROUTES: Routes = [
       ),
     },
   },
+  {
+    path: 'arena/forge-strike',
+    loadComponent: () =>
+      import('./forge-strike/forge-strike.component').then(m => m.ForgeStrikeComponent),
+    title: 'Forge Strike — Sixty seconds at the anvil | The Arena',
+    data: {
+      description: 'A reaction game: squash bugs, ship features, never touch a live error. Sixty-second rounds with a chain multiplier that rewards a clean run over a fast one.',
+      keywords: 'reaction game, reflex game, whack a mole, click game, browser game, free game',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: gameJsonLd(
+        'Forge Strike',
+        'forge-strike',
+        'A free browser reflex game — squash bugs and ship features in sixty-second rounds.'
+      ),
+    },
+  },
 ];
