@@ -20,6 +20,7 @@
  * has no way to move.
  */
 import { EclipseRarity } from '../rarity/rarity.model';
+import { totalBonus } from '../rune-forge/rune.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The persisted shape
@@ -86,6 +87,20 @@ export interface PlayerEconomy {
   artifacts: string[];
   /** Cosmetic ids owned. */
   cosmetics: string[];
+  /**
+   * Runeword ids crafted at the Rune Forge. Each can only ever appear once.
+   *
+   * Kept in the ledger rather than alongside the rune inventory in
+   * `RuneForgeService`, for the same reason `streakDays` is copied here out of
+   * `XpService`: idle settlement has to be able to price eight hours of offline
+   * time from this blob alone, on the first frame after a reload, before any
+   * other system has hydrated. A word worth +100% income that lived only in the
+   * rune store would be silently absent from every offline payout.
+   *
+   * The rune *inventory* stays in the rune store. Only the finished words,
+   * which is the part the rate depends on, are mirrored here.
+   */
+  runewords: string[];
   /** cosmetic slot → the variant currently applied, for owned cosmetics. */
   equipped: Record<string, string>;
   /** Enchantments still running. Expired entries are dropped on load. */
@@ -129,6 +144,7 @@ export function emptyEconomy(): PlayerEconomy {
     upgrades: {},
     artifacts: [],
     cosmetics: [],
+    runewords: [],
     equipped: {},
     enchantments: [],
     levelsPaid: 1,
@@ -878,6 +894,18 @@ export function globalMultiplier(e: PlayerEconomy): number {
 }
 
 /**
+ * Every crafted Runeword's income bonus, as a plain multiplier.
+ *
+ * The bonuses are summed before the 1 is added rather than multiplied together,
+ * so First Light (+25%) and Godforge Mastery (+100%) pay ×2.25 and not ×2.5.
+ * That is what the copy on each card claims, and a shop whose arithmetic
+ * disagrees with its own card text is a shop nobody can plan a purchase in.
+ */
+export function runewordMultiplier(e: PlayerEconomy): number {
+  return 1 + totalBonus(e.runewords).income;
+}
+
+/**
  * Every line of the Gold rate, kept apart so the Market can show its working.
  *
  * The two *sources* are summed and then every *multiplier* is applied to the
@@ -898,6 +926,8 @@ export interface GoldBreakdown {
   shards: number;
   /** The Fragment of the First Sun, which is ×2 or nothing. */
   artifact: number;
+  /** Every Runeword crafted at the Rune Forge, summed. ×1 when none are. */
+  runeword: number;
   /** Every line above, resolved. */
   total: number;
 }
@@ -918,6 +948,7 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
   const streak = streakMultiplier(e.streakDays);
   const shards = shardMultiplier(e);
   const artifact = globalMultiplier(e);
+  const runeword = runewordMultiplier(e);
 
   return {
     idle,
@@ -926,7 +957,8 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
     streak,
     shards,
     artifact,
-    total: (idle + auto) * upgrades * streak * shards * artifact,
+    runeword,
+    total: (idle + auto) * upgrades * streak * shards * artifact * runeword,
   };
 }
 
@@ -970,7 +1002,8 @@ export function goldPerClick(e: PlayerEconomy): number {
     * upgradeMultiplier(e)
     * streakMultiplier(e.streakDays)
     * shardMultiplier(e)
-    * globalMultiplier(e);
+    * globalMultiplier(e)
+    * runewordMultiplier(e);
   // Never round a paying strike down to nothing.
   return Math.max(1, Math.round(scaled));
 }
@@ -1035,7 +1068,20 @@ export function xpMultiplier(
   let mult = activeEnchantment(e, now)?.def.multiplier ?? 1;
   if (ctx.questReward && e.artifacts.includes('relic-third-dawn')) mult *= 2;
   if (ctx.weakerEnergy && e.artifacts.includes('mirrorblade-kael')) mult *= 2;
-  return mult * globalMultiplier(e);
+  // The Convergent's Will and Godforge Mastery both pay XP. Summed with each
+  // other, then applied once — see `runewordMultiplier`.
+  return mult * globalMultiplier(e) * (1 + totalBonus(e.runewords).xp);
+}
+
+/**
+ * The Runeword multiplier on Gold paid out by a claimed quest.
+ *
+ * Separate from `runewordMultiplier` because Shadow Step pays quest Gold and
+ * nothing else, so folding it into the income line would quietly raise the idle
+ * rate of anyone holding it.
+ */
+export function runewordQuestMultiplier(e: PlayerEconomy): number {
+  return 1 + totalBonus(e.runewords).questGold;
 }
 
 /** How many uses a lore chapter should cost, given the Codex Solarii. */

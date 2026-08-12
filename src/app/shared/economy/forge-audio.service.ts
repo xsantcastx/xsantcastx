@@ -69,6 +69,55 @@ export class ForgeAudioService {
   }
 
   /**
+   * A rune surfacing out of the anvil, layered over the strike that produced it.
+   *
+   * `semitones` comes off the rune's tier table, so the ladder is heard before
+   * the colour is read — the same argument the combo tiers make. The rising
+   * pair is deliberately *after* the hit rather than under it: a rune is the
+   * consequence of the strike, and a cue that lands simultaneously reads as one
+   * louder hammer rather than as something arriving.
+   *
+   * Above the Epic rung a sub-bass voice is added. That is the only channel a
+   * phone speaker cannot reproduce and a desk speaker can, which makes it the
+   * right place to put the difference between "good" and "stop what you are
+   * doing" — the ones who feel it are the ones sitting somewhere they would
+   * notice a screen flash anyway.
+   */
+  runeReveal(semitones = 0, heavy = false): void {
+    const k = ratio(semitones);
+    const voices: Voice[] = [
+      { freq: 330 * k, type: 'sine', gain: 0.035, start: 0.08, dur: 0.28 },
+      { freq: 495 * k, type: 'sine', gain: 0.025, start: 0.14, dur: 0.34 },
+    ];
+    if (heavy) {
+      voices.push({ freq: 55, type: 'sine', gain: 0.09, start: 0.05, dur: 1.1 });
+      voices.push({ freq: 990 * k, type: 'triangle', gain: 0.02, start: 0.22, dur: 0.5 });
+    }
+    this.tone(voices);
+  }
+
+  /**
+   * The Void. One rune in the table reaches this and most ledgers never will.
+   *
+   * A descending sub-bass under a held cluster: everything else in this file
+   * rises, so the one cue that falls is unmistakable even to someone who has
+   * heard the other six a thousand times.
+   */
+  voidRumble(): void {
+    const voices: Voice[] = [
+      { freq: 41, type: 'sine', gain: 0.11, start: 0, dur: 3.0 },
+      { freq: 62, type: 'sine', gain: 0.07, start: 0.1, dur: 2.6 },
+      { freq: 82.4, type: 'triangle', gain: 0.05, start: 0.25, dur: 2.2 },
+    ];
+    // A slow arpeggio out of the rumble, so the three seconds have a shape
+    // rather than being three seconds of held bass.
+    [523.25, 392, 329.63, 261.63].forEach((freq, i) => {
+      voices.push({ freq, type: 'sine', gain: 0.03, start: 0.6 + i * 0.35, dur: 0.9 });
+    });
+    this.tone(voices);
+  }
+
+  /**
    * The flourish on the strike that crosses a combo tier, layered over the
    * pitched strike rather than replacing it.
    *
