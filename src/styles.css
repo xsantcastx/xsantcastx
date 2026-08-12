@@ -2606,3 +2606,36 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
   .gfsigil-scene__core { animation: none; }
   .gfxp__fill { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ART ROUTES — where the painting is the atmosphere
+
+   Every layer switched off below is a CSS stand-in for atmosphere: the
+   body's own gradient, the nebula wash, the generated starfield, the
+   matrix layer, the drifting pulsar, the corner runes, the particle layer
+   and the constellation canvas. They are the backdrop for the ~20 routes
+   that have no artwork of their own, so they stay defined — but on a route
+   backed by real art they are competing with the painting, and two
+   atmospheres is worse than either.
+
+   The class is set by LandingComponent and lands in the prerendered HTML,
+   so none of this paints and then disappears on hydration.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+body.gf-art-route {
+  /* The void the artwork sits on, not the blue-grey gradient. */
+  background: #0a0a0f;
+}
+
+body.gf-art-route::before,
+body.gf-art-route::after {
+  display: none;
+}
+
+body.gf-art-route .matrix-background,
+body.gf-art-route .cosmic-canvas,
+body.gf-art-route .cosmic-pulsar,
+body.gf-art-route .rune-whisper,
+body.gf-art-route .particle-layer {
+  display: none;
+}

@@ -103,10 +103,23 @@
   animation-play-state: paused !important;
 }
 
-/* Early finish — the app was ready before the sequence was. */
+/*
+ * Early finish — the sequence is being cut short, either because the app was
+ * ready before it was or because the hard cap fired.
+ *
+ * `!important` is load-bearing, for the same reason the mobile `filter` reset
+ * below is. gfCurtain is a running animation holding `opacity: 1` for the first
+ * 88%, and animations outrank normal declarations in the cascade — a plain
+ * `opacity: 0` here loses to it and nothing fades. It is worse under a hold,
+ * where the animation is paused at stage 6 and pinned to opacity 1 for as long
+ * as the pause lasts, so the curtain would sit fully opaque until the node was
+ * yanked out of the DOM 400ms later and the site would appear in a hard cut.
+ * An `!important` normal declaration beats a non-`!important` animation, which
+ * is what makes this fade apply from any point in the sequence.
+ */
 .gf-loader--hidden {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 0 !important;
+  visibility: hidden !important;
   transition: opacity 0.38s var(--gf-ease), visibility 0s linear 0.38s;
 }
 
