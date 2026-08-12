@@ -45,12 +45,75 @@ function toFields(obj: Record<string, any>): Record<string, any> {
   return fields;
 }
 
-async function fsGet(col: string): Promise<Record<string, any>[]> {
+/**
+ * A bounded, ordered read of one collection.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS REPLACED A LIST CALL
+ * ─────────────────────────────────────────────────────────────────────────────
+ * This used to be `GET /{col}?pageSize=200` — an unordered list of up to two
+ * hundred documents, run against five collections on three-to-eight-second
+ * timers. Firestore bills per document returned, so a single visitor sitting on
+ * this page cost roughly eleven thousand reads a minute, and a tab left open in
+ * the background cost exactly the same as one being watched. That is where the
+ * site's read bill was going: not the tools, not the homepage, this page.
+ *
+ * Two things fix it, and both need a query rather than a list:
+ *
+ *  - `limit` bounds the worst case. A list call has no ordering, so you cannot
+ *    ask for "the newest thirty" — you take two hundred and sort client-side,
+ *    which is why the old code did exactly that.
+ *  - `after` makes the steady state nearly free. These feeds are append-only, so
+ *    once the window is loaded every later poll only wants what arrived since,
+ *    and a query that matches nothing is billed as a single read.
+ *
+ * Returns documents in ascending time order, which is what every caller renders.
+ */
+async function fsQuery(
+  col: string,
+  opts: { limit: number; after?: Date | null },
+): Promise<Record<string, any>[]> {
+  // Ascending straight from the server when we are tailing from a known point,
+  // descending when we are taking the newest N of an unbounded collection —
+  // "the last thirty" is only expressible as a descending limit.
+  const tailing = opts.after instanceof Date;
+
+  const structuredQuery: Record<string, any> = {
+    from: [{ collectionId: col }],
+    orderBy: [{
+      field: { fieldPath: 'timestamp' },
+      direction: tailing ? 'ASCENDING' : 'DESCENDING',
+    }],
+    limit: opts.limit,
+  };
+
+  if (tailing) {
+    structuredQuery['where'] = {
+      fieldFilter: {
+        field: { fieldPath: 'timestamp' },
+        op: 'GREATER_THAN',
+        value: { timestampValue: opts.after!.toISOString() },
+      },
+    };
+  }
+
   try {
-    const res = await fetch(`${FS_BASE}/${col}?pageSize=200&key=${FS_KEY}`);
+    const res = await fetch(`${FS_BASE}:runQuery?key=${FS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery }),
+    });
     if (!res.ok) return [];
-    const data = await res.json();
-    return (data.documents || []).map(parseDoc);
+
+    // runQuery streams an array of results; a run that matched nothing still
+    // returns one element, carrying no `document`.
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return [];
+    const docs = rows
+      .filter((r: any) => r?.document)
+      .map((r: any) => parseDoc(r.document));
+
+    return tailing ? docs : docs.reverse();
   } catch { return []; }
 }
 
@@ -307,6 +370,55 @@ export class LiveComponent implements OnInit, OnDestroy {
   private knownChatIds = new Set<string>();
   private knownCommsIds = new Set<string>();
 
+  /**
+   * Newest timestamp already seen per feed, which is where the next poll tails
+   * from. Null means the window has not been loaded yet, so the first poll takes
+   * the newest N and every poll after it asks only for what arrived since.
+   */
+  private tailFrom: Record<string, Date | null> = {
+    'claude-activity': null,
+    'live-chat': null,
+    'agent-comms': null,
+  };
+
+  /**
+   * Poll intervals, in ms.
+   *
+   * Four times slower than they were. The old numbers were chosen to make the
+   * feed feel live and were paid for per document; now that a quiet poll costs
+   * one read, the interval only trades against latency, and ten seconds on a
+   * page whose content is somebody else's build log is not a perceptible wait.
+   */
+  private static readonly POLL_MS = {
+    activity: 10_000,
+    chat: 10_000,
+    comms: 15_000,
+    viewers: 30_000,
+    status: 15_000,
+  } as const;
+
+  /** How many documents any single poll may return. */
+  private static readonly PAGE = {
+    activity: 60,
+    chat: 60,
+    comms: 30,
+    viewers: 50,
+  } as const;
+
+  /**
+   * Stop polling after this long without the visitor touching the page.
+   *
+   * Hiding the tab already suspends everything, but a page left open and visible
+   * on a second monitor never fires `visibilitychange` and would otherwise poll
+   * until the browser closed. Any interaction resumes it.
+   */
+  private static readonly IDLE_MS = 15 * 60_000;
+
+  private polling = false;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  /** True once idle or hidden suspended the feed, so the banner can say so. */
+  paused = false;
+
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   constructor(private cdr: ChangeDetectorRef) {}
@@ -331,12 +443,88 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.startMockSimulation();
     this.startBotMock();
 
-    // Start REST API polling (replaces Firebase SDK listeners)
+    // Presence is registered once, outside the poll loop — it is a write, and
+    // it should happen even if the feed is suspended a moment later.
+    this.registerPresence();
+
+    this.startPolling();
+
+    // A hidden tab is the single cheapest read to not make: nobody is looking at
+    // the feed, and every poll it fires is spent rendering to an empty room.
+    document.addEventListener('visibilitychange', this.onVisibility);
+    for (const evt of LiveComponent.WAKE_EVENTS) {
+      window.addEventListener(evt, this.onInteraction, { passive: true });
+    }
+    this.armIdleTimer();
+  }
+
+  /** Anything that means somebody is still on the other side of the screen. */
+  private static readonly WAKE_EVENTS = ['pointerdown', 'keydown', 'scroll', 'focus'] as const;
+
+  private readonly onVisibility = (): void => {
+    if (document.visibilityState === 'hidden') {
+      this.stopPolling();
+    } else {
+      this.armIdleTimer();
+      this.startPolling();
+    }
+  };
+
+  /**
+   * Interaction resumes a suspended feed and pushes the idle deadline out.
+   *
+   * Deliberately cheap: on the common path — the feed is already running — this
+   * resets a timer and returns, because it is bound to `scroll` and will fire
+   * a great many times for every one time it has anything to do.
+   */
+  private readonly onInteraction = (): void => {
+    this.armIdleTimer();
+    if (!this.polling && document.visibilityState !== 'hidden') this.startPolling();
+  };
+
+  private armIdleTimer(): void {
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => this.stopPolling(), LiveComponent.IDLE_MS);
+  }
+
+  /**
+   * Bring every feed up. Idempotent, so both wake paths can call it freely.
+   *
+   * The visibility check is here rather than only in the `visibilitychange`
+   * handler because that event fires on a *change*: a page opened in a
+   * background tab — a middle-click, a restored session, a link opened behind
+   * the current window — mounts already hidden and never fires it, and would
+   * otherwise poll to an empty room until the visitor happened to look.
+   */
+  private startPolling(): void {
+    if (this.polling) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      this.paused = true;
+      return;
+    }
+    this.polling = true;
+    this.paused = false;
+
     this.startActivityPolling();
     this.startChatPolling();
     this.startViewerPolling();
     this.startStatusPolling();
     this.startCommsPolling();
+    this.cdr.detectChanges();
+  }
+
+  /** Take every feed down. The rendered feed stays on screen exactly as it was. */
+  private stopPolling(): void {
+    if (!this.polling) return;
+    this.polling = false;
+    this.paused = true;
+
+    if (this.activityPollTimer) { clearInterval(this.activityPollTimer); this.activityPollTimer = null; }
+    if (this.chatPollTimer)     { clearInterval(this.chatPollTimer);     this.chatPollTimer = null; }
+    if (this.viewerPollTimer)   { clearInterval(this.viewerPollTimer);   this.viewerPollTimer = null; }
+    if (this.statusPollTimer)   { clearInterval(this.statusPollTimer);   this.statusPollTimer = null; }
+    if (this.commsPollTimer)    { clearInterval(this.commsPollTimer);    this.commsPollTimer = null; }
+    this.cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
@@ -344,14 +532,22 @@ export class LiveComponent implements OnInit, OnDestroy {
     if (this.botTimer)          clearTimeout(this.botTimer);
     if (this.clockTimer)        clearInterval(this.clockTimer);
     if (this.sessionTimer)      clearInterval(this.sessionTimer);
-    if (this.activityPollTimer) clearInterval(this.activityPollTimer);
-    if (this.chatPollTimer)     clearInterval(this.chatPollTimer);
-    if (this.viewerPollTimer)   clearInterval(this.viewerPollTimer);
-    if (this.statusPollTimer)   clearInterval(this.statusPollTimer);
-    if (this.commsPollTimer)    clearInterval(this.commsPollTimer);
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
 
-    // Remove presence record via REST
-    fsDeleteDoc('live-viewers', this.sessionId);
+    this.stopPolling();
+
+    // ngOnInit returns early on the server, so none of this was ever bound
+    // there — and reaching for `document` during the prerender teardown throws
+    // and takes the whole render worker down with it.
+    if (this.isBrowser) {
+      document.removeEventListener('visibilitychange', this.onVisibility);
+      for (const evt of LiveComponent.WAKE_EVENTS) {
+        window.removeEventListener(evt, this.onInteraction);
+      }
+
+      // Remove presence record via REST
+      fsDeleteDoc('live-viewers', this.sessionId);
+    }
   }
 
   // ─── TrackBy ──────────────────────────────────────────────────────────────
@@ -382,11 +578,7 @@ export class LiveComponent implements OnInit, OnDestroy {
   // ─── Viewer Count (REST polling) ──────────────────────────────────────────
 
   private startViewerPolling(): void {
-    // Register own presence immediately
-    this.registerPresence();
-
-    // Poll viewer count + heartbeat every 8s
-    this.viewerPollTimer = setInterval(() => this.pollViewers(), 8000);
+    this.viewerPollTimer = setInterval(() => this.pollViewers(), LiveComponent.POLL_MS.viewers);
     // First poll now
     this.pollViewers();
   }
@@ -398,60 +590,85 @@ export class LiveComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Read whatever has been appended to `col` since the last call.
+   *
+   * The first call has no watermark and takes the newest `limit` documents; from
+   * then on it asks only for what is newer than the last thing it saw, so a feed
+   * that nobody is writing to costs one read per poll instead of `limit` of them.
+   *
+   * The watermark advances off the documents themselves rather than off the wall
+   * clock, so a clock that disagrees with the server's cannot open a window that
+   * silently skips entries.
+   */
+  private async tail(col: string, limit: number): Promise<Record<string, any>[]> {
+    const after = this.tailFrom[col] ?? null;
+    const docs = await fsQuery(col, { limit, after });
+    if (docs.length === 0) return docs;
+
+    let newest = after;
+    for (const d of docs) {
+      const ts = d['timestamp'];
+      if (ts instanceof Date && (newest === null || ts.getTime() > newest.getTime())) {
+        newest = ts;
+      }
+    }
+    this.tailFrom[col] = newest;
+    return docs;
+  }
+
   private async pollViewers(): Promise<void> {
     // Heartbeat — refresh own presence
     this.registerPresence();
 
-    const docs = await fsGet('live-viewers');
-    if (docs.length > 0) {
-      // Prune stale viewers (older than 30s)
-      const cutoff = Date.now() - 30000;
-      const active = docs.filter(d => {
-        const ts = d['timestamp'];
-        return ts instanceof Date && ts.getTime() > cutoff;
-      });
-      // Clean up stale docs
-      const stale = docs.filter(d => {
-        const ts = d['timestamp'];
-        return !(ts instanceof Date && ts.getTime() > cutoff);
-      });
-      for (const s of stale) fsDeleteDoc('live-viewers', s['id']);
+    // Presence is a count, not a feed, so this is bounded rather than tailed:
+    // every live viewer has to be counted on every poll, and an entry going
+    // *stale* is a change no `timestamp >` filter would ever return.
+    const docs = await fsQuery('live-viewers', { limit: LiveComponent.PAGE.viewers });
+    if (docs.length === 0) return;
 
-      this.viewerCount = Math.max(1, active.length);
-      this.cdr.detectChanges();
+    // Three missed heartbeats. The old cutoff was thirty seconds against an
+    // eight-second heartbeat; at a thirty-second heartbeat that same number
+    // would have every viewer time itself out between its own beats.
+    const cutoff = Date.now() - LiveComponent.POLL_MS.viewers * 3;
+    const active: Record<string, any>[] = [];
+    const stale: Record<string, any>[] = [];
+    for (const d of docs) {
+      const ts = d['timestamp'];
+      (ts instanceof Date && ts.getTime() > cutoff ? active : stale).push(d);
     }
+    for (const s of stale) fsDeleteDoc('live-viewers', s['id']);
+
+    this.viewerCount = Math.max(1, active.length);
+    this.cdr.detectChanges();
   }
 
   // ─── Activity Feed (REST polling + mock fallback) ─────────────────────────
 
   private startActivityPolling(): void {
-    // Poll every 4s
-    this.activityPollTimer = setInterval(() => this.pollActivity(), 4000);
+    this.activityPollTimer = setInterval(() => this.pollActivity(), LiveComponent.POLL_MS.activity);
     // First poll now
     this.pollActivity();
   }
 
   private async pollActivity(): Promise<void> {
-    const docs = await fsGet('claude-activity');
+    const docs = await this.tail('claude-activity', LiveComponent.PAGE.activity);
 
-    // Sort by timestamp ascending
-    if (docs.length > 0) {
-      docs.sort((a, b) => {
-        const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
-        const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
-        return ta - tb;
-      });
-    }
-
-    // Check staleness: if newest entry is older than 5 min, fall back to mock
-    const newest = docs.length > 0 ? docs[docs.length - 1] : null;
-    const newestTs = newest?.['timestamp'] instanceof Date ? newest['timestamp'].getTime() : 0;
-    const isStale = docs.length === 0 || (Date.now() - newestTs) > LiveComponent.STALE_MS;
+    // Staleness is a property of the newest entry that has *ever* been seen, not
+    // of the ones this poll happened to return. A tailing poll returns nothing
+    // whenever nothing has been written since the last one, which is the normal
+    // case on a quiet feed and must not be mistaken for the feed going cold.
+    const seen = this.tailFrom['claude-activity'];
+    const isStale = seen === null || (Date.now() - seen.getTime()) > LiveComponent.STALE_MS;
 
     if (isStale) {
       // Switch back to mock if we were on real data
       if (this.useFirestoreActivity) {
         this.useFirestoreActivity = false;
+        // Reloading the window is the point: the feed below is about to be
+        // emptied, so the next real data has to arrive as a whole window rather
+        // than as a tail onto entries that are no longer there.
+        this.tailFrom['claude-activity'] = null;
         this.knownActivityIds.clear();
         this.activityLog = [];
         this.toolCounts = {};
@@ -620,40 +837,54 @@ export class LiveComponent implements OnInit, OnDestroy {
   }
 
   private startChatPolling(): void {
-    this.chatPollTimer = setInterval(() => this.pollChat(), 3000);
+    this.chatPollTimer = setInterval(() => this.pollChat(), LiveComponent.POLL_MS.chat);
     this.pollChat();
   }
 
+  /**
+   * Append whatever has been said since the last poll.
+   *
+   * This used to rebuild the whole list from a full read of the collection on
+   * every tick, which is why it cost what it did. Appending is both cheaper and
+   * more correct: the rebuild dropped the optimistic local echo of a message the
+   * visitor had just sent until the server round-tripped it back.
+   */
   private async pollChat(): Promise<void> {
-    const docs = await fsGet('live-chat');
+    const docs = await this.tail('live-chat', LiveComponent.PAGE.chat);
     if (docs.length === 0) return;
 
-    // Sort by timestamp ascending
-    docs.sort((a, b) => {
-      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
-      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
-      return ta - tb;
-    });
+    let appended = false;
+    for (const d of docs) {
+      const id = d['id'];
+      if (this.knownChatIds.has(id)) continue;
+      this.knownChatIds.add(id);
 
-    // Keep system message, replace rest with Firestore data
-    const systemMsg = this.chatMessages.find(m => m.isSystem);
-    const firestoreMsgs: ChatMessage[] = docs.map(d => ({
-      id: d['id'],
-      name: d['name'] ?? 'anonymous',
-      message: d['message'] ?? '',
-      timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
-      color: d['color'] ?? this.getUserColor(d['name'] ?? ''),
-      isNew: !this.knownChatIds.has(d['id']),
-    }));
+      const name = d['name'] ?? 'anonymous';
+      const message = d['message'] ?? '';
 
-    // Track new messages for animation
-    const hadNew = firestoreMsgs.some(m => m.isNew);
-    for (const d of docs) this.knownChatIds.add(d['id']);
+      // The sender already painted this one optimistically under a local id.
+      // Reconcile onto that row rather than showing the message twice.
+      const echo = this.chatMessages.find(m =>
+        m.id.startsWith('local-') && m.name === name && m.message === message);
+      if (echo) {
+        echo.id = id;
+        continue;
+      }
 
-    this.chatMessages = systemMsg ? [systemMsg, ...firestoreMsgs] : firestoreMsgs;
+      this.pushChatMessage({
+        id,
+        name,
+        message,
+        timestamp: d['timestamp'] instanceof Date ? d['timestamp'] : new Date(),
+        color: d['color'] ?? this.getUserColor(name),
+      });
+      appended = true;
+    }
+
     this.cdr.detectChanges();
-    if (hadNew) this.scrollEl(this.chatContainer);
+    if (!appended) return;
 
+    this.scrollEl(this.chatContainer);
     // Clear isNew after animation
     setTimeout(() => {
       for (const m of this.chatMessages) m.isNew = false;
@@ -706,7 +937,7 @@ export class LiveComponent implements OnInit, OnDestroy {
   // ─── Agent Status (REST polling) ─────────────────────────────────────────
 
   private startStatusPolling(): void {
-    this.statusPollTimer = setInterval(() => this.pollStatus(), 4000);
+    this.statusPollTimer = setInterval(() => this.pollStatus(), LiveComponent.POLL_MS.status);
     this.pollStatus();
   }
 
@@ -739,30 +970,26 @@ export class LiveComponent implements OnInit, OnDestroy {
   // ─── Agent Comms (REST polling) ────────────────────────────────────────────
 
   private startCommsPolling(): void {
-    this.commsPollTimer = setInterval(() => this.pollComms(), 5000);
+    this.commsPollTimer = setInterval(() => this.pollComms(), LiveComponent.POLL_MS.comms);
     this.pollComms();
   }
 
   private async pollComms(): Promise<void> {
-    const docs = await fsGet('agent-comms');
-    if (docs.length === 0) return;
+    const docs = await this.tail('agent-comms', LiveComponent.PAGE.comms);
 
-    // Sort by timestamp ascending
-    docs.sort((a, b) => {
-      const ta = a['timestamp'] instanceof Date ? a['timestamp'].getTime() : 0;
-      const tb = b['timestamp'] instanceof Date ? b['timestamp'].getTime() : 0;
-      return ta - tb;
-    });
-
-    // Check staleness: if newest entry is older than STALE_MS, stay on mock
-    const newest = docs[docs.length - 1];
-    const newestTs = newest?.['timestamp'] instanceof Date ? newest['timestamp'].getTime() : 0;
-    const isStale = (Date.now() - newestTs) > LiveComponent.STALE_MS;
+    // Same reasoning as pollActivity: a tailing poll returning nothing means
+    // nothing was written, not that the feed has gone cold. Staleness is
+    // measured off the newest entry ever seen.
+    const seen = this.tailFrom['agent-comms'];
+    const isStale = seen === null || (Date.now() - seen.getTime()) > LiveComponent.STALE_MS;
 
     if (isStale) {
       // Fall back to mock if we were on real comms
       if (this.useFirestoreComms) {
         this.useFirestoreComms = false;
+        // The list below is about to be emptied, so the next real data has to
+        // arrive as a window rather than as a tail onto messages that are gone.
+        this.tailFrom['agent-comms'] = null;
         this.knownCommsIds.clear();
         this.botMessages = [];
         this.startBotMock();
@@ -770,6 +997,8 @@ export class LiveComponent implements OnInit, OnDestroy {
       }
       return;
     }
+
+    if (docs.length === 0) return;
 
     if (!this.useFirestoreComms) {
       // First time with fresh real data → stop mock, replace bot messages

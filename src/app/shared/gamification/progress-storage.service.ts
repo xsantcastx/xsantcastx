@@ -340,7 +340,20 @@ export class ProgressStorageService {
    * or the visitor signs out, the progression is still there. Clearing it is a
    * separate, explicit decision.
    */
-  async migrate(target: ProgressAdapter): Promise<ProgressState> {
+  async migrate(
+    target: ProgressAdapter,
+    /**
+     * How to reconcile the two copies.
+     *
+     * 'merge' is the default and the only one sign-in reaches on its own. The
+     * other two exist because a visitor who is shown both saves side by side can
+     * say something the structural rules cannot infer — that the device they are
+     * holding is the one that counts, or that it is the one to throw away. Taking
+     * the max of two saves is the right guess; it is not the right answer when
+     * somebody has told you otherwise.
+     */
+    strategy: 'merge' | 'local' | 'cloud' = 'merge',
+  ): Promise<ProgressState> {
     if (!this.isBrowser) throw new Error('[ProgressStorage] migrate() is browser-only.');
 
     const local = await new LocalStorageAdapter().load();
@@ -349,13 +362,23 @@ export class ProgressStorageService {
     // whole point of migrating. On a first device there is no remote blob to
     // take it from, so it comes off the adapter itself.
     const userId = target.identity ?? remote?.userId ?? local.userId;
-    const merged = remote
-      ? { ...mergeProgress(remote, local), userId }
-      : { ...local, userId };
 
-    await target.save(merged);
+    let resolved: ProgressState;
+    if (remote === null || strategy === 'local') {
+      resolved = { ...local, userId };
+    } else if (strategy === 'cloud') {
+      resolved = { ...remote, userId };
+      // The cloud copy has to land on disk too. Every consumer reads progression
+      // out of localStorage on first injection, and `CloudSaveService` reloads
+      // the page straight after this so they pick up what is written here.
+      new LocalStorageAdapter().saveNow(resolved);
+    } else {
+      resolved = { ...mergeProgress(remote, local), userId };
+    }
+
+    await target.save(resolved);
     this.adapter = target;
-    return merged;
+    return resolved;
   }
 
   /**

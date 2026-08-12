@@ -32,11 +32,20 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
   template: `
     <div class="cs">
       @if (status.uid === null) {
+        <!-- "Sign In" rather than "Save Progress": the button opens a Google
+             account chooser, and a label that does not say so makes the popup
+             read as something the page did rather than something it asked for.
+             The Google mark is the same signal, carried visually. -->
         <button type="button" class="cs__signin" (click)="signIn()">
-          <span class="cs__cloud" aria-hidden="true">&#9729;</span>
-          <span>Save Progress</span>
+          <svg class="cs__glogo" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+          </svg>
+          <span>Sign In</span>
         </button>
-        <p class="cs__pitch">Bind the forge to a Google account and it follows you between devices.</p>
+        <p class="cs__pitch">Sync across devices</p>
       } @else {
         <div class="cs__account">
           @if (status.photoURL) {
@@ -97,7 +106,9 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
       border-color: rgba(139, 92, 246, 0.6);
       box-shadow: 0 0 26px -8px rgba(139, 92, 246, 0.7);
     }
-    .cs__cloud { font-size: 14px; }
+    /* Google's mark keeps its own colours — it is a trademark, and recolouring
+       it to the cosmic palette is exactly what their brand terms forbid. */
+    .cs__glogo { width: 16px; height: 16px; flex: none; }
 
     .cs__pitch {
       margin: 8px 0 0; text-align: center;
@@ -215,7 +226,7 @@ export class CloudSaveButtonComponent implements OnInit, OnDestroy {
   get glyph(): string {
     switch (this.status.state) {
       case 'syncing': return '↻';
-      case 'error':   return '⚠';
+      case 'error':   return this.offline ? '⚡' : '⚠';
       default:        return '☁';
     }
   }
@@ -223,9 +234,27 @@ export class CloudSaveButtonComponent implements OnInit, OnDestroy {
   get label(): string {
     switch (this.status.state) {
       case 'syncing': return 'Syncing';
-      case 'error':   return 'Sync failed';
+      case 'error':   return this.offline ? 'Offline' : 'Sync failed';
       default:        return 'Synced';
     }
+  }
+
+  /**
+   * Is the failure just a missing connection?
+   *
+   * Worth separating, because the two states ask for different things from the
+   * person reading them. "Sync failed" implies something is broken and a retry
+   * might fix it; being on a train does not, and telling somebody their save
+   * failed when their phone simply has no signal is alarming for no reason.
+   *
+   * `navigator.onLine` is only trustworthy in the negative — a browser that
+   * reports itself online may still be behind a captive portal — which is
+   * exactly the direction this uses it in.
+   */
+  get offline(): boolean {
+    return this.status.state === 'error'
+      && typeof navigator !== 'undefined'
+      && navigator.onLine === false;
   }
 
   /** First letter of whatever we know them by, for the avatar fallback. */
