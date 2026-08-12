@@ -71,7 +71,6 @@ export class ConsentService {
       functionality_storage: 'granted'
     });
 
-    console.log('🍪 Analytics consent granted');
   }
 
   /**
@@ -87,7 +86,6 @@ export class ConsentService {
       functionality_storage: 'denied'
     });
 
-    console.log('🚫 Analytics consent denied');
   }
 
   /**
