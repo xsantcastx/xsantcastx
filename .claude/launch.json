@@ -92,6 +92,18 @@
         "4361"
       ],
       "port": 4361
+    },
+    {
+      "name": "forge-view-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "-y",
+        "serve",
+        "dist/xsantcastx/browser",
+        "-l",
+        "4380"
+      ],
+      "port": 4380
     }
   ]
 }

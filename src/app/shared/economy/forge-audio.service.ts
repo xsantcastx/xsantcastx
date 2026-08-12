@@ -245,6 +245,114 @@ export class ForgeAudioService {
     ]);
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // The ambient hum
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * A furnace, heard from the next room. Started only by the Forge View, and
+   * only on an explicit click of its speaker button.
+   *
+   * ── WHY IT IS NEVER STARTED AUTOMATICALLY ─────────────────────────────────
+   * Sound that begins because a page loaded is the single most reliable way to
+   * make somebody close a tab, and browsers agree — an AudioContext created
+   * outside a gesture is born suspended, so an auto-start would be silent on
+   * the first visit and audible on the second, which is worse than either.
+   * The button is the gesture, and the choice is remembered by the caller.
+   *
+   * ── THE GRAPH ─────────────────────────────────────────────────────────────
+   * Three voices into a lowpass: a 55 Hz sine that is the body of it, a 110 Hz
+   * triangle detuned a few cents against a second at 110.4 Hz so the two beat
+   * slowly against each other, and nothing above that. The filter sweeps
+   * between 180 and 420 Hz over forty seconds, which is what stops it reading
+   * as a test tone — a fixed lowpass on a fixed drone is a fridge.
+   */
+  private drone: {
+    oscs: OscillatorNode[];
+    gain: GainNode;
+    filter: BiquadFilterNode;
+    lfo: OscillatorNode;
+    lfoGain: GainNode;
+  } | null = null;
+
+  get humming(): boolean { return this.drone !== null; }
+
+  startHum(): boolean {
+    if (this.suppressed || this.drone) return false;
+    const ctx = this.context();
+    if (!ctx) return false;
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => { /* ignore */ });
+
+    const now = ctx.currentTime;
+
+    const gain = ctx.createGain();
+    // Four seconds to reach full. A drone that arrives at volume is a noise;
+    // one that fades up is something the room was already doing.
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.045, now + 4);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, now);
+    filter.Q.setValueAtTime(0.7, now);
+
+    // The sweep. An oscillator into the filter's frequency param, rather than a
+    // chain of scheduled ramps: one node that runs forever beats a timer that
+    // has to keep re-arming itself and drifts when the tab is throttled.
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(1 / 40, now);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(120, now);
+    lfo.connect(lfoGain).connect(filter.frequency);
+    lfo.start(now);
+
+    const oscs = ([
+      { freq: 55, type: 'sine' as OscillatorType, gain: 1 },
+      { freq: 110, type: 'triangle' as OscillatorType, gain: 0.35 },
+      { freq: 110.4, type: 'triangle' as OscillatorType, gain: 0.35 },
+    ]).map(v => {
+      const osc = ctx.createOscillator();
+      const amp = ctx.createGain();
+      osc.type = v.type;
+      osc.frequency.setValueAtTime(v.freq, now);
+      amp.gain.setValueAtTime(v.gain, now);
+      osc.connect(amp).connect(filter);
+      osc.start(now);
+      return osc;
+    });
+
+    filter.connect(gain).connect(ctx.destination);
+
+    this.drone = { oscs, gain, filter, lfo, lfoGain };
+    return true;
+  }
+
+  /**
+   * Fade out over a second and a half, then tear the graph down.
+   *
+   * Stopping the oscillators outright would put a click through the speakers,
+   * which is exactly the sound the mute button exists to avoid making.
+   */
+  stopHum(): void {
+    const drone = this.drone;
+    const ctx = this.ctx;
+    if (!drone || !ctx) { this.drone = null; return; }
+    this.drone = null;
+
+    const now = ctx.currentTime;
+    try {
+      drone.gain.gain.cancelScheduledValues(now);
+      drone.gain.gain.setValueAtTime(Math.max(0.0001, drone.gain.gain.value), now);
+      drone.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+      drone.oscs.forEach(o => o.stop(now + 1.6));
+      drone.lfo.stop(now + 1.6);
+    } catch {
+      // A node already stopped, or a context torn down under us. Nothing left
+      // to clean up that the garbage collector will not take.
+    }
+  }
+
   private context(): AudioContext | null {
     if (!this.isBrowser) return null;
     if (this.ctx) return this.ctx;
