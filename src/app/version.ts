@@ -22,18 +22,53 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.46.1',
+  version: '2.47.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'The Answer',
+  codename: 'Tribute',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
 
 /**
+ * Tool slugs released to Pro holders before the public registry.
+ *
+ * The Pro Pack promises early access to new tools, and this is the list that
+ * promise is made of. A slug listed here is visible on /tools and routable only
+ * for a visitor `ProService.isPro()` returns true for; removing the slug is what
+ * "public release" means, and needs no other change.
+ *
+ * Kept in version.ts rather than in the tools registry deliberately: early
+ * access is a property of a *release*, not of a tool, and this is the file that
+ * gets edited every time one ships. A flag stored next to the tool definition
+ * would be set once and then never remembered again.
+ *
+ * Empty is the correct steady state — it means everything built so far is
+ * public. Add a slug the week a tool lands, drop it the week it opens up.
+ */
+export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
+
+/**
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.47.0',
+    codename: 'Tribute',
+    date: '2026-08-13',
+    highlights: [
+      'The site can now earn. Two surfaces went in: the ad slots that were already on 39 tool pages finally render something, and /pro sells a one-time $9 Pro Pack',
+      'The Carbon Ads unit had been sitting on those 39 pages serving nothing for months. Its serve id was the string CWYD42JY, which has exactly the shape of a real Carbon id — the only thing marking it as a placeholder was a comment four lines above it, and comments do not fail builds',
+      'Placeholder ids are now named constants compared against at runtime, so ad-config.ts can answer "is a network live?" instead of every surface assuming one is. Nothing about the slot depended on that answer before',
+      'With no network configured the slots render a house card — "Your ad here", linking to /sponsors — rather than an empty box. Dead inventory became the only thing that actually sells inventory: proof the slot exists, is well placed and looks good',
+      'Ads now know when not to paint: Pro holders never see one, /admin, /forge-keeper, /pro, /sponsors and /donate never carry one, and nothing requests an impression while the boot curtain is still up — an ad served under the splash is an impression billed to an advertiser that no human saw',
+      'The Pro Pack is $9 once: every ad gone, a permanent 2x XP multiplier, 500 Gold, 50 Eclipse Essence, three exclusive cosmetics and early access to new tools',
+      'The 2x composes into the existing multiplier rather than calling setMultiplierSource a second time — that method replaces its source instead of composing, so a second caller would have silently deleted the enchantments, the Mirrorblade, the Relic and the Fragment, and only for the visitors who paid',
+      'Pro grants are settled once and marked before they are minted, the same discipline markLevelsPaid documents: a failed write costs a buyer 500 Gold, where the other order would have paid out again on every reload of a bookmarked success URL',
+      'Sponsor pricing is public for the first time — $200/month for one tool category, $750 for the whole network — alongside a contact block that says what to put in the mail and when a reply lands',
+      'The audience figures on /sponsors are still "on request". They are shown to people deciding whether to send money, and none of them has been checked against the analytics dashboard yet; AUDIENCE_VERIFIED in sponsors.component.ts is the one-word switch once they have'
+    ]
+  },
   {
     version: '2.46.1',
     codename: 'The Answer',
