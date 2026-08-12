@@ -69,8 +69,48 @@ const routes: Routes = [
         }
       }
     },
+  /*
+   * /live is the Forge View — the idle dashboard.
+   *
+   * It used to be the AI mission-control feed. That page still exists, at
+   * /mission-control below: it is the source the admin panel's activity stat
+   * reads, and retiring it to make room here would have deleted a working
+   * feature rather than moved one. The URL changed hands rather than the page
+   * being replaced, because "live" describes a forge that is earning per second
+   * far better than it describes a log, and /live is the link already in the
+   * footer and on the home page.
+   *
+   * A side effect worth naming: the Firestore pollers that made this the single
+   * most expensive page on the site now only run for somebody who deliberately
+   * opens /mission-control, rather than for everybody who clicks "Live".
+   */
   {
       path: 'live',
+      loadComponent: () => import('./live/forge-view.component').then(m => m.ForgeViewComponent),
+      title: 'The Forge View — The Godforge',
+      data: {
+        description: 'A live dashboard for your Godforge: the Keeper and everything equipped, Gold per second as it climbs, daily quests, and explorers sent into the five Eclipse realms for runes, scrolls and Gold.',
+        keywords: 'idle game dashboard, godforge, forge view, gold per second, explorers, eclipse realms, runes, daily quests, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org', '@type': 'WebPage', name: 'The Forge View',
+          url: `${SITE_URL}/live`,
+          description: 'A live dashboard for your Godforge: rank, equipment, Gold per second, quests and expeditions across the five Eclipse realms.',
+          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+            { '@type': 'ListItem', position: 2, name: 'The Forge View', item: `${SITE_URL}/live` }
+          ]}
+        }
+      }
+    },
+  /*
+   * The name the page is called by, pointed at the URL it lives on. A redirect
+   * rather than a second `loadComponent`, so there is exactly one canonical
+   * address for the dashboard and no duplicate for a crawler to index.
+   */
+  { path: 'forge-view', redirectTo: 'live', pathMatch: 'full' },
+  {
+      path: 'mission-control',
       loadComponent: () => import('./live/live.component').then(m => m.LiveComponent),
       title: 'Mission Control — The Godforge',
       data: {
@@ -79,11 +119,11 @@ const routes: Routes = [
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org', '@type': 'WebPage', name: 'Watch Live — AI Mission Control',
-          url: `${SITE_URL}/live`,
+          url: `${SITE_URL}/mission-control`,
           description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
-            { '@type': 'ListItem', position: 2, name: 'Live', item: `${SITE_URL}/live` }
+            { '@type': 'ListItem', position: 2, name: 'Mission Control', item: `${SITE_URL}/mission-control` }
           ]}
         }
       }
