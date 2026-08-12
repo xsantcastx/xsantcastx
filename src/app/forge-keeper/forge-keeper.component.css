@@ -246,6 +246,32 @@
 .fk-id__coin--gold .fk-id__coin-val { color: #ffd97a; }
 .fk-id__coin--essence { border-color: rgba(164, 139, 255, .3); }
 .fk-id__coin--essence .fk-id__coin-val { color: #c48bff; }
+.fk-id__coin--shard { border-color: rgba(123, 97, 255, .34); }
+.fk-id__coin--shard .fk-id__coin-val { color: #d8c8ff; }
+.fk-id__coin-glyph { grid-row: 1 / span 2; align-self: center; font-size: 22px; line-height: 1; }
+
+/* The live rate, under the wallet. One line, because the Market carries the
+   full breakdown and duplicating it here would be a second thing to keep true. */
+.fk-id__rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.fk-id__rate-num {
+  font: 800 26px/1 'Orbitron', system-ui, sans-serif;
+  color: #ffd97a;
+  text-shadow: 0 0 18px rgba(232, 117, 42, .5);
+  font-variant-numeric: tabular-nums;
+}
+.fk-id__rate-unit {
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #7d918c;
+}
+.fk-id__rate-auto { font-size: 11px; color: #7fd5a3; }
 
 .fk-id__meta {
   display: flex; flex-wrap: wrap; gap: 8px 26px;

@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.42.0',
+  version: '2.43.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Foundation',
+  codename: 'Gold Per Second',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -35,6 +35,27 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.43.0',
+    codename: 'Gold Per Second',
+    date: '2026-08-12',
+    highlights: [
+      'The idle economy was priced per minute and settled per minute, which made the one number it produces invisible — a rate you can only observe by waiting sixty seconds for it to move once is a rate nobody believes in. The unit is now the second, from the price tables to the settlement loop, and the header carries a live Gold/sec readout instead of a Gold pill that changed once a minute with no animation at all',
+      'The count rolls. Every digit that changed in the last second is swapped through a two-layer slide — the old digit leaves upward, the new arrives from below — and the rate chip beats once beside it. Past a thousand the rate abbreviates to 1.2K and 3.4M so the chip cannot grow sideways and shove the whole nav row along with it; on a phone the unit compacts to "/s"',
+      'Forge upgrades go from five rungs to ten, ending at The First Sun for ten million Gold. Two shelves are new: Mastery, four one-off multipliers that add rather than compound (+185% holding all four), and Automatons, three repeatable machines that strike the Flame for you',
+      'The automatons are income, not input. Routing a twenty-a-second machine through the real click path would have held a x1,000 combo forever and collected three Codex achievements for striking the Flame while the tab sat behind a text editor, so they are folded into the per-second rate and the Flame is told to look struck once a second instead. They are counted apart from your own strikes, and they will not hold a combo for you',
+      'The Eclipse: a prestige reset at ten million all-time Gold or rank 10. It wipes Gold and all four Gold ladders and grants Eclipse Shards worth 5% each, forever. Shards are priced off the all-time total minus what has already been granted, so four resets at ten million pay exactly what one at forty million pays — without that, the square-root curve would make bailing out at the threshold strictly better than playing on',
+      'What the Eclipse does not take is deliberate. Rank, Essence, artifacts, cosmetics and the Codex all survive it: those are records of things the visitor actually did, in systems that predate the Market and cannot tell a prestige from data loss. The button is two clicks and the second one names everything it is about to cost',
+      'The Market shows its working. A Gold income breakdown lists every source and every multiplier as its own line, each naming the upgrades responsible and totalling to the headline rate — a rate nobody can decompose reads as arbitrary, which is the state the old one was in',
+      'Buying something now flashes the wallet and floats the real rate delta rather than the number printed on the card: a Forge Bellows bought while Forge Mastery and nine shards are held floats +0.7/sec, because that is what actually happened',
+      'The tick fires sixty times more often than the old one, so the ledger now writes at most once every five seconds with an immediate flush on purchase, prestige, paid-rank markers and pagehide. Gold and the idle clock are written together, so a dropped write rewinds both and the next load re-settles exactly the span it did not save — the failure mode is repeated work, never a double credit and never a loss',
+      'Settlement skips the change-detection pass entirely on a hidden tab. A foreground tab costs exactly one pass a second for the counter; a background one costs nothing at all'
+    ]
+  },
+  {
+    // Renumbered from 2.41.0: that number had already shipped to main and been
+    // tagged v2.41.0 by the atmosphere release below, which landed while this
+    // one was still on dev. Two entries carrying the same version would have
+    // rendered as duplicate rows in the /blueprint dev log.
     version: '2.42.0',
     codename: 'The Foundation',
     date: '2026-08-12',

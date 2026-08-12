@@ -69,7 +69,15 @@ export class EconomyWiringService {
     this.xp.init();
 
     this.settleBackPay();
+    this.mirrorProgression();
     this.paintCosmetics();
+
+    // The streak and the rank both move through progression, not through the
+    // ledger, and the ledger now multiplies by both. Re-mirroring on every XP
+    // award is cheap — each setter returns immediately when the value has not
+    // changed — and it is the only way the streak bonus is correct on the day
+    // it rolls over rather than on the next reload.
+    this.xp.snapshot$.subscribe(() => this.mirrorProgression());
 
     // ── Gold in ─────────────────────────────────────────────────────────────
 
@@ -162,6 +170,21 @@ export class EconomyWiringService {
   private settleBackPay(): void {
     this.payLevels(this.xp.snapshot.level.level);
     this.payStreakWeeks(this.xp.snapshot.streak);
+  }
+
+  /**
+   * Copy the two progression numbers the Gold rate depends on into the ledger.
+   *
+   * The direction matters. `EconomyService` does not inject `XpService`, and it
+   * must not: the ledger has to be able to price eight hours of offline time
+   * from its own persisted blob on the first frame after a reload, before
+   * progression has come back from its async store. So the values are pushed
+   * in, and the streak is persisted alongside the Gold it multiplies.
+   */
+  private mirrorProgression(): void {
+    const snap = this.xp.snapshot;
+    this.economy.setStreakDays(snap.streak);
+    this.economy.setRankLevel(snap.level.level);
   }
 
   private payLevels(level: number): void {

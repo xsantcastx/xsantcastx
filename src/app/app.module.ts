@@ -29,7 +29,7 @@ import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
-import { CurrencyRailComponent } from './shared/economy/currency-rail.component';
+import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
@@ -66,7 +66,7 @@ import { PwaService } from './shared/pwa.service';
     QuestTriggerComponent,
     QuestToastComponent,
     ForgeFlameComponent,
-    CurrencyRailComponent,
+    GoldTickerComponent,
     GodforgeLoaderComponent,
     InstallPromptComponent
 ],
