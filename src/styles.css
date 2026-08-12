@@ -290,24 +290,16 @@ body::before {
 
 @media (hover: none) { .cosmic-cursor { display: none !important; } }
 
-/* Scroll-reveal — sections fade-up as they enter viewport */
-.cosmic-reveal {
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.cosmic-in-view {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* Scroll-reveal now lives in styles/interactions.css as .gf-reveal /
+   .gf-in-view, which is what cosmic-engine.js applies. The old .cosmic-reveal
+   pair was left stranded here: two of the five staggered selectors below it
+   (.skill-card, .project-card) named pages deleted in 2.44.0, and the 28px /
+   850ms travel read as sluggish next to the 200ms the rest of the site now
+   uses. Nothing adds .cosmic-reveal any more. */
 
 /* Stagger child cards inside their grid parent for a sweeping reveal */
-.cosmic-in-view.tool-card,
-.cosmic-in-view.skill-card,
-.cosmic-in-view.galaxy,
-.cosmic-in-view.hp-tool-card,
-.cosmic-in-view.project-card { transition-delay: 0.05s; }
+.gf-in-view.tool-card,
+.gf-in-view.hp-tool-card { transition-delay: 0.05s; }
 
 /* ─── 3D card tilt — set via JS on hover ─── */
 .cosmic-tilting {
@@ -865,9 +857,13 @@ app-root {
   display: block;
 }
 
-/* ===== Route transition ===== */
+/* ===== Route transition =====
+   200ms on the Material curve, matching styles/interactions.css. The transform
+   stays: it makes every routed host a containing block, which is exactly why
+   the flame, the quest drawer and the install prompt are siblings of <main>
+   rather than children of a routed page. Dropping it would silently move them. */
 router-outlet + * {
-  animation: routeFadeIn 0.22s ease forwards;
+  animation: routeFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes routeFadeIn {
