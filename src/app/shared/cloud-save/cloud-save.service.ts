@@ -1,0 +1,659 @@
+/**
+ * cloud-save.service.ts — progression that follows you between devices.
+ *
+ * Signing in with Google binds this browser's Godforge to a Firebase uid and
+ * keeps `users/{uid}` in step with it from then on. Signing out unbinds it and
+ * changes nothing else: the local save stays exactly where it was, and the site
+ * carries on offline the way it always has.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THE AUTH SDK IS LOADED BY HAND
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `provideAuth()` is deliberately absent from the root injector. It lives on the
+ * lazy /guestbook, /admin and /pdf-generator routes so that `@firebase/auth` —
+ * which is not small — stays out of the bundle every visitor downloads to read
+ * one page. That decision predates this feature and is still the right one: the
+ * overwhelming majority of visits are one person, one tool, never signed in.
+ *
+ * But cloud save lives in the header, which is on every page, so injecting
+ * `Auth` would have quietly undone it. Instead the SDK is imported at the moment
+ * it is first genuinely needed — the click on "Save Progress", or an idle
+ * callback on a device that was already signed in — and `getAuth(getApp())` is
+ * called directly rather than through DI. Same SDK, same Firebase app, no
+ * injector involvement, and a visitor who never signs in never downloads it.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY A RELOAD AFTER ADOPTING CLOUD STATE
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Seven services hold their state in memory and flush it to localStorage. They
+ * read it once, on first injection, and never look again — which is correct for
+ * a store only they write to, and is exactly wrong the moment a merge rewrites
+ * that store underneath them. Left alone, their next flush would overwrite the
+ * merged save with the stale copy they were still holding, and the progress that
+ * had just arrived from the other device would be gone within the second.
+ *
+ * Adding a `rehydrate()` to all seven was the alternative. It is more code in
+ * more places, and it has to be got right in seven services with live timers and
+ * subscriptions — for a moment that happens once per device. Reloading is one
+ * line, cannot be subtly wrong, and reads to the visitor as the button they just
+ * pressed finishing its job. It is guarded by a sessionStorage flag so that a
+ * merge which somehow never settles can never loop.
+ */
+import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { getApp } from '@angular/fire/app';
+import { BehaviorSubject, Observable } from 'rxjs';
+import {
+  CLOUD_WRITE_INTERVAL_MS,
+  FirestoreAdapter,
+  LocalStorageAdapter,
+  PROGRESS_KEY,
+  ProgressStorageService,
+} from '../gamification/progress-storage.service';
+import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import {
+  SYNCED_BLOBS,
+  SyncedBlob,
+  mergeDeep,
+  unwrapBlob,
+  wrapBlob,
+} from './cloud-save.model';
+
+/** Remembers across reloads that this browser is bound, so sync resumes itself. */
+const BOUND_UID_KEY = 'cloud-save-uid';
+/** Set immediately before an adopt-reload, so a merge that never settles cannot loop. */
+const ADOPTED_FLAG = 'cloud-save-adopted';
+/**
+ * Set on the way out to a redirect sign-in.
+ *
+ * Redirect is the one path that leaves the page and comes back with nothing to
+ * find: the binding is only written once a uid is known, and the whole point of
+ * the redirect is that the uid arrives after the navigation. Without this
+ * breadcrumb the visitor returns from Google genuinely signed in, and to a
+ * header that still says "Save Progress".
+ */
+const REDIRECT_PENDING = 'cloud-save-redirect';
+/** The achievement for opening cloud save. Registered in EASTER_EGGS. */
+export const CLOUD_SAVE_EGG = 'cloud-eternal-archive';
+
+export type SyncState =
+  /** Signed out. The local save is the only save, which is a fine way to live. */
+  | 'off'
+  /** Booting auth, merging, or pushing. */
+  | 'syncing'
+  /** Everything on this device is in the cloud. */
+  | 'synced'
+  /** A read or write failed. Retried on the next tick; retryable by hand. */
+  | 'error';
+
+export interface SyncStatus {
+  state: SyncState;
+  uid: string | null;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  /** Epoch ms of the last fully successful sync, or null. */
+  lastSyncedAt: number | null;
+  /** Set when `state` is 'error'. Already phrased for a person to read. */
+  error: string | null;
+}
+
+const SIGNED_OUT: SyncStatus = {
+  state: 'off',
+  uid: null,
+  email: null,
+  displayName: null,
+  photoURL: null,
+  lastSyncedAt: null,
+  error: null,
+};
+
+/** The slice of a Firebase user this service needs. Avoids importing the type eagerly. */
+interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class CloudSaveService {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly firestore = inject(Firestore);
+  private readonly progress = inject(ProgressStorageService);
+  private readonly eggs = inject(EasterEggService);
+  private readonly zone = inject(NgZone);
+
+  private readonly status$$ = new BehaviorSubject<SyncStatus>(SIGNED_OUT);
+  readonly status$: Observable<SyncStatus> = this.status$$.asObservable();
+
+  get status(): SyncStatus { return this.status$$.value; }
+  get signedIn(): boolean { return this.status$$.value.uid !== null; }
+
+  private booted = false;
+  /** Resolved auth module, kept so the SDK is only ever fetched once. */
+  private authModule: Promise<typeof import('@angular/fire/auth')> | null = null;
+  private adapter: FirestoreAdapter | null = null;
+  private pushTimer: ReturnType<typeof setInterval> | null = null;
+  /** Last payload written per blob key, so an unchanged blob costs nothing. */
+  private readonly pushed = new Map<string, string>();
+  private pushing = false;
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Boot
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Resume sync on a browser that was already bound. Idempotent.
+   *
+   * Nothing here is on the critical path: the Godforge has already hydrated from
+   * localStorage by the time this runs, and if it never ran at all the site
+   * would work exactly as it did before cloud save existed. So it waits for an
+   * idle callback rather than competing with first paint for the network.
+   */
+  init(): void {
+    if (!this.isBrowser || this.booted) return;
+    this.booted = true;
+
+    let bound: string | null = null;
+    let returning = false;
+    try {
+      bound = localStorage.getItem(BOUND_UID_KEY);
+      // Set on the way out to a redirect sign-in, which is the one path that
+      // leaves and comes back with no binding yet to find.
+      returning = sessionStorage.getItem(REDIRECT_PENDING) !== null;
+    } catch {
+      // Private mode. Sign-in still works, it just will not be remembered.
+    }
+    if (!bound && !returning) return;
+
+    // Optimistic: paint the signed-in chrome from what we remembered rather than
+    // flashing "Save Progress" at somebody who is already signed in and making
+    // them wonder whether they were logged out.
+    this.status$$.next({ ...SIGNED_OUT, state: 'syncing', uid: bound });
+
+    // A visitor who has just been bounced back from Google is waiting on this,
+    // so it does not get to sit behind an idle callback the way a routine
+    // resume does.
+    if (returning) void this.resume();
+    else this.whenIdle(() => void this.resume());
+  }
+
+  private async resume(): Promise<void> {
+    try {
+      const { getAuth, getRedirectResult, onAuthStateChanged } = await this.auth();
+      const auth = getAuth(getApp());
+
+      // Settle any redirect first. `onAuthStateChanged` would eventually report
+      // the same user, but only this call surfaces the *reason* a redirect
+      // sign-in failed — an unauthorised domain, a cancelled consent screen —
+      // and without it those land as a silent return to a signed-out header.
+      try {
+        await getRedirectResult(auth);
+      } catch (err) {
+        this.clearRedirectPending();
+        if (!isUserCancelled(err)) this.fail(err);
+        return;
+      }
+      this.clearRedirectPending();
+
+      // One-shot: the persisted session either restores or it does not, and a
+      // standing listener would fight `signOut()` for control of the status.
+      const user = await new Promise<AuthUser | null>(resolve => {
+        const stop = onAuthStateChanged(
+          auth,
+          u => { stop(); resolve(u as AuthUser | null); },
+          () => { stop(); resolve(null); },
+        );
+      });
+
+      if (!user) {
+        // The Google session lapsed. Drop the binding rather than sitting in a
+        // permanent "syncing" that will never resolve.
+        this.forgetBinding();
+        this.status$$.next(SIGNED_OUT);
+        return;
+      }
+      await this.bind(user);
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Sign in / sign out
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Google sign-in, then bind this device.
+   *
+   * Popup first, on every form factor — it keeps the visitor on the page and
+   * survives the page being reloaded mid-flow, which redirect does not. Redirect
+   * is the fallback for the environments where a popup genuinely cannot open:
+   * an in-app browser, a hardened popup blocker, an embedded webview. Both land
+   * in the same place, because `resume()` picks the session up on the way back.
+   */
+  async signIn(): Promise<void> {
+    if (!this.isBrowser) return;
+    this.booted = true;
+    this.status$$.next({ ...this.status, state: 'syncing', error: null });
+
+    try {
+      const mod = await this.auth();
+      const auth = mod.getAuth(getApp());
+      const provider = new mod.GoogleAuthProvider();
+      // Always ask which account. A shared machine that silently reuses the last
+      // Google session would bind somebody else's Godforge to this browser.
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      let user: AuthUser;
+      try {
+        const cred = await mod.signInWithPopup(auth, provider);
+        user = cred.user as AuthUser;
+      } catch (err) {
+        if (!isPopupUnavailable(err)) throw err;
+        // Hands off to a full page navigation; `resume()` completes the bind
+        // when Google sends the visitor back — provided it knows to look.
+        try { sessionStorage.setItem(REDIRECT_PENDING, '1'); } catch { /* private mode */ }
+        await mod.signInWithRedirect(auth, provider);
+        return;
+      }
+
+      await this.bind(user);
+    } catch (err) {
+      if (isUserCancelled(err)) {
+        // Closing the popup is an answer, not a failure. Go quiet.
+        this.status$$.next(this.signedIn ? { ...this.status, state: 'synced' } : SIGNED_OUT);
+        return;
+      }
+      this.fail(err);
+    }
+  }
+
+  /**
+   * Unbind this browser. The local save is deliberately left untouched — signing
+   * out of the cloud is not a request to forget seven months of XP, and a
+   * visitor who signs back in should find everything where they left it.
+   */
+  async signOut(): Promise<void> {
+    if (!this.isBrowser) return;
+
+    // Push whatever is still in the throttle window before letting go of the
+    // adapter. This is the one moment the visitor is explicitly thinking about
+    // whether their progress is safe.
+    try {
+      await this.pushAll();
+      await this.progress.flush();
+    } catch {
+      // Already unreachable; the local save still holds everything.
+    }
+
+    this.stopPushing();
+    this.adapter = null;
+    this.pushed.clear();
+    this.forgetBinding();
+    // Back to the local save, which has been kept current all along — the cloud
+    // adapter wrote through to it on every single save.
+    this.progress.useAdapter(new LocalStorageAdapter());
+
+    try {
+      const { getAuth, signOut } = await this.auth();
+      await signOut(getAuth(getApp()));
+    } catch {
+      // Already gone as far as this device is concerned.
+    }
+
+    this.status$$.next(SIGNED_OUT);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Binding
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Reconcile every blob against `users/{uid}`, then keep pushing.
+   *
+   * Runs on sign-in and on every subsequent load. There is no separate
+   * first-time path: the merge is the same operation whether the cloud copy is
+   * absent (first device — local wins by default), behind (this device has been
+   * doing the work) or ahead (another device has). Doing it every load is what
+   * makes moving between a phone and a PC mid-session work at all.
+   */
+  private async bind(user: AuthUser): Promise<void> {
+    this.status$$.next({
+      state: 'syncing',
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      lastSyncedAt: this.status.lastSyncedAt,
+      error: null,
+    });
+
+    try {
+      localStorage.setItem(BOUND_UID_KEY, user.uid);
+    } catch { /* private mode; sync works for this session only */ }
+
+    const adapter = new FirestoreAdapter(this.firestore, user.uid, err => {
+      if (err) this.fail(err);
+    });
+
+    // Decided up front, because it changes what this tab is willing to write.
+    // Adopting cloud state means writing it into localStorage under seven
+    // services that have already read it, and that is only safe if the tab is
+    // then going to restart and let them read it again.
+    const canAdopt = this.canAdopt();
+
+    // Progression rides the adapter seam that was built for it. `migrate()`
+    // merges local into whatever is already up there and swaps itself in.
+    const before = readRaw(PROGRESS_KEY);
+    await this.progress.migrate(adapter);
+    this.adapter = adapter;
+    let changed = readRaw(PROGRESS_KEY) !== before;
+
+    // The other six have no adapter seam, so they are reconciled directly.
+    for (const blob of SYNCED_BLOBS) {
+      if (await this.reconcile(user.uid, blob, canAdopt)) changed = true;
+    }
+
+    this.markSynced();
+    this.startPushing();
+    void this.eggs.trigger(CLOUD_SAVE_EGG);
+
+    if (changed) {
+      // Cloud state arrived that this device did not have. Every service is now
+      // holding a copy behind its own localStorage — see the note at the top.
+      if (canAdopt) this.adoptAndReload();
+    } else {
+      // A bind that moved nothing is a fixed point: local and cloud agree, and
+      // every service is holding the state that is actually on disk. Release
+      // the once-per-session reload so a divergence later in this session can
+      // still be adopted. A merge that somehow never settles never reaches here,
+      // so the guard it is releasing stays held and the loop stays impossible.
+      this.clearAdoptGuard();
+    }
+  }
+
+  /**
+   * Merge one blob with its cloud copy and write back whichever sides moved.
+   * Returns true when the local copy changed, which is what decides the reload.
+   */
+  private async reconcile(uid: string, blob: SyncedBlob, canAdopt: boolean): Promise<boolean> {
+    const ref = doc(this.firestore, 'users', uid, blob.collection, blob.doc);
+    const local = readParsed(blob.key);
+    const localRaw = JSON.stringify(local);
+
+    const snap = await getDoc(ref);
+    const remote = snap.exists() ? unwrapBlob(snap.data()) : null;
+
+    const merged = remote === null
+      ? local
+      : (blob.merge ?? mergeDeep)(remote, local);
+
+    if (merged === null || merged === undefined) return false;
+
+    const mergedRaw = JSON.stringify(merged);
+    const moved = mergedRaw !== localRaw;
+
+    if (moved && !canAdopt) {
+      // Newer cloud state this tab has no safe way to take. Touch nothing:
+      // writing it locally would be undone by the next flush from a service
+      // still holding the old copy, and that stale flush would then be pushed
+      // back up and undo the merge in the cloud as well. Recording it as
+      // already-pushed keeps the push loop off it until the next page load,
+      // which starts a fresh session and adopts it properly.
+      this.pushed.set(blob.key, localRaw);
+      return false;
+    }
+
+    if (moved) {
+      try {
+        localStorage.setItem(blob.key, mergedRaw);
+      } catch { /* quota or private mode — the cloud copy is still correct */ }
+    }
+
+    // Silence when the cloud already agrees. Without this, every page load of
+    // an unchanged save would cost six writes for nothing.
+    if (remote === null || mergedRaw !== JSON.stringify(remote)) {
+      await setDoc(ref, wrapBlob(merged));
+    }
+    this.pushed.set(blob.key, mergedRaw);
+    return moved;
+  }
+
+  /** Is this tab still allowed to restart itself to pick up cloud state? */
+  private canAdopt(): boolean {
+    try {
+      return sessionStorage.getItem(ADOPTED_FLAG) === null;
+    } catch {
+      // No sessionStorage means no loop guard, and an unguarded reload loop is a
+      // far worse outcome than stale numbers until the next navigation.
+      return false;
+    }
+  }
+
+  private clearAdoptGuard(): void {
+    try { sessionStorage.removeItem(ADOPTED_FLAG); } catch { /* private mode */ }
+  }
+
+  private clearRedirectPending(): void {
+    try { sessionStorage.removeItem(REDIRECT_PENDING); } catch { /* private mode */ }
+  }
+
+  /**
+   * Take the merged save and start again from it.
+   *
+   * The flag goes down *before* the reload, not after, so a merge that somehow
+   * reports a change on every pass cannot reload twice.
+   *
+   * The delay is not cosmetic. The achievement fired a moment ago and its XP is
+   * still inside `XpService`'s save debounce; the drop toast is also mid-
+   * animation. `pagehide` flushes the award either way, but there is no reason
+   * to make it do the work, and no reason to yank a drop off the screen the
+   * frame after it appeared.
+   */
+  private adoptAndReload(): void {
+    try {
+      sessionStorage.setItem(ADOPTED_FLAG, '1');
+    } catch {
+      return;
+    }
+    this.zone.runOutsideAngular(() => {
+      setTimeout(() => location.reload(), 1500);
+    });
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Steady state
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Watch the six satellite blobs and push the ones that moved.
+   *
+   * Polling, rather than each service announcing its own writes. The services
+   * own their storage and none of them emit a "persisted" event; giving all six
+   * one would mean six edits to six files that are otherwise untouched by this
+   * feature, for a signal that a ten-second `JSON.stringify` of a few kilobytes
+   * gets for free. The comparison is against what was last *uploaded*, so an
+   * idle tab makes no Firestore calls at all.
+   *
+   * Progression is not in this loop — `FirestoreAdapter` throttles its own
+   * writes on the same interval, driven by real awards rather than by a clock.
+   */
+  private startPushing(): void {
+    this.stopPushing();
+    // Outside Angular: a ten-second timer that usually finds nothing to do
+    // should not wake change detection on every tick for the life of the tab.
+    this.zone.runOutsideAngular(() => {
+      this.pushTimer = setInterval(() => void this.pushAll(), CLOUD_WRITE_INTERVAL_MS);
+    });
+
+    window.addEventListener('pagehide', this.flushOnLeave);
+    document.addEventListener('visibilitychange', this.flushOnHidden);
+  }
+
+  private stopPushing(): void {
+    if (this.pushTimer !== null) {
+      clearInterval(this.pushTimer);
+      this.pushTimer = null;
+    }
+    window.removeEventListener('pagehide', this.flushOnLeave);
+    document.removeEventListener('visibilitychange', this.flushOnHidden);
+  }
+
+  private readonly flushOnLeave = (): void => { void this.pushAll(); };
+  private readonly flushOnHidden = (): void => {
+    if (document.visibilityState === 'hidden') void this.pushAll();
+  };
+
+  /** Upload every blob whose serialised form has changed since its last upload. */
+  private async pushAll(): Promise<void> {
+    const uid = this.status.uid;
+    if (!uid || this.pushing) return;
+    this.pushing = true;
+
+    try {
+      for (const blob of SYNCED_BLOBS) {
+        const raw = readRaw(blob.key);
+        if (raw === null) continue;
+        if (this.pushed.get(blob.key) === raw) continue;
+
+        const ref = doc(this.firestore, 'users', uid, blob.collection, blob.doc);
+        await setDoc(ref, wrapBlob(JSON.parse(raw)));
+        this.pushed.set(blob.key, raw);
+      }
+      this.markSynced();
+    } catch (err) {
+      this.fail(err);
+    } finally {
+      this.pushing = false;
+    }
+  }
+
+  /**
+   * Try again after a failure, from the button.
+   *
+   * A denied write is the interesting case and the reason this re-runs the whole
+   * bind rather than just repeating the upload. The progress document only
+   * accepts monotonic XP, so the write a second device makes after falling
+   * behind is *supposed* to be rejected — pushing harder would never succeed.
+   * Re-binding re-merges, which is the thing that actually resolves it.
+   */
+  async retry(): Promise<void> {
+    if (!this.isBrowser) return;
+    const { uid, email, displayName, photoURL } = this.status;
+    if (!uid) return;
+
+    this.status$$.next({ ...this.status, state: 'syncing', error: null });
+    try {
+      this.pushed.clear();
+      await this.bind({ uid, email, displayName, photoURL });
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Plumbing
+  // ───────────────────────────────────────────────────────────────────────────
+
+  private auth(): Promise<typeof import('@angular/fire/auth')> {
+    return (this.authModule ??= import('@angular/fire/auth'));
+  }
+
+  private markSynced(): void {
+    this.zone.run(() => {
+      this.status$$.next({ ...this.status, state: 'synced', lastSyncedAt: Date.now(), error: null });
+    });
+  }
+
+  private fail(err: unknown): void {
+    this.zone.run(() => {
+      this.status$$.next({ ...this.status, state: 'error', error: describe(err) });
+    });
+  }
+
+  private forgetBinding(): void {
+    try {
+      localStorage.removeItem(BOUND_UID_KEY);
+      sessionStorage.removeItem(ADOPTED_FLAG);
+      sessionStorage.removeItem(REDIRECT_PENDING);
+    } catch { /* private mode */ }
+  }
+
+  /** Run when the browser is not busy, with a timeout so it always runs. */
+  private whenIdle(fn: () => void): void {
+    const ric = (window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void;
+    }).requestIdleCallback;
+    this.zone.runOutsideAngular(() => {
+      if (ric) ric(fn, { timeout: 4000 });
+      else setTimeout(fn, 1200);
+    });
+  }
+}
+
+function readRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function readParsed(key: string): unknown {
+  const raw = readRaw(key);
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // A blob that will not parse is a blob the owning service is about to
+    // replace with a fresh one. Treating it as absent lets the cloud copy win,
+    // which is the better of the two.
+    return null;
+  }
+}
+
+/** Popup could not open — an in-app browser, a webview, or a blocker. */
+function isPopupUnavailable(err: unknown): boolean {
+  const code = codeOf(err);
+  return code === 'auth/popup-blocked'
+    || code === 'auth/operation-not-supported-in-this-environment'
+    || code === 'auth/web-storage-unsupported';
+}
+
+/** The visitor shut the popup or started a second one. Not an error to report. */
+function isUserCancelled(err: unknown): boolean {
+  const code = codeOf(err);
+  return code === 'auth/popup-closed-by-user'
+    || code === 'auth/cancelled-popup-request'
+    || code === 'auth/user-cancelled';
+}
+
+function codeOf(err: unknown): string {
+  return typeof err === 'object' && err !== null && 'code' in err
+    ? String((err as { code: unknown }).code)
+    : '';
+}
+
+/**
+ * A sentence the visitor can act on.
+ *
+ * Firebase error strings are written for whoever wrote the rules, not for
+ * whoever hit them, and "Missing or insufficient permissions" in a header
+ * dropdown tells somebody nothing except that something is broken.
+ */
+function describe(err: unknown): string {
+  const code = codeOf(err);
+  if (code === 'permission-denied' || code === 'auth/insufficient-permission') {
+    return 'The cloud refused that write. Retry to re-merge.';
+  }
+  if (code === 'unavailable' || code === 'auth/network-request-failed') {
+    return 'No connection. Your progress is safe on this device.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'This domain is not authorised for sign-in.';
+  }
+  return 'Sync failed. Your progress is safe on this device.';
+}

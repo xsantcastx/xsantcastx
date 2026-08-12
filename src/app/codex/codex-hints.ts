@@ -26,6 +26,7 @@ export const EGG_HINTS: Record<string, string> = {
   'speed-demon': 'Pass through five doors before a single minute closes behind you.',
   'explorer': 'Walk the whole length of the first hall before you leave it.',
   'codex-archivist': 'You are already here. The record notices when it is opened.',
+  'cloud-eternal-archive': 'Your progress transcends devices. The Godforge remembers across all realms.',
 
   // ── Luminous — light, colour and the making of surfaces ───────────────────
   'shadow-lord': 'A shadow with five layers holds power.',
