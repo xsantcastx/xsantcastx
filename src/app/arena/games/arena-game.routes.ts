@@ -61,4 +61,20 @@ export const ARENA_GAME_ROUTES: Routes = [
       ),
     },
   },
+  {
+    path: 'arena/shadow-cipher',
+    loadComponent: () =>
+      import('./shadow-cipher/shadow-cipher.component').then(m => m.ShadowCipherComponent),
+    title: 'Shadow Cipher — Restore the Codex | The Arena',
+    data: {
+      description: 'A code-ordering puzzle across ten pages: every line of the snippet is shuffled, and you put it back. CSS, JavaScript and HTML, increasing in length.',
+      keywords: 'code puzzle, programming puzzle, reorder code, logic game, browser game, free game',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: gameJsonLd(
+        'Shadow Cipher',
+        'shadow-cipher',
+        'A free browser puzzle — rearrange ten shuffled code snippets back into working order.'
+      ),
+    },
+  },
 ];
