@@ -86,7 +86,6 @@ const VIOLET = (a: number) => `rgba(139, 92, 246, ${a})`;   // the Godforge core
 const GOLD   = (a: number) => `rgba(201, 168, 76, ${a})`;   // Archivum, commerce, patronage
 const CRIMSON = (a: number) => `rgba(220, 38, 38, ${a})`;   // the pit
 const CYAN   = (a: number) => `rgba(0, 212, 255, ${a})`;    // Verge, instrumentation
-const EMERALD = (a: number) => `rgba(16, 185, 129, ${a})`;  // Nexus, delivery
 const SUN    = (a: number) => `rgba(232, 212, 77, ${a})`;   // Luminous
 const NOCTURNE = (a: number) => `rgba(139, 34, 82, ${a})`;  // Umbral
 
@@ -128,23 +127,16 @@ const BY_SEGMENT: Record<string, Atmosphere> = {
   /* A live feed is an instrument panel. Same light as the war table, dimmer. */
   live: { id: 'live', top: CYAN(0.045), center: CYAN(0.02) },
 
-  /* Craft: the Luminous realm is where things get made. */
-  skills: { id: 'skills', center: SUN(0.045), tr: VIOLET(0.03) },
-
-  /* Finished work, filed. The archive's gold. */
-  projects: { id: 'projects', center: GOLD(0.04), tl: VIOLET(0.03) },
-
-  /* A channel out of the Godforge — Nexus green, the realm of delivery. */
-  contact: { id: 'contact', center: EMERALD(0.04), bottom: EMERALD(0.025) },
+  /* No `skills`, `projects`, `contact` or `guestbook` entries, for the same
+     reason `games` has none: the full migration deleted those pages and left
+     redirects behind, and the service resolves on `urlAfterRedirects`, so this
+     table is never asked about them. */
 
   /* Fuel for the forge: the core, brighter than anywhere but /tools. */
   donate: { id: 'donate', center: VIOLET(0.07), bottom: GOLD(0.03) },
 
   /* A machine interface for other machines. */
   mcp: { id: 'mcp', top: CYAN(0.04), center: VIOLET(0.03) },
-
-  /* Names left behind by people passing through. */
-  guestbook: { id: 'guestbook', center: VIOLET(0.045), tl: CYAN(0.025) },
 };
 
 /** The atmosphere for a place-route, or null when the segment is not a place. */

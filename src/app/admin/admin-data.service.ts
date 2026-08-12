@@ -263,17 +263,6 @@ export class AdminDataService {
     }
   }
 
-  /** Guestbook signatures — public read, so this always resolves. */
-  async guestbookCount(): Promise<number | null> {
-    if (!this.isBrowser) return null;
-    try {
-      const snap = await getDocs(collection(this.firestore, 'guestbook'));
-      return snap.size;
-    } catch (err) {
-      return this.degrade(err, null, 'guestbookCount');
-    }
-  }
-
   /**
    * Recent dev-log entries. `changelog` is public-read but write-locked, so on
    * a project where nothing has been pushed to it this is legitimately empty

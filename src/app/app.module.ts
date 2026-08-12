@@ -115,8 +115,10 @@ import { PwaService } from './shared/pwa.service';
     //   provideFunctions()  — same static auth import. PaymentService imports
     //                         `firebase/functions` on demand.
     //
-    // provideAuth()/provideDatabase() live on the lazy /guestbook, /admin and
-    // /tools/pdf-generator routes for the same reason.
+    // provideAuth() lives on the lazy /admin route for the same reason.
+    // provideDatabase() is gone entirely: the guestbook was the only Realtime
+    // Database consumer, so deleting it dropped @angular/fire/database from the
+    // build along with the SDK it pulled in.
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names

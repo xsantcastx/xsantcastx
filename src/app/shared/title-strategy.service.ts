@@ -68,8 +68,5 @@ export class AppTitleStrategy extends TitleStrategy {
 
 /** Titles for the routes that share this map rather than spelling their own out. */
 export const RouteTitles = {
-  skills: 'Skills — The Godforge',
-  projects: 'Projects — The Godforge',
-  contact: 'Contact — The Godforge',
   donate: 'Fuel the Forge',
 } as const;

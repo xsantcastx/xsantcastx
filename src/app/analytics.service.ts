@@ -283,19 +283,6 @@ export class AnalyticsService {
   }
 
   /**
-   * Track CTA button clicks (hire me, download resume, etc.)
-   */
-  trackCTAClick(ctaType: 'hire_me' | 'download_resume' | 'view_portfolio' | 'contact' | 'social'): void {
-    if (!this.canTrack()) return;
-
-    this.log('cta_click', {
-      cta_type: ctaType,
-      page_location: window.location.href,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
    * Track social media link clicks
    */
   trackSocialClick(platform: 'github' | 'linkedin' | 'twitter' | 'email'): void {
