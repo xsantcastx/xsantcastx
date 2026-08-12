@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.49.1',
+  version: '2.50.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Codex',
+  codename: 'Keeper',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,26 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.50.0',
+    codename: 'Keeper',
+    date: '2026-08-13',
+    highlights: [
+      '/live is now the Forge View: the Keeper in the middle wearing everything bought, Gold/sec down the left, quests and expeditions down the right, and a rolling feed of every drop along the bottom',
+      'Expeditions are the new mechanic. Send an explorer into one of the five realms for two minutes, ten minutes or an hour; they keep walking while the tab is shut and come home with Gold, XP, and sometimes a rune or a scroll',
+      'The loot is rolled on *return*, not on dispatch. Rolling at dispatch would leave the pending rune sitting in localStorage in plain text for the whole mission, and anyone with devtools could re-dispatch until a Mythic fell out',
+      'A mission is settled purely from startedAt + duration against the wall clock, so an hour-long expedition sent at midnight and reopened at 8am settles on load, in full, with no timer having survived anything',
+      'Expedition runes go into the Rune Forge\'s own ledger through a new RuneForgeService.grant, not into a second collection: the runes are only worth anything because they craft Runewords, and a rune the crafting table cannot see is a trophy with the mechanic cut off it',
+      'Lore Scrolls come along for free, because grant() is the same path a strike takes — an expedition rune rolls the Codex against its own tier exactly as the anvil does, fills the same sealed slot on the same wall, and counts toward the same two completion achievements. Expeditions therefore have no scroll odds of their own: a second roll would have paid twice for one find and needed its own copy of the shelf rules to do it',
+      'The landing card was silently losing its own payload. The component subscribed to returned$ *after* calling explorers.init(), and init settles everything that landed while the tab was shut — so an overnight expedition banked its Gold correctly and showed the visitor nothing. Measured before the fix: 87 Gold arrived, no loot card, empty feed',
+      'Simultaneous landings queue rather than overwrite. Three explorers finishing overnight all settle in one pass, and assigning each straight to the card left only the last one on screen with the two runes above it swallowed',
+      'The Forge Flame is mounted inside the page here instead of pinned to the corner, and the corner copy stands down while it is — two clickable flames paying into one ledger is a thing the visitor would have to work out for themselves',
+      'Explorer slots are bought on the Market\'s new Expeditions tab through the same ladder every other upgrade uses, capped at five — one per realm, because a sixth could only ever duplicate a realm already covered',
+      'The AI mission-control feed was not deleted to make room; it moved to /mission-control intact. A side effect worth naming: its Firestore pollers now only run for somebody who deliberately opens that page, rather than for everybody who clicks "Live"',
+      'The loot card renders in flow rather than as a fixed overlay. Every routed host carries a routeFadeIn transform with fill: forwards, which makes it a containing block — a position: fixed card inside one is pinned to the page and scrolls away under the header whatever its z-index',
+      'Below 768px the warm wash and the fourteen embers come off entirely, which is the same trade the rest of the site made when the phone build was found spending its frame budget on wallpaper',
+    ]
+  },
   {
     version: '2.49.1',
     codename: 'Codex',
