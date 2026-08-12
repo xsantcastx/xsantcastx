@@ -180,6 +180,23 @@ export const EGG_HINTS: Record<string, string> = {
   'idle-never-sleeps': 'Be watching when one day becomes the next.',
   'idle-forge-striker': 'A thousand blows. The flame counts every one.',
   'idle-obsidian-hammer': 'Ten thousand. Nobody arrives here by accident.',
+
+  // ── The Godforge Market — spending, not finding ───────────────────────────
+  // Six that are earned rather than hidden. The hints say what kind of effort
+  // reaches them without naming the number, because on three of these the
+  // number *is* the whole secret.
+  //
+  // The two strike-count achievements this release would otherwise have added
+  // are deliberately absent: 'idle-forge-striker' and 'idle-obsidian-hammer'
+  // above already pay out at a thousand and ten thousand strikes, and the
+  // Market's flame drives the same counter. Two cards for one act would be two
+  // wrong numbers on the wall.
+  'forge-first-purchase': 'The ember in the corner is not the only thing that takes coins.',
+  'forge-investor': 'A handful of the furnace ladder, in any combination you like.',
+  'forge-market-mogul': 'Three times a handful. The price climbs 15% every time you say yes.',
+  'forge-artifact-collector': 'Essence buys permanence. Own enough permanence to make a shelf.',
+  'forge-complete-collection': 'Every shelf, empty. Nothing left in the case with a price on it.',
+  'forge-click-frenzy': 'The ember pays twice a second at most. Spend a whole minute finding out.',
 };
 
 /**

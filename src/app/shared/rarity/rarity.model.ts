@@ -132,9 +132,14 @@ const LEGACY_MAP: Record<string, EclipseRarity> = {
  * — it is earned, not authored (see `isSingular`).
  */
 export const EGG_TIERS: Record<string, EclipseRarity> = {
-  // ── Mythic ── two eggs that take real intent to reach.
+  // ── Mythic ── three eggs that take real intent to reach.
   'hash-miner': 'mythic',          // a digest with four leading zeros
   'regex-ouroboros': 'mythic',     // a regex that matches its own source
+  // 5,800 Essence of artifacts, which is months of ranks, weeklies and Mythic
+  // drops. The legacy 'legendary' on its registry line would file it as
+  // Anomalous alongside holding three, and holding all five is not the same
+  // claim as holding three.
+  'forge-complete-collection': 'mythic',
 
   // ── Anomalous ── outcomes you cannot really aim at.
   'uuid-lucky': 'anomalous',       // a UUID beginning 000

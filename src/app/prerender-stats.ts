@@ -9,4 +9,4 @@
  */
 
 /** Routes Angular prerenders to static HTML, /embed pages included. */
-export const PRERENDERED_PATHS = 276;
+export const PRERENDERED_PATHS = 277;
