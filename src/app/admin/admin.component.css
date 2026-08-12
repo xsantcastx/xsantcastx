@@ -751,3 +751,65 @@ a.adm-list__main:hover { color: var(--adm-accent); }
   .adm-bar__fill,
   .adm-ring__fill { transition: none; }
 }
+
+/* ── Cache freshness + manual refresh ──────────────────────────────────────
+   The panels below are whole-collection scans cached for five minutes, so the
+   header says how old they are and offers a way to pay for fresh ones. */
+.adm-updated {
+  font-size: 12px;
+  color: #7d918c;
+  white-space: nowrap;
+}
+
+.adm-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: transparent;
+  color: #A78BFA;
+  cursor: pointer;
+  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .05em;
+  transition: border-color .25s ease, color .25s ease;
+}
+
+.adm-refresh:hover:not(:disabled) {
+  color: #F2ECFF;
+  border-color: rgba(139, 92, 246, 0.65);
+}
+
+.adm-refresh:disabled { opacity: .6; cursor: default; }
+
+.adm-refresh__glyph { display: inline-block; font-size: 13px; }
+.adm-refresh__glyph--spin { animation: admRefreshSpin 1s linear infinite; }
+
+@keyframes admRefreshSpin { to { transform: rotate(360deg); } }
+
+/* ── Paginated lists ─────────────────────────────────────────────────────── */
+.adm-more { list-style: none; margin-top: 10px; }
+
+.adm-more__btn {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: #9fb4ae;
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color .25s ease, color .25s ease;
+}
+
+.adm-more__btn:hover {
+  color: #F2ECFF;
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-refresh__glyph--spin { animation: none; }
+}

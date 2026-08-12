@@ -1,6 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { LazyFirestoreService } from '../lazy-firestore.service';
+import { CACHE_TTL, FirestoreCacheService } from '../firestore-cache.service';
 import { BehaviorSubject } from 'rxjs';
 
 export interface EasterEgg {
@@ -277,6 +278,7 @@ export const EGGS_DATES_KEY = 'easter-eggs-dates';
 @Injectable({ providedIn: 'root' })
 export class EasterEggService {
   private lazyFirestore = inject(LazyFirestoreService);
+  private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private discovered = new Set<string>();
   private dates: Record<string, string> = {};
@@ -358,15 +360,21 @@ export class EasterEggService {
     }
   }
 
-  /** Get global discovery count for an egg */
+  /**
+   * How many people have found this egg, site-wide.
+   *
+   * Cached for an hour. This is the "0.4% of visitors found this" line on a
+   * discovery toast — a bragging figure, not a number anything branches on, so
+   * it is not worth a document read every time an egg fires.
+   */
   async getGlobalCount(id: string): Promise<number> {
     if (!this.isBrowser) return 0;
-    try {
+    return this.cache.through(`easter-eggs/${id}`, CACHE_TTL.counters, async () => {
       const handle = await this.lazyFirestore.get();
       if (!handle) return 0;
       const { db, api } = handle;
       const snap = await api.getDoc(api.doc(db, 'easter-eggs', id));
-      return snap.exists() ? (snap.data()['discoveries'] ?? 0) : 0;
-    } catch { return 0; }
+      return snap.exists() ? ((snap.data()['discoveries'] as number) ?? 0) : 0;
+    }).catch(() => 0);
   }
 }
