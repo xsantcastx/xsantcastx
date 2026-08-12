@@ -6,4 +6,19 @@
 User-agent: *
 Allow: /
 
+# /admin is the exception to the reasoning above, on purpose.
+#
+# The noindex-over-Disallow argument assumes the goal is to get a page dropped
+# from the index cleanly. Here the goal is different: don't spend crawl budget
+# on it, and don't advertise it. There is nothing to de-index — /admin has never
+# been linked from anywhere on the site, is absent from the sitemap, and is not
+# prerendered, so no crawler has a path to it in the first place. It also serves
+# `noindex` from the route data, which covers the case where the URL leaks
+# anyway. This line is belt-and-braces, not the primary control.
+#
+# It is worth being explicit that this is not a security measure. robots.txt is
+# a public file and a request not to crawl; the actual protection is the auth
+# guard on the route and the isOwner() checks in firestore.rules.
+Disallow: /admin
+
 Sitemap: https://xsantcastx.com/sitemap.xml

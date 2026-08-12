@@ -2,6 +2,7 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, of } from 'rxjs';
 import { LazyFirestoreService } from './shared/lazy-firestore.service';
+import { whenAppCheckReady } from './app-check.bootstrap';
 
 export interface ChangelogEntry {
   id?: string;
@@ -34,27 +35,35 @@ export class ChangelogService {
       let unsubscribe: (() => void) | null = null;
       let torndown = false;
 
-      this.lazyFirestore.get().then(handle => {
-        if (!handle || torndown) return;
-        const { db, api } = handle;
+      // App Check initializes on idle now rather than at bootstrap (see
+      // app-check.bootstrap.ts), and this read fires from the landing page's
+      // ngOnInit. Waiting for App Check keeps the query token-bearing if
+      // enforcement is ever switched on in the Firebase console; the changelog
+      // renders below the fold, so the delay is not user-visible. The Firestore
+      // SDK itself is fetched on demand — see shared/lazy-firestore.service.ts.
+      Promise.all([whenAppCheckReady(), this.lazyFirestore.get()])
+        .then(([, handle]) => {
+          if (!handle || torndown) return;
+          const { db, api } = handle;
 
-        const q = api.query(
-          api.collection(db, 'changelog'),
-          api.orderBy('date', 'desc'),
-          api.limit(50)
-        );
+          const q = api.query(
+            api.collection(db, 'changelog'),
+            api.orderBy('date', 'desc'),
+            api.limit(50)
+          );
 
-        // Raw-SDK snapshot callbacks fire outside the Angular zone; re-enter it
-        // so the async pipe in the template actually repaints.
-        unsubscribe = api.onSnapshot(
-          q,
-          snap => {
-            const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChangelogEntry));
-            this.lazyFirestore.runInZone(() => observer.next(this.groupByDay(entries)));
-          },
-          err => this.lazyFirestore.runInZone(() => this.degrade(err, observer))
-        );
-      }).catch(err => this.degrade(err, observer));
+          // Raw-SDK snapshot callbacks fire outside the Angular zone; re-enter
+          // it so the async pipe in the template actually repaints.
+          unsubscribe = api.onSnapshot(
+            q,
+            snap => {
+              const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChangelogEntry));
+              this.lazyFirestore.runInZone(() => observer.next(this.groupByDay(entries)));
+            },
+            err => this.lazyFirestore.runInZone(() => this.degrade(err, observer))
+          );
+        })
+        .catch(err => this.degrade(err, observer));
 
       return () => {
         torndown = true;

@@ -6,6 +6,13 @@ import { LazyFirestoreService } from '../shared/lazy-firestore.service';
 import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
 import { DEV_LOG, DEV_LOG_CATEGORIES, DevLogEntry, DevLogCategory } from './dev-log';
 import { APP_VERSION, VERSION_HISTORY, VersionRelease } from '../version';
+import {
+  ECLIPSE_ROADMAP,
+  EclipsePhase,
+  PHASE_STATUS,
+  PhaseStatus,
+  phaseProgress,
+} from './eclipse-roadmap';
 
 /**
  * blueprint.component.ts — the public roadmap + project documentation page.
@@ -478,6 +485,38 @@ export class BlueprintComponent implements OnInit {
 
   toggleDecision(id: string): void {
     this.openDecision = this.openDecision === id ? null : id;
+  }
+
+  // ── The Eclipse arc ────────────────────────────────────────────────────
+  // Now/Next/Later answers "what is being worked on this month". These six
+  // phases answer where all of it is going. Both live in the Roadmap panel.
+
+  readonly eclipsePhases: EclipsePhase[] = ECLIPSE_ROADMAP;
+  readonly phaseStatus = PHASE_STATUS;
+
+  /**
+   * Which phases are expanded. The one in progress starts open, because that
+   * is the one a reader came to check — everything else is one click away.
+   */
+  private readonly openPhases = new Set<string>(
+    ECLIPSE_ROADMAP.filter(p => p.status === 'in-progress').map(p => p.id)
+  );
+
+  isPhaseOpen(id: string): boolean {
+    return this.openPhases.has(id);
+  }
+
+  togglePhase(id: string): void {
+    if (this.openPhases.has(id)) this.openPhases.delete(id);
+    else this.openPhases.add(id);
+  }
+
+  phaseProgress(phase: EclipsePhase): { done: number; total: number; percent: number } {
+    return phaseProgress(phase);
+  }
+
+  phaseStatusOf(status: PhaseStatus) {
+    return PHASE_STATUS[status];
   }
 
   statusLabel(status: RoadmapStatus): string {

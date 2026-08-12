@@ -210,11 +210,146 @@
   opacity: 0.6;
 }
 
-/* Rarity accent */
-.gp-card[data-rarity="epic"]      { border-left: 3px solid #ec4899; }
-.gp-card[data-rarity="rare"]      { border-left: 3px solid #8b5cf6; }
-.gp-card[data-rarity="common"]    { border-left: 3px solid #00ffcc; }
-.gp-card[data-rarity="legendary"] { border-left: 3px solid gold; }
+/* ── Tier accent ──────────────────────────────────────────────────────────
+   A gate inherits the tier of the secret that unlocks it, so the colour here
+   is the same claim the drop toast makes. --tier / --tier-glow come from the
+   template, which reads them off the shared rarity table — the four hardcoded
+   data-rarity colours that used to live here are gone with the old scale. */
+.ar-card {
+  border-left: 3px solid var(--tier);
+}
+
+/* Unlocked gates glow in their tier colour. Locked ones are dimmed and
+   desaturated — you can see the shape of the prize, not its colour. */
+.ar-card.gp-card--unlocked {
+  border-color: color-mix(in srgb, var(--tier) 45%, transparent);
+  box-shadow: 0 0 28px -12px var(--tier-glow);
+}
+
+.ar-card.gp-card--unlocked:hover {
+  border-color: var(--tier);
+  box-shadow: 0 0 42px -10px var(--tier-glow);
+}
+
+.ar-card--locked {
+  filter: saturate(0.35);
+}
+
+.ar-card--locked .gp-card__title {
+  letter-spacing: 0.25em;
+}
+
+.ar-card__tier {
+  color: var(--tier);
+  border: 1px solid color-mix(in srgb, var(--tier) 40%, transparent);
+  background: color-mix(in srgb, var(--tier) 9%, transparent);
+}
+
+.ar-card--locked .ar-card__tier {
+  opacity: 0.55;
+}
+
+/* The chain replaces the padlock: a gate is held shut, not merely hidden. */
+.ar-chain {
+  color: var(--tier);
+  opacity: 0.75;
+}
+
+.ar-locked {
+  color: #7d918c;
+}
+
+/* An open gate with nothing behind it yet. Distinct from chained, so the two
+   states are not read as the same thing. */
+.ar-forging {
+  color: color-mix(in srgb, var(--tier) 55%, #7d918c);
+  font-style: italic;
+}
+
+/* ── Playable-gate furniture ─────────────────────────────────────────────── */
+
+.gp-card { position: relative; }
+
+.ar-new {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #4dffe0, #a48bff);
+  color: #06101c;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  box-shadow: 0 0 16px -4px rgba(0, 255, 204, 0.9);
+}
+
+.ar-card__best {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.76rem;
+  color: color-mix(in srgb, var(--tier) 75%, #e8ecf1);
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-card__best-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tier);
+  box-shadow: 0 0 8px var(--tier-glow);
+}
+
+/* ── Arena stats ── */
+.ar-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 1.5rem 0 0;
+}
+
+.ar-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ar-stat__num {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #eafff9;
+}
+
+.ar-stat__of {
+  font-size: 0.7em;
+  color: #7d918c;
+}
+
+.ar-stat__num--tier {
+  color: var(--tier);
+  text-shadow: 0 0 22px var(--tier-glow);
+}
+
+.ar-stat__num--empty {
+  color: #4a5754;
+}
+
+.ar-stat__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7d918c;
+}
+
+.ar-stat--rarest .ar-stat__label {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
 
 .gp-card__top {
   display: flex;
@@ -261,14 +396,22 @@
   margin-top: auto;
 }
 
+/* An anchor now, not a button — the gate leads to a real route, and a link is
+   what gives it a middle-click, a hover target and a copyable address. */
 .gp-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   background: linear-gradient(135deg, #00ffcc, #8b5cf6);
   color: #000;
   border: none;
   border-radius: 6px;
+  min-height: 44px;
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
   transition: opacity 0.2s;
 }

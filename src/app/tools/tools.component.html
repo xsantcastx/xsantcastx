@@ -46,6 +46,30 @@
   </div>
 
   <!-- Active tag filter bar -->
+  <!-- ═════ REALM RAIL ═════
+       Five realms, each a different cut of the same registry. Selecting one
+       switches to the realm-grouped grid below. -->
+  <div class="realm-rail" role="group" aria-label="Browse by realm">
+    @for (realm of realms; track realm.id) {
+      <button
+        type="button"
+        class="realm-chip"
+        [class.realm-chip--active]="isRealmActive(realm.id)"
+        [attr.data-realm]="realm.id"
+        [style.--realm-color]="realm.color"
+        [style.--realm-glow]="realm.glow"
+        [attr.aria-pressed]="isRealmActive(realm.id)"
+        (click)="setRealm(realm.id)">
+        <span class="realm-chip__orb" aria-hidden="true"></span>
+        <span class="realm-chip__text">
+          <span class="realm-chip__name">{{ realm.name }}</span>
+          <span class="realm-chip__domain">{{ realm.domain }}</span>
+        </span>
+        <span class="realm-chip__count">{{ realmCount(realm) }}</span>
+      </button>
+    }
+  </div>
+
   @if (activeTag) {
     <div class="tools-filter-bar">
       <span class="tools-filter-bar__label">Filtered by:</span>
@@ -168,8 +192,27 @@
       </div>
     }
 
-    <div class="tools-grid">
-      @for (tool of filteredTools; track tool.id) {
+    <!-- Grouped by realm: a header with the realm's lore line, then its stars. -->
+    @for (group of realmGroups; track group.realm.id) {
+      <section
+        class="realm-section"
+        [attr.data-realm]="group.realm.id"
+        [style.--realm-color]="group.realm.color"
+        [style.--realm-glow]="group.realm.glow">
+        <header class="realm-section__head">
+          <span class="realm-section__orb" aria-hidden="true"></span>
+          <div class="realm-section__text">
+            <h2 class="realm-section__name">
+              {{ group.realm.name }}
+              <span class="realm-section__domain">{{ group.realm.domain }}</span>
+            </h2>
+            <p class="realm-section__quote">{{ group.realm.quote }}</p>
+          </div>
+          <span class="realm-section__count">{{ group.tools.length }}</span>
+        </header>
+
+        <div class="tools-grid">
+      @for (tool of group.tools; track tool.id) {
         <a
           class="tool-card"
           [class.tool-card--live]="tool.status === 'live'"
@@ -204,23 +247,25 @@
           </div>
         </a>
       }
-
-      @if (filteredTools.length === 0) {
-        <div class="tools-empty">
-          <span class="tools-empty__icon">◌</span>
-          @if (searchQuery) {
-            <p>No tools match "{{ searchQuery }}"</p>
-          }
-          @if (!searchQuery && activeTag) {
-            <p>No tools match the tag "{{ activeTag }}"</p>
-          }
-          @if (!searchQuery && !activeTag && activeCategory !== 'All') {
-            <p>No tools in "{{ activeCategory }}" yet</p>
-          }
-          <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
         </div>
-      }
-    </div>
+      </section>
+    }
+
+    @if (filteredTools.length === 0) {
+      <div class="tools-empty">
+        <span class="tools-empty__icon">◌</span>
+        @if (searchQuery) {
+          <p>No tools match "{{ searchQuery }}"</p>
+        }
+        @if (!searchQuery && activeTag) {
+          <p>No tools match the tag "{{ activeTag }}"</p>
+        }
+        @if (!searchQuery && !activeTag && activeCategory !== 'All') {
+          <p>No tools in "{{ activeCategory }}" yet</p>
+        }
+        <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
+      </div>
+    }
   }
 
   @if (warpingToolId) {

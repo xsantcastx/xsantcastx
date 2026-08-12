@@ -1,7 +1,8 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { BehaviorSubject } from 'rxjs';
 import { LazyFirestoreService } from '../lazy-firestore.service';
+import { BehaviorSubject } from 'rxjs';
+import { whenAppCheckReady } from '../../app-check.bootstrap';
 
 export interface MilestoneEvent {
   count: number;
@@ -41,6 +42,14 @@ export class VisitCounterService {
       return;
     }
 
+    // App Check now initializes on idle rather than at bootstrap, so this
+    // write — which fires from AppComponent.ngOnInit — would otherwise race
+    // ahead of it and go out without a token. Harmless while App Check
+    // enforcement is off, but it would silently break the counter the moment
+    // enforcement is switched on in the Firebase console. Waiting costs
+    // nothing here: the visit count is not on any rendering path.
+    await whenAppCheckReady();
+
     try {
       const handle = await this.lazyFirestore.get();
       if (!handle) return;
@@ -57,8 +66,8 @@ export class VisitCounterService {
 
       sessionStorage.setItem('visit-counted', '1');
 
-      // The transaction resolved outside the Angular zone (raw SDK), so push
-      // the subjects back inside it or subscribers never re-render.
+      // The transaction resolved against the raw SDK, outside the Angular
+      // zone — push the subjects back inside it or subscribers never repaint.
       this.lazyFirestore.runInZone(() => {
         this.visitCount$.next(newCount);
 

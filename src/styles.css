@@ -106,7 +106,26 @@
   --info-color: #7b61ff;
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Lore voice — the Godforge title and the realm quotes. Deliberately a
+     system stack and not a webfont: the two self-hosted families above are
+     the whole font budget (the Google Fonts CDN was removed to kill a
+     render-blocking third-party request), and the largest text on the home
+     page must not wait on a network fetch to paint. */
+  --font-lore: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
   --header-offset: 96px;
+
+  /* ===== Forge palette (Eclipse Realms) =====
+     The atmosphere layer over the cosmic palette. Warm, subterranean, and
+     used only by the Godforge surfaces — the realm accents themselves come
+     from REALMS in realm.model.ts, which paints --realm-color per station. */
+  --forge-ember: #E8752A;
+  --forge-gold: #C9A84C;
+  --forge-crimson: #8B2252;
+  /* Gold is 3.6:1 on the dark base — too low for body text, so text-weight
+     gold uses this lightened stop instead and the raw token stays for
+     borders, glows and rules where contrast rules do not apply. */
+  --forge-gold-text: #E0A857;
+  --forge-void: #0a0f1e;
 }
 
 /* ===== Resets ===== */
@@ -923,6 +942,31 @@ button.cta-button {
   color: #fff;
 }
 .share-btn--linkedin:hover { box-shadow: 0 6px 20px rgba(10,102,194,0.4); }
+
+/* Short aliases used by the tool pages (`share-btn--x` / `share-btn--li`).
+   Tool components define their own scoped `.share-btn` base, which resolves to
+   `.share-btn[_ngcontent-*]` (0,2,0) and outranks a bare `.share-btn--x` (0,1,0).
+   Qualifying with the element name lifts these to (0,2,1) so the brand colors win
+   regardless of stylesheet order. Every usage in the app is an `<a>`. */
+a.share-btn.share-btn--x {
+  background: #000;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+a.share-btn.share-btn--x:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+
+a.share-btn.share-btn--li {
+  background: #0a66c2;
+  color: #fff;
+  border-color: rgba(10, 102, 194, 0.45);
+}
+a.share-btn.share-btn--li:hover {
+  box-shadow: 0 6px 20px rgba(10, 102, 194, 0.4);
+  color: #fff;
+}
 
 /* ===== App shell ===== */
 app-root {
@@ -2032,8 +2076,8 @@ summary:focus-visible {
    35px tall.
 
    Scope note: WCAG 2.5.5 explicitly exempts targets inside a sentence, so
-   inline prose links (the email address on /contact, "the tools section" on
-   /games) are deliberately left alone — padding them to 44px would wreck the
+   inline prose links (the email address on /contact, "the tools" link on
+   /arena) are deliberately left alone — padding them to 44px would wreck the
    line boxes of the paragraphs they live in. Everything that is a standalone
    control gets the full target.
    ════════════════════════════════════════════════════════════════════════════ */
@@ -2328,4 +2372,127 @@ summary:focus-visible {
   iframe {
     max-width: 100%;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   REALM BADGE
+   RealmService writes data-realm and --realm-* onto <html> on every tool
+   route. All 126 tool pages already share <header class="tool-header"> with a
+   category eyebrow, so this single rule puts a realm badge beside every tool
+   title without touching a single tool template.
+   ════════════════════════════════════════════════════════════════════════ */
+html[data-realm] .tool-header__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+html[data-realm] .tool-header__eyebrow::after {
+  content: var(--realm-name);
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  color: var(--realm-color);
+  border: 1px solid color-mix(in srgb, var(--realm-color) 45%, transparent);
+  background: color-mix(in srgb, var(--realm-color) 10%, transparent);
+  box-shadow: 0 0 14px -4px var(--realm-glow);
+  /* Deliberately quiet — it labels the page, it does not compete with the
+     title sitting directly underneath it. */
+  opacity: 0.85;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GODFORGE COSMETICS
+
+   Bought in the Market, equipped per slot, and published by
+   EconomyWiringService as `data-cos-<slot>` attributes on <html>. Attributes
+   rather than classes so a rule can key on the *variant* — one selector per
+   look instead of one class per combination — and on the root rather than the
+   body so a cosmetic can reach the fixed layers that live outside <app-root>.
+
+   Every rule here is inert until something is bought. With nothing equipped no
+   attribute is present, no selector matches, and the site renders byte-for-byte
+   as it did before the economy existed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Cursor Trail ───────────────────────────────────────────────────────────
+   The engine picks a colour per particle from a five-entry brand array and
+   writes it inline. An `!important` declaration in a stylesheet outranks a
+   normal inline one, which is what lets a cosmetic override a value the engine
+   is already setting without touching the engine. */
+html[data-cos-trail="aether"]  .cosmic-trail-particle { --trail-color: #4dffe0 !important; }
+html[data-cos-trail="nox"]     .cosmic-trail-particle { --trail-color: #7b61ff !important; }
+html[data-cos-trail="eclipse"] .cosmic-trail-particle { --trail-color: #E8752A !important; }
+
+/* ─── Title Prefix ───────────────────────────────────────────────────────────
+   Rendered by the XP bar's rank title, from a custom property carrying an
+   already-quoted CSS string. `content` needs a string, and the wiring layer is
+   the only place that knows which variant is worn, so the quoting happens
+   there rather than being reconstructed here. */
+html[data-cos-prefix] .xpb__title::before,
+html[data-cos-prefix] .xpb__panel-title::before {
+  content: var(--cos-title-prefix, "");
+  color: #C9A84C;
+}
+
+/* ─── Theme Variant ──────────────────────────────────────────────────────────
+   Repoints the two brand variables the whole site already draws from, rather
+   than adding a tint layer. Zero new composited surfaces — which matters, since
+   the mobile pass in 2.1.0 exists specifically because this site had eight
+   fixed full-viewport layers on a phone.
+
+   Umbral is lightened from its realm colour (#8B2252) because that value is a
+   background on the realm rail, and as a foreground on a near-black page it
+   does not clear 4.5:1. */
+html[data-cos-theme="luminous"] { --primary-color: #E8D44D; --secondary-color: #C9A84C; }
+html[data-cos-theme="umbral"]   { --primary-color: #d4547f; --secondary-color: #8B2252; }
+html[data-cos-theme="verge"]    { --primary-color: #00d4ff; --secondary-color: #5fb6ff; }
+html[data-cos-theme="nexus"]    { --primary-color: #10B981; --secondary-color: #34d399; }
+
+/* ─── XP Bar Skin ────────────────────────────────────────────────────────────
+   Reaches into a component with emulated encapsulation on purpose. The
+   component's own `.xpb__fill` compiles to `.xpb__fill[_ngcontent-x]` at
+   specificity 0-2-0; an attribute on the root ahead of it makes these 0-2-1,
+   which is the smallest margin that wins without an `!important`. */
+html[data-cos-xpbar="ornate"] .xpb__track {
+  border: 1px solid rgba(201, 168, 76, .55);
+  box-shadow: 0 0 10px -3px rgba(201, 168, 76, .7);
+}
+html[data-cos-xpbar="ornate"] .xpb__fill { background: linear-gradient(90deg, #C9A84C, #ffd97a); }
+html[data-cos-xpbar="ornate"] .xpb__rank { box-shadow: 0 0 12px rgba(201, 168, 76, .8); }
+
+html[data-cos-xpbar="molten"] .xpb__fill { background: linear-gradient(90deg, #6d2a12, #E8752A 55%, #ffd97a); }
+html[data-cos-xpbar="molten"] .xpb__track { box-shadow: inset 0 0 8px rgba(232, 117, 42, .5); }
+html[data-cos-xpbar="molten"] .xpb__rank { box-shadow: 0 0 14px rgba(232, 117, 42, .85); }
+
+html[data-cos-xpbar="void"] .xpb__fill { background: linear-gradient(90deg, #2a1a4d, #7b61ff 60%, #ff6dd7); }
+html[data-cos-xpbar="void"] .xpb__track { background: rgba(20, 8, 40, .9); }
+html[data-cos-xpbar="void"] .xpb__rank { box-shadow: 0 0 14px rgba(123, 97, 255, .85); }
+
+/* ─── Achievement Frame ──────────────────────────────────────────────────────
+   Applied to found cards only. A locked card already carries the tier border
+   that says what it is worth, and framing the 130 a visitor has *not* earned
+   would turn a bought ornament into a wall of gold nobody reached. */
+html[data-cos-frame="golden"] .cx-card:not(.cx-card--locked) {
+  border-color: #C9A84C;
+  box-shadow: 0 0 0 1px rgba(201, 168, 76, .35), 0 0 24px -12px rgba(201, 168, 76, .9);
+}
+html[data-cos-frame="obsidian"] .cx-card:not(.cx-card--locked) {
+  border-color: #4b4160;
+  box-shadow: 0 0 0 1px rgba(20, 16, 32, .9), 0 6px 20px -10px rgba(0, 0, 0, .95);
+}
+html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
+  border-color: transparent;
+  /* Two backgrounds, clipped to the padding box and the border box in turn:
+     the card keeps its own surface and the gradient only paints the 1px ring. */
+  background-image:
+    linear-gradient(rgba(10, 6, 26, .92), rgba(10, 6, 26, .92)),
+    linear-gradient(135deg, #4dffe0, #7b61ff 40%, #ff6dd7 70%, #ffd97a);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }

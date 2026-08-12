@@ -41,81 +41,137 @@ export class PaymentService {
     { value: 50, label: '$50' }
   ];
 
+  /**
+   * In-flight/settled loader promises. Both SDKs are fetched on demand — see
+   * `ensureStripe()` / `ensurePayPal()` — and these fields make the call
+   * idempotent so N modal opens still produce exactly one <script> tag.
+   */
+  private stripeLoader?: Promise<boolean>;
+  private paypalLoader?: Promise<boolean>;
+
   constructor() {
-    if (this.isBrowser) {
-      this.initializePaymentSDKs();
-    }
+    // Deliberately empty. The payment SDKs are NOT loaded here.
+    //
+    // PaymentService is `providedIn: 'root'` and FooterComponent — which is
+    // app-shell mounted, i.e. present on every single route — injects it. So
+    // anything this constructor kicks off runs on the home page, on all 123
+    // tool pages, everywhere. It used to call initializePaymentSDKs(), which
+    // meant js.stripe.com/v3 (~818 kB) and the PayPal SDK were downloaded on
+    // every page view, competing for bandwidth with the LCP resource on
+    // throttled mobile, for a donation flow that only opens behind a click.
+    //
+    // Both SDKs are now pulled in lazily by ensureStripe()/ensurePayPal(),
+    // which the footer calls when the corresponding donate modal opens.
   }
 
-  private initializePaymentSDKs(): void {
-    this.loadPayPalSDK();
-    this.loadStripeSDK();
+  /**
+   * Fetch the PayPal SDK, once. Resolves true when `paypal` is usable.
+   *
+   * Safe to call repeatedly and from anywhere — the loader promise is cached,
+   * so concurrent callers share one network request.
+   */
+  ensurePayPal(): Promise<boolean> {
+    if (!this.isBrowser) return Promise.resolve(false);
+    if (this.paypalLoader) return this.paypalLoader;
+
+    this.paypalLoader = new Promise<boolean>(resolve => {
+      // Check if PayPal is configured with a real client ID
+      const clientId = environment.payments.paypal.clientId;
+      if (!clientId ||
+          clientId === '' ||
+          clientId.includes('YOUR_PAYPAL_CLIENT_ID') ||
+          clientId.includes('PLACEHOLDER')) {
+        console.log('PayPal not configured - skipping SDK load');
+        this.paypalLoaded.next(false);
+        resolve(false);
+        return;
+      }
+
+      // Check if already loaded
+      if (typeof paypal !== 'undefined') {
+        this.paypalLoaded.next(true);
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
+      script.async = true;
+      script.onload = () => {
+        this.paypalLoaded.next(true);
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load PayPal SDK');
+        this.paypalLoaded.next(false);
+        // Drop the cached rejection path so a later retry can re-attempt.
+        this.paypalLoader = undefined;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+
+    return this.paypalLoader;
   }
 
-  private loadPayPalSDK(): void {
-    // Check if PayPal is configured with a real client ID
-    const clientId = environment.payments.paypal.clientId;
-    if (!clientId || 
-        clientId === '' || 
-        clientId.includes('YOUR_PAYPAL_CLIENT_ID') || 
-        clientId.includes('PLACEHOLDER')) {
-      console.log('PayPal not configured - skipping SDK load');
-      this.paypalLoaded.next(false);
-      return;
-    }
+  /**
+   * Fetch the Stripe SDK, once. Resolves true when `this.stripe` is usable.
+   *
+   * Same contract as ensurePayPal(): idempotent, shared promise, and a failed
+   * load clears the cache so the next attempt can retry rather than being
+   * permanently stuck on a stale `false`.
+   */
+  ensureStripe(): Promise<boolean> {
+    if (!this.isBrowser) return Promise.resolve(false);
+    if (this.stripeLoader) return this.stripeLoader;
 
-    // Check if already loaded
-    if (typeof paypal !== 'undefined') {
-      this.paypalLoaded.next(true);
-      return;
-    }
+    this.stripeLoader = new Promise<boolean>(resolve => {
+      // Check if Stripe is configured with a real publishable key
+      const publishableKey = environment.payments.stripe.publishableKey;
+      if (!publishableKey ||
+          publishableKey === '' ||
+          publishableKey.includes('YOUR_STRIPE_PUBLISHABLE') ||
+          publishableKey.includes('PLACEHOLDER')) {
+        console.log('Stripe not configured - skipping SDK load');
+        this.stripeLoaded.next(false);
+        resolve(false);
+        return;
+      }
 
-    const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${environment.payments.paypal.clientId}&currency=USD`;
-    script.onload = () => {
-      this.paypalLoaded.next(true);
-    };
-    script.onerror = () => {
-      console.error('Failed to load PayPal SDK');
-      this.paypalLoaded.next(false);
-    };
-    document.head.appendChild(script);
-  }
+      // Check if already loaded
+      if (typeof Stripe !== 'undefined') {
+        this.stripe = Stripe(publishableKey);
+        this.stripeLoaded.next(true);
+        resolve(true);
+        return;
+      }
 
-  private loadStripeSDK(): void {
-    // Check if Stripe is configured with a real publishable key
-    const publishableKey = environment.payments.stripe.publishableKey;
-    if (!publishableKey || 
-        publishableKey === '' || 
-        publishableKey.includes('YOUR_STRIPE_PUBLISHABLE') || 
-        publishableKey.includes('PLACEHOLDER')) {
-      console.log('Stripe not configured - skipping SDK load');
-      this.stripeLoaded.next(false);
-      return;
-    }
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      script.onload = () => {
+        this.stripe = Stripe(publishableKey);
+        this.stripeLoaded.next(true);
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load Stripe SDK');
+        this.stripeLoaded.next(false);
+        this.stripeLoader = undefined;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
 
-    // Check if already loaded
-    if (typeof Stripe !== 'undefined') {
-      this.stripe = Stripe(environment.payments.stripe.publishableKey);
-      this.stripeLoaded.next(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/';
-    script.onload = () => {
-      this.stripe = Stripe(environment.payments.stripe.publishableKey);
-      this.stripeLoaded.next(true);
-    };
-    script.onerror = () => {
-      console.error('Failed to load Stripe SDK');
-      this.stripeLoaded.next(false);
-    };
-    document.head.appendChild(script);
+    return this.stripeLoader;
   }
 
   // PayPal payment processing
-  renderPayPalButton(containerId: string, amount: number): Promise<void> {
+  async renderPayPalButton(containerId: string, amount: number): Promise<void> {
+    // Pull the SDK in on demand. No-op once it has already loaded, so callers
+    // that pre-warmed via ensurePayPal() pay nothing extra here.
+    await this.ensurePayPal();
+
     return new Promise((resolve, reject) => {
       if (!this.paypalLoaded.value) {
         reject('PayPal SDK not loaded');
@@ -182,11 +238,14 @@ export class PaymentService {
       };
     }
 
+    // Pull the SDK in on demand — no-op if the modal already pre-warmed it.
+    await this.ensureStripe();
+
     // Check if Stripe SDK is loaded
     if (!this.stripeLoaded.value || !this.stripe) {
-      return { 
-        success: false, 
-        error: 'Stripe SDK failed to load. Please check your publishable key and try again.' 
+      return {
+        success: false,
+        error: 'Stripe SDK failed to load. Please check your publishable key and try again.'
       };
     }
 

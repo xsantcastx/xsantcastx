@@ -51,6 +51,16 @@ export class FooterComponent implements OnInit, OnDestroy {
   // Payment states
   paypalProcessing: boolean = false;
   stripeProcessing: boolean = false;
+  /**
+   * True while the corresponding SDK <script> is in flight. Distinguishes
+   * "fetching the SDK right now" from "SDK is unavailable", which used to be
+   * the same state because both SDKs were loaded eagerly at app start and so
+   * were essentially always either ready or broken. Now that the fetch starts
+   * when the modal opens, the template needs to tell those apart — otherwise
+   * every modal open flashes the "card portal is still tuning in" copy.
+   */
+  paypalSdkLoading: boolean = false;
+  stripeSdkLoading: boolean = false;
   selectedAmount: number = 10;
   customAmount: number | null = null;
   showCustomInput: boolean = false;
@@ -129,14 +139,36 @@ export class FooterComponent implements OnInit, OnDestroy {
     this.showCryptoModal = true;
   }
 
+  /**
+   * PaymentService no longer loads the payment SDKs in its constructor — the
+   * footer is app-shell mounted, so that pulled ~818 kB of Stripe plus the
+   * PayPal SDK onto every route for a flow that lives behind this click.
+   *
+   * Warming the SDK the moment the modal opens gives the fetch a head start
+   * while the user is still picking an amount, so by the time they hit the
+   * pay button it is almost always ready. `isPayPalReady`/`isStripeReady`
+   * still gate the button, and processPayPal/StripePayment await the same
+   * loader, so a slow network degrades to "button appears a beat later"
+   * rather than a failure.
+   */
   openPayPalDonate(): void {
     this.closeModals();
     this.showPayPalModal = true;
+    if (this.isPayPalReady) return;
+    this.paypalSdkLoading = true;
+    this.paymentService.ensurePayPal().finally(() => {
+      this.paypalSdkLoading = false;
+    });
   }
 
   openStripeDonate(): void {
     this.closeModals();
     this.showStripeModal = true;
+    if (this.isStripeReady) return;
+    this.stripeSdkLoading = true;
+    this.paymentService.ensureStripe().finally(() => {
+      this.stripeSdkLoading = false;
+    });
   }
 
   closeModals(): void {

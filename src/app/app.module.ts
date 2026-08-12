@@ -13,7 +13,6 @@ import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
-import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
 import { ScrollTrackingDirective } from './scroll-tracking.directive';
@@ -23,8 +22,14 @@ import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
-import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
+import { XpBarComponent } from './shared/gamification/xp-bar.component';
+import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
+import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
+import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
+import { QuestToastComponent } from './shared/quests/quest-toast.component';
+import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
+import { CurrencyRailComponent } from './shared/economy/currency-rail.component';
 
 
 @NgModule({
@@ -40,7 +45,6 @@ import { CommandPaletteComponent } from './shared/command-palette/command-palett
     FocusTrapDirective,
     EmbedBarComponent,
     MilestoneEffectComponent,
-    EggDiscoveryComponent,
     CommandPaletteComponent
   ],
   bootstrap: [AppComponent],
@@ -48,58 +52,49 @@ import { CommandPaletteComponent } from './shared/command-palette/command-palett
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    CommonModule
+    CommonModule,
+    // Standalone — imported here so the (non-standalone) HeaderComponent and
+    // AppComponent templates can use them without the module graph moving.
+    XpBarComponent,
+    AchievementDropComponent,
+    QuestDrawerComponent,
+    QuestTriggerComponent,
+    QuestToastComponent,
+    ForgeFlameComponent,
+    CurrencyRailComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    // Performance and AppCheck require browser APIs — skip on server.
-    //
-    // provideAnalytics() is gone: @angular/fire/analytics statically imports
-    // @angular/fire/auth (for UserTrackingService), which put the ~100 kB auth
-    // SDK in the initial chunk. AnalyticsService now loads `firebase/analytics`
-    // on demand instead, and AppTitleStrategy logs the page_view that
-    // ScreenTrackingService used to emit.
+    // Performance requires browser APIs — skip on server.
     ...(isBrowserEnv ? [
       providePerformance(() => getPerformance()),
-      provideAppCheck(() => {
-        const siteKey = environment.appCheck?.siteKey ?? '';
-        const rawDebugToken = environment.appCheck?.debugToken;
-        const debugToken =
-          rawDebugToken && rawDebugToken !== 'undefined' && rawDebugToken !== 'null'
-            ? rawDebugToken
-            : undefined;
-        const globalScope = globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: unknown; __xsantcastxAppCheck?: ReturnType<typeof initializeAppCheck> };
-
-        if (!siteKey || siteKey.startsWith('REPLACE_WITH')) {
-          console.warn('[AppModule] Firebase App Check site key is not configured. Update environment.appCheck.siteKey before deploying.');
-        }
-
-        if (debugToken) {
-          globalScope.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'auto' ? true : debugToken;
-        }
-
-        if (!globalScope.__xsantcastxAppCheck) {
-          globalScope.__xsantcastxAppCheck = initializeAppCheck(getApp(), {
-            provider: new ReCaptchaV3Provider(siteKey),
-            isTokenAutoRefreshEnabled: true
-          });
-        }
-
-        return globalScope.__xsantcastxAppCheck;
-      }),
+      // App Check is deliberately NOT provided here any more.
+      // provideAppCheck() runs during root-injector creation, and
+      // ReCaptchaV3Provider reacts by pulling ~333 kB of reCAPTCHA into every
+      // page load — including the 123 tool pages that show no captcha. It now
+      // initializes on the first idle callback instead; see
+      // app-check.bootstrap.ts for the rationale and for the consumers that
+      // await it before issuing Firebase traffic.
     ] as any[] : []),
-    // provideFirestore() is deliberately absent. It forced the ~450 kB
-    // Firestore SDK into the initial chunk even though nothing on first paint
-    // touches the database. Every consumer now goes through
-    // shared/lazy-firestore.service.ts, which dynamically imports
-    // `firebase/firestore` on first use — see that file for the details.
+    // Three more providers are deliberately absent, all for the same reason:
+    // having them in the root injector puts their SDK in the initial chunk,
+    // and nothing on first paint uses any of them.
     //
-    // provideAuth()/provideDatabase() live on the lazy /guestbook and
-    // /tools/pdf-generator routes for the same reason: that keeps
-    // @firebase/auth + re2js + the RTDB SDK out of the initial bundle.
-    // provideFunctions() removed for the same reason as provideAnalytics():
-    // @angular/fire/functions statically imports @angular/fire/auth.
-    // PaymentService imports `firebase/functions` on demand instead.
+    //   provideFirestore()  — the ~450 kB Firestore SDK, for a visit counter,
+    //                         a changelog and some counters that all run after
+    //                         hydration. Consumers go through
+    //                         shared/lazy-firestore.service.ts instead.
+    //   provideAnalytics()  — statically imports @angular/fire/auth (for
+    //                         UserTrackingService), which is what kept the auth
+    //                         SDK eager despite provideAuth() already being
+    //                         route-scoped. AnalyticsService imports
+    //                         `firebase/analytics` on demand. ScreenTracking's
+    //                         page_view now comes from AppTitleStrategy.
+    //   provideFunctions()  — same static auth import. PaymentService imports
+    //                         `firebase/functions` on demand.
+    //
+    // provideAuth()/provideDatabase() live on the lazy /guestbook, /admin and
+    // /tools/pdf-generator routes for the same reason.
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names
