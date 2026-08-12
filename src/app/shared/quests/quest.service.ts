@@ -169,7 +169,10 @@ export class QuestService {
     // The XP ledger backs four of the condition types. It is idempotent and the
     // header usually beat us to it, but the board must never render a level-0
     // epic just because nothing else happened to touch XP first.
-    this.xp.init();
+    // Fire-and-forget: every condition the board derives from XP is read through
+    // `snapshot$`, which republishes when hydration lands, so the board corrects
+    // itself rather than needing to block on storage here.
+    void this.xp.init();
     this.rollPeriods();
     this.publish();
 

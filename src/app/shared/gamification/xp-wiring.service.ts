@@ -36,10 +36,11 @@ export class XpWiringService {
     if (!this.isBrowser || this.started) return;
     this.started = true;
 
-    this.xp.init();
     // Everyone who used the site before the Bestiary existed still gets credit
-    // for the tools the XP ledger already knows they opened.
-    this.mastery.backfill(this.xp.toolsUsed);
+    // for the tools the XP ledger already knows they opened. This has to wait
+    // for hydration: `toolsUsed` reads the ledger once and never looks again, so
+    // backfilling before storage resolves would silently backfill nothing.
+    void this.xp.init().then(() => this.mastery.backfill(this.xp.toolsUsed));
 
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))

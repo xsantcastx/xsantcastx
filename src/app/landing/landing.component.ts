@@ -179,7 +179,9 @@ export class LandingComponent implements OnInit, OnDestroy {
 
     // No-ops on the server; on the client this reads stored progress and
     // settles the daily streak, then pushes the real rank into the hero.
-    this.xpService.init();
+    // Fire-and-forget: `hasForged` and `recommendedTool` are template getters, so
+    // the snapshot subscription below re-renders them once storage resolves.
+    void this.xpService.init();
     this.xpSub = this.xpService.snapshot$.subscribe(snap => { this.xp = snap; });
   }
 
