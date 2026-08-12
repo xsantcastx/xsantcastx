@@ -1,18 +1,15 @@
 /**
- * AdsenseComponent
- * ─────────────────
- * Renders a single responsive Google AdSense banner.
+ * AdsenseComponent — the landing-page ad slot.
  *
- * SETUP REQUIRED (one-time):
- *  1. Apply for Google AdSense at https://adsense.google.com.
- *  2. Once approved, replace ca-pub-XXXXXXXXXX in src/index.html AND
- *     set the real publisher ID in AD_CLIENT below.
- *  3. Create an ad unit in AdSense (or use Auto Ads) and replace
- *     AD_SLOT below with the numeric slot ID they provide.
+ * Renders the AdSense unit only when a real publisher id is configured (see
+ * ../ads/ad-config.ts); otherwise it renders the house "slot for sale" card.
+ * Suppressed entirely for Pro buyers, on dashboard routes, and while the boot
+ * curtain is up — see AdVisibilityService.
  *
- * Current placeholders:
- *   AD_CLIENT = 'ca-pub-XXXXXXXXXX'  →  swap after AdSense approval
- *   AD_SLOT   = '0000000000'         →  swap with real slot ID
+ * NOTE: the AdSense loader script in src/index.html is commented out and also
+ * carries the ca-pub-XXXXXXXXXX placeholder. Switching AdSense on means editing
+ * BOTH that script tag and ADSENSE in ad-config.ts — `requestAd()` here only
+ * queues a request; it cannot load the library.
  */
 import {
   Component,
@@ -22,69 +19,119 @@ import {
   PLATFORM_ID,
   Input,
   ElementRef,
-  ViewChild
+  ViewChild,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-
-const AD_CLIENT = 'ca-pub-XXXXXXXXXX';
-const AD_SLOT   = '0000000000';
+import { Subscription } from 'rxjs';
+import { AdVisibilityService } from '../ads/ad-visibility.service';
+import { HouseAdComponent } from '../ads/house-ad.component';
+import { activeAdNetwork, ADSENSE, AdNetwork } from '../ads/ad-config';
 
 @Component({
   selector: 'app-adsense',
   standalone: true,
+  imports: [HouseAdComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="adsense-wrap" #wrap [attr.aria-label]="label">
-      <span class="adsense-label">{{ label }}</span>
-      <ins class="adsbygoogle adsense-ins"
-           style="display:block"
-           [attr.data-ad-client]="adClient"
-           [attr.data-ad-slot]="adSlot"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
+    @if (visible) {
+      <div class="adsense-wrap" #wrap [attr.aria-label]="label">
+        @if (network === 'house') {
+          <app-house-ad
+            title="This slot is for sale"
+            body="The homepage unit — seen by everyone who lands here. One sponsor at a time."
+          ></app-house-ad>
+        } @else {
+          <span class="adsense-label">{{ label }}</span>
+          <ins
+            class="adsbygoogle adsense-ins"
+            style="display:block"
+            [attr.data-ad-client]="adClient"
+            [attr.data-ad-slot]="adSlot"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          ></ins>
+        }
+      </div>
+    }
   `,
-  styleUrls: ['./adsense.component.css']
+  styleUrls: ['./adsense.component.css'],
 })
 export class AdsenseComponent implements OnInit, OnDestroy {
   @Input() label = 'Advertisement';
-  @ViewChild('wrap', { static: true }) wrapEl!: ElementRef<HTMLDivElement>;
+  /** `static: false` — lives inside an @if, so it does not exist at ngOnInit. */
+  @ViewChild('wrap') wrapEl?: ElementRef<HTMLDivElement>;
 
-  adClient = AD_CLIENT;
-  adSlot   = AD_SLOT;
+  readonly network: AdNetwork = activeAdNetwork();
+  readonly adClient = ADSENSE.client;
+  readonly adSlot = ADSENSE.slot;
 
-  /** Kept so we can disconnect on destroy if the slot never scrolled in. */
+  visible = false;
+
   private observer?: IntersectionObserver;
+  private sub?: Subscription;
+  private requested = false;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private visibility: AdVisibilityService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
-    // This unit sits well below the fold on the landing page. Pushing to the
-    // adsbygoogle queue during ngOnInit makes AdSense fire its ad request as
-    // soon as its loader runs — during initial page load, for a slot the user
-    // cannot see. Wait until the slot approaches the viewport instead, so the
-    // ad request never competes with LCP resources.
+    this.sub = this.visibility.canShowAds$.subscribe(can => {
+      if (this.visible === can) return;
+      this.visible = can;
+      this.cdr.markForCheck();
+
+      if (!can) {
+        this.disconnect();
+        return;
+      }
+      if (this.network !== 'adsense') return;
+
+      queueMicrotask(() => this.observeSlot());
+    });
+  }
+
+  /**
+   * Defer the ad request until the slot approaches the viewport.
+   *
+   * This unit sits well below the fold on the landing page. Pushing to the
+   * adsbygoogle queue during ngOnInit makes AdSense fire its request as soon as
+   * its loader runs — during initial page load, for a slot the user cannot see.
+   */
+  private observeSlot(): void {
+    const el = this.wrapEl?.nativeElement;
+    if (!el || this.requested) return;
+
     if (typeof IntersectionObserver === 'undefined') {
       this.requestAd();
       return;
     }
 
-    this.observer = new IntersectionObserver(entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      this.disconnect();
-      this.requestAd();
-    }, { rootMargin: '200px' });
-
-    this.observer.observe(this.wrapEl.nativeElement);
+    this.observer = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        this.disconnect();
+        this.requestAd();
+      },
+      { rootMargin: '200px' },
+    );
+    this.observer.observe(el);
   }
 
   private requestAd(): void {
+    if (this.requested) return;
+    this.requested = true;
     try {
       const w = window as Window & { adsbygoogle?: unknown[] };
       (w.adsbygoogle = w.adsbygoogle || []).push({});
     } catch {
-      // AdSense script not yet loaded — safe to ignore during development
+      // Loader not present — expected while AdSense is unconfigured.
     }
   }
 
@@ -94,6 +141,7 @@ export class AdsenseComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.sub?.unsubscribe();
     this.disconnect();
   }
 }

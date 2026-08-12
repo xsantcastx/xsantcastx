@@ -700,6 +700,41 @@ export class EconomyService implements OnDestroy {
     return true;
   }
 
+  /**
+   * Unlock a cosmetic without charging for it, equipping a chosen variant.
+   *
+   * The Pro Pack's entitlement path. Kept separate from `buyCosmetic` rather
+   * than added as a `free` flag, because the two differ in more than price:
+   * a grant picks its own variant (the Pack promises a *golden* XP bar, not
+   * whichever variant happens to be listed first), and it must not publish a
+   * `purchase$` event — that stream drives the "you bought something" toast and
+   * the spending achievements, neither of which should fire for something the
+   * visitor was given.
+   *
+   * Idempotent on the cosmetic: re-granting an already-owned slot still moves
+   * the equipped variant, so a buyer who had bought the frame themselves and
+   * then bought Pro ends up wearing the Pro variant rather than silently
+   * getting nothing.
+   */
+  grantCosmetic(cosmeticId: string, variantId: string): boolean {
+    if (!this.isBrowser) return false;
+    const def = COSMETICS.find(c => c.id === cosmeticId);
+    if (!def) return false;
+    // Validate the variant against the catalogue rather than trusting the
+    // caller: an unknown id would otherwise be written into `equipped` and
+    // paint as a missing `data-cos-*` value forever.
+    if (!def.variants.some(v => v.id === variantId)) return false;
+
+    if (!this.ownsCosmetic(cosmeticId)) {
+      this.state.cosmetics = [...this.state.cosmetics, cosmeticId];
+    }
+    this.state.equipped = { ...this.state.equipped, [def.slot]: variantId };
+
+    this.flush();
+    this.publish();
+    return true;
+  }
+
   /** Switch (or clear, with null) the variant in an owned cosmetic's slot. */
   equip(cosmeticId: string, variantId: string | null): boolean {
     if (!this.isBrowser) return false;

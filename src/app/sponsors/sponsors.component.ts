@@ -87,6 +87,40 @@ const MEDIA_KIT = {
     'Traffic figures are shared directly from the analytics dashboard when you get in touch — no inflated public estimates.',
   /** Contact address for booking */
   contactEmail: 'xsantcastx@xsantcastx.com',
+  /** Typical turnaround quoted in the contact section. */
+  replyWindow: 'same day, usually within a few hours',
+} as const;
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUDIENCE NUMBERS — READ BEFORE FLIPPING THIS TO TRUE
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `AUDIENCE_VERIFIED` gates whether the figures in `PENDING_AUDIENCE` below are
+ * published on the page. It is false, and it must stay false until the owner
+ * has opened the analytics property and confirmed each number against a real
+ * reporting window.
+ *
+ * Why the gate exists rather than just pasting the numbers in:
+ * these figures are shown to people deciding whether to send money. Publishing
+ * an unconfirmed traffic claim to a prospective advertiser is misrepresentation
+ * even when the number turns out to be right, because at the moment of
+ * publishing nobody had checked. The rest of this file is built on the same
+ * principle — every `value: null` renders "on request" instead of a guess.
+ *
+ * TO PUBLISH:
+ *   1. Open the analytics dashboard and pick a full, closed reporting window.
+ *   2. Correct any figure in PENDING_AUDIENCE that does not match it.
+ *   3. Set `sourceNote` to name the window, e.g. "Plausible, Jul 2026".
+ *   4. Flip AUDIENCE_VERIFIED to true.
+ *
+ * The values below were supplied by the owner ahead of that check. They are
+ * recorded here so the work is not lost, NOT because they have been verified.
+ */
+const AUDIENCE_VERIFIED = false;
+
+const PENDING_AUDIENCE = {
+  dailyActiveUsers: 246,
+  dayOneRetentionPct: 50,
 } as const;
 
 @Component({
@@ -99,6 +133,7 @@ const MEDIA_KIT = {
 export class SponsorsComponent {
   readonly contactEmail = MEDIA_KIT.contactEmail;
   readonly sourceNote = MEDIA_KIT.sourceNote;
+  readonly replyWindow = MEDIA_KIT.replyWindow;
 
   /** Prefilled booking mail link — keeps the first message useful. */
   readonly bookingMailto: string;
@@ -132,6 +167,22 @@ export class SponsorsComponent {
       suffix: '',
       hint: 'Opted in for one new tool a week',
       color: '#a48bff',
+    },
+    // The two figures below stay null until AUDIENCE_VERIFIED is flipped —
+    // see the block comment on that constant.
+    {
+      label: 'Daily active users',
+      value: AUDIENCE_VERIFIED ? PENDING_AUDIENCE.dailyActiveUsers : null,
+      suffix: '+',
+      hint: 'People who opened a tool that day',
+      color: '#4dffe0',
+    },
+    {
+      label: 'Day 1 retention',
+      value: AUDIENCE_VERIFIED ? PENDING_AUDIENCE.dayOneRetentionPct : null,
+      suffix: '%',
+      hint: 'Came back the day after their first visit',
+      color: '#7fd5a3',
     },
   ];
 
@@ -237,7 +288,10 @@ export class SponsorsComponent {
     {
       id: 'single',
       name: 'Single category',
-      priceUsd: null,
+      // Unlike the audience figures, this is a decision rather than a
+      // measurement: it is the owner's asking price, so publishing it is not a
+      // claim about the world that could turn out to be false.
+      priceUsd: 200,
       blurb: 'One placement family, one month.',
       features: [
         'Your card on every tool in one category',
@@ -251,7 +305,10 @@ export class SponsorsComponent {
     {
       id: 'network',
       name: 'Whole network',
-      priceUsd: null,
+      // Five categories at the single rate would be $1,000; the bundle is
+      // priced at $750 so taking the whole network is the obvious move for
+      // anyone considering more than two.
+      priceUsd: 750,
       blurb: 'Every category, every wired tool page.',
       features: [
         'All five in-content placement families',

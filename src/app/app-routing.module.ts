@@ -278,6 +278,65 @@ const routes: Routes = [
       }
     },
   {
+      path: 'pro',
+      loadComponent: () => import('./pro/pro.component').then(m => m.ProComponent),
+      title: 'The Godforge Pro Pack — $9 once, no subscription',
+      data: {
+        description: 'Remove every ad, double your XP permanently, and unlock exclusive cosmetics for a single $9 payment. No subscription, no account, 30-day refund. All 123+ developer tools stay free.',
+        keywords: 'godforge pro, ad-free developer tools, one time payment, no subscription, lifetime access, pro pack, support indie developer',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          '@id': `${SITE_URL}/pro`,
+          url: `${SITE_URL}/pro`,
+          name: 'The Godforge Pro Pack',
+          description: 'A one-time $9 upgrade for xsantcastx.com: ad-free browsing, a permanent 2x XP multiplier, bonus currency, exclusive cosmetics and early access to new tools.',
+          category: 'Software Upgrade',
+          brand: { '@type': 'Brand', name: 'The Godforge' },
+          // A real Offer with a real price — unlike /sponsors, this rate card
+          // IS public, so the structured data can carry it.
+          offers: {
+            '@type': 'Offer',
+            price: '9.00',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            url: `${SITE_URL}/pro`,
+          },
+          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
+          mainEntity: {
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'Is the Godforge Pro Pack a subscription?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'No. It is one payment of $9, once, forever. There is no renewal, no card kept on file, and no way for it to charge you a second time.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'Do the free tools stay free?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes. All 123+ tools stay free, unlimited and account-free. Pro removes ads and adds cosmetics and progression — it does not put a wall in front of anything that works today.'
+                }
+              },
+              {
+                '@type': 'Question',
+                name: 'Can I get a refund?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes — email xsantcastx@xsantcastx.com within 30 days for a full refund, no reason needed. LemonSqueezy processes it as merchant of record.'
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+  {
       path: 'sponsors',
       loadComponent: () => import('./sponsors/sponsors.component').then(m => m.SponsorsComponent),
       title: 'Sponsor The Godforge',

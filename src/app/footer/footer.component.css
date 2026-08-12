@@ -1010,3 +1010,15 @@ footer::after {
     font-size: 14px;
   }
 }
+
+/* The only paid link in the footer, so the only gold one. Matches the /pro
+   palette (--pro-gold) rather than introducing a new colour. */
+.gffoot__link--pro {
+  color: #F5C451;
+}
+
+.gffoot__link--pro:hover,
+.gffoot__link--pro:focus-visible {
+  color: #FFE9A8;
+  text-shadow: 0 0 12px rgba(245, 196, 81, 0.6);
+}
