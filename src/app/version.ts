@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.9.0',
-  buildDate: '2026-08-11',
+  version: '2.10.0',
+  buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Patron',
+  codename: 'Lean',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.10.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The initial JavaScript download is 44% smaller — 408 kB to 230 kB gzipped — with no visible change to the site',
+      'The Firestore SDK was the single largest thing on the page and nothing on first paint used it; it now downloads on demand, the first time something actually reads or writes the database',
+      'Firebase Auth was riding along in the initial bundle too, pulled in statically by the Analytics and Functions wrappers rather than by anything that signs a user in',
+      'Nine pages — home, skills, projects, contact, donate, live, mcp, games and the 404 — were bundled into every visit regardless of where you landed. Each is now fetched only when you open it, which matters most on tool pages, where the search traffic arrives',
+      'Deleted twelve components and services left over from an old crypto-portfolio scaffold, plus two byte-identical copies of the social-share image',
+      'Bundle budgets now fail the build if the initial download creeps back up'
+    ]
+  },
   {
     version: '2.9.0',
     codename: 'Patron',
