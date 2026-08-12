@@ -45,6 +45,7 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { FirestoreHandle, LazyFirestoreService } from '../lazy-firestore.service';
+import { CACHE_TTL, FirestoreCacheService } from '../firestore-cache.service';
 import {
   CLOUD_WRITE_INTERVAL_MS,
   FirestoreAdapter,
@@ -122,6 +123,7 @@ interface AuthUser {
 export class CloudSaveService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly lazyFirestore = inject(LazyFirestoreService);
+  private readonly cache = inject(FirestoreCacheService);
   private readonly progress = inject(ProgressStorageService);
   private readonly eggs = inject(EasterEggService);
   private readonly zone = inject(NgZone);
@@ -395,6 +397,30 @@ export class CloudSaveService {
     const local = readParsed(blob.key);
     const localRaw = JSON.stringify(local);
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // The read this device does not have to make
+    // ─────────────────────────────────────────────────────────────────────────
+    // Binding reads every blob, and binding happens on every page load — eleven
+    // document reads per navigation for a signed-in visitor, which on a site
+    // people move around costs more than the sync itself does.
+    //
+    // Most of those reads answer "has anything changed?" with "no". If this
+    // device pushed a blob a moment ago and the local copy has not moved since,
+    // then the cloud copy is byte-for-byte what we put there, and there is
+    // nothing to merge and nothing to write.
+    //
+    // The skip is only taken on the path where this device would write nothing.
+    // That is what makes it safe: a stale read followed by a write would merge
+    // against an old remote and `setDoc` the result over whatever a second
+    // device had added in between — real data loss. A stale read followed by no
+    // write can only ever mean this device notices another device's progress one
+    // page load later than it might have.
+    const fingerprint = this.cache.get<string>(this.blobKey(uid, blob));
+    if (fingerprint === localRaw) {
+      this.pushed.set(blob.key, localRaw);
+      return false;
+    }
+
     const snap = await fs.api.getDoc(ref);
     const remote = snap.exists() ? unwrapBlob(snap.data()) : null;
 
@@ -430,7 +456,15 @@ export class CloudSaveService {
       await fs.api.setDoc(ref, wrapBlob(merged));
     }
     this.pushed.set(blob.key, mergedRaw);
+    // Local and cloud now agree on exactly this payload. Recording it lets the
+    // next page load inside the TTL skip the read above — see the note there.
+    this.cache.set(this.blobKey(uid, blob), mergedRaw, CACHE_TTL.cloudSave);
     return moved;
+  }
+
+  /** Cache key for one blob's agreed-with-cloud fingerprint, scoped per account. */
+  private blobKey(uid: string, blob: SyncedBlob): string {
+    return `cloud-save/${uid}/${blob.collection}/${blob.doc}`;
   }
 
   /** Is this tab still allowed to restart itself to pick up cloud state? */
@@ -536,6 +570,8 @@ export class CloudSaveService {
         const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
         await fs.api.setDoc(ref, wrapBlob(JSON.parse(raw)));
         this.pushed.set(blob.key, raw);
+        // Keeps the bind-time read skip honest: what is up there is now `raw`.
+        this.cache.set(this.blobKey(uid, blob), raw, CACHE_TTL.cloudSave);
       }
       this.markSynced();
     } catch (err) {
@@ -562,6 +598,10 @@ export class CloudSaveService {
     this.status$$.next({ ...this.status, state: 'syncing', error: null });
     try {
       this.pushed.clear();
+      // Re-merging is the whole point of retry, so every read-skip fingerprint
+      // has to go with it — otherwise this would re-run the bind and skip the
+      // very reads it is being asked to make again.
+      this.cache.bustPrefix(`cloud-save/${uid}/`);
       await this.bind({ uid, email, displayName, photoURL });
     } catch (err) {
       this.fail(err);

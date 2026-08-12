@@ -5,7 +5,10 @@
       @for (donation of donations; track donation) {
         <div class="feed-item">
           <p class="message">"{{ donation.message }}"</p>
-          <p class="timestamp">{{ donation.createdAt.toDate() | date:'short' }}</p>
+          <!-- An ISO string, not a Firestore Timestamp: the feed is cached, and
+               a Timestamp does not survive the round trip through JSON. The
+               date pipe parses the string directly. -->
+          <p class="timestamp">{{ donation.createdAt | date:'short' }}</p>
         </div>
       }
     </div>

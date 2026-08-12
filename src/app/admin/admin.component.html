@@ -51,6 +51,13 @@
         <p class="adm-sub">Engagement, activity and system health for xsantcastx.com</p>
       </div>
       <div class="adm-head__right">
+        <!-- These panels are whole-collection scans and are cached for five
+             minutes; this is how the owner asks for them fresh. -->
+        <span class="adm-updated">Last updated: {{ lastUpdatedLabel }}</span>
+        <button type="button" class="adm-refresh" (click)="refresh()" [disabled]="refreshing">
+          <span class="adm-refresh__glyph" [class.adm-refresh__glyph--spin]="refreshing" aria-hidden="true">&#8635;</span>
+          {{ refreshing ? 'Refreshing' : 'Refresh' }}
+        </button>
         <span class="adm-who">{{ user?.email }}</span>
         <button type="button" class="adm-signout" (click)="signOutNow()">Sign out</button>
       </div>
@@ -248,12 +255,19 @@
             </div>
 
             <ul *ngSwitchCase="'ready'" class="adm-eggs">
-              <li class="adm-egg" *ngFor="let e of eggs.data; trackBy: trackEgg"
+              <!-- 139 eggs; ten at a time. The list is sorted by discoveries, so
+                   the first page is the part anybody actually reads. -->
+              <li class="adm-egg" *ngFor="let e of (eggs.data || []).slice(0, eggsShown); trackBy: trackEgg"
                   [class.adm-egg--cold]="e.discoveries === 0">
                 <span class="adm-egg__icon" aria-hidden="true">{{ e.icon }}</span>
                 <span class="adm-egg__name">{{ e.name }}</span>
                 <span class="adm-egg__rarity" [attr.data-rarity]="e.rarity">{{ e.rarity }}</span>
                 <span class="adm-egg__count">{{ num(e.discoveries) }}</span>
+              </li>
+              <li *ngIf="(eggs.data || []).length > eggsShown" class="adm-more">
+                <button type="button" class="adm-more__btn" (click)="showMoreEggs()">
+                  Show more &mdash; {{ (eggs.data || []).length - eggsShown }} remaining
+                </button>
               </li>
             </ul>
 
@@ -308,7 +322,7 @@
             </div>
 
             <ul *ngSwitchCase="'ready'" class="adm-sugs">
-              <li class="adm-sug" *ngFor="let s of suggestions.data; trackBy: trackSuggestion"
+              <li class="adm-sug" *ngFor="let s of (suggestions.data || []).slice(0, suggestionsShown); trackBy: trackSuggestion"
                   [attr.data-review]="s.review || 'new'">
                 <div class="adm-sug__top">
                   <h4 class="adm-sug__name">{{ s.name }}</h4>
@@ -331,6 +345,11 @@
                           [disabled]="busySuggestion === s.id"
                           (click)="review(s, 'rejected')">Reject</button>
                 </div>
+              </li>
+              <li *ngIf="(suggestions.data || []).length > suggestionsShown" class="adm-more">
+                <button type="button" class="adm-more__btn" (click)="showMoreSuggestions()">
+                  Show more &mdash; {{ (suggestions.data || []).length - suggestionsShown }} remaining
+                </button>
               </li>
             </ul>
 
