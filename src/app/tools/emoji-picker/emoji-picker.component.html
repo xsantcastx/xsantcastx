@@ -4,8 +4,12 @@
     {{ translate('tools.common.backToTools') }}
   </button>
 
-  <header class="ep-header">
-    <p class="ep-header__eyebrow">{{ translate('tools.common.cat.productivity') }}</p>
+  <!-- The shared `tool-header` / `tool-header__eyebrow` classes sit alongside the
+       ep-* ones on purpose: RealmService writes data-realm onto <html> and a single
+       global rule hangs the realm badge off `.tool-header__eyebrow::after`. Without
+       these classes this was the only one of the 128 tools with no realm badge. -->
+  <header class="tool-header ep-header">
+    <p class="tool-header__eyebrow ep-header__eyebrow">{{ translate('tools.common.cat.productivity') }}</p>
     <h1 class="ep-header__title">{{ translate('tools.emojiPicker.title') }}</h1>
     <p class="ep-header__subtitle">{{ translate('tools.emojiPicker.subtitle') }}</p>
     <div class="ep-header__share">
