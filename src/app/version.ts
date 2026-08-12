@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.32.0',
+  version: '2.33.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'The True Face',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.32.0',
+    version: '2.33.0',
     codename: 'The True Face',
     date: '2026-08-12',
     highlights: [
@@ -45,6 +45,22 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'The icons are lit rather than pasted. The Flame breathes, the rank you hold glows while the ranks above it stay dark stone, and the rarity ladder escalates from an inert Mortal to a Singular that cycles through the whole spectrum — every one of them holding a static end state when the visitor asks for reduced motion',
       'Ranks read as progress at a glance: the Codex path shows all ten sigils with the earned ones lit and the rest greyed, and the Forge Keeper crest carries the painted sigil inside the ring whose point count already encoded the rank',
     ],
+  },
+  {
+    version: '2.32.0',
+    codename: 'Unbroken',
+    date: '2026-08-12',
+    highlights: [
+      'The Forge Flame counts combos. Consecutive strikes stack a multiplier beside the ember, and ten rungs escalate from a purple "COMBO x10!" through ON FIRE, UNSTOPPABLE and GODFORGE AWAKENS to THE FIRST SUN SHATTERS at x9,999',
+      'The strike itself pitches up as the ladder climbs — same anvil, struck harder — and the upper rungs each add a channel rather than just volume: an overtone, a decay tail, a bass impact under a high ring, and finally an ascending arpeggio onto a held chord',
+      'The screen escalates with it. Purple along the viewport edges from x50, a hard shake at x100, the ember doubling at x250, a full vignette from x500, a bright frame at x1,000 and a whiteout into flooding purple at x5,000',
+      'Two seconds of silence ends a run. Against the existing 500ms strike cooldown that leaves 1.5s of slack per strike and caps the rate at two a second — which is what makes x9,999 mean something: 83 minutes of unbroken rhythm, and one missed beat puts it back to zero',
+      'At exactly x666 the screen inverts for a fifth of a second, a detuned rumble rolls under a chain, and THE NAMELESS STIRS. Once, ever — the achievement is the gate, so a second run past it passes in silence',
+      'Eight new achievements, from Rapid Strike at x10 to First Sun Shatter at the cap, the only ones on the wall priced in time held rather than in a thing done',
+      'Every screen-level effect is switched off under prefers-reduced-motion — the counter, the shouts and all eight achievements remain, so the ladder is fully collectable without a single flash',
+      'Fixed a floater that could swallow a strike: the "+1" rising off the ember is a sibling of the button with pointer events on, and at two strikes a second there is always one crossing the target',
+      'Fixed the reduced-motion floater fade, which had never once run — Angular scopes @keyframes per component but leaves an animation reference inside a @media block unscoped, so it pointed at a name that did not exist'
+    ]
   },
   {
     version: '2.31.0',
