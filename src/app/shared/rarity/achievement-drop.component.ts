@@ -130,7 +130,11 @@ interface Drop {
         rgba(8, 5, 20, 0.95);
       box-shadow: 0 0 32px -10px var(--tier-glow), 0 18px 44px -16px rgba(0,0,0,.85);
       cursor: pointer;
-      opacity: 0; transform: translateY(18px) scale(.96);
+      /* Slides in from the right. Safe here specifically because this card is
+         already right-anchored and stacked above the flame — the travel stays
+         inside its own corner instead of sweeping across the flame's hit area
+         on the way in. */
+      opacity: 0; transform: translateX(26px) scale(.96);
       transition: opacity .38s ease, transform .38s cubic-bezier(.34, 1.56, .64, 1);
     }
     .ad--on { opacity: 1; transform: none; }
