@@ -487,9 +487,21 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.idleTimer = setTimeout(() => this.stopPolling(), LiveComponent.IDLE_MS);
   }
 
-  /** Bring every feed up. Idempotent, so both wake paths can call it freely. */
+  /**
+   * Bring every feed up. Idempotent, so both wake paths can call it freely.
+   *
+   * The visibility check is here rather than only in the `visibilitychange`
+   * handler because that event fires on a *change*: a page opened in a
+   * background tab — a middle-click, a restored session, a link opened behind
+   * the current window — mounts already hidden and never fires it, and would
+   * otherwise poll to an empty room until the visitor happened to look.
+   */
   private startPolling(): void {
     if (this.polling) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      this.paused = true;
+      return;
+    }
     this.polling = true;
     this.paused = false;
 
