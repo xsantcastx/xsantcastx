@@ -188,15 +188,6 @@ export const SECRETS: SecretDefinition[] = [
     route: '/arena',
   },
   {
-    id: 'guestbook-wall',
-    group: 'hidden-pages',
-    name: 'The Visitor Constellation',
-    reveal: 'A wall anyone can sign. Every name on it is a star that passed through.',
-    clue: 'Somewhere there is a wall with other people\'s names on it, and room for yours. Nothing in the navigation points at it.',
-    tier: 'mortal',
-    route: '/guestbook',
-  },
-  {
     id: 'blueprint-room',
     group: 'hidden-pages',
     name: 'The Open Blueprint',
