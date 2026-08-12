@@ -1,0 +1,104 @@
+<div class="quests-page">
+
+  <header class="quests-header">
+    <p class="quests-eyebrow"><span class="quests-eyebrow__pulse"></span>Mission Board</p>
+    <h1 class="quests-title">The Standing Orders</h1>
+    <p class="quests-tagline">what the realms are asking of you today, this week, and once</p>
+
+    <dl class="quests-stats">
+      <div>
+        <dt>This week</dt>
+        <dd>{{ board.completedThisWeek }}</dd>
+      </div>
+      <div>
+        <dt>All time</dt>
+        <dd>{{ board.totalCompleted }}</dd>
+      </div>
+      <div>
+        <dt>Epics cleared</dt>
+        <dd>{{ epicCleared }}/{{ board.epic.length }}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- Daily -->
+  <section class="quests-section">
+    <div class="quests-section__head">
+      <h2 class="quests-section__title">Daily</h2>
+      <span class="quests-section__timer">Resets in {{ dailyCountdown }}</span>
+    </div>
+    <p class="quests-section__note">Three drawn from thirty. Everyone in the realms is given the same three today.</p>
+    <div class="quests-grid">
+      @for (q of board.daily; track q.id) {
+        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
+      }
+    </div>
+  </section>
+
+  <!-- Weekly -->
+  <section class="quests-section">
+    <div class="quests-section__head">
+      <h2 class="quests-section__title">Weekly</h2>
+      <span class="quests-section__timer">Resets in {{ weeklyCountdown }}</span>
+    </div>
+    <p class="quests-section__note">Two that will not fit in one sitting. The board redraws on Monday.</p>
+    <div class="quests-grid">
+      @for (q of board.weekly; track q.id) {
+        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
+      }
+    </div>
+  </section>
+
+  <!-- Epic -->
+  <section class="quests-section quests-section--epic">
+    <div class="quests-section__head">
+      <h2 class="quests-section__title">Epic</h2>
+      <span class="quests-section__timer">No clock</span>
+    </div>
+    <p class="quests-section__note">The storyline. Cleared once, and it stays cleared.</p>
+    <div class="quests-grid">
+      @for (q of board.epic; track q.id) {
+        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
+      }
+    </div>
+  </section>
+
+  <!-- History -->
+  <section class="quests-section">
+    <button
+      type="button"
+      class="quests-history__toggle"
+      (click)="toggleHistory()"
+      [attr.aria-expanded]="historyOpen">
+      <span class="quests-history__chevron" [class.quests-history__chevron--open]="historyOpen" aria-hidden="true">&#9656;</span>
+      Completed quests
+      <span class="quests-history__count">{{ board.log.length }}</span>
+    </button>
+
+    @if (historyOpen) {
+      <div class="quests-history">
+        @for (day of history; track day.label) {
+          <div class="quests-history__day">
+            <h3 class="quests-history__label">{{ day.label }}<span>+{{ day.xp }} XP</span></h3>
+            <ul class="quests-history__list">
+              @for (entry of day.entries; track entry.at) {
+                <li>
+                  <span class="quests-history__name">{{ entry.title }}</span>
+                  <span class="quests-history__type">{{ entry.type }}</span>
+                  <span class="quests-history__xp">+{{ entry.xp }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        } @empty {
+          <p class="quests-history__empty">Nothing yet. The board is waiting.</p>
+        }
+      </div>
+    }
+  </section>
+
+  <p class="quests-whisper">between light and shadow, the soul remembers both</p>
+
+  <a routerLink="/tools" class="quests-cta">Walk the realms &rarr;</a>
+
+</div>
