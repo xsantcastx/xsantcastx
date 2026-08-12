@@ -36,7 +36,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { EconomyService, EconomySnapshot } from './economy.service';
-import { formatCurrency, formatRate } from './economy.model';
+import { formatCompact, formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { IdleService } from '../idle/idle.service';
 import { ComboEvent, ComboService, ComboSnapshot } from './combo.service';
@@ -114,6 +114,7 @@ interface Shout {
       [class.ff--quake]="quaking"
       [class.ff--shake]="shaking"
       [class.ff--swell]="swelling"
+      [class.ff--auto]="autoBeat"
       [class.ff--still]="reducedMotion">
 
       @for (s of shouts; track s.key) {
@@ -142,7 +143,10 @@ interface Shout {
            and the long-press-free path is the Market link inside it. -->
       <div class="ff__hud" [class.ff__hud--open]="hudOpen" aria-hidden="true">
         <span class="ff__hud-gold">{{ gold }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"></span>
-        <span class="ff__hud-rate">+{{ rate }}/min</span>
+        <span class="ff__hud-rate">+{{ rate }}/sec</span>
+        @if (snap.autoPerSecond > 0) {
+          <span class="ff__hud-auto">⚙ Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'click' : 'clicks' }}/sec</span>
+        }
         <span class="ff__hud-hint">Click to forge</span>
         @if (snap.essence > 0) {
           <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
@@ -378,6 +382,7 @@ interface Shout {
     .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #ffd97a; }
     .ff__hud-coin { width: 13px; height: 13px; vertical-align: -2px; }
     .ff__hud-rate { font-size: 11px; color: #A78BFA; }
+    .ff__hud-auto { font-size: 11px; color: #7fd5a3; }
     .ff__hud-essence { font-size: 11px; color: #c48bff; }
     .ff__hud-hint { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
     .ff__hud-market {
@@ -562,6 +567,21 @@ interface Shout {
       100% { opacity: 0;   transform: scale(1.3); }
     }
 
+    /* ── The automatons ───────────────────────────────────────────────────
+       One dip a second while anything is striking for you: the same squash the
+       button makes under a real click, at a third of the depth so it reads as
+       "something is working here" rather than as a click you did not make.
+
+       Deliberately one beat a second at any rate. An Eclipse Automaton throws
+       twenty strikes a second, and animating twenty is a strobe nobody can
+       count — the number is on the HUD, where it can be read. */
+    .ff--auto .ff__btn { animation: ffAuto .5s cubic-bezier(.22, 1, .36, 1); }
+    @keyframes ffAuto {
+      0%   { transform: scale(1); }
+      28%  { transform: scale(.955); }
+      100% { transform: scale(1); }
+    }
+
     /* Eclipse Hammer: the realm flinches. Shakes the flame, not the page —
        shaking the document would move every fixed element on the site. */
     .ff--quake .ff__btn { animation: ffQuake .34s ease-in-out; }
@@ -639,7 +659,7 @@ interface Shout {
          that were ever a problem. The whole screen layer is removed rather
          than dimmed: there is no gentler version of a full-viewport flash. */
       .fx { display: none; }
-      .ff--shake .ff__btn, .ff--swell .ff__btn { animation: none; }
+      .ff--shake .ff__btn, .ff--swell .ff__btn, .ff--auto .ff__btn { animation: none; }
       .ff__combo { animation: none; }
       .ff[data-combo] .ff__core { animation: none !important; }
     }
@@ -673,6 +693,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   burst: ComboEffect | 'invert' | null = null;
   shaking = false;
   swelling = false;
+  /** One dip a second while the automatons are running. */
+  autoBeat = false;
   /** Mounts the site-wide confetti hook for one beat at the top of the ladder. */
   shattered = false;
 
@@ -698,6 +720,11 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
 
     this.subs.add(this.comboSvc.event$.subscribe(e => this.onComboEvent(e)));
 
+    // The automatons, made visible. This fires once a second whatever the rate,
+    // and only when the tab is in front — the service does not emit at all on a
+    // hidden one, so nothing here is animating into a background tab.
+    this.subs.add(this.economy.autoStrike$.subscribe(() => this.onAutoStrike()));
+
     if (this.isBrowser) {
       this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     }
@@ -711,11 +738,33 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
 
   get gold(): string { return formatCurrency(this.snap.gold); }
   get essence(): string { return formatCurrency(this.snap.essence); }
-  get rate(): string { return formatRate(this.snap.perMinute); }
+  get rate(): string { return formatCompact(this.snap.perSecond); }
+  get autoRate(): string { return formatRate(this.snap.autoPerSecond); }
 
   get label(): string {
-    return `The Forge Flame. ${formatCurrency(this.snap.gold)} Gold, earning ${this.rate} per minute. `
-      + `Strike for ${this.snap.perClick} Gold.`;
+    const auto = this.snap.autoPerSecond > 0
+      ? ` ${this.autoRate} automatic strikes a second.`
+      : '';
+    return `The Forge Flame. ${formatCurrency(this.snap.gold)} Gold, earning ${this.rate} a second. `
+      + `Strike for ${this.snap.perClick} Gold.${auto}`;
+  }
+
+  /**
+   * One beat of the automatons.
+   *
+   * A dip and two sparks — no floater, no sound, no combo. The Gold is already
+   * in the per-second rate and has already been paid; this is the forge looking
+   * busy, which is the only thing a machine you bought should be allowed to
+   * take from the Flame's vocabulary. Skipped under reduced motion, where a
+   * once-a-second pulse in the corner of every page is exactly the sort of
+   * thing the preference is asking us not to do.
+   */
+  private onAutoStrike(): void {
+    if (this.reducedMotion || this.autoBeat) return;
+    this.autoBeat = true;
+    this.sparkBurst(2);
+    this.after(() => { this.autoBeat = false; this.cdr.markForCheck(); }, 520);
+    this.cdr.markForCheck();
   }
 
   onStrike(): void {
