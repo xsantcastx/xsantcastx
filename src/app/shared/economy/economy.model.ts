@@ -529,14 +529,57 @@ export const AUTO_CLICKERS: AutoClicker[] = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Expeditions — explorer slots for the Forge View
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Hiring an explorer is a Gold-ladder purchase like any other, which is why it
+ * lives here rather than in the explorer's own blob.
+ *
+ * The alternative was a second spend path owned by ExplorerService, and that is
+ * how a shop ends up with two ideas about what the visitor has paid for: the
+ * Market prices every other purchase through `costOf` and the 15% escalator,
+ * and a slot bought somewhere else would be the one item on the site whose
+ * price nobody could look up. Buying through `upgrades` also means slots ride
+ * the cloud save, the reset and the prestige rules for free.
+ *
+ * It contributes nothing to `goldPerSecond` — an expedition pays on return, not
+ * per second — so it is deliberately absent from every rate function below.
+ */
+export interface ExpeditionUpgrade {
+  id: string;
+  name: string;
+  effect: string;
+  flavour: string;
+  icon: string;
+  baseCost: number;
+  /** Explorers added per level owned. */
+  explorers: number;
+}
+
+export const EXPEDITION_UPGRADES: ExpeditionUpgrade[] = [
+  {
+    id: 'explorer-slot',
+    name: 'Hire an Explorer',
+    effect: '+1 explorer out at once',
+    flavour: 'They ask for a lamp, a week of rations, and no supervision whatsoever.',
+    icon: '🧭',
+    baseCost: 2_500,
+    explorers: 1,
+  },
+];
+
 /** Every Gold ladder as one list. Used for the "how many do you own" counts. */
-export type AnyUpgrade = ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker;
+export type AnyUpgrade =
+  | ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker | ExpeditionUpgrade;
 
 export const ALL_UPGRADES: AnyUpgrade[] = [
   ...FORGE_UPGRADES,
   ...HAMMER_UPGRADES,
   ...MULTIPLIER_UPGRADES,
   ...AUTO_CLICKERS,
+  ...EXPEDITION_UPGRADES,
 ];
 
 /**
@@ -547,6 +590,26 @@ const SINGLE_PURCHASE = new Set(MULTIPLIER_UPGRADES.map(m => m.id));
 
 export function isSinglePurchase(id: string): boolean {
   return SINGLE_PURCHASE.has(id);
+}
+
+/**
+ * Ladders that repeat but not forever.
+ *
+ * Only expeditions need this today: five explorers is one per realm, and a
+ * sixth could only ever duplicate a realm already covered. Kept as a map rather
+ * than a field on `ExpeditionUpgrade` so the next capped ladder does not need a
+ * second mechanism, and absent means unbounded — which is the correct default
+ * for the four ladders that are meant to be climbed indefinitely.
+ */
+const LEVEL_CAPS: Record<string, number> = {
+  // MAX_EXPLORER_SLOTS (5) minus the one every visitor starts with.
+  'explorer-slot': 4,
+};
+
+/** The most levels of an upgrade anyone may hold, or Infinity. */
+export function levelCap(id: string): number {
+  if (isSinglePurchase(id)) return 1;
+  return LEVEL_CAPS[id] ?? Infinity;
 }
 
 /** The definition behind any Gold-ladder id, or undefined. */

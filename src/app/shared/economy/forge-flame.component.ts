@@ -26,6 +26,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  Input,
   NgZone,
   OnDestroy,
   OnInit,
@@ -38,6 +39,7 @@ import { Subscription } from 'rxjs';
 import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCompact, formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
+import { InlineFlameService } from './inline-flame.service';
 import { IdleService } from '../idle/idle.service';
 import { ComboEvent, ComboService, ComboSnapshot } from './combo.service';
 import {
@@ -108,6 +110,7 @@ interface Shout {
 
     <div
       class="ff"
+      [class.ff--inline]="inline"
       [attr.data-tier]="snap.flameTier"
       [attr.data-hammer]="snap.hammerVisual"
       [attr.data-combo]="comboLevel"
@@ -201,6 +204,17 @@ interface Shout {
       display: grid;
       place-items: center;
       pointer-events: none;
+    }
+
+    /* Mounted in the page instead of pinned to the corner — see
+       InlineFlameService for why both never render at once. Only the pinning
+       is undone: every tier, combo and hammer rule below keys off .ff and its
+       data attributes, so the inline flame is the same flame in a new box. */
+    .ff--inline {
+      position: relative;
+      right: auto;
+      bottom: auto;
+      z-index: auto;
     }
     .ff > * { pointer-events: auto; }
 
@@ -700,7 +714,17 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly inlineFlame = inject(InlineFlameService);
   private readonly subs = new Subscription();
+
+  /**
+   * Render in the page rather than pinned to the corner.
+   *
+   * Set by the Forge View, which wants the flame at the centre of its forge
+   * panel. Claiming the registry on init is what stands the corner flame down
+   * for as long as this one is mounted.
+   */
+  @Input() inline = false;
 
   snap: EconomySnapshot = this.economy.snapshot;
   hudOpen = false;
@@ -731,6 +755,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 
   ngOnInit(): void {
+    if (this.inline) this.inlineFlame.claim();
+
     this.economy.init();
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.snap = s;
@@ -758,6 +784,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.inline) this.inlineFlame.release();
     this.subs.unsubscribe();
     this.timers.forEach(t => clearTimeout(t));
     this.timers.clear();
