@@ -47,7 +47,7 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
           </span>
         </span>
         @if (snap.streak > 1) {
-          <span class="xpb__streak" [attr.title]="snap.streak + ' day streak'">{{ snap.streak }}<span aria-hidden="true">&#9788;</span></span>
+          <span class="xpb__streak" [attr.title]="snap.streak + ' day streak'">{{ snap.streak }}<span class="xpb__ember" aria-hidden="true"></span></span>
         }
         <!-- Only once there is something to say. A cloud on the header of
              somebody who has never signed in is an advert, not a status. -->
@@ -158,6 +158,16 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
       color: #ffc669; white-space: nowrap;
     }
     .xpb__streak span { margin-left: 2px; }
+    /* A drawn ember rather than a dingbat sun, which shipped as a colour
+       emoji on several platforms and ignored the bar's palette. */
+    .xpb__ember {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50% 50% 50% 0;
+      rotate: -45deg;
+      background: radial-gradient(circle at 40% 65%, #ffe9a8 0%, #E8752A 60%, #a8391a 100%);
+      box-shadow: 0 0 6px rgba(232, 117, 42, 0.7);
+    }
 
     .xpb__sync { font-size: 11px; line-height: 1; color: #A78BFA; }
     .xpb__sync[data-state="syncing"] {
