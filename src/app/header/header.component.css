@@ -93,30 +93,24 @@
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 40%, transparent);
-  background:
-    radial-gradient(circle at 50% 50%,
-      color-mix(in srgb, var(--primary-color) 26%, transparent) 0%,
-      rgba(var(--gfnav-void), 0.9) 72%);
-  transition: border-color 0.25s var(--gfnav-ease), box-shadow 0.25s var(--gfnav-ease);
+  transition: filter 0.25s var(--gfnav-ease), transform 0.25s var(--gfnav-ease);
 }
 
-.gfnav__sigil-bar {
-  position: absolute;
-  width: 17px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--primary-color);
-  box-shadow: 0 0 7px color-mix(in srgb, var(--primary-color) 85%, transparent);
+/* The painted Void X medallion, which the two crossed bars here stood in for.
+   The plate that framed them is gone with them: the art carries its own ring
+   and nebula, and a squared border around a circular sigil reads as a sticker.
+   The halo is a drop-shadow so it traces the medallion, not a 32px box. */
+.gfnav__sigil-art {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--primary-color) 55%, transparent));
 }
-.gfnav__sigil-bar:nth-child(1) { transform: rotate(45deg); }
-.gfnav__sigil-bar:nth-child(2) { transform: rotate(-45deg); }
 
 .gfnav__brand:hover .gfnav__sigil,
 .gfnav__brand:focus-visible .gfnav__sigil {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 18px -4px color-mix(in srgb, var(--primary-color) 90%, transparent);
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--primary-color) 90%, transparent))
+          brightness(1.12);
+  transform: scale(1.05);
 }
 
 .gfnav__wordmark {

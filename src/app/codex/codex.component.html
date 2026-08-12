@@ -109,7 +109,12 @@
               [style.--chip-glow]="cat.glow"
               [attr.title]="cat.blurb"
               (click)="categoryFilter = cat.id">
-              <span aria-hidden="true">{{ cat.icon }}</span> {{ cat.label }}
+              @if (cat.art) {
+                <img class="cx-cat-icon gf-icon realm-sigil" [src]="cat.icon" alt="" aria-hidden="true"
+                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
+              } @else {
+                <span aria-hidden="true">{{ cat.icon }}</span>
+              } {{ cat.label }}
               <span class="cx-chip__count">{{ categoryCount(cat.id).found }}/{{ categoryCount(cat.id).total }}</span>
             </button>
           }
@@ -183,7 +188,13 @@
       <div class="cx-section" [style.--realm]="section.category.color" [style.--realm-glow]="section.category.glow">
         <div class="cx-section__hd">
           <h2 class="cx-section__title">
-            <span aria-hidden="true">{{ section.category.icon }}</span>
+            @if (section.category.art) {
+              <img class="cx-cat-icon cx-cat-icon--lg gf-icon realm-sigil" [src]="section.category.icon"
+                   alt="" aria-hidden="true" width="26" height="26"
+                   loading="lazy" decoding="async" draggable="false">
+            } @else {
+              <span aria-hidden="true">{{ section.category.icon }}</span>
+            }
             {{ section.category.label }}
           </h2>
           <span class="cx-section__count">{{ section.found }} / {{ section.items.length }}</span>
@@ -211,8 +222,18 @@
 
               <div class="cx-card__body">
                 <p class="cx-card__meta">
+                  <img class="cx-card__tier-icon gf-icon" [ngClass]="'rarity-' + a.rarity.id"
+                       [src]="a.rarity.icon" alt="" aria-hidden="true"
+                       width="18" height="18" loading="lazy" decoding="async" draggable="false">
                   <span class="cx-card__badge">{{ a.rarity.label }}</span>
-                  <span class="cx-card__realm">{{ a.category.icon }} {{ a.category.label }}</span>
+                  <span class="cx-card__realm">
+                    @if (a.category.art) {
+                      <img class="cx-cat-icon gf-icon realm-sigil" [src]="a.category.icon" alt="" aria-hidden="true"
+                           width="15" height="15" loading="lazy" decoding="async" draggable="false">
+                    } @else {
+                      <span aria-hidden="true">{{ a.category.icon }}</span>
+                    } {{ a.category.label }}
+                  </span>
                 </p>
 
                 <h3 class="cx-card__name">{{ a.unlocked ? a.name : '???' }}</h3>
@@ -266,7 +287,9 @@
     <!-- ── Rank ───────────────────────────────────────────────────────── -->
     <div class="cx-rank">
       <div class="cx-rank__sigil" aria-hidden="true">
-        <span class="cx-rank__sigil-num">{{ snap.level.level }}</span>
+        <img class="cx-rank__sigil-art gf-icon rank-current"
+             [src]="rankSigil(snap.level.level)" alt=""
+             width="128" height="128" decoding="async" draggable="false">
         <span class="cx-rank__sigil-ring"></span>
         <span class="cx-rank__sigil-ring cx-rank__sigil-ring--2"></span>
       </div>
@@ -301,6 +324,11 @@
         @for (node of path; track node.level.level) {
           <li class="cx-path__node" [attr.data-state]="node.state">
             <span class="cx-path__dot" aria-hidden="true"></span>
+            <img class="cx-path__sigil gf-icon"
+                 [ngClass]="node.state === 'current' ? 'rank-current'
+                          : node.state === 'held' ? 'rank-earned' : 'rank-locked'"
+                 [src]="rankSigil(node.level.level)" alt="" aria-hidden="true"
+                 width="40" height="40" loading="lazy" decoding="async" draggable="false">
             <span class="cx-path__level">Level {{ node.level.level }}</span>
             <span class="cx-path__title">{{ node.level.title }}</span>
             <span class="cx-path__xp">{{ node.level.minXp | number }} XP</span>
@@ -593,6 +621,9 @@
               [style.--tier-glow]="card.rarity.glow">
 
               <p class="cx-secret__meta">
+                <img class="cx-card__tier-icon gf-icon" [ngClass]="'rarity-' + card.rarity.id"
+                     [src]="card.rarity.icon" alt="" aria-hidden="true"
+                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
                 <span class="cx-card__badge">{{ card.rarity.label }}</span>
                 @if (card.found) {
                   <span class="cx-secret__state">discovered</span>
