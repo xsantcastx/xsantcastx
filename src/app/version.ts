@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.35.0',
+  version: '2.36.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Godforge Awakens',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.35.0',
+    version: '2.36.0',
     codename: 'Godforge Awakens',
     date: '2026-08-12',
     highlights: [
@@ -45,6 +45,18 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'It respects your time on the way back. The first visit is the full 2.9-second cinematic; every visit after starts at the ignition and runs 1.3 seconds, decided before the first frame is painted',
       'The whole sequence runs and clears itself in CSS, off the main thread. It cannot hold the page hostage the way the splash it replaces could, and a visitor who asks for reduced motion is taken straight past it to the site',
     ],
+  },
+  {
+    version: '2.35.0',
+    codename: 'Five Doors',
+    date: '2026-08-12',
+    highlights: [
+      'The mobile tab bar carries Santiago\'s painted icons — the forge anvil under its flame, the crossed hammers, the crossed swords, the runed book and the hooded figure — each in the cold-steel state it was drawn in, lighting to its purple rune-circle version on the tab you are standing in',
+      'Both states are in the DOM and cross-fade on opacity rather than swapping one image source. A src swap fetches the lit icon at the moment the tab is tapped, so the first visit to every tab flashed an empty box on the one frame the visitor is looking straight at',
+      'The active tab is marked three ways, because one is not enough at a glance on a phone: the lit icon, the label in purple, and a short glowing underline beneath it — the indicator the icon sheet\'s own tab-bar example draws',
+      'The icons are keyed to transparency rather than cropped on their black ground, so the purple bloom traces the sigil instead of haloing a square, and each is packed to 96px so it stays crisp on a DPR-3 phone',
+      'Reduced motion keeps every state and drops only the travel: the lit icon does not scale in and the underline does not wipe, but the active tab is still unmistakably the active tab'
+    ]
   },
   {
     version: '2.34.0',
