@@ -138,6 +138,16 @@ html {
   scroll-behavior: smooth;
   overflow-x: hidden;
   background: #07090f;
+  /* The five atmosphere slots cross-fade here, on the element they are written
+     to, rather than on `body` where they are consumed — a transition runs where
+     the value changes, and the inherited copy follows it down. See the
+     ATMOSPHERE block further down for the whole mechanism. */
+  transition:
+    --atm-center 0.55s ease,
+    --atm-top    0.55s ease,
+    --atm-bottom 0.55s ease,
+    --atm-tl     0.55s ease,
+    --atm-tr     0.55s ease;
 }
 
 body {
@@ -146,7 +156,26 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   color: var(--text-color);
-  background: linear-gradient(135deg, #07090f 0%, #0b1325 55%, #0a162f 100%);
+  /* The per-route atmosphere rides in front of the base gradient, on the one
+     surface that actually reaches the screen. See the ATMOSPHERE block below for
+     why it cannot be its own layer. Every slot defaults to `transparent`, so
+     with no route entry these five gradients paint nothing and the base gradient
+     below them is exactly what it always was. */
+  background-color: #07090f;
+  background-image:
+    radial-gradient(ellipse 90% 70% at 50% 50%,   var(--atm-center) 0%, transparent 70%),
+    radial-gradient(ellipse 95% 55% at 50% 0%,    var(--atm-top)    0%, transparent 65%),
+    radial-gradient(ellipse 95% 60% at 50% 100%,  var(--atm-bottom) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 50% at 0% 0%,     var(--atm-tl)     0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 100% 0%,   var(--atm-tr)     0%, transparent 70%),
+    linear-gradient(135deg, #07090f 0%, #0b1325 55%, #0a162f 100%);
+  /* The wash is anchored to the viewport, the base gradient to the document.
+     "Lit from below" has to mean the bottom of the screen — on a page several
+     thousand pixels tall, a document-anchored glow would sit off-screen for the
+     whole scroll. The base gradient keeps `scroll` so it stretches across the
+     full document exactly as before. */
+  background-attachment: fixed, fixed, fixed, fixed, fixed, scroll;
+  background-repeat: no-repeat;
   min-height: 100vh;
   overflow-x: hidden;
   transition: color 0.6s ease;
@@ -920,6 +949,75 @@ router-outlet + * {
     radial-gradient(1.5px 1.5px at 70% 60%, rgba(123, 97, 255, 0.35) 0%, transparent 100%),
     radial-gradient(2.5px 2.5px at 80% 20%, rgba(255, 0, 255, 0.2) 0%, transparent 100%);
   animation: nebulaDrift 22s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ATMOSPHERE — the per-route wash
+   ════════════════════════════════════════════════════════════════════════════
+
+   Art creates atmosphere; CSS creates UI. /home has painted art behind it. No
+   other route does yet, so every one of them was standing in the same violet
+   void. This gives each a colour of its own — the Arena lit from below in
+   crimson, the Codex by candlelight, the war table under instrument cyan — at
+   alphas between 0.03 and 0.08, which is enough to feel and not enough to see.
+
+   Placeholders, explicitly. When a page gets painted, its entry in
+   atmosphere.model.ts is deleted and the artwork takes the first slot of body's
+   `background-image` list instead.
+
+   ── WHY IT LIVES ON `body` AND NOT ON A LAYER OF ITS OWN ───────────────────
+   Because a layer of its own does not paint. This was measured, not assumed: a
+   fixed full-viewport div at z-index -1 was invisible, and flat-colouring every
+   backdrop layer in turn showed why — `.matrix-background` (-3), `body::before`
+   (-2) and `body::after` (-1) do not paint either.
+
+   `body` is `position: relative; z-index: auto`, which does NOT open a stacking
+   context. So every negative-z-index descendant of body — including body's own
+   ::before and ::after — escapes into html's stacking context and paints at
+   step 2 of CSS 2.1 Appendix E, while body, being positioned, paints its own
+   background later at step 8. Body's base gradient is fully opaque. It covers
+   all of them.
+
+   What a visitor actually sees behind the content is therefore body's gradient
+   plus `.cosmic-canvas` (z-index 0, so it is above body). Every other backdrop
+   layer is dead paint. That is a pre-existing bug and it is deliberately NOT
+   fixed here: giving body a stacking context (`isolation: isolate`, or any
+   z-index) would resurrect the sigil, the nebula, the fog and the starfield on
+   every route at once, /home included, which is a redesign and not this change.
+
+   So the wash goes where the pixels already are: in front of the base gradient,
+   in body's own `background-image` list. Zero new elements, zero new compositor
+   layers, and nothing to occlude it.
+
+   ── WHY THE SLOTS ARE REGISTERED ───────────────────────────────────────────
+   `background-image` does not transition: swapping one gradient list for another
+   is a hard cut. Registered `<color>` properties do interpolate, so the five
+   colours are declared with `@property` and the gradient positions stay fixed.
+   A route change then cross-fades one palette into the next over 0.55s and the
+   wash never slides. Where `@property` is unsupported the colours swap instantly
+   instead — at these alphas, imperceptible.
+
+   ── SLOT MAP ───────────────────────────────────────────────────────────────
+   center  the wash a page sits inside      top     a glow overhead
+   bottom  a glow underfoot                 tl / tr corner hints
+   ════════════════════════════════════════════════════════════════════════════ */
+
+@property --atm-center { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --atm-top    { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --atm-bottom { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --atm-tl     { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --atm-tr     { syntax: '<color>'; inherits: true; initial-value: transparent; }
+
+/* The gradients themselves are declared on `body` up in the Resets block, in
+   front of its base gradient — see the stacking note above. */
+
+/* A visitor who asks for reduced motion gets the destination immediately. The
+   wash still changes per route — it is the 0.55s cross-fade that goes away, not
+   the atmosphere. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
 }
 
 .matrix-background {
