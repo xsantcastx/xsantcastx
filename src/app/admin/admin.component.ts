@@ -77,6 +77,23 @@ export class AdminComponent implements OnInit, OnDestroy {
   changelogEntries: Panel<any[]> = loadingPanel();
   busySuggestion = '';
 
+  /** True while a manual refresh is in flight, to disable the button. */
+  refreshing = false;
+
+  /**
+   * How many rows of each long list are on screen.
+   *
+   * The egg table is 139 rows and the suggestion list is unbounded; both used to
+   * render in full. Ten at a time with a "Show more" is enough to see the shape
+   * of the data without handing the browser a table nobody scrolls to the end of.
+   */
+  static readonly PAGE_SIZE = 10;
+  eggsShown = AdminComponent.PAGE_SIZE;
+  suggestionsShown = AdminComponent.PAGE_SIZE;
+
+  showMoreEggs(): void { this.eggsShown += AdminComponent.PAGE_SIZE; }
+  showMoreSuggestions(): void { this.suggestionsShown += AdminComponent.PAGE_SIZE; }
+
   // ── 6. SEO ─────────────────────────────────────────────────────────────
   seo: Panel<null> = unavailablePanel(
     'Indexed-page counts and search queries come from Search Console, which has no public read API — it needs an OAuth service account. Until then, the sitemap figure on the left is the number of URLs actually submitted.'
@@ -151,13 +168,40 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Re-read every panel, ignoring the cache.
+   *
+   * The dashboard is cached for five minutes because its panels are
+   * whole-collection scans (see AdminDataService.cached). This is the escape
+   * hatch: the owner is the only person who ever sees this page, and they are
+   * the one person who knows when a number is worth paying for again.
+   */
+  refresh(): void {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    this.data.bustCache();
+    this.loadAll(true);
+    // The panels settle independently; this just retires the spinner once the
+    // slowest of the whole-collection reads has had time to land.
+    setTimeout(() => { this.refreshing = false; this.cdr.markForCheck(); }, 1200);
+  }
+
+  /** "just now", "4 minutes ago" — how old the numbers on screen are. */
+  get lastUpdatedLabel(): string {
+    const at = this.data.cachedAt();
+    if (at === null) return 'just now';
+    const minutes = Math.floor((Date.now() - at) / 60_000);
+    if (minutes < 1) return 'just now';
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  }
+
+  /**
    * Every source is fired independently and settles on its own — one slow or
    * unreachable source must not hold up the whole dashboard.
    */
-  private loadAll(): void {
-    this.data.activeViewers().then(v => this.settle('activeNow', v));
-    this.data.totalVisits().then(v => this.settle('totalVisits', v));
-    this.data.lastActivityAt().then(v => this.settle('lastActivity', v));
+  private loadAll(force = false): void {
+    this.data.activeViewers(force).then(v => this.settle('activeNow', v));
+    this.data.totalVisits(force).then(v => this.settle('totalVisits', v));
+    this.data.lastActivityAt(force).then(v => this.settle('lastActivity', v));
 
     this.data.buildStats().then(stats => {
       this.build = stats
@@ -166,7 +210,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.data.toolUsage().then(rows => {
+    this.data.toolUsage(force).then(rows => {
       if (!rows) {
         this.topTools = { state: 'error', data: null };
       } else if (!rows.length) {
@@ -179,7 +223,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.data.eggDiscoveries().then(rows => {
+    this.data.eggDiscoveries(force).then(rows => {
       if (!rows) {
         this.eggs = { state: 'error', data: null };
       } else {
@@ -190,7 +234,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.data.suggestions().then(rows => {
+    this.data.suggestions(force).then(rows => {
       this.suggestions = !rows
         ? { state: 'error', data: null }
         : rows.length ? { state: 'ready', data: rows } : { state: 'empty', data: null };
@@ -212,7 +256,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
 
     this.sub?.add(
-      this.data.recentChangelog().subscribe(entries => {
+      this.data.recentChangelog(force).subscribe(entries => {
         this.changelogEntries = entries.length
           ? { state: 'ready', data: entries }
           : { state: 'empty', data: null };
