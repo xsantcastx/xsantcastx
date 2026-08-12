@@ -224,6 +224,26 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
   { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
 
+  // ── The Rune Forge ──────────────────────────────────────────────
+  // Eight, and the shape of the ladder is the drop table's. The three
+  // collection rungs are priced off how many strikes they actually take at the
+  // published rates rather than off how they read: ten uniques is most of one
+  // sitting, twenty is a long week, and all twenty-five needs the 0.05% rune,
+  // which is why it and 'rune-void-voice' are the only two filed Mythic.
+  //
+  // 'rune-breath-of-void' carries no `xp` override and no explicit tier here
+  // because it is not authored as Singular — Singular is earned at runtime when
+  // the global discovery count comes back exactly 1, and this is the one
+  // achievement on the wall genuinely capable of returning that.
+  { id: 'rune-first',                name: 'First Rune',              description: 'Took the first rune off the anvil',                   tool: 'global', rarity: 'common', icon: '🪨', xp: 25 },
+  { id: 'rune-collector',            name: 'Rune Collector',          description: 'Found ten of the twenty-five runes',                  tool: 'global', rarity: 'rare',   icon: '🗿', xp: 75 },
+  { id: 'rune-master',               name: 'Rune Master',             description: 'Found twenty of the twenty-five runes',               tool: 'global', rarity: 'epic',   icon: '⛰️', xp: 250 },
+  { id: 'rune-complete-set',         name: 'The Complete Set',        description: 'Found all twenty-five runes, Void included',          tool: 'global', rarity: 'legendary', icon: '🌑', xp: 1000 },
+  { id: 'rune-first-word',           name: 'First Runeword',          description: 'Set runes into a word and made it hold',              tool: 'global', rarity: 'epic',   icon: '📜', xp: 150 },
+  { id: 'rune-word-scholar',         name: 'Runeword Scholar',        description: 'Completed three Runewords',                           tool: 'global', rarity: 'legendary', icon: '📖', xp: 400 },
+  { id: 'rune-void-voice',           name: 'Voice of the Void',       description: 'The Void rune fell. It falls once in two thousand.',  tool: 'global', rarity: 'legendary', icon: '👁️', xp: 2000 },
+  { id: 'rune-breath-of-void',       name: 'Breath of the Void',      description: 'Completed the last Runeword in the Archivum',         tool: 'global', rarity: 'legendary', icon: '🕳️', xp: 5000 },
+
   // ── The character sheet ─────────────────────────────────────────
   // Paid at 25 like The Archivist, and for the same reason: this one is
   // *noticed* rather than hunted, and a page you can reach from the navbar
