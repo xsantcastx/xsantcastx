@@ -8,35 +8,21 @@ import { TitleStrategy } from '@angular/router';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';
-import { SkillsComponent } from './skills/skills.component';
-import { ProjectsComponent } from './projects/projects.component';
-import { ContactComponent } from './contact/contact.component';
 import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
-import { provideFunctions, getFunctions } from '@angular/fire/functions';
-import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { environment } from '../environments/environment';
-import { DonationFormComponent } from './donation-form/donation-form.component';
-import { DonationFeedComponent } from './donation-feed/donation-feed.component';
-import { DonateComponent } from './donate/donate.component';
-import { LandingComponent } from './landing/landing.component';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
 import { ScrollTrackingDirective } from './scroll-tracking.directive';
 import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
-import { LiveComponent } from './live/live.component';
-import { AdsenseComponent } from './shared/adsense/adsense.component';
-import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { ArenaComponent } from './arena/arena.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
 import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
@@ -44,32 +30,22 @@ import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { CurrencyRailComponent } from './shared/economy/currency-rail.component';
-import { McpComponent } from './mcp/mcp.component';
 
 
 @NgModule({
+  // Every routed page is standalone and lazy-loaded (see app-routing.module.ts).
+  // What is left here is the app shell — the pieces AppComponent renders on
+  // every route.
   declarations: [
     AppComponent,
     HeaderComponent,
-    SkillsComponent,
-    ProjectsComponent,
-    ContactComponent,
     FooterComponent,
-    DonationFormComponent,
-    DonationFeedComponent,
-    DonateComponent,
-    LandingComponent,
     CookieBannerComponent,
     ScrollTrackingDirective,
     FocusTrapDirective,
-    LiveComponent,
-    AdsenseComponent,
-    NotFoundComponent,
     EmbedBarComponent,
     MilestoneEffectComponent,
-    CommandPaletteComponent,
-    ArenaComponent,
-    McpComponent
+    CommandPaletteComponent
   ],
   bootstrap: [AppComponent],
   imports: [
@@ -89,9 +65,8 @@ import { McpComponent } from './mcp/mcp.component';
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    // Analytics, Performance and AppCheck require browser APIs — skip on server
+    // Performance requires browser APIs — skip on server.
     ...(isBrowserEnv ? [
-      provideAnalytics(() => getAnalytics()),
       providePerformance(() => getPerformance()),
       // App Check is deliberately NOT provided here any more.
       // provideAppCheck() runs during root-injector creation, and
@@ -100,33 +75,26 @@ import { McpComponent } from './mcp/mcp.component';
       // initializes on the first idle callback instead; see
       // app-check.bootstrap.ts for the rationale and for the consumers that
       // await it before issuing Firebase traffic.
-      //
-      // Firebase Analytics automatic tracking services (browser only)
-      ScreenTrackingService,
-      UserTrackingService
     ] as any[] : []),
-    provideFirestore(() => {
-      const app = getApp();
-      // Calling initializeFirestore() twice (once on the SSR pass, once on
-      // client hydration) throws "Firestore has already been started" and
-      // leaves us with two different SDK instances — the source of the
-      // "Type does not match the expected instance. Did you pass a reference
-      // from a different Firestore SDK?" red wall in the console.
-      // Fall back to the already-initialized instance on subsequent calls so
-      // every consumer shares one Firestore reference.
-      try {
-        return initializeFirestore(app, {
-          experimentalForceLongPolling: true
-        });
-      } catch (e) {
-        return getFirestore(app);
-      }
-    }),
-    // provideAuth()/provideDatabase() intentionally live on the lazy /guestbook
-    // route (see guestbook/guestbook.routes.ts) — that is the only consumer,
-    // and keeping them out of the root injector keeps @firebase/auth + re2js +
-    // the RTDB SDK out of the initial bundle.
-    provideFunctions(() => getFunctions()),
+    // Three more providers are deliberately absent, all for the same reason:
+    // having them in the root injector puts their SDK in the initial chunk,
+    // and nothing on first paint uses any of them.
+    //
+    //   provideFirestore()  — the ~450 kB Firestore SDK, for a visit counter,
+    //                         a changelog and some counters that all run after
+    //                         hydration. Consumers go through
+    //                         shared/lazy-firestore.service.ts instead.
+    //   provideAnalytics()  — statically imports @angular/fire/auth (for
+    //                         UserTrackingService), which is what kept the auth
+    //                         SDK eager despite provideAuth() already being
+    //                         route-scoped. AnalyticsService imports
+    //                         `firebase/analytics` on demand. ScreenTracking's
+    //                         page_view now comes from AppTitleStrategy.
+    //   provideFunctions()  — same static auth import. PaymentService imports
+    //                         `firebase/functions` on demand.
+    //
+    // provideAuth()/provideDatabase() live on the lazy /guestbook, /admin and
+    // /tools/pdf-generator routes for the same reason.
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names
