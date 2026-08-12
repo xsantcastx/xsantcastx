@@ -97,6 +97,27 @@ export class ForgeAudioService {
   }
 
   /**
+   * A scroll unrolling, layered over whatever the rune already played.
+   *
+   * Deliberately not another bell. Every cue in this file so far is pitched
+   * metal, and a scroll announced with more pitched metal would be heard as a
+   * louder rune rather than as a second, different thing. This is the one cue
+   * built from noise instead of tone: a short rising breath, no fundamental,
+   * which reads as paper next to an anvil without anybody having to be told.
+   *
+   * Two detuned high triangles beating against each other approximate the
+   * texture closely enough at this length, and cost two oscillators against the
+   * buffer of white noise the honest version would need.
+   */
+  scrollUnfurl(): void {
+    this.tone([
+      { freq: 2100, type: 'triangle', gain: 0.012, start: 0.16, dur: 0.30 },
+      { freq: 2183, type: 'triangle', gain: 0.012, start: 0.17, dur: 0.28 },
+      { freq: 1480, type: 'sine', gain: 0.014, start: 0.24, dur: 0.34 },
+    ]);
+  }
+
+  /**
    * The Void. One rune in the table reaches this and most ledgers never will.
    *
    * A descending sub-bass under a held cluster: everything else in this file
