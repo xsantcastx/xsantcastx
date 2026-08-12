@@ -1,0 +1,139 @@
+<app-arena-shell
+  [title]="'The Convergent\'s Path'"
+  [lore]="'Walk between Light and Shadow — lose your balance, lose yourself.'"
+  [icon]="'🧭'"
+  [bestLabel]="bestLabel"
+  [locked]="locked"
+  [unlockHint]="game.unlockHint">
+
+  @if (!locked) {
+
+    <!-- ── INTRO ─────────────────────────────────────────── -->
+    @if (phase === 'intro') {
+      <section class="ag-panel ag-intro">
+        <p class="ag-intro__body">
+          A maze that is never the same twice, seeded with {{ totalOrbs / 2 }} motes of Aether
+          and {{ totalOrbs / 2 }} of Nox. Take them in equal measure and reach the far corner.
+          Drift {{ collapseAt }} either way and the realm closes over you.
+        </p>
+        <p class="cp-energies">
+          <span class="cp-energies__item cp-energies__item--aether">◆ Aether</span>
+          <span class="cp-energies__item cp-energies__item--nox">◆ Nox</span>
+          <span class="cp-energies__item cp-energies__item--exit">✦ The way out</span>
+        </p>
+        <p class="ag-intro__body cp-controls-note">
+          Arrow keys or WASD · swipe the board · or use the pad below it.
+        </p>
+        <button type="button" class="ag-btn ag-btn--primary" (click)="start()">
+          Step onto the path &rarr;
+        </button>
+      </section>
+    }
+
+    <!-- ── MAZE ──────────────────────────────────────────── -->
+    @if (phase === 'playing') {
+      <div class="ag-hud">
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ collected }}/{{ totalOrbs }}</span>
+          <span class="ag-stat__label">Motes taken</span>
+        </div>
+        <div class="ag-stat" [class.ag-stat--warn]="drift >= collapseAt - 1">
+          <span class="ag-stat__num">{{ drift }}</span>
+          <span class="ag-stat__label">Drift / {{ collapseAt }}</span>
+        </div>
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ timeLabel }}</span>
+          <span class="ag-stat__label">Time</span>
+        </div>
+      </div>
+
+      <!-- Balance meter: gold to the right, violet to the left, centre is safe -->
+      <div class="cp-balance" [class.cp-balance--edge]="drift >= collapseAt - 1">
+        <span class="cp-balance__end cp-balance__end--nox">{{ nox }} Nox</span>
+        <span class="cp-balance__track">
+          <span class="cp-balance__centre" aria-hidden="true"></span>
+          <span class="cp-balance__needle" [style.left.%]="needle * 100" aria-hidden="true"></span>
+        </span>
+        <span class="cp-balance__end cp-balance__end--aether">{{ aether }} Aether</span>
+        <span class="ag-sr">
+          Balance {{ balance }}, drift {{ drift }} of {{ collapseAt }} before collapse
+        </span>
+      </div>
+
+      <div class="cp-board">
+        <canvas
+          #canvas
+          class="cp-canvas"
+          (touchstart)="onTouchStart($event)"
+          (touchend)="onTouchEnd($event)"
+          aria-hidden="true"></canvas>
+      </div>
+
+      <!-- Always present, not only on touch: a pad that appears by device
+           sniffing is a pad that is missing somewhere. -->
+      <div class="cp-pad" role="group" aria-label="Move the Convergent">
+        <button type="button" class="cp-pad__btn cp-pad__btn--up"
+                aria-label="Move up" (click)="move('up')">▲</button>
+        <button type="button" class="cp-pad__btn cp-pad__btn--left"
+                aria-label="Move left" (click)="move('left')">◀</button>
+        <button type="button" class="cp-pad__btn cp-pad__btn--right"
+                aria-label="Move right" (click)="move('right')">▶</button>
+        <button type="button" class="cp-pad__btn cp-pad__btn--down"
+                aria-label="Move down" (click)="move('down')">▼</button>
+      </div>
+    }
+
+    <!-- ── END ───────────────────────────────────────────── -->
+    @if ((phase === 'won' || phase === 'lost') && result) {
+      <section
+        class="ag-end"
+        [class.ag-end--lost]="phase === 'lost'"
+        [attr.data-success-burst]="phase === 'won' ? '' : null"
+        role="status">
+        <h2 class="ag-end__title">
+          @if (perfect) { Perfectly balanced ✦ }
+          @else if (phase === 'won') { You walked out ✦ }
+          @else { The realm closed over you }
+        </h2>
+
+        @if (phase === 'won') {
+          <p class="ag-end__line">
+            {{ aether }} Aether · {{ nox }} Nox · drift {{ drift }} ·
+            {{ steps }} steps in {{ timeLabel }}
+          </p>
+        } @else {
+          <p class="ag-end__line">
+            You leaned {{ balance > 0 ? 'too far into the light' : 'too deep into the shadow' }} —
+            {{ aether }} Aether against {{ nox }} Nox.
+          </p>
+        }
+
+        <p class="ag-end__line">
+          Score <strong>{{ result.score }}</strong>
+          @if (result.isBest) { <span class="cp-pb">— new personal best</span> }
+        </p>
+
+        @if (result.xpAwarded > 0) {
+          <p class="ag-end__xp">
+            +{{ result.xpAwarded }} Aether
+            @if (!perfect && result.firstClear) {
+              <span class="cp-scaled">(scaled by your balance)</span>
+            }
+          </p>
+        } @else if (phase === 'lost') {
+          <p class="ag-end__line ag-end__line--muted">
+            Reach the far corner without collapsing to earn Aether.
+          </p>
+        } @else {
+          <p class="ag-end__line ag-end__line--muted">Already claimed. Beat your best to earn again.</p>
+        }
+
+        <div class="ag-end__actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="start()">A new maze</button>
+          <a routerLink="/arena" class="ag-btn ag-btn--ghost">Back to the Arena</a>
+        </div>
+      </section>
+    }
+
+  }
+</app-arena-shell>

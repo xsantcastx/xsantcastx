@@ -138,6 +138,45 @@ function writeBuildStats(totalRoutes, sitemapUrls) {
   );
 }
 
+/**
+ * The prerendered-route count, written as a committed TypeScript constant.
+ *
+ * The homepage's "Paths Prerendered" stat needs this number at *compile* time
+ * on both the server and the browser build, so it cannot come from
+ * assets/build-stats.json — that file is generated, uncommitted, and read at
+ * runtime by /admin, which means a fresh clone running `ng serve` would fail to
+ * resolve it. A checked-in .ts file always exists, and the `prebuild` run
+ * rewrites it from prerender-routes.txt before the compiler sees it, so the
+ * stat cannot drift from the routes actually being prerendered.
+ *
+ * Rewritten only when the number changed, so a build on an unchanged tree
+ * leaves the working directory clean.
+ */
+function writePrerenderStats(totalRoutes) {
+  const out = path.join(ROOT, 'src', 'app', 'prerender-stats.ts');
+  const contents = `/**
+ * prerender-stats.ts — GENERATED FILE. Do not edit by hand.
+ *
+ * Written by scripts/generate-sitemap.js on every \`prebuild\`, counting the
+ * non-blank lines of prerender-routes.txt. Checked in so a fresh clone
+ * compiles before any build has run.
+ *
+ * Consumed by the homepage's "Paths Prerendered" stat.
+ */
+
+/** Routes Angular prerenders to static HTML, /embed pages included. */
+export const PRERENDERED_PATHS = ${totalRoutes};
+`;
+
+  const existing = fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : null;
+  if (existing === contents) {
+    console.log(`[generate-sitemap] prerender-stats.ts already at ${totalRoutes} — unchanged`);
+    return;
+  }
+  fs.writeFileSync(out, contents);
+  console.log(`[generate-sitemap] wrote PRERENDERED_PATHS = ${totalRoutes} → ${path.relative(ROOT, out)}`);
+}
+
 function main() {
   if (!fs.existsSync(ROUTES_FILE)) {
     console.error(`[generate-sitemap] ${ROUTES_FILE} not found. Run a build first.`);
@@ -164,6 +203,7 @@ function main() {
   // /embed routes are prerendered too, so this is the real SSR route count.
   const totalRoutes = raw.split('\n').map(s => s.trim()).filter(Boolean).length;
   writeBuildStats(totalRoutes, unique.length);
+  writePrerenderStats(totalRoutes);
 }
 
 main();

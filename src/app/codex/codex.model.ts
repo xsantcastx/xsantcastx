@@ -11,6 +11,7 @@
  * Pure data and pure functions. No browser APIs: the wall is server-rendered in
  * its fully-locked state and hydration only flips what has actually been found.
  */
+import { ARENA_PLAYABLE } from '../arena/games/arena-game.model';
 import { EASTER_EGGS, EasterEgg } from '../shared/easter-eggs/easter-egg.service';
 import { EclipseRarity, RarityDefinition, rarityOf, tierForEgg } from '../shared/rarity/rarity.model';
 import { RealmId, realmForCategory } from '../shared/realms/realm.model';
@@ -92,21 +93,29 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
 export const CODEX_CATEGORY_ORDER: CodexCategoryId[] = CODEX_CATEGORIES.map(c => c.id);
 
 /**
- * The eight eggs that chain the Arena gates.
+ * The eggs that chain the Arena gates, keyed egg id → gate name.
  *
- * Duplicated from ArenaComponent's seed list on purpose: importing the component
- * here would pull its template and styles into the Codex chunk for eight
- * strings. `arenaGateDrift()` below is the guard against the two lists drifting.
+ * The five playable gates are read straight out of `ARENA_PLAYABLE`, which is
+ * pure data with no browser APIs, so those can never drift.
+ *
+ * The seven flavour gates are still literals here: they live in a private field
+ * inside `ArenaComponent`, and importing that component would pull its template
+ * and styles into the Codex chunk for seven strings. `arenaGateDrift()` below is
+ * the guard for those.
  */
-export const ARENA_GATE_EGGS: Record<string, string> = {
+const FLAVOUR_GATE_EGGS: Record<string, string> = {
   'shadow-lord': 'Shadow Puzzle',
   'regex-master': 'Regex Race',
   'json-inception': 'JSON Tower',
   'uuid-lucky': 'UUID Lottery',
-  'color-void': 'Color Memory',
   'chmod-god': 'Chmod Chess',
   'hash-meaning': 'Hash Hunt',
   'css-important': 'CSS Golf',
+};
+
+export const ARENA_GATE_EGGS: Record<string, string> = {
+  ...Object.fromEntries(ARENA_PLAYABLE.map(g => [g.unlockEggId, g.title])),
+  ...FLAVOUR_GATE_EGGS,
 };
 
 const TOOLS_BY_ID = new Map<string, ToolDefinition>(TOOLS_REGISTRY.map(t => [t.id, t]));
