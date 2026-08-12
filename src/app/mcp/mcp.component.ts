@@ -17,7 +17,7 @@ interface WhyCard {
 
 @Component({
   selector: 'app-mcp',
-  standalone: false,
+  standalone: true,
   template: `
     <div class="mcp-page">
     

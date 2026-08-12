@@ -32,7 +32,7 @@ import { TranslationService } from '../translation.service';
     </section>
     `,
     styleUrls: ['./skills.component.css'],
-    standalone: false
+    standalone: true
 })
 export class SkillsComponent implements OnInit {
   private translationService = inject(TranslationService);
