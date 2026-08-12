@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { LazyFirestoreService } from '../shared/lazy-firestore.service';
 import { ChangelogService, ChangelogDay, ChangelogEntry } from '../changelog.service';
@@ -58,6 +58,7 @@ export const FORGE_STATION_SIZE = 6;
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly doc = inject(DOCUMENT);
   private lazyFirestore = inject(LazyFirestoreService);
   private router = inject(Router);
   private changelogService = inject(ChangelogService);
@@ -223,6 +224,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.addHeroPreloads();
+    this.markArtRoute(true);
     this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
     this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
       next: (days) => {
@@ -247,7 +250,71 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.ecoSub = this.economyService.snapshot$.subscribe(eco => { this.eco = eco; });
   }
 
+
+  /**
+   * Preload the hero art into THIS route's document.
+   *
+   * Not in index.html: that file backs every route, so a preload there makes
+   * /tools, /codex and eighteen others fetch a 286kB hero they never paint.
+   * Written here, it lands in the prerendered /home HTML and nowhere else.
+   *
+   * One link per breakpoint with the same `media` as the <picture>'s sources,
+   * so the preload resolves to the same file the element will choose — a bare
+   * href would preload the 1920 frame and then the phone would fetch the 768
+   * one as well, downloading the hero twice.
+   */
+  private static readonly HERO_PRELOADS: ReadonlyArray<{ href: string; media: string }> = [
+    { href: 'assets/images/godforge-hero-768.webp',  media: '(max-width: 768px)' },
+    { href: 'assets/images/godforge-hero-1280.webp', media: '(min-width: 768.02px) and (max-width: 1280px)' },
+    { href: 'assets/images/godforge-hero-1920.webp', media: '(min-width: 1280.02px)' }
+  ];
+
+  private addHeroPreloads(): void {
+    const head = this.doc.head;
+    if (!head || head.querySelector('link[data-gf-hero]')) return;
+    for (const p of LandingComponent.HERO_PRELOADS) {
+      const link = this.doc.createElement('link');
+      link.setAttribute('rel', 'preload');
+      link.setAttribute('as', 'image');
+      link.setAttribute('type', 'image/webp');
+      link.setAttribute('media', p.media);
+      link.setAttribute('href', p.href);
+      link.setAttribute('data-gf-hero', '');
+      head.appendChild(link);
+    }
+  }
+
+  private removeHeroPreloads(): void {
+    this.doc.head?.querySelectorAll('link[data-gf-hero]').forEach(el => el.remove());
+  }
+
+
+  /**
+   * Marks the document while the art-backed homepage is on screen.
+   *
+   * The site's CSS atmosphere — the body gradient, the nebula wash in
+   * body::before, the starfield in body::after, the matrix layer, the pulsar,
+   * the corner runes, the particle layer and the constellation canvas — is the
+   * backdrop for every route that has no artwork of its own. Here it is
+   * competing with the painting, so it is switched off for this route only.
+   *
+   * Set from the component rather than AppComponent because AppComponent's
+   * ngOnInit returns early on the server; written here it lands in the
+   * prerendered /home HTML, so the atmosphere never paints and then vanishes
+   * on hydration.
+   */
+  private static readonly ART_ROUTE_CLASS = 'gf-art-route';
+
+  private markArtRoute(add: boolean): void {
+    const body = this.doc.body;
+    if (!body) return;
+    if (add) body.classList.add(LandingComponent.ART_ROUTE_CLASS);
+    else body.classList.remove(LandingComponent.ART_ROUTE_CLASS);
+  }
+
   ngOnDestroy(): void {
+    this.removeHeroPreloads();
+    this.markArtRoute(false);
     this.changelogSub?.unsubscribe();
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
