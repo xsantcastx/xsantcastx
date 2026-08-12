@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.18.0',
-  buildDate: '2026-08-11',
+  version: '2.19.0',
+  buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Long Arc',
+  codename: 'The Godforge',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.19.0',
+    codename: 'The Godforge',
+    date: '2026-08-12',
+    highlights: [
+      'The home page is the Godforge now — a serif title over a CSS-only furnace core, the visitor\'s rank read out under it, and one door into the forges instead of a rotating carousel of five cards',
+      'Tools are grouped by realm rather than by recency: five forge stations, each with its codex line and its own accent, opening one at a time. Collapsed stations keep their cards in the markup, so every link is still crawled — only the visitor\'s view is filtered',
+      'The stats bar counts real things and can no longer drift: artifacts are live registry entries, fragments are registered easter eggs, realms come from the codex, and the prerendered-path count is written into a committed constant by the same script that builds the sitemap',
+      'Cards the visitor has actually used are marked "Struck" from local progress — the site has no per-tool analytics, so it shows what it knows instead of inventing a usage number',
+      'The Chronicle badges an entry with a realm only when the entry names a tool that can be placed; platform-wide work is left unbadged rather than filed under a guess',
+      'A closing call before the footer: current rank and XP, a first tool to open, and the two doors the lore points at — the War Table and the Arena'
+    ]
+  },
   {
     version: '2.18.0',
     codename: 'The Long Arc',
