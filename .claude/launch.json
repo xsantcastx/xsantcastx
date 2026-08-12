@@ -18,6 +18,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["-y", "serve", "dist/xsantcastx/browser", "-l", "4310"],
       "port": 4310
+    },
+    {
+      "name": "godforge-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "serve", "dist/xsantcastx/browser", "-l", "4320"],
+      "port": 4320
     }
   ]
 }

@@ -204,6 +204,18 @@ export class XpService {
     return [...this.state.toolsUsed];
   }
 
+  /**
+   * True once this visitor has used the tool at least once.
+   *
+   * The snapshot carries only the count, because that is all the XP bar needs.
+   * The homepage marks individual forge cards as already-struck, so it needs
+   * membership — read-only, and false on the server, where there is no stored
+   * progress to read.
+   */
+  hasUsedTool(toolId: string): boolean {
+    return this.state.toolsUsed.includes(toolId);
+  }
+
   /** True once this achievement has been banked, so a drop never repeats. */
   hasAchievement(id: string): boolean {
     return this.state.achievements.includes(id);

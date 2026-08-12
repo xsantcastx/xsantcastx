@@ -1045,6 +1045,48 @@ export class TranslationService {
     // ─── Cosmic anchor planet ──────────────────────────────────────────────
     'cosmic.anchor.whisper':        { en: 'look closer — those lights down there aren\'t ours.', es: 'mira mas de cerca — esas luces de ahi abajo no son nuestras.' },
 
+    // ─── The Godforge — homepage ───────────────────────────────────────────
+    // The Eclipse Realms layer over the home page. Lore vocabulary, but every
+    // number under it is real: artifacts are registry tools, paths are the
+    // prerendered routes, fragments are registered easter eggs.
+    'godforge.hero.eyebrow':   { en: 'The Engine of Creation',                     es: 'El motor de la creacion' },
+    'godforge.hero.sub':       { en: 'Free Developer Tools Forged in the Eclipse', es: 'Herramientas gratis para desarrolladores forjadas en el Eclipse' },
+    'godforge.hero.welcome':   { en: 'Welcome,',                                   es: 'Bienvenido,' },
+    'godforge.hero.toNext':    { en: 'XP to',                                      es: 'XP para' },
+    'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
+    'godforge.hero.cta':       { en: 'Enter the Forge',                            es: 'Entra en la forja' },
+    'godforge.hero.ctaLive':   { en: 'Watch Live Work',                            es: 'Ver el trabajo en vivo' },
+
+    'godforge.pulse.artifacts': { en: 'Artifacts Forged',   es: 'Artefactos forjados' },
+    'godforge.pulse.paths':     { en: 'Paths Prerendered',  es: 'Caminos prerenderizados' },
+    'godforge.pulse.fragments': { en: 'Fragments Hidden',   es: 'Fragmentos ocultos' },
+    'godforge.pulse.realms':    { en: 'Realms to Explore',  es: 'Reinos por explorar' },
+
+    'godforge.forges.eyebrow':   { en: 'The Forges',      es: 'Las forjas' },
+    'godforge.forges.title':     { en: 'The Five Realms', es: 'Los cinco reinos' },
+    'godforge.forges.tagline':   { en: 'five fires, five domains — open one and see what hangs on its walls', es: 'cinco fuegos, cinco dominios — abre uno y mira que cuelga de sus paredes' },
+    'godforge.forges.browseAll': { en: 'Browse all',      es: 'Explorar las' },
+    'godforge.forges.seeAll':    { en: 'Walk the full catalogue —', es: 'Recorre el catalogo completo —' },
+    'godforge.forges.artifacts': { en: 'artifacts',       es: 'artefactos' },
+    'godforge.forges.strike':    { en: 'Strike it',       es: 'Forjala' },
+    'godforge.forges.struck':    { en: 'Struck',          es: 'Forjada' },
+    'godforge.forges.more':      { en: 'more in',         es: 'mas en' },
+
+    'godforge.chronicle.eyebrow': { en: 'The Chronicle',           es: 'La cronica' },
+    'godforge.chronicle.title':   { en: 'Recent Forging Activity', es: 'Actividad reciente de forja' },
+    'godforge.chronicle.tagline': { en: 'every strike on the anvil, written down as it lands', es: 'cada golpe en el yunque, anotado en cuanto cae' },
+
+    'godforge.journey.eyebrow':       { en: 'Begin Your Journey',       es: 'Comienza tu viaje' },
+    'godforge.journey.title':         { en: 'Every tool leaves a mark', es: 'Cada herramienta deja una marca' },
+    'godforge.journey.creed':         { en: 'Every tool you use earns you power. Every secret you find brings you closer to the truth.', es: 'Cada herramienta que usas te da poder. Cada secreto que encuentras te acerca a la verdad.' },
+    'godforge.journey.startWith':     { en: 'Start with',              es: 'Empieza con' },
+    'godforge.journey.blueprintLabel':{ en: 'Read',                    es: 'Lee' },
+    'godforge.journey.blueprint':     { en: 'The War Table',           es: 'La mesa de guerra' },
+    'godforge.journey.blueprintHint': { en: 'the roadmap, the architecture, and what ships next', es: 'la hoja de ruta, la arquitectura y lo que viene despues' },
+    'godforge.journey.arenaLabel':    { en: 'Prove yourself in',       es: 'Demuestra tu valia en' },
+    'godforge.journey.arena':         { en: 'The Arena',               es: 'La arena' },
+    'godforge.journey.arenaHint':     { en: 'fragments buried across the realms', es: 'fragmentos enterrados por los reinos' },
+
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
 

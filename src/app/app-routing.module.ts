@@ -7,6 +7,7 @@ import { DonateComponent } from './donate/donate.component';
 import { LandingComponent } from './landing/landing.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { ArenaComponent } from './arena/arena.component';
+import { ARENA_GAME_ROUTES } from './arena/games/arena-game.routes';
 import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
@@ -158,11 +159,25 @@ const routes: Routes = [
       component: ArenaComponent,
       title: 'The Arena — Where Convergents Prove Their Worth | xsantcastx',
       data: {
-        description: 'Eight gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
+        description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
         keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, arena',
         ogImage: `${SITE_URL}/assets/og/og-default.jpg`
       }
     },
+
+  /*
+   * The playable gates. Declared as siblings of `arena` rather than as its
+   * children: `ArenaComponent` is a leaf with no router-outlet, and a child
+   * route would need one added purely to satisfy the router.
+   *
+   * Every game is `loadComponent` — a lazy chunk each, so a visitor who never
+   * opens the Arena never downloads a game loop. No guards: a guard that
+   * redirects during prerender bakes a redirect stub into the built HTML and
+   * the route stops working in production. Each game renders its own locked
+   * gate instead.
+   */
+  ...ARENA_GAME_ROUTES,
+
   {
       path: 'codex',
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
