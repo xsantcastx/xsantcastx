@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.48.0',
+  version: '2.49.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Anvil',
+  codename: 'Codex',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,31 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.49.0',
+    codename: 'Codex',
+    date: '2026-08-13',
+    highlights: [
+      'The Rune Forge now turns up Lore Scrolls alongside runes — twenty-five fragments of the Eclipse Realms codex, in five chapters of five',
+      'The better the rune, the likelier the page: a Common carries a scroll one strike in ten, an Epic three in five, and the Void every time',
+      'A new Lore tab on /codex holds the wall — parchment and serif rather than neon, with sealed fragments showing nothing but their number until you find them',
+      'The Prophecy of the Final Eclipse needs an Epic rune or better, and its last page has never come up for anything but the Void',
+      'Two achievements: Lore Hunter at ten fragments, and The Full Codex at all twenty-five — which cannot be finished without the rarest rune in the table',
+    ]
+  },
+  {
+    version: '2.48.1',
+    codename: 'Anvil',
+    date: '2026-08-13',
+    highlights: [
+      'Cloud save is now findable. Everything behind it already worked — Google sign-in, the uid bind, the blob merge, the ten-second push loop — but the only control that started it was on /forge-keeper, and nobody opens a character sheet to discover that their progress can follow them. The command bar carries it now, on every page: the Google mark and "Sign In" signed out, the account avatar with its sync state signed in',
+      'The mobile tome carries the full control too, so a phone gets the account, the last-synced line and the way out without a route change. It mounts only while the drawer is open — the drawer stays in the DOM when closed, and a component with its own buttons cannot be kept out of the tab order with the [tabIndex] its sibling links use',
+      'The command bar was already overflowing before any of this. The row never shrinks, so at 375px the hamburger\'s right edge sat at 395 in a 375px viewport — the primary mobile nav control, clipped, on a fresh save. Adding a fifth control pushed it off the screen entirely',
+      'The breakpoints that shed the pills are now measured against the gold odometer rather than a fresh save\'s zero. It renders one column per digit of the real balance, so the wallet is the only item in the row whose width depends on how long somebody has played: with seven figures and every pill shown the row needs 516px, and the old thresholds were set where a "0" fit and passed at every width. That is why this kept coming back',
+      'So the essence and rank pills leave at 560px, the keeper glyph and the codex count come back later, and the wallet holds on to 364px — just under the iPhone SE width, so the most common phone keeps its gold. Verified with a seven-figure balance at eleven widths from 320px to 1440px: nothing clips, and the last control in the row takes a click at every one',
+      'The bar\'s wallet drops its Gold/sec pill below 420px and keeps the count. Scoped to that instance, not the viewport — the tome renders the same component at the same widths in a drawer with room to spare',
+    ]
+  },
   {
     version: '2.48.0',
     codename: 'Anvil',
