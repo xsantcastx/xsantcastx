@@ -204,6 +204,24 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'idle-never-sleeps',     name: 'The Godforge Never Sleeps', description: 'Had the forge open as the date rolled over',        tool: 'global', rarity: 'rare',      icon: '🌌', xp: 50 },
   { id: 'idle-forge-striker',    name: 'Forge Striker',          description: 'Struck the forge one thousand times',                  tool: 'global', rarity: 'epic',      icon: '🔨', xp: 80 },
   { id: 'idle-obsidian-hammer',  name: 'Obsidian Hammer',        description: 'Struck the forge ten thousand times',                  tool: 'global', rarity: 'legendary', icon: '⚒️', xp: 200 },
+
+  // ── Batch 12: the Godforge Market ──────────────────────────
+  // Six awarded by the ledger rather than by an input into a tool. They pay
+  // below the standard 200 for the same reason The Archivist does: the Market
+  // is linked from the header and the Forge Flame is on every page, so these
+  // are the record of a habit rather than the result of a hunt.
+  //
+  // There is no strike-count achievement here. 'idle-forge-striker' and
+  // 'idle-obsidian-hammer' above already pay at a thousand and ten thousand,
+  // and the Market's flame drives that same counter — a second pair keyed on
+  // the same act would put two cards on the wall for one thing and let a
+  // visitor bank both for a single swing.
+  { id: 'forge-first-purchase',      name: 'First Purchase',          description: 'Bought anything at all in the Godforge Market',       tool: 'global', rarity: 'common', icon: '🪙',  xp: 25 },
+  { id: 'forge-investor',            name: 'Forge Investor',          description: 'Owned five upgrades across the two ladders',          tool: 'global', rarity: 'rare',   icon: '📈', xp: 50 },
+  { id: 'forge-market-mogul',        name: 'Market Mogul',            description: 'Owned fifteen upgrades across the two ladders',       tool: 'global', rarity: 'epic',   icon: '🏦', xp: 100 },
+  { id: 'forge-artifact-collector',  name: 'Artifact Collector',      description: 'Held three of the five artifacts at once',            tool: 'global', rarity: 'legendary', icon: '💠', xp: 200 },
+  { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
+  { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */

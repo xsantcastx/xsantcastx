@@ -2405,3 +2405,94 @@ html[data-realm] .tool-header__eyebrow::after {
      title sitting directly underneath it. */
   opacity: 0.85;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GODFORGE COSMETICS
+
+   Bought in the Market, equipped per slot, and published by
+   EconomyWiringService as `data-cos-<slot>` attributes on <html>. Attributes
+   rather than classes so a rule can key on the *variant* — one selector per
+   look instead of one class per combination — and on the root rather than the
+   body so a cosmetic can reach the fixed layers that live outside <app-root>.
+
+   Every rule here is inert until something is bought. With nothing equipped no
+   attribute is present, no selector matches, and the site renders byte-for-byte
+   as it did before the economy existed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Cursor Trail ───────────────────────────────────────────────────────────
+   The engine picks a colour per particle from a five-entry brand array and
+   writes it inline. An `!important` declaration in a stylesheet outranks a
+   normal inline one, which is what lets a cosmetic override a value the engine
+   is already setting without touching the engine. */
+html[data-cos-trail="aether"]  .cosmic-trail-particle { --trail-color: #4dffe0 !important; }
+html[data-cos-trail="nox"]     .cosmic-trail-particle { --trail-color: #7b61ff !important; }
+html[data-cos-trail="eclipse"] .cosmic-trail-particle { --trail-color: #E8752A !important; }
+
+/* ─── Title Prefix ───────────────────────────────────────────────────────────
+   Rendered by the XP bar's rank title, from a custom property carrying an
+   already-quoted CSS string. `content` needs a string, and the wiring layer is
+   the only place that knows which variant is worn, so the quoting happens
+   there rather than being reconstructed here. */
+html[data-cos-prefix] .xpb__title::before,
+html[data-cos-prefix] .xpb__panel-title::before {
+  content: var(--cos-title-prefix, "");
+  color: #C9A84C;
+}
+
+/* ─── Theme Variant ──────────────────────────────────────────────────────────
+   Repoints the two brand variables the whole site already draws from, rather
+   than adding a tint layer. Zero new composited surfaces — which matters, since
+   the mobile pass in 2.1.0 exists specifically because this site had eight
+   fixed full-viewport layers on a phone.
+
+   Umbral is lightened from its realm colour (#8B2252) because that value is a
+   background on the realm rail, and as a foreground on a near-black page it
+   does not clear 4.5:1. */
+html[data-cos-theme="luminous"] { --primary-color: #E8D44D; --secondary-color: #C9A84C; }
+html[data-cos-theme="umbral"]   { --primary-color: #d4547f; --secondary-color: #8B2252; }
+html[data-cos-theme="verge"]    { --primary-color: #00d4ff; --secondary-color: #5fb6ff; }
+html[data-cos-theme="nexus"]    { --primary-color: #10B981; --secondary-color: #34d399; }
+
+/* ─── XP Bar Skin ────────────────────────────────────────────────────────────
+   Reaches into a component with emulated encapsulation on purpose. The
+   component's own `.xpb__fill` compiles to `.xpb__fill[_ngcontent-x]` at
+   specificity 0-2-0; an attribute on the root ahead of it makes these 0-2-1,
+   which is the smallest margin that wins without an `!important`. */
+html[data-cos-xpbar="ornate"] .xpb__track {
+  border: 1px solid rgba(201, 168, 76, .55);
+  box-shadow: 0 0 10px -3px rgba(201, 168, 76, .7);
+}
+html[data-cos-xpbar="ornate"] .xpb__fill { background: linear-gradient(90deg, #C9A84C, #ffd97a); }
+html[data-cos-xpbar="ornate"] .xpb__rank { box-shadow: 0 0 12px rgba(201, 168, 76, .8); }
+
+html[data-cos-xpbar="molten"] .xpb__fill { background: linear-gradient(90deg, #6d2a12, #E8752A 55%, #ffd97a); }
+html[data-cos-xpbar="molten"] .xpb__track { box-shadow: inset 0 0 8px rgba(232, 117, 42, .5); }
+html[data-cos-xpbar="molten"] .xpb__rank { box-shadow: 0 0 14px rgba(232, 117, 42, .85); }
+
+html[data-cos-xpbar="void"] .xpb__fill { background: linear-gradient(90deg, #2a1a4d, #7b61ff 60%, #ff6dd7); }
+html[data-cos-xpbar="void"] .xpb__track { background: rgba(20, 8, 40, .9); }
+html[data-cos-xpbar="void"] .xpb__rank { box-shadow: 0 0 14px rgba(123, 97, 255, .85); }
+
+/* ─── Achievement Frame ──────────────────────────────────────────────────────
+   Applied to found cards only. A locked card already carries the tier border
+   that says what it is worth, and framing the 130 a visitor has *not* earned
+   would turn a bought ornament into a wall of gold nobody reached. */
+html[data-cos-frame="golden"] .cx-card:not(.cx-card--locked) {
+  border-color: #C9A84C;
+  box-shadow: 0 0 0 1px rgba(201, 168, 76, .35), 0 0 24px -12px rgba(201, 168, 76, .9);
+}
+html[data-cos-frame="obsidian"] .cx-card:not(.cx-card--locked) {
+  border-color: #4b4160;
+  box-shadow: 0 0 0 1px rgba(20, 16, 32, .9), 0 6px 20px -10px rgba(0, 0, 0, .95);
+}
+html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
+  border-color: transparent;
+  /* Two backgrounds, clipped to the padding box and the border box in turn:
+     the card keeps its own surface and the gradient only paints the 1px ring. */
+  background-image:
+    linear-gradient(rgba(10, 6, 26, .92), rgba(10, 6, 26, .92)),
+    linear-gradient(135deg, #4dffe0, #7b61ff 40%, #ff6dd7 70%, #ffd97a);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
