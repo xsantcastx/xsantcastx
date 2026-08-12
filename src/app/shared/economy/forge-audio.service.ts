@@ -15,6 +15,20 @@ import { isPlatformBrowser } from '@angular/common';
 
 type Ctor = typeof AudioContext;
 
+/** One enveloped oscillator inside a cue. */
+interface Voice {
+  freq: number;
+  type: OscillatorType;
+  gain: number;
+  start: number;
+  dur: number;
+}
+
+/** Equal-temperament frequency ratio for a semitone offset. */
+function ratio(semitones: number): number {
+  return Math.pow(2, semitones / 12);
+}
+
 @Injectable({ providedIn: 'root' })
 export class ForgeAudioService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -38,12 +52,118 @@ export class ForgeAudioService {
     ]);
   }
 
-  /** A dull struck-metal thud. One strike of the Flame. */
-  strike(): void {
+  /**
+   * A dull struck-metal thud. One strike of the Flame.
+   *
+   * `semitones` pitches the whole hit up without changing its shape, which is
+   * how the combo ladder is heard before it is read: the same anvil, struck
+   * harder. Both voices shift together — moving only one would detune the
+   * interval between them and turn a thud into a chord.
+   */
+  strike(semitones = 0): void {
+    const k = ratio(semitones);
     this.tone([
-      { freq: 220, type: 'triangle', gain: 0.05, start: 0, dur: 0.07 },
-      { freq: 660, type: 'sine', gain: 0.03, start: 0, dur: 0.05 },
+      { freq: 220 * k, type: 'triangle', gain: 0.05, start: 0, dur: 0.07 },
+      { freq: 660 * k, type: 'sine', gain: 0.03, start: 0, dur: 0.05 },
     ]);
+  }
+
+  /**
+   * The flourish on the strike that crosses a combo tier, layered over the
+   * pitched strike rather than replacing it.
+   *
+   * `semitones` comes off the tier table so the ladder is defined in one place.
+   * The upper rungs each add a channel rather than just getting louder — an
+   * overtone, then a decay tail, then a bass impact, then an arpeggio — because
+   * volume alone stops reading as escalation about two steps in.
+   */
+  comboTier(semitones: number): void {
+    const k = ratio(semitones);
+    const base = 440 * k;
+
+    const voices: Voice[] = [
+      { freq: base, type: 'triangle', gain: 0.08, start: 0, dur: 0.18 },
+      { freq: base * 1.5, type: 'sine', gain: 0.05, start: 0.03, dur: 0.2 },
+    ];
+
+    // From +5 up: a ringing overtone two octaves over the fundamental.
+    if (semitones >= 5) {
+      voices.push({ freq: base * 4, type: 'sine', gain: 0.03, start: 0.05, dur: 0.26 });
+    }
+
+    // From +7 up: three decaying repeats. Not a convolution reverb — there is no
+    // impulse response here and pretending otherwise would mean shipping one —
+    // but a tail of quieter copies reads as space, which is the part that
+    // matters at the volume this plays at.
+    if (semitones >= 7) {
+      for (let i = 1; i <= 3; i++) {
+        voices.push({
+          freq: base * 1.5,
+          type: 'sine',
+          gain: 0.045 / (i + 1),
+          start: 0.09 * i,
+          dur: 0.22,
+        });
+      }
+    }
+
+    this.tone(voices);
+  }
+
+  /** The Millennium hit: a bass impact under a high ring. */
+  comboImpact(): void {
+    this.tone([
+      { freq: 80, type: 'sine', gain: 0.13, start: 0, dur: 0.55 },
+      { freq: 120, type: 'triangle', gain: 0.07, start: 0, dur: 0.4 },
+      { freq: 1_500, type: 'sine', gain: 0.05, start: 0.02, dur: 0.7 },
+      { freq: 2_250, type: 'sine', gain: 0.025, start: 0.06, dur: 0.6 },
+    ]);
+  }
+
+  /**
+   * The top of the ladder: an ascending arpeggio that lands on a sustained
+   * chord. The only sound on the site that takes more than a second, for the
+   * only thing on it that takes 83 minutes.
+   */
+  comboAscension(): void {
+    // A minor arpeggio climbing two octaves, then the triad held under it.
+    const climb = [440, 523.25, 659.25, 880, 1_046.5, 1_318.5, 1_760];
+    const voices: Voice[] = climb.map((freq, i) => ({
+      freq,
+      type: 'triangle' as OscillatorType,
+      gain: 0.07,
+      start: i * 0.085,
+      dur: 0.16,
+    }));
+
+    const chordAt = climb.length * 0.085;
+    for (const freq of [440, 523.25, 659.25, 880]) {
+      voices.push({ freq, type: 'sine', gain: 0.05, start: chordAt, dur: 1.9 });
+    }
+    voices.push({ freq: 110, type: 'sine', gain: 0.09, start: chordAt, dur: 2.1 });
+
+    this.tone(voices);
+  }
+
+  /**
+   * The Nameless, at 666. Deep, detuned and slow, with the chain over it.
+   *
+   * The two bass voices are a couple of hertz apart on purpose: the beating
+   * between them is what makes it sit wrong, and it is a far better use of two
+   * oscillators than making it merely louder.
+   */
+  comboNameless(): void {
+    const voices: Voice[] = [
+      { freq: 42, type: 'sine', gain: 0.14, start: 0, dur: 1.5 },
+      { freq: 44.5, type: 'sine', gain: 0.12, start: 0, dur: 1.5 },
+      { freq: 61, type: 'triangle', gain: 0.06, start: 0.1, dur: 1.2 },
+    ];
+    // The chain: short, bright, irregularly spaced square blips over the rumble.
+    const rattle = [0.16, 0.23, 0.29, 0.38, 0.44, 0.53, 0.61, 0.72];
+    for (const start of rattle) {
+      voices.push({ freq: 2_600 + (start * 1_900), type: 'square', gain: 0.012, start, dur: 0.035 });
+    }
+    this.tone(voices);
   }
 
   /** Louder, with a fifth over it. Every hundredth strike. */
@@ -74,9 +194,7 @@ export class ForgeAudioService {
    * exponential decay — a linear ramp to zero reads as a click at the tail, and
    * `exponentialRampToValueAtTime` cannot reach zero, hence the 0.0001 floor.
    */
-  private tone(
-    voices: Array<{ freq: number; type: OscillatorType; gain: number; start: number; dur: number }>,
-  ): void {
+  private tone(voices: Voice[]): void {
     if (this.suppressed) return;
     const ctx = this.context();
     if (!ctx) return;

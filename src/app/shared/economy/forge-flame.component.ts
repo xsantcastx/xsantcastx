@@ -39,6 +39,14 @@ import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { IdleService } from '../idle/idle.service';
+import { ComboEvent, ComboService, ComboSnapshot } from './combo.service';
+import {
+  COMBO_TIERS,
+  ComboEffect,
+  ComboTone,
+  NAMELESS_LABEL,
+  pitchFor,
+} from './combo.model';
 
 /** One "+5" rising off the flame. */
 interface Floater {
@@ -64,17 +72,63 @@ interface Banner {
   grand: boolean;
 }
 
+/** One combo tier name, thrown up over the flame and gone in a second and a half. */
+interface Shout {
+  key: number;
+  text: string;
+  tone: ComboTone;
+  grand: boolean;
+}
+
 @Component({
   selector: 'app-forge-flame',
   standalone: true,
   imports: [CommonModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!-- The combo's screen-level effects.
+         A sibling of the flame rather than a child, and that is load-bearing:
+         .ff takes a transform when it shakes, and a transformed ancestor turns
+         position: fixed into position: absolute — the overlay would be pinned to
+         the bottom-right corner instead of covering the viewport. -->
+    @if (comboLevel > 0 || burst) {
+      <div class="fx"
+           [attr.data-level]="comboLevel"
+           [attr.data-burst]="burst"
+           aria-hidden="true">
+        <span class="fx__edge"></span>
+        <span class="fx__vignette"></span>
+        @if (burst) { <span class="fx__sheet"></span> }
+      </div>
+    }
+
+    <!-- The site-wide confetti hook the arena games use. Adding the node is the
+         whole API; the cosmic engine's observer does the rest. -->
+    @if (shattered) { <span data-success-burst hidden></span> }
+
     <div
       class="ff"
       [attr.data-tier]="snap.flameTier"
       [attr.data-hammer]="snap.hammerVisual"
-      [class.ff--quake]="quaking">
+      [attr.data-combo]="comboLevel"
+      [class.ff--quake]="quaking"
+      [class.ff--shake]="shaking"
+      [class.ff--swell]="swelling"
+      [class.ff--still]="reducedMotion">
+
+      @for (s of shouts; track s.key) {
+        <span class="ff__shout" [attr.data-tone]="s.tone" [class.ff__shout--grand]="s.grand" aria-hidden="true">
+          {{ s.text }}
+        </span>
+      }
+
+      <!-- Only from x2. A "x1" beside every single click is noise, not a combo.
+           Tracked on the count itself so each strike replaces the element and
+           the punch animation replays — a CSS animation on an element that
+           never leaves the DOM cannot be restarted by setting the same class. -->
+      @for (c of comboBadge; track c) {
+        <span class="ff__combo" [attr.data-tone]="comboTone" aria-hidden="true">x{{ c }}</span>
+      }
 
       @if (banner) {
         <div class="ff__banner" [class.ff__banner--grand]="banner.grand" role="status">
@@ -143,6 +197,24 @@ interface Banner {
       pointer-events: none;
     }
     .ff > * { pointer-events: auto; }
+
+    /* …except the decorations, which must never intercept a strike.
+       The rule above turns pointer events back on for every direct child, and
+       the floater is a *sibling* of the button that rises straight across it. At
+       two strikes a second there are always one or two in the air, so a tap
+       landing on a "+1" instead of the ember is not hypothetical — it is a lost
+       strike on the one interaction this whole feature is built around, and on a
+       phone, where the ember is 52px, it is the difference between holding a
+       combo and wondering why it keeps stalling. All three are aria-hidden
+       decoration and none of them wants a click.
+
+       Written as child selectors to match the shape of the rule above rather
+       than as bare classes: Angular scopes both sides of a combinator, so the
+       rule above becomes a two-attribute selector that outranks a single scoped
+       class and keeps winning. Same combinator, same weight plus the class. */
+    .ff > .ff__float,
+    .ff > .ff__shout,
+    .ff > .ff__combo { pointer-events: none; }
 
     /* ── The button ─────────────────────────────────────────────────────── */
     .ff__btn {
@@ -322,6 +394,172 @@ interface Banner {
       padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
 
+    /* ── Combo: the counter ─────────────────────────────────────────────────
+       Sits to the left of the ember rather than over it, so it never covers the
+       thing being clicked and never moves the target as the digits grow. */
+    .ff__combo {
+      position: absolute; right: calc(100% + 10px); top: 50%;
+      transform: translateY(-50%);
+      font: 800 15px/1 'Orbitron', system-ui, sans-serif;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      color: #A78BFA;
+      text-shadow: 0 0 10px rgba(139, 92, 246, .8), 0 1px 3px rgba(0, 0, 0, .8);
+      animation: ffComboBeat .22s cubic-bezier(.22, 1, .36, 1);
+    }
+    .ff__combo[data-tone="gold"] {
+      color: #ffd97a;
+      text-shadow: 0 0 12px rgba(201, 168, 76, .9), 0 1px 3px rgba(0, 0, 0, .8);
+    }
+    .ff__combo[data-tone="crimson"] {
+      color: #ff8fa3;
+      text-shadow: 0 0 12px rgba(255, 45, 77, .9), 0 1px 3px rgba(0, 0, 0, .8);
+    }
+    /* Re-triggered per strike from the component, so the number punches on each
+       hit rather than sitting still while it climbs. */
+    @keyframes ffComboBeat {
+      from { transform: translateY(-50%) scale(1.5); }
+      to   { transform: translateY(-50%) scale(1); }
+    }
+
+    /* ── Combo: the shout ───────────────────────────────────────────────────── */
+    .ff__shout {
+      position: absolute; bottom: calc(100% + 8px); right: 0;
+      font: 800 15px/1.15 'Orbitron', system-ui, sans-serif;
+      letter-spacing: .04em; white-space: nowrap;
+      color: #A78BFA;
+      text-shadow: 0 0 14px rgba(139, 92, 246, .85), 0 2px 4px rgba(0, 0, 0, .9);
+      pointer-events: none;
+      animation: ffShout 1.5s cubic-bezier(.22, 1, .36, 1) forwards;
+    }
+    .ff__shout[data-tone="gold"]    { color: #ffd97a; text-shadow: 0 0 16px rgba(201, 168, 76, .95), 0 2px 4px rgba(0,0,0,.9); }
+    .ff__shout[data-tone="crimson"] { color: #ff2d4d; text-shadow: 0 0 18px rgba(255, 45, 77, .95), 0 2px 4px rgba(0,0,0,.9); }
+    .ff__shout--grand { font-size: 19px; }
+    @keyframes ffShout {
+      0%   { opacity: 0; transform: translateY(10px) scale(.85); }
+      18%  { opacity: 1; transform: translateY(0) scale(1.08); }
+      30%  { transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-42px) scale(1); }
+    }
+
+    /* ── Combo: what it does to the ember ───────────────────────────────────
+       Held states, keyed on the tier being *stood in* rather than fired once,
+       so they last exactly as long as the run does and vanish with it. */
+    .ff[data-combo="2"] .ff__core,
+    .ff[data-combo="3"] .ff__core { animation-duration: 2.2s; filter: brightness(1.15); }
+    .ff[data-combo="4"] .ff__core,
+    .ff[data-combo="5"] .ff__core { animation-duration: 1.5s; filter: brightness(1.3) saturate(1.2); }
+    .ff[data-combo="6"] .ff__core,
+    .ff[data-combo="7"] .ff__core { animation-duration: 1s; filter: brightness(1.45) saturate(1.35); }
+    .ff[data-combo="8"] .ff__core,
+    .ff[data-combo="9"] .ff__core { animation-duration: .7s; filter: brightness(1.6) saturate(1.5); }
+
+    /* x250: the ember doubles, briefly. */
+    .ff--swell .ff__btn { animation: ffSwell .9s cubic-bezier(.22, 1, .36, 1); }
+    @keyframes ffSwell {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(2); }
+      100% { transform: scale(1); }
+    }
+
+    /* x100: harder and longer than the Eclipse Hammer's flinch. */
+    .ff--shake .ff__btn { animation: ffShake .5s ease-in-out; }
+    @keyframes ffShake {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-7px, 4px); }
+      25% { transform: translate(7px, -5px); }
+      40% { transform: translate(-6px, -4px); }
+      55% { transform: translate(6px, 5px); }
+      70% { transform: translate(-4px, 2px); }
+      85% { transform: translate(3px, -2px); }
+    }
+
+    /* ── Combo: the screen ──────────────────────────────────────────────────
+       One fixed layer, never interactive, painting only what the current tier
+       has earned. Held effects fade in on their tier and out with the run. */
+    .fx {
+      position: fixed; inset: 0;
+      z-index: 935;
+      pointer-events: none;
+    }
+    .fx > span { position: absolute; inset: 0; display: block; opacity: 0; }
+
+    /* x50: purple along the edges, the whole middle left alone. */
+    .fx__edge {
+      background:
+        linear-gradient(to right,  rgba(139, 92, 246, .5), transparent 14%),
+        linear-gradient(to left,   rgba(139, 92, 246, .5), transparent 14%),
+        linear-gradient(to bottom, rgba(139, 92, 246, .4), transparent 12%),
+        linear-gradient(to top,    rgba(139, 92, 246, .4), transparent 12%);
+      transition: opacity .5s ease;
+    }
+    .fx[data-level="3"] .fx__edge,
+    .fx[data-level="4"] .fx__edge,
+    .fx[data-level="5"] .fx__edge { opacity: .55; }
+    .fx[data-level="6"] .fx__edge,
+    .fx[data-level="7"] .fx__edge { opacity: .8; }
+    .fx[data-level="8"] .fx__edge,
+    .fx[data-level="9"] .fx__edge { opacity: 1; animation: fxEdgePulse 1.4s ease-in-out infinite; }
+    @keyframes fxEdgePulse { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+
+    /* x500: the corners close in. */
+    .fx__vignette {
+      background: radial-gradient(ellipse 78% 68% at 50% 50%, transparent 42%, rgba(76, 29, 149, .62) 100%);
+      transition: opacity .6s ease;
+    }
+    .fx[data-level="6"] .fx__vignette,
+    .fx[data-level="7"] .fx__vignette { opacity: .85; }
+    .fx[data-level="8"] .fx__vignette,
+    .fx[data-level="9"] .fx__vignette { opacity: 1; animation: fxVignettePulse 2.4s ease-in-out infinite; }
+    @keyframes fxVignettePulse { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
+
+    /* ── Combo: the one-shot sheets ─────────────────────────────────────────
+       Each fires on the single strike that crosses its tier, so the brightest
+       moments are isolated events hundreds of strikes apart. Nothing here can
+       repeat at a rate that matters for photosensitivity, and the whole layer
+       is switched off entirely under reduced motion. */
+    .fx__sheet { opacity: 0; }
+
+    .fx[data-burst="flash"] .fx__sheet {
+      background: radial-gradient(circle at 50% 50%, rgba(255, 240, 200, .9), rgba(139, 92, 246, .5) 55%, transparent 78%);
+      animation: fxFlash .5s ease-out forwards;
+    }
+    @keyframes fxFlash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* White, then purple floods back. The white half is 200ms and single. */
+    .fx[data-burst="whiteout"] .fx__sheet {
+      background: #fff;
+      animation: fxWhiteout 1.5s ease-out forwards;
+    }
+    @keyframes fxWhiteout {
+      0%   { opacity: 0;  background: #fff; }
+      6%   { opacity: 1;  background: #fff; }
+      20%  { opacity: 1;  background: #fff; }
+      34%  { opacity: .95; background: #7b2ff7; }
+      70%  { opacity: .55; background: #4c1d95; }
+      100% { opacity: 0;  background: #4c1d95; }
+    }
+
+    /* The Nameless. A true inversion: difference against white flips every
+       channel, which works on mobile where backdrop-filter is switched off. */
+    .fx[data-burst="invert"] .fx__sheet {
+      background: #fff;
+      mix-blend-mode: difference;
+      animation: fxInvert .2s steps(1, end) forwards;
+    }
+    @keyframes fxInvert { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    .fx[data-burst="shatter"] .fx__sheet {
+      background: radial-gradient(circle at 50% 50%, #fff, rgba(255, 217, 122, .8) 30%, rgba(139, 92, 246, .6) 62%, transparent 82%);
+      animation: fxShatter 2.6s ease-out forwards;
+    }
+    @keyframes fxShatter {
+      0%   { opacity: 0;   transform: scale(.2); }
+      8%   { opacity: 1;   transform: scale(1); }
+      45%  { opacity: .7;  transform: scale(1.1); }
+      100% { opacity: 0;   transform: scale(1.3); }
+    }
+
     /* Eclipse Hammer: the realm flinches. Shakes the flame, not the page —
        shaking the document would move every fixed element on the site. */
     .ff--quake .ff__btn { animation: ffQuake .34s ease-in-out; }
@@ -333,6 +571,33 @@ interface Banner {
       80% { transform: translate(2px, 2px); }
     }
 
+    /* ── The still versions ─────────────────────────────────────────────────
+       Driven by a class off the component's own prefers-reduced-motion read,
+       NOT by the media query below, and that is not a style preference.
+
+       Angular scopes @keyframes per component — ffShoutStill becomes
+       _ngcontent-<id>_ffShoutStill — but it does not rewrite an animation
+       shorthand that sits inside a @media block. The reference keeps the bare
+       name, matches no keyframes rule in the document, and the animation
+       silently never runs: no console error, no build warning, and
+       getComputedStyle still cheerfully reports it as running while
+       element.getAnimations() comes back empty. The floater rule had been
+       shipping in exactly that state since the flame was written.
+
+       Both the keyframes and the reference live out here, where Angular rewrites
+       the pair consistently. */
+    @keyframes ffFadeOnly { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes ffShoutStill {
+      0%   { opacity: 0; }
+      15%  { opacity: 1; }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    /* The floater still says what was earned; it just stops travelling. */
+    .ff--still .ff__float { animation: ffFadeOnly 1s linear forwards; }
+    /* The shout still names the tier; it stops rising. */
+    .ff--still .ff__shout { animation: ffShoutStill 2s linear forwards; }
+
     /* ── Mobile: smaller, and further from the thumb's resting arc so it does
          not sit on top of a tool's own controls. ─────────────────────────── */
     @media (max-width: 768px) {
@@ -340,6 +605,10 @@ interface Banner {
       .ff__btn { width: 52px !important; height: 52px !important; }
       .ff__glyph { font-size: 19px !important; }
       .ff__hud, .ff__banner { min-width: 154px; font-size: 11px; }
+      /* The counter shares the row with the ember on a 375px viewport. */
+      .ff__combo { font-size: 13px; right: calc(100% + 7px); }
+      .ff__shout { font-size: 13px; }
+      .ff__shout--grand { font-size: 15px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -348,15 +617,28 @@ interface Banner {
       .ff__spark { display: none; }
       .ff--quake .ff__btn { animation: none; }
       .ff__banner, .ff__hud { animation: none; transition: none; }
-      /* The floater still says what was earned; it just stops travelling. */
-      .ff__float { animation: ffFloatStill 1s linear forwards; }
-      @keyframes ffFloatStill { from { opacity: 1; } to { opacity: 0; } }
+      /* The two rules that name a keyframes live outside this block — see the
+         note up by ffFadeOnly. Everything here either cancels an animation or
+         hides an element, neither of which needs a name resolved. */
+
+      /* ── The combo under reduced motion ─────────────────────────────────
+         The ladder is kept; the spectacle is not. The counter and every shout
+         still read, so somebody can still see they are at x1,000 and still
+         collect all eight achievements — what goes is the shake, the swell,
+         the flash, the whiteout and the inversion, which are the only parts
+         that were ever a problem. The whole screen layer is removed rather
+         than dimmed: there is no gentler version of a full-viewport flash. */
+      .fx { display: none; }
+      .ff--shake .ff__btn, .ff--swell .ff__btn { animation: none; }
+      .ff__combo { animation: none; }
+      .ff[data-combo] .ff__core { animation: none !important; }
     }
   `],
 })
 export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly idle = inject(IdleService);
+  private readonly comboSvc = inject(ComboService);
   private readonly audio = inject(ForgeAudioService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
@@ -372,8 +654,21 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   floaters: Floater[] = [];
   sparks: Spark[] = [];
 
+  /** The live run. Zero between runs, which hides the counter entirely. */
+  combo: ComboSnapshot = this.comboSvc.snapshot;
+  shouts: Shout[] = [];
+  /** 1-9 for the tier being held, 0 for none. Drives every held effect in CSS. */
+  comboLevel = 0;
+  /** The one-shot currently painting the screen layer, or null. */
+  burst: ComboEffect | 'invert' | null = null;
+  shaking = false;
+  swelling = false;
+  /** Mounts the site-wide confetti hook for one beat at the top of the ladder. */
+  shattered = false;
+
   private seq = 0;
-  private reducedMotion = false;
+  /** Read once from the platform query; drives the .ff--still class in the template. */
+  reducedMotion = false;
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 
   ngOnInit(): void {
@@ -382,6 +677,16 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
       this.snap = s;
       this.cdr.markForCheck();
     }));
+
+    // The run itself, including the drop back to zero when the fuse burns out —
+    // which is how the counter and every held effect disappear together.
+    this.subs.add(this.comboSvc.snapshot$.subscribe(c => {
+      this.combo = c;
+      this.comboLevel = c.tier ? COMBO_TIERS.indexOf(c.tier) + 1 : 0;
+      this.cdr.markForCheck();
+    }));
+
+    this.subs.add(this.comboSvc.event$.subscribe(e => this.onComboEvent(e)));
 
     if (this.isBrowser) {
       this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -423,7 +728,12 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     // button would otherwise strobe the whole corner of the screen.
     if (!hit) return;
 
-    this.announcement = `+${hit.gold} Gold. ${formatCurrency(this.snap.gold)} total.`;
+    // The strike paid, so it counts toward the run. Everything the combo does —
+    // the counter, the shouts, the screen — hangs off the event this emits.
+    const run = this.comboSvc.strike();
+
+    this.announcement = `+${hit.gold} Gold. ${formatCurrency(this.snap.gold)} total.`
+      + (run.count > 1 ? ` Combo ${run.count}.` : '');
     this.pushFloater(`+${hit.gold}`, hit.century || hit.millennium);
 
     if (hit.millennium) {
@@ -433,7 +743,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
         grand: true,
       }, 4_600);
       this.audio.century();
-      this.burst(22);
+      this.sparkBurst(22);
     } else if (hit.century) {
       this.showBanner({
         title: 'Century Strike!',
@@ -441,13 +751,15 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
         grand: false,
       }, 3_000);
       this.audio.century();
-      this.burst(16);
+      this.sparkBurst(16);
     } else if (hit.count % 10 === 0) {
-      this.audio.strike();
-      this.burst(10);
+      this.audio.strike(pitchFor(run.count));
+      this.sparkBurst(10);
     } else {
-      this.audio.strike();
-      this.burst(4);
+      // Pitched by the tier being held, so the ladder is audible on every
+      // ordinary strike rather than only on the ones that cross a threshold.
+      this.audio.strike(pitchFor(run.count));
+      this.sparkBurst(4);
     }
 
     // The Eclipse Hammer's screen shake, scoped to the flame.
@@ -460,6 +772,103 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+
+  /** The colour the counter is wearing: the held tier's, or purple before one. */
+  get comboTone(): ComboTone {
+    return this.combo.tier?.tone ?? 'purple';
+  }
+
+  /**
+   * The counter as a one-or-zero-length list, so `@for`'s tracking does the
+   * animation restart for us. Empty below x2, which hides it entirely.
+   */
+  get comboBadge(): number[] {
+    return this.combo.count > 1 ? [this.combo.count] : [];
+  }
+
+  /**
+   * React to a rung being crossed: shout it, play it, and paint it.
+   *
+   * The sound fires regardless of reduced motion — `ForgeAudioService` makes its
+   * own decision there, and it suppresses on the same query — while everything
+   * that moves is gated here. The achievement has already been banked by the
+   * service before this runs, so the rarity drop and this shout land together.
+   */
+  private onComboEvent(e: ComboEvent): void {
+    if (e.nameless) {
+      this.pushShout(NAMELESS_LABEL, 'crimson', true);
+      this.audio.comboNameless();
+      this.paint('invert', 220);
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const tier = e.tier;
+    if (!tier) return;
+
+    this.pushShout(tier.label, tier.tone, tier.at >= 500);
+
+    // The top three rungs get their own cue; the rest ride the tier flourish.
+    if (tier.effect === 'shatter') this.audio.comboAscension();
+    else if (tier.effect === 'flash' || tier.effect === 'whiteout') this.audio.comboImpact();
+    else this.audio.comboTier(tier.semitones);
+
+    switch (tier.effect) {
+      case 'shake':
+        this.shaking = true;
+        this.after(() => { this.shaking = false; this.cdr.markForCheck(); }, 520);
+        this.sparkBurst(20);
+        break;
+      case 'swell':
+        this.swelling = true;
+        this.after(() => { this.swelling = false; this.cdr.markForCheck(); }, 920);
+        break;
+      case 'flash':
+        this.paint('flash', 520);
+        this.sparkBurst(24);
+        break;
+      case 'whiteout':
+        this.paint('whiteout', 1_520);
+        break;
+      case 'shatter':
+        this.paint('shatter', 2_620);
+        this.sparkBurst(28);
+        // Mount, then unmount: the engine's observer fires on the node being
+        // added, so leaving it in the DOM would celebrate exactly once and then
+        // never again for the rest of the session.
+        this.shattered = true;
+        this.after(() => { this.shattered = false; this.cdr.markForCheck(); }, 400);
+        break;
+      // 'pop', 'surge', 'edge' and 'vignette' are all held states driven off
+      // `comboLevel` in CSS — they have nothing to fire here.
+      default:
+        break;
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Run a one-shot across the screen layer.
+   *
+   * Every one of these is suppressed under reduced motion. There is no gentler
+   * version of a full-viewport flash to fall back to, so the fallback is nothing
+   * — the shout still names the tier and the achievement still drops.
+   */
+  private paint(effect: ComboEffect | 'invert', ms: number): void {
+    if (this.reducedMotion) return;
+    this.burst = effect;
+    this.after(() => { this.burst = null; this.cdr.markForCheck(); }, ms);
+  }
+
+  private pushShout(text: string, tone: ComboTone, grand: boolean): void {
+    const key = this.seq++;
+    this.shouts = [...this.shouts, { key, text, tone, grand }];
+    this.after(() => {
+      this.shouts = this.shouts.filter(s => s.key !== key);
+      this.cdr.markForCheck();
+    }, 2_100);
+  }
 
   private pushFloater(text: string, big: boolean): void {
     const key = this.seq++;
@@ -478,7 +887,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
    * Skipped entirely under reduced motion — this is the one effect with no
    * meaningful static form. The floater and the payout both still happen.
    */
-  private burst(count: number): void {
+  private sparkBurst(count: number): void {
     if (this.reducedMotion) return;
 
     const made: Spark[] = [];

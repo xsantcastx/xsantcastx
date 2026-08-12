@@ -1723,68 +1723,11 @@ body.flicker {
   .tools-cta__visual { display: none; }
 }
 
-/* ===== Header Shared Styles ===== */
-app-header .nav-buzzword {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.28rem 0.72rem;
-  border-radius: 999px;
-  font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: clamp(0.64rem, 0.9vw, 0.82rem);
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: rgba(237, 246, 255, 0.86);
-  background: linear-gradient(120deg, rgba(139, 92, 246, 0.22), rgba(123, 97, 255, 0.28));
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25), 0 14px 26px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: transform 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease;
-}
-
-app-header .nav-buzzword::before {
-  content: '>>';
-  font-size: 0.7em;
-  letter-spacing: 0.3em;
-  opacity: 0.68;
-  color: rgba(139, 92, 246, 0.85);
-}
-
-app-header .navbar.is-compact .nav-buzzword {
-  padding: 0.22rem 0.6rem;
-  letter-spacing: 0.22em;
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.22), 0 10px 20px rgba(0, 0, 0, 0.26);
-}
-
-app-header .nav-buzzword[data-swap='true'],
-app-header .nav-buzzword[data-swap='false'] {
-  animation: navWordSwap 0.65s cubic-bezier(0.65, 0.05, 0.36, 1);
-}
-
-app-header .logo:hover .nav-buzzword,
-app-header .logo:focus-visible .nav-buzzword {
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.3), 0 16px 32px rgba(0, 0, 0, 0.32);
-  transform: translateY(-1px);
-}
-
-@keyframes navWordSwap {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.92);
-    filter: blur(3px);
-  }
-  45% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.04);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: none;
-  }
-}
+/* ===== Header Shared Styles =====
+   The rotating buzzword pill that used to live under the wordmark went with
+   the portfolio navbar. Its rules (.nav-buzzword, @keyframes navWordSwap)
+   are deleted rather than left orphaned — the Godforge command bar draws its
+   own mark and has no element they could apply to. */
 
 /* ===== Embed Mode ===== */
 .embed-mode {
@@ -2003,28 +1946,32 @@ summary:focus-visible {
    text legibility. Component styles are scoped with a host attribute, which
    outranks a bare class selector — hence the app-header prefix. */
 @media (max-width: 960px) {
-  app-header .nav-menu {
+  app-header .gftome {
     background:
       radial-gradient(ellipse 60% 40% at 20% 0%, rgba(139, 92, 246, 0.1), transparent 60%),
       radial-gradient(ellipse 55% 45% at 80% 100%, rgba(123, 97, 255, 0.12), transparent 60%),
       rgba(6, 2, 18, 0.985);
   }
 
-  app-header .mobile-backdrop {
+  app-header .gftome__backdrop {
     background:
       radial-gradient(ellipse 60% 50% at 50% 30%, rgba(139, 92, 246, 0.07), transparent 70%),
       rgba(3, 1, 10, 0.9);
   }
 
+  app-header .gfnav__menu {
+    background: rgba(6, 2, 18, 0.985);
+  }
+
   /* The header bar itself was 58% opaque and leaned on an 18px backdrop blur to
      stay readable over scrolling content. Without the blur that is a window
      onto whatever is passing underneath, so raise the fill. */
-  app-header .navbar__glass {
-    background: rgba(8, 12, 26, 0.94);
+  app-header .gfnav__glass {
+    background: rgba(8, 10, 22, 0.95);
   }
 
-  app-header .navbar.is-compact .navbar__glass {
-    background: rgba(6, 10, 22, 0.97);
+  app-header .gfnav--compact .gfnav__glass {
+    background: rgba(6, 8, 18, 0.975);
   }
 }
 
@@ -2346,7 +2293,7 @@ summary:focus-visible {
      Without it, older iOS Safari scrolls these panes without inertia, which is
      the single most "not a real app" feeling on the site. overscroll-behavior
      stops a flick inside the pane from chaining to the page behind it. */
-  .nav-menu,
+  .gftome,
   .chat-messages,
   .bot-messages,
   .feed-panel,

@@ -38,7 +38,7 @@ import { formatCurrency, formatRate } from './economy.model';
        routerLink="/market"
        [class.cr__chip--tick]="goldTick"
        [attr.aria-label]="goldLabel">
-      <span class="cr__icon" aria-hidden="true">&#129689;</span>
+      <span class="cr__icon cr__icon--coin" aria-hidden="true"></span>
       <span class="cr__val">{{ gold }}</span>
     </a>
 
@@ -47,7 +47,7 @@ import { formatCurrency, formatRate } from './economy.model';
          routerLink="/market"
          [class.cr__chip--tick]="essenceTick"
          [attr.aria-label]="essenceLabel">
-        <span class="cr__icon" aria-hidden="true">&#9889;</span>
+        <span class="cr__icon cr__icon--shard" aria-hidden="true"></span>
         <span class="cr__val">{{ essence }}</span>
       </a>
     }
@@ -64,7 +64,25 @@ import { formatCurrency, formatRate } from './economy.model';
       text-decoration: none;
       transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
     }
-    .cr__icon { font-size: 13px; line-height: 1; }
+    /* Drawn, not emoji: the coin and the shard have to sit in the bar's
+       palette, and a colour-font glyph cannot. */
+    .cr__icon { display: block; flex-shrink: 0; }
+
+    .cr__icon--coin {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 1.5px solid #C9A84C;
+      background: radial-gradient(circle at 34% 30%, #ffe9a8 0%, #E0A857 55%, #a97f2e 100%);
+      box-shadow: 0 0 7px rgba(201, 168, 76, 0.55);
+    }
+
+    .cr__icon--shard {
+      width: 10px; height: 10px;
+      rotate: 45deg;
+      border-radius: 2px;
+      background: linear-gradient(135deg, #e4d4ff 0%, #a48bff 55%, #6f4fd8 100%);
+      box-shadow: 0 0 7px rgba(164, 139, 255, 0.6);
+    }
     .cr__val {
       font: 700 12px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: .02em;

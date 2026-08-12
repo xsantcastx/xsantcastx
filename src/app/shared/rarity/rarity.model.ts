@@ -132,6 +132,21 @@ const LEGACY_MAP: Record<string, EclipseRarity> = {
  * — it is earned, not authored (see `isSingular`).
  */
 export const EGG_TIERS: Record<string, EclipseRarity> = {
+  // ── The combo ladder ── the only tiers on the wall priced in time held.
+  // Assigned explicitly rather than left to LEGACY_MAP for two reasons: the
+  // legacy scale tops out at 'legendary', which maps to Anomalous, so the two
+  // Mythic rungs are unreachable through it; and the ladder's shape is the
+  // point, so it should be readable in one place rather than inferred from six
+  // scattered `rarity` fields.
+  'combo-first-sun': 'mythic',        // x9,999 — 83 minutes without a gap
+  'combo-eclipse-breaker': 'mythic',  // x5,000
+  'combo-millennium-strike': 'anomalous',
+  'combo-forbidden-count': 'anomalous',
+  'combo-relentless': 'sacred',
+  'combo-century-forge': 'sacred',
+  'combo-forge-frenzy': 'eclipsed',
+  'combo-rapid-strike': 'mortal',
+
   // ── Mythic ── three eggs that take real intent to reach.
   'hash-miner': 'mythic',          // a digest with four leading zeros
   'regex-ouroboros': 'mythic',     // a regex that matches its own source
