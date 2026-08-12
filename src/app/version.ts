@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.39.0',
+  version: '2.39.1',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Three Layers',
+  codename: 'Clean Cut',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,17 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.39.1',
+    codename: 'Clean Cut',
+    date: '2026-08-12',
+    highlights: [
+      'The boot sequence never faded out. The rule that dismisses the curtain early set a plain opacity of zero, and a running CSS animation outranks a plain declaration — so gfCurtain, which pins the curtain opaque for the first 88%, won every time. Any early dismissal was a hard cut to the site. The rule is marked important now, which is what it takes to beat an animation',
+      'Holding at stage six no longer eats the ending. The hold pauses the CSS, but the stage-seven tick and the teardown were still armed against a clock that had stopped: the read-out jumped to a hundred over a frozen frame, and the teardown then dropped the curtain mid-hold, so the flash and the flight into the navbar were skipped and the site arrived in a cut. Those timers are cancelled going into the hold and re-armed against the remaining animation time coming out',
+      'The hold is bounded twice. Its own cap comes down from six seconds to six hundred milliseconds, and a single absolute deadline now fires once from boot regardless of what else is or is not happening — a wedged router event, a timer out of order — so the curtain can cover the site for at most about three and a half seconds in the worst case a user can actually reach',
+      'Teardown is idempotent. Four paths reach it and it now runs once, and it releases the pause on the way out so the sigil is not frozen mid-shake behind the fade'
+    ]
+  },
   {
     version: '2.39.0',
     codename: 'Three Layers',
