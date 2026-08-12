@@ -32,13 +32,10 @@
              width="1920" height="1280"
              fetchpriority="high" decoding="async" draggable="false">
       </picture>
-      <!-- Two scrims, not one. The vignette pulls the frame's edges down so
-           the glass panels have something to sit against, and the floor wash
-           darkens the lower third where the wordmark and the calls land.
-           Without them the art's own highlights run straight through the
-           panel text. -->
-      <span class="gfh__vignette"></span>
-      <span class="gfh__floor"></span>
+      <!-- One overlay. Layer 2 of the three-layer pattern: artwork, dark
+           gradient, glass UI. It resolves to solid #0a0a0f at the bottom so
+           the hero hands off to the page below with no visible seam. -->
+      <span class="gfh__overlay"></span>
     </div>
 
     <div class="gfh__inner">
@@ -417,58 +414,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-       COSMIC ANCHOR — a small rotating planet
-       between sections as a moment of breath
-       ═══════════════════════════════════════════ -->
-  <section class="hp-anchor" aria-hidden="true">
-    <div class="hp-anchor__inner">
-      <div class="cosmic-planet">
-        <!-- z=0: outer diffuse glow halo (§3.3 cross-fade layers) -->
-        <div class="cosmic-planet__atmosphere" aria-hidden="true"></div>
-        <!-- z=1: ring far half — behind sphere -->
-        <div class="cosmic-planet__ring cosmic-planet__ring--back" aria-hidden="true"></div>
-        <!-- §1.4a: sphere's shadow wedge cast onto the ring far half -->
-        <div class="cosmic-planet__sphere-shadow" aria-hidden="true"></div>
-        <!-- z=2: sphere body — surface + clouds + terminator + lights inside -->
-        <div class="cosmic-planet__sphere">
-          <div class="cosmic-planet__surface" aria-hidden="true"></div>
-          <div class="cosmic-planet__clouds" aria-hidden="true"></div>
-          <!-- §1.2: terminator sits above surface+clouds so both darken at night -->
-          <div class="cosmic-planet__terminator" aria-hidden="true"></div>
-          <div class="cosmic-planet__nightlights" aria-hidden="true"></div>
-          <!-- alien megacity hubs — bright pulsing lights on the dark hemisphere,
-               not ours: someone down there is home. Colors cycle the brand palette. -->
-          <div class="cosmic-planet__hub" style="--hx:74%; --hy:58%; --hub-color:#A78BFA; --hub-delay:0s; --hub-dur:3.6s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__hub" style="--hx:62%; --hy:74%; --hub-color:#a48bff; --hub-delay:-1.1s; --hub-dur:4.2s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__hub" style="--hx:83%; --hy:41%; --hub-color:#A78BFA; --hub-delay:-2.4s; --hub-dur:3.9s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__hub" style="--hx:55%; --hy:51%; --hub-color:#ff6dd7; --hub-delay:-0.6s; --hub-dur:4.6s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__hub" style="--hx:70%; --hy:81%; --hub-color:#a48bff; --hub-delay:-3.2s; --hub-dur:3.4s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__hub" style="--hx:89%; --hy:63%; --hub-color:#A78BFA; --hub-delay:-1.8s; --hub-dur:4.0s;" aria-hidden="true"></div>
-          <div class="cosmic-planet__glint" aria-hidden="true"></div>
-          <div class="cosmic-planet__highlight" aria-hidden="true"></div>
-          <!-- §1.4b: ring's shadow band across the lower sphere -->
-          <div class="cosmic-planet__ring-shadow" aria-hidden="true"></div>
-          <!-- §1.5/§3.4: ~2% noise overlay to kill OLED gradient banding -->
-          <div class="cosmic-planet__banding" aria-hidden="true"></div>
-        </div>
-        <!-- §1.3: Fresnel atmosphere rim — bright arc on sunlit limb -->
-        <div class="cosmic-planet__atmosphere-rim" aria-hidden="true"></div>
-        <!-- existing limb retained as subtle secondary scatter -->
-        <div class="cosmic-planet__limb" aria-hidden="true"></div>
-        <!-- a signal, breaking free of the capital hub into open space —
-             unclipped by the sphere so the ring can expand past the rim -->
-        <div class="cosmic-planet__beacon" aria-hidden="true"></div>
-        <!-- z=4: ring near half — in front of sphere -->
-        <div class="cosmic-planet__ring cosmic-planet__ring--front" aria-hidden="true"></div>
-        <!-- §1.6: moon with mini-terminator gradient -->
-        <div class="cosmic-planet__moon" aria-hidden="true"></div>
-      </div>
-      <p class="hp-anchor__whisper">{{ translate('cosmic.anchor.whisper') }}</p>
     </div>
   </section>
 

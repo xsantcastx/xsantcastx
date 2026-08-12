@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.37.0',
+  version: '2.38.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Altar',
+  codename: 'Three Layers',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.38.0',
+    codename: 'Three Layers',
+    date: '2026-08-12',
+    highlights: [
+      'The homepage is down to three layers, the way a game studio builds one: the artwork, a single dark gradient for readability, and the glass UI on top. Nothing else is drawing atmosphere there any more',
+      'The CSS planet is gone — sphere, rings, clouds, terminator, night lights, the moon and the beacon, six hundred and ninety-five lines of stylesheet that existed to fake something the painting already has',
+      'On the homepage the site\'s whole CSS backdrop is switched off: the body gradient, the nebula wash, the generated starfield, the matrix layer, the drifting pulsar, the corner runes, the particle layer and the constellation canvas. Two atmospheres competing is worse than either',
+      'It is switched off for that route only. Every other page still has that backdrop, because it is the only thing behind them — there is no artwork for /tools or /codex yet, and stripping it there would leave twenty routes on flat black',
+      'The hero art is preloaded into the homepage document alone, one link per breakpoint matching the picture\'s own sources, so the preload resolves to the same file the element picks and no other route fetches a hero it never paints'
+    ]
+  },
   {
     version: '2.37.0',
     codename: 'The Altar',
