@@ -50,11 +50,18 @@
   --gf-pale: #C4B5FD;
   --gf-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Where the sigil flies to at stage 7 — the header's 32x32 brand sigil,
-     which sits at half of --gfnav-h (56px fallback; the measured --nav-h does
-     not exist during prerender) plus the row's inline padding. */
-  --gf-logo-x: calc(clamp(0.75rem, 2.5vw, 1.75rem) + 16px);
-  --gf-logo-y: calc(28px + env(safe-area-inset-top, 0px));
+  /*
+   * Where the sigil flies to at stage 7 — the centre of the header's 32x32
+   * brand sigil (.gfnav__sigil).
+   *
+   * These are only the prerender fallback. The component overwrites both with
+   * the brand's measured position shortly after boot (see aimAtBrand), because
+   * a hand-copy of the header's geometry goes stale every time the header
+   * changes and does so silently. Approximate values here are fine and are
+   * what a JS-less client gets; they are not the source of truth.
+   */
+  --gf-logo-x: calc(clamp(0.7rem, 2vw, 1.5rem) + 16px);
+  --gf-logo-y: calc(26px + env(safe-area-inset-top, 0px));
 
   /* Negative delay is how the repeat-visit cut is made: one set of keyframes,
      started partway in. -1.6s lands on stage 5, leaving 1.3s of runway. */
