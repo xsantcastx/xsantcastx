@@ -1,23 +1,26 @@
 /**
  * progress-storage.service.ts — where progression is persisted.
  *
- * The service talks to a `ProgressAdapter`, not to a storage API. Today the only
- * live adapter is localStorage; the Firestore adapter is a deliberate stub so
- * that Phase 2 (progress that follows a signed-in visitor across devices) is a
- * one-line provider swap rather than a rewrite of XpService.
+ * The service talks to a `ProgressAdapter`, not to a storage API. Signed out,
+ * that is localStorage. Signed in, `CloudSaveService` swaps in `FirestoreAdapter`
+ * and progression follows the visitor between devices — which was the whole
+ * reason for the indirection, and it did turn out to be the promised swap rather
+ * than a rewrite of XpService.
  *
  * The contract is async, including in the localStorage adapter where it is not
  * strictly needed. That is the point: a synchronous interface would quietly grow
- * callers that assume `load()` resolves in the same tick, and Phase 2 — where
- * loading is a network round trip — would become a rewrite instead of a swap.
- * The cost is paid once, here, rather than across every consumer later.
+ * callers that assume `load()` resolves in the same tick, and the cloud path —
+ * where loading is a network round trip — would have become a rewrite instead of
+ * a swap. The cost was paid once, here, rather than across every consumer later.
  *
  * One escape hatch: `saveNow()`. Page unload does not await promises, and losing
- * the last award of every session would be a real bug. Adapters that *can* write
- * synchronously expose it; Firestore cannot, and says so.
+ * the last award of every session would be a real bug. Adapters expose it when
+ * they have a synchronous store to reach — for Firestore that is the localStorage
+ * cache underneath it, which is the half worth saving.
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import type { FirestoreHandle } from '../lazy-firestore.service';
 import {
   ProgressState,
   emptyProgress,
@@ -27,12 +30,28 @@ import {
 
 export const PROGRESS_KEY = 'eclipse-progress';
 
+/**
+ * Floor on the gap between two Firestore writes of the same document.
+ *
+ * A busy session awards XP every few seconds and each award schedules a save.
+ * Ten seconds is the ceiling on how much work a crashed tab can cost — and the
+ * cache write underneath it is unthrottled, so what is actually at risk is the
+ * cloud copy being ten seconds behind the disk copy, not the award itself.
+ */
+export const CLOUD_WRITE_INTERVAL_MS = 10_000;
+
 export interface ProgressAdapter {
   /** Human-readable, for the HUD and for logs. */
   readonly name: string;
+  /**
+   * The id this backend files progression under, when it has an opinion. The
+   * Firestore adapter sets it to the signed-in uid; the local and null adapters
+   * leave it undefined and keep whatever id the blob already carries.
+   */
+  readonly identity?: string;
   load(): Promise<ProgressState>;
   save(state: ProgressState): Promise<void>;
-  /** Is there anything stored for this identity? Phase 2 uses it to decide whether to merge. */
+  /** Is there anything stored for this identity? Sign-in uses it to decide whether to merge. */
   exists(): Promise<boolean>;
   clear(): Promise<void>;
   /**
@@ -104,88 +123,167 @@ export class NullAdapter implements ProgressAdapter {
 }
 
 /**
- * Phase 2 stub. Signing in should sync progression to `users/{uid}/progress`,
- * with the local blob acting as an offline cache that reconciles on load
- * (highest lifetime XP wins, achievement id sets union — `mergeProgress` in
- * gamification.model.ts already implements exactly that).
+ * Progression in `users/{uid}/progress/state`, with localStorage kept alongside
+ * it as a cache rather than replaced by it.
  *
- * INERT ON PURPOSE. Every method throws rather than silently returning an empty
- * blob: a stub that quietly hands back zero XP would look like a wiped profile
- * the first time somebody wired it up by accident. It is a real class rather
- * than a comment block so the compiler keeps proving it satisfies the
- * interface — a stub that has drifted out of shape is worth less than no stub.
+ * This was a deliberate stub for two releases and the notes it carried have been
+ * mostly honoured; the two places this departs from them are worth stating,
+ * because both were written down as certainties and only one survived contact.
  *
- * Everything Phase 2 needs is already true of the data: `ProgressState` is
- * JSON-safe so it goes straight to `setDoc` with no converter, `userId` already
- * exists so sign-in only changes where the id comes from, and `level` is already
- * stored so a leaderboard is one `orderBy` away.
+ * ── It writes both stores, not one ───────────────────────────────────────────
+ * Every save lands in localStorage *first* and Firestore second. That is what
+ * lets the site keep working signed-out, offline, and in the seconds before auth
+ * has finished booting — the whole Godforge hydrates from localStorage on the
+ * first frame and never waits on a network round trip. A network failure costs
+ * the visitor nothing, because the write it failed to make is already on disk.
  *
- * TO ACTIVATE:
+ * ── It does have `saveNow` ───────────────────────────────────────────────────
+ * The stub refused one, reasoning that Firestore cannot write synchronously and
+ * that pretending otherwise would drop the last slice of a session. Half of that
+ * is right: the Firestore half of a `pagehide` write genuinely cannot be
+ * awaited. But the localStorage half can, and it is the half that matters —
+ * dropping it would lose the award outright, whereas dropping the Firestore
+ * write only defers it to the next load, when the cache is read back and pushed
+ * up. Refusing to write either store is strictly worse than writing the one that
+ * works. The Firestore write is still attempted, best effort, because the SDK's
+ * offline queue often does land it.
  *
- *  1. Uncomment the bodies and inject Firestore.
- *  2. Add the security rule. The important half is that XP must not be
- *     client-writable to an arbitrary value — a document the browser can set to
- *     `xp: 999999999` makes the whole ladder meaningless the moment one person
- *     opens devtools:
- *
- *       match /users/{uid}/progress/{doc} {
- *         allow read:   if request.auth != null && request.auth.uid == uid;
- *         allow create: if request.auth != null && request.auth.uid == uid
- *                       && request.resource.data.xp == 0;
- *         allow update: if request.auth != null && request.auth.uid == uid
- *                       // monotonic, and bounded per write
- *                       && request.resource.data.xp >= resource.data.xp
- *                       && request.resource.data.xp <= resource.data.xp + 2000
- *                       && request.resource.data.userId == uid;
- *       }
- *
- *     That bounds the damage rather than preventing it. If the Arena
- *     leaderboards ever become competitive, XP has to be awarded by a Cloud
- *     Function the client cannot call with an arbitrary amount, and this rule
- *     tightens to `allow write: if false`.
- *
- *  3. Call `ProgressStorageService.migrate(new FirestoreAdapter(uid))` once on
- *     first sign-in, then let the adapter take over.
- *
- * Also worth doing before this goes live: `XpService` already debounces writes,
- * but a busy session still produces one every few seconds. Batch to ~30s plus a
- * flush on sign-out, or Firestore write costs will outpace the feature.
+ * ── Throttling ───────────────────────────────────────────────────────────────
+ * `XpService` debounces at 800ms, which is right for a disk write and far too
+ * chatty for a billed one. Firestore writes are throttled to one per
+ * `CLOUD_WRITE_INTERVAL_MS` here, leading-edge so the first award of a session
+ * syncs immediately, with a trailing write so the last one is never the one left
+ * behind.
  */
 export class FirestoreAdapter implements ProgressAdapter {
   readonly name = 'firestore';
 
-  // TODO(phase-2): inject Firestore alongside the authenticated uid.
-  //   constructor(private firestore: Firestore, private uid: string) {}
-  constructor(private readonly uid: string) {}
+  /** The cache half of every write. */
+  private readonly local = new LocalStorageAdapter();
 
-  async load(): Promise<ProgressState> {
-    throw new Error('[FirestoreAdapter] Phase 2 is not implemented yet.');
-    // TODO(phase-2):
-    // const ref  = doc(this.firestore, 'users', this.uid, 'progress', 'state');
-    // const snap = await getDoc(ref);
-    // if (!snap.exists()) return { ...emptyProgress(), userId: this.uid };
-    // return migrateProgress(snap.data());
+  get identity(): string { return this.uid; }
+
+  private lastWriteAt = 0;
+  private trailing: ReturnType<typeof setTimeout> | null = null;
+  /** Newest state not yet pushed. Null once the upstream write has been issued. */
+  private pending: ProgressState | null = null;
+
+  /**
+   * Takes a resolved {@link FirestoreHandle} rather than an injected `Firestore`.
+   * `provideFirestore()` is no longer in the root injector — the SDK is ~450 kB
+   * and nothing on first paint touches it, so it is imported on demand and
+   * handed around as `{ db, api }`. Which suits this adapter: it is only ever
+   * constructed after somebody has signed in, by which point the SDK has loaded.
+   */
+  constructor(
+    private readonly fs: FirestoreHandle,
+    private readonly uid: string,
+    /** Called after every upstream write attempt, for the sync indicator. */
+    private readonly onWrite: (error: unknown | null) => void = () => {},
+  ) {}
+
+  private ref() {
+    return this.fs.api.doc(this.fs.db, 'users', this.uid, 'progress', 'state');
   }
 
-  async save(_state: ProgressState): Promise<void> {
-    throw new Error('[FirestoreAdapter] Phase 2 is not implemented yet.');
-    // TODO(phase-2):
-    // const ref = doc(this.firestore, 'users', this.uid, 'progress', 'state');
-    // await setDoc(ref, { ..._state, userId: this.uid }, { merge: true });
+  /**
+   * Remote first, cache as the fallback.
+   *
+   * A remote read that succeeds also refreshes the cache, so the next cold start
+   * paints this device's real progression before auth has even loaded.
+   *
+   * A remote read that *fails* returns the local blob rather than an empty one.
+   * That distinction is the whole difference between "you are offline" and "your
+   * profile was wiped", and only one of them is survivable.
+   */
+  async load(): Promise<ProgressState> {
+    const cached = await this.local.load();
+    try {
+      const snap = await this.fs.api.getDoc(this.ref());
+      if (!snap.exists()) return { ...cached, userId: this.uid };
+      const remote = migrateProgress(snap.data());
+      const adopted = { ...remote, userId: this.uid };
+      this.local.saveNow(adopted);
+      return adopted;
+    } catch (err) {
+      this.onWrite(err);
+      return { ...cached, userId: this.uid };
+    }
+  }
+
+  async save(state: ProgressState): Promise<void> {
+    const stamped = { ...state, userId: this.uid };
+    // Cache unconditionally and synchronously. Whatever happens upstream, the
+    // visitor's own device already has it.
+    this.local.saveNow(stamped);
+    this.pending = stamped;
+
+    const since = Date.now() - this.lastWriteAt;
+    if (since >= CLOUD_WRITE_INTERVAL_MS) {
+      await this.flush();
+      return;
+    }
+    // Inside the window: leave `pending` for the trailing write already booked,
+    // or book one for whatever is left of the interval.
+    if (this.trailing === null) {
+      this.trailing = setTimeout(() => {
+        this.trailing = null;
+        void this.flush();
+      }, CLOUD_WRITE_INTERVAL_MS - since);
+    }
+  }
+
+  /** Push whatever is pending, now. */
+  async flush(): Promise<void> {
+    const state = this.pending;
+    if (!state) return;
+    this.pending = null;
+    this.lastWriteAt = Date.now();
+    try {
+      // Whole-document write, not a merge: `ProgressState` is a closed shape and
+      // a field removed locally should not survive in the cloud copy forever.
+      await this.fs.api.setDoc(this.ref(), state as unknown as Record<string, unknown>);
+      this.onWrite(null);
+    } catch (err) {
+      // Put it back so the next tick retries rather than dropping it. A newer
+      // state may have replaced it already, which is fine — that one is newer.
+      this.pending ??= state;
+      this.onWrite(err);
+      throw err;
+    }
+  }
+
+  saveNow(state: ProgressState): void {
+    const stamped = { ...state, userId: this.uid };
+    this.local.saveNow(stamped);
+    this.pending = stamped;
+    // Unawaitable by definition — `pagehide` will not hold the page open for it.
+    // The SDK's offline queue lands it surprisingly often, and when it does not,
+    // the cache write above means the next load still has it.
+    void this.flush().catch(() => { /* leaving; the cache holds the truth */ });
   }
 
   async exists(): Promise<boolean> {
-    throw new Error('[FirestoreAdapter] Phase 2 is not implemented yet.');
-    // TODO(phase-2):
-    // return (await getDoc(doc(this.firestore, 'users', this.uid, 'progress', 'state'))).exists();
+    try {
+      return (await this.fs.api.getDoc(this.ref())).exists();
+    } catch {
+      // Unknown is not the same as absent, and treating it as absent would let
+      // `migrate()` overwrite a real cloud profile with a fresh device's empty
+      // one — the exact silent clobber it exists to prevent.
+      throw new Error('[FirestoreAdapter] could not reach Firestore.');
+    }
   }
 
+  /** Wipes both copies. Used by `XpService.reset()`. */
   async clear(): Promise<void> {
-    throw new Error('[FirestoreAdapter] Phase 2 is not implemented yet.');
+    await this.local.clear();
+    this.pending = null;
+    if (this.trailing !== null) {
+      clearTimeout(this.trailing);
+      this.trailing = null;
+    }
+    await this.fs.api.deleteDoc(this.ref());
   }
-
-  // No `saveNow`. Firestore cannot write synchronously, and pretending
-  // otherwise would silently drop the last unsaved slice of every session.
 }
 
 @Injectable({ providedIn: 'root' })
@@ -248,13 +346,28 @@ export class ProgressStorageService {
     const local = await new LocalStorageAdapter().load();
     const remote = (await target.exists()) ? await target.load() : null;
     // The target's identity always wins — adopting the signed-in uid is the
-    // whole point of migrating.
+    // whole point of migrating. On a first device there is no remote blob to
+    // take it from, so it comes off the adapter itself.
+    const userId = target.identity ?? remote?.userId ?? local.userId;
     const merged = remote
-      ? { ...mergeProgress(remote, local), userId: remote.userId }
-      : local;
+      ? { ...mergeProgress(remote, local), userId }
+      : { ...local, userId };
 
     await target.save(merged);
     this.adapter = target;
     return merged;
+  }
+
+  /**
+   * Push anything the adapter is holding back, immediately.
+   *
+   * The Firestore adapter throttles its uploads, so at sign-out — the one moment
+   * the visitor is explicitly asking for their progress to be safe — there may
+   * be up to ten seconds of awards sitting in a trailing timer that is about to
+   * be thrown away with the adapter.
+   */
+  async flush(): Promise<void> {
+    const adapter = this.adapter as ProgressAdapter & { flush?: () => Promise<void> };
+    if (adapter.flush) await adapter.flush();
   }
 }

@@ -228,6 +228,15 @@ export const EASTER_EGGS: EasterEgg[] = [
   // *noticed* rather than hunted, and a page you can reach from the navbar
   // should not pay what a four-leading-zero hash pays.
   { id: 'forge-self-aware',          name: 'Self-Aware',              description: 'Opened your own Forge for the first time',            tool: 'global', rarity: 'rare',   icon: '🪞', xp: 25 },
+
+  // ── Cloud save ──────────────────────────────────────────────────
+  // Bound the forge to an account, so the save outlives the browser it was made
+  // in. Announced rather than hidden — the button says exactly what it does —
+  // so it pays 50 rather than a hunt's 200, above Self-Aware and The Archivist
+  // because opening a page is a click and this is a decision. The tier is
+  // Eclipsed rather than Mortal for the same reason: most visitors will use
+  // every tool on the site and never make it.
+  { id: 'cloud-eternal-archive',     name: 'The Eternal Archive',     description: 'Bound your progress to the cloud',                    tool: 'global', rarity: 'rare',   icon: '☁️', xp: 50 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */

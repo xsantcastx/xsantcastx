@@ -22,11 +22,13 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { XpService, XpSnapshot } from './xp.service';
+import { CloudSaveButtonComponent } from '../cloud-save/cloud-save-button.component';
+import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
 
 @Component({
   selector: 'app-xp-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CloudSaveButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="xpb" [class.xpb--open]="open">
@@ -35,7 +37,7 @@ import { XpService, XpSnapshot } from './xp.service';
         class="xpb__trigger"
         (click)="toggle()"
         [attr.aria-expanded]="open"
-        [attr.aria-label]="'Level ' + snap.level.level + ', ' + snap.level.title + '. ' + snap.xp + ' XP. Open progression panel.'">
+        [attr.aria-label]="triggerLabel">
         <span class="xpb__rank">{{ snap.level.level }}</span>
         <span class="xpb__meta">
           <span class="xpb__title">{{ snap.level.title }}</span>
@@ -46,6 +48,15 @@ import { XpService, XpSnapshot } from './xp.service';
         </span>
         @if (snap.streak > 1) {
           <span class="xpb__streak" [attr.title]="snap.streak + ' day streak'">{{ snap.streak }}<span aria-hidden="true">&#9788;</span></span>
+        }
+        <!-- Only once there is something to say. A cloud on the header of
+             somebody who has never signed in is an advert, not a status. -->
+        @if (sync.uid !== null) {
+          <span
+            class="xpb__sync"
+            [attr.data-state]="sync.state"
+            [attr.title]="syncTooltip"
+            aria-hidden="true">{{ syncGlyph }}</span>
         }
       </button>
 
@@ -84,6 +95,8 @@ import { XpService, XpSnapshot } from './xp.service';
           </dl>
 
           <p class="xpb__whisper">between light and shadow, the soul remembers both</p>
+
+          <app-cloud-save-button></app-cloud-save-button>
         </div>
       }
     </div>
@@ -146,6 +159,15 @@ import { XpService, XpSnapshot } from './xp.service';
     }
     .xpb__streak span { margin-left: 2px; }
 
+    .xpb__sync { font-size: 11px; line-height: 1; color: #A78BFA; }
+    .xpb__sync[data-state="syncing"] {
+      color: #ffc669;
+      display: inline-block;
+      animation: xpbSyncSpin 1.1s linear infinite;
+    }
+    .xpb__sync[data-state="error"] { color: #ff6dd7; }
+    @keyframes xpbSyncSpin { to { transform: rotate(360deg); } }
+
     .xpb__panel {
       position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
       width: min(260px, calc(100vw - 32px));
@@ -191,34 +213,87 @@ import { XpService, XpSnapshot } from './xp.service';
       .xpb__title { display: none; }
     }
 
+    /* Below 960px the bar moves into the mobile drawer (see header.component.css,
+       which switches .nav-xp for .nav-xp--drawer at exactly this width). In there
+       it sits hard against the left edge, so a 260px panel anchored to its *right*
+       edge hangs about 125px off the side of the viewport — clipped, not
+       scrollable, and taking half of the cloud save button with it. Anchoring
+       left instead puts the whole panel on screen at 375px with room to spare. */
+    @media (max-width: 960px) {
+      .xpb__panel { right: auto; left: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .xpb__fill, .xpb__split, .xpb__energy-aether { transition: none; }
       .xpb__panel { animation: none; }
+      /* The glyph still changes to ↻, so the state is still legible standing
+         still — this drops the spin, not the signal. */
+      .xpb__sync[data-state="syncing"] { animation: none; }
     }
   `],
 })
 export class XpBarComponent implements OnInit, OnDestroy {
   private readonly xp = inject(XpService);
+  private readonly cloud = inject(CloudSaveService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private sub?: Subscription;
+  private readonly subs = new Subscription();
 
   open = false;
   snap: XpSnapshot = this.xp.snapshot;
+  sync = this.cloud.status;
 
   ngOnInit(): void {
     // Fire-and-forget: the subscription below repaints the bar when hydration
     // lands, so there is nothing to wait for here.
     void this.xp.init();
-    this.sub = this.xp.snapshot$.subscribe(s => {
+    this.subs.add(this.xp.snapshot$.subscribe(s => {
       this.snap = s;
       this.cdr.markForCheck();
-    });
+    }));
+
+    // The XP bar is on every page, which makes it the natural place to start
+    // cloud save from. `init()` is idempotent and does nothing at all unless
+    // this browser has already been bound, so an anonymous visitor pays for a
+    // single localStorage read.
+    this.cloud.init();
+    this.subs.add(this.cloud.status$.subscribe(s => {
+      this.sync = s;
+      this.cdr.markForCheck();
+    }));
   }
 
   ngOnDestroy(): void {
-    this.sub?.unsubscribe();
+    this.subs.unsubscribe();
+  }
+
+  /** The whole trigger in one string, because the sync glyph is decorative. */
+  get triggerLabel(): string {
+    const base = `Level ${this.snap.level.level}, ${this.snap.level.title}. ${this.snap.xp} XP.`;
+    const cloud = this.sync.uid === null
+      ? ''
+      : ` Cloud save ${this.sync.state === 'off' ? 'inactive' : this.sync.state}.`;
+    return `${base}${cloud} Open progression panel.`;
+  }
+
+  get syncGlyph(): string {
+    switch (this.sync.state) {
+      case 'syncing': return '↻';
+      case 'error':   return '⚠';
+      default:        return '☁';
+    }
+  }
+
+  get syncTooltip(): string {
+    if (this.sync.state === 'error') return this.sync.error ?? 'Sync failed';
+    if (this.sync.state === 'syncing') return 'Syncing…';
+    if (this.sync.lastSyncedAt === null) return 'Cloud save on';
+    const minutes = Math.round((Date.now() - this.sync.lastSyncedAt) / 60_000);
+    if (minutes < 1) return 'Last synced: a moment ago';
+    if (minutes < 60) return `Last synced: ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.round(minutes / 60);
+    return `Last synced: ${hours} hour${hours === 1 ? '' : 's'} ago`;
   }
 
   toggle(): void {
