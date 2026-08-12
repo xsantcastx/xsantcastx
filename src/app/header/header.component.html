@@ -1,109 +1,61 @@
 <!-- ═══════════════════════════════════════════════════════════════════
-     THE GODFORGE COMMAND BAR
-     [sigil + wordmark]   [Realms ▾ · Arena · Codex · War Table · Market]
-                          [quests · gold · XP · keeper · EN/ES]
+     THE COMMAND BAR
+     [sigil + XSANTCASTX / BUILD · FORGE · OWN]
+     [HOME MARKET GAMES TOOLS CODEX ARENA MCP]
+     [Gold] [Essence] [rank] [EN|ES] [keeper]
 
-     Notes that are not obvious from the markup:
-     · .gfnav__glass is a CHILD, not a backdrop-filter on .gfnav itself —
-       a filter on the bar would make it a containing block and pin the
-       fixed-position drawer and backdrop inside it.
-     · The drawer and its backdrop are siblings of .gfnav__row so they
-       escape the row's flex context and cover the viewport.
-     · No emoji anywhere: every glyph here is a CSS-drawn shape.
+     .gfnav__glass is a CHILD, not a backdrop-filter on .gfnav: a filter
+     makes an element a containing block, which would pin the fixed tome
+     and its backdrop inside the bar instead of over the viewport.
+     Every glyph below is CSS-drawn — see .gfrune in the stylesheet.
      ═══════════════════════════════════════════════════════════════════ -->
-<nav class="gfnav"
-     [class.gfnav--compact]="compact"
-     [class.gfnav--open]="mobileMenuOpen"
-     aria-label="Primary">
+<nav class="gfnav" [class.gfnav--compact]="compact" aria-label="Primary">
   <span class="gfnav__glass" aria-hidden="true"></span>
 
   <div class="gfnav__row">
 
-    <!-- ── LEFT — the mark ─────────────────────────────────────────── -->
-    <a routerLink="/home" class="gfnav__brand" aria-label="The Godforge — home">
+    <!-- ── The mark ─────────────────────────────────────────────────── -->
+    <a routerLink="/home" class="gfnav__brand" aria-label="xsantcastx — home">
       <span class="gfnav__sigil" aria-hidden="true">
         <img class="gfnav__sigil-art" src="assets/brand/logo-godforge.png"
              alt="" width="32" height="32" decoding="async" draggable="false">
       </span>
-      <span class="gfnav__wordmark">The Godforge</span>
+      <span class="gfnav__lockup">
+        <span class="gfnav__wordmark">XSANTCASTX</span>
+        <span class="gfnav__creed" aria-hidden="true">BUILD &middot; FORGE &middot; OWN</span>
+      </span>
     </a>
 
-    <!-- ── CENTRE — the ways in (desktop) ──────────────────────────── -->
-    <div class="gfnav__centre">
-
-      <div class="gfnav__realms"
-           (mouseenter)="openRealms()"
-           (mouseleave)="closeRealms()">
-        <button type="button"
-                class="gfnav__link gfnav__realms-btn"
-                [class.is-active]="realmsOpen"
-                (click)="toggleRealms()"
-                aria-haspopup="true"
-                [attr.aria-expanded]="realmsOpen">
-          {{ translate('gfnav.realms') }}
-          <span class="gfnav__caret" aria-hidden="true"></span>
-        </button>
-
-        <!-- Kept in the DOM and hidden with opacity/visibility rather than
-             @if: the links are real crawlable routes into the tool filter. -->
-        <div class="gfnav__menu" [class.is-open]="realmsOpen" role="menu">
-          <p class="gfnav__menu-hd">{{ translate('gfnav.realmsHd') }}</p>
-          @for (realm of realms; track realm.id) {
-            <a class="gfnav__realm"
-               role="menuitem"
-               [routerLink]="['/tools']"
-               [queryParams]="{ realm: realm.id }"
-               [style.--realm-color]="realm.color"
-               [style.--realm-glow]="realm.glow"
-               (click)="closeAll()">
-              <span class="gfnav__realm-dot" aria-hidden="true"></span>
-              <span class="gfnav__realm-text">
-                <span class="gfnav__realm-name">{{ realm.name }}</span>
-                <span class="gfnav__realm-domain">{{ realm.domain }}</span>
-              </span>
-            </a>
+    <!-- ── The halls ────────────────────────────────────────────────── -->
+    <div class="gfnav__halls">
+      @for (hall of primaryHalls; track hall.route) {
+        <a [routerLink]="hall.route" routerLinkActive="is-active" class="gfnav__hall">
+          {{ translate(hall.key) }}
+          @if (hall.route === '/codex') {
+            <span class="gfnav__count" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
           }
-          <a class="gfnav__realm gfnav__realm--all"
-             role="menuitem"
-             routerLink="/tools"
-             (click)="closeAll()">
-            {{ translate('gfnav.allArtifacts') }}
-          </a>
-        </div>
-      </div>
-
-      <a routerLink="/arena" routerLinkActive="is-active" class="gfnav__link">
-        {{ translate('gfnav.arena') }}
-      </a>
-
-      <a routerLink="/codex" routerLinkActive="is-active" class="gfnav__link"
-         [attr.aria-label]="'Codex — ' + codexFound + ' of ' + codexTotal + ' fragments discovered'">
-        {{ translate('gfnav.codex') }}
-        <span class="gfnav__count" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
-      </a>
-
-      <a routerLink="/blueprint" routerLinkActive="is-active" class="gfnav__link">
-        {{ translate('gfnav.warTable') }}
-      </a>
-
-      <a routerLink="/market" routerLinkActive="is-active" class="gfnav__link">
-        {{ translate('gfnav.market') }}
-      </a>
-
-      <a routerLink="/live" routerLinkActive="is-active" class="gfnav__link gfnav__link--live">
-        <span class="gfnav__live-dot" aria-hidden="true"></span>LIVE
-      </a>
+        </a>
+      }
     </div>
 
-    <!-- ── RIGHT — the visitor's standing ──────────────────────────── -->
-    <div class="gfnav__status">
-      <app-quest-trigger class="gfnav__quests"></app-quest-trigger>
-      <app-currency-rail class="gfnav__gold"></app-currency-rail>
-      <app-xp-bar class="gfnav__xp"></app-xp-bar>
-
-      <a routerLink="/forge-keeper" routerLinkActive="is-active" class="gfnav__keeper"
-         [attr.aria-label]="translate('gfnav.keeperLabel')">
-        <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
+    <!-- ── Standing ─────────────────────────────────────────────────── -->
+    <div class="gfnav__standing">
+      <a routerLink="/market" class="gfpill gfpill--gold" [attr.aria-label]="gold + ' Gold'">
+        <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ gold }}</span>
+      </a>
+      <a routerLink="/market" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
+        <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ essence }}</span>
+      </a>
+      <a routerLink="/forge-keeper" class="gfpill gfpill--rank"
+         [attr.aria-label]="'Level ' + rankLevel + ' — ' + rankTitle">
+        <img class="gfpill__icon gf-icon rank-current" [src]="rankSigil(rankLevel)"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ rankLevel }}</span>
+        <span class="gfpill__rank-title">{{ rankTitle }}</span>
       </a>
 
       <div class="gfnav__lang">
@@ -113,13 +65,14 @@
                 (click)="setLanguage('es')">ES</button>
       </div>
 
-      <button type="button"
-              class="gfnav__burger"
-              [class.is-open]="mobileMenuOpen"
-              (click)="toggleMobileMenu()"
-              [attr.aria-expanded]="mobileMenuOpen"
-              aria-haspopup="menu"
-              [attr.aria-label]="translate('gfnav.menuLabel')">
+      <a routerLink="/forge-keeper" routerLinkActive="is-active" class="gfnav__keeper"
+         [attr.aria-label]="translate('gfnav.keeperLabel')">
+        <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
+      </a>
+
+      <button type="button" class="gfnav__burger" [class.is-open]="mobileMenuOpen"
+              (click)="toggleMobileMenu()" [attr.aria-expanded]="mobileMenuOpen"
+              aria-haspopup="menu" [attr.aria-label]="translate('gfnav.menuLabel')">
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
@@ -130,68 +83,145 @@
   <div class="gfnav__progress" aria-hidden="true"></div>
 </nav>
 
-<!-- ── THE TOME — mobile drawer ──────────────────────────────────────
-     Siblings of .gfnav, not children: inside the bar's stacking context
-     the backdrop painted over the logo and ate taps on the close button
-     (see nav-drawer / routed-host notes in the project history). -->
-<div class="gftome__backdrop"
-     [class.is-open]="mobileMenuOpen"
-     (click)="closeMobileMenu()"
-     aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     THE TOME — secondary navigation on a phone.
+     Sibling of .gfnav, not a child: inside the bar's z-index:1000
+     stacking context the backdrop painted over the logo and swallowed
+     taps on the close button.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="gftome__backdrop" [class.is-open]="mobileMenuOpen"
+     (click)="closeMobileMenu()" aria-hidden="true"></div>
 
 <div class="gftome" [class.is-open]="mobileMenuOpen" role="menu"
      [attr.aria-hidden]="mobileMenuOpen ? null : 'true'">
   <div class="gftome__inner">
 
-    <!-- Standing, at the top where a tome's frontispiece would be. -->
-    <div class="gftome__standing">
-      <app-quest-trigger class="gftome__quests"></app-quest-trigger>
-      <app-currency-rail class="gftome__gold"></app-currency-rail>
+    <div class="gftome__hd">
+      <span class="gfnav__sigil" aria-hidden="true">
+        <img class="gfnav__sigil-art" src="assets/brand/logo-godforge.png"
+             alt="" width="32" height="32" decoding="async" draggable="false">
+      </span>
+      <span class="gftome__lockup">
+        <span class="gfnav__wordmark">XSANTCASTX</span>
+        <span class="gfnav__creed">BUILD &middot; FORGE &middot; OWN</span>
+      </span>
+      <button type="button" class="gftome__close" (click)="closeMobileMenu()"
+              [tabIndex]="mobileMenuOpen ? 0 : -1"
+              [attr.aria-label]="translate('gfnav.closeLabel')">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
     </div>
-    <app-xp-bar class="gftome__xp"></app-xp-bar>
 
-    <p class="gftome__hd">{{ translate('gfnav.realmsHd') }}</p>
-    <div class="gftome__realms">
-      @for (realm of realms; track realm.id) {
-        <a class="gftome__realm"
-           role="menuitem"
-           [routerLink]="['/tools']"
-           [queryParams]="{ realm: realm.id }"
-           [style.--realm-color]="realm.color"
-           [style.--realm-glow]="realm.glow"
-           [tabIndex]="mobileMenuOpen ? 0 : -1"
-           (click)="closeMobileMenu()">
-          <span class="gftome__realm-dot" aria-hidden="true"></span>
-          <span class="gftome__realm-name">{{ realm.name }}</span>
-          <span class="gftome__realm-domain">{{ realm.domain }}</span>
+    <!-- Who you are, at the front of the book. -->
+    <a routerLink="/forge-keeper" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
+       (click)="closeMobileMenu()">
+      <img class="gftome__keeper-sigil gf-icon rank-current" [src]="rankSigil(rankLevel)"
+           alt="" aria-hidden="true" width="40" height="40"
+           decoding="async" draggable="false">
+      <span class="gftome__keeper-text">
+        <span class="gftome__keeper-hi">{{ translate('gfnav.welcomeBack') }}</span>
+        <span class="gftome__keeper-rank">{{ rankTitle }}</span>
+      </span>
+      <span class="gftome__keeper-lvl">{{ rankLevel }}</span>
+    </a>
+
+    <div class="gfxp">
+      <p class="gfxp__label">
+        <span>XP</span>
+        <span class="gfxp__nums">{{ xpNow }} / {{ xpTarget }}</span>
+      </p>
+      <div class="gfxp__track"><span class="gfxp__fill" [style.width.%]="xpProgress"></span></div>
+    </div>
+
+    <div class="gftome__pills">
+      <span class="gfpill gfpill--gold">
+        <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ gold }}</span>
+      </span>
+      <span class="gfpill gfpill--essence">
+        <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ essence }}</span>
+      </span>
+      <span class="gfpill gfpill--rank">
+        <img class="gfpill__icon gf-icon rank-current" [src]="rankSigil(rankLevel)"
+             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+        <span class="gfpill__val">{{ rankLevel }}</span>
+        <span class="gfpill__rank-title">{{ rankTitle }}</span>
+      </span>
+    </div>
+
+    @for (section of tomeSections; track section.titleKey) {
+      <p class="gftome__section">{{ translate(section.titleKey) }}</p>
+      <div class="gftome__links">
+        @for (hall of section.halls; track hall.route) {
+          <a class="gftome__link" role="menuitem"
+             [routerLink]="hall.route" routerLinkActive="is-active"
+             [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="closeMobileMenu()">
+            <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
+            <span class="gftome__link-name">{{ translate(hall.key) }}</span>
+            @if (hall.hintKey) {
+              <span class="gftome__link-hint">{{ translate(hall.hintKey) }}</span>
+            }
+            @if (hall.route === '/codex') {
+              <span class="gftome__badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
+            }
+            <span class="gftome__chev" aria-hidden="true"></span>
+          </a>
+        }
+      </div>
+    }
+
+    <!-- The concept closes the drawer on the forge itself. -->
+    <div class="gftome__art" aria-hidden="true">
+      <div class="gfsigil-scene gfsigil-scene--sm">
+        <span class="gfsigil-scene__ring gfsigil-scene__ring--outer"></span>
+        <span class="gfsigil-scene__ring gfsigil-scene__ring--inner"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--n"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--e"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--s"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--w"></span>
+        <span class="gfsigil-scene__x"><i></i><i></i></span>
+        <span class="gfsigil-scene__core"></span>
+      </div>
+      <p class="gftome__art-title">{{ translate('gfnav.tomeArtTitle') }}</p>
+      <p class="gftome__art-sub">{{ translate('gfnav.tomeArtSub') }}</p>
+    </div>
+
+    <div class="gftome__socials">
+      @for (s of socials; track s.href) {
+        <a [href]="s.href" target="_blank" rel="noopener noreferrer"
+           class="gftome__social" [attr.aria-label]="s.label"
+           [tabIndex]="mobileMenuOpen ? 0 : -1">
+          <span [class]="'gfsocial gfsocial--' + s.glyph" aria-hidden="true"></span>
         </a>
       }
     </div>
 
-    <p class="gftome__hd">{{ translate('gfnav.hallsHd') }}</p>
-    <div class="gftome__links">
-      @for (link of tomeLinks; track link.route) {
-        <a class="gftome__link"
-           role="menuitem"
-           [routerLink]="link.route"
-           routerLinkActive="is-active"
-           [tabIndex]="mobileMenuOpen ? 0 : -1"
-           (click)="closeMobileMenu()">
-          <span class="gftome__link-glyph" aria-hidden="true"></span>
-          <span class="gftome__link-name">{{ translate(link.key) }}</span>
-          <span class="gftome__link-hint">{{ translate(link.hintKey) }}</span>
-        </a>
-      }
-    </div>
-
-    <!-- Language lives here below 720px, where the bar's toggle is hidden. -->
     <div class="gftome__lang">
       <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'en'"
               [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="setLanguage('en')">EN</button>
       <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'es'"
               [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="setLanguage('es')">ES</button>
     </div>
-
-    <p class="gftome__mark">{{ translate('gfnav.tomeMark') }}</p>
   </div>
 </div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     THE TAB BAR — five fixed destinations, phone only.
+     Primary navigation on mobile; the hamburger above is for everything
+     secondary. Sits above the safe-area inset so the home indicator does
+     not overlap the labels.
+     ═══════════════════════════════════════════════════════════════════ -->
+<nav class="gftabs" [attr.aria-label]="translate('gfnav.tabsLabel')">
+  @for (tab of tabs; track tab.route) {
+    <a [routerLink]="tab.route" routerLinkActive="is-active" class="gftabs__tab">
+      <span [class]="'gfrune gfrune--' + tab.glyph" aria-hidden="true"></span>
+      <span class="gftabs__label">{{ translate(tab.key) }}</span>
+    </a>
+  }
+</nav>

@@ -4,83 +4,196 @@
   SECTION 1 — THE GODFORGE
   The entrance. Deep, underground, lit only by the core.
   ═══════════════════════════════════════════ -->
-  <section id="hero" class="hp-hero gf-hero">
-    <div class="hp-hero__bg" aria-hidden="true">
-      <div class="hp-hero__bg-glow hp-hero__bg-glow--ember"></div>
-      <div class="hp-hero__bg-glow hp-hero__bg-glow--crimson"></div>
-      <div class="hp-hero__grid-lines"></div>
+  <section id="hero" class="gfh">
+
+    <!-- The scene. The whole hero sits inside the Godforge sigil: rune
+         circle, four compass points, the X, and the core where the arms
+         meet. Built from gradients and borders rather than a background
+         image — a 1536px render of this is ~2MB and would be the largest
+         asset on the site by an order of magnitude. -->
+    <div class="gfh__scene" aria-hidden="true">
+      <span class="gfh__nebula gfh__nebula--a"></span>
+      <span class="gfh__nebula gfh__nebula--b"></span>
+      <span class="gfh__grid"></span>
+      <div class="gfsigil-scene gfsigil-scene--hero">
+        <span class="gfsigil-scene__ring gfsigil-scene__ring--outer"></span>
+        <span class="gfsigil-scene__ring gfsigil-scene__ring--inner"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--n"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--e"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--s"></span>
+        <span class="gfsigil-scene__point gfsigil-scene__point--w"></span>
+        <span class="gfsigil-scene__x"><i></i><i></i></span>
+        <span class="gfsigil-scene__core"></span>
+      </div>
+      <!-- Debris caught in the field. -->
+      <span class="gfh__rock" style="--rx: 12%; --ry: 26%; --rs: 14px; --rd: 0s;"></span>
+      <span class="gfh__rock" style="--rx: 84%; --ry: 34%; --rs: 10px; --rd: -3.2s;"></span>
+      <span class="gfh__rock" style="--rx: 22%; --ry: 74%; --rs: 8px;  --rd: -6.1s;"></span>
+      <span class="gfh__rock" style="--rx: 77%; --ry: 79%; --rs: 12px; --rd: -1.8s;"></span>
     </div>
 
-    <div class="hp-hero__inner gf-hero__inner">
-      <p class="hp-hero__eyebrow gf-hero__eyebrow">
-        <span class="hp-hero__eyebrow-dot"></span>
-        {{ translate('godforge.hero.eyebrow') }}
-      </p>
+    <div class="gfh__inner">
 
-      <h1 class="hp-hero__title gf-hero__title">The Godforge</h1>
+      <!-- ── Left: the forge's own readout ────────────────────────────── -->
+      <aside class="gfpanel gfh__status">
+        <p class="gfpanel__hd">
+          <span class="gfpanel__hd-name">{{ translate('godforge.status.name') }}</span>
+          <span class="gfpanel__hd-state">
+            <span class="gfpanel__dot"></span>{{ translate('godforge.status.online') }}
+          </span>
+        </p>
 
-      <p class="hp-hero__sub gf-hero__sub">{{ translate('godforge.hero.sub') }}</p>
+        <dl class="gfstat">
+          <div class="gfstat__row">
+            <dt>{{ translate('godforge.status.toolsForged') }}</dt>
+            <dd [attr.data-counter]="artifactCount">{{ artifactCount }}</dd>
+          </div>
+          <div class="gfstat__row">
+            <dt>{{ translate('godforge.status.projectsLive') }}</dt>
+            <dd [attr.data-counter]="projectsLive">{{ projectsLive }}</dd>
+          </div>
+          <div class="gfstat__row">
+            <dt>{{ translate('godforge.status.codexEntries') }}</dt>
+            <dd [attr.data-counter]="fragmentCount">{{ fragmentCount }}</dd>
+          </div>
+          <div class="gfstat__row gfstat__row--level">
+            <dt>{{ translate('godforge.status.forgeLevel') }}</dt>
+            <dd>{{ xp.level.level }}</dd>
+            <div class="gfstat__bar">
+              <span class="gfstat__fill" [style.width.%]="xp.progress * 100"></span>
+            </div>
+          </div>
+        </dl>
 
-      <!-- The core. Pure CSS: nested radial gradients from gold through
-           crimson into the void, breathing on two offset cycles so the heat
-           never looks like a single loop. Decorative — the page reads fine
-           without it, and it is the first thing to go under reduced motion. -->
-      <div class="gf-core" aria-hidden="true">
-        <div class="gf-core__haze"></div>
-        <div class="gf-core__ring gf-core__ring--outer"></div>
-        <div class="gf-core__ring gf-core__ring--inner"></div>
-        <div class="gf-core__well">
-          <div class="gf-core__heart"></div>
-        </div>
-        <div class="gf-core__ember" style="--ex: 18%; --ed: 0s;   --edur: 5.2s;"></div>
-        <div class="gf-core__ember" style="--ex: 37%; --ed: -1.7s; --edur: 6.1s;"></div>
-        <div class="gf-core__ember" style="--ex: 54%; --ed: -3.4s; --edur: 4.8s;"></div>
-        <div class="gf-core__ember" style="--ex: 71%; --ed: -0.9s; --edur: 5.7s;"></div>
-        <div class="gf-core__ember" style="--ex: 86%; --ed: -2.6s; --edur: 6.4s;"></div>
+        <a routerLink="/forge-keeper" class="gfpanel__more">
+          {{ translate('godforge.status.viewFull') }}
+          <span class="gfpanel__more-chev" aria-hidden="true"></span>
+        </a>
+      </aside>
+
+      <!-- ── Centre: the mark ─────────────────────────────────────────── -->
+      <div class="gfh__title-block">
+        <p class="gfh__eyebrow">{{ translate('godforge.hero.eyebrow') }}</p>
+        <h1 class="gfh__title">The Godforge</h1>
+        <p class="gfh__sub">{{ translate('godforge.hero.sub') }}</p>
       </div>
 
-      <!-- Rank. Renders "Wanderer" on the server (no stored progress there);
-           the visitor's real title arrives after hydration. -->
-      <div class="gf-rank">
-        <p class="gf-rank__line">
-          <img class="gf-rank__sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
-               alt="" aria-hidden="true" width="34" height="34"
+      <!-- ── Right: who you are ───────────────────────────────────────── -->
+      <aside class="gfpanel gfh__welcome">
+        <p class="gfpanel__hd">
+          <span class="gfpanel__hd-name">{{ translate('godforge.welcome.hd') }}</span>
+        </p>
+
+        <div class="gfh__rank">
+          <img class="gfh__rank-sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
+               alt="" aria-hidden="true" width="40" height="40"
                decoding="async" draggable="false">
-          {{ translate('godforge.hero.welcome') }}
-          <strong class="gf-rank__title">{{ xp.level.title }}</strong>
-        </p>
-        <div class="gf-rank__bar">
-          <span class="gf-rank__fill" [style.width.%]="xp.progress * 100"></span>
+          <span class="gfh__rank-text">
+            <span class="gfh__rank-title">{{ xp.level.title }}</span>
+            <span class="gfh__rank-lvl">{{ translate('godforge.welcome.level') }} {{ xp.level.level }}</span>
+          </span>
         </div>
-        <p class="gf-rank__meta">
-          @if (xp.next) {
-            {{ xp.xp }} XP — {{ xp.toNext }} {{ translate('godforge.hero.toNext') }} {{ xp.next.title }}
-          } @else {
-            {{ xp.xp }} XP — {{ translate('godforge.hero.maxRank') }}
-          }
-        </p>
-      </div>
 
-      <div class="hp-hero__cta gf-hero__cta">
-        <button type="button" class="cta-button gf-hero__enter" (click)="enterTheForge()">
+        <div class="gfxp gfxp--hero">
+          <p class="gfxp__label">
+            <span>XP</span>
+            <span class="gfxp__nums">{{ xp.xp }} / {{ xpTarget }}</span>
+          </p>
+          <div class="gfxp__track"><span class="gfxp__fill" [style.width.%]="xp.progress * 100"></span></div>
+        </div>
+
+        <div class="gfh__wallet">
+          <span class="gfpill gfpill--gold">
+            <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+                 alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+            <span class="gfpill__val">{{ gold }}</span>
+          </span>
+          <span class="gfpill gfpill--essence">
+            <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
+                 alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
+            <span class="gfpill__val">{{ essence }}</span>
+          </span>
+        </div>
+
+        <button type="button" class="gfbtn gfbtn--primary" (click)="enterTheForge()">
           {{ translate('godforge.hero.cta') }}
+          <span class="gfbtn__chev" aria-hidden="true"></span>
         </button>
-        <a routerLink="/live" class="cta-button is-ghost hp-hero__cta-ghost">
-          <span class="hp-live-dot"></span>
+
+        <a routerLink="/live" class="gfbtn gfbtn--ghost">
+          <span class="gfh__live-dot" aria-hidden="true"></span>
           {{ translate('godforge.hero.ctaLive') }}
         </a>
-      </div>
-
-      <!-- The quiet second door. Deliberately not a button: a visitor who is
-           not ready to pick a tool yet still has somewhere to go. -->
-      <p class="gf-hero__aside">
-        {{ translate('godforge.hero.orExplore') }}
-        <a routerLink="/codex" class="gf-hero__aside-link">{{ translate('godforge.hero.theCodex') }}</a>
-      </p>
+      </aside>
     </div>
 
-    <div class="hp-hero__scroll-hint" aria-hidden="true">
-      <div class="hp-hero__scroll-mouse"></div>
+    <!-- ── Descend ──────────────────────────────────────────────────── -->
+    <button type="button" class="gfh__descend" (click)="enterTheForge()">
+      <span class="gfh__descend-label">{{ translate('godforge.hero.descend') }}</span>
+      <span class="gfh__descend-chev" aria-hidden="true"></span>
+    </button>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+  THE COUNTERS — the five places the forge trades
+  ═══════════════════════════════════════════ -->
+  <section class="gfcounters">
+    <div class="gfcounters__inner">
+      <p class="hp-section-eyebrow">
+        <span class="hp-eyebrow-pulse"></span>
+        {{ translate('godforge.shop.eyebrow') }}
+      </p>
+      <h2 class="hp-section-title">{{ translate('godforge.shop.title') }}</h2>
+
+      <div class="gfcounters__row">
+        @for (c of counters; track c.id) {
+          @if (c.route) {
+            <a class="gfcounter" [class]="'gfcounter gfcounter--' + c.id" [routerLink]="c.route">
+              <span class="gfcounter__art" aria-hidden="true">
+                <img class="gfcounter__glyph gf-icon" [src]="c.icon" alt=""
+                     width="54" height="54" decoding="async" draggable="false">
+                <span class="gfcounter__halo"></span>
+              </span>
+              <span class="gfcounter__name">{{ translate(c.nameKey) }}</span>
+              <span class="gfcounter__sub">{{ translate(c.subKey) }}</span>
+            </a>
+          } @else {
+            <div class="gfcounter gfcounter--sealed" [class]="'gfcounter gfcounter--sealed gfcounter--' + c.id">
+              <span class="gfcounter__art" aria-hidden="true">
+                <img class="gfcounter__glyph gf-icon" [src]="c.icon" alt=""
+                     width="54" height="54" decoding="async" draggable="false">
+                <span class="gfcounter__halo"></span>
+              </span>
+              <span class="gfcounter__name">{{ translate(c.nameKey) }}</span>
+              <span class="gfcounter__sub">{{ translate(c.subKey) }}</span>
+              <span class="gfcounter__seal">{{ translate('godforge.shop.sealed') }}</span>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+  THE CREED — three promises, then the line
+  ═══════════════════════════════════════════ -->
+  <section class="gfcreed">
+    <div class="gfcreed__inner">
+      <div class="gfcreed__row">
+        @for (c of creeds; track c.id) {
+          <div class="gfcreed__item" [class]="'gfcreed__item gfcreed__item--' + c.id">
+            <span class="gfcreed__rule" aria-hidden="true"></span>
+            <h3 class="gfcreed__title">{{ translate(c.titleKey) }}</h3>
+            <p class="gfcreed__line">{{ translate(c.lineKey) }}</p>
+          </div>
+        }
+      </div>
+      <p class="gfcreed__tagline">
+        <span class="gfcreed__tagline-a">{{ translate('godforge.creed.taglineA') }}</span>
+        <span class="gfcreed__tagline-b">{{ translate('godforge.creed.taglineB') }}</span>
+      </p>
     </div>
   </section>
 
