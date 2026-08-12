@@ -45,4 +45,20 @@ export const ARENA_GAME_ROUTES: Routes = [
       ),
     },
   },
+  {
+    path: 'arena/realm-rush',
+    loadComponent: () =>
+      import('./realm-rush/realm-rush.component').then(m => m.RealmRushComponent),
+    title: 'Realm Rush — Type before the Verge closes | The Arena',
+    data: {
+      description: 'A typing speed game for developers: CSS properties, JS keywords, regex fragments and HTML tags fall out of the rift. Type them before they land. WPM and accuracy scored.',
+      keywords: 'typing game, typing speed test, wpm, developer typing game, browser game, free game',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: gameJsonLd(
+        'Realm Rush',
+        'realm-rush',
+        'A free browser typing game — type falling CSS, JS, regex and HTML before it lands.'
+      ),
+    },
+  },
 ];
