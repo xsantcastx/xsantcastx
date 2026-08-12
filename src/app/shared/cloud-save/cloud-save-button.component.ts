@@ -180,6 +180,14 @@ export class CloudSaveButtonComponent implements OnInit, OnDestroy {
   status: SyncStatus = this.cloud.status;
 
   ngOnInit(): void {
+    // The button resumes its own session. It used to rely on whichever host
+    // mounted it having already called init() — that host was the XP bar, which
+    // is not rendered anywhere, so on the profile sheet nothing ever resumed and
+    // a visitor who was already bound was shown "Save Progress". init() is
+    // idempotent, browser-only, and defers its network work to an idle callback,
+    // so calling it from here costs nothing when some other host got there first.
+    this.cloud.init();
+
     this.sub = this.cloud.status$.subscribe(s => {
       this.status = s;
       this.cdr.markForCheck();
