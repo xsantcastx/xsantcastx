@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.33.0',
+  version: '2.35.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The True Face',
+  codename: 'Godforge Awakens',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.35.0',
+    codename: 'Godforge Awakens',
+    date: '2026-08-12',
+    highlights: [
+      'The site no longer just appears — it is forged in front of you. A seven-stage boot sequence takes the sigil from a still void through waking energy, aligning runes, gathering power and an igniting forge, to the moment the void breaks open and the Godforge comes online',
+      'Every part of the seal is drawn rather than pictured: the X, the runic band and its twelve carved glyphs, the four compass marks that light in turn from north, the concentric rings and the white-hot core are five separate SVG layers, each on its own timeline',
+      'The last frame is a handoff, not a cut. The sigil flashes white, then flies to the exact spot the header brand occupies and settles there at a fifteenth of its size, so the curtain resolves into the navbar instead of vanishing',
+      'It respects your time on the way back. The first visit is the full 2.9-second cinematic; every visit after starts at the ignition and runs 1.3 seconds, decided before the first frame is painted',
+      'The whole sequence runs and clears itself in CSS, off the main thread. It cannot hold the page hostage the way the splash it replaces could, and a visitor who asks for reduced motion is taken straight past it to the site',
+    ],
+  },
   {
     version: '2.33.0',
     codename: 'The True Face',
