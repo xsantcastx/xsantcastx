@@ -1,0 +1,390 @@
+<!--
+  The Forge View. Three columns around a Keeper, a feed underneath.
+
+  The whole page is driven by two custom properties set on the root element:
+  --keeper (the dominant energy's colour) and --glow (0-1, how hard the forge is
+  earning). Every warm surface below reads one or both, which is why the page
+  gets brighter as the rate climbs without a single extra binding.
+-->
+<section
+  class="fv"
+  [style.--keeper]="keeperColor"
+  [style.--glow]="glow"
+  [attr.data-energy]="dominantEnergy"
+  [class.fv--still]="reducedMotion">
+
+  <!-- Embers. Purely decorative, hidden from assistive tech, and gone entirely
+       under reduced motion (see the CSS) — a field of drifting particles is
+       exactly what a vestibular trigger looks like. -->
+  <div class="fv__embers" aria-hidden="true">
+    @for (e of embers; track e.key) {
+      <span class="fv__ember"
+            [style.left.%]="e.x"
+            [style.animation-delay.s]="e.delay"
+            [style.animation-duration.s]="e.duration"
+            [style.--size.px]="e.size"></span>
+    }
+  </div>
+
+  <header class="fv__head">
+    <p class="fv__eyebrow"><span class="fv__pulse"></span> The Forge View</p>
+    <h1 class="fv__title">Your forge, while you were away</h1>
+    <p class="fv__tagline">
+      it has not stopped once since you closed the tab
+    </p>
+
+    <button
+      type="button"
+      class="fv__hum"
+      (click)="toggleHum()"
+      [attr.aria-pressed]="humming"
+      [attr.aria-label]="humming ? 'Mute the forge hum' : 'Play the forge hum'">
+      <span aria-hidden="true">{{ humming ? '🔊' : '🔇' }}</span>
+      <span class="fv__hum-label">{{ humming ? 'Hum on' : 'Hum off' }}</span>
+    </button>
+  </header>
+
+  <div class="fv__stage">
+
+    <!-- ─── LEFT: forge activity ──────────────────────────────────────────── -->
+    <section class="fv__col fv__col--forge" aria-labelledby="fv-forge-title">
+      <h2 class="fv__col-title" id="fv-forge-title">Forge Activity</h2>
+
+      <div class="fv__rate">
+        <p class="fv__rate-num" [attr.aria-label]="perSecondExact + ' Gold per second'">
+          {{ perSecond }}<span class="fv__rate-unit">/sec</span>
+        </p>
+        <p class="fv__rate-foot">
+          {{ gold }} Gold held · {{ lifetime }} earned all-time
+        </p>
+      </div>
+
+      <!-- The Flame, in the page rather than in the corner. The corner copy
+           stands down while this is mounted — see InlineFlameService. -->
+      <div class="fv__flame">
+        <app-forge-flame [inline]="true"></app-forge-flame>
+        <p class="fv__flame-note">{{ perClick }} Gold a strike</p>
+      </div>
+
+      @if (snap.autoPerSecond > 0) {
+        <p class="fv__auto">
+          <span aria-hidden="true">⚙</span>
+          Automatons: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'strike' : 'strikes' }}/sec
+        </p>
+      }
+
+      <h3 class="fv__sub">Upgrades held</h3>
+      @if (ownedUpgrades.length) {
+        <ul class="fv__ladder">
+          @for (row of ownedUpgrades; track row.id) {
+            <li class="fv__ladder-row">
+              <span class="fv__ladder-icon" aria-hidden="true">{{ row.icon }}</span>
+              <span class="fv__ladder-name">
+                {{ row.name }}
+                @if (row.level > 1) { <b class="fv__ladder-lv">×{{ row.level }}</b> }
+              </span>
+              <span class="fv__ladder-note">{{ row.note }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="fv__empty">
+          Nothing but the bare forge yet. The <a routerLink="/market">Market</a> sells the first
+          bellows for 50 Gold.
+        </p>
+      }
+
+      @if (ownedAutomatons.length) {
+        <h3 class="fv__sub">Automatons</h3>
+        <ul class="fv__ladder">
+          @for (row of ownedAutomatons; track row.id) {
+            <li class="fv__ladder-row">
+              <span class="fv__ladder-icon" aria-hidden="true">{{ row.icon }}</span>
+              <span class="fv__ladder-name">
+                {{ row.name }}
+                @if (row.level > 1) { <b class="fv__ladder-lv">×{{ row.level }}</b> }
+              </span>
+              <span class="fv__ladder-note">{{ row.note }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- ─── CENTRE: the Keeper ────────────────────────────────────────────── -->
+    <section class="fv__col fv__col--keeper" aria-labelledby="fv-keeper-title">
+      <h2 class="fv__col-title fv__col-title--sr" id="fv-keeper-title">The Forge Keeper</h2>
+
+      <div class="fv__keeper">
+        <span class="fv__keeper-aura" aria-hidden="true"></span>
+        <span class="fv__keeper-ring" aria-hidden="true"></span>
+
+        <img class="fv__keeper-sigil"
+             [src]="rankSigil"
+             [alt]="'Rank ' + rankLevel + ' sigil: ' + rankTitle"
+             width="128" height="128"
+             decoding="async" draggable="false">
+
+        <!-- Everything owned, orbiting. Each is positioned by a CSS rotation on
+             the wrapper and counter-rotated on the glyph, so the icons stay
+             upright however many are worn. -->
+        @for (w of worn; track w.id) {
+          <span class="fv__worn"
+                [style.--angle.deg]="w.angle"
+                [style.--worn]="w.color"
+                [title]="w.label">
+            <span class="fv__worn-glyph" aria-hidden="true">{{ w.icon }}</span>
+            <span class="fv__sr">{{ w.label }}</span>
+          </span>
+        }
+      </div>
+
+      <p class="fv__rank">
+        <b class="fv__rank-lv">Rank {{ rankLevel }}</b>
+        <span class="fv__rank-title">{{ rankTitle }}</span>
+      </p>
+
+      <div class="fv__xp">
+        <span class="fv__xp-bar">
+          <span class="fv__xp-fill" [style.width.%]="rankPercent"></span>
+        </span>
+        <span class="fv__xp-note">
+          @if (xpSnap.next) {
+            {{ xpSnap.toNext }} XP to {{ xpSnap.next.title }}
+          } @else {
+            The ladder is finished. Nothing above this.
+          }
+        </span>
+      </div>
+
+      <p class="fv__energy">
+        <span class="fv__energy-a">{{ xpSnap.aether }} Aether</span>
+        <span class="fv__energy-sep" aria-hidden="true">·</span>
+        <span class="fv__energy-n">{{ xpSnap.nox }} Nox</span>
+      </p>
+
+      @if (!worn.length) {
+        <p class="fv__empty fv__empty--centre">
+          The Keeper carries nothing yet. Everything bought in the
+          <a routerLink="/market">Market</a> shows up here.
+        </p>
+      }
+
+      <!-- The wandering trader. Rendered inside the Keeper column because that
+           is where the eye already is, and it has to be caught before it goes. -->
+      @if (traderGold > 0) {
+        <button type="button" class="fv__trader" (click)="takeTrade()">
+          <span class="fv__trader-glyph" aria-hidden="true">🧙</span>
+          <span class="fv__trader-copy">
+            <b>A mysterious trader appears</b>
+            <span>Takes nothing, leaves {{ traderGold }} Gold. Going soon.</span>
+          </span>
+        </button>
+      }
+    </section>
+
+    <!-- ─── RIGHT: quests and expeditions ─────────────────────────────────── -->
+    <section class="fv__col fv__col--quests" aria-labelledby="fv-quest-title">
+      <h2 class="fv__col-title" id="fv-quest-title">Quests</h2>
+
+      @if (openQuests.length) {
+        <ul class="fv__quests">
+          @for (q of openQuests; track q.id) {
+            <li class="fv__quest" [class.fv__quest--done]="q.status === 'completed'">
+              <p class="fv__quest-title">{{ q.title }}</p>
+              <p class="fv__quest-desc">{{ q.description }}</p>
+              <span class="fv__quest-bar">
+                <span class="fv__quest-fill" [style.width.%]="q.progress"></span>
+              </span>
+              <p class="fv__quest-foot">
+                <span>{{ q.progress }}%</span>
+                @if (q.status === 'completed') {
+                  <button type="button" class="fv__claim" (click)="claim(q)">
+                    Claim {{ q.rewards.xp }} XP
+                  </button>
+                } @else {
+                  <span class="fv__quest-xp">{{ q.rewards.xp }} XP</span>
+                }
+              </p>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="fv__empty">
+          Every quest on the board is claimed. The next three roll at midnight —
+          the <a routerLink="/quests">full board</a> has the weeklies and epics.
+        </p>
+      }
+
+      <h2 class="fv__col-title" id="fv-exp-title">Expeditions</h2>
+
+      <!-- The loot reveal.
+           In flow, at the top of the panel the explorer was dispatched from,
+           rather than as a fixed overlay — every routed host on this site
+           carries a routeFadeIn transform with fill: forwards, which makes it a
+           containing block, and a position: fixed card inside one is pinned to
+           the page instead of the viewport and scrolls away under the header
+           whatever its z-index. This is also the better place for it: the
+           expedition panel is where the eye already is. -->
+      @if (landing) {
+        <div class="fv__landing" role="status" [style.--realm]="landing.realmColor">
+          <button type="button" class="fv__landing-close" (click)="dismissLanding()" aria-label="Dismiss">×</button>
+
+          <p class="fv__landing-eyebrow">Explorer returned</p>
+          <p class="fv__landing-realm">{{ landing.missionName }} — {{ landing.realmName }}</p>
+          <p class="fv__landing-gold">+{{ landing.gold }} Gold <span>+{{ landing.xp }} XP</span></p>
+
+          @if (landing.rune) {
+            <div class="fv__loot" [style.--tone]="landing.rune.color">
+              <span class="fv__loot-glyph" aria-hidden="true">{{ landing.rune.glyph }}</span>
+              <div>
+                <p class="fv__loot-name">{{ landing.rune.name }} <span class="fv__loot-tier">{{ landing.rune.tierLabel }} rune</span></p>
+                <p class="fv__loot-lore">{{ landing.rune.lore }}</p>
+                <a class="fv__loot-link" routerLink="/rune-forge">Craft with it at the Rune Forge →</a>
+              </div>
+            </div>
+          }
+
+          @if (landing.scroll) {
+            <div class="fv__loot" [style.--tone]="landing.scroll.color">
+              <span class="fv__loot-glyph" aria-hidden="true">📜</span>
+              <div>
+                <p class="fv__loot-name">{{ landing.scroll.subtitle }} <span class="fv__loot-tier">{{ landing.scroll.title }}</span></p>
+                <p class="fv__loot-lore">{{ landing.scroll.text }}</p>
+                <a class="fv__loot-link" routerLink="/codex">Read it on the Codex wall →</a>
+              </div>
+            </div>
+          }
+
+          @if (!landing.rune && !landing.scroll) {
+            <p class="fv__landing-none">They came back with the Gold and a story nobody has written down.</p>
+          }
+
+          @if (landingsQueued > 0) {
+            <button type="button" class="fv__landing-next" (click)="dismissLanding()">
+              {{ landingsQueued }} more {{ landingsQueued === 1 ? 'explorer' : 'explorers' }} came home →
+            </button>
+          }
+        </div>
+      }
+
+      @if (activeMissions.length) {
+        <ul class="fv__missions">
+          @for (m of activeMissions; track m.id) {
+            <li class="fv__mission" [style.--realm]="m.realm.color">
+              <svg class="fv__ring" viewBox="0 0 52 52" aria-hidden="true" focusable="false">
+                <circle class="fv__ring-track" cx="26" cy="26" r="22"></circle>
+                <circle class="fv__ring-fill" cx="26" cy="26" r="22"
+                        [attr.stroke-dashoffset]="ringOffset(m.progress)"></circle>
+              </svg>
+              <span class="fv__mission-copy">
+                <b>{{ m.realm.name }}</b>
+                <span>
+                  @if (m.done) {
+                    Arriving now…
+                  } @else {
+                    Returning in {{ m.countdown }}
+                  }
+                </span>
+              </span>
+              <button type="button" class="fv__recall" (click)="recall(m.id)"
+                      [attr.aria-label]="'Recall the explorer in ' + m.realm.name">
+                Recall
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (freeSlots > 0) {
+        <div class="fv__dispatch">
+          <p class="fv__dispatch-label" id="fv-realm-label">Send to</p>
+          <ul class="fv__realms" role="radiogroup" aria-labelledby="fv-realm-label">
+            @for (r of realms; track r.id) {
+              <li>
+                <button type="button"
+                        class="fv__realm"
+                        role="radio"
+                        [attr.aria-checked]="pickedRealm === r.id"
+                        [class.fv__realm--on]="pickedRealm === r.id"
+                        [style.--realm]="r.color"
+                        (click)="pickRealm(r.id)">
+                  {{ r.name }}
+                </button>
+              </li>
+            }
+          </ul>
+
+          <p class="fv__dispatch-label" id="fv-mission-label">For</p>
+          <ul class="fv__lengths" role="radiogroup" aria-labelledby="fv-mission-label">
+            @for (m of missions; track m.id) {
+              <li>
+                <button type="button"
+                        class="fv__length"
+                        role="radio"
+                        [attr.aria-checked]="pickedMission === m.id"
+                        [class.fv__length--on]="pickedMission === m.id"
+                        (click)="pickMission(m.id)">
+                  <b>{{ m.label }}</b>
+                  <span>{{ m.goldMin }}–{{ m.goldMax }} Gold</span>
+                </button>
+              </li>
+            }
+          </ul>
+
+          <button type="button" class="fv__send" (click)="dispatch()">
+            Send Explorer into {{ pickedRealmDef.name }} →
+          </button>
+          <p class="fv__dispatch-foot">
+            {{ freeSlots }} of {{ slots }} {{ slots === 1 ? 'explorer' : 'explorers' }} free.
+            @if (slots < maxSlots) {
+              <a routerLink="/market">Hire another</a>.
+            }
+          </p>
+        </div>
+      } @else {
+        <p class="fv__empty">
+          Every explorer is out. They come home on their own — you can close the tab.
+          @if (slots < maxSlots) {
+            The <a routerLink="/market">Market</a> hires more.
+          }
+        </p>
+      }
+
+      <p class="fv__collection">
+        <span>🜂 {{ runeCount }} {{ runeCount === 1 ? 'rune' : 'runes' }}</span>
+        <span>📜 {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }}</span>
+        <span>◈ {{ goldRecovered }} recovered</span>
+      </p>
+    </section>
+  </div>
+
+  <!-- ─── BOTTOM: the feed ────────────────────────────────────────────────── -->
+  <section class="fv__feed" aria-labelledby="fv-feed-title">
+    <h2 class="fv__col-title" id="fv-feed-title">Recent drops</h2>
+
+    @if (feed.length) {
+      <ul class="fv__feed-list">
+        @for (f of feed; track f.key) {
+          <li class="fv__feed-row" [style.--tone]="f.color">
+            <span class="fv__feed-glyph" aria-hidden="true">{{ f.glyph }}</span>
+            <span class="fv__feed-text">{{ f.text }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="fv__empty">
+        Nothing yet this session. Strike the flame, use a tool, or send someone into a realm.
+      </p>
+    }
+  </section>
+
+  <nav class="fv__links" aria-label="Elsewhere in the Godforge">
+    <a routerLink="/market" class="fv__link">The Market</a>
+    <a routerLink="/forge-keeper" class="fv__link">Your Forge</a>
+    <a routerLink="/quests" class="fv__link">Quest board</a>
+    <a routerLink="/rune-forge" class="fv__link">Rune Forge</a>
+    <a routerLink="/codex" class="fv__link">The Codex</a>
+    <a routerLink="/mission-control" class="fv__link">Mission control</a>
+  </nav>
+</section>

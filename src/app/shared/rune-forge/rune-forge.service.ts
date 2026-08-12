@@ -166,7 +166,27 @@ export class RuneForgeService {
     this.ledger.strikes += 1;
     this.ledger.goldSpent += STRIKE_COST;
 
-    const rune = rollRune(random);
+    return this.grant(rollRune(random), random);
+  }
+
+  /**
+   * Bank a rune that was not struck out of the anvil.
+   *
+   * Expeditions find runes in the field, and they have to land in *this* ledger
+   * rather than in a second collection of their own: the runes are only worth
+   * anything because they craft Runewords, and a rune held somewhere the
+   * crafting table cannot see is a trophy with the mechanic cut off it. It also
+   * keeps one answer to "how many Ber have I got" — two registries would
+   * eventually disagree, and the visitor would believe whichever was larger.
+   *
+   * Everything downstream of a strike happens here and is therefore shared:
+   * the first-found date, the tier XP with its duplicate discount, the Codex
+   * achievements and the `find$` reveal. The only thing left outside is the
+   * Gold, which is the part an expedition does not pay.
+   */
+  grant(rune: Rune, random: () => number = Math.random): RuneFind | null {
+    if (!this.isBrowser) return null;
+
     const held = (this.ledger.runes[rune.id] ?? 0) + 1;
     const isNew = held === 1;
 

@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, PLATFORM_ID, NgZone, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
 import { EmbedService } from './shared/embed.service';
@@ -13,6 +14,7 @@ import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
+import { InlineFlameService } from './shared/economy/inline-flame.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
@@ -36,6 +38,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private economyWiring = inject(EconomyWiringService);
   private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
+  private inlineFlame = inject(InlineFlameService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -43,6 +46,9 @@ export class AppComponent implements OnInit, OnDestroy {
   // hot reload in dev (and on any future re-init of AppComponent) would leave
   // orphan DOM queries running on the main thread every 3.5s forever.
   private glitchPollId: ReturnType<typeof setInterval> | null = null;
+
+  /** Watches whether a page has mounted its own flame. See showCornerFlame. */
+  private inlineFlameSub: Subscription | null = null;
 
   constructor(private seo: SeoService) {}
 
@@ -54,10 +60,34 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.embed.showBranding;
   }
 
+  /**
+   * The corner flame stands down while a page mounts its own.
+   *
+   * Only the Forge View does, and only because the flame is that page's focal
+   * point rather than a widget beside it — two clickable flames paying into one
+   * ledger is a thing the visitor would have to work out for themselves.
+   *
+   * Held as a field fed by a subscription rather than read straight off the
+   * service in a getter: the inline flame claims during its own `ngOnInit`,
+   * which runs inside the change-detection pass that would then re-read this
+   * binding, and dev mode reports that as ExpressionChangedAfterItHasBeenChecked.
+   * A subscription lands the change on its own pass instead.
+   */
+  showCornerFlame = true;
+
   ngOnInit() {
     this.seo.init();
 
+    // Set before the browser guard so the prerendered HTML is correct too: an
+    // embed that shipped a flame in its SSR output would paint one for a frame
+    // on every embedded tool page.
+    this.showCornerFlame = !this.isEmbedMode;
+
     if (!isPlatformBrowser(this.platformId)) return;
+
+    this.inlineFlameSub = this.inlineFlame.active$.subscribe(active => {
+      this.showCornerFlame = !this.isEmbedMode && !active;
+    });
 
     // Queue Firebase App Check for the first idle window. Initializing it at
     // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
@@ -143,5 +173,7 @@ export class AppComponent implements OnInit, OnDestroy {
       clearInterval(this.glitchPollId);
       this.glitchPollId = null;
     }
+    this.inlineFlameSub?.unsubscribe();
+    this.inlineFlameSub = null;
   }
 }

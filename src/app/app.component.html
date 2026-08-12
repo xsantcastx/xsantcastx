@@ -72,8 +72,11 @@
 <!-- The Forge Flame. A sibling of <main>, not a child of any routed component:
      routeFadeIn leaves a transform on every routed host, which makes it a
      containing block, and a position:fixed flame inside one would be pinned to
-     the page rather than the viewport and would scroll away. -->
-@if (!isEmbedMode) {
+     the page rather than the viewport and would scroll away.
+
+     Hidden while the Forge View has the flame mounted inside its own layout —
+     see InlineFlameService. -->
+@if (showCornerFlame) {
   <app-forge-flame></app-forge-flame>
 }
 
