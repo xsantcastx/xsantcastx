@@ -218,146 +218,9 @@ body::before {
   background: transparent;
 }
 
-/* ─── Boot splash — first-paint cosmic curtain ─── */
-.cosmic-boot {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, rgba(8, 3, 22, 0.6) 0%, rgba(3, 1, 10, 0.96) 70%),
-    #03010a;
-  opacity: 1;
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.7s ease;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  /*
-   * The curtain lifts on the compositor's clock, not the main thread's.
-   *
-   * This is an opaque, fixed, inset-0, z-index-9999 layer over the whole
-   * viewport, and it used to be removed only by cosmic-engine.js adding
-   * .cosmic-boot--dismissed on a 750ms timer. That made the paint of every
-   * page hostage to the main thread: measured on throttled mobile against
-   * the production build, the hero <h1> — the LCP element, already present
-   * in the prerendered HTML and ready to paint — sat covered for 18.2s of
-   * render delay while the engine's timer waited behind ~1.4MB of
-   * third-party JS. LCP 18.6s, FCP 10.4s, both scoring 0.
-   *
-   * A CSS animation runs off the main thread, so the curtain now clears on
-   * its own by 1.5s no matter how starved JS is. The timings are lined up
-   * with the engine: hold through 50% (750ms, exactly when the JS dismissal
-   * fires), then fade out, leaving the star-flare its 0.7s to finish when
-   * the main thread is healthy. `forwards` + visibility:hidden keeps it
-   * clear if the engine never runs at all.
-   */
-  animation: cosmicBootCurtain 1.5s ease-out forwards;
-}
-
-@keyframes cosmicBootCurtain {
-  0%   { opacity: 0; visibility: visible; }
-  15%  { opacity: 1; }
-  50%  { opacity: 1; }
-  100% { opacity: 0; visibility: hidden; }
-}
-
-.cosmic-boot__star {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.85) 8%, #A78BFA 35%, rgba(8, 3, 24, 0.4) 88%);
-  box-shadow:
-    0 0 24px #8B5CF6,
-    0 0 56px rgba(139, 92, 246, 0.6),
-    0 0 100px rgba(123, 97, 255, 0.4);
-  transform: translate(-50%, -50%) scale(0);
-  animation: cosmicBootStarBirth 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.cosmic-boot__ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 60px;
-  height: 60px;
-  margin: -30px 0 0 -30px;
-  border-radius: 50%;
-  border: 1px solid rgba(139, 92, 246, 0.55);
-  transform: translate(0, 0) scale(0);
-  pointer-events: none;
-}
-
-.cosmic-boot__ring--1 {
-  animation: cosmicBootRing 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
-}
-
-.cosmic-boot__ring--2 {
-  animation: cosmicBootRing 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
-  border-color: rgba(140, 110, 255, 0.5);
-}
-
-.cosmic-boot__label {
-  position: absolute;
-  top: calc(50% + 80px);
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(139, 92, 246, 0.8);
-  text-shadow: 0 0 12px rgba(139, 92, 246, 0.55);
-  white-space: nowrap;
-  opacity: 0;
-  animation: cosmicBootLabel 0.9s ease-out 0.4s forwards;
-}
-
-.cosmic-boot--dismissed {
-  opacity: 0;
-  backdrop-filter: blur(0);
-  -webkit-backdrop-filter: blur(0);
-}
-
-.cosmic-boot--dismissed .cosmic-boot__star {
-  animation: cosmicBootStarFlare 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes cosmicBootIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes cosmicBootStarBirth {
-  0%   { transform: translate(-50%, -50%) scale(0); }
-  60%  { transform: translate(-50%, -50%) scale(1.4); }
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-@keyframes cosmicBootStarFlare {
-  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0); }
-  50%  { transform: translate(-50%, -50%) scale(8); opacity: 0.6; filter: blur(2px); }
-  100% { transform: translate(-50%, -50%) scale(40); opacity: 0; filter: blur(20px); }
-}
-
-@keyframes cosmicBootRing {
-  0%   { transform: translate(0, 0) scale(0); opacity: 1; border-width: 2px; }
-  100% { transform: translate(0, 0) scale(8); opacity: 0; border-width: 0.5px; }
-}
-
-@keyframes cosmicBootLabel {
-  0%   { opacity: 0; transform: translateX(-50%) translateY(8px); letter-spacing: 0.5em; }
-  100% { opacity: 1; transform: translateX(-50%) translateY(0); letter-spacing: 0.32em; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cosmic-boot { display: none !important; }
-}
+/* The first-paint boot curtain now lives in the Godforge loader component
+   (src/app/shared/loading/godforge-loader.component.{ts,css}), which owns its
+   own scoped styles. The .cosmic-boot rules that were here are gone with it. */
 
 /* Interactive starfield canvas — particles + constellation lines */
 .cosmic-canvas {
@@ -1959,8 +1822,10 @@ summary:focus-visible {
       rgba(3, 1, 10, 0.9);
   }
 
-  app-header .gfnav__menu {
-    background: rgba(6, 2, 18, 0.985);
+  /* The realms dropdown is gone from the bar; the tab bar took its place as
+     the mobile way around, and it leans on the same blur. */
+  app-header .gftabs {
+    background: rgba(8, 10, 22, 0.97);
   }
 
   /* The header bar itself was 58% opaque and leaned on an 18px backdrop blur to
@@ -1972,6 +1837,16 @@ summary:focus-visible {
 
   app-header .gfnav--compact .gfnav__glass {
     background: rgba(6, 8, 18, 0.975);
+  }
+}
+
+/* ── 10b. The mobile tab bar is fixed, so the document needs a floor ──
+   Without this the last section and the footer's final row sit underneath
+   the five tabs and cannot be scrolled into view — the page simply ends
+   behind them. Matches .gftabs height in header.component.css. */
+@media (max-width: 960px) {
+  main {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -2442,4 +2317,194 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
     linear-gradient(135deg, #A78BFA, #7b61ff 40%, #ff6dd7 70%, #ffd97a);
   background-origin: border-box;
   background-clip: padding-box, border-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GODFORGE SHARED PRIMITIVES — global on purpose.
+
+   .gfpill, .gfxp and .gfsigil-scene are each rendered by BOTH
+   HeaderComponent and LandingComponent. Angular's emulated encapsulation
+   stamps a per-component attribute onto every selector in a component
+   stylesheet, so a copy living in header.component.css would match only
+   the header's own elements and the landing page's identical markup would
+   render unstyled — silently, with no build warning and no console error.
+   These live here so one definition serves every component that uses them.
+
+   The tokens below mirror the ones on HeaderComponent's :host, which is
+   scoped and therefore invisible from here.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --gf-void: 10, 10, 15;
+  --gf-gold: #C9A84C;
+  --gf-gold-text: #E0A857;
+  --gf-ink: #f0f0f0;
+  --gf-dim: rgba(240, 240, 240, 0.6);
+  --gf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Standing pills ────────────────────────────────────────────────────── */
+
+.gfpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(var(--gf-void), 0.62);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.22s var(--gf-ease), box-shadow 0.22s var(--gf-ease);
+}
+.gfpill__val {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  /* Tabular figures: without them the pill resizes on every idle tick and
+     nudges the whole row a pixel sideways once a minute. */
+  font-variant-numeric: tabular-nums;
+  color: var(--gf-ink);
+}
+.gfpill__icon { display: block; flex-shrink: 0; }
+
+/* The wallet icons are Santiago's painted art; .gf-icon in
+   styles/icon-animations.css already sizes and squares them, and the
+   currency-icon rules there light them. Only the layout box belongs here. */
+.gfpill__icon { width: 14px; height: 14px; }
+.gfpill--gold .gfpill__val { color: #ffd97a; }
+.gfpill--gold:hover { border-color: rgba(232, 117, 42, 0.6); box-shadow: 0 0 20px -8px rgba(232, 117, 42, 0.9); }
+
+.gfpill--essence .gfpill__val { color: #c9b0ff; }
+.gfpill--essence:hover { border-color: rgba(164, 139, 255, 0.6); box-shadow: 0 0 20px -8px rgba(164, 139, 255, 0.9); }
+
+.gfpill--rank .gfpill__val { color: var(--primary-color); }
+.gfpill--rank:hover,
+.gfpill--rank:focus-visible {
+  border-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
+  box-shadow: 0 0 20px -8px var(--primary-color);
+}
+.gfpill__rank-title {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gf-dim);
+}
+
+/* On a phone the pills shrink to their content — a two-character Gold value
+   made a 37px-wide target, under the 44px floor this site holds every
+   standalone control to. Height was already fine; width was not. */
+@media (max-width: 960px) {
+  .gfpill { min-width: 44px; justify-content: center; }
+}
+
+/* ── XP readout ────────────────────────────────────────────────────────── */
+
+.gfxp { margin: 0.85rem 0 0.9rem; }
+.gfxp__label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0 0 0.35rem;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em;
+  color: var(--gf-dim);
+}
+.gfxp__nums { font-variant-numeric: tabular-nums; color: var(--primary-color); }
+.gfxp__track {
+  height: 6px; border-radius: 999px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.gfxp__fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary-color) 70%, transparent), var(--primary-color));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary-color) 80%, transparent);
+  transition: width 0.6s var(--gf-ease);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE SIGIL SCENE — the Godforge mark from the loading sheet.
+   X sigil · rune circle · four compass points · centre core · inner rings.
+   Rendered by the hero backdrop, the tome's closing art, and the boot
+   splash, at three different sizes via --scene.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gfsigil-scene {
+  position: relative;
+  width: var(--scene, 200px);
+  height: var(--scene, 200px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.gfsigil-scene--sm { --scene: 108px; }
+
+.gfsigil-scene__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 45%, transparent);
+}
+.gfsigil-scene__ring--outer {
+  inset: 0;
+  border-style: dashed;
+  box-shadow:
+    0 0 22px -6px color-mix(in srgb, var(--primary-color) 70%, transparent),
+    inset 0 0 22px -8px color-mix(in srgb, var(--primary-color) 60%, transparent);
+  animation: gfSceneSpin 64s linear infinite;
+}
+.gfsigil-scene__ring--inner {
+  inset: 16%;
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  animation: gfSceneSpin 44s linear infinite reverse;
+}
+
+.gfsigil-scene__point {
+  position: absolute;
+  width: 9%; height: 9%;
+  rotate: 45deg;
+  background: linear-gradient(140deg, #e6dcff, var(--primary-color));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary-color) 85%, transparent);
+}
+.gfsigil-scene__point--n { top: -4.5%; left: 45.5%; }
+.gfsigil-scene__point--s { bottom: -4.5%; left: 45.5%; }
+.gfsigil-scene__point--w { left: -4.5%; top: 45.5%; }
+.gfsigil-scene__point--e { right: -4.5%; top: 45.5%; }
+
+.gfsigil-scene__x { position: absolute; inset: 0; display: grid; place-items: center; }
+.gfsigil-scene__x i {
+  position: absolute;
+  width: 62%; height: 5%;
+  border-radius: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-color) 45%, transparent) 0%,
+    #f3ecff 50%,
+    color-mix(in srgb, var(--primary-color) 45%, transparent) 100%);
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--primary-color) 90%, transparent),
+    0 0 44px -6px color-mix(in srgb, var(--primary-color) 80%, transparent);
+}
+.gfsigil-scene__x i:nth-child(1) { transform: rotate(45deg); }
+.gfsigil-scene__x i:nth-child(2) { transform: rotate(-45deg); }
+
+.gfsigil-scene__core {
+  position: absolute;
+  width: 13%; height: 13%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #e6dcff 30%, var(--primary-color) 65%, transparent 78%);
+  box-shadow: 0 0 30px -2px var(--primary-color), 0 0 70px -10px var(--primary-color);
+  animation: gfSceneCore 4.6s ease-in-out infinite;
+}
+
+@keyframes gfSceneSpin { to { rotate: 360deg; } }
+@keyframes gfSceneCore {
+  0%, 100% { transform: scale(1);    opacity: 0.92; }
+  50%      { transform: scale(1.18); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gfsigil-scene__ring--outer,
+  .gfsigil-scene__ring--inner,
+  .gfsigil-scene__core { animation: none; }
+  .gfxp__fill { transition: none; }
 }

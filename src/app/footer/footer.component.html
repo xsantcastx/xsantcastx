@@ -5,16 +5,27 @@
        contents; the halls it names are the halls the drawer names.
        ═══════════════════════════════════════════════════════════ -->
   <div class="gffoot">
-    <a routerLink="/home" class="gffoot__brand" aria-label="The Godforge — home">
+    <!-- The creed line, the mark, and the promise — the three rows the
+         concept closes on. -->
+    <p class="gffoot__creed" aria-hidden="true">
+      <span>{{ translate('gffoot.forge') }}</span><i></i>
+      <span>{{ translate('gffoot.play') }}</span><i></i>
+      <span>{{ translate('gffoot.build') }}</span><i></i>
+      <span>{{ translate('gffoot.together') }}</span>
+    </p>
+
+    <a routerLink="/home" class="gffoot__brand" aria-label="xsantcastx — home">
       <span class="gffoot__sigil" aria-hidden="true">
         <span class="gffoot__sigil-bar"></span>
         <span class="gffoot__sigil-bar"></span>
       </span>
-      <span class="gffoot__wordmark">The Godforge</span>
+      <span class="gffoot__wordmark">XSANTCASTX</span>
     </a>
 
+    <p class="gffoot__next">{{ translate('gffoot.nextThing') }}</p>
+
     <nav class="gffoot__links" aria-label="Godforge sections">
-      <a routerLink="/tools">{{ translate('gfnav.realms') }}</a>
+      <a routerLink="/tools">{{ translate('gfnav.tools') }}</a>
       <a routerLink="/arena">{{ translate('gfnav.arena') }}</a>
       <a routerLink="/codex">{{ translate('gfnav.codex') }}</a>
       <a routerLink="/blueprint">{{ translate('gfnav.warTable') }}</a>
