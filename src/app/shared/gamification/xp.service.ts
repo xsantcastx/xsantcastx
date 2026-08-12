@@ -16,6 +16,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { ProgressStorageService } from './progress-storage.service';
 import {
   EnergyType,
+  HISTORY_DAYS,
   LevelDefinition,
   ProgressState,
   XP_VALUES,
@@ -65,10 +66,13 @@ export interface AwardOptions {
 }
 
 /** Local YYYY-MM-DD. Deliberately local, not UTC: a streak is a human day. */
-function today(): string {
-  const d = new Date();
+export function localDay(d: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function today(): string {
+  return localDay();
 }
 
 /** Whole days between two YYYY-MM-DD strings, `b - a`. */
@@ -153,6 +157,7 @@ export class XpService {
     this.state.xp += amount;
     if (energy === 'nox') this.state.nox += amount;
     else this.state.aether += amount;
+    this.recordDay(amount);
     const after = levelForXp(this.state.xp);
 
     this.persist();
@@ -164,6 +169,39 @@ export class XpService {
       levelUp: after.level > before.level,
       level: after,
     });
+  }
+
+  /**
+   * Add today's award to the daily ledger and drop anything older than the
+   * retention window. Called from `award()` only — the ledger is a projection of
+   * XP, so there is no path that can write to it without XP having moved.
+   */
+  private recordDay(amount: number): void {
+    const day = today();
+    const history: Record<string, number> = { ...this.state.history };
+    history[day] = (history[day] ?? 0) + amount;
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - HISTORY_DAYS);
+    const floor = localDay(cutoff);
+    for (const key of Object.keys(history)) {
+      if (key < floor) delete history[key];
+    }
+
+    this.state.history = history;
+  }
+
+  /**
+   * XP earned per local day, newest keys last. A copy: the caller renders it and
+   * must not be able to reach back into the ledger.
+   */
+  get history(): Record<string, number> {
+    return { ...this.state.history };
+  }
+
+  /** Tool slugs used at least once, in the order they were first opened. */
+  get toolsUsed(): string[] {
+    return [...this.state.toolsUsed];
   }
 
   /**
