@@ -35,6 +35,43 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ── Cloud save: progression ───────────────────────────────────────────────
+    // The Godforge save, synced across a visitor's devices. Owner-only, and
+    // nobody else's business — there is no leaderboard reading these.
+    //
+    // The `state` document holds lifetime XP and gets one extra condition:
+    // XP may never go down. That is not an anti-cheat measure — the client
+    // computes XP, so anyone determined to inflate it can, and the honest place
+    // to stop that is a Cloud Function awarding it instead. What it does stop is
+    // the failure this feature could realistically cause on its own: a second
+    // device that has fallen behind writing its smaller total over a larger one
+    // and silently deleting progress. The client treats the rejection as a
+    // signal to re-merge rather than an error to swallow, so the case resolves
+    // itself instead of surfacing as a wipe.
+    //
+    // Deletes are allowed: a visitor wiping their own save is a real thing to
+    // want, and `XpService.reset()` is how they do it.
+    match /users/{uid}/progress/{docId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid
+                    && (
+                      docId != 'state'
+                      || !('xp' in resource.data)
+                      || !('xp' in request.resource.data)
+                      || request.resource.data.xp >= resource.data.xp
+                    );
+    }
+
+    // ── Cloud save: the Godforge ledger ───────────────────────────────────────
+    // Gold and Eclipse Essence are spendable, so nothing here is monotonic —
+    // the whole point of a currency is that it goes down. Owner-only is the
+    // entire rule, deliberately: a stricter one would have to model every sink
+    // in economy.model.ts, and would break the next time a price changed.
+    match /users/{uid}/economy/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // ── Live Activity Feed ────────────────────────────────────────────────────
     // Written by the Claude Code PostToolUse hook; read by the /live page.
     match /claude-activity/{docId} {
