@@ -10,7 +10,7 @@ export const SITE_URL = 'https://xsantcastx.com';
 const SITE_NAME   = 'The Godforge';
 const DEFAULT_IMG = `${SITE_URL}/assets/og/og-godforge.jpg`;
 const DEFAULT_IMG_ALT =
-  'The Godforge — an eclipsed sun ringed in violet fire over a field of stars';
+  'The Godforge — a violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars';
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {

@@ -3105,20 +3105,20 @@
 }
 
 /* The realm mark: a small banked ember in the realm's own colour. */
+/* Was a CSS-drawn orb standing in for art that did not exist yet. Now it holds
+   the painted realm sigil, so the plate gradient and its inset shadow are gone —
+   both would have sat on top of the artwork — and the glow is a drop-shadow that
+   follows the sigil's alpha instead of a box-shadow round a circle. */
 .gf-station__sigil {
   flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, var(--realm-color) 0%, rgba(8, 6, 20, 0.94) 86%);
-  box-shadow: 0 0 12px -2px var(--realm-glow), inset 0 0 8px rgba(0, 0, 0, 0.5);
-  transition: box-shadow 0.35s ease, transform 0.35s ease;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 8px var(--realm-glow));
+  transition: filter 0.35s ease, transform 0.35s ease;
 }
 
 .gf-station--lit .gf-station__sigil {
-  box-shadow: 0 0 22px -2px var(--realm-glow), inset 0 0 8px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 0 16px var(--realm-glow)) brightness(1.1);
   transform: scale(1.08);
 }
 
@@ -3519,4 +3519,21 @@
     border-left-color: var(--realm-color);
     box-shadow: 0 0 34px -14px var(--realm-glow);
   }
+}
+
+/* ── Rank sigils (icon integration) ───────────────────────────────────── */
+
+/* The hero line is a paragraph, so the sigil rides the text baseline rather
+   than sitting on its own row. */
+.gf-rank__sigil {
+  width: 34px;
+  height: 34px;
+  vertical-align: -0.6em;
+  margin-right: 0.35rem;
+}
+
+.gf-journey__rank-sigil {
+  width: 44px;
+  height: 44px;
+  flex: none;
 }

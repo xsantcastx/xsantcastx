@@ -177,10 +177,10 @@
   stroke-width: 1.2;
 }
 
-.fk-sigil__numeral {
-  fill: var(--fk-ink);
-  font: 700 30px 'Orbitron', system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
+/* The crest's core carries the painted rank sigil now; the numeral it replaced
+   was duplicating the "Level N" already printed beside the rank name. */
+.fk-sigil__art {
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.55));
 }
 
 @keyframes fkSpin { to { transform: rotate(360deg); } }
@@ -233,7 +233,7 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(10, 6, 26, 0.55);
 }
-.fk-id__coin-icon { grid-row: 1 / span 2; font-size: 22px; }
+.fk-id__coin-icon { grid-row: 1 / span 2; width: 26px; height: 26px; align-self: center; }
 .fk-id__coin-val {
   font: 700 20px/1 'Orbitron', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -913,3 +913,7 @@
   .fk-link:hover { transform: none; }
   .fk-cal__day:hover .fk-cal__day-cell { transform: none; }
 }
+
+
+/* Rarity tier sigils beside the tier labels in the inventory + trophy case. */
+.fk-tier-icon { width: 16px; height: 16px; flex: none; vertical-align: -3px; }

@@ -78,6 +78,16 @@ export function energyForCategory(category: string | undefined): EnergyType {
   return category && NOX_CATEGORIES.has(category) ? 'nox' : 'aether';
 }
 
+/**
+ * The rank sigil for a level, under assets/icons/ranks. Derived rather than
+ * stored on each row: the sigil sheet is ten cells in rank order, so a
+ * hand-maintained path per level would be ten chances to typo the same fact.
+ */
+export function rankSigil(level: number): string {
+  const n = Math.min(10, Math.max(1, Math.round(level)));
+  return `assets/icons/ranks/rank-${n}.png`;
+}
+
 export interface LevelDefinition {
   /** 1-indexed rank. */
   level: number;

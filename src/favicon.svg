@@ -1,15 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The Void X sigil, as vector.
+
+  This is a redraw of assets/brand/void-x-sigil.png rather than that art
+  embedded: a browser tab renders the favicon at 16 device pixels, where the
+  painting's cracked-stone ring and nebula turn to mud. The shapes here are the
+  three things that survive at that size — disc, ring, X — so the mark stays
+  legible in a tab while the raster art carries the detail everywhere it is
+  shown larger. Keep the two in sync if the sigil is ever redrawn.
+-->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">xsantcastx Favicon</title>
-  <desc id="desc">Monogram of overlapping S and C letters inside an X frame.</desc>
+  <title id="title">The Godforge</title>
+  <desc id="desc">A glowing violet X inside a dark stone ring.</desc>
   <defs>
-    <linearGradient id="favGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00FFD1" />
-      <stop offset="55%" stop-color="#32D5FF" />
-      <stop offset="100%" stop-color="#7B5DFF" />
+    <radialGradient id="vxPlate" cx="38%" cy="32%" r="72%">
+      <stop offset="0%"   stop-color="#1a1030" />
+      <stop offset="100%" stop-color="#07040f" />
+    </radialGradient>
+    <linearGradient id="vxMark" x1="12%" y1="8%" x2="88%" y2="92%">
+      <stop offset="0%"   stop-color="#c9a5ff" />
+      <stop offset="45%"  stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#6d28d9" />
     </linearGradient>
   </defs>
-  <rect x="7" y="7" width="50" height="50" rx="14" fill="#0B1222" />
-  <path d="M18 14 L14 18 L28 32 L14 46 L18 50 L32 36 L46 50 L50 46 L36 32 L50 18 L46 14 L32 28 Z" fill="url(#favGradient)" opacity="0.92" />
-  <text x="32" y="36" font-size="20" text-anchor="middle" fill="#F3FEFF" font-family="'Orbitron','Rajdhani','Segoe UI',sans-serif" letter-spacing="4">SC</text>
+
+  <circle cx="32" cy="32" r="31" fill="url(#vxPlate)" />
+  <circle cx="32" cy="32" r="29.5" fill="none" stroke="#8B5CF6" stroke-opacity="0.75" stroke-width="2.5" />
+  <circle cx="32" cy="32" r="25"   fill="none" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="1" />
+
+  <!-- Cardinal diamonds. Sub-pixel at 16px, which is why they carry no detail. -->
+  <g fill="#a78bfa" opacity="0.85">
+    <path d="M32 3.5 34.6 8 32 12.5 29.4 8Z" />
+    <path d="M32 51.5 34.6 56 32 60.5 29.4 56Z" />
+    <path d="M3.5 32 8 29.4 12.5 32 8 34.6Z" />
+    <path d="M51.5 32 56 29.4 60.5 32 56 34.6Z" />
+  </g>
+
+  <path d="M19 14 L14 19 L27 32 L14 45 L19 50 L32 37 L45 50 L50 45 L37 32 L50 19 L45 14 L32 27 Z"
+        fill="url(#vxMark)" stroke="#ddc9ff" stroke-opacity="0.55" stroke-width="0.9"
+        stroke-linejoin="round" />
 </svg>

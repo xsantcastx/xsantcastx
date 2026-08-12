@@ -36,11 +36,14 @@ export interface RarityDefinition {
   duration: number;
   /** Takes over the viewport: flash, dim overlay, centred card, particles. */
   cinematic: boolean;
+  /** Tier sigil under assets/icons/rarity. */
+  icon: string;
 }
 
 export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   mortal: {
     id: 'mortal',
+    icon: 'assets/icons/rarity/mortal.png',
     label: 'Mortal',
     weight: 0,
     color: '#e8ecf1',
@@ -52,6 +55,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   eclipsed: {
     id: 'eclipsed',
+    icon: 'assets/icons/rarity/eclipsed.png',
     label: 'Eclipsed',
     weight: 1,
     color: '#5fb6ff',
@@ -63,6 +67,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   sacred: {
     id: 'sacred',
+    icon: 'assets/icons/rarity/sacred.png',
     label: 'Sacred',
     weight: 2,
     color: '#a48bff',
@@ -74,6 +79,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   anomalous: {
     id: 'anomalous',
+    icon: 'assets/icons/rarity/anomalous.png',
     label: 'Anomalous',
     weight: 3,
     color: '#C9A84C',
@@ -85,6 +91,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   mythic: {
     id: 'mythic',
+    icon: 'assets/icons/rarity/mythic.png',
     label: 'Mythic',
     weight: 4,
     color: '#ff2d4d',
@@ -96,6 +103,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   singular: {
     id: 'singular',
+    icon: 'assets/icons/rarity/singular.png',
     label: 'Singular',
     weight: 5,
     color: '#ff6dd7',

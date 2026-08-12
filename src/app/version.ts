@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.32.0',
+  version: '2.33.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Unbroken',
+  codename: 'The True Face',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.33.0',
+    codename: 'The True Face',
+    date: '2026-08-12',
+    highlights: [
+      'The Godforge has a face. The Void X sigil replaces the old monogram everywhere it is seen — the browser tab, the header, the home-screen icon on iOS and Android, and a new web manifest that names the icon set for installs',
+      'Sharing a link now shows the forge itself: the social card is a 1200x630 crop of the Godforge altar under its eclipse, and the profile page no longer advertises an image that was never there',
+      'Thirty-four hand-painted icons replace the emoji that stood in for them. Gold and Eclipse Essence in the header rail, the wallet and every price; the five Market tabs; the five realm sigils on the forge stations and across the Codex; ten rank sigils; six rarity tiers; and the Forge Flame itself',
+      'The icons are lit rather than pasted. The Flame breathes, the rank you hold glows while the ranks above it stay dark stone, and the rarity ladder escalates from an inert Mortal to a Singular that cycles through the whole spectrum — every one of them holding a static end state when the visitor asks for reduced motion',
+      'Ranks read as progress at a glance: the Codex path shows all ten sigils with the earned ones lit and the rest greyed, and the Forge Keeper crest carries the painted sigil inside the ring whose point count already encoded the rank',
+    ],
+  },
   {
     version: '2.32.0',
     codename: 'Unbroken',
