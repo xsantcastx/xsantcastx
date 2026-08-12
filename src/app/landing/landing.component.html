@@ -1,162 +1,221 @@
 <div class="homepage">
 
   <!-- ═══════════════════════════════════════════
-  SECTION 1 — HERO
+  SECTION 1 — THE GODFORGE
+  The entrance. Deep, underground, lit only by the core.
   ═══════════════════════════════════════════ -->
-  <section id="hero" class="hp-hero">
-    <div class="hp-hero__bg">
-      <div class="hp-hero__bg-glow hp-hero__bg-glow--cyan"></div>
-      <div class="hp-hero__bg-glow hp-hero__bg-glow--purple"></div>
+  <section id="hero" class="hp-hero gf-hero">
+    <div class="hp-hero__bg" aria-hidden="true">
+      <div class="hp-hero__bg-glow hp-hero__bg-glow--ember"></div>
+      <div class="hp-hero__bg-glow hp-hero__bg-glow--crimson"></div>
       <div class="hp-hero__grid-lines"></div>
     </div>
 
-    <div class="hp-hero__inner">
-      <!-- LEFT: copy -->
-      <div class="hp-hero__text">
-        <p class="hp-hero__eyebrow">
-          <span class="hp-hero__eyebrow-dot"></span>
-          Free Tools Platform
-        </p>
-        <h1 class="hp-hero__title">
-          The Best Free Tools<br>
-          for Developers<br>
-          <span class="hp-hero__title--accent">&amp; Designers</span>
-        </h1>
-        <p class="hp-hero__sub">
-          CSS Box Shadow Generator, Email Deliverability Auditor,<br class="hp-hero__sub-br">
-          SSL Inspector &amp; more — all free, no sign-up.
-        </p>
-        <div class="hp-hero__cta">
-          <a routerLink="/tools" class="cta-button hp-hero__cta-primary">
-            Explore All Tools
-          </a>
-          <a routerLink="/live" class="cta-button is-ghost hp-hero__cta-ghost">
-            <span class="hp-live-dot"></span>
-            Watch Live Work
-          </a>
+    <div class="hp-hero__inner gf-hero__inner">
+      <p class="hp-hero__eyebrow gf-hero__eyebrow">
+        <span class="hp-hero__eyebrow-dot"></span>
+        {{ translate('godforge.hero.eyebrow') }}
+      </p>
+
+      <h1 class="hp-hero__title gf-hero__title">The Godforge</h1>
+
+      <p class="hp-hero__sub gf-hero__sub">{{ translate('godforge.hero.sub') }}</p>
+
+      <!-- The core. Pure CSS: nested radial gradients from gold through
+           crimson into the void, breathing on two offset cycles so the heat
+           never looks like a single loop. Decorative — the page reads fine
+           without it, and it is the first thing to go under reduced motion. -->
+      <div class="gf-core" aria-hidden="true">
+        <div class="gf-core__haze"></div>
+        <div class="gf-core__ring gf-core__ring--outer"></div>
+        <div class="gf-core__ring gf-core__ring--inner"></div>
+        <div class="gf-core__well">
+          <div class="gf-core__heart"></div>
         </div>
+        <div class="gf-core__ember" style="--ex: 18%; --ed: 0s;   --edur: 5.2s;"></div>
+        <div class="gf-core__ember" style="--ex: 37%; --ed: -1.7s; --edur: 6.1s;"></div>
+        <div class="gf-core__ember" style="--ex: 54%; --ed: -3.4s; --edur: 4.8s;"></div>
+        <div class="gf-core__ember" style="--ex: 71%; --ed: -0.9s; --edur: 5.7s;"></div>
+        <div class="gf-core__ember" style="--ex: 86%; --ed: -2.6s; --edur: 6.4s;"></div>
       </div>
 
-      <!-- RIGHT: animated card carousel. aria-hidden because the rotating
-      preview is decorative; the real tool grid below is the accessible
-      entry point. Without aria-hidden, screen readers announce each
-      card as it cycles in and out which is meaningless noise. -->
-      <div class="hp-hero__visual">
-        <div class="hero-carousel" aria-hidden="true">
-          @for (card of heroCarouselCards; track trackHeroCard($index, card)) {
-            <div
-              class="hc-card"
-              [attr.data-category]="card.tool.category"
-              [attr.data-tags]="card.tool.tags.join(',')"
-              [attr.style]="'--ci: ' + card.ci"
-              >
-              <div class="hc-card__top">
-                <span class="hc-card__icon-wrap" aria-hidden="true">
-                  <span class="hc-card__icon">{{ card.tool.icon }}</span>
-                </span>
-                <span class="hc-card__cat">{{ card.tool.category }}</span>
-              </div>
-              <h3 class="hc-card__name">{{ card.tool.name }}</h3>
-              <p class="hc-card__desc">{{ card.tool.desc }}</p>
-              <div class="hc-card__footer">
-                <span class="hc-card__cta">Try it &rarr;</span>
-                <!-- Card index counter, not a timer. Two-digit zero-padded
-                via precomputed indexLabel/totalLabel — prevents the
-                "01:016 looks like broken mm:ss" bug from 2026-04-10. -->
-                <span class="hc-card__num">{{ card.indexLabel }} / {{ card.totalLabel }}</span>
-              </div>
-            </div>
-          }
-        </div>
-        <p class="hp-hero__carousel-hint">
-          <span class="hp-live-dot"></span>
-          {{ tools.length }} tools available — cycling preview
+      <!-- Rank. Renders "Wanderer" on the server (no stored progress there);
+           the visitor's real title arrives after hydration. -->
+      <div class="gf-rank">
+        <p class="gf-rank__line">
+          {{ translate('godforge.hero.welcome') }}
+          <strong class="gf-rank__title">{{ xp.level.title }}</strong>
         </p>
+        <div class="gf-rank__bar">
+          <span class="gf-rank__fill" [style.width.%]="xp.progress * 100"></span>
+        </div>
+        <p class="gf-rank__meta">
+          @if (xp.next) {
+            {{ xp.xp }} XP — {{ xp.toNext }} {{ translate('godforge.hero.toNext') }} {{ xp.next.title }}
+          } @else {
+            {{ xp.xp }} XP — {{ translate('godforge.hero.maxRank') }}
+          }
+        </p>
+      </div>
+
+      <div class="hp-hero__cta gf-hero__cta">
+        <button type="button" class="cta-button gf-hero__enter" (click)="enterTheForge()">
+          {{ translate('godforge.hero.cta') }}
+        </button>
+        <a routerLink="/live" class="cta-button is-ghost hp-hero__cta-ghost">
+          <span class="hp-live-dot"></span>
+          {{ translate('godforge.hero.ctaLive') }}
+        </a>
       </div>
     </div>
 
-    <div class="hp-hero__scroll-hint">
+    <div class="hp-hero__scroll-hint" aria-hidden="true">
       <div class="hp-hero__scroll-mouse"></div>
     </div>
   </section>
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 2 — STATS BAR
+  SECTION 2 — THE FORGE'S PULSE
+  Every number is derived from the thing it counts.
   ═══════════════════════════════════════════ -->
-  <div class="hp-stats">
+  <div class="hp-stats gf-pulse">
     <div class="hp-stats__inner">
       <div class="hp-stat">
         <span class="hp-stat__icon">⬡</span>
-        <span class="hp-stat__num" [attr.data-counter]="tools.length">{{ tools.length }}</span>
-        <span class="hp-stat__label">Free Tools</span>
+        <span class="hp-stat__num" [attr.data-counter]="artifactCount">{{ artifactCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.artifacts') }}</span>
       </div>
       <div class="hp-stats__divider"></div>
       <div class="hp-stat">
         <span class="hp-stat__icon">◉</span>
-        <span class="hp-stat__val">Always Free</span>
-        <span class="hp-stat__label">Forever, no catch</span>
+        <span class="hp-stat__num" [attr.data-counter]="prerenderedPaths">{{ prerenderedPaths }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.paths') }}</span>
       </div>
       <div class="hp-stats__divider"></div>
       <div class="hp-stat">
         <span class="hp-stat__icon">◑</span>
-        <span class="hp-stat__val">No Sign-Up</span>
-        <span class="hp-stat__label">Open &amp; use instantly</span>
+        <span class="hp-stat__num" [attr.data-counter]="fragmentCount">{{ fragmentCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.fragments') }}</span>
       </div>
       <div class="hp-stats__divider"></div>
       <div class="hp-stat">
         <span class="hp-stat__icon">◈</span>
-        <span class="hp-stat__val">Built in Public</span>
-        <span class="hp-stat__label">Watch it happen live</span>
+        <span class="hp-stat__num" [attr.data-counter]="realmCount">{{ realmCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.realms') }}</span>
       </div>
     </div>
   </div>
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 3 — LATEST TOOLS (last 8 added)
-  Full catalog lives at /tools
+  SECTION 3 — THE FIVE REALMS
+  One forge station per realm. Every station's tools stay in the
+  markup when collapsed — the toggle hides them, so crawlers still
+  follow all 30 links and only the visitor's view is filtered.
   ═══════════════════════════════════════════ -->
-  <section id="services" class="hp-tools">
+  <!-- id stays "services": the header's scrollToSection() and its
+       active-link observer both key off a fixed list of section ids
+       (hero / services / projects / about / contact), so renaming this
+       anchor would silently break the SERVICES nav link. -->
+  <section id="services" class="hp-tools gf-forges">
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
         <div class="hp-tools__hd-text">
           <p class="hp-section-eyebrow">
             <span class="hp-eyebrow-pulse"></span>
-            {{ translate('cosmic.eyebrow.latestTools') }}
+            {{ translate('godforge.forges.eyebrow') }}
           </p>
-          <h2 class="hp-section-title">Fresh off the forge</h2>
-          <p class="hp-section-tagline">{{ translate('cosmic.tagline.latestTools') }}</p>
+          <h2 class="hp-section-title">{{ translate('godforge.forges.title') }}</h2>
+          <p class="hp-section-tagline">{{ translate('godforge.forges.tagline') }}</p>
         </div>
         <a routerLink="/tools" class="hp-tools__view-all">
-          Browse all {{ tools.length }} tools &rarr;
+          {{ translate('godforge.forges.browseAll') }} {{ artifactCount }} &rarr;
         </a>
       </div>
 
-      <div class="hp-tools__grid">
-        @for (tool of latestTools; track trackToolById($index, tool)) {
-          <a
-            class="hp-tool-card"
-            [attr.data-category]="tool.category"
-            [attr.data-tags]="tool.tags.join(',')"
-            [routerLink]="tool.route"
+      <div class="gf-stations">
+        @for (station of stations; track trackStation($index, station)) {
+          <section
+            class="gf-station"
+            [class.gf-station--open]="isStationOpen(station)"
+            [class.gf-station--lit]="isStationLit(station)"
+            [attr.data-realm]="station.realm.id"
+            [style.--realm-color]="station.realm.color"
+            [style.--realm-glow]="station.realm.glow"
+            (mouseenter)="hoveredRealmId = station.realm.id"
+            (mouseleave)="hoveredRealmId = null"
             >
-            <div class="hp-tool-card__icon-wrap" aria-hidden="true">
-              <span class="hp-tool-card__icon">{{ tool.icon }}</span>
+            <h3 class="gf-station__hd-wrap">
+              <button
+                type="button"
+                class="gf-station__hd"
+                (click)="toggleStation(station)"
+                [attr.aria-expanded]="isStationOpen(station)"
+                [attr.aria-controls]="'forge-' + station.realm.id"
+                >
+                <span class="gf-station__sigil" aria-hidden="true"></span>
+                <span class="gf-station__names">
+                  <span class="gf-station__name">{{ station.realm.name }}</span>
+                  <span class="gf-station__domain">{{ station.realm.domain }}</span>
+                </span>
+                <span class="gf-station__count">
+                  {{ station.total }} <span class="gf-station__count-word">{{ translate('godforge.forges.artifacts') }}</span>
+                </span>
+                <span class="gf-station__chevron" aria-hidden="true">&#x203A;</span>
+              </button>
+            </h3>
+
+            <p class="gf-station__quote">{{ station.realm.quote }}</p>
+
+            <div class="gf-station__body" [id]="'forge-' + station.realm.id">
+              <div class="hp-tools__grid gf-station__grid">
+                @for (tool of station.shown; track trackToolById($index, tool)) {
+                  <a
+                    class="hp-tool-card gf-card"
+                    [attr.data-category]="tool.category"
+                    [attr.data-tags]="tool.tags.join(',')"
+                    [routerLink]="tool.route"
+                    [tabIndex]="isStationOpen(station) ? 0 : -1"
+                    >
+                    <div class="hp-tool-card__icon-wrap" aria-hidden="true">
+                      <span class="hp-tool-card__icon">{{ tool.icon }}</span>
+                    </div>
+                    <div class="hp-tool-card__body">
+                      <span class="hp-tool-card__cat gf-card__cat">{{ tool.category }}</span>
+                      <h4 class="hp-tool-card__name">{{ tool.name }}</h4>
+                      <p class="hp-tool-card__desc">{{ tool.desc }}</p>
+                    </div>
+                    <span class="hp-tool-card__cta gf-card__cta">
+                      @if (hasForged(tool)) {
+                        <span class="gf-card__struck">{{ translate('godforge.forges.struck') }}</span>
+                      } @else {
+                        {{ translate('godforge.forges.strike') }}
+                      }
+                      &rarr;
+                    </span>
+                  </a>
+                }
+              </div>
+
+              @if (station.hidden > 0) {
+                <a
+                  class="gf-station__more"
+                  [routerLink]="['/tools']"
+                  [queryParams]="{ realm: station.realm.id }"
+                  [tabIndex]="isStationOpen(station) ? 0 : -1"
+                  >
+                  {{ station.hidden }} {{ translate('godforge.forges.more') }} {{ station.realm.name }} &rarr;
+                </a>
+              }
             </div>
-            <div class="hp-tool-card__body">
-              <span class="hp-tool-card__cat">{{ tool.category }}</span>
-              <h3 class="hp-tool-card__name">{{ tool.name }}</h3>
-              <p class="hp-tool-card__desc">{{ tool.desc }}</p>
-            </div>
-            <span class="hp-tool-card__cta">Try it &rarr;</span>
-          </a>
+          </section>
         }
       </div>
 
       <div class="hp-tools__footer">
         <a routerLink="/tools" class="cta-button is-ghost">
-          See all {{ tools.length }} free tools &rarr;
+          {{ translate('godforge.forges.seeAll') }} {{ artifactCount }} &rarr;
         </a>
       </div>
     </div>
@@ -354,14 +413,14 @@
   <!-- ═══════════════════════════════════════════
   SECTION 6 — CHANGELOG
   ═══════════════════════════════════════════ -->
-  <section class="hp-changelog">
+  <section class="hp-changelog gf-chronicle">
     <div class="hp-changelog__inner">
       <p class="hp-section-eyebrow">
         <span class="hp-eyebrow-pulse"></span>
-        {{ translate('cosmic.eyebrow.whatsNew') }}
+        {{ translate('godforge.chronicle.eyebrow') }}
       </p>
-      <h2 class="hp-section-title">Latest Updates</h2>
-      <p class="hp-section-tagline">{{ translate('cosmic.tagline.whatsNew') }}</p>
+      <h2 class="hp-section-title">{{ translate('godforge.chronicle.title') }}</h2>
+      <p class="hp-section-tagline">{{ translate('godforge.chronicle.tagline') }}</p>
 
       <!-- Loading state -->
       @if (changelogLoading) {
@@ -398,7 +457,19 @@
                   <div class="hp-cl-entry">
                     <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
                     <div class="hp-cl-entry__body">
-                      <p class="hp-cl-entry__title">{{ entry.title }}</p>
+                      <p class="hp-cl-entry__title">
+                        {{ entry.title }}
+                        <!-- Realm badge only when the entry names a tool we can
+                             place. Platform-wide work belongs to no realm and
+                             is left unbadged rather than filed under a guess. -->
+                        @if (realmForEntry(entry); as realm) {
+                          <span
+                            class="gf-cl-realm"
+                            [style.--realm-color]="realm.color"
+                            [style.--realm-glow]="realm.glow"
+                            >{{ realm.name }}</span>
+                        }
+                      </p>
                       <p class="hp-cl-entry__details">{{ entry.details }}</p>
                     </div>
                   </div>
@@ -417,7 +488,59 @@
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 7 — FOOTER CTA
+  SECTION 7 — BEGIN YOUR JOURNEY
+  The closing call: where you stand, and the three doors out.
+  ═══════════════════════════════════════════ -->
+  <section class="gf-journey">
+    <div class="gf-journey__inner">
+      <p class="hp-section-eyebrow">
+        <span class="hp-eyebrow-pulse"></span>
+        {{ translate('godforge.journey.eyebrow') }}
+      </p>
+      <h2 class="hp-section-title gf-journey__title">{{ translate('godforge.journey.title') }}</h2>
+      <p class="gf-journey__creed">{{ translate('godforge.journey.creed') }}</p>
+
+      <div class="gf-journey__rank">
+        <p class="gf-journey__rank-line">
+          <span class="gf-journey__rank-num">{{ xp.level.level }}</span>
+          <span class="gf-journey__rank-title">{{ xp.level.title }}</span>
+          <span class="gf-journey__rank-xp">{{ xp.xp }} XP</span>
+        </p>
+        <div class="gf-rank__bar">
+          <span class="gf-rank__fill" [style.width.%]="xp.progress * 100"></span>
+        </div>
+        <p class="gf-journey__rank-next">
+          @if (xp.next) {
+            {{ xp.toNext }} {{ translate('godforge.hero.toNext') }} {{ xp.next.title }}
+          } @else {
+            {{ translate('godforge.hero.maxRank') }}
+          }
+        </p>
+      </div>
+
+      <div class="gf-journey__doors">
+        <a [routerLink]="recommendedTool.route" class="gf-door gf-door--primary">
+          <span class="gf-door__label">{{ translate('godforge.journey.startWith') }}</span>
+          <span class="gf-door__name">{{ recommendedTool.name }}</span>
+          <span class="gf-door__hint">{{ recommendedTool.desc }}</span>
+        </a>
+        <a routerLink="/blueprint" class="gf-door">
+          <span class="gf-door__label">{{ translate('godforge.journey.blueprintLabel') }}</span>
+          <span class="gf-door__name">{{ translate('godforge.journey.blueprint') }}</span>
+          <span class="gf-door__hint">{{ translate('godforge.journey.blueprintHint') }}</span>
+        </a>
+        <a routerLink="/arena" class="gf-door">
+          <span class="gf-door__label">{{ translate('godforge.journey.arenaLabel') }}</span>
+          <span class="gf-door__name">{{ translate('godforge.journey.arena') }}</span>
+          <span class="gf-door__hint">{{ fragmentCount }} {{ translate('godforge.journey.arenaHint') }}</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+  SECTION 8 — FOOTER CTA
   ═══════════════════════════════════════════ -->
   <section id="contact" class="hp-footer-cta">
     <div class="hp-footer-cta__inner">
