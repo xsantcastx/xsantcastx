@@ -104,7 +104,22 @@ interface Drop {
   styles: [`
     /* ── Corner drop (Mortal → Anomalous) ─────────────────────────────── */
     .ad {
-      position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 99998;
+      /* Cleared above the Forge Flame rather than sitting on it.
+         The flame is a permanent fixture in this exact corner — 64px of ember
+         plus its own offset — and this card is 99998 with pointer events on, so
+         for the four to seven seconds a drop is on screen it was swallowing
+         every strike aimed at the ember underneath it.
+         That was survivable until strikes started counting: a combo breaks after
+         two seconds of silence, and every tier crossing drops an achievement, so
+         the toast celebrating x10 was guaranteeing you never saw x50. The whole
+         ladder above the first rung was unreachable in a single run.
+
+         The offset is written as the flame's own geometry — its bottom clamp,
+         plus its diameter, plus a gap wide enough to stay clear through this
+         card's own slide-in — rather than as a round number, so the two stay in
+         step if the ember is ever resized. */
+      position: fixed; right: 1.25rem; z-index: 99998;
+      bottom: calc(clamp(12px, 3vw, 26px) + 64px + 32px);
       display: flex; gap: 0.85rem; align-items: flex-start;
       width: min(340px, calc(100vw - 2.5rem));
       padding: 0.95rem 1.1rem;
@@ -208,8 +223,18 @@ interface Drop {
       100% { opacity: 0; transform: rotate(var(--a)) translateX(230px) scale(.3); }
     }
 
+    /* The flame moves at 768px — up to bottom: 76px and down to a 52px ember —
+       so the clearance has to move with it, at its breakpoint rather than at
+       this component's. Keeping the two numbers in step matters more than the
+       exact gap: the failure is silent and only shows up as strikes that do not
+       register while a drop is on screen. */
+    @media (max-width: 768px) {
+      /* Same sum with the mobile flame's numbers: 76px offset, 52px ember. */
+      .ad { bottom: calc(76px + 52px + 32px); }
+    }
+
     @media (max-width: 480px) {
-      .ad { right: .75rem; bottom: .75rem; }
+      .ad { right: .75rem; }
       .ad--cine { right: auto; bottom: auto; padding: 1.5rem 1.1rem; }
       @keyframes adShard {
         0%   { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.4); }
