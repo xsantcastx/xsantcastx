@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.28.0',
+  version: '2.29.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Eclipse',
+  codename: 'Character Sheet',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,23 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.29.0',
+    codename: 'Character Sheet',
+    date: '2026-08-12',
+    highlights: [
+      'New page at /forge-keeper — the Godforge character sheet. Rank and XP, Gold and Essence, realm affinity, everything you own, a case of pinned achievements, a thirty-day streak calendar and the five tools you actually reach for',
+      'The page owns no state. Every number on it is already true in XpService, EconomyService, ToolMasteryService, QuestService, IdleService, ArenaScoresService, EasterEggService or LoreService — a profile that keeps its own copy of the totals is a profile that can disagree with the rest of the site, and the first time it does, the visitor believes the profile',
+      'The rank sigil is drawn, not typed: its point count *is* the rank, so level 3 is a triangle and level 10 a decagram. Ten lore glyphs would have been ten chances for a system font to render a tofu box on the one element the page is built around',
+      'Realm affinity is a conic gradient rather than a drawn path, so the two arcs are exact at any split and the only thing left to place is the pair of yin-yang eyes — one rotation each',
+      'The vault renders the whole catalogue, not just what is owned: 24 cards, the unbought ones in silhouette with their price and a link to the Market. That is what makes an inventory screen worth opening, and it is why the page prerenders in full',
+      'Upgrades and cosmetics carry no authored rarity — only artifacts do — so their tier is read off the price band. A 50-Gold pair of Bellows and a 10,000-Gold Achievement Frame are not the same kind of possession, and painting both one colour throws away the only thing the ladder already encodes',
+      'The achievement case fills itself with your rarest finds until you customise it, and the difference is stored as a null rather than an empty array — so "I have never touched this" and "I deliberately want nothing pinned" stay distinguishable, and a Mythic found tomorrow promotes itself into the case without anyone opening a setting',
+      'Time in the Forge is a new lifetime counter on IdleService. The existing minutesToday is an *allowance* — how much of today the forge will still pay for — and reading it as time spent would tell someone who has been here nine hours that they have been here thirty minutes',
+      '"Self-Aware" (Eclipsed, +25 XP) drops the first time you open your own sheet, paid at the same rate as The Archivist and for the same reason: a page reachable from the navbar should not pay what a four-leading-zero hash pays',
+      'The mobile drawer could not reach its own top. The 1100px rule sets justify-content: flex-end for the wrapped desktop row, and that leaked into the drawer, where a column taller than its box puts all of the overflow past the START edge — which a scroll container cannot reach. It reported scrollHeight 747 against clientHeight 747 while ~300px of links sat above y=0. Measured at 375×812, the first four links were at y=-234 through y=-8 and untappable. flex-start restores it: 1069 against 747, and all fifteen links pass a hit test',
+    ]
+  },
   {
     version: '2.28.0',
     codename: 'Eclipse',

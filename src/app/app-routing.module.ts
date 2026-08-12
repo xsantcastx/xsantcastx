@@ -257,6 +257,31 @@ const routes: Routes = [
       }
     },
   {
+      path: 'forge-keeper',
+      loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
+      title: 'Your Forge',
+      data: {
+        description: 'Your Godforge character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, everything you own, your pinned achievements, a thirty-day streak calendar and the tools you actually know.',
+        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, tool mastery, eclipse realms, godforge, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'ProfilePage',
+          '@id': `${SITE_URL}/forge-keeper`,
+          url: `${SITE_URL}/forge-keeper`,
+          name: 'The Forge Keeper — Your Godforge Profile',
+          description: 'Rank, inventory, realm affinity, achievements, streak and tool mastery for one Convergent. Progression is stored in your own browser.',
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+              { '@type': 'ListItem', position: 2, name: 'Your Forge', item: `${SITE_URL}/forge-keeper` }
+            ]
+          }
+        }
+      }
+    },
+  {
       path: 'blueprint',
       loadComponent: () => import('./blueprint/blueprint.component').then(m => m.BlueprintComponent),
       title: 'The War Table',
