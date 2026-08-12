@@ -60,6 +60,15 @@
   <app-command-palette></app-command-palette>
 }
 
+<!-- "Install The Godforge" banner. Bottom-LEFT: every other corner is already
+     claimed (flame and achievement drop bottom-right, quest toast bottom-centre,
+     cookie banner full-width along the bottom, quest drawer top-right). It also
+     waits for the cookie decision before rendering so it and the cookie banner
+     are never on screen together — see the component for the full reasoning. -->
+@if (!isEmbedMode) {
+  <app-install-prompt></app-install-prompt>
+}
+
 <!-- The Forge Flame. A sibling of <main>, not a child of any routed component:
      routeFadeIn leaves a transform on every routed host, which makes it a
      containing block, and a position:fixed flame inside one would be pinned to

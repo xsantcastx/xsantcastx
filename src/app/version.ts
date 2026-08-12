@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.39.0',
+  version: '2.42.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Three Layers',
+  codename: 'The Foundation',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,60 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.42.0',
+    codename: 'The Foundation',
+    date: '2026-08-12',
+    highlights: [
+      'The security policy and the site it protects had drifted apart. The policy pinned one inline script by checksum, the page carried two, and the checksum matched neither — so the browser had been refusing to run both of them. The first-visit boot cut, the console banner, the Konami sequence and the arcane seal were all dead in production while working perfectly on every developer machine, because a local server sends no policy at all',
+      'The stylesheet was the more expensive casualty. Angular defers the non-critical CSS behind a one-line inline handler, and inline handlers need their own permission that the policy never granted — so the deferred sheet never loaded and every page had been rendering on inlined above-the-fold CSS alone. That handler is now allowed by exact checksum rather than by opening the door to inline script generally',
+      'A build step now recomputes every checksum against all 282 built pages and fails the build when one drifts. This class of bug is invisible by construction — no error, no warning, and it only manifests in production — so the guard is the actual fix and the checksum corrections are just today\'s instance of it',
+      'The embed surface was walled off by its own headers. Hosting applies matching header blocks in order and the last one wins, so the site-wide policy was overwriting the embed policy and stripping the rule that permits third-party framing — leaving all 127 embeddable tools refusing to render on anyone else\'s site. The blocks are reordered and the embed policy is now a full copy rather than a fragment',
+      'Google Analytics and Google sign-in were reaching for hosts the policy did not list. Analytics loaded and then silently failed to send anything; the sign-in popup needed a script host that was absent. Both are now allowlisted',
+      'The site is installable. A hand-written service worker keeps the app shell alive offline, and an install banner appears once — bottom-left, the one corner not already claimed by the flame, the achievement drop, the quest toast or the cookie bar, and only after the cookie question has been answered so the two are never on screen together',
+      'Uncaught errors are captured with structure instead of vanishing: a fingerprint per fault so a render loop reports once rather than two hundred times, a filter for the five known-benign browser and deploy-timing errors, and a cap per page load',
+      'The quality gate stopped lying. Its screenshot tests only ever had macOS baselines committed, so on the Linux CI runner they failed every run; two more tests had been pointing at a hero carousel deleted sixteen releases ago; and one waited on a network-idle moment that a page holding a live database connection never reaches. All three are fixed, the suite is honest again, and the Lighthouse audit now runs even when a test fails instead of being skipped, as it had been every run since it was added',
+      'Ten debug logs removed from the production console, including one that printed each donation — donor email and amount included — on every completed donation',
+    ],
+  },
+  {
+    version: '2.41.0',
+    codename: 'Five Rooms',
+    date: '2026-08-12',
+    highlights: [
+      'Every page now has a colour of its own. The Arena is lit from below in crimson like a pit, the Codex by candlelight from the same direction, the War Table under overhead instrument cyan, the Market by forge energy above and the colour of money underfoot, and Realms by the Godforge core with Luminous and Verge bleeding in from the top corners',
+      'A tool page wears the colour of its own realm, taken from the same hex that paints its badge and its sigil glow, so the wash can never disagree with the header it sits under',
+      'The Forge Keeper wears the visitor rather than the route: above 55% Aether the page glows Solari gold, below 45% it goes Nocturne crimson, and the band between stays the neutral core because neither realm has claimed you yet',
+      'Walking between rooms fades rather than cuts. The five wash colours are registered custom properties, which is the one way a gradient can be made to interpolate — a plain background swap is a hard cut — so a route change cross-fades one palette into the next over half a second, and reduced motion takes the destination instantly',
+      'These are stand-ins for art that has not been painted yet, and they are built to be thrown away: when a page gets its own artwork, one entry is deleted and the painting takes the first slot of the same background',
+      'The home page is untouched. Its painted altar is the atmosphere, so it is the one route with no entry in the table and no wash at all behind it',
+    ],
+  },
+  {
+    version: '2.40.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The command bar carries five halls instead of seven: Realms, Arena, Codex, War Table, Market. HOME went because the wordmark beside it already goes there, GAMES because that is what the Arena is under an older name, and MCP because it is one landing page for a different audience',
+      'Nothing from the old portfolio site is reachable from the primary nav any more — Services, Projects, About, Contact, Live and Donate are all out of the bar and out of the tome\'s main list. Every one of them keeps its route and is linked from the footer, so nothing became unreachable',
+      'The tome is two sections instead of three: the same five halls as the bar plus your own sheet, then a MORE group holding the three old surfaces that still have real routes. ABOUT is absent rather than shipped as a link to the 404 page, because there is no about route to point it at',
+      'The homepage is four sections and the footer: the hero, the five realms, the pulse, the closing call. The shop counters, the creed row, the featured-tool spotlight, the "watch AI build" panel, the changelog feed and the newsletter form are gone from it — six screens of persuasion stood between a visitor and the tools',
+      'The chronicle moved to /blueprint, which is the page about what is being built, and the newsletter moved to the tool pages, where somebody has just got value out of one. Neither was deleted; both were taken off the front door',
+      'Cloud save is reachable. The profile sheet said "Cloud save is not open yet" while CloudSaveService was signing in with Google, binding the uid, merging blobs and pushing on a timer — the message was true when it was written and had been false for a release. The only thing missing was a mounted button: the component that held it was the XP bar, which is not rendered anywhere in the app',
+      '1,200 lines of stylesheet went with the deleted sections, and the audit that follows any CSS cut of that size found no @keyframes reference left pointing at a rule that no longer exists'
+    ]
+  },
+  {
+    version: '2.39.1',
+    codename: 'Clean Cut',
+    date: '2026-08-12',
+    highlights: [
+      'The boot sequence never faded out. The rule that dismisses the curtain early set a plain opacity of zero, and a running CSS animation outranks a plain declaration — so gfCurtain, which pins the curtain opaque for the first 88%, won every time. Any early dismissal was a hard cut to the site. The rule is marked important now, which is what it takes to beat an animation',
+      'Holding at stage six no longer eats the ending. The hold pauses the CSS, but the stage-seven tick and the teardown were still armed against a clock that had stopped: the read-out jumped to a hundred over a frozen frame, and the teardown then dropped the curtain mid-hold, so the flash and the flight into the navbar were skipped and the site arrived in a cut. Those timers are cancelled going into the hold and re-armed against the remaining animation time coming out',
+      'The hold is bounded twice. Its own cap comes down from six seconds to six hundred milliseconds, and a single absolute deadline now fires once from boot regardless of what else is or is not happening — a wedged router event, a timer out of order — so the curtain can cover the site for at most about three and a half seconds in the worst case a user can actually reach',
+      'Teardown is idempotent. Four paths reach it and it now runs once, and it releases the pause on the way out so the sigil is not frozen mid-shake behind the fade'
+    ]
+  },
   {
     version: '2.39.0',
     codename: 'Three Layers',
