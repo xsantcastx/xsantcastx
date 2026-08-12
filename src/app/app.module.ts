@@ -29,6 +29,7 @@ import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
+import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
@@ -66,6 +67,7 @@ import { PwaService } from './shared/pwa.service';
     QuestTriggerComponent,
     QuestToastComponent,
     ForgeFlameComponent,
+    CloudSaveMergeDialogComponent,
     GoldTickerComponent,
     GodforgeLoaderComponent,
     InstallPromptComponent

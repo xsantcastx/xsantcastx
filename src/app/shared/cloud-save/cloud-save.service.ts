@@ -55,9 +55,14 @@ import {
 } from '../gamification/progress-storage.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import {
+  MergeConflict,
+  MergeStrategy,
   SYNCED_BLOBS,
+  SaveSummary,
   SyncedBlob,
+  isConflict,
   mergeDeep,
+  summarise,
   unwrapBlob,
   wrapBlob,
 } from './cloud-save.model';
@@ -131,8 +136,31 @@ export class CloudSaveService {
   private readonly status$$ = new BehaviorSubject<SyncStatus>(SIGNED_OUT);
   readonly status$: Observable<SyncStatus> = this.status$$.asObservable();
 
+  /**
+   * Set when signing in found two saves that each hold something the other does
+   * not, and the visitor has to say which one wins. Null the rest of the time.
+   * The bind is genuinely parked on this — see {@link chooseStrategy}.
+   */
+  private readonly conflict$$ = new BehaviorSubject<MergeConflict | null>(null);
+  readonly conflict$: Observable<MergeConflict | null> = this.conflict$$.asObservable();
+
+  /** Resolves the parked bind once the dialog answers. */
+  private decide: ((choice: MergeStrategy) => void) | null = null;
+
   get status(): SyncStatus { return this.status$$.value; }
   get signedIn(): boolean { return this.status$$.value.uid !== null; }
+  get conflict(): MergeConflict | null { return this.conflict$$.value; }
+
+  /**
+   * Answer the merge dialog. Anything other than a real choice means "merge",
+   * which is the option that cannot lose anybody anything.
+   */
+  resolveConflict(choice: MergeStrategy): void {
+    const decide = this.decide;
+    this.decide = null;
+    this.conflict$$.next(null);
+    decide?.(choice);
+  }
 
   private booted = false;
   /** Resolved auth module, kept so the SDK is only ever fetched once. */
@@ -282,6 +310,12 @@ export class CloudSaveService {
   async signOut(): Promise<void> {
     if (!this.isBrowser) return;
 
+    // A bind can still be parked on the merge dialog when this is reached —
+    // signing out with it open would leave that promise unresolved and the
+    // dialog on screen with nothing behind it. Answering 'merge' lets the bind
+    // finish and unwind before the unbind below tears its adapter away.
+    if (this.decide) this.resolveConflict('merge');
+
     // Push whatever is still in the throttle window before letting go of the
     // adapter. This is the one moment the visitor is explicitly thinking about
     // whether their progress is safe.
@@ -353,16 +387,21 @@ export class CloudSaveService {
     // then going to restart and let them read it again.
     const canAdopt = this.canAdopt();
 
+    // Two saves that each hold something the other does not is the one case the
+    // structural merge cannot answer on its own. Ask, and park here until the
+    // dialog replies. Everything below then runs under whatever was chosen.
+    const strategy = await this.chooseStrategy(fs, user.uid, adapter, canAdopt);
+
     // Progression rides the adapter seam that was built for it. `migrate()`
-    // merges local into whatever is already up there and swaps itself in.
+    // reconciles local against whatever is already up there and swaps itself in.
     const before = readRaw(PROGRESS_KEY);
-    await this.progress.migrate(adapter);
+    await this.progress.migrate(adapter, strategy);
     this.adapter = adapter;
     let changed = readRaw(PROGRESS_KEY) !== before;
 
     // The rest have no adapter seam, so they are reconciled directly.
     for (const blob of SYNCED_BLOBS) {
-      if (await this.reconcile(fs, user.uid, blob, canAdopt)) changed = true;
+      if (await this.reconcile(fs, user.uid, blob, canAdopt, strategy)) changed = true;
     }
 
     this.markSynced();
@@ -384,6 +423,74 @@ export class CloudSaveService {
   }
 
   /**
+   * Decide how this bind reconciles, asking the visitor when it has to.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS ASKS AT ALL
+   * ───────────────────────────────────────────────────────────────────────────
+   * The structural merge takes the higher of every number and the union of every
+   * set, which is the right default precisely because it cannot lose anything.
+   * But "cannot lose anything" is not the same as "is what somebody wanted": a
+   * visitor who has been playing on a phone all week and then signs in on a
+   * desktop that has its own half-finished save may well want one of them gone,
+   * and the generous merge hands them a save that is neither.
+   *
+   * So the dialog opens only when the question is real — when each side holds
+   * something the other does not (see `isConflict`). A cloud save that is simply
+   * ahead of this browser on every number is not a conflict; all three buttons
+   * would do the same thing, and asking would be theatre.
+   *
+   * Returns 'merge' without asking whenever the question does not arise, which
+   * is every routine page load of an already-bound device.
+   */
+  private async chooseStrategy(
+    fs: FirestoreHandle,
+    uid: string,
+    adapter: FirestoreAdapter,
+    canAdopt: boolean,
+  ): Promise<MergeStrategy> {
+    // Adopting cloud state means rewriting localStorage under ten services that
+    // have already read it, which is only safe if the tab then restarts. A tab
+    // that has spent its one reload cannot honour "Load Cloud", so it must not
+    // offer it — it merges quietly and asks again on the next page load.
+    if (!canAdopt) return 'merge';
+
+    let local: SaveSummary;
+    let cloud: SaveSummary;
+    try {
+      const remoteProgress = (await adapter.exists()) ? await adapter.load() : null;
+      if (remoteProgress === null) return 'merge'; // First device. Nothing to weigh.
+
+      const economyBlob = SYNCED_BLOBS.find(b => b.key === 'godforge-economy');
+      const remoteEconomy = economyBlob ? await this.readRemote(fs, uid, economyBlob) : null;
+
+      local = summarise(readParsed(PROGRESS_KEY), readParsed('godforge-economy'));
+      cloud = summarise(remoteProgress, remoteEconomy);
+    } catch {
+      // Could not read one side. Merging is the safe answer to a question we
+      // could not finish asking, and the bind's own error path handles the rest.
+      return 'merge';
+    }
+
+    if (!isConflict(local, cloud)) return 'merge';
+
+    return new Promise<MergeStrategy>(resolve => {
+      this.decide = resolve;
+      this.zone.run(() => this.conflict$$.next({ local, cloud }));
+    });
+  }
+
+  /** One blob's cloud payload, or null when it has never been written. */
+  private async readRemote(
+    fs: FirestoreHandle,
+    uid: string,
+    blob: SyncedBlob,
+  ): Promise<unknown> {
+    const snap = await fs.api.getDoc(fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc));
+    return snap.exists() ? unwrapBlob(snap.data()) : null;
+  }
+
+  /**
    * Merge one blob with its cloud copy and write back whichever sides moved.
    * Returns true when the local copy changed, which is what decides the reload.
    */
@@ -392,6 +499,7 @@ export class CloudSaveService {
     uid: string,
     blob: SyncedBlob,
     canAdopt: boolean,
+    strategy: MergeStrategy = 'merge',
   ): Promise<boolean> {
     const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
     const local = readParsed(blob.key);
@@ -415,8 +523,11 @@ export class CloudSaveService {
     // device had added in between — real data loss. A stale read followed by no
     // write can only ever mean this device notices another device's progress one
     // page load later than it might have.
+    // An explicit choice from the dialog overrides the skip: the visitor has
+    // asked for one side to win, and that has to be applied even to the blobs
+    // this device already believes are in step.
     const fingerprint = this.cache.get<string>(this.blobKey(uid, blob));
-    if (fingerprint === localRaw) {
+    if (strategy === 'merge' && fingerprint === localRaw) {
       this.pushed.set(blob.key, localRaw);
       return false;
     }
@@ -424,9 +535,16 @@ export class CloudSaveService {
     const snap = await fs.api.getDoc(ref);
     const remote = snap.exists() ? unwrapBlob(snap.data()) : null;
 
-    const merged = remote === null
-      ? local
-      : (blob.merge ?? mergeDeep)(remote, local);
+    // 'local' and 'cloud' are the visitor overruling the structural rules for
+    // this one sign-in; they still fall back to whichever side exists when the
+    // other does not, because "keep this device" cannot mean "delete the save".
+    const merged = strategy === 'local'
+      ? (local ?? remote)
+      : strategy === 'cloud'
+        ? (remote ?? local)
+        : remote === null
+          ? local
+          : (blob.merge ?? mergeDeep)(remote, local);
 
     if (merged === null || merged === undefined) return false;
 

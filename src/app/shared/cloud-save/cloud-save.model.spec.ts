@@ -13,7 +13,15 @@
  * generic rules are right for those specific blobs.
  */
 
-import { SYNCED_BLOBS, mergeDeep, unwrapBlob, wrapBlob } from './cloud-save.model';
+import {
+  SYNCED_BLOBS,
+  hasProgress,
+  isConflict,
+  mergeDeep,
+  summarise,
+  unwrapBlob,
+  wrapBlob,
+} from './cloud-save.model';
 
 describe('mergeDeep', () => {
   describe('the core rules', () => {
@@ -299,5 +307,79 @@ describe('the registry', () => {
 
   it('reads a document written before the envelope existed', () => {
     expect(unwrapBlob({ gold: 12 })).toEqual({ gold: 12 });
+  });
+});
+
+/**
+ * The merge dialog only earns its interruption when the question it asks is
+ * real. These pin down when it opens, because both failure modes are bad in
+ * different ways: opening on a save that is simply ahead makes signing in feel
+ * like an interrogation, and *not* opening when each device holds something the
+ * other lacks silently applies a merge somebody might not have wanted.
+ */
+describe('summarise', () => {
+  it('reads the headline numbers off a progress and an economy blob', () => {
+    const summary = summarise(
+      { level: 7, xp: 4200, achievements: [{ id: 'a' }, { id: 'b' }] },
+      { gold: 1300 },
+    );
+    expect(summary).toEqual({ level: 7, xp: 4200, gold: 1300, achievements: 2 });
+  });
+
+  it('reports zeroes rather than throwing on blobs it has never seen', () => {
+    expect(summarise(null, null)).toEqual({ level: 0, xp: 0, gold: 0, achievements: 0 });
+    expect(summarise('nonsense', 42)).toEqual({ level: 0, xp: 0, gold: 0, achievements: 0 });
+  });
+
+  it('ignores a non-finite number rather than carrying NaN into the dialog', () => {
+    expect(summarise({ xp: NaN }, { gold: Infinity }).xp).toBe(0);
+    expect(summarise({ xp: NaN }, { gold: Infinity }).gold).toBe(0);
+  });
+});
+
+describe('hasProgress', () => {
+  it('is false for a browser that has never earned anything', () => {
+    expect(hasProgress({ level: 1, xp: 0, gold: 0, achievements: 0 })).toBe(false);
+  });
+
+  it('is true on any of xp, gold or achievements', () => {
+    expect(hasProgress({ level: 1, xp: 10, gold: 0, achievements: 0 })).toBe(true);
+    expect(hasProgress({ level: 1, xp: 0, gold: 5, achievements: 0 })).toBe(true);
+    expect(hasProgress({ level: 1, xp: 0, gold: 0, achievements: 1 })).toBe(true);
+  });
+});
+
+describe('isConflict', () => {
+  const empty = { level: 1, xp: 0, gold: 0, achievements: 0 };
+
+  it('is false on a first device, where there is nothing to weigh', () => {
+    expect(isConflict(empty, { level: 9, xp: 9000, gold: 900, achievements: 12 })).toBe(false);
+    expect(isConflict({ level: 9, xp: 9000, gold: 900, achievements: 12 }, empty)).toBe(false);
+  });
+
+  it('is false when one save is ahead on everything', () => {
+    // All three buttons would produce the same save, so there is nothing to ask.
+    const behind = { level: 3, xp: 500, gold: 50, achievements: 2 };
+    const ahead = { level: 9, xp: 9000, gold: 900, achievements: 12 };
+    expect(isConflict(behind, ahead)).toBe(false);
+    expect(isConflict(ahead, behind)).toBe(false);
+  });
+
+  it('is false when the two saves are identical', () => {
+    const same = { level: 4, xp: 800, gold: 100, achievements: 3 };
+    expect(isConflict(same, { ...same })).toBe(false);
+  });
+
+  it('is true when each side holds something the other does not', () => {
+    // Played on the phone for gold, on the desktop for XP.
+    const local = { level: 6, xp: 3000, gold: 20, achievements: 5 };
+    const cloud = { level: 4, xp: 900, gold: 800, achievements: 7 };
+    expect(isConflict(local, cloud)).toBe(true);
+  });
+
+  it('is symmetric — which device signed in first must not change the answer', () => {
+    const a = { level: 6, xp: 3000, gold: 20, achievements: 5 };
+    const b = { level: 4, xp: 900, gold: 800, achievements: 7 };
+    expect(isConflict(a, b)).toBe(isConflict(b, a));
   });
 });

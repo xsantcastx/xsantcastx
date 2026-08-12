@@ -524,13 +524,18 @@ export class LiveComponent implements OnInit, OnDestroy {
 
     this.stopPolling();
 
-    document.removeEventListener('visibilitychange', this.onVisibility);
-    for (const evt of LiveComponent.WAKE_EVENTS) {
-      window.removeEventListener(evt, this.onInteraction);
-    }
+    // ngOnInit returns early on the server, so none of this was ever bound
+    // there — and reaching for `document` during the prerender teardown throws
+    // and takes the whole render worker down with it.
+    if (this.isBrowser) {
+      document.removeEventListener('visibilitychange', this.onVisibility);
+      for (const evt of LiveComponent.WAKE_EVENTS) {
+        window.removeEventListener(evt, this.onInteraction);
+      }
 
-    // Remove presence record via REST
-    fsDeleteDoc('live-viewers', this.sessionId);
+      // Remove presence record via REST
+      fsDeleteDoc('live-viewers', this.sessionId);
+    }
   }
 
   // ─── TrackBy ──────────────────────────────────────────────────────────────

@@ -347,6 +347,88 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Comparing two saves
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What each side of the merge dialog shows.
+ *
+ * Three numbers, chosen because they are the three a person recognises their own
+ * save by. The merge itself reconciles far more than this — every quest, every
+ * discovery date, every arena record — but a dialog that listed all of it would
+ * be asking somebody to audit a diff before they can press a button.
+ */
+export interface SaveSummary {
+  level: number;
+  xp: number;
+  gold: number;
+  achievements: number;
+}
+
+/** How a sign-in conflict was resolved. */
+export type MergeStrategy =
+  /** Take the higher of every number and the union of every set. The default. */
+  | 'merge'
+  /** This browser's save wins outright and is pushed over the cloud copy. */
+  | 'local'
+  /** The cloud save wins outright and replaces what is on this device. */
+  | 'cloud';
+
+/** Both sides of a conflict, for the dialog to render. */
+export interface MergeConflict {
+  local: SaveSummary;
+  cloud: SaveSummary;
+}
+
+/**
+ * Read the three headline numbers out of a progress blob and an economy blob.
+ *
+ * Deliberately total: every field is optional on the way in, because this runs
+ * against whatever a second device happens to have written, including a blob
+ * from a build that predates a field.
+ */
+export function summarise(progress: unknown, economy: unknown): SaveSummary {
+  const p = isPlainObject(progress) ? progress : {};
+  const e = isPlainObject(economy) ? economy : {};
+  return {
+    level: numberOf(p['level']),
+    xp: numberOf(p['xp']),
+    gold: numberOf(e['gold']),
+    achievements: Array.isArray(p['achievements']) ? p['achievements'].length : 0,
+  };
+}
+
+/** True when a save has anything in it worth protecting. */
+export function hasProgress(summary: SaveSummary): boolean {
+  return summary.xp > 0 || summary.achievements > 0 || summary.gold > 0;
+}
+
+/**
+ * Is this a conflict worth stopping for?
+ *
+ * Only when both sides hold progress *and* neither is a superset of the other.
+ * A cloud save strictly ahead of this browser on every number has nothing to ask
+ * about — merging, loading the cloud and keeping the best all produce the same
+ * result, and a dialog offering three buttons that do the same thing is worse
+ * than no dialog. The question is only real when each side has something the
+ * other does not.
+ */
+export function isConflict(local: SaveSummary, cloud: SaveSummary): boolean {
+  if (!hasProgress(local) || !hasProgress(cloud)) return false;
+
+  const localAhead = local.xp > cloud.xp || local.gold > cloud.gold
+    || local.achievements > cloud.achievements || local.level > cloud.level;
+  const cloudAhead = cloud.xp > local.xp || cloud.gold > local.gold
+    || cloud.achievements > local.achievements || cloud.level > local.level;
+
+  return localAhead && cloudAhead;
+}
+
+function numberOf(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Firestore envelope
 // ─────────────────────────────────────────────────────────────────────────────
 
