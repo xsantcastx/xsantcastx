@@ -1,0 +1,187 @@
+/**
+ * icon-animations.css — life for the Godforge icon set.
+ *
+ * The icons Santiago painted are static PNGs. Everything that makes them feel
+ * lit is layered here in CSS, on two properties only — `filter: drop-shadow()`
+ * and `transform` — because both are compositor-only. An icon that animated
+ * `box-shadow` or `width` would relayout the rail it sits in on every frame,
+ * and the currency rail lives in the header on every route.
+ *
+ * `drop-shadow` follows the PNG's alpha rather than its box, which is the whole
+ * reason the crops are keyed to transparency: the glow traces the sigil's edge
+ * instead of haloing a square.
+ *
+ * The rarity ladder escalates deliberately — Mortal is inert stone and gets no
+ * animation at all, and each tier above it earns a louder channel, mirroring
+ * the sound/duration/cinematic ladder already encoded in rarity.model.ts. The
+ * glow colours are that file's `color` values; keep the two in step.
+ *
+ * Every rule here is opt-out under prefers-reduced-motion at the bottom of the
+ * file — see CLAUDE.md §7.2, which makes that non-negotiable rather than nice.
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Shared
+   ───────────────────────────────────────────────────────────────────────── */
+
+.gf-icon {
+  display: inline-block;
+  flex: none;
+  object-fit: contain;
+  /* The art is authored with its own glow falloff baked into the alpha, so it
+     must never be stretched to a non-square box by a flex parent. */
+  aspect-ratio: 1;
+  vertical-align: -0.18em;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Forge Flame — the clickable FAB
+   ───────────────────────────────────────────────────────────────────────── */
+
+.forge-flame {
+  animation: forge-pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px #8B5CF6);
+  will-change: transform, filter;
+}
+
+@keyframes forge-pulse {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 8px #8B5CF6);    transform: scale(1); }
+  50%      { filter: brightness(1.2) drop-shadow(0 0 16px #8B5CF6); transform: scale(1.05); }
+}
+
+/* Struck. One-shot, added on click and removed on animationend. */
+.forge-flame--struck {
+  animation: forge-strike 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes forge-strike {
+  0%   { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px #8B5CF6); }
+  35%  { transform: scale(0.93); filter: brightness(1.6) drop-shadow(0 0 28px #c9a5ff); }
+  100% { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px #8B5CF6); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Rarity ladder — Mortal is dead stone and stays that way
+   ───────────────────────────────────────────────────────────────────────── */
+
+.rarity-mortal    { filter: drop-shadow(0 0 3px rgba(232, 236, 241, 0.35)); }
+.rarity-eclipsed  { animation: eclipsed-pulse 3s ease-in-out infinite; }
+.rarity-sacred    { animation: sacred-glow 2.5s ease-in-out infinite; }
+.rarity-anomalous { animation: anomalous-shimmer 2s ease-in-out infinite; }
+.rarity-mythic    { animation: mythic-burn 1.5s ease-in-out infinite; }
+.rarity-singular  { animation: singular-prismatic 3s linear infinite; }
+
+@keyframes eclipsed-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px #3B82F6); }
+  50%      { filter: drop-shadow(0 0 12px #3B82F6); }
+}
+
+@keyframes sacred-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px #9333EA); }
+  50%      { filter: drop-shadow(0 0 18px #9333EA); }
+}
+
+@keyframes anomalous-shimmer {
+  0%, 100% { filter: drop-shadow(0 0 8px #C9A84C) brightness(1); }
+  50%      { filter: drop-shadow(0 0 24px #C9A84C) brightness(1.15); }
+}
+
+@keyframes mythic-burn {
+  0%, 100% { filter: drop-shadow(0 0 10px #DC2626) brightness(1);   transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 30px #DC2626) brightness(1.3); transform: scale(1.03); }
+}
+
+/* Singular is the only one-of-a-kind tier, so it gets the only hue cycle.
+   hue-rotate on a full-spectrum icon is what sells "prismatic" without a
+   second asset. */
+@keyframes singular-prismatic {
+  0%   { filter: drop-shadow(0 0 12px #DC2626) hue-rotate(0deg); }
+  33%  { filter: drop-shadow(0 0 12px #C9A84C) hue-rotate(120deg); }
+  66%  { filter: drop-shadow(0 0 12px #3B82F6) hue-rotate(240deg); }
+  100% { filter: drop-shadow(0 0 12px #DC2626) hue-rotate(360deg); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Rank sigils — only the rank you currently hold breathes
+   ───────────────────────────────────────────────────────────────────────── */
+
+.rank-current { animation: rank-energy 3s ease-in-out infinite; }
+
+@keyframes rank-energy {
+  0%, 100% { filter: drop-shadow(0 0 6px #8B5CF6); }
+  50%      { filter: drop-shadow(0 0 20px #8B5CF6); }
+}
+
+/* Ranks already earned read as lit but settled; ranks still ahead are dimmed
+   to near-silhouette so the ladder shows progress at a glance. */
+.rank-earned { filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.5)); }
+.rank-locked { filter: grayscale(0.85) brightness(0.5); opacity: 0.55; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Currencies, realms, shops
+   ───────────────────────────────────────────────────────────────────────── */
+
+.currency-icon {
+  filter: drop-shadow(0 0 4px rgba(201, 168, 76, 0.4));
+  transition: filter 200ms ease;
+}
+.currency-icon:hover { animation: currency-shimmer 0.6s ease; }
+
+@keyframes currency-shimmer {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.4); }
+  100% { filter: brightness(1); }
+}
+
+/* Essence is violet rather than gold, so its resting halo is retinted. */
+.currency-icon--essence { filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.45)); }
+
+.realm-sigil {
+  filter: drop-shadow(0 0 6px var(--realm-glow, rgba(139, 92, 246, 0.5)));
+  transition: filter 240ms ease, transform 240ms ease;
+}
+.realm-sigil--active { animation: rank-energy 3.6s ease-in-out infinite; }
+
+.shop-icon {
+  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.35));
+  transition: filter 220ms ease, transform 220ms ease;
+}
+.shop-icon:hover,
+[class*='is-active'] > .shop-icon {
+  filter: drop-shadow(0 0 14px rgba(201, 168, 76, 0.55)) brightness(1.12);
+  transform: translateY(-1px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Reduced motion — static end state, never "no styling"
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-flame,
+  .forge-flame--struck,
+  .rarity-eclipsed,
+  .rarity-sacred,
+  .rarity-anomalous,
+  .rarity-mythic,
+  .rarity-singular,
+  .rank-current,
+  .realm-sigil--active,
+  .currency-icon:hover {
+    animation: none !important;
+  }
+
+  /* Each tier keeps its identity colour, held at the animation's midpoint so a
+     Mythic drop still reads louder than a Sacred one without moving. */
+  .forge-flame     { filter: brightness(1.1) drop-shadow(0 0 12px #8B5CF6); }
+  .rarity-eclipsed { filter: drop-shadow(0 0 8px #3B82F6); }
+  .rarity-sacred   { filter: drop-shadow(0 0 12px #9333EA); }
+  .rarity-anomalous{ filter: drop-shadow(0 0 16px #C9A84C); }
+  .rarity-mythic   { filter: drop-shadow(0 0 20px #DC2626); }
+  .rarity-singular { filter: drop-shadow(0 0 20px #a48bff); }
+  .rank-current    { filter: drop-shadow(0 0 14px #8B5CF6); }
+  .realm-sigil--active { filter: drop-shadow(0 0 14px var(--realm-glow, #8B5CF6)); }
+
+  .shop-icon:hover { transform: none; }
+}

@@ -9,6 +9,7 @@ import { TranslationService } from '../translation.service';
 import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
+import { rankSigil } from '../shared/gamification/gamification.model';
 import { PRERENDERED_PATHS } from '../prerender-stats';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -78,6 +79,8 @@ export class LandingComponent implements OnInit, OnDestroy {
    * arrive on the client once XpService.init() has read storage.
    */
   xp: XpSnapshot = this.xpService.snapshot;
+  /** Exposed for the hero + journey rank sigils. */
+  readonly rankSigil = rankSigil;
 
   activeCategory = 'All';
   searchQuery = '';

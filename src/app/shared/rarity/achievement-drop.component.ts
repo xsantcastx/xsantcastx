@@ -80,6 +80,11 @@ interface Drop {
 
         <div class="ad__body">
           <p class="ad__tier">
+            <!-- The tier sigil, not the achievement's own glyph: .ad__icon
+                 already carries that, and this row is what the drop is *worth*. -->
+            <img class="ad__tier-icon gf-icon" [ngClass]="'rarity-' + drop.def.id"
+                 [src]="drop.def.icon" alt="" aria-hidden="true"
+                 width="22" height="22" decoding="async" draggable="false">
             <span class="ad__badge">{{ drop.def.label }}</span>
             <span class="ad__kind">{{ drop.isNew ? 'Drop' : 'Rediscovered' }}</span>
           </p>
@@ -140,6 +145,7 @@ interface Drop {
 
     .ad__body { min-width: 0; }
     .ad__tier { display: flex; align-items: center; gap: .5rem; margin: 0 0 .3rem; }
+    .ad__tier-icon { width: 22px; height: 22px; }
     .ad__badge {
       font: 700 10px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: .12em; text-transform: uppercase;
@@ -195,6 +201,9 @@ interface Drop {
     .ad--cine .ad__name { font-size: 22px; }
     .ad--cine .ad__body { width: 100%; }
     .ad--cine .ad__tier { justify-content: center; }
+    /* Mythic and Singular are the only cinematic tiers, and both take over the
+       viewport — the sigil scales with the card so it is not a footnote. */
+    .ad--cine .ad__tier-icon { width: 34px; height: 34px; }
     .ad--cine .ad__progress { justify-content: center; }
 
     /* Particle explosion: 18 shards on radial angles, thrown once. */

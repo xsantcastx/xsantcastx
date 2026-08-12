@@ -38,7 +38,9 @@ import { formatCurrency, formatRate } from './economy.model';
        routerLink="/market"
        [class.cr__chip--tick]="goldTick"
        [attr.aria-label]="goldLabel">
-      <span class="cr__icon cr__icon--coin" aria-hidden="true"></span>
+      <img class="cr__icon gf-icon currency-icon"
+           src="assets/icons/currencies/gold.png" alt="" aria-hidden="true"
+           width="18" height="18" decoding="async" draggable="false">
       <span class="cr__val">{{ gold }}</span>
     </a>
 
@@ -47,7 +49,9 @@ import { formatCurrency, formatRate } from './economy.model';
          routerLink="/market"
          [class.cr__chip--tick]="essenceTick"
          [attr.aria-label]="essenceLabel">
-        <span class="cr__icon cr__icon--shard" aria-hidden="true"></span>
+        <img class="cr__icon gf-icon currency-icon currency-icon--essence"
+             src="assets/icons/currencies/essence.png" alt="" aria-hidden="true"
+             width="18" height="18" decoding="async" draggable="false">
         <span class="cr__val">{{ essence }}</span>
       </a>
     }
@@ -64,25 +68,10 @@ import { formatCurrency, formatRate } from './economy.model';
       text-decoration: none;
       transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
     }
-    /* Drawn, not emoji: the coin and the shard have to sit in the bar's
-       palette, and a colour-font glyph cannot. */
-    .cr__icon { display: block; flex-shrink: 0; }
-
-    .cr__icon--coin {
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      border: 1.5px solid #C9A84C;
-      background: radial-gradient(circle at 34% 30%, #ffe9a8 0%, #E0A857 55%, #a97f2e 100%);
-      box-shadow: 0 0 7px rgba(201, 168, 76, 0.55);
-    }
-
-    .cr__icon--shard {
-      width: 10px; height: 10px;
-      rotate: 45deg;
-      border-radius: 2px;
-      background: linear-gradient(135deg, #e4d4ff 0%, #a48bff 55%, #6f4fd8 100%);
-      box-shadow: 0 0 7px rgba(164, 139, 255, 0.6);
-    }
+    /* The painted Gold coin and Essence shard, which the CSS-drawn pair here
+       was standing in for. Fixed box, not intrinsic: the chip must not resize
+       while the PNG decodes, or the whole header row shifts on first paint. */
+    .cr__icon { width: 18px; height: 18px; display: block; flex-shrink: 0; }
     .cr__val {
       font: 700 12px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: .02em;

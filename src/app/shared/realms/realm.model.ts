@@ -27,6 +27,16 @@ export interface RealmDefinition {
   energy: EnergyType;
   /** Registry categories that belong to this realm. */
   categories: string[];
+  /**
+   * Basename of the realm sigil under assets/icons/realms.
+   *
+   * Three of these do not match their realm's name: the sigil sheet was painted
+   * against a later naming pass (Verge became Celestial, Archivum became
+   * Verdant, Nexus became Infernal) that the lore and category tables here have
+   * not taken yet. The art is the newer artefact, so the id stays and the file
+   * carries the new name until the rename lands everywhere at once.
+   */
+  sigil: string;
 }
 
 export const REALMS: RealmDefinition[] = [
@@ -39,6 +49,7 @@ export const REALMS: RealmDefinition[] = [
     quote: 'In the beginning, there was the Sun — whole, silent, and dreaming.',
     energy: 'aether',
     categories: ['CSS Tools', 'CSS', 'CSS Generators', 'SVG Tools'],
+    sigil: 'luminous',
   },
   {
     id: 'umbral',
@@ -49,6 +60,7 @@ export const REALMS: RealmDefinition[] = [
     quote: 'The Nocturne build with what the light discards.',
     energy: 'nox',
     categories: ['Security Tools'],
+    sigil: 'umbral',
   },
   {
     id: 'verge',
@@ -59,6 +71,7 @@ export const REALMS: RealmDefinition[] = [
     quote: 'Between light and shadow, the soul remembers both.',
     energy: 'nox',
     categories: ['Code Converters', 'DevOps', 'Reference'],
+    sigil: 'celestial',
   },
   {
     id: 'archivum',
@@ -69,6 +82,7 @@ export const REALMS: RealmDefinition[] = [
     quote: 'Truth transcends divine conflict.',
     energy: 'aether',
     categories: ['Productivity', 'Text & Data', 'SEO Tools'],
+    sigil: 'verdant',
   },
   {
     id: 'nexus',
@@ -79,6 +93,7 @@ export const REALMS: RealmDefinition[] = [
     quote: 'Every message is a thread between worlds. Cut one and something goes dark.',
     energy: 'aether',
     categories: ['Email Tools'],
+    sigil: 'infernal',
   },
 ];
 
