@@ -42,6 +42,14 @@
     <a href="#about" [class.active]="currentSection === 'about'" (click)="scrollToSection('about'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.about') }}</a>
     <a href="#contact" [class.active]="currentSection === 'contact'" (click)="scrollToSection('contact'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.contact') }}</a>
     <a routerLink="/tools" routerLinkActive="active" (click)="closeMobileMenu()">Tools</a>
+    <!-- Mid-row on purpose: the tail of this row overflows into the EN/ES
+         toggle below ~1440px (a pre-existing defect, see header.component.css),
+         so a link added at the end would be unreachable on a 1280px laptop. -->
+    <a routerLink="/codex" routerLinkActive="active" class="nav-codex-link" (click)="closeMobileMenu()"
+       [attr.aria-label]="'Codex — ' + codexFound + ' of ' + codexTotal + ' fragments discovered'">
+      📜 Codex
+      <span class="nav-codex-badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
+    </a>
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
     <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>

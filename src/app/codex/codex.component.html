@@ -1,0 +1,698 @@
+<div class="cx-page">
+
+  <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
+  <header class="cx-hero">
+    <p class="cx-eyebrow">
+      <span class="cx-eyebrow__pulse" aria-hidden="true"></span>
+      The Ancient Record
+    </p>
+    <!-- No `.section-title` / `.hp-hero__title` here: those classes opt an
+         element into the cosmic engine's type-on system, which splits the
+         heading into per-char spans and breaks the background-clip gradient. -->
+    <h1 class="cx-hero__title">The Codex</h1>
+    <p class="cx-hero__sub">
+      Everything the Godforge is keeping from you, and everything it has already
+      given up. Fragments, ranks, tools and secrets — the whole record, in one
+      place, kept honestly.
+    </p>
+    <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
+
+    <!-- Headline completion bar -->
+    <div class="cx-hero__meter" [style.--tier]="progressRarity.color" [style.--tier-glow]="progressRarity.glow">
+      <p class="cx-hero__meter-head">
+        <span class="cx-hero__meter-count">{{ foundAchievements }} / {{ totalAchievements }}</span>
+        <span class="cx-hero__meter-label">Fragments Discovered</span>
+      </p>
+      <span class="cx-hero__meter-track" aria-hidden="true">
+        <span class="cx-hero__meter-fill" [style.width.%]="achievementPercent"></span>
+      </span>
+      <p class="cx-hero__meter-foot">
+        <span class="cx-hero__meter-badge">{{ progressRarity.label }}</span>
+        <span>{{ progressRarity.flavour }}</span>
+      </p>
+    </div>
+  </header>
+
+  <!-- ═══ Tab navigation ═════════════════════════════════════════════════ -->
+  <nav class="cx-tabs" role="tablist" aria-label="Codex sections">
+    @for (tab of tabs; track tab.key) {
+      <button
+        type="button"
+        role="tab"
+        class="cx-tab"
+        [class.is-active]="activeTab === tab.key"
+        [id]="'cx-tab-' + tab.key"
+        [attr.aria-selected]="activeTab === tab.key"
+        [attr.aria-controls]="'cx-panel-' + tab.key"
+        [attr.title]="tab.hint"
+        (click)="selectTab(tab.key)">
+        <span class="cx-tab__icon" aria-hidden="true">{{ tab.icon }}</span>
+        <span class="cx-tab__label">{{ tab.label }}</span>
+      </button>
+    }
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 1 — Achievements
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-achievements"
+    aria-labelledby="cx-tab-achievements"
+    [hidden]="activeTab !== 'achievements'">
+
+    <!-- ── Wall stats ─────────────────────────────────────────────────── -->
+    <div class="cx-statbar">
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ foundAchievements }}</span>
+        <span class="cx-stat__label">Fragments held</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ totalAchievements - foundAchievements }}</span>
+        <span class="cx-stat__label">Still hidden</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ earnedXp | number }}</span>
+        <span class="cx-stat__label">XP from discovery</span>
+      </div>
+      <div class="cx-stat">
+        @if (rarestFound) {
+          <span class="cx-stat__num cx-stat__num--sm" [style.color]="rarestFound.rarity.color">
+            {{ rarestFound.name }}
+          </span>
+          <span class="cx-stat__label">Rarest find — {{ rarestFound.rarity.label }}</span>
+        } @else {
+          <span class="cx-stat__num cx-stat__num--sm cx-stat__num--muted">nothing yet</span>
+          <span class="cx-stat__label">Rarest find</span>
+        }
+      </div>
+    </div>
+
+    <!-- ── Filters ────────────────────────────────────────────────────── -->
+    <div class="cx-filters">
+
+      <div class="cx-filter-row">
+        <span class="cx-filter-row__label">Realm</span>
+        <div class="cx-chips">
+          <button type="button" class="cx-chip" [class.is-on]="categoryFilter === 'all'"
+                  (click)="categoryFilter = 'all'">
+            All <span class="cx-chip__count">{{ totalAchievements }}</span>
+          </button>
+          @for (cat of categories; track cat.id) {
+            <button
+              type="button"
+              class="cx-chip"
+              [class.is-on]="categoryFilter === cat.id"
+              [style.--chip]="cat.color"
+              [style.--chip-glow]="cat.glow"
+              [attr.title]="cat.blurb"
+              (click)="categoryFilter = cat.id">
+              <span aria-hidden="true">{{ cat.icon }}</span> {{ cat.label }}
+              <span class="cx-chip__count">{{ categoryCount(cat.id).found }}/{{ categoryCount(cat.id).total }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="cx-filter-row">
+        <span class="cx-filter-row__label">Rarity</span>
+        <div class="cx-chips">
+          <button type="button" class="cx-chip" [class.is-on]="rarityFilter === 'all'"
+                  (click)="rarityFilter = 'all'">All</button>
+          @for (tier of rarityOrder; track tier) {
+            @if (tierCount(tier).total > 0) {
+              <button
+                type="button"
+                class="cx-chip"
+                [class.is-on]="rarityFilter === tier"
+                [style.--chip]="rarities[tier].color"
+                [style.--chip-glow]="rarities[tier].glow"
+                [attr.title]="rarities[tier].flavour"
+                (click)="rarityFilter = tier">
+                {{ rarities[tier].label }}
+                <span class="cx-chip__count">{{ tierCount(tier).found }}/{{ tierCount(tier).total }}</span>
+              </button>
+            }
+          }
+        </div>
+      </div>
+
+      <div class="cx-filter-row cx-filter-row--split">
+        <div class="cx-filter-group">
+          <span class="cx-filter-row__label">Status</span>
+          <div class="cx-chips">
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'all'"
+                    (click)="statusFilter = 'all'">All</button>
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'unlocked'"
+                    (click)="statusFilter = 'unlocked'">Discovered</button>
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'locked'"
+                    (click)="statusFilter = 'locked'">Undiscovered</button>
+          </div>
+        </div>
+
+        <div class="cx-filter-group">
+          <label class="cx-filter-row__label" for="cx-sort">Sort</label>
+          <select id="cx-sort" class="cx-select" [(ngModel)]="sort">
+            <option value="rarity">{{ sortLabels['rarity'] }}</option>
+            <option value="recent">{{ sortLabels['recent'] }}</option>
+            <option value="alpha">{{ sortLabels['alpha'] }}</option>
+            <option value="category">{{ sortLabels['category'] }}</option>
+          </select>
+        </div>
+
+        <div class="cx-filter-group cx-filter-group--grow">
+          <label class="cx-visually-hidden" for="cx-search">Search the wall</label>
+          <input
+            id="cx-search"
+            type="search"
+            class="cx-search"
+            placeholder="Search names and hints…"
+            [(ngModel)]="search" />
+        </div>
+
+        @if (hasActiveFilters) {
+          <button type="button" class="cx-clear" (click)="clearFilters()">Clear</button>
+        }
+      </div>
+    </div>
+
+    <!-- ── The wall ───────────────────────────────────────────────────── -->
+    @for (section of sections; track section.category.id + section.items.length) {
+      <div class="cx-section" [style.--realm]="section.category.color" [style.--realm-glow]="section.category.glow">
+        <div class="cx-section__hd">
+          <h2 class="cx-section__title">
+            <span aria-hidden="true">{{ section.category.icon }}</span>
+            {{ section.category.label }}
+          </h2>
+          <span class="cx-section__count">{{ section.found }} / {{ section.items.length }}</span>
+        </div>
+        @if (section.category.blurb) {
+          <p class="cx-section__blurb">{{ section.category.blurb }}</p>
+        }
+
+        <div class="cx-grid">
+          @for (a of section.items; track a.id) {
+            <article
+              class="cx-card"
+              [class.cx-card--locked]="!a.unlocked"
+              [attr.data-tier]="a.tier"
+              [style.--tier]="a.rarity.color"
+              [style.--tier-glow]="a.rarity.glow">
+
+              <div class="cx-card__icon" aria-hidden="true">
+                @if (a.unlocked) {
+                  <span class="cx-card__glyph">{{ a.icon }}</span>
+                } @else {
+                  <span class="cx-card__glyph cx-card__glyph--shadow">{{ a.icon }}</span>
+                }
+              </div>
+
+              <div class="cx-card__body">
+                <p class="cx-card__meta">
+                  <span class="cx-card__badge">{{ a.rarity.label }}</span>
+                  <span class="cx-card__realm">{{ a.category.icon }} {{ a.category.label }}</span>
+                </p>
+
+                <h3 class="cx-card__name">{{ a.unlocked ? a.name : '???' }}</h3>
+
+                @if (a.unlocked) {
+                  <p class="cx-card__desc">{{ a.description }}</p>
+                  <p class="cx-card__flavour">{{ a.rarity.flavour }}</p>
+                  <p class="cx-card__foot">
+                    <span class="cx-card__date">{{ formatDate(a.unlockedAt) }}</span>
+                    <span class="cx-card__xp">+{{ a.xp }} XP</span>
+                  </p>
+                  @if (a.toolRoute) {
+                    <a class="cx-card__link" [routerLink]="a.toolRoute">{{ a.toolTitle }} →</a>
+                  }
+                  @if (a.gate) {
+                    <p class="cx-card__gate">🔗 unchains <a routerLink="/arena">{{ a.gate }}</a></p>
+                  }
+                } @else {
+                  <!-- The hint, not the description. The description is the
+                       answer written out; showing it would turn the wall into
+                       a checklist. -->
+                  <p class="cx-card__hint">{{ a.hint }}</p>
+                  @if (a.gate) {
+                    <p class="cx-card__gate cx-card__gate--locked">🔒 holds a gate in the Arena</p>
+                  }
+                }
+              </div>
+            </article>
+          }
+        </div>
+      </div>
+    } @empty {
+      <p class="cx-empty">
+        Nothing matches that. The realm is large but it is not infinite —
+        <button type="button" class="cx-linkbtn" (click)="clearFilters()">clear the filters</button>.
+      </p>
+    }
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 2 — Progression
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-progression"
+    aria-labelledby="cx-tab-progression"
+    [hidden]="activeTab !== 'progression'">
+
+    <!-- ── Rank ───────────────────────────────────────────────────────── -->
+    <div class="cx-rank">
+      <div class="cx-rank__sigil" aria-hidden="true">
+        <span class="cx-rank__sigil-num">{{ snap.level.level }}</span>
+        <span class="cx-rank__sigil-ring"></span>
+        <span class="cx-rank__sigil-ring cx-rank__sigil-ring--2"></span>
+      </div>
+
+      <div class="cx-rank__body">
+        <p class="cx-rank__eyebrow">Level {{ snap.level.level }} of {{ levels.length }}</p>
+        <h2 class="cx-rank__title">{{ snap.level.title }}</h2>
+        <p class="cx-rank__xp">{{ snap.xp | number }} XP earned</p>
+
+        <div class="cx-rank__bar">
+          <span class="cx-rank__track" aria-hidden="true">
+            <span class="cx-rank__fill" [style.width.%]="snap.progress * 100"></span>
+          </span>
+          <p class="cx-rank__next">
+            @if (snap.next) {
+              Next rank: <strong>{{ snap.next.title }}</strong> —
+              <span class="cx-rank__togo">{{ snap.toNext | number }} XP</span> away
+            } @else {
+              The Eclipse is yours. There is nothing above this.
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── The path ───────────────────────────────────────────────────── -->
+    <div class="cx-block">
+      <h3 class="cx-block__title">The Path</h3>
+      <p class="cx-block__sub">Ten ranks. The thresholds widen as you climb.</p>
+
+      <ol class="cx-path">
+        @for (node of path; track node.level.level) {
+          <li class="cx-path__node" [attr.data-state]="node.state">
+            <span class="cx-path__dot" aria-hidden="true"></span>
+            <span class="cx-path__level">Level {{ node.level.level }}</span>
+            <span class="cx-path__title">{{ node.level.title }}</span>
+            <span class="cx-path__xp">{{ node.level.minXp | number }} XP</span>
+            @if (node.state === 'current') {
+              <span class="cx-path__here">← you are here</span>
+            }
+          </li>
+        }
+      </ol>
+    </div>
+
+    <!-- ── Energy balance ─────────────────────────────────────────────── -->
+    <div class="cx-block">
+      <h3 class="cx-block__title">Energy Balance</h3>
+      <p class="cx-block__sub">Aether is light and making. Nox is shadow and transformation.</p>
+
+      <div class="cx-energy">
+        <div class="cx-energy__row">
+          <span class="cx-energy__side cx-energy__side--aether">
+            <span class="cx-energy__name">Luminous Affinity</span>
+            <span class="cx-energy__pct">{{ aetherPercent }}%</span>
+            <span class="cx-energy__xp">{{ snap.aether | number }} XP</span>
+          </span>
+          <span class="cx-energy__side cx-energy__side--nox">
+            <span class="cx-energy__name">Umbral Affinity</span>
+            <span class="cx-energy__pct">{{ noxPercent }}%</span>
+            <span class="cx-energy__xp">{{ snap.nox | number }} XP</span>
+          </span>
+        </div>
+
+        <span class="cx-energy__bar" aria-hidden="true">
+          <span class="cx-energy__aether" [style.width.%]="aetherPercent"></span>
+          <span class="cx-energy__nox" [style.width.%]="noxPercent"></span>
+          <span class="cx-energy__seam" [style.left.%]="aetherPercent"></span>
+        </span>
+
+        @if (isBalanced && snap.xp > 0) {
+          <p class="cx-energy__badge">⚖️ Convergent — True Balance</p>
+        }
+        <p class="cx-energy__flavour">{{ affinityFlavour }}</p>
+      </div>
+    </div>
+
+    <!-- ── Streak ─────────────────────────────────────────────────────── -->
+    <div class="cx-block">
+      <h3 class="cx-block__title">The Streak</h3>
+      <p class="cx-block__sub">Consecutive days in the realm. A missed day costs the run, not the record.</p>
+
+      <div class="cx-streak">
+        <div class="cx-streak__stat">
+          <span class="cx-streak__num">🔥 {{ snap.streak }}</span>
+          <span class="cx-streak__label">Current streak</span>
+        </div>
+        <div class="cx-streak__stat">
+          <span class="cx-streak__num">🔥 {{ snap.bestStreak }}</span>
+          <span class="cx-streak__label">Best streak</span>
+        </div>
+        <div class="cx-streak__stat">
+          <span class="cx-streak__num">{{ activeDays }}</span>
+          <span class="cx-streak__label">Active days (30d)</span>
+        </div>
+        <div class="cx-streak__stat">
+          <span class="cx-streak__num">{{ calendarXp | number }}</span>
+          <span class="cx-streak__label">XP earned (30d)</span>
+        </div>
+      </div>
+
+      @if (nextStreakMilestone) {
+        <p class="cx-streak__next">
+          <strong>{{ streakDaysToGo }}</strong>
+          more {{ streakDaysToGo === 1 ? 'day' : 'days' }} to a {{ nextStreakMilestone }}-day streak.
+        </p>
+      }
+
+      <div class="cx-cal" role="img"
+           [attr.aria-label]="'Daily XP for the last 30 days. ' + activeDays + ' active days, ' + calendarXp + ' XP total.'">
+        @for (day of calendar; track day.date) {
+          <span
+            class="cx-cal__day"
+            [attr.data-heat]="day.heat"
+            [class.is-today]="day.isToday"
+            [attr.title]="day.label + ' — ' + day.xp + ' XP'"></span>
+        } @empty {
+          <p class="cx-cal__empty">The ledger starts the first time you earn something.</p>
+        }
+      </div>
+
+      <p class="cx-cal__legend">
+        <span>quiet</span>
+        <span class="cx-cal__day" data-heat="0" aria-hidden="true"></span>
+        <span class="cx-cal__day" data-heat="1" aria-hidden="true"></span>
+        <span class="cx-cal__day" data-heat="2" aria-hidden="true"></span>
+        <span class="cx-cal__day" data-heat="3" aria-hidden="true"></span>
+        <span class="cx-cal__day" data-heat="4" aria-hidden="true"></span>
+        <span>blazing</span>
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 3 — Bestiary
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-bestiary"
+    aria-labelledby="cx-tab-bestiary"
+    [hidden]="activeTab !== 'bestiary'">
+
+    <div class="cx-statbar">
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ expertTools }} / {{ totalTools }}</span>
+        <span class="cx-stat__label">Tools at Expert or above</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ touchedTools }}</span>
+        <span class="cx-stat__label">Tools touched</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ masteredTools }}</span>
+        <span class="cx-stat__label">Mastered</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ totalTools - touchedTools }}</span>
+        <span class="cx-stat__label">Untouched</span>
+      </div>
+    </div>
+
+    <!-- ── Realm champion progress ────────────────────────────────────── -->
+    <div class="cx-champions">
+      @for (realm of realms; track realm.id) {
+        <div class="cx-champion" [style.--realm]="realm.color" [style.--realm-glow]="realm.glow">
+          <p class="cx-champion__name">{{ realm.name }}</p>
+          <span class="cx-champion__track" aria-hidden="true">
+            <span class="cx-champion__fill" [style.width.%]="realmProgress(realm).percent"></span>
+          </span>
+          <p class="cx-champion__count">
+            {{ realmProgress(realm).touched }} / {{ realmProgress(realm).total }} touched
+          </p>
+        </div>
+      }
+    </div>
+    <p class="cx-champions__note">
+      Master every tool in a realm to earn that realm's Champion title. Nothing is
+      claimed until it is actually true.
+    </p>
+
+    <!-- ── Filters ────────────────────────────────────────────────────── -->
+    <div class="cx-filters">
+      <div class="cx-filter-row">
+        <span class="cx-filter-row__label">Realm</span>
+        <div class="cx-chips">
+          <button type="button" class="cx-chip" [class.is-on]="bestiaryRealm === 'all'"
+                  (click)="bestiaryRealm = 'all'">All <span class="cx-chip__count">{{ totalTools }}</span></button>
+          @for (realm of realms; track realm.id) {
+            <button
+              type="button"
+              class="cx-chip"
+              [class.is-on]="bestiaryRealm === realm.id"
+              [style.--chip]="realm.color"
+              [style.--chip-glow]="realm.glow"
+              (click)="bestiaryRealm = realm.id">
+              {{ realm.name }}
+              <span class="cx-chip__count">{{ realmProgress(realm).total }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="cx-filter-row cx-filter-row--split">
+        <div class="cx-filter-group">
+          <span class="cx-filter-row__label">Mastery</span>
+          <div class="cx-chips">
+            <button type="button" class="cx-chip" [class.is-on]="bestiaryMastery === 'all'"
+                    (click)="bestiaryMastery = 'all'">All</button>
+            @for (level of masteryLevels; track level.id) {
+              <button
+                type="button"
+                class="cx-chip"
+                [class.is-on]="bestiaryMastery === level.id"
+                [style.--chip]="level.color"
+                [style.--chip-glow]="level.glow"
+                (click)="bestiaryMastery = level.id">
+                {{ level.label }}
+                <span class="cx-chip__count">{{ masteryCount(level.id) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="cx-filter-group cx-filter-group--grow">
+          <label class="cx-visually-hidden" for="cx-bestiary-search">Search tools</label>
+          <input
+            id="cx-bestiary-search"
+            type="search"
+            class="cx-search"
+            placeholder="Search tools…"
+            [(ngModel)]="bestiarySearch" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── The grid ───────────────────────────────────────────────────── -->
+    <div class="cx-grid cx-grid--beast">
+      @for (entry of visibleBestiary; track entry.id) {
+        <article
+          class="cx-beast"
+          [class.cx-beast--untouched]="entry.uses === 0"
+          [style.--realm]="entry.realm.color"
+          [style.--realm-glow]="entry.realm.glow"
+          [style.--tier]="entry.mastery.color"
+          [style.--tier-glow]="entry.mastery.glow">
+
+          <div class="cx-beast__hd">
+            <span class="cx-beast__icon" aria-hidden="true">{{ entry.icon }}</span>
+            <div class="cx-beast__names">
+              <h3 class="cx-beast__title">{{ entry.title }}</h3>
+              <p class="cx-beast__realm">{{ entry.realm.name }}</p>
+            </div>
+          </div>
+
+          <p class="cx-beast__stars" [attr.aria-label]="entry.mastery.label + ', ' + entry.uses + ' uses'">
+            @for (filled of entry.stars; track $index) {
+              <span class="cx-beast__star" [class.is-filled]="filled" aria-hidden="true">★</span>
+            }
+          </p>
+
+          <p class="cx-beast__meta">
+            <span class="cx-beast__level">{{ entry.mastery.label }}</span>
+            <span class="cx-beast__uses">{{ entry.uses }} {{ entry.uses === 1 ? 'use' : 'uses' }}</span>
+          </p>
+
+          <span class="cx-beast__track" aria-hidden="true">
+            <span class="cx-beast__fill" [style.width.%]="entry.progress * 100"></span>
+          </span>
+
+          @if (entry.route) {
+            <a class="cx-beast__link" [routerLink]="entry.route">
+              {{ entry.uses === 0 ? 'Open it →' : 'Use it again →' }}
+            </a>
+          } @else {
+            <span class="cx-beast__link cx-beast__link--soon">not forged yet</span>
+          }
+        </article>
+      } @empty {
+        <p class="cx-empty">No tool in the Bestiary matches that.</p>
+      }
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 4 — Secrets
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-secrets"
+    aria-labelledby="cx-tab-secrets"
+    [hidden]="activeTab !== 'secrets'">
+
+    <div class="cx-secrets__hd">
+      <h2 class="cx-secrets__count">{{ foundSecrets }} of {{ totalSecrets }} secrets discovered</h2>
+      <p class="cx-secrets__blurb">
+        Not achievements — the machinery underneath. What is written below is a
+        clue, never the answer. The Godforge remembers every secret you have
+        found, and every one you have not.
+      </p>
+    </div>
+
+    @for (group of secretGroups; track group.id) {
+      <div class="cx-section" [style.--realm]="group.color" [style.--realm-glow]="group.color">
+        <div class="cx-section__hd">
+          <h3 class="cx-section__title">
+            <span aria-hidden="true">{{ group.icon }}</span>
+            {{ group.label }}
+          </h3>
+          <span class="cx-section__count">{{ groupFound(group.id) }} / {{ secretsInGroup(group.id).length }}</span>
+        </div>
+        <p class="cx-section__blurb">{{ group.blurb }}</p>
+
+        <div class="cx-grid cx-grid--secrets">
+          @for (card of secretsInGroup(group.id); track card.def.id) {
+            <article
+              class="cx-secret"
+              [class.cx-secret--locked]="!card.found"
+              [class.cx-secret--deep]="isDeepSecret(card)"
+              [style.--tier]="card.rarity.color"
+              [style.--tier-glow]="card.rarity.glow">
+
+              <p class="cx-secret__meta">
+                <span class="cx-card__badge">{{ card.rarity.label }}</span>
+                @if (card.found) {
+                  <span class="cx-secret__state">discovered</span>
+                } @else {
+                  <span class="cx-secret__state cx-secret__state--locked">sealed</span>
+                }
+              </p>
+
+              <h4 class="cx-secret__name">{{ card.found ? card.def.name : '???' }}</h4>
+
+              @if (card.found) {
+                <p class="cx-secret__reveal">{{ card.def.reveal }}</p>
+                <p class="cx-secret__found">
+                  <span>{{ formatDate(card.at) }}</span>
+                  @if (card.how) {
+                    <span class="cx-secret__how">— {{ card.how }}</span>
+                  }
+                </p>
+              } @else {
+                <p class="cx-secret__clue">{{ card.def.clue }}</p>
+                @if (card.def.lore) {
+                  <p class="cx-secret__lore">{{ card.def.lore }}</p>
+                }
+              }
+            </article>
+          }
+        </div>
+      </div>
+    }
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 5 — Leaderboard
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-leaderboard"
+    aria-labelledby="cx-tab-leaderboard"
+    [hidden]="activeTab !== 'leaderboard'">
+
+    <div class="cx-soon">
+      <p class="cx-soon__eyebrow">Not yet</p>
+      <h2 class="cx-soon__title">Coming when the Eclipse aligns</h2>
+      <p class="cx-soon__sub">
+        Ranking anyone needs an account to rank them under, and there is no
+        account system yet. Progress lives in this browser and nowhere else —
+        clear your storage and the Codex forgets you completely.
+      </p>
+      <p class="cx-soon__cta-note">
+        Sign-in and cross-device progress are Phase III on the
+        <a routerLink="/blueprint" [queryParams]="{ tab: 'roadmap' }">public roadmap</a>.
+        Until it ships, this tab is a mock-up and says so.
+      </p>
+    </div>
+
+    <div class="cx-lb">
+      <p class="cx-lb__label">Preview — illustrative ranks, not real players</p>
+
+      <table class="cx-lb__table">
+        <caption class="cx-visually-hidden">
+          Illustrative preview of the future leaderboard. These are not real
+          players and no ranking is being computed.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Rank</th>
+            <th scope="col">XP</th>
+            <th scope="col">Fragments</th>
+            <th scope="col">Affinity</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of leaderboardPreview; track row.rank) {
+            <tr class="cx-lb__row cx-lb__row--ghost">
+              <td>{{ row.rank }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.xp | number }}</td>
+              <td>{{ row.fragments }}</td>
+              <td>{{ row.tag }}</td>
+            </tr>
+          }
+          <tr class="cx-lb__row cx-lb__row--you">
+            <td>—</td>
+            <td>{{ snap.level.title }} <span class="cx-lb__badge">you</span></td>
+            <td>{{ snap.xp | number }}</td>
+            <td>{{ foundAchievements }}</td>
+            <td>{{ affinityTag }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="cx-lb__foot">
+        Your row holds real numbers. Where it would land globally is unknown —
+        nothing is being compared yet, and a made-up position would be the one
+        dishonest thing in the whole Codex.
+      </p>
+    </div>
+  </section>
+
+</div>
