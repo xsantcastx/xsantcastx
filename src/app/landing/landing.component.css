@@ -3558,70 +3558,52 @@
   overflow: hidden;
 }
 
-/* ── The scene ─────────────────────────────────────────────────────────── */
+/* ── The scene ─────────────────────────────────────────────────────────
+   The painted altar, full-bleed, with the UI layered over it. The CSS
+   nebulas, drafting grid, drifting rocks and the drawn sigil that used to
+   stand in for this art are gone — the art carries all four, and running
+   both put a second X over the one in the picture. */
 
 .gfh__scene {
   position: absolute;
   inset: 0;
   z-index: -1;
-  display: grid;
-  place-items: center;
+  overflow: hidden;
+  /* Painted behind the art so the hero is never a white flash while the
+     image decodes, and so any letterboxing reads as void. */
+  background-color: #0a0a0f;
   pointer-events: none;
 }
 
-.gfh__nebula {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.55;
-}
-.gfh__nebula--a {
-  width: 62vw; height: 62vw;
-  max-width: 900px; max-height: 900px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary-color) 42%, transparent), transparent 68%);
-}
-.gfh__nebula--b {
-  width: 40vw; height: 40vw;
-  max-width: 560px; max-height: 560px;
-  translate: 22% 18%;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.22), transparent 70%);
+.gfh__art { display: block; width: 100%; height: 100%; }
+.gfh__art img {
+  width: 100%;
+  height: 100%;
+  /* cover, so the frame fills any viewport; the focal point sits slightly
+     above centre in the source, which is where the anvil is. */
+  object-fit: cover;
+  object-position: center 42%;
 }
 
-/* A faint drafting grid, the war-table under the scene. */
-.gfh__grid {
+/* Edge vignette — gives the two glass panels a ground to sit against. */
+.gfh__vignette {
   position: absolute;
-  inset: -10%;
-  background-image:
-    linear-gradient(rgba(139, 92, 246, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(139, 92, 246, 0.07) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 62% 58% at 50% 48%, #000 30%, transparent 78%);
-  -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 48%, #000 30%, transparent 78%);
+  inset: 0;
+  background:
+    radial-gradient(ellipse 78% 70% at 50% 45%, transparent 38%, rgba(10, 10, 15, 0.55) 78%, rgba(10, 10, 15, 0.88) 100%);
 }
 
-.gfsigil-scene--hero {
-  --scene: clamp(300px, 46vw, 620px);
-  opacity: 0.9;
-}
-
-/* Debris caught in the field. Only transform animates, so the whole scene
-   composites on the GPU and never triggers layout. */
-.gfh__rock {
+/* Floor wash — the wordmark and the calls land in the lower half, and the
+   art is at its brightest exactly there. */
+.gfh__floor {
   position: absolute;
-  left: var(--rx); top: var(--ry);
-  width: var(--rs); height: var(--rs);
-  border-radius: 36% 64% 58% 42% / 48% 38% 62% 52%;
-  background: linear-gradient(150deg, #2a2140, #120c22);
-  box-shadow:
-    inset 0 0 6px rgba(0, 0, 0, 0.8),
-    0 0 14px -4px color-mix(in srgb, var(--primary-color) 70%, transparent);
-  opacity: 0.72;
-  animation: gfhDrift 14s ease-in-out infinite;
-  animation-delay: var(--rd, 0s);
-}
-@keyframes gfhDrift {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50%      { transform: translate3d(0, -16px, 0) rotate(22deg); }
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(10, 10, 15, 0.62) 0%,
+      rgba(10, 10, 15, 0.30) 26%,
+      rgba(10, 10, 15, 0.42) 58%,
+      rgba(10, 10, 15, 0.86) 100%);
 }
 
 /* ── Layout ────────────────────────────────────────────────────────────── */
@@ -4143,14 +4125,11 @@ a.gfcounter:focus-visible .gfcounter__glyph {
 }
 
 @media (max-width: 480px) {
-  /* Keep the scene behind the wordmark instead of letting its compass
-     points slice across the two panels below it. */
-  .gfsigil-scene--hero { --scene: clamp(240px, 78vw, 320px); }
-  .gfh__scene { align-items: flex-start; padding-top: 4vh; }
+  /* The phone gets its own portrait crop of the art, so `cover` no longer
+     throws away both pillars — nothing to reposition here. */
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gfh__rock,
   .gfpanel__dot,
   .gfh__live-dot,
   .gfh__descend-chev { animation: none; }
