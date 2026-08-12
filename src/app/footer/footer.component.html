@@ -44,6 +44,9 @@
       <a routerLink="/live">{{ translate('gfnav.live') }}</a>
       <a routerLink="/sponsors">{{ translate('gfnav.sponsors') }}</a>
       <a routerLink="/donate">{{ translate('gfnav.donate') }}</a>
+      <!-- Gold-tinted on purpose: it is the only link in this row that costs
+           money, and /pro is the only page on the site using this colour. -->
+      <a routerLink="/pro" class="gffoot__link--pro">{{ translate('gfnav.pro') }}</a>
     </nav>
 
     <!--

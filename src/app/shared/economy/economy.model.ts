@@ -723,6 +723,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'shadowborn', label: 'Shadowborn', color: '#8B2252' },
       { id: 'unbroken', label: 'The Unbroken', color: '#C9A84C' },
       { id: 'ashwalker', label: 'Ashwalker', color: '#9fb4ae' },
+      // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
+      { id: 'pro', label: 'Pro', color: '#F5C451' },
     ],
   },
   {
@@ -752,6 +754,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'ornate', label: 'Ornate', color: '#C9A84C' },
       { id: 'molten', label: 'Molten', color: '#E8752A' },
       { id: 'void', label: 'Void', color: '#7b61ff' },
+      // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
+      { id: 'golden', label: 'Golden', color: '#F5C451' },
     ],
   },
   {

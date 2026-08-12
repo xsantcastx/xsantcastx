@@ -918,3 +918,114 @@
     transform: none;
   }
 }
+
+/* ─── Pricing note ───────────────────────────────────────────────────────────
+   Sits under the tagline pill and carries the terms that do not fit in it. */
+.sp-section__note {
+  max-width: 44ch;
+  margin: 0.75rem auto 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.5);
+  text-align: center;
+}
+
+/* ─── Contact ────────────────────────────────────────────────────────────────
+   Two panels: the address on the left, what to put in the mail on the right.
+   Collapses to one column below 720px. */
+.sp-contact {
+  display: grid;
+  /* min(320px, 100%) rather than a bare 320px floor — a hard px minimum
+     resolves wider than a 375px viewport once gap and padding come off, which
+     is the overflow this codebase has shipped before. */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 1rem;
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.sp-contact__main,
+.sp-contact__aside {
+  padding: 1.5rem 1.4rem;
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sp-contact__main {
+  border-color: rgba(167, 139, 250, 0.28);
+}
+
+.sp-contact__main:hover {
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: 0 0 28px -8px rgba(139, 92, 246, 0.6);
+}
+
+.sp-contact__label {
+  margin: 0 0 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.85);
+}
+
+.sp-contact__email {
+  display: inline-block;
+  /* 44px tap target — the primary action of this whole page. */
+  min-height: 44px;
+  line-height: 44px;
+  font-family: var(--font-display, 'Orbitron', sans-serif);
+  font-size: clamp(0.95rem, 2.6vw, 1.25rem);
+  font-weight: 700;
+  color: #A78BFA;
+  text-decoration: none;
+  word-break: break-word;
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.sp-contact__email:hover,
+.sp-contact__email:focus-visible {
+  color: #d6c7ff;
+  text-shadow: 0 0 18px rgba(139, 92, 246, 0.7);
+}
+
+.sp-contact__email:focus-visible {
+  outline: 2px solid #A78BFA;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.sp-contact__reply {
+  margin: 0.4rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+.sp-contact__list {
+  margin: 0 0 0.9rem;
+  padding-left: 1.1rem;
+  font-size: 0.86rem;
+  line-height: 1.75;
+  color: rgba(214, 221, 235, 0.72);
+}
+
+.sp-contact__list li::marker {
+  color: rgba(167, 139, 250, 0.8);
+}
+
+.sp-contact__note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: rgba(214, 221, 235, 0.48);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-contact__main,
+  .sp-contact__email {
+    transition: none;
+  }
+}
