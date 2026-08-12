@@ -10,6 +10,9 @@ import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/real
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
+import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
+import { formatCurrency } from '../shared/economy/economy.model';
+import { PROJECTS_LIVE } from '../projects/projects.data';
 import { PRERENDERED_PATHS } from '../prerender-stats';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -60,8 +63,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   private changelogService = inject(ChangelogService);
   private translationService = inject(TranslationService);
   private readonly xpService = inject(XpService);
+  private readonly economyService = inject(EconomyService);
   private changelogSub?: Subscription;
   private xpSub?: Subscription;
+  private ecoSub?: Subscription;
 
   translate(key: string): string {
     return this.translationService.translate(key);
@@ -159,6 +164,51 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Realms in the codex. */
   readonly realmCount = REALMS.length;
 
+  /** Shipped projects, counted from the same array the /projects page renders. */
+  readonly projectsLive = PROJECTS_LIVE;
+
+  /**
+   * Wallet, for the hero's standing panel. Seeded from the service's current
+   * value so the server renders a coherent zero state during prerender; the
+   * visitor's real numbers arrive after hydration.
+   */
+  eco: EconomySnapshot = this.economyService.snapshot;
+
+  get gold(): string { return formatCurrency(this.eco.gold); }
+  get essence(): string { return formatCurrency(this.eco.essence); }
+  /** The XP the next rank begins at, for the "1,364 / 2,500" readout. */
+  get xpTarget(): number { return this.xp.next ? this.xp.next.minXp : this.xp.xp; }
+
+  /**
+   * The five counters of the forge, from the concept's shop sheet.
+   *
+   * Gold, Essence and the two cosmetic counters all resolve to the Market,
+   * which is where every one of them is actually spent — it has five tabs
+   * over one ledger. The Relic Forge has no tab and no Relic Dust ledger
+   * anywhere in the app, so it is marked sealed rather than given a link
+   * that lands on a page with nothing to buy.
+   */
+  readonly counters: ReadonlyArray<{
+    id: string;
+    nameKey: string;
+    subKey: string;
+    route: string | null;
+    icon: string;
+  }> = [
+    { id: 'gold',    nameKey: 'godforge.shop.gold',    subKey: 'godforge.shop.goldSub',    route: '/market', icon: 'assets/icons/shops/gold-shop.png' },
+    { id: 'essence', nameKey: 'godforge.shop.essence', subKey: 'godforge.shop.essenceSub', route: '/market', icon: 'assets/icons/shops/essence-shop.png' },
+    { id: 'aether',  nameKey: 'godforge.shop.aether',  subKey: 'godforge.shop.aetherSub',  route: '/market', icon: 'assets/icons/shops/aether-shop.png' },
+    { id: 'nox',     nameKey: 'godforge.shop.nox',     subKey: 'godforge.shop.noxSub',     route: '/market', icon: 'assets/icons/shops/nox-shop.png' },
+    { id: 'relic',   nameKey: 'godforge.shop.relic',   subKey: 'godforge.shop.relicSub',   route: null,      icon: 'assets/icons/shops/relic-forge.png' }
+  ];
+
+  /** The three promises, from the concept's value-prop row. */
+  readonly creeds: ReadonlyArray<{ id: string; titleKey: string; lineKey: string }> = [
+    { id: 'tools',     titleKey: 'godforge.creed.toolsTitle',     lineKey: 'godforge.creed.toolsLine' },
+    { id: 'impact',    titleKey: 'godforge.creed.impactTitle',    lineKey: 'godforge.creed.impactLine' },
+    { id: 'community', titleKey: 'godforge.creed.communityTitle', lineKey: 'godforge.creed.communityLine' }
+  ];
+
   get filteredTools(): Tool[] {
     const q = this.searchQuery.toLowerCase();
     return this.tools.filter(t => {
@@ -190,11 +240,17 @@ export class LandingComponent implements OnInit, OnDestroy {
     // the snapshot subscription below re-renders them once storage resolves.
     void this.xpService.init();
     this.xpSub = this.xpService.snapshot$.subscribe(snap => { this.xp = snap; });
+
+    // Same shape for the wallet: idempotent init, then the hero's standing
+    // panel tracks Gold and Essence as the ambient forge ticks them.
+    this.economyService.init();
+    this.ecoSub = this.economyService.snapshot$.subscribe(eco => { this.eco = eco; });
   }
 
   ngOnDestroy(): void {
     this.changelogSub?.unsubscribe();
     this.xpSub?.unsubscribe();
+    this.ecoSub?.unsubscribe();
   }
 
   // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
