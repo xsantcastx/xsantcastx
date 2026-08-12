@@ -21,7 +21,8 @@ export type XpEventType =
   | 'easter-egg'
   | 'share'
   | 'streak'
-  | 'quest';
+  | 'quest'
+  | 'game-win';
 
 /** Canonical XP award per event. Kept in one place so the economy is auditable. */
 export const XP_VALUES: Record<XpEventType, number> = {
@@ -35,6 +36,9 @@ export const XP_VALUES: Record<XpEventType, number> = {
   // Quest payouts are authored per quest in quest.model.ts, so there is no
   // table value here either — the claim always passes an explicit amount.
   'quest': 0,
+  // Base for clearing an Arena gate. The gate itself passes an `amount` scaled
+  // by how well it was cleared, so this is the floor, not the usual payout.
+  'game-win': 40,
 };
 
 /** Each consecutive day adds this much to the daily bonus… */
@@ -136,7 +140,18 @@ export interface ProgressState {
   toolsUsed: string[];
   /** Achievement ids already awarded, so a tier never drops twice. */
   achievements: string[];
+  /**
+   * XP earned per local day, keyed YYYY-MM-DD. Feeds the Codex streak calendar.
+   *
+   * Trimmed to `HISTORY_DAYS` on every write so the blob cannot grow without
+   * bound in a browser that keeps localStorage for years — the heatmap only ever
+   * renders the last month, and nothing else reads further back.
+   */
+  history: Record<string, number>;
 }
+
+/** How many days of daily-XP history are kept. The calendar renders 30. */
+export const HISTORY_DAYS = 60;
 
 export function emptyProgress(): ProgressState {
   return {
@@ -149,5 +164,6 @@ export function emptyProgress(): ProgressState {
     bestStreak: 0,
     toolsUsed: [],
     achievements: [],
+    history: {},
   };
 }

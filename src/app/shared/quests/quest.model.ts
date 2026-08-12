@@ -666,8 +666,8 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
   {
     id: 'arena-champion',
     title: 'Arena Champion',
-    description: 'Open three gates in the Arena.',
-    loreText: 'Eight gates, each chained by a secret. The chains are not the test. Finding out where the secrets are kept is the test.',
+    description: 'Clear three different Arena games.',
+    loreText: 'Thirteen gates, each chained by a secret. The chain is not the test. What is behind it is the test.',
     type: 'weekly',
     condition: { type: 'arena-game', count: 3 },
     rewards: { xp: 75 },
@@ -689,11 +689,7 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
     description: 'Read the Blueprint and walk the Arena.',
     loreText: 'Two rooms nobody is required to enter. The Archivum has always held that the people who enter them anyway are the ones worth watching.',
     type: 'weekly',
-    // The brief named /blueprint and /codex. /codex is not a registered route on
-    // this branch, and a quest pointing at a 404 can never be finished, so the
-    // second stop is /arena. Add /codex here — and bump `count` — the week the
-    // codex route lands.
-    condition: { type: 'page-visit', paths: ['/blueprint', '/arena'], count: 2 },
+    condition: { type: 'page-visit', paths: ['/blueprint', '/codex'], count: 2 },
     rewards: { xp: 50, energy: 'aether' },
     rarity: 'sacred',
   },

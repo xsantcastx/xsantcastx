@@ -1,0 +1,131 @@
+<app-arena-shell
+  [title]="'Realm Rush'"
+  [lore]="'The Verge is closing — type the incantations before reality fractures.'"
+  [icon]="'🌠'"
+  [bestLabel]="bestLabel"
+  [locked]="locked"
+  [unlockHint]="game.unlockHint">
+
+  @if (!locked) {
+
+    <!-- ── INTRO ─────────────────────────────────────────── -->
+    @if (phase === 'intro') {
+      <section class="ag-panel ag-intro">
+        <p class="ag-intro__body">
+          Incantations fall out of the rift — CSS properties, JS keywords, regex fragments,
+          HTML tags. Type one and it burns away. Let three reach the floor and the Verge
+          takes you. Clear {{ clearAt }} to survive the run.
+        </p>
+        <p class="rr-legend">
+          <span class="rr-legend__item rr-legend__item--css">CSS</span>
+          <span class="rr-legend__item rr-legend__item--js">JS</span>
+          <span class="rr-legend__item rr-legend__item--regex">Regex</span>
+          <span class="rr-legend__item rr-legend__item--html">HTML</span>
+        </p>
+        <button type="button" class="ag-btn ag-btn--primary" (click)="start()">
+          Open the rift &rarr;
+        </button>
+
+        @if (board.length) {
+          <div class="rr-board">
+            <h2 class="rr-board__title">Your best runs</h2>
+            <ol class="rr-board__list">
+              @for (row of board; track $index) {
+                <li class="rr-board__row">
+                  <span class="rr-board__rank">{{ $index + 1 }}</span>
+                  <span class="rr-board__score">{{ row.score }}</span>
+                  <span class="rr-board__meta">{{ row.wpm }} WPM · {{ row.accuracy }}% · {{ row.words }} cleared</span>
+                </li>
+              }
+            </ol>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ── PLAYFIELD ─────────────────────────────────────── -->
+    @if (phase === 'playing') {
+      <div class="ag-hud">
+        <div class="ag-stat" [class.ag-stat--warn]="lives === 1">
+          <span class="ag-stat__num rr-lives">
+            @for (i of livesArray; track i) {
+              <span class="rr-life" [class.rr-life--gone]="i >= lives" aria-hidden="true">◆</span>
+            }
+          </span>
+          <span class="ag-stat__label">Anchors</span>
+          <span class="ag-sr">{{ lives }} of {{ maxLives }} anchors left</span>
+        </div>
+        <div class="ag-stat ag-stat--good">
+          <span class="ag-stat__num">{{ wordsCleared }}</span>
+          <span class="ag-stat__label">Cleared</span>
+        </div>
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ wave }}</span>
+          <span class="ag-stat__label">Wave</span>
+        </div>
+      </div>
+
+      <div class="rr-field" (click)="focusInput()">
+        <canvas #canvas class="rr-canvas" aria-hidden="true"></canvas>
+      </div>
+
+      <!--
+        The real control. Kept visible (not a hidden input) so a phone shows a
+        caret where the player expects one, and so the buffer is legible.
+      -->
+      <label class="rr-input-wrap" [class.rr-input-wrap--miss]="miss">
+        <span class="ag-sr">Type the falling incantation</span>
+        <input
+          #typeInput
+          type="text"
+          class="rr-input"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          inputmode="text"
+          enterkeyhint="done"
+          placeholder="type here…"
+          (input)="onType($event)" />
+      </label>
+      <p class="rr-tip">Tap the field if the keyboard closes. One wrong key costs accuracy, not the word.</p>
+    }
+
+    <!-- ── END ───────────────────────────────────────────── -->
+    @if (phase === 'over' && result) {
+      <section
+        class="ag-end"
+        [class.ag-end--lost]="wordsCleared < clearAt"
+        [attr.data-success-burst]="wordsCleared >= clearAt ? '' : null"
+        role="status">
+        <h2 class="ag-end__title">
+          {{ wordsCleared >= clearAt ? 'The rift closes ✦' : 'The Verge took you' }}
+        </h2>
+        <p class="ag-end__line">
+          {{ wpm }} WPM · {{ accuracy }}% accuracy · {{ wordsCleared }} incantations burned
+        </p>
+        <p class="ag-end__line">
+          Score <strong>{{ result.score }}</strong>
+          @if (result.isBest) { <span class="rr-pb">— new personal best</span> }
+        </p>
+
+        @if (result.xpAwarded > 0) {
+          <p class="ag-end__xp">+{{ result.xpAwarded }} Aether</p>
+        } @else if (wordsCleared < clearAt) {
+          <p class="ag-end__line ag-end__line--muted">
+            Clear {{ clearAt }} incantations in one run to earn Aether.
+          </p>
+        } @else {
+          <p class="ag-end__line ag-end__line--muted">Already claimed. Beat your best to earn again.</p>
+        }
+
+        <div class="ag-end__actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="start()">Run it back</button>
+          <button type="button" class="ag-btn" (click)="playAgain()">Board</button>
+          <a routerLink="/arena" class="ag-btn ag-btn--ghost">Back to the Arena</a>
+        </div>
+      </section>
+    }
+
+  }
+</app-arena-shell>

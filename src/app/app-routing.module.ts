@@ -7,6 +7,7 @@ import { DonateComponent } from './donate/donate.component';
 import { LandingComponent } from './landing/landing.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { ArenaComponent } from './arena/arena.component';
+import { ARENA_GAME_ROUTES } from './arena/games/arena-game.routes';
 import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
 import { SITE_URL } from './seo.service';
@@ -158,9 +159,51 @@ const routes: Routes = [
       component: ArenaComponent,
       title: 'The Arena — Where Convergents Prove Their Worth | xsantcastx',
       data: {
-        description: 'Eight gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 139 secrets across the five realms.',
+        description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
         keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, arena',
         ogImage: `${SITE_URL}/assets/og/og-default.jpg`
+      }
+    },
+
+  /*
+   * The playable gates. Declared as siblings of `arena` rather than as its
+   * children: `ArenaComponent` is a leaf with no router-outlet, and a child
+   * route would need one added purely to satisfy the router.
+   *
+   * Every game is `loadComponent` — a lazy chunk each, so a visitor who never
+   * opens the Arena never downloads a game loop. No guards: a guard that
+   * redirects during prerender bakes a redirect stub into the built HTML and
+   * the route stops working in production. Each game renders its own locked
+   * gate instead.
+   */
+  ...ARENA_GAME_ROUTES,
+
+  {
+      path: 'codex',
+      loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
+      title: 'The Codex — Every Achievement, Rank and Secret | xsantcastx',
+      data: {
+        description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, mastery for all 128 tools, and clues to every secret still hidden.',
+        keywords: 'achievements, developer tools achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/codex`,
+          url: `${SITE_URL}/codex`,
+          name: 'The Codex — Every Achievement, Rank and Secret',
+          description: 'Every achievement, rank, tool mastery level and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
+          inLanguage: 'en',
+          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'xsantcastx' },
+          author: { '@id': `${SITE_URL}/#person` },
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 2, name: 'Codex', item: `${SITE_URL}/codex` }
+            ]
+          }
+        }
       }
     },
   {
