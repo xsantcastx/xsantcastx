@@ -13,6 +13,7 @@
  * for a page the visitor is not looking at.
  */
 import { RUNES } from './rune.model';
+import { LORE_SCROLLS } from './lore-scroll.model';
 import type { RuneForgeService } from './rune-forge.service';
 
 export interface RuneAchievement {
@@ -59,5 +60,17 @@ export const RUNE_ACHIEVEMENTS: RuneAchievement[] = [
   {
     id: 'rune-breath-of-void',
     met: f => f.hasCrafted('breath-of-the-void'),
+  },
+
+  // ── Lore Scrolls ── the other half of what the anvil turns up.
+  {
+    id: 'scroll-lore-hunter',
+    met: f => f.scrollsFound >= 10,
+  },
+  {
+    // Guarded on the registry length rather than a literal 25, so adding a
+    // twenty-sixth scroll does not leave this claimable at twenty-five.
+    id: 'scroll-full-codex',
+    met: f => f.scrollsFound >= LORE_SCROLLS.length,
   },
 ];

@@ -17,6 +17,8 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { EconomyService } from '../economy/economy.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { XpService } from '../gamification/xp.service';
+import { LoreScrollService } from './lore-scroll.service';
+import { LoreScroll, rollScroll } from './lore-scroll.model';
 import { RUNE_ACHIEVEMENTS } from './rune-achievements';
 import {
   RUNES,
@@ -74,6 +76,15 @@ export interface RuneFind {
   isNew: boolean;
   /** Essence minted alongside, when Realm Bridge is held. Zero otherwise. */
   essence: number;
+  /**
+   * A Lore Scroll the same strike turned up, or null.
+   *
+   * Carried on the find rather than announced on a channel of its own so that
+   * the rune and the scroll arrive in the same event and the reveal can show
+   * them together. Two subjects would let the two cards race, and the whole
+   * point of the drop is that one strike produced both.
+   */
+  scroll: LoreScroll | null;
 }
 
 /** Everything the page renders, recomputed on every change. */
@@ -98,6 +109,7 @@ export class RuneForgeService {
   private readonly economy = inject(EconomyService);
   private readonly xp = inject(XpService);
   private readonly eggs = inject(EasterEggService);
+  private readonly scrolls = inject(LoreScrollService);
 
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
@@ -122,6 +134,10 @@ export class RuneForgeService {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
     this.ledger = this.load();
+    // Both are idempotent. The scroll ledger has to be hydrated before the
+    // first strike or `rollScroll` would be handed an empty found-set and could
+    // re-award a scroll the visitor already has.
+    this.scrolls.init();
     this.publish();
   }
 
@@ -178,9 +194,20 @@ export class RuneForgeService {
     const tier = tierOf(rune.tier);
     this.xp.award('craft', { amount: isNew ? tier.xp : Math.max(1, Math.round(tier.xp / 10)) });
 
+    // The scroll is rolled against what is already held, so it can only ever be
+    // something new — see `rollScroll`. Granting is what makes it new, so the
+    // set has to be read before the grant, not after.
+    const scroll = rollScroll(rune.tier, this.scrolls.foundIds, random);
+    if (scroll) {
+      this.scrolls.grant(scroll.id);
+      // A scroll is worth a find of its own tier, on top of the rune's. The
+      // strike paid for one thing and produced two, and the XP should say so.
+      this.xp.award('craft', { amount: tierOf(scroll.rarity).xp });
+    }
+
     this.checkAchievements();
 
-    const find: RuneFind = { rune, held, isNew, essence };
+    const find: RuneFind = { rune, held, isNew, essence, scroll };
     this.find$$.next(find);
     return find;
   }
@@ -274,6 +301,9 @@ export class RuneForgeService {
   }
 
   get craftedCount(): number { return this.economy.runewords.length; }
+
+  /** Lore Scrolls held. Read through, so the predicates have one source. */
+  get scrollsFound(): number { return this.scrolls.foundCount; }
 
   /** True once this rune has ever been found, even if it has since been spent. */
   hasEverFound(runeId: string): boolean {

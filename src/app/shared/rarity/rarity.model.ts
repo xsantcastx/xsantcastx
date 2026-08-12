@@ -169,6 +169,13 @@ export const EGG_TIERS: Record<string, EclipseRarity> = {
   'rune-collector': 'eclipsed',
   'rune-first': 'mortal',
 
+  // The two scroll rungs. The Full Codex is Mythic because it cannot be
+  // completed without the Void rune — `unwritten-verse` is the only scroll on
+  // the Singular shelf and nothing below the Void reaches it, so the last page
+  // of the codex is gated on the rarest drop in the table.
+  'scroll-full-codex': 'mythic',
+  'scroll-lore-hunter': 'sacred',
+
   // ── Mythic ── three eggs that take real intent to reach.
   'hash-miner': 'mythic',          // a digest with four leading zeros
   'regex-ouroboros': 'mythic',     // a regex that matches its own source
