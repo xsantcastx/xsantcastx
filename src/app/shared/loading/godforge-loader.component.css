@@ -2,9 +2,9 @@
    GODFORGE AWAKENS — 7-stage boot sequence
    ───────────────────────────────────────────────────────────────────────────
    The CSS is the authority here, not the component. Every layer runs a single
-   2.9s keyframe animation whose stops are the seven stages, so the whole
-   sequence plays — and, critically, *clears itself* — on the compositor's
-   clock with no main-thread involvement at all.
+   2.9s keyframe whose stops are the seven stages, so the whole sequence plays
+   — and, critically, *clears itself* — on the compositor's clock with no main
+   thread involvement at all.
 
    That is not stylistic preference. The splash this replaces was dismissed by
    a JS timer, and on throttled mobile the prerendered <h1> sat covered for
@@ -25,22 +25,30 @@
      6 The Void Breaks Open 72%
      7 GODFORGE ONLINE      86%  → cleared at 100%
 
-   Two structural notes, both of which also keep the weight down:
+   Three structural notes:
 
    - All five layers share ONE reveal keyframe, `gfReveal`, and differ only in
      the seven --o* custom properties they feed it. The stage timeline is
      therefore written once. Adding a layer is seven numbers, not a keyframe.
 
-   - The glow is one filter on the <svg>, not one per layer. Three overlapping
-     drop-shadow filter regions on a DPR-3 phone is exactly the kind of layer
-     stack this project's mobile budget exists to prevent.
+   - Anything that lights in sequence (runes, compass marks) carries an index
+     in --ri and offsets its own delay by --gf-stagger. One keyframe drives
+     twelve runes. The short cut zeroes --gf-stagger rather than fighting it:
+     the cut is itself a negative animation-delay, and a per-element delay
+     added on top would push the tail of the sweep back outside the shortened
+     window.
+
+   - The heavy work (drop-shadow glow, the carve and grain filters) is one
+     declaration on a shared ancestor, not one per layer, and mobile turns all
+     of it off with a single `filter: none !important` — which outranks a
+     running animation, where a normal declaration would lose to it.
 
    Keep every @keyframes at the top level of this file. Angular's emulated
    encapsulation rewrites keyframe names and the `animation` shorthands that
    reference them, but it does *not* rewrite a @keyframes nested inside an
    @media block — the reference is left dangling, the animation is silently
-   never instantiated, and nothing warns you. This repo has been bitten by
-   exactly that before.
+   never instantiated, and nothing warns you. This repo has shipped that bug
+   twice.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :host {
@@ -66,6 +74,9 @@
   /* Negative delay is how the repeat-visit cut is made: one set of keyframes,
      started partway in. -1.6s lands on stage 5, leaving 1.3s of runway. */
   --gf-delay: 0s;
+
+  /* Per-element ignition offset for anything that lights in sequence. */
+  --gf-stagger: 42ms;
 }
 
 .gf-loader {
@@ -125,9 +136,92 @@
 .layer-core    { --o1: 0.05; --o2: 0.12; --o3: 0.35; --o4: 0.70; --o5: 0.95; --o6: 1; --o7: 1; }
 .layer-rings   { --o1: 0.04; --o2: 0.08; --o3: 0.20; --o4: 0.65; --o5: 0.90; --o6: 1; --o7: 1; }
 
+/* ─── Depth: three parallax star sheets ──────────────────────────────────── */
+
+/*
+ * Stage 1 is "The Void is Still", not "the void is an empty black rectangle".
+ * Three sheets of stars at different sizes and drift rates give the black
+ * something to be in front of. Painted as repeating radial-gradients rather
+ * than elements — one layer each instead of ninety nodes.
+ */
+.gf-deep {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background-repeat: repeat;
+}
+
+.gf-deep--far {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(196, 181, 253, 0.55), transparent),
+    radial-gradient(1px 1px at 70% 65%, rgba(167, 139, 250, 0.45), transparent),
+    radial-gradient(1px 1px at 45% 80%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(196, 181, 253, 0.4), transparent);
+  background-size: 220px 220px;
+  opacity: 0.5;
+  animation: gfDeepDrift 190s linear infinite;
+}
+
+.gf-deep--mid {
+  background-image:
+    radial-gradient(1.4px 1.4px at 35% 55%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.4px 1.4px at 78% 25%, rgba(167, 139, 250, 0.55), transparent),
+    radial-gradient(1.4px 1.4px at 12% 88%, rgba(196, 181, 253, 0.5), transparent);
+  background-size: 340px 340px;
+  opacity: 0.55;
+  animation: gfDeepDrift 130s linear infinite reverse;
+}
+
+.gf-deep--near {
+  background-image:
+    radial-gradient(2px 2px at 60% 40%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(2px 2px at 25% 15%, rgba(196, 181, 253, 0.6), transparent);
+  background-size: 520px 520px;
+  opacity: 0.6;
+  animation: gfDeepDrift 90s linear infinite;
+}
+
+@keyframes gfDeepDrift {
+  to { background-position: 400px -260px; }
+}
+
+/* ─── Nebula ─────────────────────────────────────────────────────────────── */
+
+/* Held at zero until stage 4: the brief keeps the screen at pure #0a0a0f
+   until the purple activates, so the depth arrives with the power. */
+.gf-nebula {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 38% at 28% 32%, rgba(139, 92, 246, 0.22), transparent 70%),
+    radial-gradient(ellipse 46% 40% at 74% 68%, rgba(109, 62, 216, 0.2), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(76, 40, 160, 0.16), transparent 75%);
+  opacity: 0;
+  animation: gfNebula var(--gf-seq) linear var(--gf-delay) forwards,
+             gfNebulaRoll 46s ease-in-out infinite;
+}
+
+/* Peaks well under 1. At full strength the wash lifts the whole frame to
+   lavender, which costs the sigil its contrast at exactly the moment it is
+   supposed to be the brightest thing on screen. */
+@keyframes gfNebula {
+  0%, 40% { opacity: 0; }
+  55%     { opacity: 0.34; }
+  72%     { opacity: 0.5; }
+  86%     { opacity: 0.6; }
+  100%    { opacity: 0; }
+}
+
+@keyframes gfNebulaRoll {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50%      { transform: scale(1.12) translate(-2%, 1.5%); }
+}
+
 /* ─── Particle field ─────────────────────────────────────────────────────── */
 
-.gf-particles {
+.gf-particles,
+.gf-embers {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -155,6 +249,7 @@
   width: 3px;
   height: 3px;
   background: var(--gf-lit);
+  box-shadow: 0 0 6px var(--gf-lit);
   animation: gfInrush var(--gf-seq) linear calc(var(--gf-delay) + var(--pd, 0s)) forwards;
 }
 
@@ -165,12 +260,52 @@
   100%    { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 }
 
+/* ─── Embers ─────────────────────────────────────────────────────────────── */
+
+/*
+ * Sparks coming off the forge from stage 5. Purple and white, not orange: the
+ * brief holds the whole scene to #8B5CF6 plus white for the flash, so these
+ * read as something cooling in a magical furnace rather than a literal one.
+ */
+.gf-ember {
+  position: absolute;
+  bottom: 22%;
+  width: calc(var(--er, 1.4px) * 2);
+  height: calc(var(--er, 1.4px) * 2);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--gf-pale) 40%, var(--gf-purple) 100%);
+  box-shadow: 0 0 8px var(--gf-lit), 0 0 16px rgba(139, 92, 246, 0.6);
+  opacity: 0;
+  animation: gfEmber var(--ps, 4s) ease-out calc(var(--gf-delay) + var(--pd, 0s)) infinite;
+}
+
+@keyframes gfEmber {
+  0%   { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  12%  { opacity: 0.95; }
+  70%  { opacity: 0.8; }
+  100% { transform: translate(var(--sway, 12px), -46vh) scale(1.1); opacity: 0; }
+}
+
+/* The embers only exist once the forge is lit; before stage 5 the wrapper is
+   simply not painted. */
+.gf-embers {
+  opacity: 0;
+  animation: gfEmbersIn var(--gf-seq) linear var(--gf-delay) forwards;
+}
+
+@keyframes gfEmbersIn {
+  0%, 52% { opacity: 0; }
+  60%     { opacity: 1; }
+  92%     { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
 /* ─── The sigil ──────────────────────────────────────────────────────────── */
 
 .gf-sigil {
   position: relative;
-  width: min(300px, 62vw);
-  height: min(300px, 62vw);
+  width: min(320px, 66vw);
+  height: min(320px, 66vw);
   display: grid;
   place-items: center;
   animation: gfFlight var(--gf-seq) var(--gf-ease) var(--gf-delay) forwards;
@@ -182,12 +317,12 @@
  * so its own centre already sits at the viewport centre.
  */
 @keyframes gfFlight {
-  0%, 71% { transform: translate(0, 0) scale(1); }
-  74%     { transform: translate(-5px, 3px) scale(1.02); }
-  78%     { transform: translate(4px, -4px) scale(1.03); }
-  82%     { transform: translate(-3px, 2px) scale(1.02); }
-  86%     { transform: translate(0, 0) scale(1.06); }
-  100%    { transform: translate(calc(var(--gf-logo-x) - 50vw), calc(var(--gf-logo-y) - 50vh)) scale(0.107); }
+  0%, 71% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  74%     { transform: translate(-6px, 4px) scale(1.02) rotate(-0.6deg); }
+  78%     { transform: translate(5px, -5px) scale(1.03) rotate(0.7deg); }
+  82%     { transform: translate(-4px, 2px) scale(1.02) rotate(-0.4deg); }
+  86%     { transform: translate(0, 0) scale(1.07) rotate(0deg); }
+  100%    { transform: translate(calc(var(--gf-logo-x) - 50vw), calc(var(--gf-logo-y) - 50vh)) scale(0.1) rotate(0deg); }
 }
 
 /*
@@ -207,10 +342,10 @@
 @keyframes gfGlow {
   0%, 24% { filter: none; }
   40%     { filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.75)); }
-  55%     { filter: drop-shadow(0 0 20px var(--gf-purple)); }
-  72%     { filter: drop-shadow(0 0 32px var(--gf-lit)); }
-  86%     { filter: drop-shadow(0 0 44px #fff); }
-  100%    { filter: drop-shadow(0 0 16px var(--gf-purple)); }
+  55%     { filter: drop-shadow(0 0 22px var(--gf-purple)) drop-shadow(0 0 48px rgba(139, 92, 246, 0.45)); }
+  72%     { filter: drop-shadow(0 0 36px var(--gf-lit)) drop-shadow(0 0 80px rgba(167, 139, 250, 0.6)); }
+  86%     { filter: drop-shadow(0 0 52px #fff) drop-shadow(0 0 110px var(--gf-lit)); }
+  100%    { filter: drop-shadow(0 0 18px var(--gf-purple)); }
 }
 
 /* ─── Layer 1: X Sigil ───────────────────────────────────────────────────── */
@@ -225,26 +360,77 @@
 }
 
 @keyframes gfXTrace {
-  0%, 11% { stroke-dashoffset: 1180; fill: rgba(139, 92, 246, 0); stroke: var(--gf-purple); }
-  40%     { stroke-dashoffset: 0; fill: rgba(139, 92, 246, 0.1); }
-  55%     { fill: rgba(139, 92, 246, 0.22); stroke: var(--gf-lit); }
-  72%     { fill: rgba(139, 92, 246, 0.42); stroke: var(--gf-pale); }
-  86%     { fill: rgba(196, 181, 253, 0.62); stroke: #fff; }
-  100%    { stroke-dashoffset: 0; fill: rgba(139, 92, 246, 0.34); stroke: var(--gf-lit); }
+  0%, 11% { stroke-dashoffset: 1180; fill: rgba(29, 18, 54, 0); stroke: var(--gf-purple); }
+  40%     { stroke-dashoffset: 0; fill: rgba(29, 18, 54, 0.92); }
+  55%     { fill: rgba(45, 26, 86, 0.95); stroke: var(--gf-lit); }
+  72%     { fill: rgba(86, 52, 160, 0.95); stroke: var(--gf-pale); }
+  86%     { fill: rgba(167, 139, 250, 0.9); stroke: #fff; }
+  100%    { stroke-dashoffset: 0; fill: rgba(76, 46, 140, 0.95); stroke: var(--gf-lit); }
 }
 
-.gf-x__cracks {
+/* Bevel. The top and left edges catch the light; the bottom and right fall
+   away into the stone. */
+.gf-x__lit,
+.gf-x__dim {
+  fill: none;
+  stroke-width: 2.6;
+  opacity: 0;
+  animation: gfBevel var(--gf-seq) ease-out var(--gf-delay) forwards;
+}
+
+.gf-x__lit { stroke: rgba(196, 181, 253, 0.95); }
+.gf-x__dim { stroke: rgba(6, 3, 16, 0.95); }
+
+@keyframes gfBevel {
+  0%, 24% { opacity: 0; }
+  40%     { opacity: 0.7; }
+  72%     { opacity: 1; }
+  100%    { opacity: 0.85; }
+}
+
+.gf-x__facet {
+  fill: none;
+  stroke: rgba(139, 92, 246, 0.5);
+  stroke-width: 1;
+  transform-origin: 200px 200px;
+  transform: scale(0.9);
+  opacity: 0;
+  animation: gfFacet var(--gf-seq) ease-out var(--gf-delay) forwards;
+}
+
+@keyframes gfFacet {
+  0%, 24% { opacity: 0; }
+  40%     { opacity: 0.5; }
+  72%     { opacity: 0.9; }
+  100%    { opacity: 0.7; }
+}
+
+/*
+ * The fracture network. This is what the reference art is actually built on:
+ * the X is dark stone, and what makes it read as alive is the light running
+ * through the cracks rather than the surface being bright.
+ */
+.gf-crack {
+  fill: none;
   stroke: var(--gf-pale);
-  stroke-width: 1.4;
-  stroke-dasharray: 260;
-  animation: gfCracks var(--gf-seq) ease-out var(--gf-delay) forwards;
+  stroke-width: 2.2;
+  stroke-dasharray: 200;
+  opacity: 0;
+  animation: gfCrack var(--gf-seq) ease-out
+             calc(var(--gf-delay) + var(--ri, 0) * var(--gf-stagger)) forwards;
 }
 
-@keyframes gfCracks {
-  0%, 24% { stroke-dashoffset: 260; opacity: 0; }
-  55%     { stroke-dashoffset: 0; opacity: 0.7; }
+.gf-crack--major { stroke-width: 3.4; }
+.gf-crack--hair  { stroke-width: 1.3; stroke: rgba(196, 181, 253, 0.8); }
+
+@keyframes gfCrack {
+  0%, 22% { stroke-dashoffset: 200; opacity: 0; }
+  38%     { stroke-dashoffset: 0; opacity: 0.55; }
+  55%     { opacity: 0.85; }
+  62%     { opacity: 0.45; }
   72%     { opacity: 1; stroke: #fff; }
-  100%    { stroke-dashoffset: 0; opacity: 0.8; }
+  86%     { opacity: 1; stroke: #fff; }
+  100%    { stroke-dashoffset: 0; opacity: 0.9; }
 }
 
 /* ─── Layer 2: Rune Circle ───────────────────────────────────────────────── */
@@ -252,47 +438,74 @@
 /* The band and the glyphs counter-rotate so the ring reads as carved stone
    turning, rather than a texture sliding across it. */
 .layer-runes__band   { transform-origin: 200px 200px; animation: gfSpinB 46s linear infinite; }
+.layer-runes__stone  { filter: url(#gfCarve); }
 .layer-runes__glyphs { transform-origin: 200px 200px; animation: gfSpinA 30s linear infinite; }
+.layer-runes__ticks  { transform-origin: 200px 200px; animation: gfSpinB 62s linear infinite; }
 
 @keyframes gfSpinA { to { transform: rotate(360deg); } }
 @keyframes gfSpinB { to { transform: rotate(-360deg); } }
 
-.gf-band       { stroke: rgba(139, 92, 246, 0.13); stroke-width: 30; }
+/*
+ * The disc has to be near-opaque, not a tint. The scene glow is a drop-shadow
+ * on the whole <svg>, so a translucent disc lets its own purple halo through
+ * from behind and the interior of the ring washes out to lavender — which is
+ * the opposite of the dark well the X is supposed to sit in.
+ */
+.gf-band       { stroke: rgba(139, 92, 246, 0.16); stroke-width: 30; fill: #0b0718; }
 .gf-band__edge { stroke: var(--gf-purple); stroke-width: 1.6; }
-.gf-rune       { stroke: var(--gf-lit); stroke-width: 1.8; }
+.gf-band__grain {
+  stroke: rgba(196, 181, 253, 0.5);
+  stroke-width: 30;
+  filter: url(#gfGrain);
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+.gf-tick { stroke: rgba(167, 139, 250, 0.55); stroke-width: 1.2; }
+
+/*
+ * Runes ignite one after another around the circle. --ri is the seat index,
+ * written as an inline style by the template; --gf-stagger is the gap, which
+ * the short cut zeroes so the sweep does not run off the end of the shortened
+ * window.
+ */
+.gf-rune {
+  stroke: var(--gf-lit);
+  stroke-width: 1.8;
+  opacity: 0;
+  animation: gfRuneIgnite var(--gf-seq) ease-out
+             calc(var(--gf-delay) + var(--ri, 0) * var(--gf-stagger)) forwards;
+}
+
+@keyframes gfRuneIgnite {
+  0%, 20% { opacity: 0; stroke: var(--gf-purple); }
+  30%     { opacity: 1; stroke: #fff; }
+  38%     { opacity: 0.8; stroke: var(--gf-lit); }
+  72%     { opacity: 1; stroke: var(--gf-pale); }
+  100%    { opacity: 1; stroke: var(--gf-lit); }
+}
 
 /* ─── Layer 3: Compass Points ────────────────────────────────────────────── */
 
 .gf-compass {
   stroke: var(--gf-purple);
   stroke-width: 1.6;
-  fill: rgba(139, 92, 246, 0.18);
+  fill: rgba(139, 92, 246, 0.22);
   opacity: 0;
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation-duration: var(--gf-seq);
-  animation-timing-function: var(--gf-ease);
-  animation-delay: var(--gf-delay);
-  animation-fill-mode: forwards;
+  /* 200ms between marks — the brief's N → E → S → W cadence — expressed as a
+     multiple of the shared stagger so the short cut zeroes it too. */
+  animation: gfCompassIn var(--gf-seq) var(--gf-ease)
+             calc(var(--gf-delay) + var(--ri, 0) * var(--gf-stagger) * 4.8) forwards;
 }
 
-/*
- * Stage 3 lights them N → E → S → W, 200ms apart — 200ms being 6.9% of the
- * sequence, so each mark's ramp is offset by that much.
- *
- * Four keyframes rather than one keyframe with four animation-delays: the
- * repeat-visit cut is itself a negative animation-delay, and a per-mark delay
- * would compound with it and knock the marks out of the shortened window.
- */
-.gf-compass--n { animation-name: gfCompassN; }
-.gf-compass--e { animation-name: gfCompassE; }
-.gf-compass--s { animation-name: gfCompassS; }
-.gf-compass--w { animation-name: gfCompassW; }
-
-@keyframes gfCompassN { 0%, 24% { opacity: 0; transform: scale(0.6); } 31% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes gfCompassE { 0%, 31% { opacity: 0; transform: scale(0.6); } 38% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes gfCompassS { 0%, 38% { opacity: 0; transform: scale(0.6); } 45% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes gfCompassW { 0%, 45% { opacity: 0; transform: scale(0.6); } 52% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gfCompassIn {
+  0%, 24% { opacity: 0; transform: scale(0.5) rotate(-25deg); }
+  32%     { opacity: 1; transform: scale(1.15) rotate(3deg); }
+  38%     { opacity: 1; transform: scale(1) rotate(0deg); }
+  100%    { opacity: 1; transform: scale(1) rotate(0deg); }
+}
 
 .gf-compass__pip { fill: var(--gf-lit); stroke: none; }
 .gf-compass__dot { fill: var(--gf-purple); stroke: none; }
@@ -301,9 +514,10 @@
 
 .gf-ring { stroke: var(--gf-purple); stroke-width: 1; transform-origin: 200px 200px; }
 
-.gf-ring--1 { stroke-dasharray: 3 9;  animation: gfSpinA 38s linear infinite; }
-.gf-ring--2 { stroke-dasharray: 1 6;  animation: gfSpinB 26s linear infinite; opacity: 0.7; }
-.gf-ring--3 { stroke-dasharray: 6 10; animation: gfSpinA 14s linear infinite; stroke: var(--gf-lit); }
+.gf-ring--1 { stroke-dasharray: 3 9;   animation: gfSpinA 38s linear infinite; }
+.gf-ring--2 { stroke-dasharray: 1 6;   animation: gfSpinB 26s linear infinite; opacity: 0.7; }
+.gf-ring--3 { stroke-dasharray: 6 10;  animation: gfSpinA 14s linear infinite; stroke: var(--gf-lit); }
+.gf-ring--4 { stroke-dasharray: 2 14;  animation: gfSpinB 34s linear infinite; opacity: 0.55; }
 
 /* ─── Layer 4: Center Core ───────────────────────────────────────────────── */
 
@@ -333,8 +547,24 @@
   0%, 40% { opacity: 0; transform: scale(0.3); }
   55%     { opacity: 0.35; transform: scale(0.8); }
   72%     { opacity: 0.7; transform: scale(1.3); }
-  86%     { opacity: 1; transform: scale(2.2); }
+  86%     { opacity: 1; transform: scale(2.3); }
   100%    { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* The four-point star is the tell that a light source is blowing out, rather
+   than merely being bright. */
+.gf-core__star {
+  fill: #fff;
+  transform-origin: 200px 200px;
+  opacity: 0;
+  animation: gfStarFlare var(--gf-seq) ease-in-out var(--gf-delay) forwards;
+}
+
+@keyframes gfStarFlare {
+  0%, 55% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  72%     { opacity: 0.55; transform: scale(0.8) rotate(22deg); }
+  86%     { opacity: 1; transform: scale(1.35) rotate(45deg); }
+  100%    { opacity: 0; transform: scale(0.5) rotate(60deg); }
 }
 
 /* ─── Stage 5: lightning arcs ────────────────────────────────────────────── */
@@ -355,6 +585,44 @@
   72%     { opacity: 0.3; }
   76%     { opacity: 1; stroke: #fff; }
   100%    { opacity: 0; stroke-dashoffset: 0; }
+}
+
+/* ─── Stage 5+: volumetric shafts ────────────────────────────────────────── */
+
+.gf-rays {
+  fill: rgba(167, 139, 250, 0.5);
+  transform-origin: 200px 200px;
+  opacity: 0;
+  animation: gfRays var(--gf-seq) linear var(--gf-delay) forwards,
+             gfSpinA 70s linear infinite;
+}
+
+@keyframes gfRays {
+  0%, 50% { opacity: 0; }
+  62%     { opacity: 0.25; }
+  72%     { opacity: 0.5; }
+  86%     { opacity: 0.85; }
+  100%    { opacity: 0; }
+}
+
+/* ─── Stage 6: shockwaves ────────────────────────────────────────────────── */
+
+.gf-shock__ring {
+  fill: none;
+  stroke: var(--gf-pale);
+  stroke-width: 2;
+  transform-origin: 200px 200px;
+  opacity: 0;
+}
+
+.gf-shock__ring--1 { animation: gfShock var(--gf-seq) ease-out var(--gf-delay) forwards; }
+.gf-shock__ring--2 { animation: gfShock var(--gf-seq) ease-out calc(var(--gf-delay) + 110ms) forwards; }
+.gf-shock__ring--3 { animation: gfShock var(--gf-seq) ease-out calc(var(--gf-delay) + 220ms) forwards; }
+
+@keyframes gfShock {
+  0%, 70% { opacity: 0; transform: scale(0.1); stroke-width: 3; }
+  74%     { opacity: 0.9; }
+  100%    { opacity: 0; transform: scale(6); stroke-width: 0.4; }
 }
 
 /* ─── Stage 6: beams from the compass points ─────────────────────────────── */
@@ -378,22 +646,38 @@
 .gf-flare {
   position: absolute;
   top: 50%;
-  left: -30%;
-  width: 160%;
+  left: -40%;
+  width: 180%;
   height: 3px;
   margin-top: -1.5px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.5) 22%, #fff 50%, rgba(167, 139, 250, 0.5) 78%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.5) 20%, #fff 50%, rgba(167, 139, 250, 0.5) 80%, transparent);
   opacity: 0;
   animation: gfFlare var(--gf-seq) var(--gf-ease) var(--gf-delay) forwards;
+}
+
+/* A second, softer flare rotated off-axis — real anamorphic streaks are never
+   a single clean line. */
+.gf-flare--ghost {
+  height: 12px;
+  margin-top: -6px;
+  filter: blur(6px);
+  opacity: 0;
+  animation: gfFlareGhost var(--gf-seq) var(--gf-ease) var(--gf-delay) forwards;
 }
 
 @keyframes gfFlare {
   0%, 72% { opacity: 0; transform: scaleX(0) scaleY(0.4); }
   80%     { opacity: 0.85; transform: scaleX(0.8) scaleY(1); }
-  86%     { opacity: 1; transform: scaleX(1) scaleY(2.2); }
+  86%     { opacity: 1; transform: scaleX(1) scaleY(2.4); }
   93%     { opacity: 0.4; transform: scaleX(1) scaleY(0.6); }
   100%    { opacity: 0; transform: scaleX(1) scaleY(0.2); }
+}
+
+@keyframes gfFlareGhost {
+  0%, 72% { opacity: 0; transform: scaleX(0) rotate(-8deg); }
+  86%     { opacity: 0.55; transform: scaleX(1) rotate(-8deg); }
+  100%    { opacity: 0; transform: scaleX(1.1) rotate(-8deg); }
 }
 
 /* ─── Stage 5: screen-edge vignette ──────────────────────────────────────── */
@@ -402,15 +686,15 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 62% 58% at 50% 50%, transparent 40%, rgba(139, 92, 246, 0.14) 78%, rgba(139, 92, 246, 0.34) 100%);
+  background: radial-gradient(ellipse 62% 58% at 50% 50%, transparent 40%, rgba(139, 92, 246, 0.16) 78%, rgba(139, 92, 246, 0.38) 100%);
   opacity: 0;
   animation: gfVignette var(--gf-seq) linear var(--gf-delay) forwards;
 }
 
 @keyframes gfVignette {
-  0%, 55% { opacity: 0; }
+  0%, 55%  { opacity: 0; }
   72%, 86% { opacity: 1; }
-  100%    { opacity: 0; }
+  100%     { opacity: 0; }
 }
 
 /* ─── Stage 7: the flash ─────────────────────────────────────────────────── */
@@ -437,7 +721,7 @@
 .loader-text {
   position: absolute;
   left: 50%;
-  top: calc(50% + min(190px, 40vw));
+  top: calc(50% + min(200px, 42vw));
   transform: translateX(-50%);
   font-family: 'Orbitron', 'Inter', sans-serif;
   font-size: 0.7rem;
@@ -450,9 +734,9 @@
 }
 
 @keyframes gfReadout {
-  0%       { opacity: 0; }
-  24%      { opacity: 0.2; }
-  72%      { opacity: 0.32; }
+  0%        { opacity: 0; }
+  24%       { opacity: 0.2; }
+  72%       { opacity: 0.32; }
   86%, 100% { opacity: 0; }
 }
 
@@ -464,8 +748,15 @@
  * prerender. One negative delay on the host cascades to every animation in the
  * subtree via var(--gf-delay), so the whole sequence starts at stage 5 and the
  * repeat visitor gets 1.3s instead of 2.9s. No second set of keyframes.
+ *
+ * --gf-stagger goes to zero with it: the per-element offsets are added to the
+ * delay, and on the shortened window they would push the tail of each sweep
+ * past the end.
  */
-:host-context(html.gf-boot-short) { --gf-delay: -1.6s; }
+:host-context(html.gf-boot-short) {
+  --gf-delay: -1.6s;
+  --gf-stagger: 0ms;
+}
 
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */
 
@@ -481,14 +772,21 @@
 /* ─── Mobile ─────────────────────────────────────────────────────────────── */
 
 /*
- * Per the project's mobile budget, drop the drop-shadow filter — the expensive
- * part of this scene on a DPR-3 phone — and thin the particle field. `filter`
- * is animated by gfGlow, and a normal declaration would lose to a running
- * animation; an `!important` one outranks it, which is what lets this be a
- * two-line override instead of a duplicate set of filter-free keyframes.
+ * The budget here is GPU time, not bytes. Filters are what cost on a DPR-3
+ * phone, so the scene glow, the carve displacement and the grain all come off;
+ * the geometry, the ignition sweep, the shockwaves and the flare all stay.
+ *
+ * `filter` is animated by gfGlow, and a normal declaration would lose to a
+ * running animation — an `!important` one outranks it, which is what lets this
+ * be a short override instead of a duplicate set of filter-free keyframes.
  */
 @media (max-width: 768px) {
   .godforge-sigil { filter: none !important; }
+  .layer-runes__stone { filter: none !important; }
+  .gf-band__grain { display: none; }
+  .gf-deep--far { display: none; }
   .gf-particle:nth-child(n + 6):nth-child(-n + 9) { display: none; }
+  .gf-ember:nth-child(n + 7) { display: none; }
+  .gf-flare--ghost { display: none; }
   .gf-flare { height: 2px; }
 }
