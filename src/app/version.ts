@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.47.0',
+  version: '2.48.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Tribute',
+  codename: 'Anvil',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.48.0',
+    codename: 'Anvil',
+    date: '2026-08-13',
+    highlights: [
+      'The Rune Forge opened at /rune-forge. Ten Gold a strike buys one of twenty-five runes across seven tiers, from Ash at roughly one strike in eight down to Void at one in two thousand',
+      'Six Runewords consume the runes they name for a permanent bonus — First Light pays +25% Gold, Godforge Mastery +100% to Gold, quests and XP, and Breath of the Void triples all income but wants the Void rune itself',
+      'The bonuses are real income, not a trophy shelf: they join the same multiplier chain the upgrades, the streak, the shards and the Fragment already run through, and they are priced from the ledger so offline settlement pays them too',
+      'Eight new achievements on the Codex wall, two of them Mythic because they cannot be reached without the rarest rune in the table',
+      'Every rune carries a line of codex lore, and the anvil is heard as well as seen — the strike pitches up with the tier and everything above Epic adds a sub-bass voice',
+    ]
+  },
   {
     version: '2.47.0',
     codename: 'Tribute',
