@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.33.0',
+  version: '2.34.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The True Face',
+  codename: 'The Engine of Creation',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,22 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.34.0',
+    codename: 'The Engine of Creation',
+    date: '2026-08-12',
+    highlights: [
+      'The homepage is now the Godforge entrance from the concept art: the sigil scene behind everything, the wordmark set at viewport scale in serif, a status panel on the left reading the forge\'s own numbers and a welcome panel on the right reading yours',
+      'The sigil scene is the mark from the loading sheet, built in CSS — rune circle, four compass points, the crossed X and the core where the arms meet. A 1536px render of the same image is roughly 2MB and would have been the largest asset on the site by an order of magnitude',
+      'The navbar carries the XSANTCASTX lockup over BUILD · FORGE · OWN, seven halls across the middle, and Gold, Essence and rank as pills on the right',
+      'Phones get a five-tab bar fixed to the bottom — Home, Tools, Arena, Codex, Profile — and the hamburger now opens a tome of everything secondary, grouped Main / Developer / More, closing on the Godforge mark and the social row',
+      'Five counters below the fold: Gold, Essence, Aether and Nox all resolve to the Market, which is where each is actually spent. The Relic Forge is marked sealed rather than linked — there is no Relic Dust ledger anywhere in the app yet, and a card that opens a page with nothing to buy is worse than one that says so',
+      'The creed row and the closing line: Real Tools, Real Impact, Real Community, over "more than a platform — a weapon for creators"',
+      'The footer closes on FORGE × PLAY × BUILD × TOGETHER, the wordmark, and "the next thing is yours"',
+      'Projects Live counts the same array the /projects page renders, lifted into projects.data.ts — hardcoding it on the homepage would have drifted the first time a project was added',
+      'The tome sits above the command bar rather than under it. At the old z-index the bar\'s hamburger painted directly over the tome\'s own close button and swallowed every tap on it'
+    ]
+  },
   {
     version: '2.33.0',
     codename: 'The True Face',
