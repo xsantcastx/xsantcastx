@@ -10,6 +10,7 @@ import { AffiliateCTAComponent } from '../shared/affiliate/affiliate-cta.compone
 import { CarbonAdComponent } from '../shared/carbon-ad/carbon-ad.component';
 import { SponsorSlotComponent } from '../shared/sponsor-slot/sponsor-slot.component';
 import { ToolLoreComponent } from '../shared/lore/tool-lore.component';
+import { HouseAdComponent } from '../shared/ads/house-ad.component';
 
 /**
  * ToolsSharedModule — declares + exports the shared presentational components
@@ -28,7 +29,9 @@ import { ToolLoreComponent } from '../shared/lore/tool-lore.component';
     CarbonAdComponent,
     SponsorSlotComponent,
   ],
-  imports: [CommonModule, FormsModule, RouterModule],
+  // HouseAdComponent is standalone, so it is imported rather than declared.
+  // CarbonAdComponent's template uses it for the no-network fallback.
+  imports: [CommonModule, FormsModule, RouterModule, HouseAdComponent],
   exports: [
     CommonModule,
     FormsModule,

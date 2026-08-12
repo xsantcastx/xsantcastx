@@ -43,6 +43,9 @@ export class TranslationService {
     'gfnav.warTable':     { en: 'War Table',     es: 'Mesa de guerra' },
     'gfnav.quests':       { en: 'Quests',        es: 'Misiones' },
     'gfnav.sponsors':     { en: 'Sponsors',      es: 'Patrocinadores' },
+    // Left untranslated in both languages on purpose — "Pro" is the product
+    // name, and it is what the badge, the title prefix and the receipt all say.
+    'gfnav.pro':          { en: 'Pro',           es: 'Pro' },
     'gfnav.live':         { en: 'Live',          es: 'En vivo' },
     'gfnav.donate':       { en: 'Donate',        es: 'Donar' },
     'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },

@@ -1,0 +1,92 @@
+/* House ad — shown when no ad network is configured (see ad-config.ts).
+   Sells the slot itself rather than sitting empty.
+
+   Deliberately quieter than a real ad: violet on near-black, no image, no
+   motion beyond the eyebrow pulse. It has to be ignorable by the visitors who
+   are not buying advertising, or it is worse than the empty box it replaced. */
+
+:host {
+  display: block;
+}
+
+.house-ad {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 15px;
+  text-decoration: none;
+  color: inherit;
+  border-left: 2px solid rgba(139, 92, 246, 0.55);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.house-ad:hover,
+.house-ad:focus-visible {
+  background: rgba(139, 92, 246, 0.06);
+  border-left-color: rgba(167, 139, 250, 0.9);
+}
+
+.house-ad:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.9);
+  outline-offset: -2px;
+}
+
+.house-ad__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.85);
+}
+
+.house-ad__pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a78bfa;
+  box-shadow: 0 0 6px rgba(167, 139, 250, 0.9);
+  animation: houseAdPulse 3s ease-in-out infinite;
+}
+
+.house-ad__title {
+  font-family: var(--font-display, 'Orbitron', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(237, 233, 254, 0.96);
+  letter-spacing: 0.01em;
+}
+
+.house-ad__body {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(214, 221, 235, 0.62);
+}
+
+.house-ad__cta {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #a78bfa;
+}
+
+@keyframes houseAdPulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.8); }
+}
+
+/* CLAUDE.md §7.2 — a static end state, not an absent animation. */
+@media (prefers-reduced-motion: reduce) {
+  .house-ad__pulse { animation: none; }
+}
+
+@media (max-width: 768px) {
+  .house-ad {
+    padding: 12px 14px 13px;
+  }
+  .house-ad__title { font-size: 14px; }
+  .house-ad__body  { font-size: 11px; }
+}

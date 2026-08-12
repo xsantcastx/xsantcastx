@@ -41,6 +41,7 @@ import { QuestWiringService } from '../quests/quest-wiring.service';
 import { LoreService } from '../lore/lore.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { tierForEgg } from '../rarity/rarity.model';
+import { ProService } from '../pro/pro.service';
 
 @Injectable({ providedIn: 'root' })
 export class EconomyWiringService {
@@ -51,6 +52,7 @@ export class EconomyWiringService {
   private readonly questWiring = inject(QuestWiringService);
   private readonly lore = inject(LoreService);
   private readonly eggs = inject(EasterEggService);
+  private readonly pro = inject(ProService);
 
   private started = false;
 
@@ -144,10 +146,16 @@ export class EconomyWiringService {
       // at the moment of the award, so the blade keeps pointing at whichever
       // realm the visitor has been neglecting rather than at a fixed one.
       const weaker = ctx.energy === (snap.aether <= snap.nox ? 'aether' : 'nox');
+      // The Pro Pack's permanent 2x composes here rather than in its own call
+      // to `setMultiplierSource`. That method replaces the source instead of
+      // composing with it (see its doc comment), so a second caller would have
+      // silently deleted the enchantments, the Mirrorblade, the Relic and the
+      // Fragment — a bug that only shows up as "my artifacts stopped working"
+      // for the subset of visitors who paid.
       return xpMultiplier(e, Date.now(), {
         questReward: ctx.type === 'quest',
         weakerEnergy: weaker,
-      });
+      }) * this.pro.xpMultiplier();
     });
 
     // The Codex Solarii.

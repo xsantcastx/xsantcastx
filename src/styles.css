@@ -2360,6 +2360,19 @@ html[data-cos-prefix] .xpb__panel-title::before {
   color: #C9A84C;
 }
 
+/* The "Pro Convergent" badge.
+   No new markup: the Pro Pack equips the `pro` prefix variant, so the rank
+   chip already reads "Pro Convergent" (or "Pro Ashwalker", or whatever rank the
+   buyer holds) through the rule above. This only makes that prefix look bought
+   rather than earned — brighter gold than the Gold-purchasable prefixes, with a
+   glow none of them get. */
+html[data-cos-prefix="pro"] .xpb__title::before,
+html[data-cos-prefix="pro"] .xpb__panel-title::before {
+  color: #F5C451;
+  text-shadow: 0 0 10px rgba(245, 196, 81, 0.75);
+  font-weight: 700;
+}
+
 /* ─── Theme Variant ──────────────────────────────────────────────────────────
    Repoints the two brand variables the whole site already draws from, rather
    than adding a tint layer. Zero new composited surfaces — which matters, since
@@ -2393,6 +2406,39 @@ html[data-cos-xpbar="molten"] .xpb__rank { box-shadow: 0 0 14px rgba(232, 117, 4
 html[data-cos-xpbar="void"] .xpb__fill { background: linear-gradient(90deg, #2a1a4d, #7b61ff 60%, #ff6dd7); }
 html[data-cos-xpbar="void"] .xpb__track { background: rgba(20, 8, 40, .9); }
 html[data-cos-xpbar="void"] .xpb__rank { box-shadow: 0 0 14px rgba(123, 97, 255, .85); }
+
+/* Golden — Pro Pack exclusive. Richer than Ornate on purpose: Ornate is the
+   5,000-Gold variant anyone can grind to, so the paid one has to read as
+   different at a glance rather than as a slightly warmer version of it. The
+   sheen sweep is what does that; it is the only xpbar variant that moves. */
+html[data-cos-xpbar="golden"] .xpb__track {
+  background: rgba(28, 20, 6, .92);
+  border: 1px solid rgba(245, 196, 81, .7);
+  box-shadow: 0 0 14px -3px rgba(245, 196, 81, .85), inset 0 0 8px rgba(245, 196, 81, .25);
+}
+html[data-cos-xpbar="golden"] .xpb__fill {
+  background: linear-gradient(90deg, #8a6212, #F5C451 45%, #fff3c4 70%, #F5C451);
+  background-size: 200% 100%;
+  animation: proGoldSheen 4.5s ease-in-out infinite;
+}
+html[data-cos-xpbar="golden"] .xpb__rank {
+  box-shadow: 0 0 16px rgba(245, 196, 81, .95);
+}
+
+@keyframes proGoldSheen {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Vestibular safety: the sweep is decorative, so it parks at the base position
+   rather than falling back to "no gradient" (CLAUDE.md §7.2 — a static end
+   state, not an absent one). */
+@media (prefers-reduced-motion: reduce) {
+  html[data-cos-xpbar="golden"] .xpb__fill {
+    animation: none;
+    background-position: 0% 50%;
+  }
+}
 
 /* ─── Achievement Frame ──────────────────────────────────────────────────────
    Applied to found cards only. A locked card already carries the tier border

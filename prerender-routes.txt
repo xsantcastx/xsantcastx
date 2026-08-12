@@ -4,6 +4,7 @@
 /blueprint
 /quests
 /market
+/pro
 /sponsors
 /codex
 /forge-keeper
