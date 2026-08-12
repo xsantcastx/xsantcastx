@@ -244,6 +244,9 @@ export class CodexComponent implements OnInit, OnDestroy {
     // microtask, i.e. after Angular has finished comparing this component's
     // first render against the server's HTML.
     await this.eggs.init();
+    // The calendar and the snapshot below are one-shot reads of the ledger, so
+    // they have to wait for storage rather than rendering an empty year.
+    await this.xp.init();
     this.hydrated = true;
 
     this.achievements = this.achievements.map(a => ({
