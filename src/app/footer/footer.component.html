@@ -34,22 +34,27 @@
     </nav>
 
     <!--
-      The second row is everything the command bar and the tome stopped
-      carrying. Services, Projects, Contact, Live, Guestbook and Quests all
-      still have routes and all still work; they are simply not what this site
-      is about any more, so the footer is where they live. Deliberately quieter
-      than the row above — same markup, dimmer type.
+      The second row is the quieter half of the tome — same markup, dimmer type.
+      It used to be where the portfolio pages were parked once they left the
+      command bar; the full migration deleted those outright, so what is left
+      here is Godforge surfaces that simply are not top-six.
     -->
     <nav class="gffoot__links gffoot__links--minor" aria-label="More">
-      <a routerLink="/skills">{{ translate('gfnav.skills') }}</a>
-      <a routerLink="/projects">{{ translate('gfnav.projects') }}</a>
-      <a routerLink="/live">{{ translate('gfnav.live') }}</a>
       <a routerLink="/quests">{{ translate('gfnav.quests') }}</a>
-      <a routerLink="/guestbook">{{ translate('gfnav.guestbook') }}</a>
+      <a routerLink="/live">{{ translate('gfnav.live') }}</a>
       <a routerLink="/sponsors">{{ translate('gfnav.sponsors') }}</a>
-      <a routerLink="/contact">{{ translate('gfnav.contact') }}</a>
       <a routerLink="/donate">{{ translate('gfnav.donate') }}</a>
     </nav>
+
+    <!--
+      The maker's mark carries the only contact route that survives the
+      migration. The /contact page is gone, but a product still needs a way to
+      be reached, so the address moves here as a plain mailto — no form, no
+      Cloud Function, nothing to keep alive.
+    -->
+    <p class="gffoot__reach">
+      <a href="mailto:xsantcastx&#64;xsantcastx.com">xsantcastx&#64;xsantcastx.com</a>
+    </p>
 
     <p class="gffoot__mark">{{ translate('gffoot.forgedBy') }}</p>
   </div>

@@ -110,11 +110,11 @@ export class AdminDataService {
    * ───────────────────────────────────────────────────────────────────────────
    * WHY THE DASHBOARD IS THE WORST OFFENDER PER LOAD
    * ───────────────────────────────────────────────────────────────────────────
-   * Three of these panels are whole-collection scans: every tool-usage counter,
-   * every easter egg, every guestbook signature. There is no `limit` that would
-   * help, because the panels are totals — they have to see every document to
-   * add them up. One dashboard open is therefore several hundred reads, and it
-   * used to be several hundred reads *per render*.
+   * Two of these panels are whole-collection scans: every tool-usage counter and
+   * every easter egg. There is no `limit` that would help, because the panels
+   * are totals — they have to see every document to add them up. One dashboard
+   * open is therefore several hundred reads, and it used to be several hundred
+   * reads *per render*.
    *
    * Five minutes, with a Refresh button next to the timestamp, is the shape that
    * fits: the numbers move slowly, the person reading them knows when they want
@@ -305,19 +305,6 @@ export class AdminDataService {
     } catch (err) {
       this.degrade(err, false, 'setSuggestionReview');
       return false;
-    }
-  }
-
-  /** Guestbook signatures — public read, so this always resolves. */
-  async guestbookCount(force = false): Promise<number | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('guestbook-count', async () => {
-      const snap = await getDocs(collection(this.firestore, 'guestbook'));
-      return snap.size;
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'guestbookCount');
     }
   }
 

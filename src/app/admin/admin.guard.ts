@@ -33,12 +33,14 @@ export function isAdminEmail(email: string | null | undefined): boolean {
  * On the *unauthenticated* case the brief said "redirect to homepage". Doing
  * that literally makes the route unreachable: Firebase restores a session from
  * IndexedDB, so a cold visit to /admin is always unauthenticated for the first
- * few hundred milliseconds, and there is no other sign-in surface on the site
- * except /guestbook. You would have to sign in on the guestbook and then hand-
- * type /admin, every time the session expired. So unauthenticated visitors land
- * on a sign-in card instead — it renders no data, reads no collection, and
- * offers nothing but a Google button, which leaks strictly less than the
- * homepage it would otherwise redirect to.
+ * few hundred milliseconds, and bouncing on that would bounce the owner every
+ * time. So unauthenticated visitors land on a sign-in card instead — it renders
+ * no data, reads no collection, and offers nothing but a Google button, which
+ * leaks strictly less than the homepage it would otherwise redirect to.
+ *
+ * That card is now the only sign-in surface on the site. It used to share the
+ * job with /guestbook, which the full migration deleted; since the card signs
+ * in on its own with signInWithPopup, nothing about this gate changed.
  *
  * A wrong-email session still gets bounced, which is the case that actually
  * matters: it means someone signed in and is not Santiago.
