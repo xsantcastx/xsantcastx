@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.45.0',
-  buildDate: '2026-08-12',
+  version: '2.46.0',
+  buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Thrift',
+  codename: 'The Answer',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,23 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.46.0',
+    codename: 'The Answer',
+    date: '2026-08-13',
+    highlights: [
+      'Every clickable surface now answers back: a 2px lift on hover, a 0.97 press on pointer-down, an edge in the realm colour, and one consistent focus ring — all on the Material curve at 200ms, with the press at 90ms because a slow press reads as lag rather than weight',
+      'The interaction layer never writes transform, and that is the whole design. It loads last, so a global transform would REPLACE what a card already does rather than add to it: .tool-card--live already hovers with translateY(-6px) rotateX(-4deg), so the obvious implementation would have silently deleted the 3D tilt on all 126 tool pages. The lift uses the independent translate property and the press uses scale, which the compositor combines with whatever transform is already there',
+      'Only things that actually respond to a click are lifted. A hover lift on a static panel advertises an affordance that is not there, and inline prose links are excluded because a link that jumps 2px reflows the sentence around it',
+      'Card edges resolve through --realm-color, then --star-color, then purple, so the tools page lights up in its own realm colour (Luminous gold, Umbral rose) rather than a flat accent',
+      'Scroll reveal was keyed to a list of class names that had rotted: it still named .skill-card, .project-card and .contact-section, all deleted in 2.44.0, and named nothing on /codex, /market, /quests, /forge-keeper, /arena or /sponsors. Most of the site scrolled with no reveal at all. Now keyed on main section, so it covers the pages that exist and the ones added later',
+      'Reveal retimed to 18px over 380ms from 28px over 850ms, and the route fade to 200ms on the same curve — the old timings read as sluggish next to everything else',
+      'The nav underline wipes in from the left instead of appearing at full width; one ::after serves both the hover wipe and the active dash',
+      'The Forge Flame tap is now a shallow .96 dip with a spring on release instead of a flat scale(.9) hold, and its glow-on-press had to move off .ff__core: that element runs ffBreathe, which animates filter, and a running animation outranks a plain declaration for the property it animates',
+      'The achievement drop slides in from the right, which is safe only because it is already right-anchored above the flame. The quest toast keeps its vertical entry and only gains the spring — the bottom-right corner is three widgets deep and a toast animating into it has eaten clicks on the flame before',
+      'Reduced motion drops movement and timing but keeps every state that carries meaning: outlines, hover colours and focus rings all survive'
+    ]
+  },
   {
     version: '2.45.0',
     codename: 'Thrift',
