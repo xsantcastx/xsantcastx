@@ -80,8 +80,6 @@ export class TrackingPreventionService {
   private applyMitigations(): void {
     if (this.mitigationApplied) return;
 
-    console.log('[TrackingPrevention] Applying mitigations...');
-
     // 1. Use first-party storage context
     this.ensureFirstPartyContext();
 
@@ -109,7 +107,6 @@ export class TrackingPreventionService {
     
     // Disable offline persistence if storage is blocked
     if (!this.isStorageAvailable()) {
-      console.log('[TrackingPrevention] Disabling Firebase offline features due to storage restrictions');
       // Note: This would require Firebase configuration changes
     }
   }
@@ -120,8 +117,6 @@ export class TrackingPreventionService {
     // 1. Use session-based storage instead of persistent
     // 2. Implement graceful degradation for analytics
     // 3. Use alternative contact methods when Firebase is blocked
-    
-    console.log('[TrackingPrevention] Fallback mechanisms configured');
   }
 
   private isStorageAvailable(): boolean {

@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.40.0',
+  version: '2.41.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Lean',
+  codename: 'The Foundation',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,22 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.41.0',
+    codename: 'The Foundation',
+    date: '2026-08-12',
+    highlights: [
+      'The security policy and the site it protects had drifted apart. The policy pinned one inline script by checksum, the page carried two, and the checksum matched neither — so the browser had been refusing to run both of them. The first-visit boot cut, the console banner, the Konami sequence and the arcane seal were all dead in production while working perfectly on every developer machine, because a local server sends no policy at all',
+      'The stylesheet was the more expensive casualty. Angular defers the non-critical CSS behind a one-line inline handler, and inline handlers need their own permission that the policy never granted — so the deferred sheet never loaded and every page had been rendering on inlined above-the-fold CSS alone. That handler is now allowed by exact checksum rather than by opening the door to inline script generally',
+      'A build step now recomputes every checksum against all 282 built pages and fails the build when one drifts. This class of bug is invisible by construction — no error, no warning, and it only manifests in production — so the guard is the actual fix and the checksum corrections are just today\'s instance of it',
+      'The embed surface was walled off by its own headers. Hosting applies matching header blocks in order and the last one wins, so the site-wide policy was overwriting the embed policy and stripping the rule that permits third-party framing — leaving all 127 embeddable tools refusing to render on anyone else\'s site. The blocks are reordered and the embed policy is now a full copy rather than a fragment',
+      'Google Analytics and Google sign-in were reaching for hosts the policy did not list. Analytics loaded and then silently failed to send anything; the sign-in popup needed a script host that was absent. Both are now allowlisted',
+      'The site is installable. A hand-written service worker keeps the app shell alive offline, and an install banner appears once — bottom-left, the one corner not already claimed by the flame, the achievement drop, the quest toast or the cookie bar, and only after the cookie question has been answered so the two are never on screen together',
+      'Uncaught errors are captured with structure instead of vanishing: a fingerprint per fault so a render loop reports once rather than two hundred times, a filter for the five known-benign browser and deploy-timing errors, and a cap per page load',
+      'The quality gate stopped lying. Its screenshot tests only ever had macOS baselines committed, so on the Linux CI runner they failed every run; two more tests had been pointing at a hero carousel deleted sixteen releases ago; and one waited on a network-idle moment that a page holding a live database connection never reaches. All three are fixed, the suite is honest again, and the Lighthouse audit now runs even when a test fails instead of being skipped, as it had been every run since it was added',
+      'Ten debug logs removed from the production console, including one that printed each donation — donor email and amount included — on every completed donation',
+    ],
+  },
   {
     version: '2.40.0',
     codename: 'Lean',

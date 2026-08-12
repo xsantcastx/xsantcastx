@@ -14,55 +14,122 @@
     ],
     "headers": [
       {
-        "source": "/embed/**",
+        "source": "**",
         "headers": [
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" },
-          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-          { "key": "Content-Security-Policy", "value": "frame-ancestors *;" }
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          },
+          {
+            "//csp-script-src": "The 'sha256-…' pins the one remaining inline <script> (the pre-paint boot cut in index.html, which cannot be externalised without a render-blocking round-trip). Note that a hash and 'unsafe-inline' are mutually exclusive: per CSP3 a browser that understands hashes IGNORES 'unsafe-inline' whenever any hash or nonce is present, so adding it here would weaken nothing and fix nothing — it would just be dead text. Everything else inline was moved to assets/js/ and is covered by 'self'. scripts/verify-csp-hashes.js fails the build if this hash drifts from the HTML, which is how the previous one went stale and silently killed both inline blocks in production. www.googletagmanager.com is gtag.js, loaded lazily by AnalyticsService after cookie consent; apis.google.com is the gapi shim signInWithPopup needs.",
+            "//csp-connect-src": "*.google-analytics.com and *.analytics.google.com are the GA4 measurement beacons — without them gtag loads and then every event silently fails to send. *.googleapis.com already covers firestore.googleapis.com and identitytoolkit.googleapis.com; wss://*.firestore.googleapis.com covers the WebChannel transport Firestore falls back to.",
+            "//csp-img-src": "Left as the broad `https:` rather than enumerating *.googleusercontent.com (auth avatars) and the GA pixel hosts — `https:` already covers both, and narrowing it would be a behaviour change, not a hardening win, while user-supplied avatar hosts vary.",
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'sha256-OTdoLVltqU7gqB7lqeUpJIvnaJ+hSaPw9rG48HV1NNM=' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc=' https://apis.google.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://cdn.carbonads.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com wss://*.firestore.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://xsantcastx-1694b.firebaseapp.com https://cloudflare-dns.com https://cdn.carbonads.com https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+            "//csp-unsafe-hashes": "'unsafe-hashes' + 'sha256-MhtPZ…' allows exactly one inline event handler: this.media='all'. It is emitted by Angular itself, not by us — `optimization.styles.inlineCritical: true` inlines the above-the-fold CSS and defers the rest as <link media=\"print\" onload=\"this.media='all'\">. Inline handlers need script-src permission, and the policy had none, so in production that onload was refused and the main stylesheet never flipped from media=\"print\" to \"all\": the whole site was rendering on the inlined critical CSS alone. 'unsafe-hashes' is the narrow fix — it permits only handler bodies whose hash is listed, which here is one 16-character string, rather than 'unsafe-inline' which would permit every inline script on the site and silently disable the sha256 pin above it. Supported in Chrome 85+/Firefox 86+/Safari 15.4+; older engines still block the handler and fall back to critical-CSS-only, which is the behaviour they already had. If this hash ever needs regenerating, it is sha256 of the attribute value, and scripts/verify-csp-hashes.js prints the expected value on failure."
+          }
         ]
       },
       {
-        "source": "**",
+        "source": "/embed/**",
         "headers": [
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" },
-          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-/QoqcW1pnfcKJZT6YpLBdgORQXBMJqpPR9ZKUVfOhQU=' https://apis.google.com https://www.google.com https://www.gstatic.com https://cdn.carbonads.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://cloudflare-dns.com https://cdn.carbonads.com https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'" }
-        ]
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'sha256-OTdoLVltqU7gqB7lqeUpJIvnaJ+hSaPw9rG48HV1NNM=' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc=' https://apis.google.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://cdn.carbonads.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com wss://*.firestore.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://xsantcastx-1694b.firebaseapp.com https://cloudflare-dns.com https://cdn.carbonads.com https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; frame-ancestors *; object-src 'none'; base-uri 'self'"
+          }
+        ],
+        "//": "MUST stay after the '**' block. Firebase applies every matching header block in order and the LAST one to set a key wins, so while this sat first its `frame-ancestors *` was overwritten by the site-wide policy — which has no frame-ancestors at all — leaving X-Frame-Options: SAMEORIGIN from '**' as the only framing rule. Net effect: all 127 noindex'd /embed/* routes, whose entire purpose is being iframed by third-party sites, refused to render off-origin. The policy here is now a full copy of the site-wide one rather than a fragment, differing only in frame-ancestors, so overriding it no longer silently drops script-src/connect-src protection from the embed surface. X-Frame-Options is deliberately not repeated: there is no permissive value for it, and per CSP2 a browser that understands frame-ancestors ignores X-Frame-Options entirely — which is what lets the SAMEORIGIN inherited from '**' coexist with framing being allowed here."
       },
       {
         "source": "**/*.@(js|css|woff2|woff|ttf|otf|eot)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
         ]
       },
       {
         "source": "**/*.@(png|jpg|jpeg|gif|webp|avif|svg|ico)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=604800" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
         ]
       },
       {
         "source": "**/*.@(html|csr.html)",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
         ]
       },
       {
         "//": "Prerendered routes are served at clean URLs (/home, /blueprint, /tools/x) which do NOT match the *.html glob above — header globs match the REQUEST path, not the resolved file. Without this they fell through to Firebase's default max-age=3600, so a deploy stayed invisible for an hour and the site looked like it had not shipped. !(*.*) matches only extensionless final segments, so content-hashed js/css/font/image assets keep their immutable year-long cache.",
         "source": "**/!(*.*)",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
         ]
       },
       {
         "source": "/@(sitemap.xml|robots.txt)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=86400" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400"
+          }
+        ]
+      },
+      {
+        "//": "MUST stay after the **/*.@(js|...) immutable rule so it overrides it — Firebase applies matching header blocks in order and the last one to set a key wins. Without this, /service-worker.js inherits max-age=31536000, immutable, which is the single worst cache header a service worker can have: it is the file that controls every other file, so a bad version would be pinned for a year with no way to push a replacement. Modern browsers ignore the HTTP cache for the top-level worker script (updateViaCache defaults to 'imports'), but that is a browser courtesy, not a guarantee, and it does not cover older engines. no-cache costs one conditional request per navigation and removes the whole failure mode.",
+        "source": "/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Service-Worker-Allowed",
+            "value": "/"
+          }
         ]
       }
     ],
