@@ -81,7 +81,6 @@ export class PaymentService {
           clientId === '' ||
           clientId.includes('YOUR_PAYPAL_CLIENT_ID') ||
           clientId.includes('PLACEHOLDER')) {
-        console.log('PayPal not configured - skipping SDK load');
         this.paypalLoaded.next(false);
         resolve(false);
         return;
@@ -132,7 +131,6 @@ export class PaymentService {
           publishableKey === '' ||
           publishableKey.includes('YOUR_STRIPE_PUBLISHABLE') ||
           publishableKey.includes('PLACEHOLDER')) {
-        console.log('Stripe not configured - skipping SDK load');
         this.stripeLoaded.next(false);
         resolve(false);
         return;
@@ -250,8 +248,6 @@ export class PaymentService {
     }
 
     try {
-      console.log('Creating Stripe checkout session for amount:', amount);
-      
       // Call Firebase Cloud Function to create a Stripe Checkout session
       // Loaded on demand: @angular/fire/functions statically imports
       // @angular/fire/auth, which dragged the whole auth SDK into the initial
@@ -266,8 +262,6 @@ export class PaymentService {
       if (!data.success || !data.sessionId) {
         throw new Error(data.error || 'Failed to create checkout session');
       }
-
-      console.log('Checkout session created, redirecting to Stripe...');
 
       // Redirect to Stripe Checkout page
       const result = await this.stripe.redirectToCheckout({
@@ -303,8 +297,10 @@ export class PaymentService {
   private async logDonation(donation: any): Promise<void> {
     try {
       // Here you would use AngularFire to log to Firestore
-      console.log('Donation logged:', donation);
-      
+      // Intentionally not logged. The donation object carries the donor's
+      // email and amount, and this ran on every donation in production.
+      void donation;
+
       // Example structure for when you add AngularFire:
       // const db = getFirestore();
       // await addDoc(collection(db, 'donations'), donation);
