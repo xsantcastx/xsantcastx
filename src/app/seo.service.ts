@@ -3,6 +3,7 @@ import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
 import { filter } from 'rxjs/operators';
+import { brandTitle } from './shared/title-strategy.service';
 
 export const SITE_URL = 'https://xsantcastx.com';
 
@@ -28,12 +29,24 @@ export class SeoService {
         const data = r.snapshot.data;
         const url  = this.router.url.split('?')[0].split('#')[0];
         const lang = r.snapshot.queryParamMap.get('lang') === 'es' ? 'es' : 'en';
-        this.apply(this.title.getTitle(), data, url, lang);
+
+        // Brand the route's own resolved title rather than reading the
+        // document's. AppTitleStrategy and this subscriber both run off
+        // NavigationEnd, and during prerender this one wins the race — so
+        // getTitle() handed back whatever index.html shipped with, and every
+        // static page went out with the same generic og:title and
+        // twitter:title regardless of what stood in its <title>. Going
+        // through the same brandTitle() the strategy uses means the two
+        // cannot disagree, including on routes that declare a title without
+        // the wordmark. getTitle() remains the fallback for a route with no
+        // title of its own.
+        const routeTitle = brandTitle(r.snapshot.title ?? this.title.getTitle());
+        this.apply(routeTitle, data, url, lang);
       });
   }
 
   private apply(pageTitle: string, data: Record<string, string | object>, url: string, lang: 'en' | 'es'): void {
-    const desc      = (data['description'] as string) || 'xsantcastx — Full-Stack Developer & Studio Utilities';
+    const desc      = (data['description'] as string) || 'The Godforge — free developer tools forged in the Eclipse.';
     const keywords  = data['keywords']  as string | undefined;
     const ogImage   = (data['ogImage']  as string | undefined) || DEFAULT_IMG;
 

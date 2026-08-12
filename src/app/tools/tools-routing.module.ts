@@ -6,7 +6,13 @@ const routes: Routes = [
   {
       path: '',
       loadComponent: () => import('./tools.component').then(m => m.ToolsComponent),
-      title: 'Free Online Tools for Developers & Designers — No Sign-Up | xsantcastx',
+      // Renamed to the lore title on the owner's explicit instruction. Worth
+      // knowing what it cost: this is the catalogue landing page, and it gave
+      // up the keyword phrasing it ranked on ("Free Online Tools for
+      // Developers & Designers — No Sign-Up"). The meta description below
+      // still carries those terms, and the 128 individual tool pages keep
+      // their keyword titles untouched.
+      title: 'The Five Realms · xsantcastx',
       data: {
         description: 'Free browser tools: CSS Box Shadow Generator, Email Deliverability Auditor, Gmail Checker, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor & more.',
         keywords: 'free online tools, css box shadow generator, email deliverability checker, gmail deliverability, ssl certificate checker, svg to react component, pdf catalog generator, color palette extractor, wcag contrast checker, image compressor, browser tools, no sign up',
