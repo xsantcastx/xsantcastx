@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.36.0',
+  version: '2.38.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Godforge Awakens',
+  codename: 'The Altar',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,30 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.38.0',
+    codename: 'The Forge Lit',
+    date: '2026-08-12',
+    highlights: [
+      'The boot sequence is no longer a diagram of the sigil — it is the sigil. The X is beveled stone lit from the top left, and a network of seventeen fractures runs through it, catching light from the centre outward as the forge takes hold',
+      'The ring is carved rather than drawn: its edges are displaced by noise so the stone reads as chiselled, it is speckled with grain, and it turns against its own glyphs so the band and the runes move independently',
+      'The twelve runes now ignite one after another around the circle instead of all at once, and the four compass marks snap in over-scale and settle — the whole of stage three reads as light travelling around the seal',
+      'Once the forge is lit it throws things off: embers rising through the frame, twelve volumetric shafts turning slowly behind the ring, three shockwaves off the core, and a four-point star flare on the white-hot centre',
+      'The void has depth before any of it starts — three sheets of stars drifting at different rates, with the nebula held back until the power arrives so stage one stays as black as it was written to be',
+    ],
+  },
+  {
+    version: '2.37.0',
+    codename: 'The Altar',
+    date: '2026-08-12',
+    highlights: [
+      'The hero is Santiago\'s painted altar now, not a CSS impression of it — the blade in the anvil under its eclipse, the pillars, the chains and the ringed floor. The panels, the wordmark and the calls layer on top; the art is the atmosphere and CSS is only the UI',
+      'Three cuts rather than one. Desktop and tablet take the native landscape frame; the phone takes a portrait crop composed around the altar, because a 3:2 frame under `cover` on a 375-wide screen keeps the middle 46% and throws both pillars away',
+      'Served through a <picture>, so the browser picks by viewport and format before it fetches anything: a phone never downloads the 1920px frame, and a browser without WebP still gets a JPEG. The hero image is the largest contentful paint, so it is marked high priority rather than queued behind the app\'s own scripts',
+      'Two scrims carry the UI over the art — an edge vignette that gives the glass panels a ground to sit against, and a floor wash over the lower half where the wordmark and the calls land. Without them the art\'s own highlights ran straight through the panel text',
+      'The CSS scene the art replaces is deleted rather than left underneath: the drawn sigil, the nebulas, the drafting grid and the drifting rocks. The painting carries all four, and running both put a second X over the one in the picture'
+    ]
+  },
   {
     version: '2.36.0',
     codename: 'Godforge Awakens',
