@@ -212,6 +212,21 @@ const ROLL_MS = 420;
       .gt__rate-num { font-size: .54rem; }
     }
 
+    /* ── Narrow, and only in the command bar: the count without the rate ──
+       The rate pill is the reason this component replaced a static number, so
+       dropping it is not done lightly. But the bar now carries the cloud save
+       control as well, and below this width it has room for the count or the
+       rate and not both — at which point the count is the number the visitor
+       came for, and the alternative was shedding the whole pill from the bar.
+
+       Scoped to the bar's own instance, not the viewport alone. The tome renders
+       this component too, at the same viewport widths, in a full-width drawer
+       with room to spare — a viewport-only media query here would have taken the
+       rate out of there as well, to buy space that surface was never short of. */
+    @media (max-width: 420px) {
+      :host(.gt--bar) .gt__rate { display: none; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       /* The number still changes and the rate is still correct; nothing
          travels. An odometer is decoration on top of a value, and the value is

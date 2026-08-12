@@ -44,7 +44,10 @@
            minute with no animation at all. The ticker is the same pill with the
            count rolling and the live Gold/sec rate beside it — see
            gold-ticker.component.ts for why that is the entire point. -->
-      <app-gold-ticker></app-gold-ticker>
+      <!-- .gt--bar marks this as the instance in the crowded row: below 420px it
+           drops its rate pill and keeps the count. The tome's instance carries
+           no such class and keeps both. -->
+      <app-gold-ticker class="gt--bar"></app-gold-ticker>
       <a routerLink="/market" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
@@ -57,6 +60,17 @@
         <span class="gfpill__val">{{ rankLevel }}</span>
         <span class="gfpill__rank-title">{{ rankTitle }}</span>
       </a>
+
+      <!-- Cloud save. Signed out it is the Google mark and "Sign In"; signed in
+           it is the avatar with the sync state on it, linking to the full
+           control on /forge-keeper.
+
+           The one control in this group that is never shed: every other item
+           here has a width at which it moves to the tome, and this one collapses
+           to the mark alone instead and stays. On a phone the bar is the nav
+           that is always on screen, and somebody signing in on a second device
+           is exactly the visitor who needs to find it. -->
+      <app-cloud-save-chip></app-cloud-save-chip>
 
       <div class="gfnav__lang">
         <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'en'"
@@ -152,6 +166,21 @@
         <span class="gfpill__rank-title">{{ rankTitle }}</span>
       </span>
     </div>
+
+    <!-- The full cloud save control, next to the standing it syncs. The chip in
+         the bar above can only start a sign-in; this is where a phone gets the
+         account, the last-synced line and the way out without a route change.
+
+         Rendered only while the tome is open, unlike every sibling here: the
+         drawer stays in the DOM when closed and each of its own links takes a
+         [tabIndex] to stay out of the tab order. This is a component with its
+         own buttons inside it, which cannot be reached that way — so it is the
+         mount that goes, not the tabindex. -->
+    @if (mobileMenuOpen) {
+      <div class="gftome__cloud">
+        <app-cloud-save-button></app-cloud-save-button>
+      </div>
+    }
 
     @for (section of tomeSections; track section.titleKey) {
       <p class="gftome__section">{{ translate(section.titleKey) }}</p>

@@ -65,6 +65,20 @@ export class TranslationService {
     'gfnav.tomeArtTitle': { en: 'The Godforge',   es: 'La Godforge' },
     'gfnav.tomeArtSub':   { en: 'The Engine of Creation', es: 'El motor de la creacion' },
 
+    // ── Cloud save ───────────────────────────────────────────────────────
+    // The chip in the command bar. "Sign In" rather than "Save Progress" on
+    // purpose: the control opens a Google account chooser, and a label that
+    // does not say so makes the popup read as something the page did rather
+    // than something it asked for.
+    'cloud.signIn':      { en: 'Sign In', es: 'Entrar' },
+    'cloud.signInLabel': {
+      en: 'Sign in with Google so your progress follows you between devices',
+      es: 'Entra con Google para que tu progreso te siga entre dispositivos',
+    },
+    'cloud.synced':      { en: 'Synced',      es: 'Sincronizado' },
+    'cloud.syncing':     { en: 'Syncing',     es: 'Sincronizando' },
+    'cloud.syncFailed':  { en: 'Sync failed', es: 'Fallo la sincronizacion' },
+
     'gfnav.hint.home':      { en: 'The forge entrance',              es: 'La entrada de la forja' },
     'gfnav.hint.tools':     { en: '125 artifacts, five realms',      es: '125 artefactos, cinco reinos' },
     'gfnav.hint.arena':     { en: 'Games forged in the eclipse',     es: 'Juegos forjados en el eclipse' },
