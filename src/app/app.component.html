@@ -76,3 +76,12 @@
 @if (!isEmbedMode) {
   <app-forge-flame></app-forge-flame>
 }
+
+<!-- "Which save wins" — opens when signing in finds two saves that each hold
+     something the other does not. Mounted here rather than next to the sign-in
+     button for the same reason as the flame above: the button lives inside
+     /forge-keeper, and a fixed full-viewport dialog inside a routed host would
+     be pinned to the page. It renders nothing until a conflict exists. -->
+@if (!isEmbedMode) {
+  <app-cloud-save-merge-dialog></app-cloud-save-merge-dialog>
+}
