@@ -37,7 +37,7 @@ export class ContrastCheckerComponent {
   get presets(): { label: string; fg: string; bg: string }[] {
     return [
       { label: this.translate('tools.contrast.preset.white.dark'),  fg: '#ffffff', bg: '#1a1a2e' },
-      { label: this.translate('tools.contrast.preset.cyan.dark'),   fg: '#00ffcc', bg: '#07090f' },
+      { label: this.translate('tools.contrast.preset.cyan.dark'),   fg: '#8B5CF6', bg: '#07090f' },
       { label: this.translate('tools.contrast.preset.black.white'), fg: '#000000', bg: '#ffffff' },
       { label: this.translate('tools.contrast.preset.navy.white'),  fg: '#1a237e', bg: '#ffffff' },
       { label: this.translate('tools.contrast.preset.danger'),      fg: '#ffffff', bg: '#c0392b' },

@@ -158,7 +158,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .jts-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -193,7 +193,7 @@
 .jts-option-hint code {
   font-family: 'Fira Code', monospace;
   font-size: 0.7rem;
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
   color: var(--primary-color);
@@ -217,7 +217,7 @@
   color: rgba(214, 221, 235, 0.3);
 }
 .jts-name-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* ── Toggle ────────────────────────────────────────────────── */
@@ -259,7 +259,7 @@
 
 .jts-toggle input:checked ~ .jts-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .jts-toggle input:checked ~ .jts-toggle__track .jts-toggle__thumb {
   left: 20px;
@@ -341,12 +341,12 @@
 }
 .jts-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .jts-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .jts-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .jts-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -373,7 +373,7 @@
 
 .jts-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -436,7 +436,7 @@
 /* ── Syntax highlight token colors (TypeScript) ──────────── */
 :host ::ng-deep .jts-keyword { color: #ff79c6; }       /* pink    — export, interface */
 :host ::ng-deep .jts-type    { color: #ffb86c; }       /* orange  — string, number, boolean */
-:host ::ng-deep .jts-iface   { color: #00ffcc; }       /* cyan    — interface names */
+:host ::ng-deep .jts-iface   { color: #8B5CF6; }       /* cyan    — interface names */
 :host ::ng-deep .jts-prop    { color: #7ec8e3; }       /* blue    — property names */
 :host ::ng-deep .jts-null    { color: #6272a4; }       /* muted   — null */
 :host ::ng-deep .jts-bracket { color: #ffb86c; }       /* orange  — [] */

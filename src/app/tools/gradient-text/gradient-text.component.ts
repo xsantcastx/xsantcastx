@@ -77,7 +77,7 @@ export class GradientTextComponent {
       stops: [
         { color: '#2193b0', position: 0 },
         { color: '#6dd5ed', position: 50 },
-        { color: '#00d2ff', position: 100 }
+        { color: '#A78BFA', position: 100 }
       ]
     },
     {
@@ -95,9 +95,9 @@ export class GradientTextComponent {
       type: 'linear',
       angle: 90,
       stops: [
-        { color: '#00ffcc', position: 0 },
+        { color: '#8B5CF6', position: 0 },
         { color: '#ff00ff', position: 50 },
-        { color: '#00ffcc', position: 100 }
+        { color: '#8B5CF6', position: 100 }
       ]
     },
     {

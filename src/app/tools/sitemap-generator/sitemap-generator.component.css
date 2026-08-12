@@ -124,7 +124,7 @@
   display: inline-flex; align-items: center; gap: 0.4rem;
   padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.82rem;
   font-weight: 600; border: 1px solid var(--primary-color);
-  background: var(--primary-color); color: #0a0f1e; cursor: pointer;
+  background: var(--primary-color); color: #0a0a0f; cursor: pointer;
   transition: opacity 0.2s ease;
 }
 .smg-btn-primary:hover { opacity: 0.9; }
@@ -215,7 +215,7 @@
   outline: none;
 }
 .smg-textarea::placeholder { color: var(--text-muted); opacity: 0.45; }
-.smg-textarea:focus { background: rgba(0, 255, 204, 0.02); }
+.smg-textarea:focus { background: rgba(139, 92, 246, 0.02); }
 
 .smg-url-count {
   font-size: 0.68rem;
@@ -223,8 +223,8 @@
   letter-spacing: 0.05em;
   padding: 0.14rem 0.45rem;
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.12);
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
   white-space: nowrap;
 }
@@ -249,7 +249,7 @@
   background: var(--primary-color);
   border: none;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
 }
 .smg-slider::-moz-range-thumb {
   width: 14px;
@@ -258,9 +258,9 @@
   background: var(--primary-color);
   border: none;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
 }
-.smg-slider:focus-visible { box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.2); }
+.smg-slider:focus-visible { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 
 .smg-slider-labels {
   display: flex;
@@ -286,8 +286,8 @@
   color: var(--text-muted);
 }
 .smg-status-bar--valid {
-  border-color: rgba(0, 255, 204, 0.3);
-  background: rgba(0, 255, 204, 0.06);
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.06);
   color: var(--primary-color);
 }
 .smg-status-bar--invalid {

@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Progress Bar Generator — Component Styles
-   xsantcastx design system: dark navy, cyan #00ffcc, glassmorphism
+   xsantcastx design system: dark navy, cyan #8B5CF6, glassmorphism
    ══════════════════════════════════════════════════════════════ */
 
 .pb-page {
@@ -18,11 +18,11 @@
   cursor: pointer; padding: 0; margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
-.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #00ffcc; margin-bottom: 0.4rem; }
+.tool-header__eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B5CF6; margin-bottom: 0.4rem; }
 .tool-header__title { font-family: var(--font-heading); font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 700; color: var(--text-color); letter-spacing: -0.02em; margin-bottom: 0.5rem; line-height: 1.15; }
 .tool-header__amp { color: var(--info-color); }
 .tool-header__subtitle { font-size: 0.95rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; }
@@ -49,8 +49,8 @@
   font-family: var(--font-heading); font-size: 0.95rem; font-weight: 600;
   color: var(--text-color); margin-bottom: 1rem;
 }
-.pb-card__title svg { color: #00ffcc; flex-shrink: 0; }
-.pb-card--preview { border-color: rgba(0, 255, 204, 0.12); }
+.pb-card__title svg { color: #8B5CF6; flex-shrink: 0; }
+.pb-card--preview { border-color: rgba(139, 92, 246, 0.12); }
 
 /* ── Presets ────────────────────────────────────────────────── */
 .pb-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
@@ -61,7 +61,7 @@
   background: rgba(255, 255, 255, 0.02); cursor: pointer;
   text-align: left; transition: all 0.2s ease;
 }
-.pb-preset-btn:hover { border-color: rgba(0, 255, 204, 0.25); background: rgba(0, 255, 204, 0.03); }
+.pb-preset-btn:hover { border-color: rgba(139, 92, 246, 0.25); background: rgba(139, 92, 246, 0.03); }
 .pb-preset-btn__name { font-size: 0.75rem; font-weight: 600; color: var(--text-color); }
 .pb-preset-btn__preview { width: 100%; overflow: hidden; }
 
@@ -72,7 +72,7 @@
   display: flex; justify-content: space-between; align-items: center;
   font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.35rem;
 }
-.pb-label__val { font-family: 'SF Mono', 'Fira Code', monospace; color: #00ffcc; }
+.pb-label__val { font-family: 'SF Mono', 'Fira Code', monospace; color: #8B5CF6; }
 .pb-slider {
   width: 100%; height: 4px; appearance: none; -webkit-appearance: none;
   background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none;
@@ -80,12 +80,12 @@
 }
 .pb-slider::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px;
-  background: #00ffcc; border-radius: 50%; cursor: pointer;
-  border: 2px solid #0a0f1e;
+  background: #8B5CF6; border-radius: 50%; cursor: pointer;
+  border: 2px solid #0a0a0f;
 }
 .pb-slider::-moz-range-thumb {
-  width: 14px; height: 14px; background: #00ffcc;
-  border-radius: 50%; cursor: pointer; border: 2px solid #0a0f1e;
+  width: 14px; height: 14px; background: #8B5CF6;
+  border-radius: 50%; cursor: pointer; border: 2px solid #0a0a0f;
 }
 
 /* ── Color inputs ──────────────────────────────────────────── */
@@ -107,7 +107,7 @@
   font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem;
   outline: none; transition: border-color 0.2s ease;
 }
-.pb-text-input:focus { border-color: rgba(0, 255, 204, 0.5); }
+.pb-text-input:focus { border-color: rgba(139, 92, 246, 0.5); }
 .pb-text-input--color { width: 90px; }
 
 /* ── Toggles ───────────────────────────────────────────────── */
@@ -116,7 +116,7 @@
 .pb-toggle {
   display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
 }
-.pb-toggle input[type="checkbox"] { accent-color: #00ffcc; width: 14px; height: 14px; cursor: pointer; }
+.pb-toggle input[type="checkbox"] { accent-color: #8B5CF6; width: 14px; height: 14px; cursor: pointer; }
 .pb-toggle__label { font-size: 0.8rem; color: var(--text-muted); }
 
 /* ── Type buttons ──────────────────────────────────────────── */
@@ -127,8 +127,8 @@
   color: var(--text-muted); font-size: 0.78rem; cursor: pointer;
   transition: all 0.2s ease;
 }
-.pb-type-btn:hover { border-color: rgba(0, 255, 204, 0.3); color: var(--text-color); }
-.pb-type-btn--active { background: rgba(0, 255, 204, 0.1); border-color: #00ffcc; color: #00ffcc; }
+.pb-type-btn:hover { border-color: rgba(139, 92, 246, 0.3); color: var(--text-color); }
+.pb-type-btn--active { background: rgba(139, 92, 246, 0.1); border-color: #8B5CF6; color: #8B5CF6; }
 
 /* ── Reset button ──────────────────────────────────────────── */
 .pb-reset-btn {
@@ -171,8 +171,8 @@
   color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
   cursor: pointer; transition: all 0.2s ease;
 }
-.pb-copy-btn:hover { border-color: rgba(0, 255, 204, 0.4); color: var(--text-color); }
-.pb-copy-btn--done { color: #00ffcc; border-color: #00ffcc; }
+.pb-copy-btn:hover { border-color: rgba(139, 92, 246, 0.4); color: var(--text-color); }
+.pb-copy-btn--done { color: #8B5CF6; border-color: #8B5CF6; }
 .pb-code {
   display: block; padding: 1rem 1.2rem;
   background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.06);
@@ -180,7 +180,7 @@
   font-size: 0.78rem; color: #e0e0e0; line-height: 1.6;
   overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;
 }
-.pb-code--html { color: #00ffcc; }
+.pb-code--html { color: #8B5CF6; }
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 900px) {

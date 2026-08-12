@@ -231,7 +231,7 @@ Second line with team@xsantcastx.dev in it.`;
       label: 'Hex colour',
       pattern: '#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\\b',
       flags: 'g',
-      sample: 'Brand cyan #00ffcc, short #0fc, with alpha #00ffcc80, invalid #xyz123.',
+      sample: 'Brand purple #8B5CF6, short #0fc, with alpha #8B5CF680, invalid #xyz123.',
       note: 'Handles 3, 6 and 8 digit forms including the alpha channel.'
     },
     {
@@ -287,7 +287,7 @@ Second line with team@xsantcastx.dev in it.`;
       label: 'CSS hex → var()',
       pattern: '#([0-9a-f]{6})\\b',
       flags: 'gi',
-      sample: '.a { color: #00ffcc; } .b { border-color: #7b61ff; background: #0a0f1e; }',
+      sample: '.a { color: #8B5CF6; } .b { border-color: #7b61ff; background: #0a0a0f; }',
       note: 'Pair with replace mode and a replacement of var(--c-$1) to see the rewrite.'
     },
   ];

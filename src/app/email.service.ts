@@ -97,35 +97,35 @@ export class EmailService {
     
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #ffffff;">
-        <div style="background: linear-gradient(135deg, #00ffcc 0%, #00cc99 100%); padding: 2rem; text-align: center; border-radius: 8px 8px 0 0;">
+        <div style="background: linear-gradient(135deg, #8B5CF6 0%, #00cc99 100%); padding: 2rem; text-align: center; border-radius: 8px 8px 0 0;">
           <h1 style="margin: 0; color: #000; font-size: 2rem; font-weight: 700;">✨ New Project Inquiry</h1>
           <p style="margin: 0.5rem 0 0 0; color: #000; opacity: 0.8; font-size: 1.1rem;">xsantcastx Portfolio Contact Form</p>
         </div>
         
         <div style="padding: 2rem; background: #1a1a1a;">
-          <div style="background: #2a2a2a; border: 2px solid #00ffcc; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h2 style="color: #00ffcc; margin-top: 0; font-size: 1.3rem; display: flex; align-items: center;">
+          <div style="background: #2a2a2a; border: 2px solid #8B5CF6; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h2 style="color: #8B5CF6; margin-top: 0; font-size: 1.3rem; display: flex; align-items: center;">
               👤 Contact Information
             </h2>
-            <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border-left: 4px solid #00ffcc;">
-              <p style="margin: 0.5rem 0;"><strong style="color: #00ffcc;">Name:</strong> <span style="color: #fff;">${data.name}</span></p>
-              <p style="margin: 0.5rem 0;"><strong style="color: #00ffcc;">Email:</strong> <span style="color: #fff;">${data.email}</span></p>
-              ${data.projectType ? `<p style="margin: 0.5rem 0;"><strong style="color: #00ffcc;">Project Type:</strong> <span style="color: #fff;">${data.projectType}</span></p>` : ''}
-              ${data.budget ? `<p style="margin: 0.5rem 0;"><strong style="color: #00ffcc;">Budget Range:</strong> <span style="color: #fff;">${data.budget}</span></p>` : ''}
+            <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border-left: 4px solid #8B5CF6;">
+              <p style="margin: 0.5rem 0;"><strong style="color: #8B5CF6;">Name:</strong> <span style="color: #fff;">${data.name}</span></p>
+              <p style="margin: 0.5rem 0;"><strong style="color: #8B5CF6;">Email:</strong> <span style="color: #fff;">${data.email}</span></p>
+              ${data.projectType ? `<p style="margin: 0.5rem 0;"><strong style="color: #8B5CF6;">Project Type:</strong> <span style="color: #fff;">${data.projectType}</span></p>` : ''}
+              ${data.budget ? `<p style="margin: 0.5rem 0;"><strong style="color: #8B5CF6;">Budget Range:</strong> <span style="color: #fff;">${data.budget}</span></p>` : ''}
             </div>
           </div>
           
-          <div style="background: #2a2a2a; border: 2px solid #00ffcc; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h3 style="color: #00ffcc; margin-top: 0; font-size: 1.3rem; display: flex; align-items: center;">
+          <div style="background: #2a2a2a; border: 2px solid #8B5CF6; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="color: #8B5CF6; margin-top: 0; font-size: 1.3rem; display: flex; align-items: center;">
               📝 Project Details
             </h3>
-            <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border-left: 4px solid #00ffcc;">
+            <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border-left: 4px solid #8B5CF6;">
               <p style="white-space: pre-wrap; line-height: 1.6; color: #fff; margin: 0;">${data.message}</p>
             </div>
           </div>
 
-          <div style="background: linear-gradient(135deg, #0d2818, #1a3d2e); border: 1px solid #00ffcc; border-radius: 8px; padding: 1rem; text-align: center;">
-            <p style="margin: 0; font-size: 0.9rem; color: #00ffcc;">
+          <div style="background: linear-gradient(135deg, #0d2818, #1a3d2e); border: 1px solid #8B5CF6; border-radius: 8px; padding: 1rem; text-align: center;">
+            <p style="margin: 0; font-size: 0.9rem; color: #8B5CF6;">
               📧 <strong>Sent via Brevo SMTP</strong> from xsantcastx.com<br>
               🕒 <strong>Timestamp:</strong> ${new Date().toLocaleString()}<br>
               💬 <strong>Reply to this email</strong> to respond directly to ${data.name}

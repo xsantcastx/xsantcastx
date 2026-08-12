@@ -454,7 +454,7 @@ export class ConvergentsPathComponent extends ArenaGameBase
     const wx = ox + this.px * s + s / 2;
     const wy = oy + this.py * s + s / 2;
     const lean = this.balance;
-    const tint = lean === 0 ? '#4dffe0' : lean > 0 ? AETHER : NOX;
+    const tint = lean === 0 ? '#A78BFA' : lean > 0 ? AETHER : NOX;
 
     if (!this.reduced) {
       ctx.shadowColor = tint;

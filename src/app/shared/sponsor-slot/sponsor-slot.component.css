@@ -15,7 +15,7 @@
 }
 
 .sponsor-slot {
-  --sponsor-accent: #00ffcc; /* default fallback; overridden inline per-sponsor */
+  --sponsor-accent: #8B5CF6; /* default fallback; overridden inline per-sponsor */
   position: relative;
   display: block;
   margin: 0 auto 1.5rem;
@@ -32,7 +32,7 @@
 }
 
 .sponsor-slot:hover {
-  border-color: rgba(0, 255, 204, 0.22);
+  border-color: rgba(139, 92, 246, 0.22);
   box-shadow: 0 12px 40px -16px rgba(0, 0, 0, 0.7);
 }
 

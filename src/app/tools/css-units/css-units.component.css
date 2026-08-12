@@ -176,8 +176,8 @@
 
 .cu-input:focus,
 .cu-select:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .cu-input::placeholder {
@@ -234,7 +234,7 @@
 }
 
 .cu-result-row:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .cu-result-row--active {
@@ -280,12 +280,12 @@
 
 .cu-btn-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .cu-btn-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .cu-results-empty {
@@ -319,7 +319,7 @@
 }
 
 .cu-spacing-row:hover {
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .cu-spacing-bar {
@@ -385,12 +385,12 @@
 }
 
 .cu-ref-table tbody tr:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .cu-ref-table code {
   font-family: 'Fira Code', monospace;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   padding: 0.1em 0.35em;
   border-radius: 3px;

@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Regex Builder & Tester — Component Styles
-   Cosmic theme: cyan #00ffcc, violet var(--info-color)
+   Cosmic theme: cyan #8B5CF6, violet var(--info-color)
    ══════════════════════════════════════════════════════════════ */
 
 .rb-page {
@@ -28,7 +28,7 @@
   margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -38,7 +38,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 
@@ -120,7 +120,7 @@
   cursor: pointer;
   min-height: 44px;
 }
-.rb-panel__header--button:hover { background: rgba(0, 255, 204, 0.06); }
+.rb-panel__header--button:hover { background: rgba(139, 92, 246, 0.06); }
 
 .rb-panel__title {
   display: flex;
@@ -132,7 +132,7 @@
   letter-spacing: 0.02em;
   color: var(--text-color);
 }
-.rb-panel__title svg { color: #00ffcc; flex-shrink: 0; }
+.rb-panel__title svg { color: #8B5CF6; flex-shrink: 0; }
 
 .rb-panel__actions {
   display: flex;
@@ -164,14 +164,14 @@
   transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 .rb-btn-ghost:hover {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.07);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.07);
 }
 .rb-btn-ghost--success {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.6);
-  background: rgba(0, 255, 204, 0.1);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.1);
 }
 .rb-btn-sm {
   padding: 0.34rem 0.7rem;
@@ -196,8 +196,8 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 .rb-editor:focus-within {
-  border-color: rgba(0, 255, 204, 0.5);
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
 }
 
 /* Every metric here must match on BOTH layers or the text drifts. */
@@ -233,12 +233,12 @@
   overflow: hidden;
   background: transparent;
   color: transparent;
-  caret-color: #00ffcc;
+  caret-color: #8B5CF6;
   outline: none;
   display: block;
 }
 .rb-editor__input::placeholder { color: var(--text-muted); opacity: 0.55; }
-.rb-editor__input::selection { background: rgba(0, 255, 204, 0.25); }
+.rb-editor__input::selection { background: rgba(139, 92, 246, 0.25); }
 
 .rb-editor--pattern { flex: 1; min-width: 0; }
 .rb-editor--test .rb-editor__highlight { min-height: 13em; }
@@ -262,7 +262,7 @@
 }
 .rb-delim--flags {
   font-size: 0.9rem;
-  color: #00ffcc;
+  color: #8B5CF6;
   min-width: 2.5rem;
   letter-spacing: 0.05em;
 }
@@ -282,7 +282,7 @@
    Each rule stays anchored to .rb-editor__highlight (a real template element,
    so it carries the attribute) which keeps the deep selector contained. */
 .rb-editor__highlight ::ng-deep .rb-tok--literal     { color: var(--text-color); }
-.rb-editor__highlight ::ng-deep .rb-tok--escape      { color: #00ffcc; }
+.rb-editor__highlight ::ng-deep .rb-tok--escape      { color: #8B5CF6; }
 .rb-editor__highlight ::ng-deep .rb-tok--class       { color: #ffc669; }
 .rb-editor__highlight ::ng-deep .rb-tok--quantifier  { color: #ff6dd7; }
 .rb-editor__highlight ::ng-deep .rb-tok--group       { color: var(--info-color); }
@@ -300,9 +300,9 @@
   -webkit-box-decoration-break: clone;
 }
 .rb-editor__highlight ::ng-deep .rb-hl--a {
-  background: rgba(0, 255, 204, 0.24);
-  box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.4);
-  color: #eafff9;
+  background: rgba(139, 92, 246, 0.24);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4);
+  color: #F2ECFF;
 }
 .rb-editor__highlight ::ng-deep .rb-hl--b {
   background: rgba(123, 97, 255, 0.28);
@@ -357,11 +357,11 @@
   cursor: pointer;
   transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
-.rb-flag:hover { border-color: rgba(0, 255, 204, 0.4); color: var(--text-color); }
+.rb-flag:hover { border-color: rgba(139, 92, 246, 0.4); color: var(--text-color); }
 .rb-flag--on {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.55);
-  background: rgba(0, 255, 204, 0.1);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.55);
+  background: rgba(139, 92, 246, 0.1);
 }
 .rb-flag__key {
   font-family: var(--rb-mono);
@@ -383,12 +383,12 @@
 }
 .rb-status svg { flex-shrink: 0; margin-top: 0.1rem; }
 .rb-status--ok {
-  background: rgba(0, 255, 204, 0.07);
-  border: 1px solid rgba(0, 255, 204, 0.22);
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.22);
   color: var(--text-muted);
 }
-.rb-status--ok strong { color: #00ffcc; }
-.rb-status--ok svg { color: #00ffcc; }
+.rb-status--ok strong { color: #8B5CF6; }
+.rb-status--ok svg { color: #8B5CF6; }
 .rb-status--error {
   background: rgba(255, 90, 90, 0.09);
   border: 1px solid rgba(255, 90, 90, 0.3);
@@ -441,8 +441,8 @@
 .rb-select { font-family: var(--font-body); }
 .rb-text-input:focus,
 .rb-select:focus {
-  border-color: rgba(0, 255, 204, 0.5);
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
 }
 
 .rb-count {
@@ -460,8 +460,8 @@
 }
 .rb-hint code {
   font-family: var(--rb-mono);
-  color: #00ffcc;
-  background: rgba(0, 255, 204, 0.08);
+  color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.08);
   padding: 0.05rem 0.28rem;
   border-radius: 3px;
 }
@@ -536,15 +536,15 @@
   transition: transform 0.2s ease, background 0.2s ease;
 }
 .rb-toggle input:checked + .rb-toggle__track {
-  background: rgba(0, 255, 204, 0.22);
-  border-color: rgba(0, 255, 204, 0.55);
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.55);
 }
 .rb-toggle input:checked + .rb-toggle__track .rb-toggle__thumb {
   transform: translateX(16px);
-  background: #00ffcc;
+  background: #8B5CF6;
 }
 .rb-toggle input:focus-visible + .rb-toggle__track {
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.25);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
 }
 
 /* ── Match results ─────────────────────────────────────────── */
@@ -582,7 +582,7 @@
   font-family: var(--font-body);
   transition: background 0.18s ease;
 }
-.rb-match__head:hover { background: rgba(0, 255, 204, 0.06); }
+.rb-match__head:hover { background: rgba(139, 92, 246, 0.06); }
 
 .rb-match__index {
   display: grid;
@@ -591,9 +591,9 @@
   height: 22px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(0, 255, 204, 0.14);
-  border: 1px solid rgba(0, 255, 204, 0.35);
-  color: #00ffcc;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #8B5CF6;
   font-size: 0.68rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -703,15 +703,15 @@
   transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
 }
 .rb-preset:hover {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.08);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.08);
   transform: translateY(-1px);
 }
 .rb-preset--active {
-  color: #00ffcc;
-  border-color: rgba(0, 255, 204, 0.6);
-  background: rgba(0, 255, 204, 0.12);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.12);
 }
 
 /* ── Flavor notes ──────────────────────────────────────────── */
@@ -759,7 +759,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin: 0 0 0.6rem;
 }
 
@@ -794,7 +794,7 @@
 .rb-match__head:focus-visible,
 .rb-panel__header--button:focus-visible,
 .back-link:focus-visible {
-  outline: 2px solid #00ffcc;
+  outline: 2px solid #8B5CF6;
   outline-offset: 2px;
 }
 

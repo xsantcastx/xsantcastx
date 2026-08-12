@@ -23,7 +23,7 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--primary-color);
-  text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
   margin: 0 0 0.7rem;
 }
 
@@ -47,8 +47,8 @@
   margin: 0.85rem auto 0;
   padding: 0.32rem 0.95rem;
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.05);
-  border: 1px solid rgba(0, 255, 204, 0.14);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.14);
   color: var(--text-muted);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -112,14 +112,14 @@
   grid-template-columns: auto 1fr;
   gap: 1.1rem;
   padding: 1rem 1.25rem;
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   border-radius: var(--radius-md);
   transition: transform 0.3s ease, background 0.3s ease;
 }
 
 .contact-method:hover {
   transform: translateX(6px);
-  background: rgba(0, 255, 204, 0.12);
+  background: rgba(139, 92, 246, 0.12);
 }
 
 .method-icon {
@@ -225,7 +225,7 @@
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.18);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
 }
 
 textarea {
@@ -246,12 +246,12 @@ textarea {
   font-size: 0.95rem;
   cursor: pointer;
   transition: transform 0.35s ease, box-shadow 0.35s ease;
-  box-shadow: 0 15px 40px rgba(0, 255, 204, 0.32);
+  box-shadow: 0 15px 40px rgba(139, 92, 246, 0.32);
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 20px 55px rgba(0, 255, 204, 0.45);
+  box-shadow: 0 20px 55px rgba(139, 92, 246, 0.45);
 }
 
 .submit-btn:disabled {
@@ -268,8 +268,8 @@ textarea {
 }
 
 .form-status .success {
-  background: rgba(0, 255, 204, 0.12);
-  border: 1px solid rgba(0, 255, 204, 0.32);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.32);
   color: var(--primary-color);
   margin: 0;
 }

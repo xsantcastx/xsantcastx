@@ -85,7 +85,7 @@ import { formatCurrency, formatRate } from './economy.model';
       box-shadow: 0 0 20px -8px rgba(164, 139, 255, .8);
     }
 
-    .cr__chip:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+    .cr__chip:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
 
     /* One pulse when the number moves, so an idle tick is noticed without a
        standing animation running in the header forever. */

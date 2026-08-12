@@ -37,7 +37,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     data: {
       description: 'A memory game in the Eclipse Realms: turn the scattered fragments face up two at a time and put the realms back together. Three difficulties, no sign-up.',
       keywords: 'memory game, matching game, browser game, free game, eclipse realms, color memory',
-      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       jsonLd: gameJsonLd(
         'Eclipse Fragments',
         'color-memory',
@@ -53,7 +53,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     data: {
       description: 'A typing speed game for developers: CSS properties, JS keywords, regex fragments and HTML tags fall out of the rift. Type them before they land. WPM and accuracy scored.',
       keywords: 'typing game, typing speed test, wpm, developer typing game, browser game, free game',
-      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       jsonLd: gameJsonLd(
         'Realm Rush',
         'realm-rush',
@@ -69,7 +69,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     data: {
       description: 'A code-ordering puzzle across ten pages: every line of the snippet is shuffled, and you put it back. CSS, JavaScript and HTML, increasing in length.',
       keywords: 'code puzzle, programming puzzle, reorder code, logic game, browser game, free game',
-      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       jsonLd: gameJsonLd(
         'Shadow Cipher',
         'shadow-cipher',
@@ -85,7 +85,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     data: {
       description: 'A reaction game: squash bugs, ship features, never touch a live error. Sixty-second rounds with a chain multiplier that rewards a clean run over a fast one.',
       keywords: 'reaction game, reflex game, whack a mole, click game, browser game, free game',
-      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       jsonLd: gameJsonLd(
         'Forge Strike',
         'forge-strike',
@@ -102,7 +102,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     data: {
       description: 'A procedurally generated maze with a twist: collect Aether and Nox in equal measure. Lean too far toward either and the realm collapses. Keyboard, swipe or on-screen pad.',
       keywords: 'maze game, procedural maze, puzzle game, balance game, browser game, free game',
-      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       jsonLd: gameJsonLd(
         "The Convergent's Path",
         'convergents-path',

@@ -54,7 +54,7 @@ export class GradientGeneratorComponent {
       type: 'linear',
       angle: 135,
       stops: [
-        { color: '#00ffcc', position: 0 },
+        { color: '#8B5CF6', position: 0 },
         { color: '#7b61ff', position: 100 }
       ]
     },
@@ -83,7 +83,7 @@ export class GradientGeneratorComponent {
       type: 'linear',
       angle: 135,
       stops: [
-        { color: '#00ffcc', position: 0 },
+        { color: '#8B5CF6', position: 0 },
         { color: '#00b4d8', position: 33 },
         { color: '#7b61ff', position: 66 },
         { color: '#ff6b9d', position: 100 }
@@ -94,7 +94,7 @@ export class GradientGeneratorComponent {
       type: 'radial',
       angle: 0,
       stops: [
-        { color: '#00ffcc', position: 0 },
+        { color: '#8B5CF6', position: 0 },
         { color: '#0a0a1a', position: 100 }
       ]
     },
@@ -136,7 +136,7 @@ export class GradientGeneratorComponent {
   ];
 
   constructor(private router: Router, private translationService: TranslationService) {
-    this.addStop('#00ffcc', 0);
+    this.addStop('#8B5CF6', 0);
     this.addStop('#7b61ff', 100);
   }
 
@@ -340,7 +340,7 @@ export class GradientGeneratorComponent {
     this.stops = [];
     this.nextId = 1;
     this.activeStopIndex = 0;
-    this.addStop('#00ffcc', 0);
+    this.addStop('#8B5CF6', 0);
     this.addStop('#7b61ff', 100);
   }
 

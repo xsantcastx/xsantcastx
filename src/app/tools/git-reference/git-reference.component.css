@@ -103,8 +103,8 @@
   overflow: hidden;
 }
 .gr-search:focus-within {
-  border-color: rgba(0, 255, 204, 0.4);
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.06);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.06);
 }
 
 .gr-search__icon {
@@ -287,11 +287,11 @@
 .gr-cheat-card:hover .gr-cheat-card__copy { opacity: 1; }
 .gr-cheat-card__copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .gr-cheat-card__copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
   opacity: 1 !important;
 }
 
@@ -553,11 +553,11 @@
 }
 .gr-detail__example-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .gr-detail__example-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 /* -- Flags list ----------------------------------------------- */
@@ -618,11 +618,11 @@
 }
 .gr-btn-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .gr-btn-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 /* ==============================================================

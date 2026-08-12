@@ -71,7 +71,7 @@ export class CrontabRefComponent implements OnDestroy {
 
   // ── Visual syntax fields for the diagram ─────────────────────────────────────
   readonly syntaxFields = [
-    { label: 'Minute',  value: '*', color: '#00ffcc' },
+    { label: 'Minute',  value: '*', color: '#8B5CF6' },
     { label: 'Hour',    value: '*', color: '#ff6ec7' },
     { label: 'Day',     value: '*', color: '#fbbf24' },
     { label: 'Month',   value: '*', color: '#60a5fa' },
@@ -89,7 +89,7 @@ export class CrontabRefComponent implements OnDestroy {
   // ── Category metadata ──────────────────────────────────────────────────────
   readonly categories: { key: ExpressionCategory; label: string; color: string }[] = [
     { key: 'all',      label: 'All',       color: 'var(--text-muted)' },
-    { key: 'common',   label: 'Common',    color: '#00ffcc' },
+    { key: 'common',   label: 'Common',    color: '#8B5CF6' },
     { key: 'system',   label: 'System',    color: '#60a5fa' },
     { key: 'business', label: 'Business',  color: '#fbbf24' },
     { key: 'devops',   label: 'DevOps',    color: '#a78bfa' },
