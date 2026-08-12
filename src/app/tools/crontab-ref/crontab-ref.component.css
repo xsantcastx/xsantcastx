@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Crontab Quick Reference — Component Styles
-   xsantcastx design system: dark navy, cyan #00ffcc, glassmorphism
+   xsantcastx design system: dark navy, cyan #8B5CF6, glassmorphism
    ══════════════════════════════════════════════════════════════ */
 
 .cr-page {
@@ -25,7 +25,7 @@
   margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -35,7 +35,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 
@@ -99,11 +99,11 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.cr-tab:hover { color: var(--text-color); border-color: rgba(0, 255, 204, 0.3); }
+.cr-tab:hover { color: var(--text-color); border-color: rgba(139, 92, 246, 0.3); }
 .cr-tab--active {
-  color: #00ffcc;
-  border-color: #00ffcc;
-  background: rgba(0, 255, 204, 0.08);
+  color: #8B5CF6;
+  border-color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.08);
 }
 
 /* ── Section wrapper ───────────────────────────────────────── */
@@ -159,7 +159,7 @@
   transition: border-color 0.2s ease;
 }
 .cr-search__input::placeholder { color: var(--text-muted); opacity: 0.6; }
-.cr-search__input:focus { border-color: #00ffcc; }
+.cr-search__input:focus { border-color: #8B5CF6; }
 
 .cr-categories {
   display: flex;
@@ -181,9 +181,9 @@
 }
 .cr-cat-btn:hover { color: var(--cat-color, var(--text-color)); border-color: var(--cat-color, var(--glass-border)); }
 .cr-cat-btn--active {
-  color: var(--cat-color, #00ffcc);
-  border-color: var(--cat-color, #00ffcc);
-  background: rgba(0, 255, 204, 0.06);
+  color: var(--cat-color, #8B5CF6);
+  border-color: var(--cat-color, #8B5CF6);
+  background: rgba(139, 92, 246, 0.06);
 }
 
 .cr-result-count {
@@ -214,13 +214,13 @@
   position: relative;
 }
 .cr-card:hover {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
 }
 .cr-card--copied {
-  border-color: #00ffcc !important;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+  border-color: #8B5CF6 !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
 }
 
 .cr-card__top {
@@ -233,7 +233,7 @@
 .cr-card__expr {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.95rem;
-  color: #00ffcc;
+  color: #8B5CF6;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -272,7 +272,7 @@
   transition: opacity 0.2s ease;
 }
 .cr-card:hover .cr-card__copy-hint { opacity: 1; }
-.cr-card__copy-hint--ok { color: #00ffcc; opacity: 1 !important; }
+.cr-card__copy-hint--ok { color: #8B5CF6; opacity: 1 !important; }
 
 .cr-empty {
   text-align: center;
@@ -371,12 +371,12 @@
   text-align: left;
   padding: 0.75rem 1rem;
   font-weight: 700;
-  color: #00ffcc;
+  color: #8B5CF6;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 .cr-table td {
   padding: 0.65rem 1rem;
@@ -387,7 +387,7 @@
 .cr-table code {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.82rem;
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 
 .cr-table__field-name { font-weight: 600; }
@@ -417,12 +417,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: rgba(0, 255, 204, 0.08);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 1.4rem;
   font-weight: 700;
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 
 .cr-wc-card__body { flex: 1; min-width: 0; }
@@ -451,8 +451,8 @@
 .cr-wc-card__example code {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.82rem;
-  color: #00ffcc;
-  background: rgba(0, 255, 204, 0.06);
+  color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.06);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
 }
@@ -479,7 +479,7 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 1rem;
   font-weight: 700;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 

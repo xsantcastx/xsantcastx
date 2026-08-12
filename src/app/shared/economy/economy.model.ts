@@ -454,7 +454,7 @@ export const COSMETICS: Cosmetic[] = [
     cost: 500,
     slot: 'trail',
     variants: [
-      { id: 'aether', label: 'Aether sparkles', color: '#4dffe0' },
+      { id: 'aether', label: 'Aether sparkles', color: '#A78BFA' },
       { id: 'nox', label: 'Nox shadows', color: '#7b61ff' },
       { id: 'eclipse', label: 'Eclipse fire', color: '#E8752A' },
     ],

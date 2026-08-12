@@ -164,7 +164,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .sf-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -209,10 +209,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.sf-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.sf-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .sf-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -257,7 +257,7 @@
   color: var(--text-color);
 }
 .sf-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -280,12 +280,12 @@
 }
 .sf-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .sf-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .sf-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .sf-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

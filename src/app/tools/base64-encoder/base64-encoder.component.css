@@ -164,7 +164,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .be-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Drop zone ─────────────────────────────────────────────── */
@@ -186,13 +186,13 @@
 }
 .be-dropzone:hover,
 .be-dropzone--over {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
   color: var(--text-color);
 }
 .be-dropzone--has-file {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.04);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .be-dropzone__icon {
@@ -257,7 +257,7 @@
 
 .be-option-hint code {
   font-family: 'Fira Code', monospace;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   padding: 0.1em 0.3em;
   border-radius: 3px;
@@ -288,10 +288,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.be-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.be-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .be-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -335,7 +335,7 @@
 
 .be-toggle input:checked ~ .be-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .be-toggle input:checked ~ .be-toggle__track .be-toggle__thumb {
   left: 20px;
@@ -383,12 +383,12 @@
 }
 .be-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .be-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .be-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .be-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -415,7 +415,7 @@
 
 .be-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 

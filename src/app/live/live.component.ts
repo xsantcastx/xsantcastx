@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 // ─── Firestore REST API (bypasses App Check) ──────────────────────────────────
 
@@ -124,7 +126,7 @@ type MockEntry = Omit<ActivityEntry, 'id' | 'timestamp' | 'isNew'>;
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TOOL_COLORS: Record<string, string> = {
-  Read:      '#00ffcc',
+  Read:      '#8B5CF6',
   Grep:      '#7b61ff',
   Edit:      '#ff00ff',
   Write:     '#00ccff',
@@ -136,12 +138,12 @@ const TOOL_COLORS: Record<string, string> = {
 };
 
 const BOT_COLORS: Record<string, string> = {
-  ops:       '#00ffcc',
+  ops:       '#8B5CF6',
   review:    '#7b61ff',
   analytics: '#ffcc00',
 };
 
-const USER_COLORS = ['#00ffcc', '#7b61ff', '#ff3399', '#ffcc00', '#00ff88', '#ff8800', '#00ccff'];
+const USER_COLORS = ['#8B5CF6', '#7b61ff', '#ff3399', '#ffcc00', '#00ff88', '#ff8800', '#00ccff'];
 
 const MOCK_SEQUENCES: MockEntry[][] = [
   [
@@ -240,7 +242,8 @@ const BOT_MOCK: { botName: string; botId: string; message: string; delay: number
   selector: 'app-live',
   templateUrl: './live.component.html',
   styleUrls: ['./live.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [CommonModule, FormsModule]
 })
 export class LiveComponent implements OnInit, OnDestroy {
 
@@ -320,7 +323,7 @@ export class LiveComponent implements OnInit, OnDestroy {
       name: 'SYSTEM',
       message: 'Stream is LIVE — say hello!',
       timestamp: new Date(),
-      color: '#00ffcc',
+      color: '#8B5CF6',
       isSystem: true,
     });
 
@@ -581,7 +584,7 @@ export class LiveComponent implements OnInit, OnDestroy {
     this.toolStats = entries.map(([name, count]) => ({
       name, count,
       pct: Math.round((count / max) * 100),
-      color: TOOL_COLORS[name] ?? '#00ffcc',
+      color: TOOL_COLORS[name] ?? '#8B5CF6',
     }));
   }
 
@@ -835,7 +838,7 @@ export class LiveComponent implements OnInit, OnDestroy {
   }
 
   getBotColor(botId: string): string {
-    return BOT_COLORS[botId] ?? '#00ffcc';
+    return BOT_COLORS[botId] ?? '#8B5CF6';
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

@@ -26,7 +26,7 @@ export class ColorPickerComponent {
   readonly twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Free Advanced Color Picker — RGB, HSL sliders, hex input, color history')}&url=${encodeURIComponent(SITE_URL + '/tools/color-picker')}`;
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools/color-picker')}`;
 
-  hex = '#00FFCC';
+  hex = '#8B5CF6';
   r = 0; g = 255; b = 204;
   h = 168; s = 100; l = 50;
   copied = false;

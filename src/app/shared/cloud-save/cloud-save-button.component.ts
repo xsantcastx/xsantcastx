@@ -84,18 +84,18 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
       display: flex; align-items: center; justify-content: center; gap: 8px;
       width: 100%; min-height: 44px; padding: 8px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(0, 255, 204, 0.28);
+      border: 1px solid rgba(139, 92, 246, 0.28);
       background:
-        radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0, 255, 204, 0.12), transparent 70%),
+        radial-gradient(ellipse 80% 100% at 50% 0%, rgba(139, 92, 246, 0.12), transparent 70%),
         rgba(10, 6, 26, 0.6);
       color: #cfe9e2; cursor: pointer;
       font: 600 12px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em;
       transition: border-color .25s ease, box-shadow .25s ease, color .25s ease;
     }
     .cs__signin:hover {
-      color: #eafff9;
-      border-color: rgba(0, 255, 204, 0.6);
-      box-shadow: 0 0 26px -8px rgba(0, 255, 204, 0.7);
+      color: #F2ECFF;
+      border-color: rgba(139, 92, 246, 0.6);
+      box-shadow: 0 0 26px -8px rgba(139, 92, 246, 0.7);
     }
     .cs__cloud { font-size: 14px; }
 
@@ -111,14 +111,14 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
     .cs__avatar {
       width: 24px; height: 24px; flex: none;
       border-radius: 50%;
-      border: 1px solid rgba(0, 255, 204, 0.35);
-      box-shadow: 0 0 10px -2px rgba(0, 255, 204, 0.5);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      box-shadow: 0 0 10px -2px rgba(139, 92, 246, 0.5);
       object-fit: cover;
     }
     .cs__avatar--initial {
       display: grid; place-items: center;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif; color: #eafff9;
-      background: radial-gradient(circle at 50% 50%, #4dffe0 0%, rgba(8, 3, 24, .92) 90%);
+      font: 700 11px/1 'Orbitron', system-ui, sans-serif; color: #F2ECFF;
+      background: radial-gradient(circle at 50% 50%, #A78BFA 0%, rgba(8, 3, 24, .92) 90%);
     }
 
     .cs__who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -126,7 +126,7 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
     .cs__state {
       display: flex; align-items: center; gap: 5px;
       font: 600 11px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em;
-      color: #4dffe0;
+      color: #A78BFA;
     }
     .cs__state[data-state="syncing"] { color: #ffc669; }
     .cs__state[data-state="error"]   { color: #ff6dd7; }
@@ -160,11 +160,11 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: border-color .25s ease, color .25s ease;
     }
-    .cs__signout:hover { color: #eafff9; border-color: rgba(255, 255, 255, 0.28); }
+    .cs__signout:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, 0.28); }
     .cs__retry {
-      color: #4dffe0; border-color: rgba(0, 255, 204, 0.3);
+      color: #A78BFA; border-color: rgba(139, 92, 246, 0.3);
     }
-    .cs__retry:hover { color: #eafff9; border-color: rgba(0, 255, 204, 0.65); }
+    .cs__retry:hover { color: #F2ECFF; border-color: rgba(139, 92, 246, 0.65); }
 
     @media (prefers-reduced-motion: reduce) {
       .cs__state[data-state="syncing"] .cs__glyph { animation: none; }

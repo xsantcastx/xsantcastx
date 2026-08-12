@@ -1,12 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { FirebaseService } from '../firebase.service';
 import { TranslationService } from '../translation.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-donation-form',
   templateUrl: './donation-form.component.html',
   styleUrls: ['./donation-form.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [FormsModule]
 })
 export class DonationFormComponent {
   private firebaseService = inject(FirebaseService);

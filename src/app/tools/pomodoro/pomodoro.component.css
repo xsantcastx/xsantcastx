@@ -136,11 +136,11 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.pm-seg-btn:hover:not(:disabled) { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.pm-seg-btn:hover:not(:disabled) { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .pm-seg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .pm-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -162,7 +162,7 @@
 .pm-ring {
   width: 260px;
   height: 260px;
-  filter: drop-shadow(0 0 2px rgba(0, 255, 204, 0.15));
+  filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.15));
 }
 
 .pm-ring__bg {
@@ -182,9 +182,9 @@
 }
 
 /* Mode-specific neon colors */
-.pm-timer--work .pm-ring__progress { stroke: #00ffcc; }
-.pm-timer--work .pm-ring__glow { stroke: #00ffcc; }
-.pm-timer--work .pm-timer-mode { color: #00ffcc; }
+.pm-timer--work .pm-ring__progress { stroke: #8B5CF6; }
+.pm-timer--work .pm-ring__glow { stroke: #8B5CF6; }
+.pm-timer--work .pm-timer-mode { color: #8B5CF6; }
 
 .pm-timer--short .pm-ring__progress { stroke: var(--info-color); }
 .pm-timer--short .pm-ring__glow { stroke: var(--info-color); }
@@ -285,10 +285,10 @@
   background: var(--primary-color);
   color: #0a0e14;
   border-color: var(--primary-color);
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.25), 0 0 4px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.25), 0 0 4px rgba(139, 92, 246, 0.15);
 }
 .pm-btn--primary:hover {
-  box-shadow: 0 0 24px rgba(0, 255, 204, 0.4), 0 0 8px rgba(0, 255, 204, 0.25);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.4), 0 0 8px rgba(139, 92, 246, 0.25);
   transform: translateY(-1px);
 }
 
@@ -299,7 +299,7 @@
 }
 .pm-btn--ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .pm-btn--ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -337,7 +337,7 @@
 .pm-dot--filled {
   background: var(--primary-color);
   border-color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
 }
 
 .pm-total-label {
@@ -367,7 +367,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .pm-task-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Settings ──────────────────────────────────────────────── */
@@ -402,7 +402,7 @@
   transition: border-color 0.2s ease;
 }
 .pm-setting-input-wrap:focus-within {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .pm-setting-input {
@@ -450,7 +450,7 @@
 }
 .pm-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .pm-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -488,7 +488,7 @@
   transition: background 0.15s ease;
 }
 .pm-history-item:hover {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 .pm-history-item:last-child {
   border-bottom: none;
@@ -507,9 +507,9 @@
 }
 
 .pm-history-badge--work {
-  background: rgba(0, 255, 204, 0.1);
-  border: 1px solid rgba(0, 255, 204, 0.25);
-  color: #00ffcc;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: #8B5CF6;
 }
 
 .pm-history-badge--short {

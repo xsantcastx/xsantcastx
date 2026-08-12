@@ -118,9 +118,9 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     [data-tier="gold"] .ms-card__glow,
     .ms-card[data-tier="gold"] .ms-card__glow { background: radial-gradient(circle, #ffd700, transparent 70%); }
     [data-tier="diamond"] .ms-card__glow,
-    .ms-card[data-tier="diamond"] .ms-card__glow { background: radial-gradient(circle, #00ffcc, transparent 70%); }
+    .ms-card[data-tier="diamond"] .ms-card__glow { background: radial-gradient(circle, #8B5CF6, transparent 70%); }
     [data-tier="legendary"] .ms-card__glow,
-    .ms-card[data-tier="legendary"] .ms-card__glow { background: radial-gradient(circle, #ff00ff, #00ffcc, transparent 70%); }
+    .ms-card[data-tier="legendary"] .ms-card__glow { background: radial-gradient(circle, #ff00ff, #8B5CF6, transparent 70%); }
 
     @keyframes ms-glow-pulse {
       from { opacity: 0.3; transform: scale(0.95); }
@@ -156,12 +156,12 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     .ms-card__badge[data-tier="bronze"] { background: rgba(205, 127, 50, 0.2); color: #cd7f32; border: 2px solid rgba(205, 127, 50, 0.4); }
     .ms-card__badge[data-tier="silver"] { background: rgba(192, 192, 192, 0.2); color: #e0e0e0; border: 2px solid rgba(192, 192, 192, 0.4); }
     .ms-card__badge[data-tier="gold"] { background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 2px solid rgba(255, 215, 0, 0.4); }
-    .ms-card__badge[data-tier="diamond"] { background: rgba(0, 255, 204, 0.12); color: #00ffcc; border: 2px solid rgba(0, 255, 204, 0.35); }
+    .ms-card__badge[data-tier="diamond"] { background: rgba(139, 92, 246, 0.12); color: #8B5CF6; border: 2px solid rgba(139, 92, 246, 0.35); }
     .ms-card__badge[data-tier="legendary"] {
-      background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 255, 204, 0.15));
+      background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(139, 92, 246, 0.15));
       color: #ff00ff;
       border: 2px solid rgba(255, 0, 255, 0.4);
-      box-shadow: 0 0 20px rgba(255, 0, 255, 0.2), 0 0 40px rgba(0, 255, 204, 0.1);
+      box-shadow: 0 0 20px rgba(255, 0, 255, 0.2), 0 0 40px rgba(139, 92, 246, 0.1);
     }
     @keyframes ms-badge-spin {
       from { transform: rotateY(180deg) scale(0.5); opacity: 0; }
@@ -201,9 +201,9 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     .ms-card__count[data-tier="bronze"] { color: #cd7f32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.4); }
     .ms-card__count[data-tier="silver"] { color: #e0e0e0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.4); }
     .ms-card__count[data-tier="gold"] { color: #ffd700; text-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
-    .ms-card__count[data-tier="diamond"] { color: #00ffcc; text-shadow: 0 0 20px rgba(0, 255, 204, 0.5); }
+    .ms-card__count[data-tier="diamond"] { color: #8B5CF6; text-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
     .ms-card__count[data-tier="legendary"] {
-      background: linear-gradient(90deg, #ff00ff, #00ffcc, #7b61ff, #ff00ff);
+      background: linear-gradient(90deg, #ff00ff, #8B5CF6, #7b61ff, #ff00ff);
       background-size: 200% auto;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -238,9 +238,9 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     .ms-card__tier[data-tier="bronze"] { background: rgba(205, 127, 50, 0.15); color: #cd7f32; border: 1px solid rgba(205, 127, 50, 0.3); }
     .ms-card__tier[data-tier="silver"] { background: rgba(192, 192, 192, 0.12); color: #c0c0c0; border: 1px solid rgba(192, 192, 192, 0.3); }
     .ms-card__tier[data-tier="gold"] { background: rgba(255, 215, 0, 0.12); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.3); }
-    .ms-card__tier[data-tier="diamond"] { background: rgba(0, 255, 204, 0.1); color: #00ffcc; border: 1px solid rgba(0, 255, 204, 0.25); }
+    .ms-card__tier[data-tier="diamond"] { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.25); }
     .ms-card__tier[data-tier="legendary"] {
-      background: linear-gradient(135deg, rgba(255, 0, 255, 0.12), rgba(0, 255, 204, 0.12));
+      background: linear-gradient(135deg, rgba(255, 0, 255, 0.12), rgba(139, 92, 246, 0.12));
       color: #ff00ff;
       border: 1px solid rgba(255, 0, 255, 0.3);
       box-shadow: 0 0 12px rgba(255, 0, 255, 0.15);
@@ -335,8 +335,8 @@ export class MilestoneEffectComponent implements OnInit, OnDestroy {
       bronze:    ['#cd7f32', '#e8a854', '#a0622a'],
       silver:    ['#c0c0c0', '#e0e0e0', '#8a8a8a'],
       gold:      ['#ffd700', '#ffec80', '#e6b800'],
-      diamond:   ['#00ffcc', '#7b61ff', '#00e5ff'],
-      legendary: ['#ff00ff', '#00ffcc', '#7b61ff', '#ff6ec7', '#00e5ff'],
+      diamond:   ['#8B5CF6', '#7b61ff', '#00e5ff'],
+      legendary: ['#ff00ff', '#8B5CF6', '#7b61ff', '#ff6ec7', '#00e5ff'],
     };
     const palette = colors[tier] || colors['diamond'];
     const count = tier === 'legendary' ? 60 : tier === 'diamond' ? 45 : 30;

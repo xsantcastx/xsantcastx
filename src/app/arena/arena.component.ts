@@ -10,6 +10,7 @@ import {
 } from '../shared/rarity/rarity.model';
 import { ARENA_PLAYABLE, formatScore, playableById } from './games/arena-game.model';
 import { ArenaScoresService } from './games/arena-scores.service';
+import { RouterModule } from '@angular/router';
 
 export interface ArenaGame {
   id: string;
@@ -46,7 +47,8 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
   selector: 'app-arena',
   templateUrl: './arena.component.html',
   styleUrls: ['./arena.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [RouterModule]
 })
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

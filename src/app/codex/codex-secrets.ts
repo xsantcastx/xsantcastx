@@ -38,7 +38,7 @@ export const SECRET_GROUPS: SecretGroup[] = [
     id: 'easter-eggs',
     label: 'Easter Eggs',
     icon: '🥚',
-    color: '#4dffe0',
+    color: '#A78BFA',
     blurb: 'Things the realm does when you are not expected to be looking.',
   },
   {

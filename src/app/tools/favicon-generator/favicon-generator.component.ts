@@ -49,7 +49,7 @@ export class FaviconGeneratorComponent implements OnInit, OnDestroy {
 
   // Customization
   bgColor = '#0a0e17';
-  textColor = '#00ffcc';
+  textColor = '#8B5CF6';
   fontSize = 64;
   borderRadius = 0;
   fontFamily = 'Inter';

@@ -114,8 +114,8 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
       transition: border-color .25s ease, box-shadow .25s ease;
     }
     .xpb__trigger:hover, .xpb--open .xpb__trigger {
-      border-color: rgba(0, 255, 204, 0.45);
-      box-shadow: 0 0 24px -8px rgba(0, 255, 204, 0.6);
+      border-color: rgba(139, 92, 246, 0.45);
+      box-shadow: 0 0 24px -8px rgba(139, 92, 246, 0.6);
     }
 
     .xpb__rank {
@@ -123,11 +123,11 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
       width: 26px; height: 26px; flex: none;
       border-radius: 50%;
       font: 700 12px/1 'Orbitron', system-ui, sans-serif;
-      color: #eafff9;
+      color: #F2ECFF;
       background:
-        radial-gradient(circle at 32% 28%, #eafff9 0%, rgba(255,255,255,.3) 18%, rgba(255,255,255,0) 42%),
-        radial-gradient(circle at 50% 50%, #4dffe0 0%, rgba(8,3,24,.92) 88%);
-      box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        radial-gradient(circle at 32% 28%, #F2ECFF 0%, rgba(255,255,255,.3) 18%, rgba(255,255,255,0) 42%),
+        radial-gradient(circle at 50% 50%, #A78BFA 0%, rgba(8,3,24,.92) 88%);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
     }
 
     .xpb__meta { display: flex; flex-direction: column; gap: 3px; min-width: 92px; }
@@ -143,7 +143,7 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
     }
     .xpb__fill {
       position: absolute; inset: 0 auto 0 0;
-      background: linear-gradient(90deg, #4dffe0, #7b61ff);
+      background: linear-gradient(90deg, #A78BFA, #7b61ff);
       transition: width .6s cubic-bezier(.22, 1, .36, 1);
     }
     /* The seam between the two energies, drawn over the rank fill. */
@@ -159,7 +159,7 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
     }
     .xpb__streak span { margin-left: 2px; }
 
-    .xpb__sync { font-size: 11px; line-height: 1; color: #4dffe0; }
+    .xpb__sync { font-size: 11px; line-height: 1; color: #A78BFA; }
     .xpb__sync[data-state="syncing"] {
       color: #ffc669;
       display: inline-block;
@@ -173,9 +173,9 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
       width: min(260px, calc(100vw - 32px));
       padding: 14px;
       border-radius: 14px;
-      border: 1px solid rgba(0, 255, 204, 0.22);
+      border: 1px solid rgba(139, 92, 246, 0.22);
       background:
-        radial-gradient(ellipse 70% 60% at 20% 0%, rgba(0, 255, 204, 0.09), transparent 65%),
+        radial-gradient(ellipse 70% 60% at 20% 0%, rgba(139, 92, 246, 0.09), transparent 65%),
         radial-gradient(ellipse 60% 55% at 90% 100%, rgba(123, 97, 255, 0.11), transparent 65%),
         rgba(6, 4, 18, 0.94);
       box-shadow: 0 18px 48px -18px rgba(0, 0, 0, 0.9);
@@ -184,25 +184,25 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
     @keyframes xpbIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
     .xpb__panel-rank { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 4px; }
-    .xpb__panel-title { font: 700 14px/1.2 'Orbitron', system-ui, sans-serif; color: #4dffe0; }
+    .xpb__panel-title { font: 700 14px/1.2 'Orbitron', system-ui, sans-serif; color: #A78BFA; }
     .xpb__panel-xp { font-size: 12px; color: #9fb4ae; }
     .xpb__panel-next { margin: 0 0 12px; font-size: 12px; color: #b9cdc7; }
     .xpb__panel-next strong { color: #c48bff; font-weight: 600; }
 
     .xpb__energy { display: grid; gap: 5px; margin-bottom: 12px; }
     .xpb__energy-row { display: flex; justify-content: space-between; font-size: 12px; }
-    .xpb__energy-row--aether { color: #4dffe0; }
+    .xpb__energy-row--aether { color: #A78BFA; }
     .xpb__energy-row--nox { color: #c48bff; }
     .xpb__energy-bar {
       display: block; height: 5px; border-radius: 999px; overflow: hidden;
       background: #7b61ff;
     }
-    .xpb__energy-aether { display: block; height: 100%; background: #4dffe0; transition: width .6s ease; }
+    .xpb__energy-aether { display: block; height: 100%; background: #A78BFA; transition: width .6s ease; }
 
     .xpb__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 10px; }
     .xpb__stats div { text-align: center; }
     .xpb__stats dt { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
-    .xpb__stats dd { margin: 2px 0 0; font: 600 14px/1 'Orbitron', system-ui, sans-serif; color: #eafff9; }
+    .xpb__stats dd { margin: 2px 0 0; font: 600 14px/1 'Orbitron', system-ui, sans-serif; color: #F2ECFF; }
 
     .xpb__whisper { margin: 0; font-size: 10px; font-style: italic; color: #6d817c; text-align: center; }
 

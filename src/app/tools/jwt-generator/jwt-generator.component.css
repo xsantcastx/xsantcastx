@@ -167,8 +167,8 @@
   color: rgba(214, 221, 235, 0.25);
 }
 .jg-input:focus {
-  border-color: rgba(0, 255, 204, 0.35);
-  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.08);
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.08);
 }
 
 .jg-input--sm {
@@ -232,12 +232,12 @@
   transition: transform 0.2s ease, background 0.2s ease;
 }
 .jg-toggle input:checked + .jg-toggle__track {
-  background: rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.25);
 }
 .jg-toggle input:checked + .jg-toggle__track::after {
   transform: translateX(16px);
   background: var(--primary-color);
-  box-shadow: 0 0 6px rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
 }
 
 /* -- Algorithm button group ----------------------------------- */
@@ -260,14 +260,14 @@
   transition: all 0.15s ease;
 }
 .jg-algo-btn:hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--text-color);
 }
 .jg-algo-btn--active {
-  background: rgba(0, 255, 204, 0.12);
-  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.15);
 }
 .jg-algo-btn--danger.jg-algo-btn--active {
   background: rgba(255, 77, 106, 0.12);
@@ -365,8 +365,8 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  background: rgba(0, 255, 204, 0.08);
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 8px;
   color: var(--primary-color);
   cursor: pointer;
@@ -374,8 +374,8 @@
   flex-shrink: 0;
 }
 .jg-btn-add:hover:not(:disabled) {
-  background: rgba(0, 255, 204, 0.15);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
 }
 .jg-btn-add:disabled {
   opacity: 0.3;
@@ -390,8 +390,8 @@
   gap: 0.5rem;
   width: 100%;
   padding: 0.7rem 1.2rem;
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.15), rgba(123, 97, 255, 0.15));
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(123, 97, 255, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: 10px;
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -403,8 +403,8 @@
   transition: all 0.2s ease;
 }
 .jg-btn-generate:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(123, 97, 255, 0.22));
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.15), 0 0 40px rgba(123, 97, 255, 0.08);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(123, 97, 255, 0.22));
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), 0 0 40px rgba(123, 97, 255, 0.08);
   transform: translateY(-1px);
 }
 .jg-btn-generate:disabled {
@@ -431,12 +431,12 @@
 }
 .jg-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .jg-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .jg-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .jg-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -451,7 +451,7 @@
 }
 .jg-dot--header   { background: #ff6b6b; box-shadow: 0 0 6px rgba(255, 107, 107, 0.4); }
 .jg-dot--payload  { background: var(--info-color); box-shadow: 0 0 6px rgba(123, 97, 255, 0.4); }
-.jg-dot--token    { background: #00ffcc; box-shadow: 0 0 6px rgba(0, 255, 204, 0.4); }
+.jg-dot--token    { background: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.4); }
 
 /* -- Badge ---------------------------------------------------- */
 .jg-badge {
@@ -565,7 +565,7 @@
   gap: 0.55rem;
   padding: 0.6rem 1rem;
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
   font-size: 0.75rem;
   color: rgba(214, 221, 235, 0.6);

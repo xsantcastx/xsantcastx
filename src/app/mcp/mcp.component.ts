@@ -17,7 +17,7 @@ interface WhyCard {
 
 @Component({
   selector: 'app-mcp',
-  standalone: false,
+  standalone: true,
   template: `
     <div class="mcp-page">
     
@@ -222,7 +222,7 @@ interface WhyCard {
     /* ── Page shell ───────────────────────────────────────────────────────── */
     .mcp-page {
       min-height: 100vh;
-      background: #0a0f1e;
+      background: #0a0a0f;
       color: #e2e8f0;
       font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     }
@@ -311,7 +311,7 @@ interface WhyCard {
       align-items: center;
       gap: 0.5rem;
       background: #00d4ff;
-      color: #0a0f1e;
+      color: #0a0a0f;
       font-weight: 700;
       padding: 0.75rem 1.5rem;
       border-radius: 8px;
@@ -762,7 +762,7 @@ export class McpComponent implements OnInit {
     { name: 'regex_replace',        description: 'Replace matches in a string using regex.',                       example: 'regex_replace({ pattern: "foo", replacement: "bar", input: "foo baz" })' },
     { name: 'hash_generate',        description: 'Generate a hash (MD5/SHA-1/SHA-256/SHA-512).',                   example: 'hash_generate({ text: "hello", algorithm: "sha256" })' },
     { name: 'hash_verify',          description: 'Verify text against a known hash.',                              example: 'hash_verify({ text: "hello", hash: "...", algorithm: "sha256" })' },
-    { name: 'color_contrast',       description: 'Calculate WCAG color contrast ratio.',                           example: 'color_contrast({ foreground: "#fff", background: "#0a0f1e" })' },
+    { name: 'color_contrast',       description: 'Calculate WCAG color contrast ratio.',                           example: 'color_contrast({ foreground: "#fff", background: "#0a0a0f" })' },
     { name: 'cron_parse',           description: 'Parse a cron expression into human-readable form.',              example: 'cron_parse({ expression: "0 9 * * 1-5" })' },
     { name: 'cron_build',           description: 'Build a cron expression from schedule params.',                   example: 'cron_build({ minute: "0", hour: "9", weekday: "1-5" })' },
   ];
