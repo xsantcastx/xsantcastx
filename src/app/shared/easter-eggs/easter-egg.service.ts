@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, doc, getDoc, setDoc, increment } from '@angular/fire/firestore';
+import { LazyFirestoreService } from '../lazy-firestore.service';
 import { BehaviorSubject } from 'rxjs';
 
 export interface EasterEgg {
@@ -239,7 +239,7 @@ export const EGGS_DATES_KEY = 'easter-eggs-dates';
 
 @Injectable({ providedIn: 'root' })
 export class EasterEggService {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private discovered = new Set<string>();
   private dates: Record<string, string> = {};
@@ -297,27 +297,38 @@ export class EasterEggService {
       }
     } catch { /* quota or private mode — the drop still fires, it just won't stick */ }
 
-    if (isNew) {
-      // Track in Firestore (global discovery count)
-      try {
-        const ref = doc(this.firestore, 'easter-eggs', id);
-        await setDoc(ref, { discoveries: increment(1), name: egg.name }, { merge: true });
-      } catch { /* silent */ }
-    }
-
+    // Announce first, persist second. The global counter now travels through
+    // a lazily-downloaded Firestore SDK, and the player should never wait on a
+    // network chunk to see their own discovery.
     this.discovery$.next({
       egg,
       isNew,
       totalFound: this.discovered.size,
       totalEggs: EASTER_EGGS.length,
     });
+
+    if (isNew) {
+      // Track in Firestore (global discovery count) — fire and forget.
+      void this.lazyFirestore.get().then(handle => {
+        if (!handle) return;
+        const { db, api } = handle;
+        return api.setDoc(
+          api.doc(db, 'easter-eggs', id),
+          { discoveries: api.increment(1), name: egg.name },
+          { merge: true }
+        );
+      }).catch(() => { /* silent */ });
+    }
   }
 
   /** Get global discovery count for an egg */
   async getGlobalCount(id: string): Promise<number> {
     if (!this.isBrowser) return 0;
     try {
-      const snap = await getDoc(doc(this.firestore, 'easter-eggs', id));
+      const handle = await this.lazyFirestore.get();
+      if (!handle) return 0;
+      const { db, api } = handle;
+      const snap = await api.getDoc(api.doc(db, 'easter-eggs', id));
       return snap.exists() ? (snap.data()['discoveries'] ?? 0) : 0;
     } catch { return 0; }
   }

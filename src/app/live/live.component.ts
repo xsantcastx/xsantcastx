@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 // ─── Firestore REST API (bypasses App Check) ──────────────────────────────────
 
@@ -240,7 +242,8 @@ const BOT_MOCK: { botName: string; botId: string; message: string; delay: number
   selector: 'app-live',
   templateUrl: './live.component.html',
   styleUrls: ['./live.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [CommonModule, FormsModule]
 })
 export class LiveComponent implements OnInit, OnDestroy {
 
