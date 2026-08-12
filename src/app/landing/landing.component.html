@@ -1,3 +1,23 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     THE HOMEPAGE — four sections and the footer, in this order:
+
+       1. the hero            the artwork, the mark, your standing
+       2. the five realms     the artifacts, grouped the way the codex groups them
+       3. the forge's pulse   four numbers, each derived from the thing it counts
+       4. begin your journey  where you stand and the three doors out
+
+     What used to sit between them, and why it is gone: the shop counters and
+     the creed row repeated what the Market and the hero already said; the
+     featured-tool spotlight and the "watch AI build" panel and the changelog
+     feed were three separate portfolio pitches stacked below the fold; the
+     newsletter form was a fifth call to action on a page that already had four.
+     A visitor scrolled through six screens of persuasion to reach the tools.
+
+     The chronicle lives on /blueprint, which is the page about what is being
+     built. The newsletter lives on the tool pages, where somebody has just got
+     value and might want more of it. Nothing was deleted from the site — it was
+     taken off the front door.
+     ═══════════════════════════════════════════════════════════════════════ -->
 <div class="homepage">
 
   <!-- ═══════════════════════════════════════════
@@ -6,11 +26,6 @@
   ═══════════════════════════════════════════ -->
   <section id="hero" class="gfh">
 
-    <!-- The scene. The whole hero sits inside the Godforge sigil: rune
-         circle, four compass points, the X, and the core where the arms
-         meet. Built from gradients and borders rather than a background
-         image — a 1536px render of this is ~2MB and would be the largest
-         asset on the site by an order of magnitude. -->
     <!-- The scene is Santiago's painted altar, not a CSS recreation of it.
          Everything below — the panels, the wordmark, the calls — layers on
          top; the art is the atmosphere and CSS is only the UI.
@@ -53,10 +68,6 @@
           <div class="gfstat__row">
             <dt>{{ translate('godforge.status.toolsForged') }}</dt>
             <dd [attr.data-counter]="artifactCount">{{ artifactCount }}</dd>
-          </div>
-          <div class="gfstat__row">
-            <dt>{{ translate('godforge.status.projectsLive') }}</dt>
-            <dd [attr.data-counter]="projectsLive">{{ projectsLive }}</dd>
           </div>
           <div class="gfstat__row">
             <dt>{{ translate('godforge.status.codexEntries') }}</dt>
@@ -142,111 +153,14 @@
 
 
   <!-- ═══════════════════════════════════════════
-  THE COUNTERS — the five places the forge trades
-  ═══════════════════════════════════════════ -->
-  <section class="gfcounters">
-    <div class="gfcounters__inner">
-      <p class="hp-section-eyebrow">
-        <span class="hp-eyebrow-pulse"></span>
-        {{ translate('godforge.shop.eyebrow') }}
-      </p>
-      <h2 class="hp-section-title">{{ translate('godforge.shop.title') }}</h2>
-
-      <div class="gfcounters__row">
-        @for (c of counters; track c.id) {
-          @if (c.route) {
-            <a class="gfcounter" [class]="'gfcounter gfcounter--' + c.id" [routerLink]="c.route">
-              <span class="gfcounter__art" aria-hidden="true">
-                <img class="gfcounter__glyph gf-icon" [src]="c.icon" alt=""
-                     width="54" height="54" decoding="async" draggable="false">
-                <span class="gfcounter__halo"></span>
-              </span>
-              <span class="gfcounter__name">{{ translate(c.nameKey) }}</span>
-              <span class="gfcounter__sub">{{ translate(c.subKey) }}</span>
-            </a>
-          } @else {
-            <div class="gfcounter gfcounter--sealed" [class]="'gfcounter gfcounter--sealed gfcounter--' + c.id">
-              <span class="gfcounter__art" aria-hidden="true">
-                <img class="gfcounter__glyph gf-icon" [src]="c.icon" alt=""
-                     width="54" height="54" decoding="async" draggable="false">
-                <span class="gfcounter__halo"></span>
-              </span>
-              <span class="gfcounter__name">{{ translate(c.nameKey) }}</span>
-              <span class="gfcounter__sub">{{ translate(c.subKey) }}</span>
-              <span class="gfcounter__seal">{{ translate('godforge.shop.sealed') }}</span>
-            </div>
-          }
-        }
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  THE CREED — three promises, then the line
-  ═══════════════════════════════════════════ -->
-  <section class="gfcreed">
-    <div class="gfcreed__inner">
-      <div class="gfcreed__row">
-        @for (c of creeds; track c.id) {
-          <div class="gfcreed__item" [class]="'gfcreed__item gfcreed__item--' + c.id">
-            <span class="gfcreed__rule" aria-hidden="true"></span>
-            <h3 class="gfcreed__title">{{ translate(c.titleKey) }}</h3>
-            <p class="gfcreed__line">{{ translate(c.lineKey) }}</p>
-          </div>
-        }
-      </div>
-      <p class="gfcreed__tagline">
-        <span class="gfcreed__tagline-a">{{ translate('godforge.creed.taglineA') }}</span>
-        <span class="gfcreed__tagline-b">{{ translate('godforge.creed.taglineB') }}</span>
-      </p>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 2 — THE FORGE'S PULSE
-  Every number is derived from the thing it counts.
-  ═══════════════════════════════════════════ -->
-  <div class="hp-stats gf-pulse">
-    <div class="hp-stats__inner">
-      <div class="hp-stat">
-        <span class="hp-stat__icon">⬡</span>
-        <span class="hp-stat__num" [attr.data-counter]="artifactCount">{{ artifactCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.artifacts') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◉</span>
-        <span class="hp-stat__num" [attr.data-counter]="prerenderedPaths">{{ prerenderedPaths }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.paths') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◑</span>
-        <span class="hp-stat__num" [attr.data-counter]="fragmentCount">{{ fragmentCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.fragments') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◈</span>
-        <span class="hp-stat__num" [attr.data-counter]="realmCount">{{ realmCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.realms') }}</span>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 3 — THE FIVE REALMS
+  SECTION 2 — THE FIVE REALMS
   One forge station per realm. Every station's tools stay in the
   markup when collapsed — the toggle hides them, so crawlers still
   follow all 30 links and only the visitor's view is filtered.
   ═══════════════════════════════════════════ -->
-  <!-- id stays "services": the header's scrollToSection() and its
-       active-link observer both key off a fixed list of section ids
-       (hero / services / projects / about / contact), so renaming this
-       anchor would silently break the SERVICES nav link. -->
+  <!-- id stays "services": enterTheForge() scrolls to it, and it is the
+       anchor the hero's two calls to action both land on. The name is
+       historical — nothing on this page is called Services any more. -->
   <section id="services" class="hp-tools gf-forges">
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
@@ -366,210 +280,40 @@
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 4 — FEATURED SPOTLIGHT
+  SECTION 3 — THE FORGE'S PULSE
+  Every number is derived from the thing it counts.
   ═══════════════════════════════════════════ -->
-  <section id="projects" class="hp-spotlight">
-    <div class="hp-spotlight__inner">
-      <div class="hp-spotlight__label">
-        <span class="hp-spotlight__label-dot"></span>
-        Featured Tool
+  <div class="hp-stats gf-pulse">
+    <div class="hp-stats__inner">
+      <div class="hp-stat">
+        <span class="hp-stat__icon">⬡</span>
+        <span class="hp-stat__num" [attr.data-counter]="artifactCount">{{ artifactCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.artifacts') }}</span>
       </div>
-      <div class="hp-spotlight__card glass-card">
-        <div class="hp-spotlight__left">
-          <span class="hp-spotlight__cat">{{ spotlightTool.category }}</span>
-          <h2 class="hp-spotlight__name">{{ spotlightTool.name }}</h2>
-          <p class="hp-spotlight__desc">{{ spotlightTool.desc }}</p>
-          <ul class="hp-spotlight__features">
-            @for (f of spotlightTool.features; track trackFeature($index, f)) {
-              <li>
-                <span class="hp-spotlight__check">✓</span>
-                {{ f }}
-              </li>
-            }
-          </ul>
-          <a [routerLink]="spotlightTool.route" class="cta-button hp-spotlight__btn">
-            Open Tool &rarr;
-          </a>
-        </div>
-        <div class="hp-spotlight__right" aria-hidden="true">
-          <div class="hp-spotlight__preview">
-            <div class="hp-sp__bar">
-              <span class="hp-sp__dot hp-sp__dot--red"></span>
-              <span class="hp-sp__dot hp-sp__dot--yellow"></span>
-              <span class="hp-sp__dot hp-sp__dot--green"></span>
-              <span class="hp-sp__title">{{ spotlightTool.name }}</span>
-            </div>
-            <div class="hp-sp__body">
-              <div class="hp-sp__icon-big">{{ spotlightTool.icon }}</div>
-              <div class="hp-sp__lines">
-                <div class="hp-sp__line hp-sp__line--long"></div>
-                <div class="hp-sp__line hp-sp__line--med"></div>
-                <div class="hp-sp__line hp-sp__line--short"></div>
-              </div>
-              <div class="hp-sp__output">
-                <span class="hp-sp__prompt">$ running tool</span>
-                <span class="hp-sp__blink">_</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◉</span>
+        <span class="hp-stat__num" [attr.data-counter]="prerenderedPaths">{{ prerenderedPaths }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.paths') }}</span>
+      </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◑</span>
+        <span class="hp-stat__num" [attr.data-counter]="fragmentCount">{{ fragmentCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.fragments') }}</span>
+      </div>
+      <div class="hp-stats__divider"></div>
+      <div class="hp-stat">
+        <span class="hp-stat__icon">◈</span>
+        <span class="hp-stat__num" [attr.data-counter]="realmCount">{{ realmCount }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.pulse.realms') }}</span>
       </div>
     </div>
-  </section>
+  </div>
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 5 — WATCH LIVE WORK
-  ═══════════════════════════════════════════ -->
-  <section id="about" class="hp-live">
-    <div class="hp-live__inner">
-      <div class="hp-live__text">
-        <p class="hp-live__eyebrow">
-          <span class="hp-live-badge">
-            <span class="hp-live-dot"></span>LIVE
-          </span>
-          AI in Real Time
-        </p>
-        <h2 class="hp-live__title">
-          Watch AI Build<br>
-          <span class="hp-live__title--accent">This Site in Real Time</span>
-        </h2>
-        <p class="hp-live__desc">
-          A real-time broadcast of Claude AI in action — tool calls, file edits, build commands,
-          and task completions streaming live as they happen. Mission control for the curious.
-        </p>
-        <div class="hp-live__pills">
-          <span class="hp-live__pill hp-live__pill--cyan">Real-Time Feed</span>
-          <span class="hp-live__pill hp-live__pill--violet">Tool Calls</span>
-          <span class="hp-live__pill hp-live__pill--cyan">AI Activity</span>
-        </div>
-        <a routerLink="/live" class="cta-button hp-live__btn">Watch Now &rarr;</a>
-      </div>
-
-      <div class="hp-live__visual" aria-hidden="true">
-        <div class="hp-live__card">
-          <div class="hp-live__card-hd">
-            <span class="hp-live-badge">
-              <span class="hp-live-dot"></span>LIVE
-            </span>
-            <span class="hp-live__mc-label">MISSION CONTROL</span>
-            <span class="hp-live__clock">00:04:23</span>
-          </div>
-          <div class="hp-live__feed">
-            <div class="hp-lf-line hp-lf-line--sys hp-lf-1">
-              <span class="hp-lf__dot hp-lf__dot--sys"></span>
-              <span class="hp-lf__text hp-lf__text--muted">Session initialized — Claude Sonnet 4.6</span>
-            </div>
-            <div class="hp-lf-line hp-lf-line--tool hp-lf-2">
-              <span class="hp-lf__dot hp-lf__dot--cyan"></span>
-              <span class="hp-lf__badge">Read</span>
-              <span class="hp-lf__text">Read("landing.component.html")</span>
-            </div>
-            <div class="hp-lf-line hp-lf-line--think hp-lf-3">
-              <span class="hp-lf__dot hp-lf__dot--violet"></span>
-              <span class="hp-lf__text hp-lf__text--italic">Planning hero section layout...</span>
-            </div>
-            <div class="hp-lf-line hp-lf-line--tool hp-lf-4">
-              <span class="hp-lf__dot hp-lf__dot--cyan"></span>
-              <span class="hp-lf__badge">Write</span>
-              <span class="hp-lf__text">Write("landing.component.css")</span>
-            </div>
-            <div class="hp-lf-line hp-lf-line--success hp-lf-5">
-              <span class="hp-lf__dot hp-lf__dot--green"></span>
-              <span class="hp-lf__text hp-lf__text--success">Feature deployed successfully</span>
-            </div>
-          </div>
-          <div class="hp-live__card-ft">
-            <div class="hp-live__progress">
-              <div class="hp-live__progress-fill"></div>
-            </div>
-            <span class="hp-live__cursor">claude&#64;xsantcastx:~$&nbsp;<span class="hp-live__blink">█</span></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 6 — CHANGELOG
-  ═══════════════════════════════════════════ -->
-  <section class="hp-changelog gf-chronicle">
-    <div class="hp-changelog__inner">
-      <p class="hp-section-eyebrow">
-        <span class="hp-eyebrow-pulse"></span>
-        {{ translate('godforge.chronicle.eyebrow') }}
-      </p>
-      <h2 class="hp-section-title">{{ translate('godforge.chronicle.title') }}</h2>
-      <p class="hp-section-tagline">{{ translate('godforge.chronicle.tagline') }}</p>
-
-      <!-- Loading state -->
-      @if (changelogLoading) {
-        <div class="hp-cl-loading">
-          <div class="hp-cl-loading__bar"></div>
-          <div class="hp-cl-loading__bar hp-cl-loading__bar--short"></div>
-          <div class="hp-cl-loading__bar"></div>
-        </div>
-      }
-
-      <!-- Grouped changelog -->
-      @if (!changelogLoading) {
-        <div class="hp-cl-feed">
-          @if (changelogDays.length === 0) {
-            <div class="hp-cl-empty">
-              No updates yet — check back soon.
-            </div>
-          }
-          @for (day of changelogDays; track trackChangelogDay(di, day); let di = $index) {
-            <div class="hp-cl-day">
-              <!-- Day header (clickable to expand/collapse) -->
-              <button class="hp-cl-day__header" (click)="toggleChangelogDay(day)" [attr.aria-expanded]="day.expanded">
-                <span class="hp-cl-day__dot" [class.hp-cl-day__dot--latest]="di === 0"></span>
-                <span class="hp-cl-day__label">{{ day.dateLabel }}</span>
-                <span class="hp-cl-day__count">{{ day.entries.length }} update{{ day.entries.length !== 1 ? 's' : '' }}</span>
-                @if (di === 0) {
-                  <span class="hp-cl-day__new-badge">New</span>
-                }
-                <span class="hp-cl-day__chevron" [class.hp-cl-day__chevron--open]="day.expanded">&#x203A;</span>
-              </button>
-              <!-- Entries (expanded view) -->
-              <div class="hp-cl-entries" [class.hp-cl-entries--open]="day.expanded">
-                @for (entry of day.entries; track trackChangelogEntry($index, entry)) {
-                  <div class="hp-cl-entry">
-                    <span class="hp-cl-entry__badge hp-cl-entry__badge--{{ entry.category }}">{{ entry.category }}</span>
-                    <div class="hp-cl-entry__body">
-                      <p class="hp-cl-entry__title">
-                        {{ entry.title }}
-                        <!-- Realm badge only when the entry names a tool we can
-                             place. Platform-wide work belongs to no realm and
-                             is left unbadged rather than filed under a guess. -->
-                        @if (realmForEntry(entry); as realm) {
-                          <span
-                            class="gf-cl-realm"
-                            [style.--realm-color]="realm.color"
-                            [style.--realm-glow]="realm.glow"
-                            >{{ realm.name }}</span>
-                        }
-                      </p>
-                      <p class="hp-cl-entry__details">{{ entry.details }}</p>
-                    </div>
-                  </div>
-                }
-              </div>
-              <!-- Connector line between days -->
-              @if (di < changelogDays.length - 1) {
-                <div class="hp-cl-day__connector"></div>
-              }
-            </div>
-          }
-        </div>
-      }
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 7 — BEGIN YOUR JOURNEY
+  SECTION 4 — BEGIN YOUR JOURNEY
   The closing call: where you stand, and the three doors out.
   ═══════════════════════════════════════════ -->
   <section class="gf-journey">
@@ -617,65 +361,6 @@
           <span class="gf-door__label">{{ translate('godforge.journey.arenaLabel') }}</span>
           <span class="gf-door__name">{{ translate('godforge.journey.arena') }}</span>
           <span class="gf-door__hint">{{ fragmentCount }} {{ translate('godforge.journey.arenaHint') }}</span>
-        </a>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 8 — FOOTER CTA
-  ═══════════════════════════════════════════ -->
-  <section id="contact" class="hp-footer-cta">
-    <div class="hp-footer-cta__inner">
-      <div class="hp-footer-cta__text">
-        <h2 class="hp-footer-cta__title">More tools shipping weekly.</h2>
-        <p class="hp-footer-cta__sub">{{ translate('newsletter.trust') }}</p>
-      </div>
-
-      @if (subscribeStatus !== 'success') {
-        <form class="hp-sub-form" (ngSubmit)="onSubscribe()">
-          <input
-            type="email"
-            class="hp-sub-form__input"
-            [(ngModel)]="subscribeEmail"
-            name="subscribeEmail"
-            placeholder="you@example.com"
-            autocomplete="email"
-            required
-            />
-          <button type="submit" class="cta-button hp-sub-form__btn" [disabled]="subscribeStatus === 'loading'">
-            @if (subscribeStatus !== 'loading') {
-              <span>Notify Me</span>
-            }
-            @if (subscribeStatus === 'loading') {
-              <span class="hp-sub-form__spinner">...</span>
-            }
-          </button>
-        </form>
-      }
-
-      @if (subscribeStatus === 'success') {
-        <p class="hp-sub-success">
-          <span class="hp-sub-success__icon">✦</span>
-          Signal received. The next time a star is born in this universe, we'll send a beam your way.
-        </p>
-      }
-      @if (subscribeStatus === 'error') {
-        <p class="hp-sub-error">
-          The signal scattered — that doesn't look like a real email. Try again.
-        </p>
-      }
-
-      <div class="hp-footer-cta__social">
-        <a href="https://github.com/xsantcastx" target="_blank" rel="noopener noreferrer" class="hp-social-link" aria-label="GitHub">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
-        </a>
-        <a href="https://twitter.com/xsantcastx" target="_blank" rel="noopener noreferrer" class="hp-social-link" aria-label="Twitter/X">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        </a>
-        <a href="https://www.twitch.tv/xsantcastx" target="_blank" rel="noopener noreferrer" class="hp-social-link" aria-label="Twitch">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
         </a>
       </div>
     </div>

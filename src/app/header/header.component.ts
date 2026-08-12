@@ -6,7 +6,7 @@
  * same thing and splitting them across components would mean three copies of
  * "is the drawer open" to keep in step.
  *
- *  · Desktop: sigil + XSANTCASTX lockup, seven halls, then the visitor's
+ *  · Desktop: sigil + XSANTCASTX lockup, five halls, then the visitor's
  *    standing (Gold, Essence, rank) and the language toggle.
  *  · Mobile: the bar keeps the lockup and the status pills; primary
  *    navigation moves to a fixed five-tab bar at the bottom of the viewport,
@@ -120,15 +120,26 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   /** Painted rank crest for the level held — exposed for the bar and the tome. */
   readonly rankSigil = rankSigil;
 
-  /** The seven halls across the middle of the bar. */
+  /**
+   * The five halls across the middle of the bar.
+   *
+   * Five, not seven. HOME is the wordmark on the left — a bar that links to the
+   * page you are already looking at spends a slot on nothing. GAMES is what the
+   * Arena is, under an older name, and MCP is one landing page for a different
+   * audience; both live in the footer now. What is left is the Godforge itself:
+   * the artifacts, the games, the fragments, the plan and the shop.
+   *
+   * Nothing from the old portfolio site (Services, Projects, About, Contact,
+   * Live, Donate) is reachable from this bar. They still have routes and they
+   * are still linked — from the footer and the tome's MORE section — but they
+   * are not what this site is any more, so they are not in the primary nav.
+   */
   readonly primaryHalls: Hall[] = [
-    { route: '/home',   key: 'gfnav.home',   glyph: 'home' },
-    { route: '/market', key: 'gfnav.market', glyph: 'market' },
-    { route: '/games',  key: 'gfnav.games',  glyph: 'games' },
-    { route: '/tools',  key: 'gfnav.tools',  glyph: 'tools' },
-    { route: '/codex',  key: 'gfnav.codex',  glyph: 'codex' },
-    { route: '/arena',  key: 'gfnav.arena',  glyph: 'arena' },
-    { route: '/mcp',    key: 'gfnav.mcp',    glyph: 'mcp' }
+    { route: '/tools',     key: 'gfnav.realms',   glyph: 'tools' },
+    { route: '/arena',     key: 'gfnav.arena',    glyph: 'arena' },
+    { route: '/codex',     key: 'gfnav.codex',    glyph: 'codex' },
+    { route: '/blueprint', key: 'gfnav.warTable', glyph: 'blueprint' },
+    { route: '/market',    key: 'gfnav.market',   glyph: 'market' }
   ];
 
   /**
@@ -149,43 +160,39 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   ];
 
   /**
-   * The tome. Grouped the way the concept groups them.
+   * The tome — two sections, not three.
    *
-   * The concept's DEVELOPER group asks for SERVICES and its MORE group for
-   * ABOUT and SETTINGS. None of those three is a route in this app — there is
-   * no `path: 'services'`, `path: 'about'` or `path: 'settings'` in
-   * app-routing.module.ts, and an <a routerLink> to a path with no route is a
-   * link that silently lands on the 404 page. They are replaced with the
-   * nearest real routes (Skills for Services; Contact, Sponsors and Guestbook
-   * under MORE) rather than shipped as dead links.
+   * MAIN is the same five halls as the bar plus the visitor's own sheet, so the
+   * drawer and the bar name the same places. MORE holds the three surfaces that
+   * belong to the old portfolio site and still have real routes: Services
+   * (`path: 'skills'`), MCP and Contact. There is no `path: 'about'` and no
+   * `path: 'settings'` in app-routing.module.ts, and an <a routerLink> to a path
+   * with no route is a link that silently lands on the 404 page — so ABOUT is
+   * absent rather than shipped dead.
+   *
+   * What left the tome in this pass — Projects, Quests, Sponsors, Guestbook —
+   * kept its routes and moved to the footer. The drawer is primary navigation on
+   * a phone; nine secondary destinations in it made the five that matter harder
+   * to find, which was the whole complaint.
    */
   readonly tomeSections: TomeSection[] = [
     {
       titleKey: 'gfnav.section.main',
       halls: [
-        { route: '/home',      key: 'gfnav.home',      glyph: 'home',      hintKey: 'gfnav.hint.home' },
-        { route: '/tools',     key: 'gfnav.tools',     glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
-        { route: '/arena',     key: 'gfnav.arena',     glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
-        { route: '/codex',     key: 'gfnav.codex',     glyph: 'codex',     hintKey: 'gfnav.hint.codex' },
-        { route: '/blueprint', key: 'gfnav.warTable',  glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' }
-      ]
-    },
-    {
-      titleKey: 'gfnav.section.developer',
-      halls: [
-        { route: '/skills',   key: 'gfnav.skills',   glyph: 'skills',   hintKey: 'gfnav.hint.skills' },
-        { route: '/projects', key: 'gfnav.projects', glyph: 'projects', hintKey: 'gfnav.hint.projects' },
-        { route: '/mcp',      key: 'gfnav.mcp',      glyph: 'mcp',      hintKey: 'gfnav.hint.mcp' }
+        { route: '/tools',        key: 'gfnav.realms',   glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
+        { route: '/arena',        key: 'gfnav.arena',    glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
+        { route: '/codex',        key: 'gfnav.codex',    glyph: 'codex',     hintKey: 'gfnav.hint.codex' },
+        { route: '/blueprint',    key: 'gfnav.warTable', glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
+        { route: '/market',       key: 'gfnav.market',   glyph: 'market',    hintKey: 'gfnav.hint.market' },
+        { route: '/forge-keeper', key: 'gfnav.profile',  glyph: 'profile',   hintKey: 'gfnav.hint.keeper' }
       ]
     },
     {
       titleKey: 'gfnav.section.more',
       halls: [
-        { route: '/contact',   key: 'gfnav.contact',   glyph: 'contact',   hintKey: 'gfnav.hint.contact' },
-        { route: '/market',    key: 'gfnav.market',    glyph: 'market',    hintKey: 'gfnav.hint.market' },
-        { route: '/quests',    key: 'gfnav.quests',    glyph: 'quests',    hintKey: 'gfnav.hint.quests' },
-        { route: '/sponsors',  key: 'gfnav.sponsors',  glyph: 'sponsors',  hintKey: 'gfnav.hint.sponsors' },
-        { route: '/guestbook', key: 'gfnav.guestbook', glyph: 'guestbook', hintKey: 'gfnav.hint.guestbook' }
+        { route: '/skills',  key: 'gfnav.skills',  glyph: 'skills',  hintKey: 'gfnav.hint.skills' },
+        { route: '/mcp',     key: 'gfnav.mcp',     glyph: 'mcp',     hintKey: 'gfnav.hint.mcp' },
+        { route: '/contact', key: 'gfnav.contact', glyph: 'contact', hintKey: 'gfnav.hint.contact' }
       ]
     }
   ];

@@ -46,6 +46,16 @@ jobs:
           fi
           echo "Sitemap lastmod = ${TODAY} ✓"
 
+      - name: Verify CSP hashes match the built HTML
+        # The production script-src pins each inline <script> by sha256. Any edit
+        # to an inline block invalidates its hash and the browser then silently
+        # refuses to run it — no build error, and `ng serve` sends no CSP at all,
+        # so local dev looks fine while production loses the feature. That is not
+        # theoretical: the pinned hash had already drifted from index.html and was
+        # matching neither inline block. Runs against dist/ because that is what
+        # actually gets deployed.
+        run: node scripts/verify-csp-hashes.js
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -54,13 +64,33 @@ jobs:
           retention-days: 7
 
   # Quality checks: Playwright (chromium only in CI) + Lighthouse CI
-  # Runs in parallel with deploy — does NOT block deploy (continue-on-error: true).
-  # TODO: remove continue-on-error once baselines are stable and thresholds confirmed.
+  #
+  # This job used to be permanently red and permanently ignored. Three separate
+  # causes, all now fixed:
+  #
+  #   1. The 12 visual screenshot tests only ever had `-darwin` baselines
+  #      committed, so on ubuntu-latest Playwright found no baseline, wrote the
+  #      actual screenshot and failed — every run, forever. They are now opt-in
+  #      behind VISUAL=1; see e2e/visual.spec.ts for the rationale and for how
+  #      to regenerate Linux baselines if you want them back.
+  #   2. Two runtime-proxy tests targeted `.hc-card`, the hero carousel deleted
+  #      in v2.19.0. They had been failing on a selector matching nothing for
+  #      sixteen releases. Retargeted at the surviving staggered-animation
+  #      surface.
+  #   3. One test waited on `networkidle`, which a page holding Firestore
+  #      long-polling open never reaches, so it burned its full 30s timeout on
+  #      every run and retry.
+  #
+  # `continue-on-error: true` hid all of it — and would equally have hidden a
+  # genuine regression. Verified locally after the fixes: 9 passed, 0 failed,
+  # 12 skipped, in 3.8s (down from 1.4m of timeouts).
+  #
+  # It still does not block the deploy: deploy-production only `needs: build`.
+  # A red X here is a signal to a human, not a hold on shipping.
   quality-checks:
     name: Quality Checks (Playwright + LHCI)
     needs: build
     runs-on: ubuntu-latest
-    continue-on-error: true   # non-blocking; tighten to false once baselines pass cleanly
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -99,7 +129,9 @@ jobs:
       - name: Install serve
         run: npm install -g serve
 
-      - name: Run Playwright visual + smoke tests (chromium only)
+      - name: Run Playwright functional tests (chromium only)
+        # VISUAL is deliberately unset: screenshot comparisons skip on CI because
+        # only darwin baselines are committed. Everything else runs and gates.
         run: npx playwright test --project=chromium
         env:
           CI: true
@@ -121,6 +153,12 @@ jobs:
           retention-days: 30
 
       - name: Run Lighthouse CI
+        # if: always() — without it this step is skipped whenever Playwright
+        # fails, and Playwright failed on every single run (see the job comment).
+        # Lighthouse has therefore never actually executed in CI. It reports perf
+        # and a11y regressions that are independent of whether an e2e test broke,
+        # so it should run either way.
+        if: always()
         run: npm run lhci
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

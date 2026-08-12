@@ -31,6 +31,10 @@ import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
+import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
+import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
+import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
+import { PwaService } from './shared/pwa.service';
 
 
 @NgModule({
@@ -63,10 +67,26 @@ import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.compon
     QuestToastComponent,
     ForgeFlameComponent,
     GoldTickerComponent,
-    GodforgeLoaderComponent
+    GodforgeLoaderComponent,
+    InstallPromptComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
+    // Uncaught-error capture. Installed via APP_INITIALIZER rather than from
+    // AppComponent.ngOnInit so the window handlers are attached before the
+    // first component renders — an error thrown during initial render would
+    // otherwise be the one error nothing catches.
+    ErrorTrackingService,
+    {
+      provide: APP_INITIALIZER,
+      multi: true,
+      deps: [ErrorTrackingService, PwaService],
+      useFactory: (errors: ErrorTrackingService, pwa: PwaService) => () => {
+        errors.install();
+        pwa.init();
+      },
+    },
+    { provide: ErrorHandler, useClass: GodforgeErrorHandler },
     // Performance requires browser APIs — skip on server.
     ...(isBrowserEnv ? [
       providePerformance(() => getPerformance()),
