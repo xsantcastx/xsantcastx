@@ -42,6 +42,7 @@ function metaFor(route) {
   if (route === '/guestbook')   return { changefreq: 'weekly',  priority: '0.6' };
   if (route === '/blueprint')   return { changefreq: 'weekly',  priority: '0.8' };
   if (route === '/sponsors')    return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/codex')       return { changefreq: 'weekly',  priority: '0.7' };
   if (route.startsWith('/tools/')) return { changefreq: 'monthly', priority: '0.6' };
   return { changefreq: 'monthly', priority: '0.5' }; // fallback for anything new
 }

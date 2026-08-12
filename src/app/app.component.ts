@@ -8,6 +8,7 @@ import { VisitCounterService } from './shared/visit-counter/visit-counter.servic
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
+import { CodexSecretsService } from './codex/codex-secrets.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
   private realms = inject(RealmService);
+  private codexSecrets = inject(CodexSecretsService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -66,6 +68,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Realm tinting: resolve every route to a realm and publish it to CSS.
     this.realms.init();
+
+    // Codex: passively note the secrets that are not easter eggs — ritual mode,
+    // the command palette, the unlinked routes. Global rather than page-local so
+    // a secret found on /home is recorded on /home, not the next time /codex is
+    // opened.
+    this.codexSecrets.init();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {
