@@ -11,25 +11,34 @@
          meet. Built from gradients and borders rather than a background
          image — a 1536px render of this is ~2MB and would be the largest
          asset on the site by an order of magnitude. -->
+    <!-- The scene is Santiago's painted altar, not a CSS recreation of it.
+         Everything below — the panels, the wordmark, the calls — layers on
+         top; the art is the atmosphere and CSS is only the UI.
+
+         A <picture> rather than a CSS background-image: the browser picks the
+         source from `media` and `type` before it fetches anything, so a phone
+         never downloads the 1920px frame and a browser without WebP still
+         gets a JPEG. A CSS background can do neither without image-set, whose
+         type() branch is the thing older Safari lacks.
+
+         fetchpriority="high" because this IS the largest contentful paint —
+         left to default it queues behind the app's own scripts. -->
     <div class="gfh__scene" aria-hidden="true">
-      <span class="gfh__nebula gfh__nebula--a"></span>
-      <span class="gfh__nebula gfh__nebula--b"></span>
-      <span class="gfh__grid"></span>
-      <div class="gfsigil-scene gfsigil-scene--hero">
-        <span class="gfsigil-scene__ring gfsigil-scene__ring--outer"></span>
-        <span class="gfsigil-scene__ring gfsigil-scene__ring--inner"></span>
-        <span class="gfsigil-scene__point gfsigil-scene__point--n"></span>
-        <span class="gfsigil-scene__point gfsigil-scene__point--e"></span>
-        <span class="gfsigil-scene__point gfsigil-scene__point--s"></span>
-        <span class="gfsigil-scene__point gfsigil-scene__point--w"></span>
-        <span class="gfsigil-scene__x"><i></i><i></i></span>
-        <span class="gfsigil-scene__core"></span>
-      </div>
-      <!-- Debris caught in the field. -->
-      <span class="gfh__rock" style="--rx: 12%; --ry: 26%; --rs: 14px; --rd: 0s;"></span>
-      <span class="gfh__rock" style="--rx: 84%; --ry: 34%; --rs: 10px; --rd: -3.2s;"></span>
-      <span class="gfh__rock" style="--rx: 22%; --ry: 74%; --rs: 8px;  --rd: -6.1s;"></span>
-      <span class="gfh__rock" style="--rx: 77%; --ry: 79%; --rs: 12px; --rd: -1.8s;"></span>
+      <picture class="gfh__art">
+        <source media="(max-width: 768px)"  type="image/webp" srcset="assets/images/godforge-hero-768.webp">
+        <source media="(max-width: 1280px)" type="image/webp" srcset="assets/images/godforge-hero-1280.webp">
+        <source type="image/webp" srcset="assets/images/godforge-hero-1920.webp">
+        <img src="assets/images/godforge-hero-1920.jpg" alt=""
+             width="1920" height="1280"
+             fetchpriority="high" decoding="async" draggable="false">
+      </picture>
+      <!-- Two scrims, not one. The vignette pulls the frame's edges down so
+           the glass panels have something to sit against, and the floor wash
+           darkens the lower third where the wordmark and the calls land.
+           Without them the art's own highlights run straight through the
+           panel text. -->
+      <span class="gfh__vignette"></span>
+      <span class="gfh__floor"></span>
     </div>
 
     <div class="gfh__inner">
