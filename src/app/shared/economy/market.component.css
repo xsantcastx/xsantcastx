@@ -1,0 +1,434 @@
+/**
+ * market.component.css — dark glassmorphism, two currencies, one page.
+ *
+ * The tint is driven off `[data-currency]` on the host section, written from
+ * the active tab: Gold surfaces get the warm forge pair (#E8752A → #C9A84C),
+ * Essence surfaces get violet-into-crimson. Nothing here introduces a colour
+ * that is not already in the brand palette or the Eclipse rarity ladder.
+ */
+
+.mk {
+  --mk-warm: #E8752A;
+  --mk-gold: #C9A84C;
+  --mk-gold-soft: rgba(201, 168, 76, 0.5);
+  --mk-ess: #a48bff;
+  --mk-ess-soft: rgba(164, 139, 255, 0.5);
+
+  /* The accent the panel is currently wearing. */
+  --mk-accent: var(--mk-gold);
+  --mk-accent-soft: var(--mk-gold-soft);
+
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 44px) clamp(14px, 4vw, 28px) 80px;
+}
+
+.mk[data-currency='essence'] {
+  --mk-accent: var(--mk-ess);
+  --mk-accent-soft: var(--mk-ess-soft);
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────── */
+
+.mk__head { text-align: center; margin-bottom: clamp(22px, 4vw, 38px); }
+
+.mk__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0 0 10px;
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--mk-gold);
+}
+.mk__eyebrow-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--mk-warm);
+  box-shadow: 0 0 10px var(--mk-warm);
+  animation: mkPulse 3s ease-in-out infinite;
+}
+@keyframes mkPulse { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
+
+.mk__title {
+  margin: 0 0 10px;
+  font: 700 clamp(26px, 5vw, 42px)/1.15 'Orbitron', system-ui, sans-serif;
+  background: linear-gradient(92deg, #ffd97a, var(--mk-warm) 46%, #c48bff);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+.mk__tagline {
+  display: inline-block;
+  margin: 0 auto 20px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.16);
+  background: rgba(201, 168, 76, 0.05);
+  font-size: 14px; font-style: italic; color: #b9cdc7;
+}
+
+.mk__wallet {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 18px;
+}
+.mk__coin {
+  display: grid; grid-template-columns: auto auto; align-items: center;
+  gap: 4px 10px;
+  padding: 12px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(10, 6, 26, 0.55);
+}
+.mk__coin-icon { grid-row: 1 / span 2; font-size: 26px; }
+.mk__coin-val {
+  font: 700 24px/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.mk__coin-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
+.mk__coin--gold { border-color: rgba(201, 168, 76, .3); }
+.mk__coin--gold .mk__coin-val { color: #ffd97a; }
+.mk__coin--essence { border-color: rgba(164, 139, 255, .3); }
+.mk__coin--essence .mk__coin-val { color: #c48bff; }
+
+.mk__stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px; max-width: 520px; margin: 0 auto 14px;
+}
+.mk__stats div { text-align: center; }
+.mk__stats dt { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
+.mk__stats dd {
+  margin: 3px 0 0;
+  font: 600 15px/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #eafff9;
+}
+
+.mk__doubled {
+  margin: 0 0 8px;
+  font-size: 13px; color: #ffd97a;
+}
+.mk__running {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(164, 139, 255, .3);
+  background: rgba(164, 139, 255, .07);
+  font-size: 13px; color: #cfc4ff;
+}
+.mk__running strong { color: #c48bff; }
+.mk__running-timer { font-variant-numeric: tabular-nums; color: #eafff9; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+
+.mk__tabs {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 8px; margin-bottom: 20px;
+}
+.mk__tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 6, 26, 0.55);
+  color: #9fb4ae;
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: border-color .25s ease, color .25s ease, box-shadow .25s ease;
+}
+.mk__tab:hover { color: #eafff9; border-color: rgba(255, 255, 255, .2); }
+.mk__tab--active[data-currency='gold'] {
+  color: #ffd97a;
+  border-color: rgba(201, 168, 76, .55);
+  box-shadow: 0 0 24px -8px rgba(232, 117, 42, .85);
+}
+.mk__tab--active[data-currency='essence'] {
+  color: #c48bff;
+  border-color: rgba(164, 139, 255, .55);
+  box-shadow: 0 0 24px -8px rgba(164, 139, 255, .85);
+}
+.mk__tab:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.mk__tab-icon { font-size: 15px; }
+
+/* ── Panels ───────────────────────────────────────────────────────────── */
+
+/* All five panels are in the DOM at once — see the note in market.component.ts
+   about why the shop is prerendered in full — so the inactive four have to be
+   taken out of both the layout and the accessibility tree. `[hidden]` gets
+   `display: none` from the UA stylesheet, but this file sets `display` on
+   `.mk__panel`'s descendants and a reset elsewhere could reach it first, so it
+   is restated here rather than relied upon. */
+.mk__panel[hidden] { display: none !important; }
+
+.mk__panel {
+  position: relative;
+  padding: clamp(16px, 3vw, 26px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(ellipse 60% 50% at 18% 0%, rgba(232, 117, 42, 0.06), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 86% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
+    rgba(6, 4, 18, 0.62);
+  backdrop-filter: blur(14px);
+}
+.mk__panel--essence {
+  background:
+    radial-gradient(ellipse 60% 50% at 18% 0%, rgba(164, 139, 255, 0.09), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 86% 100%, rgba(139, 34, 82, 0.1), transparent 65%),
+    rgba(6, 4, 18, 0.62);
+}
+.mk__panel::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mk-accent-soft) 50%, transparent);
+}
+
+.mk__panel-note {
+  margin: 0 0 18px;
+  font-size: 13px; line-height: 1.6; color: #9fb4ae;
+}
+.mk__panel-note strong { color: #eafff9; }
+
+/* ── The two Gold ladders ─────────────────────────────────────────────── */
+
+.mk__ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.mk__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+  transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
+}
+.mk__row:hover { border-color: rgba(201, 168, 76, .32); }
+.mk__row--owned { border-color: rgba(201, 168, 76, .3); background: rgba(28, 17, 10, 0.5); }
+
+.mk__row-icon { font-size: 24px; line-height: 1; }
+.mk__row-body { display: grid; gap: 3px; min-width: 0; }
+.mk__row-name {
+  font: 600 14px/1.2 'Orbitron', system-ui, sans-serif;
+  color: #eafff9;
+}
+.mk__row-owned {
+  margin-left: 7px; padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, .18);
+  color: #ffd97a; font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.mk__row-effect { font-size: 13px; color: #4dffe0; }
+.mk__row-flavour { font-size: 12px; font-style: italic; color: #6d817c; }
+
+/* ── Cards (enchantments and cosmetics) ───────────────────────────────── */
+
+.mk__grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.mk__grid--artifact { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+.mk__card {
+  display: grid; align-content: start; gap: 7px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+  transition: border-color .25s ease, box-shadow .25s ease;
+}
+.mk__card:hover { border-color: rgba(201, 168, 76, .32); }
+.mk__card--essence:hover { border-color: rgba(164, 139, 255, .4); }
+.mk__card--running {
+  border-color: rgba(164, 139, 255, .6);
+  box-shadow: 0 0 30px -12px rgba(164, 139, 255, .9);
+}
+.mk__card--owned { border-color: rgba(201, 168, 76, .38); }
+
+.mk__card-icon { font-size: 26px; line-height: 1; }
+.mk__card-name { margin: 0; font: 600 15px/1.2 'Orbitron', system-ui, sans-serif; color: #eafff9; }
+.mk__card-effect { margin: 0; font-size: 13px; color: #4dffe0; }
+.mk__card--essence .mk__card-effect { color: #c48bff; }
+.mk__card-flavour { margin: 0 0 6px; font-size: 12px; font-style: italic; line-height: 1.5; color: #6d817c; }
+.mk__card-timer { margin: 0; font-size: 12px; color: #ffd97a; font-variant-numeric: tabular-nums; }
+.mk__card-sold {
+  margin: 4px 0 0;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .16em; color: var(--mk-gold);
+}
+
+/* ── Artifacts ────────────────────────────────────────────────────────── */
+
+.mk__relic {
+  position: relative;
+  display: grid; align-content: start; gap: 8px;
+  padding: 20px 18px 18px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--relic-color) 42%, transparent);
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, color-mix(in srgb, var(--relic-color) 10%, transparent), transparent 70%),
+    rgba(8, 5, 20, 0.72);
+  box-shadow: 0 0 34px -18px var(--relic-glow);
+  transition: box-shadow .3s ease, border-color .3s ease;
+}
+.mk__relic:hover { box-shadow: 0 0 44px -14px var(--relic-glow); }
+
+.mk__relic-tier {
+  position: absolute; top: 12px; right: 14px;
+  font: 700 9px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--relic-color);
+}
+.mk__relic-icon { font-size: 30px; line-height: 1; }
+.mk__relic-name {
+  margin: 0;
+  font: 700 16px/1.2 'Orbitron', system-ui, sans-serif;
+  color: var(--relic-color);
+}
+.mk__relic-effect { margin: 0; font-size: 13px; color: #eafff9; }
+.mk__relic-lore {
+  margin: 4px 0 8px;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--relic-color) 40%, transparent);
+  font: italic 12.5px/1.6 Georgia, 'Times New Roman', serif;
+  color: #9fb4ae;
+}
+.mk__relic--owned {
+  border-color: var(--relic-color);
+  box-shadow: 0 0 46px -14px var(--relic-glow);
+}
+.mk__relic-sold {
+  margin: 0;
+  padding: 9px 0;
+  text-align: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--relic-color) 14%, transparent);
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .16em;
+  color: var(--relic-color);
+}
+
+/* ── Buy buttons ──────────────────────────────────────────────────────── */
+
+.mk__buy {
+  display: grid; gap: 2px; justify-items: center;
+  min-width: 108px; min-height: 44px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, .45);
+  background: linear-gradient(160deg, rgba(232, 117, 42, .22), rgba(201, 168, 76, .1));
+  color: #ffd97a;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .22s ease, border-color .22s ease, filter .22s ease;
+}
+.mk__buy:hover:not(:disabled) {
+  border-color: var(--mk-warm);
+  box-shadow: 0 0 26px -8px rgba(232, 117, 42, .9);
+  filter: brightness(1.12);
+}
+/* The satisfying part: it gives under the finger, and springs back. */
+.mk__buy:active:not(:disabled) { transform: scale(.94); }
+.mk__buy:focus-visible { outline: 2px solid #4dffe0; outline-offset: 3px; }
+.mk__buy:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.6); }
+
+.mk__buy-cost {
+  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mk__buy-word {
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: #b9cdc7;
+}
+
+.mk__buy--essence, .mk__buy--relic {
+  border-color: rgba(164, 139, 255, .45);
+  background: linear-gradient(160deg, rgba(139, 34, 82, .28), rgba(164, 139, 255, .12));
+  color: #d9ccff;
+}
+.mk__buy--essence:hover:not(:disabled), .mk__buy--relic:hover:not(:disabled) {
+  border-color: var(--mk-ess);
+  box-shadow: 0 0 26px -8px rgba(164, 139, 255, .9);
+}
+
+/* Landed. */
+.mk__row--flash, .mk__card--flash {
+  animation: mkFlash .42s cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes mkFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 217, 122, .7); }
+  40%  { box-shadow: 0 0 32px 4px rgba(255, 217, 122, .5); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 217, 122, 0); }
+}
+
+/* Did not land. A shake rather than an error message: the price is already on
+   the button, so the only new information is "not yet". */
+.mk__row--denied, .mk__card--denied { animation: mkDeny .36s ease-in-out; }
+@keyframes mkDeny {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* ── Cosmetic variant pickers ─────────────────────────────────────────── */
+
+.mk__variants { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
+.mk__variant {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(6, 4, 18, .6);
+  color: #9fb4ae; font-size: 12px;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease;
+}
+.mk__variant-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 8px var(--swatch);
+}
+.mk__variant:hover { color: #eafff9; border-color: rgba(255, 255, 255, .26); }
+.mk__variant--on {
+  border-color: var(--swatch);
+  color: #eafff9;
+  box-shadow: 0 0 18px -8px var(--swatch);
+}
+.mk__variant:focus-visible { outline: 2px solid #4dffe0; outline-offset: 2px; }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+.mk__foot { margin-top: 34px; text-align: center; }
+.mk__whisper { margin: 0 0 10px; font-size: 12.5px; font-style: italic; color: #6d817c; }
+.mk__links { margin: 0; font-size: 13px; color: #6d817c; }
+.mk__links a { color: #4dffe0; text-decoration: none; }
+.mk__links a:hover { text-decoration: underline; }
+
+/* ── Mobile: the Market is a full-width surface, not a narrowed desktop one.
+     The ladder collapses to two rows so the price never squeezes the name. ─ */
+@media (max-width: 640px) {
+  .mk { padding-left: 12px; padding-right: 12px; }
+  /* backdrop-filter is off below 768px site-wide (see the 2.1.0 mobile pass) —
+     the panel needs an opaque base or it reads as a flat wash. */
+  .mk__panel { backdrop-filter: none; background-color: rgba(6, 4, 18, 0.9); }
+
+  .mk__row { grid-template-columns: auto minmax(0, 1fr); row-gap: 12px; }
+  .mk__buy { grid-column: 1 / -1; width: 100%; }
+
+  .mk__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk__coin { flex: 1 1 140px; }
+  .mk__grid { grid-template-columns: 1fr; }
+  .mk__tabs { gap: 6px; }
+  .mk__tab { padding: 8px 12px; font-size: 11px; }
+  .mk__tab-label { display: none; }
+  .mk__tab--active .mk__tab-label { display: inline; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk__eyebrow-pulse { animation: none; opacity: .9; }
+  .mk__row--flash, .mk__card--flash, .mk__row--denied, .mk__card--denied { animation: none; }
+  .mk__buy:active:not(:disabled) { transform: none; }
+  .mk__row, .mk__card, .mk__buy, .mk__tab, .mk__variant, .mk__relic { transition: none; }
+}

@@ -54,6 +54,10 @@
       📜 Codex
       <span class="nav-codex-badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
     </a>
+    <!-- Mid-row for the same reason the Codex link is: the tail of this row
+         overflows into the EN/ES toggle below ~1440px, so a link appended at
+         the end is unreachable on a 1280px laptop. -->
+    <a routerLink="/market" routerLinkActive="active" class="nav-market-link" (click)="closeMobileMenu()">🪙 Market</a>
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
     <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
@@ -64,14 +68,18 @@
     <!-- Drawer copy of the progression readout. The header row is already at
          ~375px on a small phone, so the navbar instance is hidden below the
          drawer breakpoint and this one takes over. -->
+    <!-- Drawer copies of the wallet and the progression readout. The header row
+         is already at ~375px on a small phone, so the navbar instances are
+         hidden below the drawer breakpoint and these take over. -->
+    <app-currency-rail class="nav-coins nav-coins--drawer"></app-currency-rail>
     <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
 
-    <!-- Drawer copy of the forge. It is NOT in .mobile-controls: that row is
-         already 259px of a 375px viewport, and a fourth 44px control clipped
-         the wordmark from six characters to four. The forge accrues from a
-         service, not from this component, so idling still works on a phone
-         whether or not the drawer is open. -->
-    <app-forge-flame class="nav-forge--drawer"></app-forge-flame>
+    <!-- The forge's drawer copy used to sit here. The Godforge Market gave the
+         flame a fixed home in the bottom-right corner of every page, which is
+         reachable on a phone without opening the drawer at all — so this copy
+         was a second, smaller, worse button for the same swing. The Ambient
+         Forge still accrues from IdleService, not from any component, so
+         nothing about idling depends on this element having existed. -->
   </nav>
 
   <!-- Desktop dock: the quest sword and the progression readout, docked under
@@ -79,8 +87,8 @@
        at 1280px (see .nav-xp in the stylesheet) — adding a 44px control to it
        would push LIVE over the language toggle. -->
   <div class="nav-dock">
-    <app-forge-flame class="nav-forge"></app-forge-flame>
     <app-quest-trigger class="nav-quests"></app-quest-trigger>
+    <app-currency-rail class="nav-coins"></app-currency-rail>
     <app-xp-bar class="nav-xp"></app-xp-bar>
   </div>
 
