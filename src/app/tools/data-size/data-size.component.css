@@ -200,8 +200,8 @@
 
 .ds-input:focus,
 .ds-select:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ds-input::placeholder {
@@ -265,7 +265,7 @@
 }
 
 .ds-toggle--active {
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   box-shadow: inset 0 -2px 0 var(--primary-color);
 }
@@ -291,7 +291,7 @@
 
 .ds-btn-sm:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .ds-btn-sm--danger:hover {
@@ -319,7 +319,7 @@
 }
 
 .ds-result-row:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ds-result-info {
@@ -380,12 +380,12 @@
 
 .ds-btn-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .ds-btn-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .ds-results-empty {
@@ -409,8 +409,8 @@
 }
 
 .ds-transfer-result {
-  background: rgba(0, 255, 204, 0.05);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
   padding: 1rem 1.25rem;
   text-align: center;
@@ -430,7 +430,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--primary-color);
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
 /* ── Storage Planner ─────────────────────────────────────── */
@@ -452,8 +452,8 @@
 }
 
 .ds-storage-card:hover {
-  border-color: rgba(0, 255, 204, 0.2);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .ds-storage-icon {
@@ -463,7 +463,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(0, 255, 204, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   color: var(--primary-color);
   flex-shrink: 0;
 }
@@ -530,12 +530,12 @@
 }
 
 .ds-ref-table tbody tr:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .ds-ref-table code {
   font-family: 'Fira Code', monospace;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   padding: 0.1em 0.35em;
   border-radius: 3px;

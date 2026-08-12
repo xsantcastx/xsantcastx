@@ -20,7 +20,7 @@
 .cpk-panel__body { padding: 1rem 1.1rem; }
 
 .cpk-input { width: 100%; padding: 0.6rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--primary-color); font-family: 'Fira Code', monospace; font-size: 1.1rem; font-weight: 700; text-align: center; outline: none; box-sizing: border-box; letter-spacing: 0.05em; }
-.cpk-input:focus { border-color: rgba(0, 255, 204, 0.4); }
+.cpk-input:focus { border-color: rgba(139, 92, 246, 0.4); }
 
 .cpk-sliders { display: flex; flex-direction: column; gap: 0.6rem; }
 .cpk-slider-row { display: flex; align-items: center; gap: 0.75rem; }
@@ -30,7 +30,7 @@
 
 .cpk-copy-grid { display: flex; flex-direction: column; gap: 0.5rem; }
 .cpk-copy-btn { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.8rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s ease; width: 100%; }
-.cpk-copy-btn:hover { border-color: rgba(0, 255, 204, 0.3); }
+.cpk-copy-btn:hover { border-color: rgba(139, 92, 246, 0.3); }
 .cpk-copy-btn__label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .cpk-copy-btn code { font-family: 'Fira Code', monospace; font-size: 0.82rem; color: var(--primary-color); }
 

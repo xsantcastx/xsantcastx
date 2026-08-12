@@ -49,14 +49,14 @@ export interface OrbitStar {
 type CosmicView = 'galaxies' | 'stars' | 'search';
 
 const CATEGORY_PALETTE: Record<string, { hue: string; glow: string }> = {
-  'CSS Tools':        { hue: '#4dffe0', glow: 'rgba(0, 255, 204, 0.65)' },
+  'CSS Tools':        { hue: '#A78BFA', glow: 'rgba(139, 92, 246, 0.65)' },
   'Email Tools':      { hue: '#ff6dd7', glow: 'rgba(255, 90, 210, 0.65)' },
   'Security Tools':   { hue: '#a48bff', glow: 'rgba(140, 110, 255, 0.65)' },
   'Code Converters':  { hue: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.65)' },
   'Productivity':     { hue: '#ffc669', glow: 'rgba(255, 180, 80, 0.65)' },
 };
 
-const DEFAULT_PALETTE = { hue: '#00ffcc', glow: 'rgba(0, 255, 204, 0.65)' };
+const DEFAULT_PALETTE = { hue: '#8B5CF6', glow: 'rgba(139, 92, 246, 0.65)' };
 
 const ORBIT_RINGS = [
   { radius: 115, duration: 46 },

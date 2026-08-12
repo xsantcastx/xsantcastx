@@ -127,7 +127,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-soft);
 }
-.rg-panel--output { border-color: rgba(0, 255, 204, 0.2); }
+.rg-panel--output { border-color: rgba(139, 92, 246, 0.2); }
 
 .rg-panel__header {
   display: flex;
@@ -168,7 +168,7 @@
   align-items: center;
   gap: 0.35rem;
   background: none;
-  border: 1px solid rgba(0, 255, 204, 0.22);
+  border: 1px solid rgba(139, 92, 246, 0.22);
   border-radius: var(--radius-md);
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -176,9 +176,9 @@
   cursor: pointer;
   transition: background 0.2s ease, opacity 0.2s ease;
 }
-.rg-btn-ghost:hover:not(:disabled) { background: rgba(0, 255, 204, 0.08); }
+.rg-btn-ghost:hover:not(:disabled) { background: rgba(139, 92, 246, 0.08); }
 .rg-btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
-.rg-btn-ghost--success { border-color: rgba(0, 255, 204, 0.6); background: rgba(0, 255, 204, 0.12); }
+.rg-btn-ghost--success { border-color: rgba(139, 92, 246, 0.6); background: rgba(139, 92, 246, 0.12); }
 .rg-btn-ghost--danger {
   border-color: rgba(255, 77, 106, 0.28);
   color: var(--error-color, #ff4d6a);
@@ -215,7 +215,7 @@
   width: 100%;
   padding: 0.65rem 1rem;
   background: none;
-  border: 1px dashed rgba(0, 255, 204, 0.3);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
   border-radius: var(--radius-md);
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -224,7 +224,7 @@
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
-.rg-add-rule-btn:hover { background: rgba(0, 255, 204, 0.06); border-color: rgba(0, 255, 204, 0.5); }
+.rg-add-rule-btn:hover { background: rgba(139, 92, 246, 0.06); border-color: rgba(139, 92, 246, 0.5); }
 
 /* ── Presets ───────────────────────────────────────────────── */
 .rg-presets {
@@ -247,8 +247,8 @@
 }
 .rg-preset-btn:hover {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.06);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.06);
 }
 
 /* ── Directive rows ────────────────────────────────────────── */
@@ -338,14 +338,14 @@
 }
 
 .rg-toggle input:checked + .rg-toggle__track {
-  background: rgba(0, 255, 204, 0.22);
-  border-color: rgba(0, 255, 204, 0.5);
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 .rg-toggle input:checked + .rg-toggle__track .rg-toggle__thumb {
   transform: translateX(16px);
   background: var(--primary-color);
 }
-.rg-toggle input:focus-visible + .rg-toggle__track { box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.2); }
+.rg-toggle input:focus-visible + .rg-toggle__track { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 
 .rg-toggle__label {
   display: inline-flex;
@@ -362,8 +362,8 @@
   letter-spacing: 0.08em;
   padding: 0.12rem 0.42rem;
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.12);
-  border: 1px solid rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
   color: var(--primary-color);
 }
 .rg-badge--warn {
@@ -422,7 +422,7 @@
 .rg-number-input:focus,
 .rg-select:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
 }
 
 .rg-number-input { max-width: 110px; font-family: monospace; }
@@ -506,7 +506,7 @@
 }
 .rg-summary-item--active .rg-summary-dot {
   background: var(--primary-color);
-  box-shadow: 0 0 7px rgba(0, 255, 204, 0.7);
+  box-shadow: 0 0 7px rgba(139, 92, 246, 0.7);
 }
 
 /* ── Reference ─────────────────────────────────────────────── */

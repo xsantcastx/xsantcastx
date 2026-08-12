@@ -84,8 +84,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
     id: 'global',
     label: 'Global',
     icon: '🌐',
-    color: '#4dffe0',
-    glow: 'rgba(0, 255, 204, 0.6)',
+    color: '#A78BFA',
+    glow: 'rgba(139, 92, 246, 0.6)',
     blurb: 'Site-wide: streaks, exploration, and the things you did to the realm itself.',
   },
 ];

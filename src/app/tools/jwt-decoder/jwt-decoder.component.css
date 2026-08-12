@@ -160,7 +160,7 @@
   word-break: normal;
 }
 .jd-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Security notice ------------------------------------------ */
@@ -170,7 +170,7 @@
   gap: 0.55rem;
   padding: 0.6rem 1rem;
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
   font-size: 0.75rem;
   color: rgba(214, 221, 235, 0.6);
@@ -204,7 +204,7 @@
 
 .jd-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -239,7 +239,7 @@
   font-family: 'Fira Code', monospace;
   font-weight: 600;
   padding: 0.15rem 0.5rem;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   border-radius: 4px;
   letter-spacing: 0.03em;
 }
@@ -263,12 +263,12 @@
 }
 .jd-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .jd-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .jd-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .jd-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -283,7 +283,7 @@
 }
 .jd-dot--header   { background: #ff6b6b; box-shadow: 0 0 6px rgba(255, 107, 107, 0.4); }
 .jd-dot--payload  { background: var(--info-color); box-shadow: 0 0 6px rgba(123, 97, 255, 0.4); }
-.jd-dot--signature { background: #00ffcc; box-shadow: 0 0 6px rgba(0, 255, 204, 0.4); }
+.jd-dot--signature { background: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.4); }
 
 /* -- Badge ---------------------------------------------------- */
 .jd-badge {
@@ -387,7 +387,7 @@
 }
 .jd-claim:last-child { border-bottom: none; }
 .jd-claim:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .jd-claim--timestamp {

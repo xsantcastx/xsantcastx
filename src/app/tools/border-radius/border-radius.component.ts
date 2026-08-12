@@ -64,7 +64,7 @@ export class BorderRadiusComponent {
   advancedMode = false;
 
   previewBgColor = '#ffffff';
-  previewBoxColor = '#00ffcc';
+  previewBoxColor = '#8B5CF6';
   previewBoxWidth = 200;
   previewBoxHeight = 200;
 

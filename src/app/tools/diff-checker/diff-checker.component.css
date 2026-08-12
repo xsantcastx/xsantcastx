@@ -151,7 +151,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .dc-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Controls bar ─────────────────────────────────────────── */
@@ -200,10 +200,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.dc-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.dc-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .dc-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -247,7 +247,7 @@
 
 .dc-toggle input:checked ~ .dc-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .dc-toggle input:checked ~ .dc-toggle__track .dc-toggle__thumb {
   left: 20px;
@@ -294,7 +294,7 @@
   color: var(--text-color);
 }
 .dc-btn--secondary:not(:disabled):hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -317,12 +317,12 @@
 }
 .dc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .dc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .dc-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .dc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

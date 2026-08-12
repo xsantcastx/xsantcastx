@@ -21,7 +21,7 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--primary-color);
-  text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
   margin: 0 0 0.6rem;
 }
 
@@ -58,8 +58,8 @@
   margin: 0 0 2.5rem;
   padding: 0.32rem 0.95rem;
   border-radius: 999px;
-  background: rgba(0, 255, 204, 0.05);
-  border: 1px solid rgba(0, 255, 204, 0.14);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.14);
   color: var(--text-muted);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -86,8 +86,8 @@
 
 .skill-card {
   --star-color: var(--primary-color);
-  --star-glow: rgba(0, 255, 204, 0.55);
-  --star-inner: #eafff9;
+  --star-glow: rgba(139, 92, 246, 0.55);
+  --star-inner: #F2ECFF;
 
   position: relative;
   display: flex;
@@ -107,7 +107,7 @@
 }
 
 /* Distribute palette colors across cards */
-.skill-card:nth-child(7n)   { --star-color: #4dffe0; --star-glow: rgba(0, 255, 204, 0.6);  --star-inner: #eafff9; }
+.skill-card:nth-child(7n)   { --star-color: #A78BFA; --star-glow: rgba(139, 92, 246, 0.6);  --star-inner: #F2ECFF; }
 .skill-card:nth-child(7n+1) { --star-color: #a48bff; --star-glow: rgba(140, 110, 255, 0.6); --star-inner: #efeaff; }
 .skill-card:nth-child(7n+2) { --star-color: #ff6dd7; --star-glow: rgba(255, 90, 210, 0.6); --star-inner: #ffe6f6; }
 .skill-card:nth-child(7n+3) { --star-color: #5fb6ff; --star-glow: rgba(80, 180, 255, 0.6);  --star-inner: #e6f4ff; }

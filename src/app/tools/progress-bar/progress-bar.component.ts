@@ -36,7 +36,7 @@ export class ProgressBarComponent {
   height = 24;
   borderRadius = 12;
   bgColor = '#1a1a2e';
-  fillColor = '#00ffcc';
+  fillColor = '#8B5CF6';
   fillPercentage = 65;
   animatedStripes = false;
   gradientFill = false;
@@ -51,7 +51,7 @@ export class ProgressBarComponent {
     {
       name: 'Default',
       width: 400, height: 24, borderRadius: 12,
-      bgColor: '#1a1a2e', fillColor: '#00ffcc',
+      bgColor: '#1a1a2e', fillColor: '#8B5CF6',
       fillPercentage: 65, animatedStripes: false,
       gradientFill: false, gradientColor: '#7b00ff',
       labelPosition: 'inside', animationSpeed: 1
@@ -67,7 +67,7 @@ export class ProgressBarComponent {
     {
       name: 'Gradient',
       width: 400, height: 20, borderRadius: 10,
-      bgColor: '#0f0f1a', fillColor: '#00ffcc',
+      bgColor: '#0f0f1a', fillColor: '#8B5CF6',
       fillPercentage: 80, animatedStripes: false,
       gradientFill: true, gradientColor: '#7b00ff',
       labelPosition: 'inside', animationSpeed: 1
@@ -75,7 +75,7 @@ export class ProgressBarComponent {
     {
       name: 'Glass',
       width: 400, height: 32, borderRadius: 16,
-      bgColor: 'rgba(255,255,255,0.08)', fillColor: 'rgba(0,255,204,0.6)',
+      bgColor: 'rgba(255,255,255,0.08)', fillColor: 'rgba(139,92,246,0.6)',
       fillPercentage: 55, animatedStripes: false,
       gradientFill: true, gradientColor: 'rgba(123,0,255,0.4)',
       labelPosition: 'inside', animationSpeed: 1
@@ -91,9 +91,9 @@ export class ProgressBarComponent {
     {
       name: 'Minimal',
       width: 400, height: 6, borderRadius: 3,
-      bgColor: '#2a2a3e', fillColor: '#00ffcc',
+      bgColor: '#2a2a3e', fillColor: '#8B5CF6',
       fillPercentage: 45, animatedStripes: false,
-      gradientFill: false, gradientColor: '#00ffcc',
+      gradientFill: false, gradientColor: '#8B5CF6',
       labelPosition: 'outside', animationSpeed: 1
     }
   ];
@@ -324,7 +324,7 @@ export class ProgressBarComponent {
     this.height = 24;
     this.borderRadius = 12;
     this.bgColor = '#1a1a2e';
-    this.fillColor = '#00ffcc';
+    this.fillColor = '#8B5CF6';
     this.fillPercentage = 65;
     this.animatedStripes = false;
     this.gradientFill = false;

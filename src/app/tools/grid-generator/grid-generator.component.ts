@@ -31,7 +31,7 @@ interface GridPreset {
 }
 
 const CELL_COLORS = [
-  '#00ffcc', '#ff6b6b', '#ffd93d', '#6bcbff',
+  '#8B5CF6', '#ff6b6b', '#ffd93d', '#6bcbff',
   '#c084fc', '#fb923c', '#34d399', '#f472b6',
   '#a78bfa', '#38bdf8', '#facc15', '#4ade80'
 ];

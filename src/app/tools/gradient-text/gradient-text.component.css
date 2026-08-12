@@ -214,7 +214,7 @@
   background: var(--surface-strong); color: var(--text-muted);
 }
 .gt-btn:hover { color: var(--text-color); border-color: var(--text-muted); }
-.gt-btn--primary { background: var(--primary-color); color: #0a0f1e; border-color: var(--primary-color); }
+.gt-btn--primary { background: var(--primary-color); color: #0a0a0f; border-color: var(--primary-color); }
 .gt-btn--primary:hover { opacity: 0.9; }
 .gt-btn--sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
 
@@ -236,7 +236,7 @@
   transition: all 0.2s ease;
 }
 .gt-toggle-btn:hover { color: var(--text-color); }
-.gt-toggle-btn.active { background: var(--primary-color); color: #0a0f1e; border-color: var(--primary-color); }
+.gt-toggle-btn.active { background: var(--primary-color); color: #0a0a0f; border-color: var(--primary-color); }
 .gt-format-btns { display: flex; gap: 0.35rem; }
 
 /* ── Responsive ────────────────────────────────────────────── */

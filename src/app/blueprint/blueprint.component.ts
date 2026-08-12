@@ -141,8 +141,8 @@ export class BlueprintComponent implements OnInit {
     {
       label: 'CSS & Design',
       categories: ['CSS Tools', 'CSS', 'CSS Generators', 'SVG Tools'],
-      color: '#4dffe0',
-      glow: 'rgba(0, 255, 204, 0.6)',
+      color: '#A78BFA',
+      glow: 'rgba(139, 92, 246, 0.6)',
       tools: []
     },
     {
@@ -193,8 +193,8 @@ export class BlueprintComponent implements OnInit {
       key: 'now',
       label: 'Now',
       blurb: 'shipping this cycle',
-      color: '#4dffe0',
-      glow: 'rgba(0, 255, 204, 0.6)',
+      color: '#A78BFA',
+      glow: 'rgba(139, 92, 246, 0.6)',
       items: [
         {
           title: 'Mobile polish',
@@ -280,7 +280,7 @@ export class BlueprintComponent implements OnInit {
   stack: StackCard[] = [
     { icon: '◆', name: 'Angular 21', detail: 'Standalone components, signals, lazy-loaded routes', color: '#ff6dd7', glow: 'rgba(255, 90, 210, 0.6)' },
     { icon: '▲', name: 'Firebase Hosting', detail: 'Global CDN, per-route cache headers, preview channels', color: '#ffc669', glow: 'rgba(255, 180, 80, 0.6)' },
-    { icon: '◉', name: 'Angular SSR', detail: `${PRERENDERED_ROUTES}+ routes prerendered at build time`, color: '#4dffe0', glow: 'rgba(0, 255, 204, 0.6)' },
+    { icon: '◉', name: 'Angular SSR', detail: `${PRERENDERED_ROUTES}+ routes prerendered at build time`, color: '#A78BFA', glow: 'rgba(139, 92, 246, 0.6)' },
     { icon: '⬡', name: 'TypeScript', detail: 'Strict mode, one registry as the single source of truth', color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.6)' },
     { icon: '⬢', name: 'Firestore', detail: 'Changelog, suggestions and counters — schema-enforced in rules', color: '#a48bff', glow: 'rgba(140, 110, 255, 0.6)' },
     { icon: '✦', name: 'MCP Server', detail: '14 tools exposed to AI agents over stdio', color: '#7fd5a3', glow: 'rgba(100, 220, 150, 0.6)' }

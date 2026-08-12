@@ -157,7 +157,7 @@ interface Banner {
       -webkit-tap-highlight-color: transparent;
     }
     .ff__btn:active { transform: scale(.9); }
-    .ff__btn:focus-visible { outline: 2px solid #4dffe0; outline-offset: 6px; border-radius: 50%; }
+    .ff__btn:focus-visible { outline: 2px solid #A78BFA; outline-offset: 6px; border-radius: 50%; }
 
     /* The ember itself. Warm gradient per the forge palette: #E8752A → #C9A84C. */
     .ff__core {
@@ -303,13 +303,13 @@ interface Banner {
     .ff__hud--open { opacity: 1; visibility: visible; transform: none; }
     .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #ffd97a; }
     .ff__hud-coin { font-size: 12px; }
-    .ff__hud-rate { font-size: 11px; color: #4dffe0; }
+    .ff__hud-rate { font-size: 11px; color: #A78BFA; }
     .ff__hud-essence { font-size: 11px; color: #c48bff; }
     .ff__hud-hint { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
     .ff__hud-market {
       margin-top: 4px; padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, .08);
-      font-size: 11px; color: #4dffe0; text-decoration: none;
+      font-size: 11px; color: #A78BFA; text-decoration: none;
     }
     .ff__hud-market:hover { text-decoration: underline; }
 

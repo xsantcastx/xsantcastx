@@ -2,8 +2,8 @@
   background: rgba(1, 1, 22, 0.8);
   padding: 2rem;
   border-radius: 10px;
-  border: 1px solid #00ffcc;
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+  border: 1px solid #8B5CF6;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
   color: #e0f7fa;
   margin-top: 2rem;
 }
@@ -14,7 +14,7 @@
 }
 
 .feed-item {
-  border-bottom: 1px solid #00ffcc;
+  border-bottom: 1px solid #8B5CF6;
   padding: 1rem 0;
 }
 
@@ -28,7 +28,7 @@
 
 .timestamp {
   font-size: 0.8rem;
-  color: #00ffcc;
+  color: #8B5CF6;
   text-align: right;
 }
 
@@ -37,7 +37,7 @@
     padding: 1.25rem 1rem;
     margin-top: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
   }
   .feed {
     max-height: 320px;
