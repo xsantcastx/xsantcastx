@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.19.0',
+  version: '2.20.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Five Gates',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.19.0',
+    version: '2.20.0',
     codename: 'Five Gates',
     date: '2026-08-12',
     highlights: [
@@ -44,6 +44,31 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'A first clear pays that game\'s reward once, banked as an achievement id so a reload cannot re-collect it; after that only beating your own best pays, and only 10 XP. Shadow Cipher\'s hints are billed against its reward, and The Convergent\'s Path scales its payout by how evenly you walked it — a full sweep at zero drift is the full 75 Aether and anything less is honestly less',
       'Arena cards carry your personal best and a NEW badge until you have finished a run, both filled in on hydration so a prerendered card never shows a score it cannot know. Gates with nothing behind them yet say so instead of offering a button that does nothing',
       'Playable on a phone: every control clears 44px, the maze takes arrow keys, swipes or an always-present on-screen pad, and the typing game drives a real input so the keyboard actually opens. Reduced motion keeps every game playable and drops only the ornament'
+    ]
+  },
+  {
+    version: '2.19.0',
+    codename: 'The Godforge',
+    date: '2026-08-12',
+    highlights: [
+      'The home page is the Godforge now — a serif title over a CSS-only furnace core, the visitor\'s rank read out under it, and one door into the forges instead of a rotating carousel of five cards',
+      'Tools are grouped by realm rather than by recency: five forge stations, each with its codex line and its own accent, opening one at a time. Collapsed stations keep their cards in the markup, so every link is still crawled — only the visitor\'s view is filtered',
+      'The stats bar counts real things and can no longer drift: artifacts are live registry entries, fragments are registered easter eggs, realms come from the codex, and the prerendered-path count is written into a committed constant by the same script that builds the sitemap',
+      'Cards the visitor has actually used are marked "Struck" from local progress — the site has no per-tool analytics, so it shows what it knows instead of inventing a usage number',
+      'The Chronicle badges an entry with a realm only when the entry names a tool that can be placed; platform-wide work is left unbadged rather than filed under a guess',
+      'A closing call before the footer: current rank and XP, a first tool to open, and the two doors the lore points at — the War Table and the Arena'
+    ]
+  },
+  {
+    version: '2.18.1',
+    codename: 'The Long Arc',
+    date: '2026-08-12',
+    highlights: [
+      'The Arena gates open now — "Enter →" was a bare button with no click handler on it, so every gate you unlocked led nowhere, on every card',
+      'Color Memory is the first gate with a game behind it: Match the Eclipse Fragments, a 4×4 or 6×6 board of paired fragments in the brand palette, with a timer, a move counter and a best time',
+      'Clearing it pays XP through the same XpService the rest of the site uses — 10 per pair, plus a bonus for finishing under par and under two minutes — so it lands in the header bar and counts towards a rank rather than into a score the game kept to itself',
+      'Gates whose game is not built yet say "Still forging" instead of offering an Enter button that goes nowhere',
+      'The overlay has to lift its own routed host to be seen: routeFadeIn leaves a transform with fill:forwards on every routed component, which makes it a stacking context, and a fixed overlay inside one cannot out-rank the header'
     ]
   },
   {

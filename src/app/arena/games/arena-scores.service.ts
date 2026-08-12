@@ -138,11 +138,11 @@ export class ArenaScoresService {
     const firstClear = this.xp.claimAchievement(`arena-clear-${gameId}`);
     if (firstClear) {
       const payout = Math.max(0, Math.min(game.xpReward, xpOverride ?? game.xpReward));
-      if (payout > 0) this.xp.award('arena-win', { amount: payout, energy: game.energy });
+      if (payout > 0) this.xp.award('game-win', { amount: payout, energy: game.energy });
       result.firstClear = true;
       result.xpAwarded = payout;
     } else if (result.isBest) {
-      this.xp.award('arena-win', { amount: REPEAT_WIN_XP, energy: game.energy });
+      this.xp.award('game-win', { amount: REPEAT_WIN_XP, energy: game.energy });
       result.xpAwarded = REPEAT_WIN_XP;
     }
 

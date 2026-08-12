@@ -156,22 +156,27 @@
   animation: glowDrift 18s ease-in-out infinite alternate;
 }
 
-.hp-hero__bg-glow--cyan {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, var(--primary-color), transparent 70%);
-  top: -15%;
-  left: -10%;
-  animation-duration: 18s;
+/* Forge glows. Warmer and dimmer than the cosmic pair they replace — the
+   Godforge sits underground and the only real light in the room comes off
+   the core, so these are held below the core's own brightness. */
+.hp-hero__bg-glow--ember {
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle, #E8752A, transparent 70%);
+  top: -18%;
+  left: -12%;
+  opacity: 0.13;
+  animation-duration: 20s;
 }
 
-.hp-hero__bg-glow--purple {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, var(--secondary-color), transparent 70%);
-  bottom: -10%;
-  right: -5%;
-  animation-duration: 22s;
+.hp-hero__bg-glow--crimson {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, #8B2252, transparent 70%);
+  bottom: -12%;
+  right: -6%;
+  opacity: 0.15;
+  animation-duration: 26s;
   animation-direction: alternate-reverse;
 }
 
@@ -184,26 +189,35 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 255, 204, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 204, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(201, 168, 76, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 168, 76, 0.045) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
 }
 
-/* Layout */
+/* Layout — a single centred column. The Godforge is an entrance, not a
+   split marketing hero: title, subtitle, core, rank, door. */
 .hp-hero__inner {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: var(--page-max-width);
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: clamp(2.5rem, 6vw, 5rem);
   align-items: center;
 }
 
-/* Left: copy */
+.gf-hero__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(0.7rem, 1.6vw, 1.1rem);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
 .hp-hero__text {
   display: flex;
   flex-direction: column;
@@ -222,6 +236,11 @@
   text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
 }
 
+.gf-hero__eyebrow {
+  color: #E0A857; /* forge gold, lightened past #C9A84C for 4.5:1 on the dark base */
+  text-shadow: 0 0 12px rgba(232, 117, 42, 0.45);
+}
+
 .hp-hero__eyebrow-dot {
   width: 8px;
   height: 8px;
@@ -229,6 +248,11 @@
   background: var(--primary-color);
   box-shadow: 0 0 10px var(--primary-color);
   animation: liveDotPulse 1.5s ease-in-out infinite;
+}
+
+.gf-hero__eyebrow .hp-hero__eyebrow-dot {
+  background: #E8752A;
+  box-shadow: 0 0 10px #E8752A;
 }
 
 .hp-hero__title {
@@ -239,6 +263,25 @@
   text-transform: uppercase;
   color: var(--text-color);
   margin: 0;
+}
+
+/* The name of the place. Serif, not Orbitron — the forge predates the
+   neon. A system serif stack rather than a webfont: the Google Fonts CDN
+   was deliberately removed for LCP (see v2.x perf work) and this title is
+   the largest text on the page, so it must not wait on a network font. */
+.gf-hero__title {
+  font-family: var(--font-lore);
+  font-size: clamp(2.9rem, 9vw, 5.6rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  line-height: 1.02;
+  background: linear-gradient(168deg, #FFE6B0 0%, #E8752A 52%, #8B2252 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* The gradient clips the glow too, so the halo is drawn behind instead. */
+  filter: drop-shadow(0 0 34px rgba(232, 117, 42, 0.34));
 }
 
 .hp-hero__title--accent {
@@ -256,6 +299,15 @@
   max-width: 480px;
 }
 
+.gf-hero__sub {
+  font-family: var(--font-lore);
+  font-style: italic;
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+  color: #C9B79A;
+  max-width: 620px;
+  letter-spacing: 0.02em;
+}
+
 .hp-hero__sub-br { display: block; }
 
 .hp-hero__cta {
@@ -265,190 +317,220 @@
   align-items: center;
 }
 
+.gf-hero__cta {
+  justify-content: center;
+  margin-top: clamp(0.6rem, 2vw, 1.2rem);
+}
+
+/* The door into the forges. Ember fill rather than the site's cyan CTA —
+   this is the one button that belongs to the forge, not the cosmos. */
+.gf-hero__enter {
+  border-color: rgba(232, 117, 42, 0.55);
+  background: linear-gradient(135deg, rgba(232, 117, 42, 0.22), rgba(139, 34, 82, 0.28));
+  color: #FFE6B0;
+  box-shadow: 0 0 30px -10px rgba(232, 117, 42, 0.75);
+}
+
+.gf-hero__enter:hover,
+.gf-hero__enter:focus-visible {
+  border-color: rgba(255, 210, 122, 0.85);
+  box-shadow: 0 0 44px -8px rgba(232, 117, 42, 0.95);
+}
+
 .hp-hero__cta-ghost {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
 }
 
-/* Right: carousel */
-.hp-hero__visual {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.85rem;
+/* ─── The forge core ────────────────────────────────────────────────
+   Pure CSS. Gold at the centre, crimson at the edge, void beyond —
+   the furnace you are looking down into. Every layer animates only
+   transform / opacity / filter, so the whole thing composites on the
+   GPU and never triggers layout. Five layers, all decorative. */
+
+/* Sized so that title → subtitle → core → rank → CTA all clear the fold on
+   a 900px-tall desktop viewport. The core is the centrepiece but it is not
+   the destination: a visitor who cannot see "Enter the Forge" without
+   scrolling has been shown an ornament instead of a door. */
+.gf-core {
+  position: relative;
+  width: clamp(180px, 24vw, 260px);
+  height: clamp(180px, 24vw, 260px);
+  margin: clamp(0.4rem, 1.4vw, 1rem) auto clamp(0.8rem, 2vw, 1.4rem);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
 }
 
-.hero-carousel {
+/* Heat haze bleeding out past the rings. */
+.gf-core__haze {
+  position: absolute;
+  inset: -32%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 52%,
+    rgba(232, 117, 42, 0.32) 0%,
+    rgba(139, 34, 82, 0.18) 38%,
+    rgba(139, 34, 82, 0) 70%
+  );
+  filter: blur(24px);
+  animation: gfHaze 9s ease-in-out infinite;
+}
+
+/* Two counter-rotating rims: the lip of the forge. */
+.gf-core__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+}
+
+.gf-core__ring--outer {
+  inset: 0;
+  border-style: dashed;
+  animation: gfRingSpin 46s linear infinite;
+}
+
+.gf-core__ring--inner {
+  inset: 13%;
+  border-color: rgba(232, 117, 42, 0.34);
+  box-shadow: inset 0 0 30px -8px rgba(232, 117, 42, 0.5);
+  animation: gfRingSpin 31s linear infinite reverse;
+}
+
+/* The well — looking down the shaft. Dark rim, hot floor. */
+.gf-core__well {
+  position: relative;
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  /* Read the stops as depth, not as a colour ramp: white-hot floor, a wide
+     ember body, crimson only at the rim, then the shaft goes dark. Crimson
+     is held to a narrow band at high alpha — spread wide and semi-opaque it
+     stops reading as a furnace and starts reading as a purple nebula orb. */
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(255, 240, 200, 0.97) 0%,
+      rgba(255, 190, 92, 0.94) 20%,
+      rgba(232, 117, 42, 0.93) 46%,
+      rgba(168, 58, 62, 0.94) 68%,
+      rgba(139, 34, 82, 0.95) 80%,
+      rgba(10, 15, 30, 0.98) 94%);
+  box-shadow:
+    0 0 60px -10px rgba(232, 117, 42, 0.55),
+    0 0 140px -30px rgba(201, 168, 76, 0.5),
+    inset 0 0 30px rgba(10, 15, 30, 0.85);
+  animation: gfWellBreathe 6.4s ease-in-out infinite;
+}
+
+/* The molten heart, on a slower offset cycle so the two never sync. */
+.gf-core__heart {
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 46% 42%, #fff6dd 0%, #ffd27a 34%, #e8752a 72%, rgba(139, 34, 82, 0.5) 100%);
+  filter: blur(1px);
+  animation: gfHeartPulse 4.1s ease-in-out infinite;
+}
+
+/* Sparks lifting off the surface. Positioned by --ex, staggered by --ed. */
+.gf-core__ember {
+  position: absolute;
+  bottom: 26%;
+  left: var(--ex);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffd27a;
+  box-shadow: 0 0 8px rgba(232, 117, 42, 0.9);
+  opacity: 0;
+  animation: gfEmberRise var(--edur, 5.5s) ease-out infinite;
+  animation-delay: var(--ed, 0s);
+}
+
+@keyframes gfHaze {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.07); }
+}
+
+@keyframes gfRingSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gfWellBreathe {
+  0%, 100% { transform: scale(1);     filter: brightness(1); }
+  50%      { transform: scale(1.035); filter: brightness(1.16); }
+}
+
+@keyframes gfHeartPulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.85; }
+  50%      { transform: scale(1.14); opacity: 1; }
+}
+
+@keyframes gfEmberRise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+  12%  { opacity: 1; }
+  70%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-150px) translateX(14px) scale(0.3); }
+}
+
+/* ─── Rank readout ──────────────────────────────────────────────── */
+
+.gf-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100%, 380px);
+  margin: 0 auto;
+}
+
+.gf-rank__line {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.gf-rank__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #F0CE85;
+}
+
+.gf-rank__bar {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  height: 240px;
-  perspective: 800px;
+  height: 5px;
+  border-radius: 999px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.18);
 }
 
-.hc-card {
+.gf-rank__fill {
   position: absolute;
-  inset: 0;
-  background: var(--surface-strong);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 1.4rem 1.6rem;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  opacity: 0;
-  transform: rotateY(-22deg) scale(0.92) translateZ(-40px);
-  animation: hcCardCycle 25s ease-in-out infinite;
-  will-change: transform, opacity;
-  animation-delay: calc(var(--ci, 0) * 5s);
-  cursor: default;
-  /* Decorative rotating preview — not interactive. Prevents "ghost"
-     hover/click on invisible cards during fade-out and stops the
-     rotating text from stealing focus or tab order. */
-  pointer-events: none;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  inset: 0 auto 0 0;
+  /* Runs dark→light left to right, so the leading edge is the brightest
+     part of the bar. The reverse ramp put crimson against the grey track
+     at the origin and the fill read as empty at low levels. */
+  background: linear-gradient(90deg, #E8752A, #C9A84C 58%, #FFD9A0);
+  box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.hc-card {
-  --star-color: #4dffe0;
-  --star-glow: rgba(0, 255, 204, 0.55);
-  --star-inner: #eafff9;
-}
-
-.hc-card[data-category="CSS Tools"],
-.hc-card[data-category="CSS"]              { --star-color: #4dffe0; --star-glow: rgba(0, 255, 204, 0.6);  --star-inner: #eafff9; }
-.hc-card[data-category="CSS Generators"]   { --star-color: #6affe0; --star-glow: rgba(0, 220, 220, 0.6);  --star-inner: #e6fff9; }
-.hc-card[data-category="Email Tools"]      { --star-color: #ff6dd7; --star-glow: rgba(255, 90, 210, 0.6); --star-inner: #ffe6f6; }
-.hc-card[data-category="Security Tools"]   { --star-color: #a48bff; --star-glow: rgba(140, 110, 255, 0.6); --star-inner: #efeaff; }
-.hc-card[data-category="Code Converters"]  { --star-color: #5fb6ff; --star-glow: rgba(80, 180, 255, 0.6);  --star-inner: #e6f4ff; }
-.hc-card[data-category="Productivity"]     { --star-color: #ffc669; --star-glow: rgba(255, 180, 80, 0.6);  --star-inner: #fff2dc; }
-.hc-card[data-category="DevOps"]           { --star-color: #ff9a5a; --star-glow: rgba(255, 140, 60, 0.6);  --star-inner: #ffe6d2; }
-.hc-card[data-category="Text & Data"]      { --star-color: #c48bff; --star-glow: rgba(180, 120, 255, 0.6); --star-inner: #f1e6ff; }
-.hc-card[data-category="SEO Tools"]        { --star-color: #7fd5a3; --star-glow: rgba(100, 220, 150, 0.6); --star-inner: #e6ffef; }
-
-.hc-card { border-color: var(--star-glow) !important; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 28px -12px var(--star-glow), inset 0 1px 0 rgba(255,255,255,0.06) !important; }
-
-@keyframes hcCardCycle {
-  0%, 2%   { opacity: 0; transform: rotateY(-22deg) scale(0.92) translateZ(-40px); }
-  7%, 17%  { opacity: 1; transform: rotateY(0deg) scale(1) translateZ(0px); }
-  22%      { opacity: 0; transform: rotateY(18deg) scale(0.92) translateZ(-40px); }
-  23%, 100%{ opacity: 0; transform: rotateY(-22deg) scale(0.92) translateZ(-40px); }
-}
-
-/* NOTE: there is deliberately no separate mobile "fade-only" @keyframes here.
-   Angular's emulated encapsulation rewrites @keyframes names to
-   `_ngcontent-<id>_<name>` and rewrites the matching `animation` shorthands —
-   but it silently failed to rewrite the one inside the <=768px media query,
-   leaving it pointing at an undefined name so the cards never left their base
-   `opacity: 0` (a dead 210px void at the top of every mobile page). Mobile now
-   reuses hcCardCycle and flattens it with `transform: none !important`, which
-   beats the animation in the cascade. One keyframes name, no scoping to fumble. */
-
-.hc-card__top {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.hc-card__icon-wrap {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background:
-    radial-gradient(circle at 32% 28%, var(--star-inner) 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8, 3, 24, 0.92) 88%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 12px var(--star-glow), 0 0 28px -4px var(--star-glow), inset 0 0 8px rgba(0, 0, 0, 0.3);
-}
-
-.hc-card__icon-wrap::before {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  border: 1px dashed var(--star-glow);
-  opacity: 0.35;
-  animation: hpOrbitSpin 26s linear infinite;
-}
-
-.hc-card__icon {
-  font-size: 1rem;
-  line-height: 1;
-  color: #050212;
-  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.4));
-  z-index: 1;
-}
-
-.hc-card__cat {
+.gf-rank__meta {
+  margin: 0;
   font-family: var(--font-heading);
-  font-size: 0.52rem;
+  font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--star-color);
-  padding: 0.18rem 0.5rem;
-  border: 1px solid var(--star-glow);
-  border-radius: 999px;
-  background: rgba(8, 3, 22, 0.55);
-  text-shadow: 0 0 8px var(--star-glow);
-}
-
-.hc-card__name {
-  font-family: var(--font-heading);
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  color: var(--text-color);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.hc-card__desc {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin: 0;
-  flex: 1;
-}
-
-.hc-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255,255,255,0.05);
-}
-
-.hc-card__cta {
-  font-family: var(--font-heading);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  color: var(--primary-color);
-  text-shadow: 0 0 6px rgba(0, 255, 204, 0.4);
-}
-
-.hc-card__num {
-  font-family: var(--font-heading);
-  font-size: 0.52rem;
-  color: rgba(200, 215, 240, 0.3);
-  letter-spacing: 0.06em;
-}
-
-.hp-hero__carousel-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.72rem;
-  color: rgba(200, 215, 240, 0.45);
-  font-family: var(--font-heading);
-  letter-spacing: 0.08em;
+  color: rgba(201, 168, 76, 0.75);
 }
 
 /* Scroll hint */
@@ -1861,15 +1943,6 @@
     grid-template-columns: 1fr;
   }
 
-  .hp-hero__visual {
-    align-items: center;
-    order: -1;
-  }
-
-  .hero-carousel {
-    max-width: 380px;
-  }
-
   .hp-live__inner {
     grid-template-columns: 1fr;
   }
@@ -1925,18 +1998,16 @@
     min-width: 110px;
   }
 
-  /* §2.4 — from old standalone 480px block */
-  .hero-carousel {
-    height: 210px;
-  }
-
   .hp-hero__title {
     font-size: clamp(1.9rem, 9vw, 2.4rem);
+  }
+
+  .gf-hero__title {
+    font-size: clamp(2.4rem, 13vw, 3.2rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hc-card,
   .hp-lf-line,
   .hp-live__progress-fill,
   .hp-hero__bg-glow,
@@ -1944,11 +2015,24 @@
     animation: none !important;
   }
 
-  /* B-5 — parked state: only the first card visible. All five at opacity 1
-     stack their semi-transparent glass backgrounds on top of each other. */
-  .hc-card { opacity: 0; visibility: hidden; transform: none; }
-  .hc-card:first-child { opacity: 1; visibility: visible; }
   .hp-lf-line { opacity: 1; }
+
+  /* The forge parks hot rather than dark: the core keeps its gradients and
+     its glow, it just stops moving. Embers are motion-only, so they go. */
+  .gf-core__haze,
+  .gf-core__ring,
+  .gf-core__well,
+  .gf-core__heart {
+    animation: none !important;
+  }
+
+  .gf-core__ember { display: none; }
+
+  .gf-rank__fill,
+  .gf-station__body,
+  .gf-station__chevron {
+    transition: none !important;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -1964,38 +2048,46 @@
   /* ── Hero background glows: kill the 80px blur (GPU fillrate killer on
         Adreno/Mali), shrink elements, keep opacity-only fade still readable */
   .hp-hero__bg-glow,
-  .hp-hero__bg-glow--cyan,
-  .hp-hero__bg-glow--purple {
+  .hp-hero__bg-glow--ember,
+  .hp-hero__bg-glow--crimson {
     filter: none !important;
     animation: none !important;
     opacity: 0.12;
     will-change: auto;
   }
 
-  .hp-hero__bg-glow--cyan {
+  .hp-hero__bg-glow--ember {
     width: 320px;
     height: 320px;
   }
 
-  .hp-hero__bg-glow--purple {
+  .hp-hero__bg-glow--crimson {
     width: 280px;
     height: 280px;
   }
 
+  /* ── Forge core on mobile: the 24px-blurred haze is the same fillrate
+        problem as the hero glows above, so it loses the blur and holds a
+        static gradient. The well and the heart keep breathing — they are
+        two small composited layers and they are the point of the section.
+        Embers go: five independently animated 3px nodes buy nothing at
+        this size and each one is its own layer. ── */
+  .gf-core__haze {
+    filter: none !important;
+    animation: none !important;
+    opacity: 0.75;
+  }
+
+  .gf-core__ember { display: none; }
+
   /* ── backdrop-filter: stays OFF (current behaviour is correct) ──
      Give each affected card a semi-opaque background-color so the
      glass look survives without the compositor cost. */
-  .hc-card,
   .hp-spotlight__card,
   .hp-live__card,
   .hp-tool-card {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-  }
-
-  /* Semi-opaque glass substitute for carousel cards */
-  .hc-card {
-    background: rgba(10, 6, 26, 0.88);
   }
 
   /* Semi-opaque glass substitute for spotlight / live / tool cards */
@@ -2006,18 +2098,6 @@
 
   .hp-tool-card {
     background: rgba(14, 8, 32, 0.82);
-  }
-
-  /* ── Hero carousel: cross-fade only on mobile (opacity, no rotateY/translateX).
-        All 5 cards remain in DOM, stacked absolutely. Inherit hcCardCycle (and
-        its per-card animation-delay) from the base rule rather than declaring a
-        mobile-only animation — see the note by @keyframes hcCardCycle for why a
-        second keyframes name broke here. `transform: none !important` outranks
-        the animation in the cascade, so the 3D tilt is dropped and only the
-        opacity channel animates: same compositor cost as a fade-only keyframe. ── */
-  .hc-card {
-    will-change: opacity;
-    transform: none !important;  /* cancel 3D transforms — !important beats the animation */
   }
 
   /* ── Non-essential infinite animations: keep blink/progress for UI context,
@@ -2081,14 +2161,6 @@
 
   /* ── Touch targets: ≥ 44×44px per §2.3 ── */
 
-  /* Carousel hint */
-  .hp-hero__carousel-hint {
-    min-height: 44px;
-    padding: 0.6rem 0.5rem;
-    display: inline-flex;
-    align-items: center;
-  }
-
   /* Changelog day toggle */
   .hp-cl-day__header {
     min-height: 44px;
@@ -2122,8 +2194,7 @@
 }
 
 /* Paint containment isolates card repaints from their siblings. */
-.hp-tool-card,
-.hc-card {
+.hp-tool-card {
   contain: layout paint;
 }
 
@@ -2852,8 +2923,11 @@
   .hp-live__pill,
   .hp-live__eyebrow,
   .hp-live-badge,
-  .hc-card__cat,
-  .hc-card__num,
+  .gf-station__domain,
+  .gf-station__count,
+  .gf-cl-realm,
+  .gf-rank__meta,
+  .gf-door__label,
   .hp-tool-card__cat,
   .hp-spotlight__cat,
   .hp-spotlight__label,
@@ -2864,14 +2938,15 @@
   }
 
   /* ── Tier A: content and controls → 14px ────────────────────────────────── */
-  .hc-card__desc,
-  .hc-card__cta,
   .hp-tool-card__desc,
   .hp-tool-card__cta,
   .hp-cl-entry__details,
   .hp-section-tagline,
   .hp-anchor__whisper,
-  .hp-hero__carousel-hint,
+  .gf-station__quote,
+  .gf-station__more,
+  .gf-door__hint,
+  .gf-rank__line,
   .hp-lf__text,
   .hp-sp__title,
   .hp-sp__prompt,
@@ -2879,8 +2954,8 @@
     font-size: 14px;
   }
 
-  .hc-card__name,
-  .hp-tool-card__name {
+  .hp-tool-card__name,
+  .gf-station__name {
     font-size: 15px;
   }
 
@@ -2888,5 +2963,518 @@
      no longer fits four abreast at 375px. Let it wrap rather than clip. */
   .hp-stat {
     flex-wrap: wrap;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE GODFORGE — Eclipse Realms atmosphere layer
+   ═══════════════════════════════════════════════════════════════════
+   An atmosphere over the cosmic system, not a replacement for it: the
+   universe background, the pulsar, the constellation canvas and every
+   shared .hp-* primitive still do their jobs underneath. What changes
+   here is the temperature — warm forge light where the home page used
+   to be lit cyan, and realm accents where it used to be per-category.
+
+   Realm colour arrives as --realm-color / --realm-glow, bound from
+   REALMS in realm.model.ts, so adding a realm is a data edit and never
+   a stylesheet edit. */
+
+
+/* ─── The Forge's Pulse (stats bar) ─────────────────────────────── */
+
+.gf-pulse {
+  border-top-color: rgba(201, 168, 76, 0.16);
+  border-bottom-color: rgba(201, 168, 76, 0.16);
+  background: rgba(12, 9, 20, 0.6);
+}
+
+.gf-pulse .hp-stat__num {
+  color: #FFD9A0;
+  text-shadow: 0 0 18px rgba(232, 117, 42, 0.4);
+}
+
+.gf-pulse .hp-stat__icon {
+  color: var(--forge-gold-text);
+}
+
+
+/* ─── The Five Realms ───────────────────────────────────────────── */
+
+.gf-forges {
+  position: relative;
+}
+
+.gf-stations {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 2vw, 1.4rem);
+  margin-top: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+/* A forge station. Banked by default: the realm colour is held back to a
+   quarter strength so five stations do not fight each other, and the one
+   the visitor is looking at comes up to full. */
+.gf-station {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 2px solid color-mix(in srgb, var(--realm-color) 40%, transparent);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--realm-color) 6%, transparent) 0%, transparent 42%),
+    rgba(10, 12, 26, 0.55);
+  padding: clamp(0.9rem, 2vw, 1.3rem) clamp(0.9rem, 2.4vw, 1.6rem);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, background 0.35s ease;
+}
+
+/* Lit: hovered, or open when nothing is hovered. */
+.gf-station--lit {
+  border-color: color-mix(in srgb, var(--realm-color) 32%, transparent);
+  border-left-color: var(--realm-color);
+  box-shadow: 0 0 34px -14px var(--realm-glow);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--realm-color) 12%, transparent) 0%, transparent 48%),
+    rgba(12, 14, 30, 0.62);
+}
+
+.gf-station__hd-wrap {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.gf-station__hd {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 1.6vw, 1rem);
+  width: 100%;
+  min-height: 44px;
+  padding: 0.35rem 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gf-station__hd:focus-visible {
+  outline: 2px solid var(--realm-color);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+/* The realm mark: a small banked ember in the realm's own colour. */
+.gf-station__sigil {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, var(--realm-color) 0%, rgba(8, 6, 20, 0.94) 86%);
+  box-shadow: 0 0 12px -2px var(--realm-glow), inset 0 0 8px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+
+.gf-station--lit .gf-station__sigil {
+  box-shadow: 0 0 22px -2px var(--realm-glow), inset 0 0 8px rgba(0, 0, 0, 0.4);
+  transform: scale(1.08);
+}
+
+.gf-station__names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gf-station__name {
+  font-family: var(--font-heading);
+  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-color);
+}
+
+.gf-station__domain {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gf-station__count {
+  flex: none;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--realm-color);
+  white-space: nowrap;
+}
+
+.gf-station__count-word {
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.gf-station__chevron {
+  flex: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--realm-color);
+  transform: rotate(90deg);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gf-station--open .gf-station__chevron {
+  transform: rotate(270deg);
+}
+
+/* The codex line. Serif and italic — this is the one place on the page
+   where the lore speaks in its own voice. */
+.gf-station__quote {
+  margin: 0.35rem 0 0;
+  padding-left: calc(30px + clamp(0.6rem, 1.6vw, 1rem));
+  font-family: var(--font-lore);
+  font-style: italic;
+  font-size: clamp(0.82rem, 1.8vw, 0.95rem);
+  line-height: 1.5;
+  color: rgba(214, 221, 235, 0.6);
+}
+
+/* Collapsed stations keep their cards in the DOM — crawlers follow all
+   thirty tool links regardless of which realm is open, and only the
+   visitor's view is filtered. `content-visibility: hidden` skips their
+   render cost while keeping them in the accessibility tree's document
+   order; the cards are also taken out of the tab order in the template. */
+.gf-station__body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  content-visibility: hidden;
+  transition: max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+}
+
+.gf-station--open .gf-station__body {
+  /* Headroom over the tallest real case — six cards stacked single-column
+     at 375px measures ~1800px. The transition runs on max-height, so
+     overshoot costs a little easing precision and nothing else, whereas
+     undershoot silently clips the last card. */
+  max-height: 3600px;
+  opacity: 1;
+  content-visibility: visible;
+}
+
+.gf-station__grid {
+  margin-top: clamp(0.9rem, 2vw, 1.3rem);
+}
+
+/* Realm tint on the cards inside a station. The per-category star colour
+   set by .hp-tool-card[data-category] still drives the icon orb; this
+   only warms the card edge toward its realm. */
+.gf-card {
+  border-color: color-mix(in srgb, var(--realm-color) 18%, rgba(255, 255, 255, 0.06));
+}
+
+.gf-card:hover {
+  border-color: color-mix(in srgb, var(--realm-color) 55%, transparent);
+}
+
+/* The category label carries the realm, not the category star colour. The
+   icon orb keeps --star-color, so a card still reads as "a CSS tool" at a
+   glance while the label and its glow say which realm it hangs in — the
+   text-shadow has to be overridden too or the category glow wins the eye
+   and the tint reads as the wrong colour entirely. */
+.gf-card__cat {
+  color: color-mix(in srgb, var(--realm-color) 78%, white);
+  text-shadow: 0 0 8px var(--realm-glow);
+}
+
+.gf-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Already used, in this browser. Not a global usage count — the site has
+   no per-tool analytics, and inventing one would be a lie in a badge. */
+.gf-card__struck {
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--forge-gold-text);
+}
+
+.gf-station__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 0.9rem;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--realm-color);
+  text-decoration: none;
+  opacity: 0.85;
+  transition: opacity 0.25s ease;
+}
+
+.gf-station__more:hover,
+.gf-station__more:focus-visible {
+  opacity: 1;
+}
+
+
+/* ─── The Chronicle ─────────────────────────────────────────────── */
+
+/* "Recent Forging Activity" is longer than the "Latest Updates" it replaced,
+   and the typewriter splits every heading into per-character inline-blocks —
+   which means the browser may break a line between any two letters, not just
+   between words. At the inherited size the title wrapped as "RECENT FORGING
+   AC / TIVITY". Sizing it to fit the 640px column is the fix that does not
+   require reaching into shared engine behaviour. */
+.gf-chronicle .hp-section-title {
+  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+}
+
+.gf-cl-realm {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--realm-color) 45%, transparent);
+  background: color-mix(in srgb, var(--realm-color) 12%, transparent);
+  font-family: var(--font-heading);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--realm-color) 72%, white);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+
+/* ─── Begin Your Journey ────────────────────────────────────────── */
+
+.gf-journey {
+  position: relative;
+  padding: clamp(3.5rem, 8vw, 5.5rem) var(--page-gutter);
+  background:
+    radial-gradient(ellipse 60% 55% at 22% 28%, rgba(232, 117, 42, 0.07), transparent 66%),
+    radial-gradient(ellipse 55% 50% at 80% 72%, rgba(139, 34, 82, 0.09), transparent 66%),
+    rgba(6, 8, 18, 0.6);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 620px;
+}
+
+/* The gradient cap lines every cosmic section carries, in forge tones. */
+.gf-journey::before,
+.gf-journey::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.gf-journey::before {
+  top: -1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 117, 42, 0.5) 50%, transparent);
+}
+
+.gf-journey::after {
+  bottom: -1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.5) 50%, transparent);
+}
+
+.gf-journey__inner {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.7rem;
+}
+
+.gf-journey__title {
+  font-family: var(--font-lore);
+  font-size: clamp(1.7rem, 4.5vw, 2.6rem);
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: #FFE6B0;
+}
+
+.gf-journey__creed {
+  max-width: 620px;
+  margin: 0 0 0.6rem;
+  font-family: var(--font-lore);
+  font-style: italic;
+  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+  line-height: 1.6;
+  color: #C9B79A;
+}
+
+.gf-journey__rank {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background: rgba(10, 8, 20, 0.55);
+}
+
+.gf-journey__rank-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.gf-journey__rank-num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  font: 700 12px/1 var(--font-heading);
+  color: #2a1206;
+  background: radial-gradient(circle at 34% 30%, #FFE6B0 0%, #E8752A 70%, #8B2252 100%);
+  box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
+}
+
+.gf-journey__rank-title {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #FFD9A0;
+}
+
+.gf-journey__rank-xp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.gf-journey__rank-next {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.75);
+}
+
+/* Three doors out of the page. */
+.gf-journey__doors {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.8rem, 2vw, 1.2rem);
+  width: 100%;
+  margin-top: clamp(1.2rem, 3vw, 2rem);
+  text-align: left;
+}
+
+.gf-door {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 44px;
+  padding: clamp(1rem, 2.4vw, 1.4rem);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(10, 12, 26, 0.55);
+  text-decoration: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.gf-door:hover,
+.gf-door:focus-visible {
+  border-color: rgba(232, 117, 42, 0.5);
+  box-shadow: 0 0 30px -12px rgba(232, 117, 42, 0.8);
+  transform: translateY(-3px);
+}
+
+.gf-door--primary {
+  border-color: rgba(232, 117, 42, 0.35);
+  background:
+    linear-gradient(140deg, rgba(232, 117, 42, 0.12), transparent 60%),
+    rgba(12, 10, 24, 0.6);
+}
+
+.gf-door__label {
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--forge-gold-text);
+}
+
+.gf-door__name {
+  font-family: var(--font-heading);
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-color);
+}
+
+.gf-door__hint {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+
+/* ─── Responsive ────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .gf-journey__doors {
+    grid-template-columns: 1fr;
+  }
+
+  /* The station header is the accordion's tap target on phones, so the
+     count moves under the name rather than competing for the same row. */
+  .gf-station__hd {
+    flex-wrap: wrap;
+    row-gap: 0.3rem;
+  }
+
+  .gf-station__names {
+    flex: 1 1 60%;
+  }
+
+  .gf-station__quote {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .gf-core {
+    width: min(62vw, 210px);
+    height: min(62vw, 210px);
+  }
+
+  .gf-station__domain {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  /* Without a pointer there is no hover state to read, so "lit" must fall
+     back to "open" — otherwise a tap-only visitor sees every station
+     banked at quarter strength and nothing ever brightens. */
+  .gf-station--open {
+    border-color: color-mix(in srgb, var(--realm-color) 32%, transparent);
+    border-left-color: var(--realm-color);
+    box-shadow: 0 0 34px -14px var(--realm-glow);
   }
 }

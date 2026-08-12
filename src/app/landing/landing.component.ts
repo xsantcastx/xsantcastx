@@ -2,10 +2,14 @@ import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from 
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
-import { ChangelogService, ChangelogDay } from '../changelog.service';
+import { ChangelogService, ChangelogDay, ChangelogEntry } from '../changelog.service';
 import { Subscription } from 'rxjs';
 import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
 import { TranslationService } from '../translation.service';
+import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
+import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
+import { PRERENDERED_PATHS } from '../prerender-stats';
 
 export interface Tool {
   id: string;
@@ -19,28 +23,24 @@ export interface Tool {
 }
 
 /**
- * Hard invariant: the hero carousel CSS animation is hand-tuned for exactly
- * HERO_CAROUSEL_MAX cards rotating over a HERO_CAROUSEL_CYCLE_SECONDS cycle
- * with one card per (cycle / count) slice. Changing this number WITHOUT also
- * retiming hcCardCycle in landing.component.css is a bug that causes card
- * N+MAX to restart before card N finishes, producing z-index bleed-through
- * and the "flickering red/orange overlay" glitch reported on 2026-04-10.
- *
- * If you need more featured cards, build a second carousel or rework the
- * keyframes — do not just bump this constant.
+ * One forge station: a realm, the tools that hang in it, and the counts the
+ * header needs. `shown` is a slice of `total` — the homepage is a doorway, not
+ * the catalogue, and /tools?realm=<id> is where the rest live.
  */
-export const HERO_CAROUSEL_MAX = 5;
-
-/** View model for a single hero carousel slot. Precomputing the padded labels
- *  keeps them out of the template (no pipes, no hardcoded `0` prefixes that
- *  break the moment the count crosses 10). */
-interface HeroCarouselCard {
-  readonly tool: Tool;
-  readonly ci: number;          // slot index, fed to the CSS --ci variable
-  readonly indexLabel: string;  // e.g. "01"
-  readonly totalLabel: string;  // e.g. "05"
-  readonly ariaLabel: string;   // "Featured tool 1 of 5: Foo"
+export interface ForgeStation {
+  readonly realm: RealmDefinition;
+  readonly shown: Tool[];
+  readonly total: number;
+  readonly hidden: number;
 }
+
+/**
+ * Tools listed per realm on the homepage. Five realms × this = the upper bound
+ * on cards in the DOM, which is what keeps the accordion cheap: collapsed
+ * stations stay in the markup (crawlers follow the links, the toggle only
+ * hides them) rather than being conditionally rendered.
+ */
+export const FORGE_STATION_SIZE = 6;
 
 @Component({
   selector: 'app-landing',
@@ -54,7 +54,9 @@ export class LandingComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private changelogService = inject(ChangelogService);
   private translationService = inject(TranslationService);
+  private readonly xpService = inject(XpService);
   private changelogSub?: Subscription;
+  private xpSub?: Subscription;
 
   translate(key: string): string {
     return this.translationService.translate(key);
@@ -62,6 +64,16 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   changelogDays: ChangelogDay[] = [];
   changelogLoading = true;
+
+  /**
+   * Progression, for the hero welcome and the closing call.
+   *
+   * Seeded from the service's current value so the server renders a coherent
+   * level-1 state during prerender (ProgressStorageService hands back a null
+   * adapter there, so nothing touches localStorage), and the real numbers
+   * arrive on the client once XpService.init() has read storage.
+   */
+  xp: XpSnapshot = this.xpService.snapshot;
 
   activeCategory = 'All';
   searchQuery = '';
@@ -86,13 +98,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
   readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
 
-  /** Tools shown in the hero carousel — capped at HERO_CAROUSEL_MAX to match the
-   *  25s / 5s-per-slot CSS animation cycle. More than HERO_CAROUSEL_MAX cards
-   *  causes animation collisions (card N+MAX restarts before card N exits),
-   *  producing z-index bleed-through and the flickering overlay reported by
-   *  the owner on 2026-04-10. Keep this derived from the constant so a future
-   *  refactor can't accidentally regress the invariant. */
-  readonly heroCarouselTools: Tool[] = getFeaturedTools().slice(0, HERO_CAROUSEL_MAX).map(t => ({
+  /** Featured tools, for the recommendation in the closing call. */
+  private readonly featuredTools: Tool[] = getFeaturedTools().map(t => ({
     id: t.id,
     name: t.title,
     desc: t.description,
@@ -103,22 +110,47 @@ export class LandingComponent implements OnInit, OnDestroy {
     tags: t.tags,
   }));
 
-  /** Precomputed view models for the hero carousel slots. Padding is done
-   *  once here instead of via template math like `0{{ i + 1 }}/0{{ len }}`,
-   *  which silently broke at 10+ cards and visually looked like a broken
-   *  `mm:ss` timer (see [BUG] Homepage tool cards flickering, 2026-04-10). */
-  readonly heroCarouselCards: HeroCarouselCard[] = this.heroCarouselTools.map((tool, i, arr) => {
-    const total = arr.length;
-    const indexLabel = (i + 1).toString().padStart(2, '0');
-    const totalLabel = total.toString().padStart(2, '0');
+  /**
+   * The five forge stations, in codex order.
+   *
+   * Each realm shows its newest tools (the registry is append-ordered, so the
+   * tail is the freshest work) and reports how many more are behind the
+   * "browse the realm" link. Built once at construction — the registry is a
+   * compile-time constant, so there is nothing here to recompute.
+   */
+  readonly stations: ForgeStation[] = REALMS.map(realm => {
+    const inRealm = this.tools.filter(t => realmForCategory(t.category).id === realm.id);
+    const shown = inRealm.slice(-FORGE_STATION_SIZE).reverse();
     return {
-      tool,
-      ci: i,
-      indexLabel,
-      totalLabel,
-      ariaLabel: `Featured tool ${i + 1} of ${total}: ${tool.name}`,
+      realm,
+      shown,
+      total: inRealm.length,
+      hidden: Math.max(0, inRealm.length - shown.length),
     };
   });
+
+  /**
+   * Which station is open. One at a time: five expanded realms is a wall of 30
+   * cards, and the point of the accordion is that the visitor picks a realm.
+   * Luminous opens by default so the section is never a row of shut doors.
+   */
+  openRealmId: string = REALMS[0].id;
+
+  /** Realm the pointer is over, which brightens that station. */
+  hoveredRealmId: string | null = null;
+
+  // ─── The Forge's Pulse ────────────────────────────────────────────────
+  // Every stat is derived from the thing it counts, so none of them can drift
+  // into a marketing number that no longer matches the site.
+
+  /** Tools live in the registry. */
+  readonly artifactCount = this.tools.length;
+  /** Routes Angular prerenders to static HTML — regenerated at every build. */
+  readonly prerenderedPaths = PRERENDERED_PATHS;
+  /** Registered easter eggs. */
+  readonly fragmentCount = EASTER_EGGS.length;
+  /** Realms in the codex. */
+  readonly realmCount = REALMS.length;
 
   get filteredTools(): Tool[] {
     const q = this.searchQuery.toLowerCase();
@@ -134,18 +166,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Belt-and-braces: if someone bumps the slice or the registry returns
-    // more than expected, warn loudly in dev so we don't silently regress
-    // back to the flickering overlay bug.
-    if (this.heroCarouselTools.length > HERO_CAROUSEL_MAX && typeof console !== 'undefined') {
-      console.warn(
-        `[landing] heroCarouselTools length (${this.heroCarouselTools.length}) exceeds ` +
-        `HERO_CAROUSEL_MAX (${HERO_CAROUSEL_MAX}) — this will cause CSS animation ` +
-        `collisions and z-index bleed-through. Retune hcCardCycle keyframes before ` +
-        `increasing the cap.`
-      );
-    }
-
     this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
     this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
       next: (days) => {
@@ -156,10 +176,16 @@ export class LandingComponent implements OnInit, OnDestroy {
         this.changelogLoading = false;
       }
     });
+
+    // No-ops on the server; on the client this reads stored progress and
+    // settles the daily streak, then pushes the real rank into the hero.
+    this.xpService.init();
+    this.xpSub = this.xpService.snapshot$.subscribe(snap => { this.xp = snap; });
   }
 
   ngOnDestroy(): void {
     this.changelogSub?.unsubscribe();
+    this.xpSub?.unsubscribe();
   }
 
   // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
@@ -169,8 +195,8 @@ export class LandingComponent implements OnInit, OnDestroy {
     return tool.id;
   }
 
-  trackHeroCard(_index: number, card: HeroCarouselCard): string {
-    return card.tool.id;
+  trackStation(_index: number, station: ForgeStation): string {
+    return station.realm.id;
   }
 
   trackChangelogDay(_index: number, day: ChangelogDay): string {
@@ -187,6 +213,86 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   toggleChangelogDay(day: ChangelogDay): void {
     day.expanded = !day.expanded;
+  }
+
+  // ─── The Forges ───────────────────────────────────────────────────────
+
+  isStationOpen(station: ForgeStation): boolean {
+    return this.openRealmId === station.realm.id;
+  }
+
+  /**
+   * Open a station, or shut the open one.
+   *
+   * Closing the last open station is allowed — a visitor who wants the page
+   * quiet should be able to have it quiet — so this can leave every station
+   * shut, which is why `openRealmId` is a plain string and not a RealmId.
+   */
+  toggleStation(station: ForgeStation): void {
+    this.openRealmId = this.isStationOpen(station) ? '' : station.realm.id;
+  }
+
+  /** Brightest station: the one under the pointer, else the open one. */
+  isStationLit(station: ForgeStation): boolean {
+    return this.hoveredRealmId
+      ? this.hoveredRealmId === station.realm.id
+      : this.isStationOpen(station);
+  }
+
+  /**
+   * True once this visitor has actually used the tool.
+   *
+   * Local to this browser and never rendered on the server — it marks a card
+   * the visitor has already struck, not a global usage count. The site has no
+   * per-tool analytics it could show here without inventing one.
+   */
+  hasForged(tool: Tool): boolean {
+    return this.xpService.hasUsedTool(tool.id);
+  }
+
+  /**
+   * Where "Enter the Forge" goes. Scrolls rather than routes: the forges are
+   * on this page, and a hash jump would fight the scroll-reveal observer.
+   *
+   * The target id is "services", not "forges" — the header keys its nav
+   * scrolling and active-link state off a fixed id list, so the section
+   * keeps that anchor even though nothing calls it Services any more.
+   */
+  enterTheForge(): void {
+    if (!this.isBrowser) return;
+    const el = document.getElementById('services');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * The tool suggested in the closing call.
+   *
+   * The first featured tool this visitor has not opened yet — a recommendation
+   * drawn from what they have actually done, not a popularity claim we have no
+   * analytics to back. Falls back to the flagship once they have used them all.
+   */
+  get recommendedTool(): Tool {
+    return this.featuredTools.find(t => !this.xpService.hasUsedTool(t.id))
+      ?? this.featuredTools[0]
+      ?? this.tools[0];
+  }
+
+  // ─── The Chronicle ────────────────────────────────────────────────────
+
+  /**
+   * The realm a changelog entry touched, or null when it touched none.
+   *
+   * Derived by looking for a registry tool named in the entry, which is a real
+   * signal — entries about a specific tool say its name. Entries about the
+   * platform itself (a build fix, an SEO pass) legitimately match nothing and
+   * get no realm badge rather than an invented one.
+   */
+  realmForEntry(entry: ChangelogEntry): RealmDefinition | null {
+    const haystack = `${entry.title} ${entry.details}`.toLowerCase();
+    const hit = TOOLS_REGISTRY.find(t =>
+      haystack.includes(t.title.toLowerCase()) || haystack.includes(t.id.toLowerCase())
+    );
+    return hit ? realmForCategory(hit.category) : null;
   }
 
   @HostListener('document:keydown', ['$event'])
