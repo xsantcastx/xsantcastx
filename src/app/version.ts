@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.23.1',
+  version: '2.24.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Ambient Forge',
+  codename: "The Maker's Mark",
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.24.0',
+    codename: "The Maker's Mark",
+    date: '2026-08-12',
+    highlights: [
+      'The site is The Godforge. "xsantcastx" is the maker\'s mark, not the product name, and it has left the browser tab entirely — the home page reads "The Godforge — Free Developer Tools Forged in the Eclipse", and pages already carrying a name of their own stand alone: The Arena, The Codex, The War Table, The Standing Orders, Fuel the Forge',
+      'Pages with a generic name take the product on the end for context — Contact, Skills, Projects, Guestbook, Mission Control, MCP Server — while /tools is The Five Realms and /sponsors is Sponsor The Godforge',
+      'All 128 tool titles swapped their "| xsantcastx" suffix for "· The Godforge" and kept every keyword ahead of it: a title is the strongest on-page ranking signal there is, and rewriting those phrases to bare tool names would have cost real traffic to buy nothing',
+      'The wordmark now appears only where it earns its place: the header logo, the footer copyright, /about, the npm package name, the Person entity in the structured data, and the SEO keywords. The WebSite entity is now named The Godforge with xsantcastx as its alternateName, so search keeps the association without the product answering to the maker\'s name',
+      'og:site_name, the social card titles and the share-image alt text all say The Godforge; the embed bar that ships on other people\'s sites now reads "Powered by The Godforge"',
+      'Navigation labels are deliberately untouched — Tools, Blueprint, MCP and Quests are what a visitor scans for, and renaming them to lore is a usability decision rather than a branding one'
+    ]
+  },
   {
     version: '2.23.1',
     codename: 'Ambient Forge',
