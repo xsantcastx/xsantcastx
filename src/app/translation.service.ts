@@ -134,7 +134,7 @@ export class TranslationService {
     // Contact Section
     'contact.title': { en: "Let's Build Together", es: 'Construyamos Juntos' },
     'contact.subtitle': { en: "Ready to transform your ideas into reality? Let's discuss your project.", es: 'Listo para transformar tus ideas en realidad? Hablemos de tu proyecto.' },
-    'contact.info.header': { en: 'Work With xsantcastx', es: 'Trabaja con xsantcastx' },
+    'contact.info.header': { en: 'Work With The Godforge', es: 'Trabaja con The Godforge' },
     'contact.info.desc': { en: 'Tell us about your goals and we will help you craft the right solution.', es: 'Cuentanos tus objetivos y te ayudaremos a crear la solucion correcta.' },
     'contact.method.email': { en: 'Direct Email', es: 'Email Directo' },
     'contact.method.github': { en: 'GitHub', es: 'GitHub' },

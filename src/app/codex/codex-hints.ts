@@ -172,18 +172,31 @@ export const EGG_HINTS: Record<string, string> = {
   'email-santa': 'Test delivery to the one address every child already knows by heart.',
   'gmail-self': 'Check whether your own mail arrives before you check anyone else\'s.',
 
-  // ── The Godforge economy ──────────────────────────────────────────────────
-  // Eight that are earned rather than found. The hints say what kind of effort
-  // reaches them without naming the number, because on four of these the number
-  // *is* the whole secret.
+  // ── The Ambient Forge — presence, not pursuit ─────────────────────────────
+  'idle-patient-one': 'The flame gives to whoever is still watching it. A hundred of anything is a start.',
+  'idle-forge-meditation': 'Half an hour. Do not look away, and do not go anywhere.',
+  'idle-vigil': 'Five hundred, gathered a minute at a time. There is no faster road to it.',
+  'idle-eternal-flame': 'Two thousand. At this rate that is a season of afternoons.',
+  'idle-never-sleeps': 'Be watching when one day becomes the next.',
+  'idle-forge-striker': 'A thousand blows. The flame counts every one.',
+  'idle-obsidian-hammer': 'Ten thousand. Nobody arrives here by accident.',
+
+  // ── The Godforge Market — spending, not finding ───────────────────────────
+  // Six that are earned rather than hidden. The hints say what kind of effort
+  // reaches them without naming the number, because on three of these the
+  // number *is* the whole secret.
+  //
+  // The two strike-count achievements this release would otherwise have added
+  // are deliberately absent: 'idle-forge-striker' and 'idle-obsidian-hammer'
+  // above already pay out at a thousand and ten thousand strikes, and the
+  // Market's flame drives the same counter. Two cards for one act would be two
+  // wrong numbers on the wall.
   'forge-first-purchase': 'The ember in the corner is not the only thing that takes coins.',
   'forge-investor': 'A handful of the furnace ladder, in any combination you like.',
   'forge-market-mogul': 'Three times a handful. The price climbs 15% every time you say yes.',
   'forge-artifact-collector': 'Essence buys permanence. Own enough permanence to make a shelf.',
   'forge-complete-collection': 'Every shelf, empty. Nothing left in the case with a price on it.',
   'forge-click-frenzy': 'The ember pays twice a second at most. Spend a whole minute finding out.',
-  'forge-striker': 'Four figures of ember. It will take more than one sitting.',
-  'forge-obsidian-hammer': 'Five figures of ember. It will take more than one month.',
 };
 
 /**

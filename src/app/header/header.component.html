@@ -73,6 +73,13 @@
          hidden below the drawer breakpoint and these take over. -->
     <app-currency-rail class="nav-coins nav-coins--drawer"></app-currency-rail>
     <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
+
+    <!-- The forge's drawer copy used to sit here. The Godforge Market gave the
+         flame a fixed home in the bottom-right corner of every page, which is
+         reachable on a phone without opening the drawer at all — so this copy
+         was a second, smaller, worse button for the same swing. The Ambient
+         Forge still accrues from IdleService, not from any component, so
+         nothing about idling depends on this element having existed. -->
   </nav>
 
   <!-- Desktop dock: the quest sword and the progression readout, docked under

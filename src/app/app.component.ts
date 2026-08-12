@@ -10,6 +10,7 @@ import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
+import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
@@ -31,6 +32,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private realms = inject(RealmService);
   private questWiring = inject(QuestWiringService);
   private economyWiring = inject(EconomyWiringService);
+  private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
@@ -88,6 +90,10 @@ export class AppComponent implements OnInit, OnDestroy {
     // Mission board: roll the daily and weekly quests over, and start turning
     // interactions into quest progress and lore unlocks.
     this.questWiring.init();
+
+    // Ambient forge: start the visible-time heartbeat. Gated on the Page
+    // Visibility API, so a backgrounded tab earns nothing.
+    this.idle.init();
 
     // Codex: passively note the secrets that are not easter eggs — ritual mode,
     // the command palette, the unlinked routes. Global rather than page-local so
