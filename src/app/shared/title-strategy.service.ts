@@ -18,9 +18,11 @@
  * on. Rebranding the suffix costs nothing; rewriting them to bare tool names
  * would.
  */
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { TitleStrategy, RouterStateSnapshot } from '@angular/router';
 import { Title } from '@angular/platform-browser';
+import { AnalyticsService } from '../analytics.service';
 
 /** What the tab reads when a route supplies no title of its own. */
 export const DEFAULT_TITLE = 'The Godforge';
@@ -41,12 +43,26 @@ export function brandTitle(title: string | undefined | null): string {
 
 @Injectable()
 export class AppTitleStrategy extends TitleStrategy {
+  private readonly analytics = inject(AnalyticsService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   constructor(private readonly title: Title) {
     super();
   }
 
   override updateTitle(routerState: RouterStateSnapshot): void {
-    this.title.setTitle(brandTitle(this.buildTitle(routerState)));
+    const resolved = brandTitle(this.buildTitle(routerState));
+    this.title.setTitle(resolved);
+
+    // @angular/fire's ScreenTrackingService used to emit this on every
+    // navigation, but it lives in @angular/fire/analytics, which statically
+    // imports the auth SDK — see AppModule's providers. updateTitle() runs
+    // once per completed navigation, which is the same moment, so the
+    // page_view is logged from here instead. AnalyticsService gates it on
+    // consent and queues it until the SDK finishes downloading.
+    if (this.isBrowser) {
+      this.analytics.trackPageView(routerState.url, resolved);
+    }
   }
 }
 
