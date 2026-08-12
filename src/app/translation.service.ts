@@ -34,6 +34,7 @@ export class TranslationService {
     // languages exactly as the tools page already renders them.
     'gfnav.home':         { en: 'Home',          es: 'Inicio' },
     'gfnav.market':       { en: 'Market',        es: 'Mercado' },
+    'gfnav.runeForge':    { en: 'Rune Forge',    es: 'Forja de Runas' },
     'gfnav.games':        { en: 'Games',         es: 'Juegos' },
     'gfnav.tools':        { en: 'Tools',         es: 'Herramientas' },
     'gfnav.codex':        { en: 'Codex',         es: 'Codice' },

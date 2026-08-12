@@ -1,0 +1,259 @@
+<div class="rf">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="rf-head">
+    <p class="rf-eyebrow"><span class="rf-eyebrow__pulse"></span> The Rune Forge</p>
+    <h1 class="rf-title">Strike the Anvil</h1>
+    <p class="rf-tagline">
+      twenty-five names, and the anvil only ever says one of them at a time
+    </p>
+    <nav class="rf-links">
+      <a routerLink="/market" class="rf-link">← The Market</a>
+      <a routerLink="/forge-keeper" class="rf-link">Your Forge →</a>
+    </nav>
+  </header>
+
+  <!--
+    ── The anvil ─────────────────────────────────────────────────────────────
+    The reveal overlay lives INSIDE this section and is absolutely positioned
+    against it, not fixed against the viewport. `router-outlet + *` carries a
+    `transform` (see the note on routeFadeIn in styles.css), which makes every
+    routed host a containing block — a `position: fixed` child here would be
+    laid out against this component's box, not the screen, and would silently
+    end up as tall as the whole page.
+
+    The screen-level tiers get their drama from `html[data-rune-flare]` in
+    styles.css instead, which is outside the routed host and therefore free to
+    be fixed. Same reasoning that keeps the Flame and the quest drawer siblings
+    of <main>.
+  -->
+  <section class="rf-anvil-bay" [class.rf-anvil-bay--striking]="striking">
+
+    <div class="rf-anvil-scene">
+      <div class="rf-anvil-glow" aria-hidden="true"></div>
+      <div class="rf-hammer" aria-hidden="true"></div>
+      <div class="rf-anvil" aria-hidden="true">
+        <span class="rf-anvil__horn"></span>
+        <span class="rf-anvil__face"></span>
+        <span class="rf-anvil__waist"></span>
+        <span class="rf-anvil__base"></span>
+      </div>
+      <div class="rf-sparks" aria-hidden="true">
+        @for (n of [1,2,3,4,5,6,7,8]; track n) {
+          <span class="rf-spark" [style.--i]="n"></span>
+        }
+      </div>
+    </div>
+
+    <div class="rf-controls">
+      <button
+        type="button"
+        class="rf-strike"
+        [disabled]="!canStrike"
+        (click)="strike()">
+        <span class="rf-strike__label">Strike the Forge</span>
+        <span class="rf-strike__cost">{{ money(strikeCost) }} Gold</span>
+      </button>
+
+      <p class="rf-purse">
+        <span class="rf-purse__num">{{ money(gold) }}</span> Gold in hand
+      </p>
+
+      @if (broke) {
+        <p class="rf-broke" role="status">
+          The anvil takes {{ money(strikeCost) }} and you are holding
+          {{ money(gold) }}. Let the ember earn a while, or
+          <a routerLink="/market">buy a furnace</a>.
+        </p>
+      }
+    </div>
+
+    <!-- ── The reveal ───────────────────────────────────────────────────── -->
+    @if (reveal && revealTier) {
+    <div
+      class="rf-reveal"
+      [attr.data-tier]="reveal.rune.tier"
+      [attr.data-reveal]="revealTier.reveal"
+      [style.--star-color]="revealTier.color"
+      [style.--star-glow]="revealTier.glow"
+      role="status"
+      aria-live="polite"
+      (click)="dismissReveal()">
+
+      <div class="rf-reveal__card">
+        <p class="rf-reveal__tier">{{ revealTier.label }}</p>
+        <p class="rf-reveal__name">{{ reveal.rune.name }}</p>
+        <p class="rf-reveal__lore">{{ reveal.rune.lore }}</p>
+
+        <p class="rf-reveal__meta">
+          @if (reveal.isNew) {
+            <span class="rf-reveal__new">NEW</span>
+          } @else {
+            <span class="rf-reveal__held">{{ reveal.held }} held</span>
+          }
+          <span class="rf-reveal__odds">{{ chance(reveal.rune) }}</span>
+          @if (reveal.essence > 0) {
+            <span class="rf-reveal__essence">+{{ reveal.essence }} Essence</span>
+          }
+        </p>
+
+        @if (reveal.rune.tier === 'singular') {
+          <p class="rf-reveal__void">THE VOID HAS SPOKEN</p>
+        }
+      </div>
+    </div>
+    }
+  </section>
+
+  <!-- ── Stats ──────────────────────────────────────────────────────────── -->
+  <section class="rf-stats">
+    <div class="rf-stat">
+      <span class="rf-stat__num">{{ strikes }}</span>
+      <span class="rf-stat__label">Total forges</span>
+    </div>
+    <div class="rf-stat">
+      <span class="rf-stat__num">{{ unique }}<em>/{{ totalRunes }}</em></span>
+      <span class="rf-stat__label">Runes found</span>
+    </div>
+    <div class="rf-stat">
+      <span class="rf-stat__num">{{ craftedCount }}<em>/{{ totalWords }}</em></span>
+      <span class="rf-stat__label">Runewords crafted</span>
+    </div>
+    <div class="rf-stat">
+      <span
+        class="rf-stat__num rf-stat__num--rune"
+        [style.color]="rarest ? rarest.color : null">
+        {{ rarest ? rarest.name : '—' }}
+      </span>
+      <span class="rf-stat__label">Rarest rune</span>
+    </div>
+    <div class="rf-stat">
+      <span class="rf-stat__num">{{ money(goldSpent) }}</span>
+      <span class="rf-stat__label">Gold spent forging</span>
+    </div>
+    <div class="rf-stat">
+      <span class="rf-stat__num">{{ money(collectionValue) }}</span>
+      <span class="rf-stat__label">Collection worth</span>
+    </div>
+  </section>
+
+  <!-- ── Inventory ──────────────────────────────────────────────────────── -->
+  <section class="rf-panel">
+    <h2 class="rf-panel__title">The Rune Ledger</h2>
+    <p class="rf-panel__sub">
+      Every rune the Archivum has a name for. The ones you have not seen keep
+      their names to themselves.
+    </p>
+
+    @for (tier of tierOrder; track trackTier($index, tier)) {
+      <div class="rf-tier">
+        <p
+          class="rf-tier__head"
+          [style.--star-color]="tiers[tier].color"
+          [style.--star-glow]="tiers[tier].glow">
+          <span class="rf-tier__dot"></span>
+          {{ tiers[tier].label }}
+        </p>
+
+        <div class="rf-grid">
+          @for (cell of cellsOf(tier); track trackCell($index, cell)) {
+            <button
+              type="button"
+              class="rf-rune"
+              [class.rf-rune--known]="cell.known"
+              [class.rf-rune--empty]="cell.held === 0"
+              [class.rf-rune--open]="inspecting?.id === cell.rune.id"
+              [style.--star-color]="cell.tier.color"
+              [style.--star-glow]="cell.tier.glow"
+              [attr.aria-label]="cell.known
+                ? cell.rune.name + ', ' + cell.tier.label + ', ' + cell.held + ' held'
+                : 'Undiscovered ' + cell.tier.label + ' rune'"
+              (click)="inspect(cell)">
+              <span class="rf-rune__glyph">{{ cell.known ? cell.rune.name : '?' }}</span>
+              @if (cell.held > 0) {
+                <span class="rf-rune__count">{{ cell.held }}</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (inspecting) {
+      <div
+        class="rf-inspect"
+        [style.--star-color]="inspecting.color"
+        [style.--star-glow]="tiers[inspecting.tier].glow">
+        <p class="rf-inspect__name">{{ inspecting.name }}</p>
+        <p class="rf-inspect__lore">{{ inspecting.lore }}</p>
+        <p class="rf-inspect__meta">
+          {{ tiers[inspecting.tier].label }}
+          · {{ chance(inspecting) }} a strike
+          · worth {{ money(inspecting.forgeCost) }} Gold
+        </p>
+      </div>
+    }
+  </section>
+
+  <!-- ── Runewords ──────────────────────────────────────────────────────── -->
+  <section class="rf-panel">
+    <h2 class="rf-panel__title">Runewords</h2>
+    <p class="rf-panel__sub">
+      Runes set in the right order, in the right number. Setting a word consumes
+      every rune it names — they do not come back.
+    </p>
+
+    <div class="rf-words">
+      @for (row of recipes; track trackRecipe($index, row)) {
+        <article
+          class="rf-word"
+          [class.rf-word--ready]="row.ready"
+          [class.rf-word--crafted]="row.crafted"
+          [class.rf-word--hidden]="row.hidden"
+          [style.--star-color]="row.tier.color"
+          [style.--star-glow]="row.tier.glow">
+
+          <header class="rf-word__head">
+            <h3 class="rf-word__name">{{ row.hidden ? '???' : row.word.name }}</h3>
+            <span class="rf-word__tier">{{ row.tier.label }}</span>
+          </header>
+
+          <p class="rf-word__effect">
+            {{ row.hidden ? 'Unknown until one of its runes is found.' : row.word.effect }}
+          </p>
+
+          <ol class="rf-slots">
+            @for (slot of row.slots; track trackSlot($index)) {
+              <li
+                class="rf-slot"
+                [class.rf-slot--filled]="slot.satisfied"
+                [style.--star-color]="slot.rune.color">
+                <span class="rf-slot__name">{{ row.hidden ? '?' : slot.rune.name }}</span>
+                @if (!row.hidden) {
+                  <span class="rf-slot__held">{{ slot.held }}</span>
+                }
+              </li>
+            }
+          </ol>
+
+          @if (!row.hidden) {
+            <p class="rf-word__lore">{{ row.word.lore }}</p>
+          }
+
+          @if (row.crafted) {
+            <p class="rf-word__done">✦ Set. Its effect is live.</p>
+          } @else {
+            <button
+              type="button"
+              class="rf-forge-btn"
+              [disabled]="!row.ready"
+              (click)="craft(row)">
+              {{ row.ready ? 'Set the word' : 'Runes missing' }}
+            </button>
+          }
+        </article>
+      }
+    </div>
+  </section>
+
+</div>
