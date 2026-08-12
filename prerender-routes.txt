@@ -10,6 +10,7 @@
 /market
 /sponsors
 /codex
+/forge-keeper
 /tools
 /tools/box-shadow-generator
 /tools/char-map

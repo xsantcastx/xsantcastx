@@ -15,6 +15,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { ProgressStorageService } from './progress-storage.service';
 import {
+  AchievementRecord,
   EnergyType,
   HISTORY_DAYS,
   LevelDefinition,
@@ -335,6 +336,23 @@ export class XpService {
   /** The identity this progression is filed under. A local UUID until sign-in exists. */
   get userId(): string {
     return this.state.userId;
+  }
+
+  /**
+   * ISO instant this progression was minted — the visitor's "member since".
+   *
+   * Honest about what it can know: the blob is created on the first *award*, not
+   * on the first page view, and a cleared localStorage starts a new one. It is
+   * the earliest moment the site can actually attest to, which is why the Forge
+   * renders it as "first struck" rather than as an account creation date.
+   */
+  get createdAt(): string {
+    return this.state.createdAt;
+  }
+
+  /** Every banked achievement with its unlock time. A copy. */
+  get achievements(): AchievementRecord[] {
+    return this.state.achievements.map(a => ({ ...a }));
   }
 
   /** Wipe progression. Exposed for the console and for a future settings toggle. */

@@ -58,6 +58,10 @@
          overflows into the EN/ES toggle below ~1440px, so a link appended at
          the end is unreachable on a 1280px laptop. -->
     <a routerLink="/market" routerLinkActive="active" class="nav-market-link" (click)="closeMobileMenu()">🪙 Market</a>
+    <!-- Drawer-only, exactly like .nav-market-link and .nav-quests-link above:
+         the row has no spare width at 1280px, so the desktop way in is the
+         sigil docked under the navbar. -->
+    <a routerLink="/forge-keeper" routerLinkActive="active" class="nav-forge-link" (click)="closeMobileMenu()">⚒ Your Forge</a>
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
     <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
@@ -87,6 +91,13 @@
        at 1280px (see .nav-xp in the stylesheet) — adding a 44px control to it
        would push LIVE over the language toggle. -->
   <div class="nav-dock">
+    <!-- The sigil is the desktop way into /forge-keeper. It sits beside the XP
+         bar on purpose: the bar is the summary, the sheet is the whole record,
+         and a visitor looking at one is one click from the other. -->
+    <a routerLink="/forge-keeper" routerLinkActive="active" class="nav-forge"
+       aria-label="Your Forge — rank, inventory and achievements">
+      <span class="nav-forge__sigil" aria-hidden="true">⚒</span>
+    </a>
     <app-quest-trigger class="nav-quests"></app-quest-trigger>
     <app-currency-rail class="nav-coins"></app-currency-rail>
     <app-xp-bar class="nav-xp"></app-xp-bar>

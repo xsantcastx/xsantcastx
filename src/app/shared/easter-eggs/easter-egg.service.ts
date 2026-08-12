@@ -222,6 +222,12 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'forge-artifact-collector',  name: 'Artifact Collector',      description: 'Held three of the five artifacts at once',            tool: 'global', rarity: 'legendary', icon: '💠', xp: 200 },
   { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
   { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
+
+  // ── The character sheet ─────────────────────────────────────────
+  // Paid at 25 like The Archivist, and for the same reason: this one is
+  // *noticed* rather than hunted, and a page you can reach from the navbar
+  // should not pay what a four-leading-zero hash pays.
+  { id: 'forge-self-aware',          name: 'Self-Aware',              description: 'Opened your own Forge for the first time',            tool: 'global', rarity: 'rare',   icon: '🪞', xp: 25 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */
