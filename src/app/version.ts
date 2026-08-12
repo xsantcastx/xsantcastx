@@ -22,8 +22,8 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.18.0',
-  buildDate: '2026-08-11',
+  version: '2.18.1',
+  buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'The Long Arc',
   /** Where the full story of this release lives */
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.18.1',
+    codename: 'The Long Arc',
+    date: '2026-08-12',
+    highlights: [
+      'The Arena gates open now — "Enter →" was a bare button with no click handler on it, so every gate you unlocked led nowhere, on every card',
+      'Color Memory is the first gate with a game behind it: Match the Eclipse Fragments, a 4×4 or 6×6 board of paired fragments in the brand palette, with a timer, a move counter and a best time',
+      'Clearing it pays XP through the same XpService the rest of the site uses — 10 per pair, plus a bonus for finishing under par and under two minutes — so it lands in the header bar and counts towards a rank rather than into a score the game kept to itself',
+      'Gates whose game is not built yet say "Still forging" instead of offering an Enter button that goes nowhere',
+      'The overlay has to lift its own routed host to be seen: routeFadeIn leaves a transform with fill:forwards on every routed component, which makes it a stacking context, and a fixed overlay inside one cannot out-rank the header'
+    ]
+  },
   {
     version: '2.18.0',
     codename: 'The Long Arc',
