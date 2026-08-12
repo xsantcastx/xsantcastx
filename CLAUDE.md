@@ -290,8 +290,35 @@ src/
 │   ├── header/                          # global header (already on-brand)
 │   ├── live/                            # /live — terminal feed
 │   ├── games/                           # /games — easter egg gallery
-│   └── mcp/                             # /mcp — npm package landing
+│   ├── mcp/                             # /mcp — npm package landing
+│   └── shared/gamification/             # the progression ledger — see below
 ```
+
+### Progression storage (`src/app/shared/gamification/`)
+
+`XpService` is the only thing that mutates progression, and it **never touches localStorage**. It goes through `ProgressStorageService`, which owns a swappable `ProgressAdapter`. That indirection is the whole reason Phase 2 (progress that follows a signed-in visitor) is cheap — do not route around it.
+
+```
+gamification.model.ts        # ProgressState + LEVELS + migrateProgress + mergeProgress + withLevel.
+                             # Pure data and pure functions — no browser APIs, safe to import on the server.
+gamification.model.spec.ts   # pins the migration and merge contract (12 specs).
+progress-storage.service.ts  # ProgressAdapter strategy: LocalStorageAdapter (live), NullAdapter (SSR),
+                             # FirestoreAdapter (inert stub carrying its security rule + TODOs), migrate().
+xp.service.ts                # the ledger: award(), streak settling, debounced writes, pagehide flush.
+xp-wiring.service.ts         # one subscriber that turns navigation/copy/egg events into awards.
+tool-mastery.service.ts      # the Bestiary's per-tool counts, backfilled from the ledger.
+xp-bar.component.ts          # the rank HUD in the header.
+```
+
+Three fields on `ProgressState` exist for Phase 2 rather than for anything shipping today, and should not be "simplified away":
+
+- **`userId`** — a locally minted UUID now, the Firebase Auth UID later. Sign-in swaps an id instead of inventing an identity model.
+- **`level` / `levelTitle`** — denormalised from `xp`. A leaderboard cannot `orderBy` a value that only exists after running a function over every document. `withLevel()` keeps them in step.
+- **`createdAt` / `updatedAt`** — what `mergeProgress` uses to decide which of two devices is authoritative.
+
+**`init()` is async.** Anything that reads the ledger *synchronously and once* (`toolsUsed`, `history`, `claimAchievement` on a first clear) must `await xp.init()` first, or it will read the empty blob and never look again. Anything that renders from `snapshot$` can fire-and-forget — the subject republishes when hydration lands.
+
+**Phase 2** is `ProgressStorageService.migrate(new FirestoreAdapter(uid))` on first sign-in. The security rule to start from is in the `FirestoreAdapter` docblock; the non-negotiable part is that `xp` must not be client-writable to an arbitrary value.
 
 ---
 

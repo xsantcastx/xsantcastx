@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.22.0',
+  version: '2.23.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Standing Orders',
+  codename: 'Portable Progress',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.23.0',
+    codename: 'Portable Progress',
+    date: '2026-08-12',
+    highlights: [
+      'Progression is now a portable document rather than a browser-shaped blob — it carries its own identity, rank and timestamps, so signing in later becomes a swap instead of a rewrite',
+      'Storage moved behind an async contract (load / save / exists / clear / migrate). localStorage does not need the await, but a synchronous interface would have grown callers that assume storage resolves in the same tick, and Phase 2 is a network round trip',
+      'Achievements are stored with the moment they were earned instead of as bare ids, so a synced profile carries its own chronology rather than depending on a second store agreeing with it',
+      'Writes are debounced and flushed on the way out — a quest claim that awards XP and banks an achievement in the same tick is now one write, not two',
+      'Existing progress migrates in place: XP, energies, streak, best streak, tools and daily history all carry across, verified against a real v1 blob and pinned by 12 unit tests'
+    ]
+  },
   {
     version: '2.22.0',
     codename: 'Standing Orders',
