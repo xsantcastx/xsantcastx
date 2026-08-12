@@ -131,3 +131,11 @@ __pycache__/
 
 # Firebase extension secrets (contains SMTP credentials) — never commit
 extensions/*.env
+
+# Test + audit run artifacts. Regenerated on every run and machine-specific;
+# they were showing up as untracked noise in `git status` on every session.
+# Committed Playwright BASELINES live in e2e/**-snapshots/ and are unaffected —
+# only the per-run output directories are ignored here.
+test-results/
+playwright-report/
+.lighthouseci/
