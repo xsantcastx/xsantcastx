@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.18.0',
-  buildDate: '2026-08-11',
+  version: '2.19.0',
+  buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Long Arc',
+  codename: 'The Codex',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,21 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.19.0',
+    codename: 'The Codex',
+    date: '2026-08-12',
+    highlights: [
+      '/codex — the whole record in one place: 140 achievements across seven categories, the ten-rank progression path, mastery for all 128 tools, and a clued guide to every secret that is not an easter egg',
+      'A locked achievement shows a cryptic hint, never its description — the registry description is the answer written out, and putting it on a locked card would turn the wall into a checklist. 140 hints authored by hand; the search box matches hints on locked cards and names on found ones, so searching cannot spoil the wall either',
+      'Rarity borders come from the shared Eclipse ladder rather than new colours: Mortal grey through Mythic red, with the hero completion bar tinted by the mean tier of what you have actually found',
+      'Progression gains a streak calendar. XP is now recorded per local day (60 days retained, 30 rendered) so the heatmap is real data rather than a decoration, and the energy split reads out as Luminous/Umbral affinity with a Convergent badge at 45-55%',
+      'The Bestiary needed a number nothing was keeping: XP pays for a tool once, so it knows *whether* you used something, not how often. A separate localStorage tally now counts every visit, backfilled from the XP ledger so nobody who used the site before today opens it to 128 untouched cards',
+      'Achievement unlock dates are recorded from now on, in a second storage key rather than by changing the shape of the one every build since the egg system has written — eggs found earlier read "before the Codex opened" instead of being given an invented date',
+      'The Leaderboard tab is a labelled mock-up with your real row at the bottom and no invented global position. Ranking needs accounts, accounts are Phase III, and a fake rank would be the one dishonest thing on a page whose whole premise is an honest record',
+      'Opening it is itself an achievement: The Archivist, Eclipsed, +25 XP rather than the standard 200 — it is on the nav, so finding it is the start of the hunt rather than the result of one'
+    ]
+  },
   {
     version: '2.18.0',
     codename: 'The Long Arc',
