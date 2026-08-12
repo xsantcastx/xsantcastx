@@ -222,6 +222,14 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'forge-artifact-collector',  name: 'Artifact Collector',      description: 'Held three of the five artifacts at once',            tool: 'global', rarity: 'legendary', icon: '💠', xp: 200 },
   { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
   { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
+
+  // ── Batch 12: cloud save ───────────────────────────────────
+  // Bound the forge to an account, so the save outlives the browser it was made
+  // in. Like the Archivist it is announced rather than hidden — the button says
+  // exactly what it does — so it pays 50 rather than a hunt's 200. The tier is
+  // Eclipsed rather than Mortal because it is a decision, not a side effect:
+  // most visitors will use every tool on the site and never make it.
+  { id: 'cloud-eternal-archive',     name: 'The Eternal Archive',     description: 'Bound your progress to the cloud',                    tool: 'global', rarity: 'rare',   icon: '☁️', xp: 50 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */
