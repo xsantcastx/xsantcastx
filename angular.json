@@ -67,7 +67,19 @@
                   "inlineCritical": true
                 },
                 "fonts": false
-              }
+              },
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1200kb",
+                  "maximumError": "1400kb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "70kb",
+                  "maximumError": "100kb"
+                }
+              ]
             },
             "development": {
               "optimization": false,
@@ -149,4 +161,3 @@
     "analytics": "931dd7dc-6555-4485-bac5-e46d1501339e"
   }
 }
-

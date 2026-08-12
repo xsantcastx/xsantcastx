@@ -110,8 +110,8 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .rxg-nl-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.02);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .rxg-nl-result {
@@ -120,7 +120,7 @@
   gap: 0.6rem;
   padding: 0.6rem 0.9rem;
   background: color-mix(in srgb, var(--primary-color) 6%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-md);
 }
 
@@ -148,7 +148,7 @@
 }
 .rxg-btn-icon:hover {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
 }
 
 /* -- Two-column layout ---------------------------------------- */
@@ -236,11 +236,11 @@
 }
 .rxg-cat-btn:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 .rxg-cat-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
 }
 
@@ -259,7 +259,7 @@
 }
 .rxg-pattern-card:last-child { border-bottom: none; }
 .rxg-pattern-card:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .rxg-pattern-card__top {
@@ -328,12 +328,12 @@
 }
 .rxg-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .rxg-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .rxg-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .rxg-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -358,8 +358,8 @@
   transition: all 0.15s ease;
 }
 .rxg-flag-toggle:hover {
-  border-color: rgba(0, 255, 204, 0.2);
-  background: rgba(0, 255, 204, 0.02);
+  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .rxg-flag-toggle input[type="checkbox"] {
@@ -388,9 +388,9 @@
 
 .rxg-flag-toggle input:checked ~ .rxg-flag-badge {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.5);
+  border-color: rgba(139, 92, 246, 0.5);
   color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.15);
 }
 
 .rxg-flag-label {
@@ -432,7 +432,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .rxg-pattern-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Textarea ------------------------------------------------- */
@@ -455,7 +455,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .rxg-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Status bar ----------------------------------------------- */
@@ -480,7 +480,7 @@
 
 .rxg-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -530,7 +530,7 @@
   border-bottom: 2px solid var(--primary-color);
   border-radius: 2px;
   padding: 0.05em 0.1em;
-  box-shadow: 0 0 6px rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.2);
 }
 
 .rxg-match-count {
@@ -542,7 +542,7 @@
   padding: 0 0.4rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--primary-color) 18%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   color: var(--primary-color);
   font-family: 'Fira Code', monospace;
   font-size: 0.72rem;
@@ -566,7 +566,7 @@
 }
 .rxg-match-item:last-child { border-bottom: none; }
 .rxg-match-item:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .rxg-match-item__idx {
@@ -604,12 +604,12 @@
 }
 .rxg-pattern-list::-webkit-scrollbar-thumb,
 .rxg-match-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 204, 0.15);
+  background: rgba(139, 92, 246, 0.15);
   border-radius: 999px;
 }
 .rxg-pattern-list::-webkit-scrollbar-thumb:hover,
 .rxg-match-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 204, 0.3);
+  background: rgba(139, 92, 246, 0.3);
 }
 
 /* -- Responsive ----------------------------------------------- */

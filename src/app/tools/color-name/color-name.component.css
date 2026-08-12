@@ -19,11 +19,11 @@
 .cn-input-row { display: flex; gap: 0.75rem; align-items: center; }
 .cn-color-input { width: 60px; height: 44px; border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; background: none; }
 .cn-hex-input { flex: 1; padding: 0.6rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--primary-color); font-family: 'Fira Code', monospace; font-size: 1.1rem; font-weight: 700; outline: none; box-sizing: border-box; }
-.cn-hex-input:focus { border-color: rgba(0,255,204,0.4); }
+.cn-hex-input:focus { border-color: rgba(139,92,246,0.4); }
 
 .cn-btn-ghost { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; background: none; border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
-.cn-btn-ghost:hover { color: var(--text-color); border-color: rgba(0,255,204,0.25); }
-.cn-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(0,255,204,0.35) !important; }
+.cn-btn-ghost:hover { color: var(--text-color); border-color: rgba(139,92,246,0.25); }
+.cn-btn-ghost--success { color: var(--primary-color) !important; border-color: rgba(139,92,246,0.35) !important; }
 
 .cn-match { display: flex; flex-direction: column; gap: 1rem; }
 .cn-match__swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -35,7 +35,7 @@
 .cn-match__dist { font-size: 0.8rem; color: var(--text-muted); }
 
 .cn-search { width: 100%; padding: 0.5rem 0.75rem; background: var(--surface-strong); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-color); font-family: var(--font-body); font-size: 0.82rem; outline: none; margin-bottom: 0.75rem; box-sizing: border-box; }
-.cn-search:focus { border-color: rgba(0,255,204,0.4); }
+.cn-search:focus { border-color: rgba(139,92,246,0.4); }
 
 .cn-color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 0.4rem; max-height: 400px; overflow-y: auto; }
 .cn-color-tile { height: 48px; border-radius: 6px; border: 1px solid var(--glass-border); cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 0.25rem; transition: transform 0.15s ease; }

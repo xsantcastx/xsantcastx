@@ -18,7 +18,7 @@
  * But cloud save lives in the header, which is on every page, so injecting
  * `Auth` would have quietly undone it. Instead the SDK is imported at the moment
  * it is first genuinely needed — the click on "Save Progress", or an idle
- * callback on a device that was already signed in — and `getAuth(getApp())` is
+ * callback on a device that was already signed in — and `getAuth(firebaseApp())` is
  * called directly rather than through DI. Same SDK, same Firebase app, no
  * injector involvement, and a visitor who never signs in never downloads it.
  *
@@ -41,9 +41,10 @@
  */
 import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
-import { getApp } from '@angular/fire/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { FirestoreHandle, LazyFirestoreService } from '../lazy-firestore.service';
 import {
   CLOUD_WRITE_INTERVAL_MS,
   FirestoreAdapter,
@@ -120,7 +121,7 @@ interface AuthUser {
 @Injectable({ providedIn: 'root' })
 export class CloudSaveService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly firestore = inject(Firestore);
+  private readonly lazyFirestore = inject(LazyFirestoreService);
   private readonly progress = inject(ProgressStorageService);
   private readonly eggs = inject(EasterEggService);
   private readonly zone = inject(NgZone);
@@ -183,7 +184,7 @@ export class CloudSaveService {
   private async resume(): Promise<void> {
     try {
       const { getAuth, getRedirectResult, onAuthStateChanged } = await this.auth();
-      const auth = getAuth(getApp());
+      const auth = getAuth(firebaseApp());
 
       // Settle any redirect first. `onAuthStateChanged` would eventually report
       // the same user, but only this call surfaces the *reason* a redirect
@@ -241,7 +242,7 @@ export class CloudSaveService {
 
     try {
       const mod = await this.auth();
-      const auth = mod.getAuth(getApp());
+      const auth = mod.getAuth(firebaseApp());
       const provider = new mod.GoogleAuthProvider();
       // Always ask which account. A shared machine that silently reuses the last
       // Google session would bind somebody else's Godforge to this browser.
@@ -299,7 +300,7 @@ export class CloudSaveService {
 
     try {
       const { getAuth, signOut } = await this.auth();
-      await signOut(getAuth(getApp()));
+      await signOut(getAuth(firebaseApp()));
     } catch {
       // Already gone as far as this device is concerned.
     }
@@ -335,7 +336,12 @@ export class CloudSaveService {
       localStorage.setItem(BOUND_UID_KEY, user.uid);
     } catch { /* private mode; sync works for this session only */ }
 
-    const adapter = new FirestoreAdapter(this.firestore, user.uid, err => {
+    // Both SDKs this feature needs are loaded on demand rather than injected —
+    // Firestore because it is 450 kB that first paint never touches, auth for
+    // the same reason. Signing in is the moment both become worth their weight.
+    const fs = await this.firestore();
+
+    const adapter = new FirestoreAdapter(fs, user.uid, err => {
       if (err) this.fail(err);
     });
 
@@ -354,7 +360,7 @@ export class CloudSaveService {
 
     // The other six have no adapter seam, so they are reconciled directly.
     for (const blob of SYNCED_BLOBS) {
-      if (await this.reconcile(user.uid, blob, canAdopt)) changed = true;
+      if (await this.reconcile(fs, user.uid, blob, canAdopt)) changed = true;
     }
 
     this.markSynced();
@@ -379,12 +385,17 @@ export class CloudSaveService {
    * Merge one blob with its cloud copy and write back whichever sides moved.
    * Returns true when the local copy changed, which is what decides the reload.
    */
-  private async reconcile(uid: string, blob: SyncedBlob, canAdopt: boolean): Promise<boolean> {
-    const ref = doc(this.firestore, 'users', uid, blob.collection, blob.doc);
+  private async reconcile(
+    fs: FirestoreHandle,
+    uid: string,
+    blob: SyncedBlob,
+    canAdopt: boolean,
+  ): Promise<boolean> {
+    const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
     const local = readParsed(blob.key);
     const localRaw = JSON.stringify(local);
 
-    const snap = await getDoc(ref);
+    const snap = await fs.api.getDoc(ref);
     const remote = snap.exists() ? unwrapBlob(snap.data()) : null;
 
     const merged = remote === null
@@ -416,7 +427,7 @@ export class CloudSaveService {
     // Silence when the cloud already agrees. Without this, every page load of
     // an unchanged save would cost six writes for nothing.
     if (remote === null || mergedRaw !== JSON.stringify(remote)) {
-      await setDoc(ref, wrapBlob(merged));
+      await fs.api.setDoc(ref, wrapBlob(merged));
     }
     this.pushed.set(blob.key, mergedRaw);
     return moved;
@@ -514,13 +525,16 @@ export class CloudSaveService {
     this.pushing = true;
 
     try {
+      // Cheap: resolves from the already-loaded handle after the first call.
+      const fs = await this.firestore();
+
       for (const blob of SYNCED_BLOBS) {
         const raw = readRaw(blob.key);
         if (raw === null) continue;
         if (this.pushed.get(blob.key) === raw) continue;
 
-        const ref = doc(this.firestore, 'users', uid, blob.collection, blob.doc);
-        await setDoc(ref, wrapBlob(JSON.parse(raw)));
+        const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
+        await fs.api.setDoc(ref, wrapBlob(JSON.parse(raw)));
         this.pushed.set(blob.key, raw);
       }
       this.markSynced();
@@ -562,6 +576,20 @@ export class CloudSaveService {
     return (this.authModule ??= import('@angular/fire/auth'));
   }
 
+  /**
+   * The Firestore handle, loading the SDK on first call.
+   *
+   * `LazyFirestoreService` resolves to null on the server and when the SDK
+   * cannot be fetched, and its other consumers silently degrade. This one
+   * cannot: a cloud save that quietly does nothing is worse than one that says
+   * it is not working, because the visitor believes their progress is safe.
+   */
+  private async firestore(): Promise<FirestoreHandle> {
+    const handle = await this.lazyFirestore.get();
+    if (!handle) throw new Error('[CloudSave] Firestore is unavailable.');
+    return handle;
+  }
+
   private markSynced(): void {
     this.zone.run(() => {
       this.status$$.next({ ...this.status, state: 'synced', lastSyncedAt: Date.now(), error: null });
@@ -592,6 +620,18 @@ export class CloudSaveService {
       else setTimeout(fn, 1200);
     });
   }
+}
+
+/**
+ * The Firebase app, initialising it if nothing else has yet.
+ *
+ * `provideFirebaseApp()` is still in the root injector so in practice the app
+ * already exists — but this service reaches for auth outside of DI, and a bare
+ * `getApp()` would make that correctness depend on injector ordering it has no
+ * way to see. `LazyFirestoreService` guards the same call the same way.
+ */
+function firebaseApp() {
+  return getApps().length ? getApp() : initializeApp(environment.firebase);
 }
 
 function readRaw(key: string): string | null {

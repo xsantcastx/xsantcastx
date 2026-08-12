@@ -157,7 +157,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .jp-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Path Display Panel ───────────────────────────────────── */
@@ -193,8 +193,8 @@
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Menlo', monospace;
   font-size: 0.82rem;
   color: var(--primary-color);
-  background: rgba(0, 255, 204, 0.06);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.75rem;
   word-break: break-all;
@@ -223,7 +223,7 @@
 
 .jp-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -319,11 +319,11 @@
 }
 
 .jp-tree-node:hover {
-  background: rgba(0, 255, 204, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .jp-tree-node--selected {
-  background: rgba(0, 255, 204, 0.08) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
   border-right: 2px solid var(--primary-color);
 }
 
@@ -432,8 +432,8 @@
 }
 
 .jp-type-badge--object {
-  background: rgba(0, 255, 204, 0.08);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   color: var(--primary-color);
 }
 
@@ -462,12 +462,12 @@
 }
 .jp-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .jp-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .jp-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .jp-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

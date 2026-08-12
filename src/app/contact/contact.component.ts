@@ -3,12 +3,14 @@ import { FormsModule } from '@angular/forms'; // Import for ngModel
 import { TranslationService } from '../translation.service';
 import { ContactService, ContactFormData } from '../contact.service';
 import { AnalyticsService } from '../analytics.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-contact',
     templateUrl: './contact.component.html',
     styleUrls: ['./contact.component.css'],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule]
 })
 export class ContactComponent {
   private translationService = inject(TranslationService);

@@ -60,10 +60,10 @@ import { ToolsDataService } from '../tools/tools-data.service';
     .related-tools__line {
       flex: 1;
       height: 1px;
-      background: linear-gradient(90deg, rgba(0, 255, 204, 0.2), transparent);
+      background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), transparent);
     }
     .related-tools__line:last-child {
-      background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.2));
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2));
     }
     .related-tools__title {
       font-family: var(--font-heading);
@@ -99,13 +99,13 @@ import { ToolsDataService } from '../tools/tools-data.service';
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(0, 255, 204, 0.03), rgba(123, 97, 255, 0.03));
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.03), rgba(123, 97, 255, 0.03));
       pointer-events: none;
     }
     .rt-card:hover {
       transform: translateY(-2px);
-      border-color: rgba(0, 255, 204, 0.3);
-      box-shadow: 0 4px 20px -8px rgba(0, 255, 204, 0.15);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 4px 20px -8px rgba(139, 92, 246, 0.15);
     }
     .rt-card:hover .rt-card__arrow { opacity: 1; transform: translateX(2px); }
     .rt-card__icon {
@@ -113,8 +113,8 @@ import { ToolsDataService } from '../tools/tools-data.service';
       width: 38px;
       height: 38px;
       border-radius: 10px;
-      background: rgba(0, 255, 204, 0.06);
-      border: 1px solid rgba(0, 255, 204, 0.15);
+      background: rgba(139, 92, 246, 0.06);
+      border: 1px solid rgba(139, 92, 246, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -147,13 +147,13 @@ import { ToolsDataService } from '../tools/tools-data.service';
       text-transform: uppercase;
       padding: 0.15rem 0.45rem;
       border-radius: 999px;
-      background: rgba(0, 255, 204, 0.07);
+      background: rgba(139, 92, 246, 0.07);
       color: var(--primary-color);
-      border: 1px solid rgba(0, 255, 204, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.15);
     }
     .rt-tag--shared {
-      background: rgba(0, 255, 204, 0.15);
-      border-color: rgba(0, 255, 204, 0.35);
+      background: rgba(139, 92, 246, 0.15);
+      border-color: rgba(139, 92, 246, 0.35);
     }
     .rt-card__arrow {
       flex-shrink: 0;

@@ -179,8 +179,8 @@
   opacity: 1;
 }
 .lg-number-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.015);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .lg-amount-hint {
@@ -212,10 +212,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.lg-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.lg-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .lg-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -259,7 +259,7 @@
 
 .lg-toggle input:checked ~ .lg-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .lg-toggle input:checked ~ .lg-toggle__track .lg-toggle__thumb {
   left: 20px;
@@ -276,7 +276,7 @@
 
 .lg-toggle__label code {
   font-family: 'Fira Code', monospace;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   padding: 0.1em 0.3em;
   border-radius: 3px;
@@ -306,7 +306,7 @@
   width: 100%;
   padding: 0.65rem 1.2rem;
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.4);
+  border: 1px solid rgba(139, 92, 246, 0.4);
   border-radius: var(--radius-md);
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -319,8 +319,8 @@
 }
 .lg-generate-btn:hover {
   background: color-mix(in srgb, var(--primary-color) 22%, transparent);
-  border-color: rgba(0, 255, 204, 0.6);
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.15);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
 }
 .lg-generate-btn:active {
   transform: scale(0.98);
@@ -345,12 +345,12 @@
 }
 .lg-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .lg-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .lg-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .lg-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -377,7 +377,7 @@
 
 .lg-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 

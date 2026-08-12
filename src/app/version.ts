@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.27.0',
+  version: '2.29.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'The Eternal Archive',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.27.0',
+    version: '2.29.0',
     codename: 'The Eternal Archive',
     date: '2026-08-12',
     highlights: [
@@ -46,6 +46,32 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'The auth SDK is fetched only when it is first genuinely needed, so a visitor who never signs in never downloads it and the initial bundle is unchanged',
       'Lifetime XP is monotonic in the cloud, which stops a device that has fallen behind from silently overwriting a larger total with its own — the rejected write is treated as a signal to re-merge rather than an error to swallow',
       'New achievement: The Eternal Archive, Eclipsed, +50 XP — awarded the first time the forge is bound to the cloud'
+    ]
+  },
+  {
+    version: '2.28.0',
+    codename: 'Eclipse',
+    date: '2026-08-12',
+    highlights: [
+      'The forge is violet. The brand accent moved from cyan to eclipse purple across every surface — around 2,300 colour references in 250 files, from card borders and button glows to the nebula wash behind the whole site',
+      'The Verge realm keeps its cyan, because that is what the boundary between light and shadow is meant to look like. Gold stays on the forge, the artifacts and the achievements; crimson stays on Umbral',
+      'Sharing a link no longer shows a flat placeholder. The social preview is a new 1200x630 image — an eclipsed sun ringed in violet fire over a constellation, with the forge ember burning along its lower limb',
+      'Every page pointed at one of four different preview images, two of which had already been deleted and were returning 404s to Twitter and Discord. All 152 references now point at the one image that exists',
+      'The preview was also advertised as an SVG with a JPEG listed underneath it as a fallback. og:image is not a fallback list, and Facebook, LinkedIn, Discord and iMessage all reject SVG outright — which is why the preview looked broken in exactly the places people share links',
+      'The page background dropped to a deeper near-black, and the browser chrome colour on mobile follows it'
+    ]
+  },
+  {
+    version: '2.27.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The initial JavaScript download is 38% smaller — 480 kB to 297 kB gzipped — with no visible change to the site',
+      'The Firestore SDK was the single largest thing on the page and nothing on first paint used it; it now downloads on demand, the first time something actually reads or writes the database',
+      'Firebase Auth was riding along in the initial bundle too, pulled in statically by the Analytics and Functions wrappers rather than by anything that signs a user in',
+      'Nine pages — home, skills, projects, contact, donate, live, mcp, arena and the 404 — were bundled into every visit regardless of where you landed. Each is now fetched only when you open it, which matters most on tool pages, where the search traffic arrives',
+      'Deleted twelve components and services left over from an old crypto-portfolio scaffold, plus two byte-identical copies of the social-share image',
+      'Bundle budgets now fail the build if the initial download creeps back up'
     ]
   },
   {

@@ -93,7 +93,7 @@ const DWELL_MS = 5200;
     }
     .qt__title {
       font: 600 14px/1.3 'Orbitron', system-ui, sans-serif;
-      color: #eafff9;
+      color: #F2ECFF;
     }
     .qt__detail { font-size: 12px; color: #9fb4ae; }
 

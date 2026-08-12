@@ -32,7 +32,7 @@ export class TextShadowComponent {
   private nextId = 1;
 
   layers: TextShadowLayer[] = [
-    { id: this.nextId++, offsetX: 2, offsetY: 2, blur: 4, color: '#00ffcc' }
+    { id: this.nextId++, offsetX: 2, offsetY: 2, blur: 4, color: '#8B5CF6' }
   ];
 
   previewText = 'Shadow Text';
@@ -48,10 +48,10 @@ export class TextShadowComponent {
       previewColor: '#ffffff',
       previewBg: '#0a0a0f',
       layers: [
-        { offsetX: 0, offsetY: 0, blur: 7, color: '#00ffcc' },
-        { offsetX: 0, offsetY: 0, blur: 10, color: '#00ffcc' },
-        { offsetX: 0, offsetY: 0, blur: 21, color: '#00ffcc' },
-        { offsetX: 0, offsetY: 0, blur: 42, color: '#00ffcc' }
+        { offsetX: 0, offsetY: 0, blur: 7, color: '#8B5CF6' },
+        { offsetX: 0, offsetY: 0, blur: 10, color: '#8B5CF6' },
+        { offsetX: 0, offsetY: 0, blur: 21, color: '#8B5CF6' },
+        { offsetX: 0, offsetY: 0, blur: 42, color: '#8B5CF6' }
       ]
     },
     {
@@ -100,10 +100,10 @@ export class TextShadowComponent {
       previewColor: '#0a0a0f',
       previewBg: '#0a0a0f',
       layers: [
-        { offsetX: -1, offsetY: -1, blur: 0, color: '#00ffcc' },
-        { offsetX: 1, offsetY: -1, blur: 0, color: '#00ffcc' },
-        { offsetX: -1, offsetY: 1, blur: 0, color: '#00ffcc' },
-        { offsetX: 1, offsetY: 1, blur: 0, color: '#00ffcc' }
+        { offsetX: -1, offsetY: -1, blur: 0, color: '#8B5CF6' },
+        { offsetX: 1, offsetY: -1, blur: 0, color: '#8B5CF6' },
+        { offsetX: -1, offsetY: 1, blur: 0, color: '#8B5CF6' },
+        { offsetX: 1, offsetY: 1, blur: 0, color: '#8B5CF6' }
       ]
     },
     {
@@ -112,7 +112,7 @@ export class TextShadowComponent {
       previewBg: '#0a0a0f',
       layers: [
         { offsetX: -2, offsetY: 0, blur: 0, color: '#ff0040' },
-        { offsetX: 2, offsetY: 0, blur: 0, color: '#00ffcc' },
+        { offsetX: 2, offsetY: 0, blur: 0, color: '#8B5CF6' },
         { offsetX: 0, offsetY: 2, blur: 0, color: '#7b00ff' }
       ]
     },
@@ -148,7 +148,7 @@ export class TextShadowComponent {
       offsetX: 2,
       offsetY: 2,
       blur: 4,
-      color: '#00ffcc'
+      color: '#8B5CF6'
     });
     this.checkDeepEasterEgg();
   }
@@ -255,7 +255,7 @@ export class TextShadowComponent {
   resetAll(): void {
     this.nextId = 1;
     this.layers = [
-      { id: this.nextId++, offsetX: 2, offsetY: 2, blur: 4, color: '#00ffcc' }
+      { id: this.nextId++, offsetX: 2, offsetY: 2, blur: 4, color: '#8B5CF6' }
     ];
     this.previewText = 'Shadow Text';
     this.previewFontSize = 48;

@@ -141,7 +141,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .sg-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -188,7 +188,7 @@
   transition: border-color 0.2s ease;
 }
 .sg-number-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .sg-number-input::placeholder {
   color: rgba(214, 221, 235, 0.3);
@@ -218,10 +218,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.sg-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.sg-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .sg-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -265,7 +265,7 @@
 
 .sg-toggle input:checked ~ .sg-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .sg-toggle input:checked ~ .sg-toggle__track .sg-toggle__thumb {
   left: 20px;
@@ -312,16 +312,16 @@
 }
 .sg-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .sg-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .sg-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 .sg-btn-ghost--active {
   color: var(--primary-color);
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
@@ -349,7 +349,7 @@
 
 .sg-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -393,7 +393,7 @@
   transition: border-color 0.2s ease;
 }
 .sg-variant:hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .sg-variant__header {
@@ -439,7 +439,7 @@
 }
 .sg-bulk-row:last-child { border-bottom: none; }
 .sg-bulk-row:hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .sg-bulk-row__num {

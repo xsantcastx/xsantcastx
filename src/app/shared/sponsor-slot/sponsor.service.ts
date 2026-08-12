@@ -132,7 +132,7 @@ const HOUSE_INVENTORY: Sponsor[] = [
     ],
     startDate: '2026-01-01',
     endDate: '2099-12-31',
-    accentColor: '#00ffcc',
+    accentColor: '#8B5CF6',
   },
 ];
 

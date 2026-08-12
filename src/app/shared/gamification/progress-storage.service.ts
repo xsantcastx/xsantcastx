@@ -20,7 +20,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, doc, getDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import type { FirestoreHandle } from '../lazy-firestore.service';
 import {
   ProgressState,
   emptyProgress,
@@ -168,15 +168,22 @@ export class FirestoreAdapter implements ProgressAdapter {
   /** Newest state not yet pushed. Null once the upstream write has been issued. */
   private pending: ProgressState | null = null;
 
+  /**
+   * Takes a resolved {@link FirestoreHandle} rather than an injected `Firestore`.
+   * `provideFirestore()` is no longer in the root injector — the SDK is ~450 kB
+   * and nothing on first paint touches it, so it is imported on demand and
+   * handed around as `{ db, api }`. Which suits this adapter: it is only ever
+   * constructed after somebody has signed in, by which point the SDK has loaded.
+   */
   constructor(
-    private readonly firestore: Firestore,
+    private readonly fs: FirestoreHandle,
     private readonly uid: string,
     /** Called after every upstream write attempt, for the sync indicator. */
     private readonly onWrite: (error: unknown | null) => void = () => {},
   ) {}
 
   private ref() {
-    return doc(this.firestore, 'users', this.uid, 'progress', 'state');
+    return this.fs.api.doc(this.fs.db, 'users', this.uid, 'progress', 'state');
   }
 
   /**
@@ -192,7 +199,7 @@ export class FirestoreAdapter implements ProgressAdapter {
   async load(): Promise<ProgressState> {
     const cached = await this.local.load();
     try {
-      const snap = await getDoc(this.ref());
+      const snap = await this.fs.api.getDoc(this.ref());
       if (!snap.exists()) return { ...cached, userId: this.uid };
       const remote = migrateProgress(snap.data());
       const adopted = { ...remote, userId: this.uid };
@@ -235,7 +242,7 @@ export class FirestoreAdapter implements ProgressAdapter {
     try {
       // Whole-document write, not a merge: `ProgressState` is a closed shape and
       // a field removed locally should not survive in the cloud copy forever.
-      await setDoc(this.ref(), state as unknown as Record<string, unknown>);
+      await this.fs.api.setDoc(this.ref(), state as unknown as Record<string, unknown>);
       this.onWrite(null);
     } catch (err) {
       // Put it back so the next tick retries rather than dropping it. A newer
@@ -258,7 +265,7 @@ export class FirestoreAdapter implements ProgressAdapter {
 
   async exists(): Promise<boolean> {
     try {
-      return (await getDoc(this.ref())).exists();
+      return (await this.fs.api.getDoc(this.ref())).exists();
     } catch {
       // Unknown is not the same as absent, and treating it as absent would let
       // `migrate()` overwrite a real cloud profile with a fresh device's empty
@@ -275,7 +282,7 @@ export class FirestoreAdapter implements ProgressAdapter {
       clearTimeout(this.trailing);
       this.trailing = null;
     }
-    await deleteDoc(this.ref());
+    await this.fs.api.deleteDoc(this.ref());
   }
 }
 

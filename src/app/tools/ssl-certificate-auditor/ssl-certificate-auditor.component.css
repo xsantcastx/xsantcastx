@@ -571,9 +571,9 @@
   padding: 1.75rem;
   margin-bottom: 1.5rem;
   background: var(--surface-color);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft), 0 0 20px -10px rgba(0, 255, 204, 0.1);
+  box-shadow: var(--shadow-soft), 0 0 20px -10px rgba(139, 92, 246, 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -581,7 +581,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.05), transparent 60%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), transparent 60%);
   pointer-events: none;
 }
 .ssl-auditor__hero-card--warn {
@@ -612,8 +612,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(0, 255, 204, 0.1);
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -666,8 +666,8 @@
   color: var(--text-muted);
 }
 .ssl-auditor__badge--pass {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: rgba(0, 255, 204, 0.25);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 .ssl-auditor__badge--warn {
@@ -704,7 +704,7 @@
   justify-content: center;
   border: 3px solid var(--glass-border);
 }
-.ssl-auditor__expiry-ring--pass { border-color: rgba(0, 255, 204, 0.4); }
+.ssl-auditor__expiry-ring--pass { border-color: rgba(139, 92, 246, 0.4); }
 .ssl-auditor__expiry-ring--warn { border-color: rgba(255, 200, 60, 0.5); }
 .ssl-auditor__expiry-ring--danger { border-color: rgba(255, 80, 80, 0.5); }
 
@@ -904,7 +904,7 @@
 .ssl-auditor__flag-card--fail::before { background: var(--error-color); }
 .ssl-auditor__flag-card--info::before { background: var(--secondary-color); }
 
-.ssl-auditor__flag-card--pass { border-color: rgba(0, 255, 204, 0.12); }
+.ssl-auditor__flag-card--pass { border-color: rgba(139, 92, 246, 0.12); }
 .ssl-auditor__flag-card--warn { border-color: rgba(255, 200, 60, 0.15); }
 .ssl-auditor__flag-card--fail { border-color: rgba(255, 80, 80, 0.15); }
 .ssl-auditor__flag-card--info { border-color: rgba(123, 97, 255, 0.15); }
@@ -927,7 +927,7 @@
 }
 
 .ssl-auditor__flag-card--pass .ssl-auditor__flag-icon {
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
 }
 .ssl-auditor__flag-card--warn .ssl-auditor__flag-icon {
@@ -963,7 +963,7 @@
 }
 
 .ssl-auditor__flag-status-badge--pass {
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
 }
 .ssl-auditor__flag-status-badge--warn {

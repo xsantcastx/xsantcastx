@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { LazyFirestoreService } from '../shared/lazy-firestore.service';
 import { ChangelogService, ChangelogDay, ChangelogEntry } from '../changelog.service';
 import { Subscription } from 'rxjs';
 import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
@@ -10,6 +10,9 @@ import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/real
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { PRERENDERED_PATHS } from '../prerender-stats';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { AdsenseComponent } from '../shared/adsense/adsense.component';
 
 export interface Tool {
   id: string;
@@ -46,11 +49,12 @@ export const FORGE_STATION_SIZE = 6;
   selector: 'app-landing',
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [FormsModule, RouterModule, AdsenseComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private router = inject(Router);
   private changelogService = inject(ChangelogService);
   private translationService = inject(TranslationService);
@@ -332,8 +336,14 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
     this.subscribeStatus = 'loading';
     try {
-      const col = collection(this.firestore, 'homepage_subscribers');
-      await addDoc(col, {
+      const handle = await this.lazyFirestore.get();
+      if (!handle) {
+        this.subscribeStatus = 'error';
+        return;
+      }
+      const { db, api } = handle;
+      const col = api.collection(db, 'homepage_subscribers');
+      await api.addDoc(col, {
         email: email,
         subscribedAt: new Date().toISOString(),
         source: 'homepage_footer_cta'
