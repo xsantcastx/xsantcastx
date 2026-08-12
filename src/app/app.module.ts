@@ -39,6 +39,9 @@ import { CommandPaletteComponent } from './shared/command-palette/command-palett
 import { ArenaComponent } from './arena/arena.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
+import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
+import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
+import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { McpComponent } from './mcp/mcp.component';
 
 
@@ -75,7 +78,10 @@ import { McpComponent } from './mcp/mcp.component';
     // Standalone — imported here so the (non-standalone) HeaderComponent and
     // AppComponent templates can use them without the module graph moving.
     XpBarComponent,
-    AchievementDropComponent
+    AchievementDropComponent,
+    QuestDrawerComponent,
+    QuestTriggerComponent,
+    QuestToastComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
