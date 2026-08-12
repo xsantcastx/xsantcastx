@@ -1,0 +1,112 @@
+<app-arena-shell
+  [title]="'Forge Strike'"
+  [lore]="'The Godforge heats — strike true, Forgehand.'"
+  [icon]="'🔨'"
+  [bestLabel]="bestLabel"
+  [locked]="locked"
+  [unlockHint]="game.unlockHint">
+
+  @if (!locked) {
+
+    <!-- ── INTRO ─────────────────────────────────────────── -->
+    @if (phase === 'intro') {
+      <section class="ag-panel ag-intro">
+        <p class="ag-intro__body">
+          {{ roundSeconds }} seconds at the anvil. Strike what surfaces — but only what
+          should be struck. The chain multiplier is where the score really lives:
+          every 5 clean strikes adds a step, and one live error resets it to nothing.
+        </p>
+
+        <ul class="fs-key">
+          <li class="fs-key__row">
+            <span class="fs-key__glyph">🐛</span>
+            <span class="fs-key__name">Bug</span>
+            <span class="fs-key__pts fs-key__pts--good">+10</span>
+            <span class="fs-key__note">Squash it. Letting one escape breaks your chain.</span>
+          </li>
+          <li class="fs-key__row">
+            <span class="fs-key__glyph">⚡</span>
+            <span class="fs-key__name">Feature</span>
+            <span class="fs-key__pts fs-key__pts--good">+5</span>
+            <span class="fs-key__note">Ship it. No penalty if it slips away.</span>
+          </li>
+          <li class="fs-key__row">
+            <span class="fs-key__glyph">💥</span>
+            <span class="fs-key__name">Error</span>
+            <span class="fs-key__pts fs-key__pts--bad">−20</span>
+            <span class="fs-key__note">Never touch it. Resets the chain.</span>
+          </li>
+        </ul>
+
+        <button type="button" class="ag-btn ag-btn--primary" (click)="start()">
+          Take up the hammer &rarr;
+        </button>
+      </section>
+    }
+
+    <!-- ── ANVIL ─────────────────────────────────────────── -->
+    @if (phase === 'playing') {
+      <div class="ag-hud">
+        <div class="ag-stat" [class.ag-stat--warn]="remaining <= 10">
+          <span class="ag-stat__num">{{ remaining }}s</span>
+          <span class="ag-stat__label">Heat left</span>
+        </div>
+        <div class="ag-stat ag-stat--good">
+          <span class="ag-stat__num">{{ score }}</span>
+          <span class="ag-stat__label">Score</span>
+        </div>
+        <div class="ag-stat" [class.fs-stat--hot]="multiplier > 1">
+          <span class="ag-stat__num">&times;{{ multiplier }}</span>
+          <span class="ag-stat__label">Chain {{ combo }}</span>
+        </div>
+      </div>
+
+      <div class="fs-anvil">
+        <canvas
+          #canvas
+          class="fs-canvas"
+          (pointerdown)="onStrike($event)"
+          aria-hidden="true"></canvas>
+      </div>
+      <p class="fs-tip">Tap or click the targets. Swinging at empty air costs nothing.</p>
+    }
+
+    <!-- ── END ───────────────────────────────────────────── -->
+    @if (phase === 'over' && result) {
+      <section
+        class="ag-end"
+        [class.ag-end--lost]="score < clearScore"
+        [attr.data-success-burst]="score >= clearScore ? '' : null"
+        role="status">
+        <h2 class="ag-end__title">
+          {{ score >= clearScore ? 'The forge holds ✦' : 'The forge cools' }}
+        </h2>
+        <p class="ag-end__line">
+          {{ bugsSquashed }} bugs squashed · {{ featuresShipped }} features shipped ·
+          {{ errorsTouched }} error{{ errorsTouched === 1 ? '' : 's' }} struck
+        </p>
+        <p class="ag-end__line">
+          Best chain <strong>{{ bestCombo }}</strong> · score <strong>{{ result.score }}</strong>
+          @if (result.isBest) { <span class="fs-pb">— new personal best</span> }
+        </p>
+
+        @if (result.xpAwarded > 0) {
+          <p class="ag-end__xp">+{{ result.xpAwarded }} Nox</p>
+        } @else if (score < clearScore) {
+          <p class="ag-end__line ag-end__line--muted">
+            Score {{ clearScore }} in a single shift to earn Nox.
+          </p>
+        } @else {
+          <p class="ag-end__line ag-end__line--muted">Already claimed. Beat your best to earn again.</p>
+        }
+
+        <div class="ag-end__actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="start()">Another shift</button>
+          <button type="button" class="ag-btn" (click)="playAgain()">The rules</button>
+          <a routerLink="/arena" class="ag-btn ag-btn--ghost">Back to the Arena</a>
+        </div>
+      </section>
+    }
+
+  }
+</app-arena-shell>

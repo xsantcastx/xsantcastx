@@ -37,7 +37,6 @@ import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { ArenaComponent } from './arena/arena.component';
-import { ColorMemoryComponent } from './arena/color-memory/color-memory.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
 import { McpComponent } from './mcp/mcp.component';
@@ -76,9 +75,7 @@ import { McpComponent } from './mcp/mcp.component';
     // Standalone — imported here so the (non-standalone) HeaderComponent and
     // AppComponent templates can use them without the module graph moving.
     XpBarComponent,
-    AchievementDropComponent,
-    // Same reason: the (non-standalone) ArenaComponent template opens this one.
-    ColorMemoryComponent
+    AchievementDropComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
