@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.31.0',
+  version: '2.32.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Unbroken',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.31.0',
+    version: '2.32.0',
     codename: 'Unbroken',
     date: '2026-08-12',
     highlights: [
@@ -48,6 +48,21 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'Every screen-level effect is switched off under prefers-reduced-motion — the counter, the shouts and all eight achievements remain, so the ladder is fully collectable without a single flash',
       'Fixed a floater that could swallow a strike: the "+1" rising off the ember is a sibling of the button with pointer events on, and at two strikes a second there is always one crossing the target',
       'Fixed the reduced-motion floater fade, which had never once run — Angular scopes @keyframes per component but leaves an animation reference inside a @media block unscoped, so it pointed at a name that did not exist'
+    ]
+  },
+  {
+    version: '2.31.0',
+    codename: 'The Command Bar',
+    date: '2026-08-12',
+    highlights: [
+      'The navbar is no longer a portfolio header. The Void sigil and "The Godforge" open it, the five realms, the Arena, the Codex, the War Table and the Market run down the middle, and your own standing — quests, Gold, rank and XP — closes it. The rotating buzzword pill, the "Services / Projects / About / Contact" scroll links and the personal wordmark are gone',
+      'Realms is a dropdown that goes somewhere: each of the five links straight into /tools filtered by that realm, painted in its own accent, and the menu stays in the DOM when closed so crawlers still follow all six routes',
+      'The mobile drawer is a tome rather than a slide-out — chapter headings ruled in gold, realm cards carrying their accent on the left edge, and a drawn rune per hall. Quests, Gold and the XP bar sit at the top of it, where a frontispiece would be',
+      'Every icon in the bar is drawn in CSS: the Void sigil, the crossed blades on the quest sword, the Gold coin, the Essence shard, the streak ember, the keeper bust and the hamburger. No emoji anywhere — a colour-font glyph renders differently on every platform and cannot take the bar\'s palette, which matters because four purchasable cosmetic themes re-point it',
+      'The bar compacts from 56px to 48px on the way down and returns to full height on the way up, with a deadband so a jittery trackpad cannot oscillate it',
+      'The forge core on the homepage now reads ember → gold → purple → void: the eclipse bloom lives in the haze and the outer rim rather than inside the shaft, which keeps the well reading as a furnace instead of a nebula orb',
+      'The footer closes on the same mark the bar opens with — sigil, wordmark, the six halls, and "Forged by xsantcastx" under a gold hairline',
+      'Touch targets stay at 44px on touch devices; the 38px compaction that lets the controls sit in a 56px row is scoped to fine pointers only'
     ]
   },
   {
