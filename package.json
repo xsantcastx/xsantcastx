@@ -1,6 +1,6 @@
 {
   "name": "xsantcastx",
-  "version": "2.21.0",
+  "version": "2.22.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
