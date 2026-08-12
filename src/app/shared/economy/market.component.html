@@ -207,6 +207,22 @@
       <ng-container *ngTemplateOutlet="ladder; context: { rows: masteryRows, verb: 'Master' }"></ng-container>
     </div>
 
+  <!-- ── Tab 5: Expeditions ────────────────────────────────────────────── -->
+    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'expedition'" id="mk-panel-expedition" aria-labelledby="mk-tab-expedition">
+      <p class="mk__panel-note">
+        Explorers walk into a realm and come back with Gold, and sometimes with a rune or a scroll
+        nobody has filed yet. You send them from
+        <a routerLink="/live">the Forge View</a>, and they keep walking while the tab is shut.
+        @if (explorerSlots >= maxExplorerSlots) {
+          <strong>All {{ maxExplorerSlots }} hired — one for every realm.</strong>
+        } @else {
+          <strong>{{ explorerSlots }} of {{ maxExplorerSlots }} hired.</strong>
+        }
+      </p>
+
+      <ng-container *ngTemplateOutlet="ladder; context: { rows: expeditionRows, verb: 'Hire' }"></ng-container>
+    </div>
+
   <!-- ── Tab 3: Enchantments ───────────────────────────────────────────── -->
     <div class="mk__panel mk__panel--essence" role="tabpanel" [hidden]="active !== 'enchant'" id="mk-panel-enchant" aria-labelledby="mk-tab-enchant">
       <p class="mk__panel-note">

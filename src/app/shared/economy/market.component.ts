@@ -39,6 +39,7 @@ import {
   Cosmetic,
   CosmeticVariant,
   ENCHANTMENTS,
+  EXPEDITION_UPGRADES,
   Enchantment,
   FORGE_UPGRADES,
   MULTIPLIER_UPGRADES,
@@ -54,9 +55,10 @@ import {
 } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { rarityOf } from '../rarity/rarity.model';
+import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
 
 type TabId =
-  | 'forge' | 'hammer' | 'automaton' | 'mastery'
+  | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition'
   | 'enchant' | 'artifact' | 'cosmetic' | 'eclipse';
 
 interface Tab {
@@ -98,6 +100,7 @@ const TABS: Tab[] = [
   { id: 'hammer',    label: 'Hammers',        icon: 'relic-forge',  currency: 'gold' },
   { id: 'automaton', label: 'Automatons',     glyph: '⚙',           currency: 'gold' },
   { id: 'mastery',   label: 'Mastery',        glyph: '✦',           currency: 'gold' },
+  { id: 'expedition',label: 'Expeditions',    glyph: '🧭',          currency: 'gold' },
   { id: 'enchant',   label: 'Enchantments',   icon: 'essence-shop', currency: 'essence' },
   { id: 'artifact',  label: 'Artifacts',      icon: 'nox-shop',     currency: 'essence' },
   { id: 'cosmetic',  label: 'Cosmetics',      icon: 'aether-shop',  currency: 'gold' },
@@ -328,6 +331,20 @@ export class MarketComponent implements OnInit, OnDestroy {
   get masteryRows(): LadderRow[] {
     return MULTIPLIER_UPGRADES.map(u => this.rowFor(u));
   }
+
+  get expeditionRows(): LadderRow[] {
+    return EXPEDITION_UPGRADES.map(u => this.rowFor(u));
+  }
+
+  /** Explorers hired, including the one every visitor starts with. */
+  get explorerSlots(): number {
+    return Math.min(
+      MAX_EXPLORER_SLOTS,
+      BASE_EXPLORER_SLOTS + this.economy.levelOf('explorer-slot'),
+    );
+  }
+
+  readonly maxExplorerSlots = MAX_EXPLORER_SLOTS;
 
   private rowFor(u: AnyUpgrade): LadderRow {
     const owned = this.economy.levelOf(u.id);
