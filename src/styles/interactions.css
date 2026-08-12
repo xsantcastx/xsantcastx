@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE INTERACTION LAYER
+   ───────────────────────────────────────────────────────────────────────────
+   One global pass that makes every clickable surface on the site answer back:
+   a lift on hover, a press on click, a realm-coloured edge, a focus ring.
+
+   WHY THIS FILE COMPOSES INSTEAD OF OVERRIDING
+   --------------------------------------------
+   It loads last in angular.json, so anything it declares outranks a component
+   stylesheet at equal specificity. That is a loaded gun across ~126 tool pages
+   that already animate their own cards: a global `transform: translateY(-2px)`
+   would silently replace a card's existing hover `transform: scale(1.02)`
+   rather than add to it, and nothing would error.
+
+   So this layer never writes `transform`. It uses the independent `translate`
+   and `scale` properties, which the compositor combines with whatever
+   `transform` the component already sets. A card that scales on hover keeps
+   scaling and gains the lift. Same reasoning for the glow: `outline` and
+   `filter: drop-shadow()` compose, while `box-shadow` would clobber the
+   shadows components already define.
+
+   WHAT COUNTS AS INTERACTIVE
+   --------------------------
+   Only things that actually respond to a click. A lift on a static panel
+   advertises an affordance that is not there, so the selectors below are
+   anchored to <a href>, <button>, [role="button"] and focusable cards rather
+   than to "anything shaped like a card". Inline prose links are excluded too —
+   a paragraph link that jumps 2px on hover reflows the sentence around it.
+
+   REDUCED MOTION
+   --------------
+   The bottom of this file disables movement and timing only. Hover colours,
+   realm edges and focus rings all survive, because they are information about
+   what is clickable, not decoration.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Material standard easing — the owner's pick, used for every duration here. */
+  --gf-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Spring: overshoots once, settles. For things that enter, not things that hover. */
+  --gf-spring: cubic-bezier(0.22, 1.28, 0.44, 1);
+
+  --gf-dur: 200ms;
+  --gf-dur-press: 90ms;
+  --gf-dur-enter: 380ms;
+
+  --gf-lift: -2px;
+  --gf-press: 0.97;
+
+  --gf-accent: #8b5cf6;
+  --gf-accent-lit: #a78bfa;
+  --gf-glow-soft: rgba(139, 92, 246, 0.34);
+  --gf-glow-lit: rgba(139, 92, 246, 0.6);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   1 + 2 + 6. BUTTONS — lift, glow, and a physical press
+   The press uses `scale`, so a button that already has a transform (the magnetic
+   CTAs in cosmic-engine.js set one every frame) still presses.
+   ─────────────────────────────────────────────────────────────────────────── */
+:is(button, [role='button'], input[type='submit'], input[type='button']):not(:disabled):not([aria-disabled='true']),
+a:is([class*='btn'], [class*='button'], [class*='cta']):not([aria-disabled='true']) {
+  transition:
+    translate var(--gf-dur) var(--gf-ease),
+    scale var(--gf-dur-press) var(--gf-ease),
+    filter var(--gf-dur) var(--gf-ease),
+    outline-color var(--gf-dur) var(--gf-ease),
+    background-color var(--gf-dur) var(--gf-ease),
+    border-color var(--gf-dur) var(--gf-ease),
+    color var(--gf-dur) var(--gf-ease);
+  outline: 1px solid transparent;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  :is(button, [role='button'], input[type='submit'], input[type='button']):not(:disabled):not([aria-disabled='true']):hover,
+  a:is([class*='btn'], [class*='button'], [class*='cta']):not([aria-disabled='true']):hover {
+    translate: 0 var(--gf-lift);
+    /* --realm-color when the surface is inside a realm, purple everywhere else. */
+    filter: drop-shadow(0 4px 14px var(--realm-glow, var(--star-glow, var(--gf-glow-soft))));
+  }
+}
+
+/* Press: fires on pointer-down, releases on up. Deliberately faster than the
+   hover (90ms vs 200ms) — a slow press feels like lag, not weight. */
+:is(button, [role='button'], input[type='submit'], input[type='button']):not(:disabled):not([aria-disabled='true']):active,
+a:is([class*='btn'], [class*='button'], [class*='cta']):not([aria-disabled='true']):active {
+  scale: var(--gf-press);
+  translate: 0 0;
+  transition-duration: var(--gf-dur-press);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   1 + 6. CARDS — same treatment, but only when the card is actually clickable.
+
+   Two colour conventions exist and both are honoured, in this order:
+     --realm-color / --realm-glow   the realm pages and codex cards
+     --star-color  / --star-glow    the /tools orbit stars, which predate the
+                                    realm naming and still carry the old vars
+   Purple is the last fallback, so anything with neither still gets an edge.
+
+   .orbit-star is listed by name on purpose: the tools page — the single most
+   card-dense surface on the site — does not use a "card" class at all, so a
+   pattern match on [class*="card"] silently skips all 30 tools per realm.
+   ─────────────────────────────────────────────────────────────────────────── */
+:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']),
+a.orbit-star,
+.gf-interactive {
+  transition:
+    translate var(--gf-dur) var(--gf-ease),
+    scale var(--gf-dur-press) var(--gf-ease),
+    filter var(--gf-dur) var(--gf-ease),
+    outline-color var(--gf-dur) var(--gf-ease),
+    border-color var(--gf-dur) var(--gf-ease);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+}
+
+@media (hover: hover) {
+  :is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):hover,
+  a.orbit-star:hover,
+  .gf-interactive:hover {
+    translate: 0 var(--gf-lift);
+    outline-color: var(--realm-color, var(--star-color, var(--gf-accent)));
+    filter: drop-shadow(0 6px 20px var(--realm-glow, var(--star-glow, var(--gf-glow-soft))));
+  }
+}
+
+:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):active,
+a.orbit-star:active,
+.gf-interactive:active {
+  scale: var(--gf-press);
+  translate: 0 0;
+  transition-duration: var(--gf-dur-press);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   9. FORM INPUTS — purple edge on focus, plus a hair of breathing room.
+   The "expansion" is padding, not scale: scaling a focused input drags its text
+   baseline and makes the caret visibly drift mid-keystroke.
+   ─────────────────────────────────────────────────────────────────────────── */
+:is(input, textarea, select):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='submit']):not([type='button']) {
+  transition:
+    border-color var(--gf-dur) var(--gf-ease),
+    box-shadow var(--gf-dur) var(--gf-ease),
+    background-color var(--gf-dur) var(--gf-ease),
+    padding-inline var(--gf-dur) var(--gf-ease);
+}
+
+:is(input, textarea, select):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='submit']):not([type='button']):focus-visible,
+:is(input, textarea, select):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='submit']):not([type='button']):focus {
+  border-color: var(--gf-accent-lit);
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.18),
+    0 0 18px -4px var(--gf-glow-lit);
+  padding-inline-start: calc(var(--gf-input-pad, 0.75rem) + 2px);
+  outline: none;
+}
+
+/* Checkboxes and radios get the ring without the padding shuffle. */
+:is(input[type='checkbox'], input[type='radio']):focus-visible {
+  outline: 2px solid var(--gf-accent-lit);
+  outline-offset: 2px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   KEYBOARD FOCUS — one visible ring everywhere, for anything focusable that the
+   rules above did not already cover. :focus-visible only, so a mouse click does
+   not leave a ring sitting on the element afterwards.
+   ─────────────────────────────────────────────────────────────────────────── */
+:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--gf-accent-lit);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   5. LOADING — a purple shimmer, not a spinner.
+   `.gf-skeleton` is the utility for new code; the attribute selector retrofits
+   the skeletons that already exist (admin's .adm-skel and friends) so they stop
+   being grey boxes without touching each component.
+   ─────────────────────────────────────────────────────────────────────────── */
+.gf-skeleton,
+[class*='skel']:not(input):not(textarea) {
+  position: relative;
+  overflow: hidden;
+  background: rgba(139, 92, 246, 0.09);
+  border-radius: 8px;
+}
+
+.gf-skeleton::after,
+[class*='skel']:not(input):not(textarea)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.05) 35%,
+    rgba(167, 139, 250, 0.28) 50%,
+    rgba(139, 92, 246, 0.05) 65%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: gfShimmer 1.4s var(--gf-ease) infinite;
+}
+
+@keyframes gfShimmer {
+  to { transform: translateX(100%); }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   10. TOASTS — spring in, ease out.
+   Direction is intentionally NOT forced to "from the right": the flame and the
+   achievement drop both live in the bottom-right and a toast sliding into that
+   corner has already eaten clicks on the flame once (see version 2.x history).
+   Each toast springs along the axis it already occupies.
+   ─────────────────────────────────────────────────────────────────────────── */
+.gf-toast-enter {
+  animation: gfToastIn var(--gf-dur-enter) var(--gf-spring) both;
+}
+
+@keyframes gfToastIn {
+  from { opacity: 0; translate: 24px 0; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   4. SCROLL REVEAL — the class the observer in cosmic-engine.js adds.
+   The engine owns which elements get observed; this owns what the reveal looks
+   like. Sections start 18px low and settle, rather than the 28px the old cosmic
+   reveal used — shorter travel reads as responsive instead of sluggish.
+   ─────────────────────────────────────────────────────────────────────────── */
+.gf-reveal {
+  opacity: 0;
+  translate: 0 18px;
+  transition:
+    opacity var(--gf-dur-enter) var(--gf-ease),
+    translate var(--gf-dur-enter) var(--gf-ease);
+}
+
+.gf-reveal.gf-in-view {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* 3. ROUTE TRANSITION is not here on purpose — `routeFadeIn` already owns
+   `router-outlet + *` in styles.css and was retuned to this file's curve there.
+   Declaring a second animation on the same element would not layer with it; the
+   later rule would simply win, and which one that is depends on file order. */
+
+/* ───────────────────────────────────────────────────────────────────────────
+   REDUCED MOTION
+   Movement and timing go; every state that carries meaning stays. A user who
+   asked for less motion still needs to see what is hoverable and what is
+   focused, so outlines, colours and the skeleton's flat tint all remain.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :is(button, [role='button'], input[type='submit'], input[type='button'], a, [tabindex]),
+  .gf-interactive,
+  .gf-reveal,
+  main > *.ng-star-inserted,
+  router-outlet + * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* No travel, no press, no halo — but the edge and the ring stay. */
+  :is(button, [role='button'], a, [tabindex]):hover,
+  :is(button, [role='button'], a, [tabindex]):active,
+  .gf-interactive:hover,
+  .gf-interactive:active {
+    translate: none !important;
+    scale: none !important;
+    filter: none !important;
+  }
+
+  .gf-reveal {
+    opacity: 1;
+    translate: none;
+  }
+
+  .gf-skeleton::after,
+  [class*='skel']:not(input):not(textarea)::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .gf-toast-enter {
+    animation: none;
+  }
+}
