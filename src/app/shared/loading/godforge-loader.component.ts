@@ -29,8 +29,27 @@ const STAGE_AT = [0, 0.11, 0.24, 0.4, 0.55, 0.72, 0.86] as const;
  * Hard ceiling on the stage-6 hold. The hold only exists while JS is alive to
  * release it, but a wedged router event would otherwise pin the curtain open
  * forever, so it releases itself regardless.
+ *
+ * 600ms rather than the several seconds this started at. The hold's whole job
+ * is to cover the gap between the sequence ending and Angular's first
+ * navigation completing, which on a mid-tier phone is a few hundred
+ * milliseconds; past that the honest thing is to show the user the site, ready
+ * or not. See HARD_CAP_MS for the ceiling this sits under.
  */
-const HOLD_CAP_MS = 6000;
+const HOLD_CAP_MS = 600;
+
+/**
+ * Absolute ceiling on how long the curtain may cover the site, measured from
+ * the component booting. Whatever else is or is not happening — a held stage 6,
+ * a router event that never arrives, a timer that fired out of order — this
+ * fires once and tears the loader down.
+ *
+ * The sequence itself is 2.9s by design and the teardown lands at 3.02s, so
+ * this cannot be the 3s flat it reads as without truncating the normal cut. It
+ * is that ceiling plus the hold's own budget: the common path is untouched at
+ * ~3.0s, and the worst case any user can reach is ~3.6s plus the 380ms fade.
+ */
+const HARD_CAP_MS = SEQUENCE_MS + HOLD_CAP_MS + 120;
 
 type LoaderLayer = 'x' | 'runes' | 'compass' | 'core' | 'rings';
 
@@ -440,6 +459,18 @@ export class GodforgeLoaderComponent implements OnInit {
   private readonly isBrowser: boolean;
   private timers: ReturnType<typeof setTimeout>[] = [];
 
+  /**
+   * The subset of `timers` that tracks the CSS sequence — the per-stage ticks
+   * and the teardown. Held separately because a hold freezes the CSS mid-play
+   * and every one of these becomes wrong the moment it does; they are cancelled
+   * on the way into the hold and re-armed on the way out. Everything else
+   * (the hard cap, the brand measurement, node removal) is absolute and stays.
+   */
+  private seqTimers: ReturnType<typeof setTimeout>[] = [];
+
+  /** finish() is reachable from four paths; it may only run once. */
+  private finished = false;
+
   constructor(
     @Inject(PLATFORM_ID) platformId: Object,
     private router: Router,
@@ -486,14 +517,17 @@ export class GodforgeLoaderComponent implements OnInit {
 
       for (let i = startFrom; i < STAGE_AT.length; i++) {
         const at = STAGE_AT[i] * SEQUENCE_MS - offset;
-        this.timers.push(
+        this.seqTimers.push(
           setTimeout(() => this.enterStage(i + 1), Math.max(0, at))
         );
       }
 
-      this.timers.push(
+      this.seqTimers.push(
         setTimeout(() => this.finish(), SEQUENCE_MS - offset + 120)
       );
+
+      // The one timer that is never cancelled and never rescheduled.
+      this.timers.push(setTimeout(() => this.finish(), HARD_CAP_MS - offset));
     });
 
     this.aimAtBrand();
@@ -552,8 +586,17 @@ export class GodforgeLoaderComponent implements OnInit {
       // Stage 6 is the hold point: if the app has not signalled ready by the
       // time we reach 95%, pause here rather than flashing into a site that is
       // not there yet.
+      //
+      // Cancelling the sequence timers is what makes the hold real. `holding`
+      // pauses the CSS, but the stage-7 tick and the teardown were scheduled
+      // against a clock that is no longer running: left armed, the read-out
+      // jumped to 100 over a frozen stage-6 scene and the teardown then
+      // dismissed the curtain mid-hold, so the flash and the flight into the
+      // navbar were skipped entirely and the site arrived in a cut. They are
+      // re-armed against the remaining CSS time in release().
       if (next === 6 && !this.loadComplete()) {
         this.holding.set(true);
+        this.clearSequenceTimers();
         this.timers.push(setTimeout(() => this.release(), HOLD_CAP_MS));
       }
     });
@@ -571,32 +614,54 @@ export class GodforgeLoaderComponent implements OnInit {
       return;
     }
     this.holding.set(false);
-    // The pause froze the CSS mid-flight; once unpaused it still owes us the
-    // stage-7 flash and the fade, so re-arm the teardown from here.
+
+    // The pause froze the CSS at the stage-6 stop, so what it still owes is
+    // measured from there, not from zero: the flash lands at STAGE_AT[6] and
+    // the curtain clears at the end. Both deltas are the same on the short cut,
+    // because the CSS is at 72% either way — only the JS clock differs.
+    const held = STAGE_AT[5] * SEQUENCE_MS;
+    const toStage7 = STAGE_AT[6] * SEQUENCE_MS - held;
+    const toEnd = SEQUENCE_MS - held + 120;
+
     this.zone.runOutsideAngular(() => {
-      this.timers.push(
-        setTimeout(() => this.zone.run(() => this.enterStage(7)), 120)
+      this.seqTimers.push(
+        setTimeout(() => this.zone.run(() => this.enterStage(7)), toStage7)
       );
-      this.timers.push(
-        setTimeout(() => this.zone.run(() => this.finish()), (1 - STAGE_AT[5]) * SEQUENCE_MS)
+      this.seqTimers.push(
+        setTimeout(() => this.zone.run(() => this.finish()), toEnd)
       );
     });
   }
 
   private finish(): void {
+    if (this.finished) {
+      return;
+    }
+    this.finished = true;
+
     this.zone.run(() => {
       this.stage.set(7);
       this.stageText.set('100');
+      // Unpause on the way out. .gf-loader--hidden carries !important so it wins
+      // against the paused gfCurtain either way, but leaving the subtree frozen
+      // would also freeze the sigil mid-shake behind the fade.
+      this.holding.set(false);
       this.dismissed.set(true);
       // Drop it out of the DOM so the compositor stops carrying a full-viewport
-      // layer for the rest of the session.
+      // layer for the rest of the session. 400ms clears the 380ms fade.
       this.timers.push(
         setTimeout(() => this.zone.run(() => this.removed.set(true)), 400)
       );
     });
   }
 
+  private clearSequenceTimers(): void {
+    this.seqTimers.forEach(clearTimeout);
+    this.seqTimers = [];
+  }
+
   private clearTimers(): void {
+    this.clearSequenceTimers();
     this.timers.forEach(clearTimeout);
     this.timers = [];
   }

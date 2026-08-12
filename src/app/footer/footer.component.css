@@ -141,6 +141,25 @@
   text-shadow: 0 0 12px color-mix(in srgb, var(--primary-color) 60%, transparent);
 }
 
+/*
+  The second row: the surfaces the command bar stopped carrying. Smaller and
+  dimmer than the halls above so the eye still reads one primary row, but the
+  44px hit target is inherited unchanged — these are the only links to /live,
+  /contact and /donate anywhere in the chrome now, and a cramped tap target on
+  the only route to a page is worse than a slightly taller footer.
+*/
+.gffoot__links--minor {
+  margin-top: -0.35rem;
+  gap: 0.1rem clamp(0.4rem, 1.6vw, 0.85rem);
+}
+
+.gffoot__links--minor a {
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.07em;
+  color: rgba(240, 240, 240, 0.4);
+}
+
 /* Gold hairline between the halls and the maker's mark. */
 .gffoot__mark {
   position: relative;
