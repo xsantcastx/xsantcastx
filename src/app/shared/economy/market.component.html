@@ -1,0 +1,271 @@
+<section class="mk" [attr.data-currency]="tabDef.currency">
+
+  <!-- ── Masthead ──────────────────────────────────────────────────────── -->
+  <header class="mk__head">
+    <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>The Godforge Market</p>
+    <h1 class="mk__title">Everything the forge will sell you</h1>
+    <p class="mk__tagline">gold is patience; essence is proof — spend both on a forge that keeps working after you close the tab</p>
+
+    <div class="mk__wallet">
+      <div class="mk__coin mk__coin--gold">
+        <span class="mk__coin-icon" aria-hidden="true">🪙</span>
+        <span class="mk__coin-val">{{ gold }}</span>
+        <span class="mk__coin-label">Gold</span>
+      </div>
+      <div class="mk__coin mk__coin--essence">
+        <span class="mk__coin-icon" aria-hidden="true">⚡</span>
+        <span class="mk__coin-val">{{ essence }}</span>
+        <span class="mk__coin-label">Eclipse Essence</span>
+      </div>
+    </div>
+
+    <dl class="mk__stats">
+      <div><dt>Per minute</dt><dd>{{ perMinute }}</dd></div>
+      <div><dt>Per strike</dt><dd>{{ perClick }}</dd></div>
+      <div><dt>Lifetime gold</dt><dd>{{ lifetime }}</dd></div>
+      <div><dt>Strikes</dt><dd>{{ strikes }}</dd></div>
+    </dl>
+
+    @if (snap.doubled) {
+      <p class="mk__doubled">☀️ The Fragment of the First Sun is held. Everything is doubled.</p>
+    }
+
+    @if (snap.enchantment) {
+      <p class="mk__running">
+        <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
+        <strong>{{ snap.enchantment.def.name }}</strong> is running —
+        {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
+      </p>
+    }
+  </header>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────────────── -->
+  <div class="mk__tabs" role="tablist" aria-label="Market sections">
+    @for (t of tabs; track t.id) {
+      <button
+        type="button"
+        role="tab"
+        class="mk__tab"
+        [class.mk__tab--active]="active === t.id"
+        [attr.data-currency]="t.currency"
+        [attr.aria-selected]="active === t.id"
+        [attr.aria-controls]="'mk-panel-' + t.id"
+        [id]="'mk-tab-' + t.id"
+        (click)="select(t.id)">
+        <span class="mk__tab-icon" aria-hidden="true">{{ t.icon }}</span>
+        <span class="mk__tab-label">{{ t.label }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- ── Tab 1: Forge Upgrades ─────────────────────────────────────────── -->
+    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'forge'" id="mk-panel-forge" aria-labelledby="mk-tab-forge">
+      <p class="mk__panel-note">
+        The forge earns while you are looking at it — and, with the Obsidian Heart, while you are not.
+        Every purchase makes the next one 15% dearer.
+        <strong>Now producing {{ perMinute }} Gold a minute.</strong>
+      </p>
+
+      <ul class="mk__ladder">
+        @for (row of forgeRows; track row.id) {
+          <li class="mk__row"
+              [class.mk__row--owned]="row.owned > 0"
+              [class.mk__row--flash]="isFlashing(row.id)"
+              [class.mk__row--denied]="isDenied(row.id)">
+            <span class="mk__row-icon" aria-hidden="true">{{ row.icon }}</span>
+            <span class="mk__row-body">
+              <span class="mk__row-name">
+                {{ row.name }}
+                @if (row.owned > 0) { <span class="mk__row-owned">×{{ row.owned }}</span> }
+              </span>
+              <span class="mk__row-effect">{{ row.effect }}</span>
+              <span class="mk__row-flavour">{{ row.flavour }}</span>
+            </span>
+            <button
+              type="button"
+              class="mk__buy"
+              [disabled]="!row.affordable"
+              (click)="buyUpgrade(row.id)"
+              [attr.aria-label]="'Buy ' + row.name + ' for ' + format(row.cost) + ' Gold'">
+              <span class="mk__buy-cost">{{ format(row.cost) }} 🪙</span>
+              <span class="mk__buy-word">{{ row.affordable ? 'Forge' : 'Locked' }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+
+  <!-- ── Tab 2: Hammer Upgrades ────────────────────────────────────────── -->
+    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'hammer'" id="mk-panel-hammer" aria-labelledby="mk-tab-hammer">
+      <p class="mk__panel-note">
+        What one strike of the Flame is worth. The Flame is in the bottom-right corner of every page,
+        and it pays at most twice a second.
+        <strong>Now {{ perClick }} Gold a strike.</strong>
+      </p>
+
+      <ul class="mk__ladder">
+        @for (row of hammerRows; track row.id) {
+          <li class="mk__row"
+              [class.mk__row--owned]="row.owned > 0"
+              [class.mk__row--flash]="isFlashing(row.id)"
+              [class.mk__row--denied]="isDenied(row.id)">
+            <span class="mk__row-icon" aria-hidden="true">{{ row.icon }}</span>
+            <span class="mk__row-body">
+              <span class="mk__row-name">
+                {{ row.name }}
+                @if (row.owned > 0) { <span class="mk__row-owned">×{{ row.owned }}</span> }
+              </span>
+              <span class="mk__row-effect">{{ row.effect }}</span>
+              <span class="mk__row-flavour">{{ row.flavour }}</span>
+            </span>
+            <button
+              type="button"
+              class="mk__buy"
+              [disabled]="!row.affordable"
+              (click)="buyUpgrade(row.id)"
+              [attr.aria-label]="'Buy ' + row.name + ' for ' + format(row.cost) + ' Gold'">
+              <span class="mk__buy-cost">{{ format(row.cost) }} 🪙</span>
+              <span class="mk__buy-word">{{ row.affordable ? 'Forge' : 'Locked' }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+
+  <!-- ── Tab 3: Enchantments ───────────────────────────────────────────── -->
+    <div class="mk__panel mk__panel--essence" role="tabpanel" [hidden]="active !== 'enchant'" id="mk-panel-enchant" aria-labelledby="mk-tab-enchant">
+      <p class="mk__panel-note">
+        Twenty-four hours of faster progression, bought with Essence.
+        Only the strongest one applies — running two does not multiply them — and buying one you are
+        already running restarts its clock from now.
+      </p>
+
+      <ul class="mk__grid mk__grid--enchant">
+        @for (e of enchantments; track e.id) {
+          <li class="mk__card mk__card--essence"
+              [class.mk__card--running]="isRunning(e)"
+              [class.mk__card--flash]="isFlashing(e.id)"
+              [class.mk__card--denied]="isDenied(e.id)">
+            <span class="mk__card-icon" aria-hidden="true">{{ e.icon }}</span>
+            <h3 class="mk__card-name">{{ e.name }}</h3>
+            <p class="mk__card-effect">{{ e.effect }}</p>
+            <p class="mk__card-flavour">{{ e.flavour }}</p>
+
+            @if (isRunning(e)) {
+              <p class="mk__card-timer">⏳ {{ enchantRemaining }}</p>
+            }
+
+            <button
+              type="button"
+              class="mk__buy mk__buy--essence"
+              [disabled]="!canAffordEssence(e.cost)"
+              (click)="buyEnchantment(e.id)"
+              [attr.aria-label]="'Buy ' + e.name + ' for ' + e.cost + ' Eclipse Essence'">
+              <span class="mk__buy-cost">{{ format(e.cost) }} ⚡</span>
+              <span class="mk__buy-word">{{ isRunning(e) ? 'Renew' : (canAffordEssence(e.cost) ? 'Invoke' : 'Locked') }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+
+  <!-- ── Tab 4: Artifacts ──────────────────────────────────────────────── -->
+    <div class="mk__panel mk__panel--essence" role="tabpanel" [hidden]="active !== 'artifact'" id="mk-panel-artifact" aria-labelledby="mk-tab-artifact">
+      <p class="mk__panel-note">
+        Permanent, and sold once. Five of them exist and there is no second copy of any.
+        <strong>{{ artifactsOwned }} of {{ artifacts.length }} held.</strong>
+      </p>
+
+      <ul class="mk__grid mk__grid--artifact">
+        @for (a of artifacts; track a.id) {
+          <li class="mk__relic"
+              [class.mk__relic--owned]="owns(a)"
+              [class.mk__card--flash]="isFlashing(a.id)"
+              [class.mk__card--denied]="isDenied(a.id)"
+              [style.--relic-color]="colorOf(a)"
+              [style.--relic-glow]="glowOf(a)">
+            <span class="mk__relic-tier">{{ tierLabel(a) }}</span>
+            <span class="mk__relic-icon" aria-hidden="true">{{ a.icon }}</span>
+            <h3 class="mk__relic-name">{{ a.name }}</h3>
+            <p class="mk__relic-effect">{{ a.effect }}</p>
+            <blockquote class="mk__relic-lore">{{ a.lore }}</blockquote>
+
+            @if (owns(a)) {
+              <p class="mk__relic-sold">SOLD OUT — held</p>
+            } @else {
+              <button
+                type="button"
+                class="mk__buy mk__buy--relic"
+                [disabled]="!canAffordEssence(a.cost)"
+                (click)="buyArtifact(a.id)"
+                [attr.aria-label]="'Buy ' + a.name + ' for ' + a.cost + ' Eclipse Essence'">
+                <span class="mk__buy-cost">{{ format(a.cost) }} ⚡</span>
+                <span class="mk__buy-word">{{ canAffordEssence(a.cost) ? 'Claim' : 'Locked' }}</span>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+
+  <!-- ── Tab 5: Cosmetics ──────────────────────────────────────────────── -->
+    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'cosmetic'" id="mk-panel-cosmetic" aria-labelledby="mk-tab-cosmetic">
+      <p class="mk__panel-note">
+        Bought once. Every variant inside comes with it, and switching between them is free —
+        charging twice for a colour you already own is a toll booth, not a shop.
+      </p>
+
+      <ul class="mk__grid mk__grid--cosmetic">
+        @for (c of cosmetics; track c.id) {
+          <li class="mk__card"
+              [class.mk__card--owned]="ownsCosmetic(c)"
+              [class.mk__card--flash]="isFlashing(c.id)"
+              [class.mk__card--denied]="isDenied(c.id)">
+            <span class="mk__card-icon" aria-hidden="true">{{ c.icon }}</span>
+            <h3 class="mk__card-name">{{ c.name }}</h3>
+            <p class="mk__card-effect">{{ c.effect }}</p>
+            <p class="mk__card-flavour">{{ c.flavour }}</p>
+
+            @if (ownsCosmetic(c)) {
+              <div class="mk__variants" role="group" [attr.aria-label]="c.name + ' variants'">
+                @for (v of c.variants; track v.id) {
+                  <button
+                    type="button"
+                    class="mk__variant"
+                    [class.mk__variant--on]="isEquipped(c, v)"
+                    [style.--swatch]="v.color"
+                    (click)="equip(c, v)"
+                    [attr.aria-pressed]="isEquipped(c, v)"
+                    [attr.aria-label]="(isEquipped(c, v) ? 'Remove ' : 'Wear ') + v.label">
+                    <span class="mk__variant-dot" aria-hidden="true"></span>
+                    {{ v.label }}
+                  </button>
+                }
+              </div>
+              <p class="mk__card-sold">OWNED</p>
+            } @else {
+              <button
+                type="button"
+                class="mk__buy"
+                [disabled]="snap.gold < c.cost"
+                (click)="buyCosmetic(c.id)"
+                [attr.aria-label]="'Buy ' + c.name + ' for ' + format(c.cost) + ' Gold'">
+                <span class="mk__buy-cost">{{ format(c.cost) }} 🪙</span>
+                <span class="mk__buy-word">{{ snap.gold >= c.cost ? 'Acquire' : 'Locked' }}</span>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────── -->
+  <footer class="mk__foot">
+    <p class="mk__whisper">the forge does not care whether you are watching. it only cares that you came back.</p>
+    <p class="mk__links">
+      <a routerLink="/quests">The Standing Orders</a> ·
+      <a routerLink="/codex">The Codex</a> ·
+      <a routerLink="/tools">The Forges</a>
+    </p>
+  </footer>
+</section>

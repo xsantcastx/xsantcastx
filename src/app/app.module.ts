@@ -41,8 +41,9 @@ import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
 import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
-import { ForgeFlameComponent } from './shared/idle/forge-flame.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
+import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
+import { CurrencyRailComponent } from './shared/economy/currency-rail.component';
 import { McpComponent } from './mcp/mcp.component';
 
 
@@ -82,8 +83,9 @@ import { McpComponent } from './mcp/mcp.component';
     AchievementDropComponent,
     QuestDrawerComponent,
     QuestTriggerComponent,
+    QuestToastComponent,
     ForgeFlameComponent,
-    QuestToastComponent
+    CurrencyRailComponent
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
