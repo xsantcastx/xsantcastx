@@ -28,4 +28,21 @@ function gameJsonLd(name: string, path: string, description: string) {
 }
 
 export const ARENA_GAME_ROUTES: Routes = [
+  {
+    path: 'arena/color-memory',
+    loadComponent: () =>
+      import('./eclipse-fragments/eclipse-fragments.component')
+        .then(m => m.EclipseFragmentsComponent),
+    title: 'Eclipse Fragments — Match the fragments | The Arena',
+    data: {
+      description: 'A memory game in the Eclipse Realms: turn the scattered fragments face up two at a time and put the realms back together. Three difficulties, no sign-up.',
+      keywords: 'memory game, matching game, browser game, free game, eclipse realms, color memory',
+      ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
+      jsonLd: gameJsonLd(
+        'Eclipse Fragments',
+        'color-memory',
+        'A free browser memory game — match the Eclipse Fragments across three difficulties.'
+      ),
+    },
+  },
 ];

@@ -191,6 +191,7 @@
 /embed/image-resizer
 /mcp
 /arena
+/arena/color-memory
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor
