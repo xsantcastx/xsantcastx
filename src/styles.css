@@ -106,7 +106,26 @@
   --info-color: #7b61ff;
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Lore voice — the Godforge title and the realm quotes. Deliberately a
+     system stack and not a webfont: the two self-hosted families above are
+     the whole font budget (the Google Fonts CDN was removed to kill a
+     render-blocking third-party request), and the largest text on the home
+     page must not wait on a network fetch to paint. */
+  --font-lore: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
   --header-offset: 96px;
+
+  /* ===== Forge palette (Eclipse Realms) =====
+     The atmosphere layer over the cosmic palette. Warm, subterranean, and
+     used only by the Godforge surfaces — the realm accents themselves come
+     from REALMS in realm.model.ts, which paints --realm-color per station. */
+  --forge-ember: #E8752A;
+  --forge-gold: #C9A84C;
+  --forge-crimson: #8B2252;
+  /* Gold is 3.6:1 on the dark base — too low for body text, so text-weight
+     gold uses this lightened stop instead and the raw token stays for
+     borders, glows and rules where contrast rules do not apply. */
+  --forge-gold-text: #E0A857;
+  --forge-void: #0a0f1e;
 }
 
 /* ===== Resets ===== */
