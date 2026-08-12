@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { QuestService } from '../shared/quests/quest.service';
 import {
   EclipseRarity,
   RarityDefinition,
@@ -50,6 +51,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
+  private readonly quests = inject(QuestService);
 
   totalEggs = EASTER_EGGS.length;
   foundCount = 0;
@@ -168,6 +170,11 @@ export class ArenaComponent implements OnInit {
       // NEW means never finished a run — and only worth saying on a gate the
       // visitor can actually walk through.
       game.isNew = !game.locked && this.scores.isNew(game.id);
+
+      // The Arena Champion quest asks for three games *played*. Now that the
+      // gates lead somewhere, a cleared run is a real signal and the quest no
+      // longer has to settle for counting gates that were merely unlocked.
+      if (this.scores.hasCleared(game.id)) this.quests.recordArenaGame(game.id);
     }
   }
 
