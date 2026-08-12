@@ -34,7 +34,7 @@ import {
   RARITY_ORDER,
   RarityDefinition,
 } from '../shared/rarity/rarity.model';
-import { LEVELS, LevelDefinition } from '../shared/gamification/gamification.model';
+import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import {
   MASTERY_LEVELS,
@@ -206,6 +206,8 @@ export class CodexComponent implements OnInit, OnDestroy {
   // ── Progression ───────────────────────────────────────────────────────────
   snap: XpSnapshot = ZERO_SNAPSHOT;
   readonly levels = LEVELS;
+  /** Exposed for the rank orb and the ten path nodes. */
+  readonly rankSigil = rankSigil;
   calendar: CalendarDay[] = [];
 
   // ── Bestiary ──────────────────────────────────────────────────────────────

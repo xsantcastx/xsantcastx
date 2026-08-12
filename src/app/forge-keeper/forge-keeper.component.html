@@ -35,8 +35,8 @@
           <circle class="fk-sigil__point" [attr.cx]="p.x" [attr.cy]="p.y" r="5" />
         }
         <circle class="fk-sigil__core" cx="100" cy="100" r="34" />
-        <text class="fk-sigil__numeral" x="100" y="100"
-              text-anchor="middle" dominant-baseline="central">{{ snap.level.level }}</text>
+        <image class="fk-sigil__art" [attr.href]="rankSigil(snap.level.level)"
+               x="56" y="56" width="88" height="88" preserveAspectRatio="xMidYMid meet" />
       </svg>
     </div>
 
@@ -73,12 +73,15 @@
       <!-- Wallet -->
       <div class="fk-id__wallet">
         <span class="fk-id__coin fk-id__coin--gold">
-          <span class="fk-id__coin-icon" aria-hidden="true">🪙</span>
+          <img class="fk-id__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
           <span class="fk-id__coin-val">{{ money(wallet.gold) }}</span>
           <span class="fk-id__coin-label">Gold</span>
         </span>
         <span class="fk-id__coin fk-id__coin--essence">
-          <span class="fk-id__coin-icon" aria-hidden="true">⚡</span>
+          <img class="fk-id__coin-icon gf-icon currency-icon currency-icon--essence"
+               src="assets/icons/currencies/essence.png"
+               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
           <span class="fk-id__coin-val">{{ money(wallet.essence) }}</span>
           <span class="fk-id__coin-label">Eclipse Essence</span>
         </span>
@@ -161,7 +164,13 @@
 
       <div class="fk-affinity__read">
         <p class="fk-affinity__verdict">
-          <span class="fk-affinity__verdict-icon" aria-hidden="true">{{ affinityVerdict.icon }}</span>
+          @if (affinityVerdict.art) {
+            <img class="fk-affinity__verdict-icon gf-icon realm-sigil realm-sigil--active"
+                 [src]="affinityVerdict.icon" alt="" aria-hidden="true" width="26" height="26"
+                 loading="lazy" decoding="async" draggable="false">
+          } @else {
+            <span class="fk-affinity__verdict-icon" aria-hidden="true">{{ affinityVerdict.icon }}</span>
+          }
           <span class="fk-affinity__verdict-title">{{ affinityVerdict.title }}</span>
         </p>
         <p class="fk-affinity__line">{{ affinityVerdict.line }}</p>
@@ -250,13 +259,22 @@
             @if (!item.owned) {
               <p class="fk-inv__price">
                 <a routerLink="/market" class="fk-inv__price-link">
-                  {{ item.currency === 'gold' ? '🪙' : '⚡' }} {{ money(item.cost) }} in The Market
+                  <img class="gf-icon currency-icon" [class.currency-icon--essence]="item.currency !== 'gold'"
+                       [src]="'assets/icons/currencies/' + (item.currency === 'gold' ? 'gold' : 'essence') + '.png'"
+                       alt="" aria-hidden="true" width="14" height="14"
+                       loading="lazy" decoding="async" draggable="false">
+                  {{ money(item.cost) }} in The Market
                 </a>
               </p>
             }
           </div>
 
-          <span class="fk-inv__tier">{{ item.rarity.label }}</span>
+          <span class="fk-inv__tier">
+            <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + item.rarity.id"
+                 [src]="item.rarity.icon" alt="" aria-hidden="true" width="16" height="16"
+                 loading="lazy" decoding="async" draggable="false">
+            {{ item.rarity.label }}
+          </span>
         </li>
       }
     </ul>
@@ -290,7 +308,12 @@
           <p class="fk-case__name">{{ a.name }}</p>
           <p class="fk-case__desc">{{ a.description }}</p>
           <p class="fk-case__meta">
-            <span class="fk-case__tier">{{ a.rarity.label }}</span>
+            <span class="fk-case__tier">
+              <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + a.rarity.id"
+                   [src]="a.rarity.icon" alt="" aria-hidden="true" width="16" height="16"
+                   loading="lazy" decoding="async" draggable="false">
+              {{ a.rarity.label }}
+            </span>
             <span class="fk-case__date">{{ formatDate(a.unlockedAt) }}</span>
           </p>
         </li>
@@ -337,7 +360,12 @@
                         (click)="togglePin(a.id)">
                   <span class="fk-case__pick-icon" aria-hidden="true">{{ a.icon }}</span>
                   <span class="fk-case__pick-name">{{ a.name }}</span>
-                  <span class="fk-case__pick-tier">{{ a.rarity.label }}</span>
+                  <span class="fk-case__pick-tier">
+                    <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + a.rarity.id"
+                         [src]="a.rarity.icon" alt="" aria-hidden="true" width="14" height="14"
+                         loading="lazy" decoding="async" draggable="false">
+                    {{ a.rarity.label }}
+                  </span>
                 </button>
               </li>
             }

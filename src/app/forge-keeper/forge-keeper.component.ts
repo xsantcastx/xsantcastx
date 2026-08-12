@@ -47,7 +47,7 @@ import {
   RARITY_ORDER,
   RarityDefinition,
 } from '../shared/rarity/rarity.model';
-import { LEVELS, LevelDefinition } from '../shared/gamification/gamification.model';
+import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import {
   MasteryDefinition,
@@ -287,6 +287,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   /** Tools at Expert or above — the same definition the Codex Bestiary uses. */
   toolsMastered = 0;
   readonly loreTotal = LORE_CHAPTER_TOTAL;
+  /** Exposed for the rank sigil painted into the identity crest. */
+  readonly rankSigil = rankSigil;
 
   // ── Achievements ──────────────────────────────────────────────────────────
   /** The whole wall, locked. Hydration flips what this visitor has found. */
@@ -567,7 +569,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   }
 
   /** The badge over the disc. Matches the Codex's wording so the two agree. */
-  get affinityVerdict(): { icon: string; title: string; line: string } {
+  get affinityVerdict(): { icon: string; art?: boolean; title: string; line: string } {
     if (this.snap.xp === 0) {
       return {
         icon: '◌',
@@ -582,9 +584,13 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
         line: 'You walk between realms and answer to neither. That is the rarest allegiance there is.',
       };
     }
+    // Solari and Nocturne are the two realms with painted sigils; Unclaimed and
+    // True Convergent are states rather than realms and keep their glyph.
     return this.aetherPercent > 55
-      ? { icon: '🕊', title: 'Solari', line: 'The Light burns bright in you, Solari.' }
-      : { icon: '🌒', title: 'Nocturne', line: 'The Shadow knows your name, Nocturne.' };
+      ? { icon: 'assets/icons/realms/luminous.png', art: true, title: 'Solari',
+          line: 'The Light burns bright in you, Solari.' }
+      : { icon: 'assets/icons/realms/umbral.png', art: true, title: 'Nocturne',
+          line: 'The Shadow knows your name, Nocturne.' };
   }
 
   /**
