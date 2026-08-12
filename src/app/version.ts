@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.49.0',
+  version: '2.49.1',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Codex',
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.49.1',
+    codename: 'Codex',
+    date: '2026-08-13',
+    highlights: [
+      'A QA sweep of every tool page, loaded in a real browser at 1280 and 375 rather than read as source, found one structural defect and fixed it: emoji-picker was the only tool of 128 shipping without a realm badge',
+      'The cause is worth writing down because the same shape will recur. The realm badge is not authored in any template — RealmService writes data-realm onto <html> and one global rule hangs the badge off `html[data-realm] .tool-header__eyebrow::after`. That reaches 128 templates without editing them, and silently skips any template not using the class it keys on. emoji-picker built its header from private ep-header classes, so it got nothing, and a mechanism that works by not being mentioned has no way to report that it missed one',
+      'The shared classes were added alongside the ep-* ones rather than replacing them, so the component keeps its own styling. Verified on built output: the badge now resolves to "Archivum" in rgb(201,168,76), matching the Verge badge on json-formatter',
+      'The rest of the sweep found no defects, which is itself the useful result. All 128 pages: zero load failures, zero console errors, zero horizontal overflow at 375px, all with an h1, working inputs, a glassmorphism surface, a purple-family border and the same rgb(7,9,15) background. Prerendered HTML is clean — no leaked {{ }} interpolation, no stub renders, no empty shells',
+      'The reported "broken HTML showing as text" did not reproduce as a defect. Three tools do render angle brackets as visible text — font-pairer\'s "Copy <link> Tags", svg-to-code\'s "<title>" and ts-playground\'s "Partial<T>" / "ReturnType<T>" — but every one is deliberate: they are labels naming HTML tags and TypeScript generics, correctly escaped and correctly displayed. They were left alone rather than "fixed" into something wrong',
+      'Two earlier suspects were checked and cleared rather than assumed: the 15 tools that inject syntax-highlighted HTML via [innerHTML] already scope their colours with ::ng-deep, so emulated encapsulation is not stripping them; and the CSP inline-handler hashes still match the built output, so the main stylesheet is not being blocked the way it was once before'
+    ]
+  },
   {
     version: '2.49.0',
     codename: 'Codex',
