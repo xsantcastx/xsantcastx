@@ -1,0 +1,146 @@
+<app-arena-shell
+  [title]="'Shadow Cipher'"
+  [lore]="'The Nocturne encrypted the Codex — restore the sacred code.'"
+  [icon]="'🗝️'"
+  [bestLabel]="bestLabel"
+  [locked]="locked"
+  [unlockHint]="game.unlockHint">
+
+  @if (!locked) {
+
+    <!-- ── INTRO ─────────────────────────────────────────── -->
+    @if (phase === 'intro') {
+      <section class="ag-panel ag-intro">
+        <p class="ag-intro__body">
+          Ten pages of the Codex, every line shuffled out of order. Move them back into
+          place — use the arrows, or tap two lines to swap them. A page seals itself the
+          moment it reads true.
+        </p>
+        <p class="ag-intro__body sc-warn">
+          The Nocturne will whisper a position if you ask, and charge
+          {{ hintCost }} Aether against your reward for each one.
+        </p>
+        <button type="button" class="ag-btn ag-btn--primary" (click)="start()">
+          Open the Codex &rarr;
+        </button>
+      </section>
+    }
+
+    <!-- ── PUZZLE ────────────────────────────────────────── -->
+    @if (phase === 'playing') {
+      <div class="ag-hud">
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ pageIndex + 1 }}/{{ totalPages }}</span>
+          <span class="ag-stat__label">Page</span>
+        </div>
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ timeLabel }}</span>
+          <span class="ag-stat__label">Time</span>
+        </div>
+        <div class="ag-stat" [class.ag-stat--warn]="hintsUsed > 0">
+          <span class="ag-stat__num">{{ hintsUsed }}</span>
+          <span class="ag-stat__label">Whispers</span>
+        </div>
+        <div class="ag-stat ag-stat--good">
+          <span class="ag-stat__num">{{ projectedReward }}</span>
+          <span class="ag-stat__label">Reward left</span>
+        </div>
+      </div>
+
+      <section class="sc-page ag-panel" [class.sc-page--restored]="restored">
+        <header class="sc-page__head">
+          <span class="sc-lang" [attr.data-lang]="page.lang">{{ page.lang }}</span>
+          <h2 class="sc-page__title">{{ page.title }}</h2>
+        </header>
+
+        <ol class="sc-lines" [attr.aria-label]="'Lines of ' + page.title">
+          @for (row of rows; track trackRow($index, row)) {
+            <li
+              class="sc-line"
+              [class.sc-line--placed]="isPlaced($index)"
+              [class.sc-line--selected]="selected === $index">
+              <button
+                type="button"
+                class="sc-line__grab"
+                [attr.aria-label]="'Line ' + ($index + 1) + ': ' + row.text + (selected === $index ? '. Selected, choose another line to swap' : '. Select to swap')"
+                [attr.aria-pressed]="selected === $index"
+                (click)="tap($index)">
+                <span class="sc-line__num">{{ $index + 1 }}</span>
+                <code class="sc-line__code">{{ row.text }}</code>
+                @if (row.hintAt) {
+                  <span class="sc-line__hint" title="The Nocturne says this line belongs here">
+                    &rarr; {{ row.hintAt }}
+                  </span>
+                }
+              </button>
+
+              <span class="sc-line__moves">
+                <button
+                  type="button"
+                  class="sc-move"
+                  [disabled]="$index === 0 || restored"
+                  [attr.aria-label]="'Move line ' + ($index + 1) + ' up'"
+                  (click)="moveUp($index)">▲</button>
+                <button
+                  type="button"
+                  class="sc-move"
+                  [disabled]="$index === rows.length - 1 || restored"
+                  [attr.aria-label]="'Move line ' + ($index + 1) + ' down'"
+                  (click)="moveDown($index)">▼</button>
+              </span>
+            </li>
+          }
+        </ol>
+
+        @if (restored) {
+          <p class="sc-restored" role="status">✦ Page restored</p>
+        }
+      </section>
+
+      <div class="sc-actions">
+        <button type="button" class="ag-btn" (click)="hint()" [disabled]="restored">
+          Ask the Nocturne (−{{ hintCost }})
+        </button>
+        <button type="button" class="ag-btn ag-btn--ghost" (click)="giveUp()">
+          Close the Codex
+        </button>
+      </div>
+    }
+
+    <!-- ── END ───────────────────────────────────────────── -->
+    @if (phase === 'done' && result) {
+      <section
+        class="ag-end"
+        [class.ag-end--lost]="!cleared"
+        [attr.data-success-burst]="cleared ? '' : null"
+        role="status">
+        <h2 class="ag-end__title">
+          {{ cleared ? 'The Codex reads true ✦' : 'The Codex stays sealed' }}
+        </h2>
+        <p class="ag-end__line">
+          {{ result.score }}/{{ totalPages }} pages restored in {{ timeLabel }},
+          {{ hintsUsed }} whisper{{ hintsUsed === 1 ? '' : 's' }} spent.
+        </p>
+
+        @if (result.xpAwarded > 0) {
+          <p class="ag-end__xp">
+            +{{ result.xpAwarded }} Nox
+            @if (hintsUsed > 0) { <span class="sc-toll">(after the Nocturne's toll)</span> }
+          </p>
+        } @else if (!cleared) {
+          <p class="ag-end__line ag-end__line--muted">
+            Restore all {{ totalPages }} pages in one sitting to earn Nox.
+          </p>
+        } @else {
+          <p class="ag-end__line ag-end__line--muted">Already claimed. The Codex only opens once.</p>
+        }
+
+        <div class="ag-end__actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="start()">Again</button>
+          <a routerLink="/arena" class="ag-btn ag-btn--ghost">Back to the Arena</a>
+        </div>
+      </section>
+    }
+
+  }
+</app-arena-shell>
