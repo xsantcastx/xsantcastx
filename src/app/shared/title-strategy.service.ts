@@ -1,35 +1,42 @@
 /**
  * title-strategy.service.ts — the browser-tab name for every route.
  *
- * House format is `<Page> · xsantcastx`, with the middot as the separator and
- * the wordmark last. Routes carry their own fully-formed title in the router
- * config; this strategy only brands the ones that forgot to, and supplies the
- * fallback for a route with no title at all.
+ * The site is The Godforge. "xsantcastx" is the maker's mark, not the product
+ * name, and it is deliberately absent from page titles — it lives in the header
+ * logo, the footer copyright, /about, the npm package name, and the SEO
+ * keywords where it earns discovery. Nowhere else.
  *
- * Nothing here says "portfolio" or names a job. The site is a platform — the
- * Godforge — and the tab should read like one on every page.
+ * Naming rule, applied by hand in the router config rather than by a helper:
+ *   - a page whose name is already ours stands alone — "The Arena",
+ *     "The Codex", "The War Table", "Fuel the Forge"
+ *   - a page with a generic name takes the product on the end for context —
+ *     "Contact — The Godforge", "MCP Server — The Godforge"
+ *
+ * The 128 tool pages keep their keyword phrasing and simply end in
+ * "— The Godforge" instead of the old wordmark: a title is the strongest
+ * on-page ranking signal there is, and those phrases are what the pages rank
+ * on. Rebranding the suffix costs nothing; rewriting them to bare tool names
+ * would.
  */
 import { Injectable } from '@angular/core';
 import { TitleStrategy, RouterStateSnapshot } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 /** What the tab reads when a route supplies no title of its own. */
-export const DEFAULT_TITLE = 'xsantcastx · The Godforge';
+export const DEFAULT_TITLE = 'The Godforge';
 
 /**
- * Put the wordmark on a route title, once.
+ * Resolve a route's title, falling back to the product name.
  *
- * Exported because SeoService needs the identical string for og:title and
- * twitter:title — when the two branded independently, the arena game routes
- * (which declare a title without the wordmark) ended up with a `<title>` and
- * an `og:title` that disagreed on every page.
- *
- * Titles that already name the site are returned untouched, which is what
- * keeps the 128 tool pages — all ending in "| xsantcastx" — off this path.
+ * Deliberately does no appending. An earlier version bolted the wordmark onto
+ * any title that lacked it, which cannot express the rule above — it would
+ * turn "The Arena" into "The Arena — The Godforge". Titles are now fully
+ * formed at the route, and this exists so `SeoService` derives og:title and
+ * twitter:title from the same string the tab gets; when the two computed
+ * branding independently they disagreed on every page.
  */
 export function brandTitle(title: string | undefined | null): string {
-  if (!title) return DEFAULT_TITLE;
-  return title.includes('xsantcastx') ? title : `${title} · xsantcastx`;
+  return title || DEFAULT_TITLE;
 }
 
 @Injectable()
@@ -39,20 +46,14 @@ export class AppTitleStrategy extends TitleStrategy {
   }
 
   override updateTitle(routerState: RouterStateSnapshot): void {
-    // brandTitle handles the undefined case by returning DEFAULT_TITLE.
     this.title.setTitle(brandTitle(this.buildTitle(routerState)));
   }
 }
 
-/**
- * Titles for the routes that share this map rather than spelling their own out.
- *
- * Each value is already fully formed, wordmark included, so `updateTitle` above
- * passes them through rather than re-branding them.
- */
+/** Titles for the routes that share this map rather than spelling their own out. */
 export const RouteTitles = {
-  skills: 'Skills · xsantcastx',
-  projects: 'Projects · xsantcastx',
-  contact: 'Contact · xsantcastx',
-  donate: 'Fuel the Forge · xsantcastx',
+  skills: 'Skills — The Godforge',
+  projects: 'Projects — The Godforge',
+  contact: 'Contact — The Godforge',
+  donate: 'Fuel the Forge',
 } as const;
