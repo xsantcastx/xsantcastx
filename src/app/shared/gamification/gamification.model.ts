@@ -20,7 +20,8 @@ export type XpEventType =
   | 'copy'
   | 'easter-egg'
   | 'share'
-  | 'streak';
+  | 'streak'
+  | 'arena-win';
 
 /** Canonical XP award per event. Kept in one place so the economy is auditable. */
 export const XP_VALUES: Record<XpEventType, number> = {
@@ -31,6 +32,9 @@ export const XP_VALUES: Record<XpEventType, number> = {
   'share': 25,
   // Streak is computed, not fixed — this is the per-day step (see STREAK_STEP).
   'streak': 0,
+  // Each Arena game sets its own price for a first clear (see ARENA_PLAYABLE),
+  // so this default only applies if an award ever forgets to pass an amount.
+  'arena-win': 40,
 };
 
 /** Each consecutive day adds this much to the daily bonus… */
