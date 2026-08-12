@@ -36,41 +36,71 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import {
   ARTIFACTS,
+  AUTO_CLICKERS,
   Artifact,
   COSMETICS,
   Cosmetic,
   ENCHANTMENTS,
   Enchantment,
   FORGE_UPGRADES,
+  GoldBreakdown,
   HAMMER_UPGRADES,
   HammerEffect,
+  MULTIPLIER_UPGRADES,
   PlayerEconomy,
   activeEnchantment,
+  autoClicksPerSecond,
+  canPrestige,
   costOf,
   earnsWhileHidden,
   emptyEconomy,
   flameTier,
   globalMultiplier,
+  goldBreakdown,
   goldPerClick,
-  goldPerMinute,
+  goldPerSecond,
   hammerVisual,
+  isSinglePurchase,
+  pendingShards,
+  shardMultiplier,
+  shardsFor,
   totalUpgradeLevels,
+  upgradeById,
 } from './economy.model';
 
 export const ECONOMY_KEY = 'godforge-economy';
 
-/** One minute. The idle prompt, and the unit idle is priced in. */
+/** One second. The tick, and the unit the whole economy is priced in. */
+const SECOND_MS = 1_000;
+/** One minute, still the window the Click Frenzy achievement is measured over. */
 const MINUTE_MS = 60_000;
 
 /**
- * The most offline time one settlement will pay for, in minutes.
+ * The most offline time one settlement will pay for, in seconds.
  *
  * Eight hours. Long enough that a tab left open overnight pays out properly,
  * short enough that a machine restored from a two-week-old suspend does not
  * hand over a fortnight of Gold in a single frame — and short enough that
  * moving the system clock forward is not a strategy.
  */
-const MAX_OFFLINE_MINUTES = 8 * 60;
+const MAX_OFFLINE_SECONDS = 8 * 60 * 60;
+
+/**
+ * How often the ledger is actually written, in ms.
+ *
+ * The tick now fires sixty times more often than it used to, and a
+ * `localStorage.setItem` of the whole blob every second — synchronous, on the
+ * main thread, for a tab that may be doing nothing else — is a cost with no
+ * matching benefit. Writing every five seconds is safe because Gold and
+ * `lastIdleAt` are written *together*: a dropped write rewinds both, so the
+ * next load re-settles exactly the span it did not save and pays it once. The
+ * failure mode of the throttle is a repeat of work already done, never a
+ * double credit and never a loss.
+ *
+ * Anything that must not be lost — a purchase, an Eclipse reset, the tab going
+ * away — flushes immediately instead.
+ */
+const PERSIST_INTERVAL_MS = 5_000;
 
 /** Minimum ms between two paying strikes of the Forge Flame. */
 export const CLICK_COOLDOWN_MS = 500;
@@ -80,11 +110,33 @@ export interface EconomySnapshot {
   gold: number;
   essence: number;
   totalGoldEarned: number;
+  /** Gold minted since the last Eclipse. */
+  runGoldEarned: number;
   totalClicks: number;
-  /** Gold per minute, everything applied. */
+  /** Strikes the automatons have thrown. Never counted as yours. */
+  autoClicks: number;
+  /** Gold per second, everything applied. The headline number. */
+  perSecond: number;
+  /** The same rate per minute, for the surfaces that still say "a minute". */
   perMinute: number;
+  /** Every line of `perSecond`, so the Market can show its working. */
+  breakdown: GoldBreakdown;
+  /** Strikes a second the automatons are throwing, before any multiplier. */
+  autoPerSecond: number;
   /** Gold per strike, everything applied. */
   perClick: number;
+  /** Eclipse Shards held. */
+  shards: number;
+  /** What those shards are paying. 7 shards is 1.35. */
+  shardMult: number;
+  /** How many Eclipses have been taken. */
+  prestigeCount: number;
+  /** Shards the next Eclipse would hand over. */
+  pendingShards: number;
+  /** True when the Eclipse reset is open and worth taking. */
+  prestigeReady: boolean;
+  /** The daily streak the rate is being multiplied by. */
+  streakDays: number;
   /** 0-5. How elaborate the Flame is drawn. */
   flameTier: number;
   /** Loudest owned hammer visual. */
@@ -114,6 +166,18 @@ export interface PurchaseEvent {
   name: string;
   cost: number;
   currency: 'gold' | 'essence';
+  /** How much the Gold/sec rate moved. Drives the green "+2.5/sec" floater. */
+  rateDelta: number;
+}
+
+/** Emitted when an Eclipse is taken, so the Market can celebrate the wipe. */
+export interface PrestigeEvent {
+  /** Shards handed over by this reset. */
+  granted: number;
+  /** Shards held afterwards. */
+  total: number;
+  /** How many Eclipses have now been taken. */
+  count: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -125,6 +189,21 @@ export class EconomyService implements OnDestroy {
   private initialised = false;
   private idleTimer: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler: (() => void) | null = null;
+  private pageHideHandler: (() => void) | null = null;
+
+  /** Epoch ms of the last write, and the trailing write scheduled after it. */
+  private lastPersistAt = 0;
+  private persistHandle: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * The current rank, mirrored in by the wiring layer.
+   *
+   * In memory only, unlike the streak: the prestige gate is the one thing that
+   * reads it, that gate is a button on a page, and progression will always have
+   * hydrated before anybody has scrolled to it. The streak has to be persisted
+   * because offline settlement prices eight hours from the blob alone.
+   */
+  private rankLevel = 1;
 
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
   private lastClickAt = 0;
@@ -139,6 +218,8 @@ export class EconomyService implements OnDestroy {
   private readonly gain$$ = new Subject<CurrencyGain>();
   private readonly purchase$$ = new Subject<PurchaseEvent>();
   private readonly milestone$$ = new Subject<{ clicks: number; bonus: number }>();
+  private readonly autoStrike$$ = new Subject<number>();
+  private readonly prestige$$ = new Subject<PrestigeEvent>();
 
   /** Current holdings, replayed to late subscribers. */
   readonly snapshot$: Observable<EconomySnapshot> = this.snapshot$$.asObservable();
@@ -147,6 +228,17 @@ export class EconomyService implements OnDestroy {
   readonly purchase$: Observable<PurchaseEvent> = this.purchase$$.asObservable();
   /** Century Strike and Millennium Forge. `bonus` is the Gold that came with it. */
   readonly milestone$: Observable<{ clicks: number; bonus: number }> = this.milestone$$.asObservable();
+  /**
+   * One beat a second while automatons are owned, carrying how many struck.
+   *
+   * A *display* signal, not a payout: the Gold is already in the per-second
+   * rate. The Flame subscribes to make itself look struck, which is why this
+   * fires once a second whether the visitor owns one automaton or twenty-six —
+   * animating twenty-six strikes a second would be a strobe, and nobody could
+   * count them anyway.
+   */
+  readonly autoStrike$: Observable<number> = this.autoStrike$$.asObservable();
+  readonly prestige$: Observable<PrestigeEvent> = this.prestige$$.asObservable();
 
   get snapshot(): EconomySnapshot { return this.snapshot$$.value; }
   /** A copy. Callers render it; nothing outside this file may reach the ledger. */
@@ -179,19 +271,31 @@ export class EconomyService implements OnDestroy {
     // having none until their next click happens to trigger a publish.
     this.publish();
 
-    // The idle prompt does no template work — it calls settleIdle(), which
-    // re-enters the zone through its own subscribers only when Gold actually
-    // moves. A minute timer that triggers change detection sixty times an hour
-    // for a tab nobody is looking at is exactly the kind of thing the mobile
-    // pass in 2.1.0 was cleaning up.
+    // The tick runs outside Angular and re-enters exactly once a second, and
+    // only when there is something to show: `settleIdle()` returns without
+    // touching the zone when the tab is hidden or the rate is zero. That is the
+    // whole budget for the visible counter — one change-detection pass a
+    // second on a foreground tab, nothing at all on a background one.
     this.zone.runOutsideAngular(() => {
-      this.idleTimer = setInterval(() => this.settleIdle(), MINUTE_MS);
+      this.idleTimer = setInterval(() => this.settleIdle(), SECOND_MS);
 
       // Settling on the visibility edge is what makes hidden time discardable
       // without a second clock: going hidden pays out everything owed up to
       // that instant, and coming back settles the gap under the hidden rules.
-      this.visibilityHandler = () => this.settleIdle();
+      // It also flushes, because a tab that goes hidden on a phone is a tab
+      // that may never get another frame before it is killed.
+      this.visibilityHandler = () => {
+        this.settleIdle();
+        this.flush();
+        if (document.visibilityState === 'visible') this.zone.run(() => this.publish());
+      };
       document.addEventListener('visibilitychange', this.visibilityHandler, { passive: true });
+
+      // `pagehide` rather than `beforeunload`: the latter is not fired at all
+      // on a page entering the back/forward cache on iOS, which is exactly the
+      // case where a throttled write would otherwise be the one that is lost.
+      this.pageHideHandler = () => this.flush();
+      window.addEventListener('pagehide', this.pageHideHandler, { passive: true });
     });
   }
 
@@ -200,6 +304,10 @@ export class EconomyService implements OnDestroy {
     if (this.visibilityHandler) {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
+    if (this.pageHideHandler) {
+      window.removeEventListener('pagehide', this.pageHideHandler);
+    }
+    this.flush();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -216,13 +324,28 @@ export class EconomyService implements OnDestroy {
     if (!this.isBrowser || amount <= 0) return 0;
 
     const credited = Math.round(amount * globalMultiplier(this.state));
-    this.state.gold += credited;
-    this.state.totalGoldEarned += credited;
+    this.credit(credited);
 
-    this.persist();
+    this.persistSoon();
     this.publish();
     this.gain$$.next({ currency: 'gold', amount: credited, source });
     return credited;
+  }
+
+  /**
+   * The one place Gold is added to the ledger.
+   *
+   * Three counters move together and none of them may ever move alone:
+   * `gold` is spendable and goes down again, `runGoldEarned` is the current
+   * Eclipse and is wiped by a reset, and `totalGoldEarned` is all-time and is
+   * what prestige is priced off. Splitting this across the four call sites is
+   * how one of them eventually forgets the third and quietly stops the shard
+   * curve advancing.
+   */
+  private credit(amount: number): void {
+    this.state.gold += amount;
+    this.state.runGoldEarned += amount;
+    this.state.totalGoldEarned += amount;
   }
 
   /**
@@ -234,7 +357,7 @@ export class EconomyService implements OnDestroy {
     if (!this.isBrowser || amount <= 0) return 0;
 
     this.state.eclipseEssence += amount;
-    this.persist();
+    this.persistSoon();
     this.publish();
     this.gain$$.next({ currency: 'essence', amount, source });
     return amount;
@@ -266,16 +389,15 @@ export class EconomyService implements OnDestroy {
     if (century) gold += 10;
 
     // Credit directly rather than through earnGold(): goldPerClick() has already
-    // applied the multiplier to the per-strike figure, and running it through
-    // the mint would apply it a second time.
-    this.state.gold += gold;
-    this.state.totalGoldEarned += gold;
+    // applied every multiplier to the per-strike figure, and running it through
+    // the mint would apply the Fragment a second time.
+    this.credit(gold);
 
     this.recentClicks.push(now);
     const cutoff = now - MINUTE_MS;
     this.recentClicks = this.recentClicks.filter(t => t >= cutoff);
 
-    this.persist();
+    this.persistSoon();
     this.publish();
     this.gain$$.next({ currency: 'gold', amount: gold, source: 'strike' });
     if (century || millennium) {
@@ -296,11 +418,17 @@ export class EconomyService implements OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Pay for the wall-clock minutes since the last settlement.
+   * Pay for the wall-clock seconds since the last settlement.
    *
-   * Whole minutes only, and the remainder stays on the clock — settling twice
-   * inside one minute must not round a partial minute up twice, which is what a
+   * Whole seconds only, and the remainder stays on the clock — settling twice
+   * inside one second must not round a partial second up twice, which is what a
    * visibility flicker would do.
+   *
+   * The Gold credited here is deliberately *not* rounded. At the base rate the
+   * forge makes a tenth of a Gold a second, and rounding each second to an
+   * integer would round it to zero every time: a brand-new visitor would watch
+   * a counter that says "0.1 Gold/sec" produce nothing at all, forever. The
+   * fraction is carried on the balance and floored only where it is displayed.
    */
   private settleIdle(): void {
     if (!this.isBrowser) return;
@@ -312,41 +440,52 @@ export class EconomyService implements OnDestroy {
     // otherwise sit at a negative elapsed forever. Re-anchor and pay nothing.
     if (elapsed < 0) {
       this.state.lastIdleAt = now;
-      this.persist();
+      this.persistSoon();
       return;
     }
 
-    const wholeMinutes = Math.floor(elapsed / MINUTE_MS);
-    if (wholeMinutes < 1) return;
+    const wholeSeconds = Math.floor(elapsed / SECOND_MS);
+    if (wholeSeconds < 1) return;
 
-    const minutes = Math.min(wholeMinutes, MAX_OFFLINE_MINUTES);
-    // Advance by exactly what was paid for, leaving the sub-minute remainder.
-    this.state.lastIdleAt += wholeMinutes * MINUTE_MS;
+    const seconds = Math.min(wholeSeconds, MAX_OFFLINE_SECONDS);
+    // Advance by exactly what was paid for, leaving the sub-second remainder.
+    this.state.lastIdleAt += wholeSeconds * SECOND_MS;
 
     const hidden = document.visibilityState !== 'visible';
     if (hidden && !earnsWhileHidden(this.state)) {
       // The clock has moved; nothing is owed. Persist so a reload does not
       // re-examine the same span and pay it under visible rules.
-      this.persist();
+      this.persistSoon();
       return;
     }
 
-    const gold = Math.round(goldPerMinute(this.state) * minutes);
+    const gold = goldPerSecond(this.state) * seconds;
     if (gold <= 0) {
-      this.persist();
+      this.persistSoon();
       return;
     }
 
-    this.state.gold += gold;
-    this.state.totalGoldEarned += gold;
-    this.persist();
+    this.credit(gold);
 
-    // Back into the zone: the currency rail and the Flame are both bound to the
+    // Counted apart from `totalClicks`, which is the visitor's own arm and is
+    // what three of the Codex achievements are for.
+    const autoRate = autoClicksPerSecond(this.state);
+    if (autoRate > 0) this.state.autoClicks += autoRate * seconds;
+
+    this.persistSoon();
+
+    // Nothing below this line is worth a change-detection pass on a tab nobody
+    // is looking at. The Gold is already banked; the animation is not owed.
+    if (hidden) return;
+
+    // Back into the zone: the header ticker and the Flame are both bound to the
     // snapshot, and a mint outside the zone would not repaint until something
-    // else happened to trigger a pass.
+    // else happened to trigger a pass. Exactly one re-entry per second.
     this.zone.run(() => {
       this.publish();
       this.gain$$.next({ currency: 'gold', amount: gold, source: 'idle' });
+      // One beat regardless of how many automatons are owned — see `autoStrike$`.
+      if (autoRate > 0) this.autoStrike$$.next(autoRate);
     });
   }
 
@@ -359,28 +498,135 @@ export class EconomyService implements OnDestroy {
     return this.state.upgrades[id] ?? 0;
   }
 
-  /** What the next level of an upgrade costs right now. */
+  /**
+   * What the next level of an upgrade costs right now.
+   *
+   * Resolved against the whole catalog rather than the two original ladders:
+   * multipliers and automatons live in the same `upgrades` map and are bought
+   * through the same method, so there is one price function for all four.
+   */
   nextCost(id: string): number {
-    const def = FORGE_UPGRADES.find(u => u.id === id) ?? HAMMER_UPGRADES.find(u => u.id === id);
+    const def = upgradeById(id);
     return def ? costOf(def.baseCost, this.levelOf(id)) : Infinity;
   }
 
-  /** Buy one level of a forge or hammer upgrade. False when it is unaffordable. */
+  /** True once a single-purchase item has been bought and cannot be bought again. */
+  isMaxed(id: string): boolean {
+    return isSinglePurchase(id) && this.levelOf(id) > 0;
+  }
+
+  /**
+   * Buy one level from any of the four Gold ladders.
+   *
+   * False when it is unaffordable, unknown, or already held and unrepeatable.
+   * The rate delta is measured across the purchase and shipped on the event so
+   * the Market can float the green "+2.5/sec" without recomputing the whole
+   * breakdown itself — and so that a purchase which changes nothing visible
+   * (a Hammer, when no automatons are owned) does not float a "+0".
+   */
   buyUpgrade(id: string): boolean {
     if (!this.isBrowser) return false;
-    const def = FORGE_UPGRADES.find(u => u.id === id) ?? HAMMER_UPGRADES.find(u => u.id === id);
-    if (!def) return false;
+    const def = upgradeById(id);
+    if (!def || this.isMaxed(id)) return false;
 
     const cost = costOf(def.baseCost, this.levelOf(id));
     if (this.state.gold < cost) return false;
 
+    const before = goldPerSecond(this.state);
+
     this.state.gold -= cost;
     this.state.upgrades = { ...this.state.upgrades, [id]: this.levelOf(id) + 1 };
 
-    this.persist();
+    // A purchase is the kind of thing that must survive the tab being closed
+    // one frame later, so it flushes rather than joining the throttle.
+    this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'upgrade', id, name: def.name, cost, currency: 'gold' });
+    this.purchase$$.next({
+      kind: 'upgrade',
+      id,
+      name: def.name,
+      cost,
+      currency: 'gold',
+      rateDelta: goldPerSecond(this.state) - before,
+    });
     return true;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Prestige
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /** The rank the prestige gate is measured against. Fed by the wiring layer. */
+  setRankLevel(level: number): void {
+    if (level === this.rankLevel) return;
+    this.rankLevel = level;
+    this.publish();
+  }
+
+  /**
+   * The daily streak the rate is multiplied by. Persisted, because offline
+   * settlement has to be able to price eight hours from the blob alone.
+   */
+  setStreakDays(days: number): void {
+    if (!this.isBrowser || days === this.state.streakDays) return;
+    this.state.streakDays = days;
+    this.persistSoon();
+    this.publish();
+  }
+
+  get shards(): number { return this.state.eclipseShards; }
+  get pendingShards(): number { return pendingShards(this.state); }
+  get prestigeCount(): number { return this.state.prestigeCount; }
+  get canPrestige(): boolean { return canPrestige(this.state, this.rankLevel); }
+
+  /**
+   * Take the Eclipse: wipe the Gold economy, keep the shards, and hand over
+   * whatever the all-time total has earned since the last reset.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHAT SURVIVES, AND WHY IT IS NOT EVERYTHING
+   * ───────────────────────────────────────────────────────────────────────────
+   * Gold, `runGoldEarned` and all four Gold ladders go. Shards, the all-time
+   * total and `shardsGranted` stay, which is what makes the curve honest across
+   * resets.
+   *
+   * Rank does *not* reset, and that is a deliberate departure from the usual
+   * prestige shape. The rank in this app is not a score the economy owns — it
+   * gates lore chapters, drives quest availability, stamps discovery dates on
+   * the Codex wall and is the counter Essence has already been paid against.
+   * Wiping it would delete records of things the visitor genuinely did, in
+   * systems that predate the Market and cannot tell a prestige from data loss.
+   * The Essence shelf is left alone for the same reason: artifacts and
+   * cosmetics are bought with a currency this reset does not refund, and taking
+   * them would be charging for the privilege.
+   *
+   * Returns the shards granted, or 0 when the reset was not open.
+   */
+  prestige(): number {
+    if (!this.isBrowser || !this.canPrestige) return 0;
+
+    const granted = pendingShards(this.state);
+    if (granted < 1) return 0;
+
+    this.state.eclipseShards += granted;
+    // Marked against the all-time curve, never against the run — this is what
+    // stops four resets at ten million out-earning one at forty.
+    this.state.shardsGranted = shardsFor(this.state.totalGoldEarned);
+    this.state.prestigeCount += 1;
+
+    this.state.gold = 0;
+    this.state.runGoldEarned = 0;
+    this.state.upgrades = {};
+    this.state.lastIdleAt = Date.now();
+
+    this.flush();
+    this.publish();
+    this.prestige$$.next({
+      granted,
+      total: this.state.eclipseShards,
+      count: this.state.prestigeCount,
+    });
+    return granted;
   }
 
   /**
@@ -403,9 +649,9 @@ export class EconomyService implements OnDestroy {
       { id, expiresAt: now + def.hours * 3_600_000 },
     ];
 
-    this.persist();
+    this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'enchantment', id, name: def.name, cost: def.cost, currency: 'essence' });
+    this.purchase$$.next({ kind: 'enchantment', id, name: def.name, cost: def.cost, currency: 'essence', rateDelta: 0 });
     return true;
   }
 
@@ -415,12 +661,23 @@ export class EconomyService implements OnDestroy {
     const def = ARTIFACTS.find(a => a.id === id);
     if (!def || this.ownsArtifact(id) || this.state.eclipseEssence < def.cost) return false;
 
+    const before = goldPerSecond(this.state);
+
     this.state.eclipseEssence -= def.cost;
     this.state.artifacts = [...this.state.artifacts, id];
 
-    this.persist();
+    this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'artifact', id, name: def.name, cost: def.cost, currency: 'essence' });
+    this.purchase$$.next({
+      kind: 'artifact',
+      id,
+      name: def.name,
+      cost: def.cost,
+      currency: 'essence',
+      // The Fragment of the First Sun doubles the rate, so this line is the one
+      // artifact purchase that floats a number worth reading.
+      rateDelta: goldPerSecond(this.state) - before,
+    });
     return true;
   }
 
@@ -437,9 +694,9 @@ export class EconomyService implements OnDestroy {
     this.state.cosmetics = [...this.state.cosmetics, id];
     this.state.equipped = { ...this.state.equipped, [def.slot]: def.variants[0].id };
 
-    this.persist();
+    this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost: def.cost, currency: 'gold' });
+    this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost: def.cost, currency: 'gold', rateDelta: 0 });
     return true;
   }
 
@@ -455,7 +712,7 @@ export class EconomyService implements OnDestroy {
     else delete equipped[def.slot];
     this.state.equipped = equipped;
 
-    this.persist();
+    this.flush();
     this.publish();
     return true;
   }
@@ -472,17 +729,20 @@ export class EconomyService implements OnDestroy {
    * storage write throws, the visitor is short five Essence, which is a
    * complaint. If the mint happened first and the marker failed to save, every
    * page load would pay for the same rank again, which is a printing press.
+   *
+   * Flushed rather than throttled for exactly that reason — "written first" is
+   * not a property a five-second write window can offer.
    */
   markLevelsPaid(level: number): void {
     if (!this.isBrowser || level <= this.state.levelsPaid) return;
     this.state.levelsPaid = level;
-    this.persist();
+    this.flush();
   }
 
   markStreakWeeksPaid(weeks: number): void {
     if (!this.isBrowser || weeks <= this.state.streakWeeksPaid) return;
     this.state.streakWeeksPaid = weeks;
-    this.persist();
+    this.flush();
   }
 
   ownsArtifact(id: string): boolean { return this.state.artifacts.includes(id); }
@@ -500,9 +760,17 @@ export class EconomyService implements OnDestroy {
       || this.state.enchantments.length > 0;
   }
 
-  /** Wipe the ledger. Exposed for the console alongside the other resets. */
+  /**
+   * Wipe the ledger, shards and all. Exposed for the console alongside the
+   * other resets — this is the developer's wipe, not the Eclipse: `prestige()`
+   * is the one that keeps what a visitor has earned.
+   */
   reset(): void {
     if (!this.isBrowser) return;
+    if (this.persistHandle !== null) {
+      clearTimeout(this.persistHandle);
+      this.persistHandle = null;
+    }
     this.state = emptyEconomy();
     this.state.lastIdleAt = Date.now();
     this.recentClicks = [];
@@ -533,14 +801,31 @@ export class EconomyService implements OnDestroy {
         // accumulate — a visitor who has run fifty of them over a month should
         // not be carrying fifty dead timers in localStorage.
         enchantments: (parsed.enchantments ?? []).filter(e => e && e.expiresAt > now),
-        version: 1,
+        // Version 1 blobs carry none of the prestige fields. The spread over a
+        // fresh `emptyEconomy()` above has already supplied them at zero, which
+        // is the correct starting point for every one of them: no shards held,
+        // none granted, no Eclipses taken, and a run that has earned whatever
+        // the all-time total says. No migration step is needed and none is run.
+        version: 2,
       };
     } catch {
       return emptyEconomy();
     }
   }
 
-  private persist(): void {
+  /**
+   * Write now, cancelling any trailing write already scheduled.
+   *
+   * Used by everything whose loss would be visible: a purchase, an Eclipse, a
+   * paid-rank marker, and the tab going away.
+   */
+  private flush(): void {
+    if (!this.isBrowser) return;
+    if (this.persistHandle !== null) {
+      clearTimeout(this.persistHandle);
+      this.persistHandle = null;
+    }
+    this.lastPersistAt = Date.now();
     try {
       localStorage.setItem(ECONOMY_KEY, JSON.stringify(this.state));
     } catch {
@@ -548,18 +833,55 @@ export class EconomyService implements OnDestroy {
     }
   }
 
+  /**
+   * Write at most once every `PERSIST_INTERVAL_MS`, with a trailing write so
+   * the last change in a quiet period is never the one left unsaved.
+   *
+   * The trailing timer is scheduled outside the zone: it is a storage write and
+   * has no template work behind it, and letting zone.js own it would mean a
+   * change-detection pass every five seconds on a tab that is only ticking.
+   */
+  private persistSoon(): void {
+    if (!this.isBrowser || this.persistHandle !== null) return;
+
+    const due = this.lastPersistAt + PERSIST_INTERVAL_MS - Date.now();
+    if (due <= 0) {
+      this.flush();
+      return;
+    }
+
+    this.zone.runOutsideAngular(() => {
+      this.persistHandle = setTimeout(() => {
+        this.persistHandle = null;
+        this.flush();
+      }, due);
+    });
+  }
+
   private publish(): void {
     this.snapshot$$.next(this.snapshotOf(this.state, Date.now()));
   }
 
   private snapshotOf(state: PlayerEconomy, now: number): EconomySnapshot {
+    const breakdown = goldBreakdown(state);
     return {
       gold: state.gold,
       essence: state.eclipseEssence,
       totalGoldEarned: state.totalGoldEarned,
+      runGoldEarned: state.runGoldEarned,
       totalClicks: state.totalClicks,
-      perMinute: goldPerMinute(state),
+      autoClicks: state.autoClicks,
+      perSecond: breakdown.total,
+      perMinute: breakdown.total * 60,
+      breakdown,
+      autoPerSecond: autoClicksPerSecond(state),
       perClick: goldPerClick(state),
+      shards: state.eclipseShards,
+      shardMult: shardMultiplier(state),
+      prestigeCount: state.prestigeCount,
+      pendingShards: pendingShards(state),
+      prestigeReady: canPrestige(state, this.rankLevel),
+      streakDays: state.streakDays,
       flameTier: flameTier(state),
       hammerVisual: hammerVisual(state),
       upgradeLevels: totalUpgradeLevels(state),
@@ -574,4 +896,12 @@ export class EconomyService implements OnDestroy {
 
 /** Re-exported so the Market can render catalogs without a second import line. */
 export type { Artifact, Cosmetic, Enchantment };
-export { ARTIFACTS, COSMETICS, ENCHANTMENTS, FORGE_UPGRADES, HAMMER_UPGRADES };
+export {
+  ARTIFACTS,
+  AUTO_CLICKERS,
+  COSMETICS,
+  ENCHANTMENTS,
+  FORGE_UPGRADES,
+  HAMMER_UPGRADES,
+  MULTIPLIER_UPGRADES,
+};

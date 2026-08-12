@@ -85,7 +85,30 @@
           <span class="fk-id__coin-val">{{ money(wallet.essence) }}</span>
           <span class="fk-id__coin-label">Eclipse Essence</span>
         </span>
+        <!-- Shards appear only once one has been earned. A permanent-bonus
+             counter reading zero, on a mechanic the visitor has not reached
+             the gate for, is a question with no answer on this page. -->
+        @if (wallet.shards > 0) {
+          <span class="fk-id__coin fk-id__coin--shard">
+            <span class="fk-id__coin-glyph" aria-hidden="true">🌑</span>
+            <span class="fk-id__coin-val">{{ money(wallet.shards) }}</span>
+            <span class="fk-id__coin-label">Eclipse Shards · {{ shardMult }} permanent</span>
+          </span>
+        }
       </div>
+
+      <!-- What the forge is making right now, and out of what. The Market
+           carries the full breakdown; this is the one line that answers "is it
+           still running" without leaving the profile. -->
+      <p class="fk-id__rate">
+        <span class="fk-id__rate-num">{{ perSecond }}</span>
+        <span class="fk-id__rate-unit">Gold / second</span>
+        @if (wallet.autoPerSecond > 0) {
+          <span class="fk-id__rate-auto">
+            ⚙ {{ autoRate }} auto-{{ wallet.autoPerSecond === 1 ? 'strike' : 'strikes' }}/sec
+          </span>
+        }
+      </p>
 
       <!-- Provenance -->
       <dl class="fk-id__meta">

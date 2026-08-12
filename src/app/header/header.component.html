@@ -40,11 +40,11 @@
 
     <!-- ── Standing ─────────────────────────────────────────────────── -->
     <div class="gfnav__standing">
-      <a routerLink="/market" class="gfpill gfpill--gold" [attr.aria-label]="gold + ' Gold'">
-        <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
-             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
-        <span class="gfpill__val">{{ gold }}</span>
-      </a>
+      <!-- The Gold pill that used to sit here held a number that changed once a
+           minute with no animation at all. The ticker is the same pill with the
+           count rolling and the live Gold/sec rate beside it — see
+           gold-ticker.component.ts for why that is the entire point. -->
+      <app-gold-ticker></app-gold-ticker>
       <a routerLink="/market" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
@@ -136,11 +136,10 @@
     </div>
 
     <div class="gftome__pills">
-      <span class="gfpill gfpill--gold">
-        <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
-             alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
-        <span class="gfpill__val">{{ gold }}</span>
-      </span>
+      <!-- Same ticker as the command bar. It renders its compact "/s" unit at
+           this width, and both instances share one service, so whichever is on
+           screen is always showing the same second. -->
+      <app-gold-ticker></app-gold-ticker>
       <span class="gfpill gfpill--essence">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
