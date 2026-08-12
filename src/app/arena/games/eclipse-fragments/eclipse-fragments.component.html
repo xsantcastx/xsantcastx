@@ -1,0 +1,126 @@
+<app-arena-shell
+  [title]="'Eclipse Fragments'"
+  [lore]="'Match the Eclipse Fragments before the realms collapse.'"
+  [icon]="'🌗'"
+  [bestLabel]="bestLabel"
+  [locked]="locked"
+  [unlockHint]="game.unlockHint">
+
+  @if (!locked) {
+
+    <!-- ── INTRO ─────────────────────────────────────────── -->
+    @if (phase === 'intro') {
+      <section class="ag-panel ag-intro ef-intro">
+        <p class="ag-intro__body">
+          The Shattering left the realms in pairs. Turn two fragments face up; if they
+          are twins they hold, and if they are not, the realms take them back.
+          Every move and every second costs you Aether.
+        </p>
+
+        <fieldset class="ef-diff">
+          <legend class="ef-diff__legend">Choose your trial</legend>
+          @for (d of difficulties; track d.id) {
+            <button
+              type="button"
+              class="ef-diff__btn"
+              [class.ef-diff__btn--on]="difficulty.id === d.id"
+              [attr.aria-pressed]="difficulty.id === d.id"
+              (click)="choose(d)">
+              <span class="ef-diff__name">{{ d.label }}</span>
+              <span class="ef-diff__meta">{{ d.cols }}&times;{{ d.rows }} · {{ (d.cols * d.rows) / 2 }} pairs</span>
+            </button>
+          }
+        </fieldset>
+
+        <button type="button" class="ag-btn ag-btn--primary" (click)="start()">
+          Enter the trial &rarr;
+        </button>
+      </section>
+    }
+
+    <!-- ── BOARD ─────────────────────────────────────────── -->
+    @if (phase !== 'intro') {
+      <div class="ag-hud">
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ timeLabel }}</span>
+          <span class="ag-stat__label">Time</span>
+        </div>
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ moves }}</span>
+          <span class="ag-stat__label">Moves</span>
+        </div>
+        <div class="ag-stat">
+          <span class="ag-stat__num">{{ matches }}/{{ pairCount }}</span>
+          <span class="ag-stat__label">Restored</span>
+        </div>
+        <div class="ag-stat ag-stat--good">
+          <span class="ag-stat__num">{{ liveScore }}</span>
+          <span class="ag-stat__label">Aether held</span>
+        </div>
+      </div>
+
+      <div
+        class="ef-board"
+        [style.--cols]="difficulty.cols"
+        [attr.data-size]="difficulty.id"
+        role="group"
+        [attr.aria-label]="'Fragment board, ' + difficulty.cols + ' by ' + difficulty.rows">
+        @for (tile of tiles; track trackTile($index, tile)) {
+          <button
+            type="button"
+            class="ef-tile"
+            [class.ef-tile--up]="tile.flipped || tile.matched"
+            [class.ef-tile--matched]="tile.matched"
+            [style.--frag]="tile.color"
+            [style.--frag-glow]="tile.glow"
+            [attr.aria-label]="label(tile)"
+            [disabled]="phase === 'won'"
+            (click)="flip(tile)">
+            <span class="ef-tile__inner">
+              <span class="ef-tile__face ef-tile__face--back" aria-hidden="true">
+                <span class="ef-tile__sigil">✦</span>
+              </span>
+              <span class="ef-tile__face ef-tile__face--front" aria-hidden="true">
+                <span class="ef-tile__glyph">{{ tile.glyph }}</span>
+              </span>
+            </span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ── WIN ───────────────────────────────────────────── -->
+    @if (phase === 'won' && result) {
+      <!--
+        `data-success-burst` is the hook the site-wide cosmic engine watches for;
+        adding this node fires the same confetti a completed contact form does,
+        so the celebration is one implementation rather than two.
+      -->
+      <section class="ag-end" data-success-burst role="status">
+        <h2 class="ag-end__title">The realms hold ✦</h2>
+        <p class="ag-end__line">
+          {{ difficulty.label }} restored in {{ timeLabel }} across {{ moves }} moves.
+        </p>
+        <p class="ag-end__line">
+          Score <strong>{{ result.score }}</strong>
+          @if (result.isBest) { <span class="ef-pb">— new personal best</span> }
+          @else { <span class="ef-pb ef-pb--dim">— best {{ result.previousBest }}</span> }
+        </p>
+
+        @if (result.xpAwarded > 0) {
+          <p class="ag-end__xp">+{{ result.xpAwarded }} Aether{{ result.firstClear ? '' : ' (personal best)' }}</p>
+        } @else {
+          <p class="ag-end__line ag-end__line--muted">
+            Already claimed. Beat your best to earn again.
+          </p>
+        }
+
+        <div class="ag-end__actions">
+          <button type="button" class="ag-btn ag-btn--primary" (click)="playAgain()">Again</button>
+          <a routerLink="/arena" class="ag-btn ag-btn--ghost">Back to the Arena</a>
+        </div>
+      </section>
+    }
+
+  }
+</app-arena-shell>

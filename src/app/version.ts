@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.19.0',
+  version: '2.20.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Godforge',
+  codename: 'Five Gates',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.20.0',
+    codename: 'Five Gates',
+    date: '2026-08-12',
+    highlights: [
+      'Five gates in the Arena now lead to a real game instead of a description of one: Eclipse Fragments (memory), Realm Rush (typing), Shadow Cipher (code ordering), Forge Strike (reflex) and The Convergent\'s Path (a balance maze)',
+      'Each is a lazy route under /arena — 5-7 kB over the wire apiece, so a visitor who never opens the Arena downloads none of them — and each renders its own chained gate rather than sitting behind a route guard, because a guard that redirects during prerender bakes a redirect stub into the built HTML and the route stops working in production',
+      'A first clear pays that game\'s reward once, banked as an achievement id so a reload cannot re-collect it; after that only beating your own best pays, and only 10 XP. Shadow Cipher\'s hints are billed against its reward, and The Convergent\'s Path scales its payout by how evenly you walked it — a full sweep at zero drift is the full 75 Aether and anything less is honestly less',
+      'Arena cards carry your personal best and a NEW badge until you have finished a run, both filled in on hydration so a prerendered card never shows a score it cannot know. Gates with nothing behind them yet say so instead of offering a button that does nothing',
+      'Playable on a phone: every control clears 44px, the maze takes arrow keys, swipes or an always-present on-screen pad, and the typing game drives a real input so the keyboard actually opens. Reduced motion keeps every game playable and drops only the ornament'
+    ]
+  },
   {
     version: '2.19.0',
     codename: 'The Godforge',

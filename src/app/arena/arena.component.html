@@ -15,6 +15,7 @@
       <p class="gp-hero__sub">
         Where Convergents prove their worth. Every gate here is held shut by a secret
         buried in a tool — find it, and the gate opens.
+        {{ playableCount }} of them lead to a real game.
       </p>
 
       <!-- Arena stats -->
@@ -90,6 +91,9 @@
             [style.--tier]="game.rarity.color"
             [style.--tier-glow]="game.rarity.glow"
             >
+            @if (game.isNew) {
+              <span class="ar-new" aria-label="Never played">NEW</span>
+            }
             <div class="gp-card__top">
               <span class="gp-card__icon ar-card__icon" [class.gp-card__icon--locked]="game.locked">
                 @if (game.locked) {
@@ -108,18 +112,23 @@
             </div>
             <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
             <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
+
+            @if (!game.locked && game.bestLabel) {
+              <p class="ar-card__best">
+                <span class="ar-card__best-dot" aria-hidden="true"></span>
+                Best — {{ game.bestLabel }}
+              </p>
+            }
+
             <div class="gp-card__footer">
-              @if (!game.locked) {
-                <button type="button" class="gp-play-btn" (click)="enter(game)">
-                  {{ game.playable ? 'Enter →' : 'Still forging' }}
-                </button>
-                @if (soonGameId === game.id) {
-                  <span class="gp-locked-label ar-soon">
-                    The gate is open, but nothing stands behind it yet.
-                  </span>
-                }
-              } @else {
+              @if (game.locked) {
                 <span class="gp-locked-label ar-locked">Chained — find the secret to break it</span>
+              } @else if (game.route) {
+                <a [routerLink]="game.route" class="gp-play-btn">Enter &rarr;</a>
+              } @else {
+                <!-- Open, but there is nothing behind it yet. Saying so beats a
+                     button that does nothing when pressed. -->
+                <span class="gp-locked-label ar-forging">Unchained — still in the forge</span>
               }
             </div>
           </div>
@@ -136,14 +145,5 @@
       <a routerLink="/tools" class="cta-button">Walk the realms &rarr;</a>
     </div>
   </section>
-
-  <!-- ── OPEN GATE ──────────────────────────────────────── -->
-  @if (activeGameId === 'color-memory') {
-    <div class="ar-overlay" (click)="closeGame()">
-      <div class="ar-overlay__inner" (click)="$event.stopPropagation()">
-        <app-color-memory (closed)="closeGame()" />
-      </div>
-    </div>
-  }
 
 </div>
