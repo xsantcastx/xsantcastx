@@ -1,8 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  Firestore, collection, doc, setDoc, getDocs,
-  deleteDoc, query, orderBy, Timestamp
-} from '@angular/fire/firestore';
+import type { Timestamp } from 'firebase/firestore';
+import { LazyFirestoreService, FirestoreHandle } from '../../shared/lazy-firestore.service';
 import { CatalogPdfConfig, FieldConfig, ProductSection } from './pdf-generator.types';
 
 export interface CloudCatalog {
@@ -16,10 +14,17 @@ export interface CloudCatalog {
 
 @Injectable({ providedIn: 'root' })
 export class CatalogCloudService {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
 
-  private ref(uid: string) {
-    return collection(this.firestore, `users/${uid}/catalogs`);
+  /** Cloud catalogs are only reachable behind Google sign-in, so the SDK is
+   *  already warm by the time any of these run — but it is still fetched on
+   *  demand rather than shipped in the initial bundle. */
+  private async handle(): Promise<FirestoreHandle> {
+    const handle = await this.lazyFirestore.get();
+    if (!handle) {
+      throw new Error('Cloud catalogs are unavailable — Firestore failed to load.');
+    }
+    return handle;
   }
 
   async save(
@@ -30,6 +35,8 @@ export class CatalogCloudService {
     sections: ProductSection[],
     fieldConfigs: FieldConfig[]
   ): Promise<void> {
+    const { db, api } = await this.handle();
+
     // Strip image data before sending to Firestore (Firestore 1 MB doc limit)
     const stripped = sections.map(s => ({
       ...s,
@@ -43,10 +50,10 @@ export class CatalogCloudService {
       })),
     }));
 
-    await setDoc(doc(this.firestore, `users/${uid}/catalogs/${id}`), {
+    await api.setDoc(api.doc(db, `users/${uid}/catalogs/${id}`), {
       id,
       name,
-      savedAt: Timestamp.now(),
+      savedAt: api.Timestamp.now(),
       config,
       sections: stripped,
       fieldConfigs,
@@ -54,11 +61,15 @@ export class CatalogCloudService {
   }
 
   async list(uid: string): Promise<CloudCatalog[]> {
-    const snap = await getDocs(query(this.ref(uid), orderBy('savedAt', 'desc')));
+    const { db, api } = await this.handle();
+    const snap = await api.getDocs(
+      api.query(api.collection(db, `users/${uid}/catalogs`), api.orderBy('savedAt', 'desc'))
+    );
     return snap.docs.map(d => d.data() as CloudCatalog);
   }
 
   async remove(uid: string, catalogId: string): Promise<void> {
-    await deleteDoc(doc(this.firestore, `users/${uid}/catalogs/${catalogId}`));
+    const { db, api } = await this.handle();
+    await api.deleteDoc(api.doc(db, `users/${uid}/catalogs/${catalogId}`));
   }
 }

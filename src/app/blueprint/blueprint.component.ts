@@ -2,7 +2,7 @@ import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { LazyFirestoreService } from '../shared/lazy-firestore.service';
 import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
 import { DEV_LOG, DEV_LOG_CATEGORIES, DevLogEntry, DevLogCategory } from './dev-log';
 import { APP_VERSION, VERSION_HISTORY, VersionRelease } from '../version';
@@ -98,7 +98,7 @@ const GITHUB_REPO = 'https://github.com/xsantcastx/xsantcastx';
   styleUrls: ['./blueprint.component.css']
 })
 export class BlueprintComponent implements OnInit {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly githubRepo = GITHUB_REPO;
@@ -518,7 +518,12 @@ export class BlueprintComponent implements OnInit {
     try {
       // Key set is fixed (email is always present, possibly empty) so the
       // Firestore rule can use hasOnly() without branching.
-      await addDoc(collection(this.firestore, 'blueprint-suggestions'), {
+      const handle = await this.lazyFirestore.get();
+      if (!handle) {
+        throw new Error('Firestore unavailable');
+      }
+      const { db, api } = handle;
+      await api.addDoc(api.collection(db, 'blueprint-suggestions'), {
         name,
         description,
         email,

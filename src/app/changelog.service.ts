@@ -1,8 +1,7 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, collection, query, orderBy, limit, collectionData } from '@angular/fire/firestore';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { LazyFirestoreService } from './shared/lazy-firestore.service';
 
 export interface ChangelogEntry {
   id?: string;
@@ -23,7 +22,7 @@ export interface ChangelogDay {
 
 @Injectable({ providedIn: 'root' })
 export class ChangelogService {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   getGroupedChangelog(): Observable<ChangelogDay[]> {
@@ -31,29 +30,57 @@ export class ChangelogService {
       return of([]);
     }
 
-    const col = collection(this.firestore, 'changelog');
-    const q = query(col, orderBy('date', 'desc'), limit(50));
+    return new Observable<ChangelogDay[]>(observer => {
+      let unsubscribe: (() => void) | null = null;
+      let torndown = false;
 
-    return collectionData(q, { idField: 'id' }).pipe(
-      map((entries: any[]) => this.groupByDay(entries)),
-      catchError((err: any) => {
-        // permission-denied (rules not deployed) and SDK-instance-mismatch
-        // (SSR→client hydration) are expected in dev. Silent-degrade those
-        // so the changelog falls back to "No updates yet" instead of bleeding
-        // red into the console. Surface anything else as a warn.
-        const code = err?.code || '';
-        const msg = err?.message || '';
-        if (
-          code === 'permission-denied' ||
-          (typeof msg === 'string' && msg.indexOf('Type does not match') >= 0) ||
-          (typeof msg === 'string' && msg.indexOf('different Firestore SDK') >= 0)
-        ) {
-          return of([]);
-        }
-        console.warn('[ChangelogService] degraded:', err);
-        return of([]);
-      })
-    );
+      this.lazyFirestore.get().then(handle => {
+        if (!handle || torndown) return;
+        const { db, api } = handle;
+
+        const q = api.query(
+          api.collection(db, 'changelog'),
+          api.orderBy('date', 'desc'),
+          api.limit(50)
+        );
+
+        // Raw-SDK snapshot callbacks fire outside the Angular zone; re-enter it
+        // so the async pipe in the template actually repaints.
+        unsubscribe = api.onSnapshot(
+          q,
+          snap => {
+            const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChangelogEntry));
+            this.lazyFirestore.runInZone(() => observer.next(this.groupByDay(entries)));
+          },
+          err => this.lazyFirestore.runInZone(() => this.degrade(err, observer))
+        );
+      }).catch(err => this.degrade(err, observer));
+
+      return () => {
+        torndown = true;
+        unsubscribe?.();
+      };
+    });
+  }
+
+  /**
+   * permission-denied (rules not deployed) and SDK-instance-mismatch
+   * (SSR→client hydration) are expected in dev. Silent-degrade those so the
+   * changelog falls back to "No updates yet" instead of bleeding red into the
+   * console. Surface anything else as a warn.
+   */
+  private degrade(err: any, observer: { next: (v: ChangelogDay[]) => void }): void {
+    const code = err?.code || '';
+    const msg = err?.message || '';
+    const expected =
+      code === 'permission-denied' ||
+      (typeof msg === 'string' && msg.indexOf('Type does not match') >= 0) ||
+      (typeof msg === 'string' && msg.indexOf('different Firestore SDK') >= 0);
+
+    if (!expected) {
+      console.warn('[ChangelogService] degraded:', err);
+    }
+    observer.next([]);
   }
 
   private groupByDay(entries: ChangelogEntry[]): ChangelogDay[] {

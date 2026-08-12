@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { LazyFirestoreService } from '../shared/lazy-firestore.service';
 import { ChangelogService, ChangelogDay } from '../changelog.service';
 import { Subscription } from 'rxjs';
 import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
@@ -50,7 +50,7 @@ interface HeroCarouselCard {
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private router = inject(Router);
   private changelogService = inject(ChangelogService);
   private translationService = inject(TranslationService);
@@ -224,8 +224,14 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
     this.subscribeStatus = 'loading';
     try {
-      const col = collection(this.firestore, 'homepage_subscribers');
-      await addDoc(col, {
+      const handle = await this.lazyFirestore.get();
+      if (!handle) {
+        this.subscribeStatus = 'error';
+        return;
+      }
+      const { db, api } = handle;
+      const col = api.collection(db, 'homepage_subscribers');
+      await api.addDoc(col, {
         email: email,
         subscribedAt: new Date().toISOString(),
         source: 'homepage_footer_cta'
