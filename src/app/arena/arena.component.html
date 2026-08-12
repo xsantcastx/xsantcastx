@@ -110,7 +110,14 @@
             <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
             <div class="gp-card__footer">
               @if (!game.locked) {
-                <button class="gp-play-btn">Enter &rarr;</button>
+                <button type="button" class="gp-play-btn" (click)="enter(game)">
+                  {{ game.playable ? 'Enter →' : 'Still forging' }}
+                </button>
+                @if (soonGameId === game.id) {
+                  <span class="gp-locked-label ar-soon">
+                    The gate is open, but nothing stands behind it yet.
+                  </span>
+                }
               } @else {
                 <span class="gp-locked-label ar-locked">Chained — find the secret to break it</span>
               }
@@ -129,5 +136,14 @@
       <a routerLink="/tools" class="cta-button">Walk the realms &rarr;</a>
     </div>
   </section>
+
+  <!-- ── OPEN GATE ──────────────────────────────────────── -->
+  @if (activeGameId === 'color-memory') {
+    <div class="ar-overlay" (click)="closeGame()">
+      <div class="ar-overlay__inner" (click)="$event.stopPropagation()">
+        <app-color-memory (closed)="closeGame()" />
+      </div>
+    </div>
+  }
 
 </div>

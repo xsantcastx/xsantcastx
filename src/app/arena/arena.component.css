@@ -358,6 +358,7 @@
   color: #000;
   border: none;
   border-radius: 6px;
+  min-height: 44px;
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -371,6 +372,53 @@
   font-size: 0.75rem;
   color: var(--color-text-muted, #94a3b8);
   font-style: italic;
+}
+
+.ar-soon {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+/* ── Open gate overlay ───────────────────────────────────────── */
+
+/* The routed host still carries the transform routeFadeIn left behind
+   (fill: forwards), so it is its own stacking context. Lift the whole host
+   while a gate is open — otherwise the fixed header, at z-index 1000 in the
+   root context, paints straight over the game. */
+:host(.ar-game-open) {
+  position: relative;
+  z-index: 10050;
+}
+
+.ar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.75rem, 3vw, 2rem);
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(0, 255, 204, 0.1), transparent 70%),
+    radial-gradient(ellipse 60% 55% at 50% 100%, rgba(123, 97, 255, 0.12), transparent 70%),
+    rgba(3, 2, 10, 0.88);
+  animation: arOverlayIn 0.25s ease-out;
+}
+
+.ar-overlay__inner {
+  width: 100%;
+  max-width: 820px;
+  margin: auto;
+}
+
+@keyframes arOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-overlay { animation: none; }
 }
 
 /* ── CTA ─────────────────────────────────────────────────────── */
