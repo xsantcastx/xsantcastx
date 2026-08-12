@@ -35,6 +35,10 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    // Renumbered from 2.41.0: that number had already shipped to main and been
+    // tagged v2.41.0 by the atmosphere release below, which landed while this
+    // one was still on dev. Two entries carrying the same version would have
+    // rendered as duplicate rows in the /blueprint dev log.
     version: '2.42.0',
     codename: 'The Foundation',
     date: '2026-08-12',
