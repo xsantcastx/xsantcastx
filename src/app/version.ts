@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.37.0',
+  version: '2.38.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'The Altar',
@@ -34,6 +34,18 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.38.0',
+    codename: 'The Forge Lit',
+    date: '2026-08-12',
+    highlights: [
+      'The boot sequence is no longer a diagram of the sigil — it is the sigil. The X is beveled stone lit from the top left, and a network of seventeen fractures runs through it, catching light from the centre outward as the forge takes hold',
+      'The ring is carved rather than drawn: its edges are displaced by noise so the stone reads as chiselled, it is speckled with grain, and it turns against its own glyphs so the band and the runes move independently',
+      'The twelve runes now ignite one after another around the circle instead of all at once, and the four compass marks snap in over-scale and settle — the whole of stage three reads as light travelling around the seal',
+      'Once the forge is lit it throws things off: embers rising through the frame, twelve volumetric shafts turning slowly behind the ring, three shockwaves off the core, and a four-point star flare on the white-hot centre',
+      'The void has depth before any of it starts — three sheets of stars drifting at different rates, with the nebula held back until the power arrives so stage one stays as black as it was written to be',
+    ],
+  },
   {
     version: '2.37.0',
     codename: 'The Altar',
