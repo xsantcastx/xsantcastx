@@ -1,4 +1,22 @@
-﻿import {
+/**
+ * header.component.ts — the Godforge command bar.
+ *
+ * Replaced the portfolio navbar (scroll-spy links to #services / #projects /
+ * #about / #contact, a rotating buzzword under the wordmark) with a bar that
+ * navigates the game world: the realms, the arena, the codex, the war table,
+ * the market, and the visitor's own standing.
+ *
+ * What survived from the old header, because the reasons still hold:
+ *  · --nav-h is measured and published so the drawer can sit flush under a bar
+ *    whose height includes env(safe-area-inset-top) on notched phones.
+ *  · The scroll listener runs OUTSIDE the Angular zone and only re-enters when
+ *    template-bound state actually changed. Inside the zone this fired a full
+ *    CD pass ~60x/s over the whole tree.
+ *  · The drawer closes on Escape, on NavigationEnd, and on a resize past the
+ *    breakpoint; the body scroll lock takes the body out of flow (the only
+ *    technique iOS Safari honours) and restores the offset on unlock.
+ */
+import {
   Component,
   ElementRef,
   AfterViewInit,
@@ -8,6 +26,7 @@
   OnDestroy,
   NgZone,
   ChangeDetectorRef,
+  HostListener,
   PLATFORM_ID
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -17,6 +36,14 @@ import { filter } from 'rxjs/operators';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
 import { EASTER_EGGS, EasterEggService } from '../shared/easter-eggs/easter-egg.service';
+import { REALMS, RealmDefinition } from '../shared/realms/realm.model';
+
+/** A hall in the drawer: a route with a name and a one-line reason to go. */
+interface TomeLink {
+  route: string;
+  key: string;
+  hintKey: string;
+}
 
 @Component({
   selector: 'app-header',
@@ -28,66 +55,61 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private router = inject(Router);
   private ngZone = inject(NgZone);
   private cdr = inject(ChangeDetectorRef);
-  private platformId = inject(PLATFORM_ID);
   /**
-   * SSR fix: Angular's server-side DOM provides `window` and `document` stubs that
-   * pass `typeof window === 'undefined'` guards, but do NOT implement
-   * `CSSStyleDeclaration.setProperty()`, triggering 135× NotYetImplemented errors
-   * during prerender. `isPlatformBrowser` is the canonical Angular SSR guard.
+   * SSR: Angular's server DOM provides `window`/`document` stubs that pass a
+   * `typeof window === 'undefined'` guard but do not implement
+   * `CSSStyleDeclaration.setProperty()`. `isPlatformBrowser` is the real guard.
    */
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
-  private keydownHandler?: (event: KeyboardEvent) => void;
   private routerSub?: Subscription;
+  private langSub?: Subscription;
   private lastHeaderOffset = 96;
   private lastNavHeight = -1;
-  /** Scroll offset captured when the drawer locks the page, restored on unlock. */
   private lockedScrollY = 0;
   private isScrollLocked = false;
+  private scrollRafId: number | null = null;
+  private lastScrollY = 0;
+
   /** Above this width the drawer is not rendered — matches the CSS breakpoint. */
   private static readonly MOBILE_NAV_BREAKPOINT = 960;
-  // Perf: rAF throttle for scroll handler to prevent layout thrash on mobile
-  private scrollRafId: number | null = null;
-  // Perf: cache section offsets so scroll handler doesn't hit the DOM 5x per frame
-  private sectionOffsets: Array<{ id: string; top: number }> = [];
-  private cachedScrollableHeight = 0;
-  // Perf Phase 2: track template-bound state so we only trigger change detection
-  // when a value that actually affects the view changes. Scroll handler now runs
-  // outside the Angular zone, so CD must be explicitly opted into on state change.
-  private langSub?: Subscription;
 
   currentLang = 'en';
   mobileMenuOpen = false;
-  currentSection = 'hero';
+  realmsOpen = false;
+  /** Bar shrinks on the way down, returns to full height on the way up. */
+  compact = false;
+
+  readonly realms: RealmDefinition[] = REALMS;
 
   /**
-   * Codex nav badge: fragments found over fragments that exist.
-   *
-   * Starts at zero on both server and client so the header's first frame matches
-   * the prerendered HTML; the real count lands after `init()` resolves, which is
-   * a microtask later and therefore after hydration.
+   * Codex badge: fragments found over fragments that exist. Starts at zero on
+   * both server and client so the first frame matches the prerendered HTML;
+   * the real count lands after init() resolves, which is after hydration.
    */
   codexFound = 0;
   readonly codexTotal = EASTER_EGGS.length;
 
-  readonly inspirationWords: string[] = [
-    'innovate',
-    'iterate',
-    'ship boldly',
-    'solve elegantly',
-    'design in code',
-    'scale ideas',
-    'debug with heart',
-    'launch faster',
-    'create delight',
-    'dream in js'
+  /**
+   * The halls that do not earn a slot in the desktop row. The row is full at
+   * 1280px — this is the same constraint that kept Market and Quests out of it
+   * before — so these live in the drawer and the footer instead.
+   */
+  readonly tomeLinks: TomeLink[] = [
+    { route: '/tools',        key: 'gfnav.allArtifacts', hintKey: 'gfnav.hint.tools' },
+    { route: '/arena',        key: 'gfnav.arena',        hintKey: 'gfnav.hint.arena' },
+    { route: '/codex',        key: 'gfnav.codex',        hintKey: 'gfnav.hint.codex' },
+    { route: '/blueprint',    key: 'gfnav.warTable',     hintKey: 'gfnav.hint.warTable' },
+    { route: '/market',       key: 'gfnav.market',       hintKey: 'gfnav.hint.market' },
+    { route: '/quests',       key: 'gfnav.quests',       hintKey: 'gfnav.hint.quests' },
+    { route: '/forge-keeper', key: 'gfnav.keeper',       hintKey: 'gfnav.hint.keeper' },
+    { route: '/live',         key: 'gfnav.live',         hintKey: 'gfnav.hint.live' },
+    { route: '/mcp',          key: 'gfnav.mcp',          hintKey: 'gfnav.hint.mcp' },
+    { route: '/sponsors',     key: 'gfnav.sponsors',     hintKey: 'gfnav.hint.sponsors' }
   ];
-  activeWord = this.inspirationWords[0];
-  wordSwapToggle = false;
-  private lastWordChangeProgress = 0;
-  private readonly wordChangeThreshold = 6;
 
   private eggs = inject(EasterEggService);
 
@@ -99,8 +121,6 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Perf Phase 2: store the subscription so it tears down on destroy. Previously
-    // this was a naked subscribe() that leaked every time the header was recreated.
     this.langSub = this.translationService.currentLanguage$.subscribe(lang => {
       const changed = this.currentLang !== lang;
       this.currentLang = lang;
@@ -110,16 +130,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     });
     this.setupScrollListener();
 
-    // Mobile nav fix: the template closes the drawer on link click, but browser
-    // back/forward and any programmatic navigation bypassed that — the drawer
-    // stayed open (and the body stayed scroll-locked) over the new page.
+    // Back/forward and any programmatic navigation bypass the template's
+    // click handler — without this the drawer stays open (and the body stays
+    // scroll-locked) over the new page.
     this.routerSub = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe(() => this.closeMobileMenu());
+      .subscribe(() => {
+        this.closeMobileMenu();
+        this.closeRealms();
+      });
 
-    // Codex badge. Read once — the count only moves on a discovery, and a
-    // discovery already interrupts the page with a drop toast, so a live
-    // subscription here would buy a number nobody is looking at.
+    // Read once. The count only moves on a discovery, and a discovery already
+    // interrupts the page with a drop toast, so a live subscription here would
+    // buy a number nobody is looking at.
     if (this.isBrowser) {
       void this.eggs.init().then(() => {
         this.codexFound = this.eggs.foundCount;
@@ -131,20 +154,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   ngAfterViewInit(): void {
     if (!this.isBrowser) return;
 
-    this.navbarEl = this.elRef.nativeElement.querySelector('.navbar');
-    // Measure synchronously. This used to be deferred to a single
-    // requestAnimationFrame, which browsers suspend while the document is
-    // hidden — a page opened in a background tab (or restored from one) would
-    // finish AfterViewInit with --nav-h never written. That was harmless when
-    // the variable was only an advisory offset, but the mobile drawer now
-    // positions off it: unset means the drawer falls back to `top: 80px`
-    // against a 64px navbar and floats 16px low over the page.
-    // offsetHeight forces one layout, which is acceptable exactly once, and the
-    // navbar's height comes from CSS rather than content so the value is stable
-    // before fonts settle.
+    this.navbarEl = this.elRef.nativeElement.querySelector('.gfnav');
+    // Measure synchronously. Deferring this to a single rAF meant a page opened
+    // in a background tab (where browsers suspend rAF) finished AfterViewInit
+    // with --nav-h never written, and the drawer fell back to a hardcoded top.
     this.updateHeaderOffset();
-    // Re-measure after the first paint in case a late layout pass (font swap,
-    // safe-area resolution) changes the bar height.
     this.ngZone.runOutsideAngular(() => {
       window.requestAnimationFrame(() => this.updateHeaderOffset());
     });
@@ -153,24 +167,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.isBrowser && this.scrollHandler) {
-      window.removeEventListener('scroll', this.scrollHandler);
-      this.scrollHandler = undefined;
-    }
-
-    if (this.isBrowser && this.resizeHandler) {
-      window.removeEventListener('resize', this.resizeHandler);
-      this.resizeHandler = undefined;
-    }
-
-    if (this.isBrowser && this.keydownHandler) {
-      window.removeEventListener('keydown', this.keydownHandler);
-      this.keydownHandler = undefined;
-    }
-
-    if (this.scrollRafId !== null && this.isBrowser) {
-      window.cancelAnimationFrame(this.scrollRafId);
-      this.scrollRafId = null;
+    if (this.isBrowser) {
+      if (this.scrollHandler) {
+        window.removeEventListener('scroll', this.scrollHandler);
+        this.scrollHandler = undefined;
+      }
+      if (this.resizeHandler) {
+        window.removeEventListener('resize', this.resizeHandler);
+        this.resizeHandler = undefined;
+      }
+      if (this.scrollRafId !== null) {
+        window.cancelAnimationFrame(this.scrollRafId);
+        this.scrollRafId = null;
+      }
     }
 
     this.routerSub?.unsubscribe();
@@ -178,28 +187,84 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.setBodyScrollLock(false);
   }
 
-  setupScrollListener(): void {
-    if (!this.isBrowser) {
+  // ── Realms dropdown ───────────────────────────────────────────────────
+
+  /**
+   * Set when the pointer — not a click — opened the menu. Without it, hovering
+   * the button and then clicking it toggled the menu shut: mouseenter had
+   * already set realmsOpen, so the click read as "close" on a menu the visitor
+   * was clicking to open. The first click after a hover-open is absorbed; a
+   * second one closes, which is what a mouse user expects.
+   */
+  private openedByHover = false;
+
+  openRealms(): void {
+    if (this.isDrawerBreakpoint()) return;
+    if (!this.realmsOpen) {
+      this.openedByHover = true;
+    }
+    this.realmsOpen = true;
+  }
+
+  closeRealms(): void {
+    this.openedByHover = false;
+    if (!this.realmsOpen) return;
+    this.realmsOpen = false;
+  }
+
+  toggleRealms(): void {
+    if (this.realmsOpen && this.openedByHover) {
+      this.openedByHover = false;
       return;
     }
+    this.realmsOpen = !this.realmsOpen;
+    this.openedByHover = false;
+  }
 
-    // Perf Phase 2: run the scroll listener and its rAF callback OUTSIDE the
-    // Angular zone. The scroll event fires ~60×/s on mobile, and every time a
-    // zone patched callback touched a template-bound field Angular ran a full
-    // change-detection cycle over the entire component tree (114+ tools in the
-    // registry). Over 90s of continuous scroll that's ~5,400 CD passes stacking
-    // pending tasks, V8 deopts, and garbage collection pressure — exactly the
-    // "lag accumulates over time" symptom the owner reported after 9f6c586.
-    //
-    // Inside the raf callback we call handleScroll(), which internally decides
-    // whether any template-bound state (currentSection / activeWord / toggle)
-    // changed and then explicitly re-enters the zone via markForCheck() only for
-    // those frames. Static scroll rAFs (the common case) cost zero Angular work.
+  closeAll(): void {
+    this.closeRealms();
+    this.closeMobileMenu();
+  }
+
+  /** Escape closes whatever is open — WCAG 2.1.2, no keyboard trap. */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.realmsOpen) {
+      this.closeRealms();
+      this.cdr.markForCheck();
+    }
+    if (this.mobileMenuOpen) {
+      this.closeMobileMenu();
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** A click anywhere outside the bar dismisses the dropdown. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.realmsOpen) return;
+    const target = event.target as Node | null;
+    if (target && this.elRef.nativeElement.contains(target)) return;
+    this.closeRealms();
+    this.cdr.markForCheck();
+  }
+
+  private isDrawerBreakpoint(): boolean {
+    return this.isBrowser && window.innerWidth <= HeaderComponent.MOBILE_NAV_BREAKPOINT;
+  }
+
+  // ── Scroll ────────────────────────────────────────────────────────────
+
+  setupScrollListener(): void {
+    if (!this.isBrowser) return;
+
+    // Outside the zone: the scroll event fires ~60x/s and every zone-patched
+    // callback that touched a template-bound field ran a full CD pass over the
+    // whole component tree. handleScroll() re-enters the zone only on the
+    // frames where `compact` actually flips.
     this.ngZone.runOutsideAngular(() => {
       this.scrollHandler = () => {
-        if (this.scrollRafId !== null) {
-          return;
-        }
+        if (this.scrollRafId !== null) return;
         this.scrollRafId = window.requestAnimationFrame(() => {
           this.scrollRafId = null;
           this.handleScroll();
@@ -210,26 +275,15 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private setupResizeListener(): void {
-    if (!this.isBrowser) {
-      return;
-    }
+    if (!this.isBrowser) return;
 
-    // Perf Phase 2: resize is also outside the zone — it mutates layout
-    // (--header-offset CSS var + cached offsets), not template-bound state.
     this.ngZone.runOutsideAngular(() => {
       this.resizeHandler = () => {
         this.updateHeaderOffset();
-        // Section offsets change with viewport size — recache.
-        this.cacheSectionOffsets();
-        // Mobile nav fix: rotating to landscape (or resizing past the
-        // breakpoint) hides the drawer via CSS but left `mobileMenuOpen` true
-        // and the body scroll-locked — the page became unscrollable with no
-        // visible way to recover. Force it closed once the drawer no longer
-        // applies.
-        if (
-          this.mobileMenuOpen &&
-          window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT
-        ) {
+        // Rotating to landscape (or resizing past the breakpoint) hides the
+        // drawer via CSS but used to leave `mobileMenuOpen` true and the body
+        // scroll-locked — the page became unscrollable with no way to recover.
+        if (this.mobileMenuOpen && window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
           this.ngZone.run(() => {
             this.closeMobileMenu();
             this.cdr.markForCheck();
@@ -238,197 +292,81 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       };
       window.addEventListener('resize', this.resizeHandler!, { passive: true });
     });
-
-    // Escape closes the drawer (WCAG 2.1.2 — no keyboard trap) and gives
-    // external keyboards / accessibility switches a way out.
-    this.ngZone.runOutsideAngular(() => {
-      this.keydownHandler = (event: KeyboardEvent) => {
-        if (event.key !== 'Escape' || !this.mobileMenuOpen) {
-          return;
-        }
-        this.ngZone.run(() => {
-          this.closeMobileMenu();
-          this.cdr.markForCheck();
-        });
-      };
-      window.addEventListener('keydown', this.keydownHandler!);
-    });
-  }
-
-  /**
-   * Perf: cache section offsetTop values instead of calling getElementById +
-   * offsetTop on 5 sections every scroll frame. Called once on init and on resize.
-   */
-  private cacheSectionOffsets(): void {
-    if (!this.isBrowser) {
-      return;
-    }
-    const sectionIds = ['hero', 'services', 'projects', 'about', 'contact'];
-    this.sectionOffsets = sectionIds
-      .map(id => {
-        const el = document.getElementById(id);
-        return el ? { id, top: el.offsetTop } : null;
-      })
-      .filter((x): x is { id: string; top: number } => x !== null);
-    this.cachedScrollableHeight = Math.max(
-      0,
-      document.documentElement.scrollHeight - window.innerHeight
-    );
   }
 
   handleScroll(): void {
-    if (!this.isBrowser) {
-      return;
-    }
+    if (!this.isBrowser) return;
 
     const scrollY = window.scrollY;
-    this.updateNavbarState(scrollY);
     const progress = this.updateScrollProgress(scrollY);
-    // Track whether any template-bound state changed so we can opt back into
-    // change detection only when the view actually needs to update.
-    let viewDirty = this.updateInspirationWord(progress);
 
-    // Lazy-init section cache on first scroll (after hydration) if not yet populated.
-    if (this.sectionOffsets.length === 0) {
-      this.cacheSectionOffsets();
+    // Direction-aware: compact on the way down, full again on the way up, with
+    // a small deadband so a jittery trackpad does not oscillate the bar.
+    const delta = scrollY - this.lastScrollY;
+    let next = this.compact;
+    if (scrollY <= 24) {
+      next = false;
+    } else if (delta > 4) {
+      next = true;
+    } else if (delta < -4) {
+      next = false;
+    }
+    if (Math.abs(delta) > 1) {
+      this.lastScrollY = scrollY;
     }
 
-    const offset = (this.navbarEl?.offsetHeight ?? 70) + 30;
-    const scrollPosition = scrollY + offset;
-
-    let matched = false;
-    for (let i = this.sectionOffsets.length - 1; i >= 0; i--) {
-      const section = this.sectionOffsets[i];
-      if (scrollPosition >= section.top) {
-        if (this.currentSection !== section.id) {
-          this.currentSection = section.id;
-          viewDirty = true;
-        }
-        matched = true;
-        break;
-      }
+    if (next !== this.compact) {
+      this.compact = next;
+      // The bar's height changes with the class, so republish the offset the
+      // page layout and the drawer both position off.
+      this.ngZone.run(() => {
+        this.cdr.markForCheck();
+      });
+      window.requestAnimationFrame(() => this.updateHeaderOffset());
     }
 
-    if (!matched && this.currentSection !== 'hero') {
-      this.currentSection = 'hero';
-      viewDirty = true;
-    }
-
-    // Only cross the zone boundary when the view needs to re-render. On a page
-    // of static scrolling (the vast majority of rAF ticks) this is a no-op and
-    // Angular does zero work. When the active section or inspiration word
-    // actually flips we re-enter the zone once and flush one CD pass.
-    if (viewDirty) {
-      this.ngZone.run(() => this.cdr.markForCheck());
-    }
-  }
-
-  private updateNavbarState(scrollY: number): void {
-    if (!this.navbarEl) {
-      return;
-    }
-
-    const wasCompact = this.navbarEl.classList.contains('is-compact');
-
-    if (scrollY > 24) {
-      this.renderer.addClass(this.navbarEl, 'is-compact');
-    } else {
-      this.renderer.removeClass(this.navbarEl, 'is-compact');
-    }
-
-    const isCompact = this.navbarEl.classList.contains('is-compact');
-    if (wasCompact !== isCompact) {
-      this.updateHeaderOffset();
-    }
+    void progress;
   }
 
   private updateScrollProgress(scrollY: number): number {
-    if (!this.navbarEl || !this.isBrowser) {
-      return 0;
-    }
+    if (!this.navbarEl || !this.isBrowser) return 0;
 
-    // Perf: use cached scrollable height. scrollHeight reads are forced layout
-    // calculations and are expensive on mobile. Recomputed only on resize.
-    const scrollable = this.cachedScrollableHeight > 0
-      ? this.cachedScrollableHeight
-      : Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const scrollable = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight
+    );
     const progress = scrollable > 0 ? (scrollY / scrollable) * 100 : 0;
-
     this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
     return progress;
   }
 
   private updateHeaderOffset(): void {
-    if (!this.navbarEl || !this.isBrowser) {
-      return;
-    }
+    if (!this.navbarEl || !this.isBrowser) return;
 
     const measuredHeight = this.navbarEl.offsetHeight;
 
-    // Mobile nav fix: publish the *measured* navbar height (which already
-    // includes the env(safe-area-inset-top) padding on notched devices) so the
-    // mobile drawer can sit flush under the bar. Previously .nav-menu hardcoded
-    // `top: 80px` / `top: 64px`, so on a notched phone (index.html sets
-    // viewport-fit=cover, which makes the inset non-zero) the drawer opened
-    // *underneath* the header and swallowed the first nav link — and in compact
-    // mode it left a 16px gap the backdrop showed through.
+    // Publish the *measured* height (which already includes the
+    // env(safe-area-inset-top) padding on notched devices) so the drawer sits
+    // flush under the bar rather than under a hardcoded guess.
     if (this.lastNavHeight !== measuredHeight) {
       this.lastNavHeight = measuredHeight;
       document.documentElement.style.setProperty('--nav-h', `${measuredHeight}px`);
     }
 
-    const buffer = measuredHeight <= 72 ? 12 : 20;
+    const buffer = measuredHeight <= 60 ? 12 : 20;
     const nextOffset = Math.round(measuredHeight + buffer);
-
-    if (this.lastHeaderOffset === nextOffset) {
-      return;
-    }
+    if (this.lastHeaderOffset === nextOffset) return;
 
     this.lastHeaderOffset = nextOffset;
     document.documentElement.style.setProperty('--header-offset', `${nextOffset}px`);
   }
 
-  updateBodyBackground(section: string): void {
-    const body = document.body;
-    body.classList.remove('bg-hero', 'bg-services', 'bg-projects', 'bg-about', 'bg-contact');
-    body.classList.add(`bg-${section}`);
-  }
-
-  /**
-   * Returns true when a template-bound field (activeWord / wordSwapToggle)
-   * was mutated, so the caller can schedule a single markForCheck instead of
-   * letting every rAF tick trigger zone-driven change detection.
-   */
-  private updateInspirationWord(progress: number): boolean {
-    if (progress < 0) {
-      return false;
-    }
-
-    if (Math.abs(progress - this.lastWordChangeProgress) < this.wordChangeThreshold) {
-      return false;
-    }
-
-    this.activeWord = this.pickNextWord();
-    this.wordSwapToggle = !this.wordSwapToggle;
-    this.lastWordChangeProgress = progress;
-    return true;
-  }
-
-  private pickNextWord(): string {
-    const options = this.inspirationWords.filter(word => word !== this.activeWord);
-    if (!options.length) {
-      return this.activeWord;
-    }
-
-    const index = Math.floor(Math.random() * options.length);
-    return options[index];
-  }
+  // ── Language ──────────────────────────────────────────────────────────
 
   setLanguage(language: string): void {
     const previousLang = this.currentLang;
     this.translationService.setLanguage(language);
-    
-    // Track language change
+
     if (previousLang !== language) {
       this.analyticsService.trackLanguageChange(
         language as 'en' | 'es',
@@ -441,60 +379,32 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     return this.translationService.translate(key);
   }
 
-  scrollToSection(sectionId: string): void {
-    if (!this.isBrowser) {
-      return;
-    }
+  // ── Drawer ────────────────────────────────────────────────────────────
 
-    const doScroll = () => {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        const headerHeight = this.navbarEl?.offsetHeight ?? 70;
-        const offsetPosition = element.getBoundingClientRect().top + window.scrollY - headerHeight + 1;
-        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-      }
-    };
-
-    const isOnHome = this.router.url === '/home' || this.router.url === '/';
-    if (isOnHome) {
-      doScroll();
-    } else {
-      this.router.navigate(['/home']).then(() => setTimeout(doScroll, 300));
-    }
-  }
-
-  toggleMobileMenu() {
+  toggleMobileMenu(): void {
     this.mobileMenuOpen = !this.mobileMenuOpen;
     this.setBodyScrollLock(this.mobileMenuOpen);
   }
 
-  closeMobileMenu() {
-    if (!this.mobileMenuOpen) {
-      return;
-    }
-
+  closeMobileMenu(): void {
+    if (!this.mobileMenuOpen) return;
     this.mobileMenuOpen = false;
     this.setBodyScrollLock(false);
   }
 
   /**
-   * Mobile nav fix: `body { overflow: hidden }` alone does NOT stop scrolling in
-   * iOS Safari — the page keeps rubber-banding behind the drawer and taps land
-   * on whatever scrolled under it. The reliable cross-browser lock is to take
-   * the body out of flow at its current offset, then restore both the styles and
-   * the scroll position on unlock.
+   * `body { overflow: hidden }` alone does NOT stop scrolling in iOS Safari —
+   * the page keeps rubber-banding behind the drawer and taps land on whatever
+   * scrolled under it. Taking the body out of flow at its current offset and
+   * restoring both styles and scroll position on unlock is the reliable lock.
    */
   private setBodyScrollLock(lock: boolean): void {
-    if (!this.isBrowser) {
-      return;
-    }
+    if (!this.isBrowser) return;
 
     const bodyStyle = document.body.style;
 
     if (lock) {
-      if (this.isScrollLocked) {
-        return;
-      }
+      if (this.isScrollLocked) return;
       this.isScrollLocked = true;
       this.lockedScrollY = window.scrollY || window.pageYOffset || 0;
       bodyStyle.position = 'fixed';
@@ -506,9 +416,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    if (!this.isScrollLocked) {
-      return;
-    }
+    if (!this.isScrollLocked) return;
     this.isScrollLocked = false;
     bodyStyle.removeProperty('position');
     bodyStyle.removeProperty('top');
@@ -517,7 +425,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     bodyStyle.removeProperty('width');
     bodyStyle.removeProperty('overflow');
     // `position: fixed` reset the document to scrollTop 0 — put the reader back
-    // where they were. `auto` (not `smooth`) so the restore is instantaneous.
+    // where they were. `auto`, not `smooth`, so the restore is instantaneous.
     window.scrollTo({ top: this.lockedScrollY, behavior: 'auto' });
   }
 }
