@@ -1,6 +1,7 @@
 /home
 /donate
 /live
+/mission-control
 /blueprint
 /quests
 /market
