@@ -318,10 +318,43 @@ export class GodforgeLoaderComponent implements OnInit {
       );
     });
 
+    this.aimAtBrand();
+
     // First completed navigation is the app's "ready" signal.
     this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd), take(1))
       .subscribe(() => this.onAppReady());
+  }
+
+  /**
+   * Point the stage-7 flight at where the header brand actually is.
+   *
+   * The CSS carries a hand-copy of the header's geometry as the prerender
+   * fallback, but a hand-copy goes stale the moment the header changes — and it
+   * has: --gfnav-h moved 56 -> 60px, the row's inline padding changed, and the
+   * bar compacts to 48px on scroll, each of which silently shifts the landing
+   * point. Measuring the element removes the coupling entirely.
+   *
+   * Deliberately one measurement, not a resize observer: the flight begins at
+   * 86% of the sequence and the values only need to be right by then. Reading
+   * layout once, ~2.4s before it matters, costs nothing.
+   */
+  private aimAtBrand(): void {
+    this.zone.runOutsideAngular(() => {
+      this.timers.push(setTimeout(() => {
+        const brand = document.querySelector('.gfnav__sigil');
+        const host = document.querySelector('.gf-loader') as HTMLElement | null;
+        if (!brand || !host) {
+          return;
+        }
+        const r = brand.getBoundingClientRect();
+        if (!r.width) {
+          return;
+        }
+        host.style.setProperty('--gf-logo-x', `${r.left + r.width / 2}px`);
+        host.style.setProperty('--gf-logo-y', `${r.top + r.height / 2}px`);
+      }, 120));
+    });
   }
 
   /**
