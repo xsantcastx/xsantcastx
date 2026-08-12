@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.18.0',
-  buildDate: '2026-08-11',
+  version: '2.19.0',
+  buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Long Arc',
+  codename: 'Standing Orders',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.19.0',
+    codename: 'Standing Orders',
+    date: '2026-08-12',
+    highlights: [
+      'A mission board: three daily quests drawn from a pool of thirty, two weeklies from eight, and five epics that never expire — reachable from the ⚔️ in the header or in full at /quests',
+      'The daily draw is deterministic rather than random, seeded on the date, so everyone in the realms is handed the same three quests on the same day and the roll survives a reload without ever paying out twice',
+      'Quests are never persisted — only activity is. The board is recomputed from the pools on every change, so editing a target ships to every visitor with no migration, and a claim receipt is keyed by period so a re-rolled quest cannot be claimed a second time',
+      'Progress comes from an interaction beat — typing, dragging a slider, pressing a button on a tool page, coalesced to one per six seconds per tool — not from arriving on the page, because "forge three shadows" has to mean three pieces of work',
+      'Ten tools gained a codex: 41 chapters of Eclipse Realms prose that open at 8, 20, 45 and 100 uses, in a serif panel under the tool output. Locked chapters show their number and what it costs to reach them',
+      'A tool\'s realm in the codex is derived from its registry category, never authored twice — which moved five of the ten out of the realm they were first assigned, and the prose was written to fit where the tools actually live'
+    ]
+  },
   {
     version: '2.18.0',
     codename: 'The Long Arc',

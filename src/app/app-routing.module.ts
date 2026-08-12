@@ -185,6 +185,24 @@ const routes: Routes = [
       }
     },
   {
+      path: 'quests',
+      loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
+      title: 'The Standing Orders — Daily Quests | xsantcastx',
+      data: {
+        description: 'Three daily quests drawn from thirty, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by using the tools you already use.',
+        keywords: 'daily quests, missions, developer tools, gamification, eclipse realms, xp, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/quests`,
+          url: `${SITE_URL}/quests`,
+          name: 'The Standing Orders — Daily Quests',
+          description: 'Daily, weekly and epic quests across the five Eclipse realms.'
+        }
+      }
+    },
+  {
       path: 'blueprint',
       loadComponent: () => import('./blueprint/blueprint.component').then(m => m.BlueprintComponent),
       title: 'Blueprint — Public Roadmap & Architecture | xsantcastx',

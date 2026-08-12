@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { QuestService } from '../shared/quests/quest.service';
 import {
   EclipseRarity,
   RarityDefinition,
@@ -38,6 +39,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity'>;
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
+  private readonly quests = inject(QuestService);
 
   totalEggs = EASTER_EGGS.length;
   foundCount = 0;
@@ -129,6 +131,10 @@ export class ArenaComponent implements OnInit {
     this.foundCount = this.eggs.foundCount;
     for (const game of this.games) {
       game.locked = !this.eggs.isFound(game.unlockEggId);
+      // The Arena Champion quest counts gates you have opened. The gates are
+      // not yet playable, so "opened" is the honest signal available — and it
+      // is the one the quest's own wording promises.
+      if (!game.locked) this.quests.recordArenaGame(game.id);
     }
   }
 

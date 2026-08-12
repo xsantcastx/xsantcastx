@@ -20,7 +20,8 @@ export type XpEventType =
   | 'copy'
   | 'easter-egg'
   | 'share'
-  | 'streak';
+  | 'streak'
+  | 'quest';
 
 /** Canonical XP award per event. Kept in one place so the economy is auditable. */
 export const XP_VALUES: Record<XpEventType, number> = {
@@ -31,6 +32,9 @@ export const XP_VALUES: Record<XpEventType, number> = {
   'share': 25,
   // Streak is computed, not fixed — this is the per-day step (see STREAK_STEP).
   'streak': 0,
+  // Quest payouts are authored per quest in quest.model.ts, so there is no
+  // table value here either — the claim always passes an explicit amount.
+  'quest': 0,
 };
 
 /** Each consecutive day adds this much to the daily bonus… */

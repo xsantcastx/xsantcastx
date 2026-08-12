@@ -6,6 +6,7 @@
 /live
 /guestbook
 /blueprint
+/quests
 /sponsors
 /tools
 /tools/box-shadow-generator
