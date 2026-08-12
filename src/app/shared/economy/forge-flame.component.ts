@@ -602,8 +602,16 @@ interface Shout {
 
     /* ── Mobile: smaller, and further from the thumb's resting arc so it does
          not sit on top of a tool's own controls. ─────────────────────────── */
+    /* The five-tab bar appears at 960px, not 768px, so the flame has to clear
+       it from 960px down — otherwise between 769 and 960 it sits behind the
+       CODEX and PROFILE tabs. Kept as its own query so the size changes below
+       still happen at the phone breakpoint where they belong. */
+    @media (max-width: 960px) {
+      .ff { bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 18px); }
+    }
+
     @media (max-width: 768px) {
-      .ff { right: 10px; bottom: 76px; }
+      .ff { right: 10px; }
       .ff__btn { width: 52px !important; height: 52px !important; }
       .ff__glyph { width: 30px !important; height: 30px !important; }
       .ff__hud, .ff__banner { min-width: 154px; font-size: 11px; }

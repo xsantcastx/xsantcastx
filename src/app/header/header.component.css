@@ -1,44 +1,39 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   THE GODFORGE COMMAND BAR
-   Glass on void, a purple seam along the bottom, and nothing that is not
-   a way somewhere.
+   THE COMMAND BAR, THE TOME, THE TAB BAR
 
    Colour rule: the accent is var(--primary-color), never a literal
    #8B5CF6. Four purchasable cosmetic themes re-point that variable
-   (html[data-cos-theme="…"] in styles.css) and a hardcoded hex would
-   silently opt this bar out of all of them.
+   (html[data-cos-theme="…"] in styles.css); a hardcoded hex opts the
+   whole bar out of all of them.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :host {
-  --gfnav-h: 56px;
-  --gfnav-h-compact: 48px;
-  --gfnav-void: 10, 10, 15;          /* #0a0a0f, as channels for rgba() */
+  --gfnav-h: 60px;
+  --gfnav-h-compact: 50px;
+  --gfnav-void: 10, 10, 15;
   --gfnav-gold: #C9A84C;
+  --gfnav-gold-text: #E0A857;
   --gfnav-ink: #f0f0f0;
-  --gfnav-ink-dim: rgba(240, 240, 240, 0.62);
+  --gfnav-dim: rgba(240, 240, 240, 0.6);
   --gfnav-seam: color-mix(in srgb, var(--primary-color) 55%, transparent);
   --gfnav-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --gftabs-h: 58px;
 }
 
-/* ── The bar ───────────────────────────────────────────────────────────── */
+/* ── Bar ───────────────────────────────────────────────────────────────── */
 
 .gfnav {
   position: fixed;
   inset: 0 0 auto 0;
   z-index: 1000;
-  /* viewport-fit=cover: the notch inset is real padding, and --nav-h is
-     measured after it lands so the drawer can sit flush under the bar. */
   padding-top: env(safe-area-inset-top, 0px);
   border-bottom: 1px solid var(--gfnav-seam);
   box-shadow:
-    0 0 18px -6px color-mix(in srgb, var(--primary-color) 55%, transparent),
+    0 0 20px -6px color-mix(in srgb, var(--primary-color) 60%, transparent),
     0 10px 34px -28px rgba(0, 0, 0, 0.9);
-  transition: box-shadow 0.3s var(--gfnav-ease), border-color 0.3s var(--gfnav-ease);
+  transition: box-shadow 0.3s var(--gfnav-ease);
 }
 
-/* Glass is a CHILD, not a filter on .gfnav: backdrop-filter makes an element
-   a containing block, which would pin the fixed drawer and backdrop inside
-   the bar instead of over the viewport. */
 .gfnav__glass {
   position: absolute;
   inset: 0;
@@ -52,20 +47,17 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: clamp(0.5rem, 1.6vw, 1.5rem);
+  gap: clamp(0.4rem, 1.3vw, 1.1rem);
   height: var(--gfnav-h);
-  padding-inline: clamp(0.75rem, 2.5vw, 1.75rem);
+  padding-inline: clamp(0.7rem, 2vw, 1.5rem);
   transition: height 0.28s var(--gfnav-ease);
 }
-
 .gfnav--compact .gfnav__row { height: var(--gfnav-h-compact); }
-.gfnav--compact { box-shadow: 0 0 22px -6px color-mix(in srgb, var(--primary-color) 70%, transparent); }
+.gfnav--compact .gfnav__creed { opacity: 0; }
 
-/* Reading progress, hairline along the seam. */
 .gfnav__progress {
   position: absolute;
-  left: 0;
-  bottom: -1px;
+  left: 0; bottom: -1px;
   height: 1px;
   width: var(--scroll-progress, 0%);
   background: linear-gradient(90deg, var(--gfnav-gold), var(--primary-color));
@@ -73,25 +65,24 @@
   pointer-events: none;
 }
 
-/* ── The mark ──────────────────────────────────────────────────────────── */
+/* ── Lockup ────────────────────────────────────────────────────────────── */
 
 .gfnav__brand {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   flex-shrink: 0;
-  text-decoration: none;
   min-height: 44px;
+  text-decoration: none;
 }
 
-/* Void X sigil — CSS-drawn, no emoji and no image request. Two crossed bars
-   in a squared well, with a faint purple bloom behind them. */
+/* The Void X: two crossed bars in a runic well. Drawn, so it inherits the
+   cosmetic themes and costs no image request. */
 .gfnav__sigil {
   position: relative;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   transition: filter 0.25s var(--gfnav-ease), transform 0.25s var(--gfnav-ease);
 }
@@ -113,64 +104,69 @@
   transform: scale(1.05);
 }
 
+.gfnav__lockup { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
 .gfnav__wordmark {
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
-  font-weight: 600;
-  letter-spacing: 0.015em;
+  font-family: var(--font-heading, 'Orbitron', sans-serif);
+  font-size: clamp(0.82rem, 1.1vw, 0.95rem);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
   color: var(--gfnav-ink);
   white-space: nowrap;
   transition: color 0.25s var(--gfnav-ease);
 }
 .gfnav__brand:hover .gfnav__wordmark { color: var(--primary-color); }
 
-/* ── Centre row ────────────────────────────────────────────────────────── */
+.gfnav__creed {
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  line-height: 1;
+  color: var(--gfnav-gold-text);
+  white-space: nowrap;
+  transition: opacity 0.25s var(--gfnav-ease);
+}
 
-.gfnav__centre {
+/* ── Halls ─────────────────────────────────────────────────────────────── */
+
+.gfnav__halls {
   display: flex;
   align-items: center;
-  gap: clamp(0.15rem, 0.9vw, 0.6rem);
+  gap: clamp(0.05rem, 0.5vw, 0.35rem);
   margin-inline: auto;
   min-width: 0;
 }
 
-.gfnav__link {
+.gfnav__hall {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   min-height: 44px;
-  padding: 0 clamp(0.4rem, 0.9vw, 0.72rem);
-  border: 0;
-  background: none;
+  padding: 0 clamp(0.3rem, 0.75vw, 0.6rem);
   border-radius: 8px;
   font-family: var(--font-body);
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gfnav-ink);
   text-decoration: none;
   white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.22s var(--gfnav-ease), background-color 0.22s var(--gfnav-ease);
+  transition: color 0.2s var(--gfnav-ease), background-color 0.2s var(--gfnav-ease);
 }
-
-.gfnav__link:hover,
-.gfnav__link:focus-visible,
-.gfnav__link.is-active {
+.gfnav__hall:hover,
+.gfnav__hall:focus-visible,
+.gfnav__hall.is-active {
   color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 9%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
-
-/* Underseam on the active hall. */
-.gfnav__link.is-active::after {
+.gfnav__hall.is-active::after {
   content: '';
   position: absolute;
-  left: 50%;
-  bottom: 6px;
-  width: 16px;
-  height: 2px;
+  left: 50%; bottom: 5px;
+  width: 14px; height: 2px;
   border-radius: 2px;
   transform: translateX(-50%);
   background: var(--primary-color);
@@ -179,238 +175,49 @@
 
 .gfnav__count {
   font-family: 'Orbitron', system-ui, sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   padding: 2px 5px;
   border-radius: 999px;
-  color: var(--gfnav-gold);
+  color: var(--gfnav-gold-text);
   background: color-mix(in srgb, var(--gfnav-gold) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--gfnav-gold) 34%, transparent);
 }
 
-.gfnav__caret {
-  width: 0;
-  height: 0;
-  border-left: 3.5px solid transparent;
-  border-right: 3.5px solid transparent;
-  border-top: 4px solid currentColor;
-  opacity: 0.75;
-  transition: transform 0.22s var(--gfnav-ease);
-}
-.gfnav__realms-btn.is-active .gfnav__caret { transform: rotate(180deg); }
+/* ── Standing pills ────────────────────────────────────────────────────── */
 
-/* LIVE — a pulse rather than a word's worth of colour. */
-.gfnav__link--live { letter-spacing: 0.08em; }
-.gfnav__live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ff4d6a;
-  box-shadow: 0 0 8px #ff4d6a;
-  animation: gfnavLive 2s ease-in-out infinite;
-}
-@keyframes gfnavLive {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
-}
-
-/* ── Realms dropdown ───────────────────────────────────────────────────── */
-
-.gfnav__realms { position: relative; }
-
-.gfnav__menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  translate: -50% 0;
-  width: 268px;
-  padding: 0.5rem;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 26%, transparent);
-  background: rgba(var(--gfnav-void), 0.96);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    0 0 30px -10px color-mix(in srgb, var(--primary-color) 70%, transparent),
-    0 24px 60px -30px rgba(0, 0, 0, 0.95);
-  /* Hidden, not removed: these are real crawlable routes into the filter. */
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  transition: opacity 0.2s var(--gfnav-ease), transform 0.2s var(--gfnav-ease), visibility 0.2s;
-}
-
-.gfnav__menu.is-open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.gfnav__menu-hd {
-  margin: 0.25rem 0.55rem 0.45rem;
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 0.66rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gfnav-ink-dim);
-}
-
-.gfnav__realm {
+.gfnav__standing {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: 44px;
-  padding: 0.4rem 0.55rem;
-  border-radius: 10px;
-  border-left: 2px solid transparent;
-  text-decoration: none;
-  transition: background-color 0.2s var(--gfnav-ease), border-color 0.2s var(--gfnav-ease);
-}
-
-.gfnav__realm:hover,
-.gfnav__realm:focus-visible {
-  background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 12%, transparent);
-  border-left-color: var(--realm-color, var(--primary-color));
-}
-
-.gfnav__realm-dot {
-  width: 9px;
-  height: 9px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--realm-color, var(--primary-color));
-  box-shadow: 0 0 10px var(--realm-glow, var(--primary-color));
-}
-
-.gfnav__realm-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-
-.gfnav__realm-name {
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--gfnav-ink);
-}
-
-.gfnav__realm-domain {
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
-  color: var(--gfnav-ink-dim);
-}
-
-.gfnav__realm--all {
-  justify-content: center;
-  margin-top: 0.3rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  border-left: 0;
-  border-radius: 0 0 10px 10px;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--gfnav-gold);
-}
-.gfnav__realm--all:hover { border-left-color: transparent; background: color-mix(in srgb, var(--gfnav-gold) 12%, transparent); }
-
-/* ── Status rail ───────────────────────────────────────────────────────── */
-
-.gfnav__status {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.25rem, 0.7vw, 0.5rem);
+  gap: clamp(0.2rem, 0.5vw, 0.4rem);
   flex-shrink: 0;
   margin-left: auto;
 }
 
-/* The three shared components ship 44px controls sized for the old dock
-   under the bar, which is 4px taller than a 56px row can seat comfortably.
-   Compact them to 38px — but ONLY where the pointer is a mouse. On touch
-   the 44px minimum is the standard this site already holds itself to (the
-   mobile rescue pass audited every standalone control against it), and a
-   38px tap target in a 48px bar is exactly the regression that audit
-   existed to prevent. */
-@media (hover: hover) and (pointer: fine) {
-  .gfnav__quests ::ng-deep .qt__trigger,
-  .gfnav__gold ::ng-deep .cr__chip,
-  .gfnav__xp ::ng-deep .xpb__trigger {
-    min-height: 38px;
-    height: 38px;
-  }
-  .gfnav__quests ::ng-deep .qt__trigger { width: 38px; }
-  .gfnav__keeper,
-  .gfnav__lang-btn { min-height: 38px; height: 38px; }
-  .gfnav__keeper { width: 38px; }
-}
+/* ── Language ──────────────────────────────────────────────────────────── */
 
-.gfnav__keeper {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(var(--gfnav-void), 0.55);
-  text-decoration: none;
-  transition: border-color 0.25s var(--gfnav-ease), box-shadow 0.25s var(--gfnav-ease);
-}
-.gfnav__keeper:hover,
-.gfnav__keeper:focus-visible,
-.gfnav__keeper.is-active {
-  border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
-  box-shadow: 0 0 20px -8px var(--primary-color);
-}
-
-/* Keeper glyph — a CSS bust: a head over shoulders, no emoji. */
-.gfnav__keeper-glyph {
-  position: relative;
-  width: 16px;
-  height: 16px;
-}
-.gfnav__keeper-glyph::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  translate: -50% 0;
-  border-radius: 50%;
-  background: var(--gfnav-ink);
-}
-.gfnav__keeper-glyph::after {
-  content: '';
-  position: absolute;
-  bottom: 1px;
-  left: 50%;
-  width: 14px;
-  height: 7px;
-  translate: -50% 0;
-  border-radius: 7px 7px 0 0;
-  background: var(--gfnav-ink);
-}
-.gfnav__keeper:hover .gfnav__keeper-glyph::before,
-.gfnav__keeper:hover .gfnav__keeper-glyph::after { background: var(--primary-color); }
-
-/* Language */
-.gfnav__lang {
+.gfnav__lang,
+.gftome__lang {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(var(--gfnav-void), 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(var(--gfnav-void), 0.62);
   overflow: hidden;
 }
 .gfnav__lang-btn {
-  min-width: 30px;
+  min-width: 32px;
   min-height: 44px;
   padding: 0 8px;
   border: 0;
   background: none;
   cursor: pointer;
   font-family: 'Orbitron', system-ui, sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--gfnav-ink-dim);
+  color: var(--gfnav-dim);
   transition: color 0.2s var(--gfnav-ease), background-color 0.2s var(--gfnav-ease);
 }
 .gfnav__lang-btn.is-active {
@@ -419,29 +226,58 @@
 }
 .gfnav__lang-btn:hover { color: var(--gfnav-ink); }
 
-/* Hamburger — 44px hit area, drawn bars. */
-/* The bars are absolutely positioned rather than stacked with margins: in a
-   grid/flex stack the distance between bar centres depends on how the box
-   resolves its rows, and the open-state rotation then meets at a chevron
-   instead of crossing. Fixed offsets make the X exact — bars sit 7px apart,
-   so ±7px brings the outer two onto the centre line before they rotate. */
+/* ── Keeper ────────────────────────────────────────────────────────────── */
+
+.gfnav__keeper {
+  display: grid;
+  place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(var(--gfnav-void), 0.62);
+  text-decoration: none;
+  transition: border-color 0.22s var(--gfnav-ease), box-shadow 0.22s var(--gfnav-ease);
+}
+.gfnav__keeper:hover,
+.gfnav__keeper:focus-visible,
+.gfnav__keeper.is-active {
+  border-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
+  box-shadow: 0 0 20px -8px var(--primary-color);
+}
+.gfnav__keeper-glyph { position: relative; width: 16px; height: 16px; }
+.gfnav__keeper-glyph::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  width: 7px; height: 7px; translate: -50% 0;
+  border-radius: 50%; background: var(--gfnav-ink);
+}
+.gfnav__keeper-glyph::after {
+  content: ''; position: absolute; bottom: 1px; left: 50%;
+  width: 14px; height: 7px; translate: -50% 0;
+  border-radius: 7px 7px 0 0; background: var(--gfnav-ink);
+}
+.gfnav__keeper:hover .gfnav__keeper-glyph::before,
+.gfnav__keeper:hover .gfnav__keeper-glyph::after { background: var(--primary-color); }
+
+/* ── Hamburger ─────────────────────────────────────────────────────────── */
+
+/* Bars are absolutely positioned: stacked with margins the open-state
+   rotation meets at a chevron instead of crossing, because the distance
+   between bar centres then depends on how the box resolves its rows. */
 .gfnav__burger {
   display: none;
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 44px; height: 44px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
-  background: rgba(var(--gfnav-void), 0.55);
+  background: rgba(var(--gfnav-void), 0.62);
   cursor: pointer;
   transition: border-color 0.25s var(--gfnav-ease), box-shadow 0.25s var(--gfnav-ease);
 }
 .gfnav__burger span {
   position: absolute;
   left: 50%;
-  width: 18px;
-  height: 2px;
+  width: 18px; height: 2px;
   margin-left: -9px;
   border-radius: 2px;
   background: var(--gfnav-ink);
@@ -452,24 +288,188 @@
 .gfnav__burger span:nth-child(3) { top: 28px; }
 .gfnav__burger:hover { border-color: color-mix(in srgb, var(--primary-color) 50%, transparent); }
 .gfnav__burger:hover span { background: var(--primary-color); }
-.gfnav__burger.is-open {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 18px -6px var(--primary-color);
-}
+.gfnav__burger.is-open { border-color: var(--primary-color); box-shadow: 0 0 18px -6px var(--primary-color); }
 .gfnav__burger.is-open span { background: var(--primary-color); }
 .gfnav__burger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .gfnav__burger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0.3); }
 .gfnav__burger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* ── The tome (mobile drawer) ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   RUNES — one drawn glyph per hall.
+   A shared 18px well with a purple wash; each modifier draws its own mark
+   from ::before / ::after. Geometric on purpose: at 18px a literal
+   pictogram turns to mud, and these read as sigils rather than clip art.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gfrune {
+  position: relative;
+  display: block;
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  color: var(--primary-color);
+}
+.gfrune::before,
+.gfrune::after { content: ''; position: absolute; }
+
+/* home — a roof over a hall */
+.gfrune--home::before {
+  top: 1px; left: 50%; width: 0; height: 0; translate: -50% 0;
+  border-left: 8px solid transparent; border-right: 8px solid transparent;
+  border-bottom: 7px solid currentColor;
+}
+.gfrune--home::after {
+  bottom: 2px; left: 50%; width: 11px; height: 7px; translate: -50% 0;
+  border: 1.5px solid currentColor; border-top: 0;
+}
+
+/* market — a struck coin */
+.gfrune--market::before {
+  inset: 1px; border-radius: 50%; border: 1.5px solid currentColor;
+}
+.gfrune--market::after {
+  top: 50%; left: 50%; width: 8px; height: 1.5px; translate: -50% -50%;
+  background: currentColor; box-shadow: 0 -3px 0 currentColor, 0 3px 0 currentColor;
+}
+
+/* games — a cabinet screen */
+.gfrune--games::before {
+  top: 2px; left: 1px; right: 1px; height: 11px;
+  border: 1.5px solid currentColor; border-radius: 3px;
+}
+.gfrune--games::after {
+  bottom: 1px; left: 50%; width: 9px; height: 1.5px; translate: -50% 0;
+  background: currentColor;
+}
+
+/* tools — a hammer over an anvil */
+.gfrune--tools::before {
+  top: 2px; left: 50%; width: 2px; height: 9px; translate: -50% 0;
+  background: currentColor; rotate: 28deg;
+}
+.gfrune--tools::after {
+  bottom: 2px; left: 50%; width: 13px; height: 3px; translate: -50% 0;
+  background: currentColor; border-radius: 1px 1px 2px 2px;
+}
+
+/* codex — a bound book */
+.gfrune--codex::before {
+  inset: 1px 2px; border: 1.5px solid currentColor; border-radius: 2px;
+}
+.gfrune--codex::after {
+  top: 2px; bottom: 2px; left: 50%; width: 1.5px; translate: -50% 0;
+  background: currentColor;
+}
+
+/* arena — crossed blades */
+.gfrune--arena::before,
+.gfrune--arena::after {
+  top: 50%; left: 50%; width: 15px; height: 2px; margin: -1px 0 0 -7.5px;
+  background: linear-gradient(90deg, var(--gfnav-gold) 0%, var(--gfnav-gold) 26%, currentColor 30%);
+  border-radius: 1px;
+}
+.gfrune--arena::before { transform: rotate(45deg); }
+.gfrune--arena::after { transform: rotate(-45deg); }
+
+/* mcp — a node with two links */
+.gfrune--mcp::before {
+  top: 50%; left: 50%; width: 6px; height: 6px; translate: -50% -50%;
+  border-radius: 50%; border: 1.5px solid currentColor;
+}
+.gfrune--mcp::after {
+  top: 50%; left: 1px; width: 4px; height: 1.5px; margin-top: -0.75px;
+  background: currentColor; box-shadow: 12px 0 0 currentColor;
+}
+
+/* blueprint — a drafted grid */
+.gfrune--blueprint::before {
+  inset: 1px; border: 1.5px solid currentColor; border-radius: 2px;
+}
+.gfrune--blueprint::after {
+  top: 50%; left: 1px; right: 1px; height: 1.5px; margin-top: -0.75px;
+  background: currentColor;
+  box-shadow: 0 0 0 0 currentColor;
+}
+
+/* skills — a rising diamond */
+.gfrune--skills::before {
+  top: 50%; left: 50%; width: 11px; height: 11px; translate: -50% -50%;
+  rotate: 45deg; border: 1.5px solid currentColor; border-radius: 2px;
+}
+
+/* projects — stacked plates */
+.gfrune--projects::before {
+  top: 2px; left: 2px; right: 5px; height: 8px;
+  border: 1.5px solid currentColor; border-radius: 2px;
+}
+.gfrune--projects::after {
+  bottom: 2px; left: 5px; right: 2px; height: 8px;
+  border: 1.5px solid currentColor; border-radius: 2px;
+  background: rgba(10, 10, 15, 0.9);
+}
+
+/* contact — a sealed letter */
+.gfrune--contact::before {
+  top: 3px; left: 1px; right: 1px; bottom: 3px;
+  border: 1.5px solid currentColor; border-radius: 2px;
+}
+.gfrune--contact::after {
+  top: 4px; left: 50%; width: 10px; height: 5px; translate: -50% 0;
+  border-left: 1.5px solid currentColor; border-right: 1.5px solid currentColor;
+  rotate: 0deg; clip-path: polygon(0 0, 100% 0, 50% 100%);
+  background: currentColor;
+}
+
+/* quests — a scroll */
+.gfrune--quests::before {
+  top: 1px; bottom: 1px; left: 3px; right: 3px;
+  border: 1.5px solid currentColor; border-radius: 3px;
+}
+.gfrune--quests::after {
+  top: 5px; left: 6px; right: 6px; height: 1.5px;
+  background: currentColor; box-shadow: 0 4px 0 currentColor;
+}
+
+/* sponsors — a shield */
+.gfrune--sponsors::before {
+  top: 1px; left: 50%; width: 13px; height: 15px; translate: -50% 0;
+  border: 1.5px solid currentColor;
+  border-radius: 3px 3px 50% 50%;
+}
+
+/* guestbook — a quill stroke */
+.gfrune--guestbook::before {
+  top: 2px; left: 50%; width: 2px; height: 12px; translate: -50% 0;
+  background: currentColor; rotate: 32deg; border-radius: 1px 1px 0 0;
+}
+.gfrune--guestbook::after {
+  bottom: 1px; left: 2px; right: 2px; height: 1.5px; background: currentColor;
+}
+
+/* profile — a bust */
+.gfrune--profile::before {
+  top: 1px; left: 50%; width: 7px; height: 7px; translate: -50% 0;
+  border-radius: 50%; border: 1.5px solid currentColor;
+}
+.gfrune--profile::after {
+  bottom: 1px; left: 50%; width: 14px; height: 7px; translate: -50% 0;
+  border: 1.5px solid currentColor; border-bottom: 0; border-radius: 7px 7px 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE TOME
+   ═══════════════════════════════════════════════════════════════════════ */
 
 .gftome__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 998;
+  /* Above the bar (1000), not under it. The tome is a full-screen surface
+     that carries its OWN header — sigil, wordmark and close button — and at
+     z-index 999 the bar's hamburger painted directly over that close
+     button and swallowed every tap on it. */
+  z-index: 1001;
   background:
     radial-gradient(ellipse 80% 55% at 50% 0%, color-mix(in srgb, var(--primary-color) 16%, transparent), transparent 68%),
-    rgba(4, 3, 10, 0.82);
+    rgba(4, 3, 10, 0.84);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   opacity: 0;
@@ -480,24 +480,18 @@
 
 .gftome {
   position: fixed;
-  /* Off the measured bar height, which already includes the notch inset.
-     A hardcoded top opened the drawer *under* the header on notched phones. */
-  top: var(--nav-h, 56px);
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 999;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 1002;
   /* dvh, not vh: 100vh is the LARGE viewport on mobile, so the last links
      sat behind the URL bar with no way to reach them. */
-  height: calc(100dvh - var(--nav-h, 56px));
+  height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background:
-    radial-gradient(ellipse 90% 40% at 50% 0%, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 70%),
+    radial-gradient(ellipse 90% 36% at 50% 0%, color-mix(in srgb, var(--primary-color) 14%, transparent), transparent 70%),
     radial-gradient(ellipse 70% 40% at 50% 100%, color-mix(in srgb, var(--gfnav-gold) 7%, transparent), transparent 70%),
-    rgba(var(--gfnav-void), 0.97);
-  border-top: 1px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
+    rgba(var(--gfnav-void), 0.985);
   transform: translateX(100%);
   visibility: hidden;
   transition: transform 0.36s var(--gfnav-ease), visibility 0.36s;
@@ -505,141 +499,252 @@
 .gftome.is-open { transform: translateX(0); visibility: visible; }
 
 .gftome__inner {
-  padding: 1.1rem clamp(1rem, 5vw, 1.6rem) calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  padding:
+    calc(0.9rem + env(safe-area-inset-top, 0px))
+    clamp(1rem, 5vw, 1.5rem)
+    calc(2.5rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
 }
 
-.gftome__standing {
+.gftome__hd { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.1rem; }
+.gftome__lockup { display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+
+.gftome__close {
+  position: relative;
+  width: 44px; height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: rgba(var(--gfnav-void), 0.62);
+  cursor: pointer;
+}
+.gftome__close span {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 17px; height: 2px;
+  margin: -1px 0 0 -8.5px;
+  border-radius: 2px;
+  background: var(--primary-color);
+}
+.gftome__close span:nth-child(1) { transform: rotate(45deg); }
+.gftome__close span:nth-child(2) { transform: rotate(-45deg); }
+
+/* Who you are */
+.gftome__keeper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 24%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 70%),
+    rgba(var(--gfnav-void), 0.6);
+  text-decoration: none;
 }
-.gftome__xp { display: block; margin-bottom: 0.5rem; }
-.gftome__xp ::ng-deep .xpb,
-.gftome__xp ::ng-deep .xpb__trigger { width: 100%; }
+/* The painted crest for the rank held, unplated for the same reason the
+   navbar medallion is. */
+.gftome__keeper-sigil { width: 40px; height: 40px; flex-shrink: 0; }
 
-.gftome__hd {
-  margin: 1rem 0 0.35rem;
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 0.68rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gfnav-ink-dim);
+.gftome__keeper-text { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0; }
+.gftome__keeper-hi {
+  font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gfnav-gold-text);
 }
-/* Gold rule under each chapter heading — the tome's ruled line. */
-.gftome__hd::after {
-  content: '';
-  display: block;
-  margin-top: 0.4rem;
-  height: 1px;
+.gftome__keeper-rank {
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 1.05rem; font-weight: 600; color: var(--gfnav-ink);
+}
+.gftome__keeper-lvl {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 9px;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.85rem; font-weight: 700;
+  color: #0b0716;
+  background: linear-gradient(160deg, #dcd0ff, var(--primary-color));
+  box-shadow: 0 0 16px -4px var(--primary-color);
+}
+
+.gftome__pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.4rem; }
+
+.gftome__section {
+  margin: 1.35rem 0 0.4rem;
+  font-family: var(--font-lore, ui-serif, Georgia, serif);
+  font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--gfnav-dim);
+}
+.gftome__section::after {
+  content: ''; display: block; margin-top: 0.4rem; height: 1px;
   background: linear-gradient(90deg, color-mix(in srgb, var(--gfnav-gold) 55%, transparent), transparent);
 }
 
-.gftome__realms { display: flex; flex-direction: column; gap: 0.3rem; }
-
-.gftome__realm {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: 'dot name' 'dot domain';
-  align-items: center;
-  column-gap: 0.7rem;
-  min-height: 52px;
-  padding: 0.5rem 0.7rem;
-  border-radius: 10px;
-  border-left: 2px solid var(--realm-color, var(--primary-color));
-  background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 7%, transparent);
-  text-decoration: none;
-}
-.gftome__realm:active { background: color-mix(in srgb, var(--realm-color, var(--primary-color)) 16%, transparent); }
-.gftome__realm-dot {
-  grid-area: dot;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--realm-color, var(--primary-color));
-  box-shadow: 0 0 10px var(--realm-glow, var(--primary-color));
-}
-.gftome__realm-name {
-  grid-area: name;
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 1rem; font-weight: 600;
-  color: var(--gfnav-ink);
-}
-.gftome__realm-domain { grid-area: domain; font-size: 0.72rem; color: var(--gfnav-ink-dim); }
-
-.gftome__links { display: flex; flex-direction: column; gap: 0.25rem; }
+.gftome__links { display: flex; flex-direction: column; gap: 0.15rem; }
 
 .gftome__link {
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: 'glyph name' 'glyph hint';
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: 'rune name badge chev' 'rune hint badge chev';
   align-items: center;
-  column-gap: 0.75rem;
+  column-gap: 0.8rem;
   min-height: 52px;
-  padding: 0.5rem 0.7rem;
+  padding: 0.45rem 0.6rem;
   border-radius: 10px;
   text-decoration: none;
   transition: background-color 0.2s var(--gfnav-ease);
 }
+.gftome__link .gfrune { grid-area: rune; }
 .gftome__link.is-active,
 .gftome__link:active { background: color-mix(in srgb, var(--primary-color) 12%, transparent); }
-
-/* A small drawn rune per hall — a rotated square with a purple core. */
-.gftome__link-glyph {
-  grid-area: glyph;
-  position: relative;
-  width: 16px; height: 16px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 55%, transparent);
-  border-radius: 3px;
-  rotate: 45deg;
-}
-.gftome__link-glyph::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 1px;
-  background: var(--primary-color);
-  opacity: 0.55;
-}
-.gftome__link.is-active .gftome__link-glyph::after { opacity: 1; box-shadow: 0 0 8px var(--primary-color); }
-
 .gftome__link-name {
   grid-area: name;
-  font-size: 0.95rem; font-weight: 500;
-  letter-spacing: 0.03em;
+  font-size: 0.92rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--gfnav-ink);
 }
 .gftome__link.is-active .gftome__link-name { color: var(--primary-color); }
-.gftome__link-hint { grid-area: hint; font-size: 0.72rem; color: var(--gfnav-ink-dim); }
-
-/* Only shown where the bar's own toggle is hidden. */
-.gftome__lang {
-  display: none;
-  align-self: center;
-  margin-top: 1.25rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(var(--gfnav-void), 0.55);
-  overflow: hidden;
+.gftome__link-hint { grid-area: hint; font-size: 0.7rem; color: var(--gfnav-dim); }
+.gftome__badge {
+  grid-area: badge;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.58rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 2px 6px; border-radius: 999px;
+  color: var(--gfnav-gold-text);
+  background: color-mix(in srgb, var(--gfnav-gold) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gfnav-gold) 34%, transparent);
+}
+/* Chevron */
+.gftome__chev {
+  grid-area: chev;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--gfnav-dim);
+  border-top: 1.5px solid var(--gfnav-dim);
+  rotate: 45deg;
 }
 
-.gftome__mark {
-  margin-top: 1.5rem;
-  text-align: center;
+/* Closing art */
+.gftome__art {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  margin-top: 1.8rem; padding: 1.4rem 1rem;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 70%),
+    rgba(var(--gfnav-void), 0.5);
+}
+.gftome__art-title {
+  margin: 0.6rem 0 0;
   font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 0.72rem;
-  font-style: italic;
-  letter-spacing: 0.04em;
-  color: rgba(240, 240, 240, 0.4);
+  font-size: 1rem; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--gfnav-ink);
 }
+.gftome__art-sub {
+  margin: 0;
+  font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gfnav-gold-text);
+}
+
+.gftome__socials { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.3rem; }
+.gftome__social {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(var(--gfnav-void), 0.6);
+  text-decoration: none;
+  transition: border-color 0.2s var(--gfnav-ease), box-shadow 0.2s var(--gfnav-ease);
+}
+.gftome__social:hover { border-color: var(--primary-color); box-shadow: 0 0 18px -6px var(--primary-color); }
+
+/* Social marks, drawn. */
+.gfsocial { position: relative; display: block; width: 16px; height: 16px; color: var(--gfnav-ink); }
+.gfsocial::before, .gfsocial::after { content: ''; position: absolute; }
+.gfsocial--x::before, .gfsocial--x::after {
+  top: 50%; left: 50%; width: 18px; height: 1.8px; margin: -0.9px 0 0 -9px;
+  background: currentColor; border-radius: 1px;
+}
+.gfsocial--x::before { transform: rotate(45deg); }
+.gfsocial--x::after { transform: rotate(-45deg); }
+.gfsocial--github::before {
+  inset: 1px; border-radius: 50% 50% 45% 45%; border: 1.8px solid currentColor;
+}
+.gfsocial--github::after {
+  bottom: -1px; left: 50%; width: 6px; height: 5px; translate: -50% 0;
+  border-left: 1.8px solid currentColor; border-right: 1.8px solid currentColor;
+}
+.gfsocial--twitch::before {
+  top: 1px; left: 2px; right: 2px; bottom: 4px;
+  border: 1.8px solid currentColor; border-radius: 2px 2px 0 2px;
+}
+.gfsocial--twitch::after {
+  bottom: 0; right: 4px; width: 1.8px; height: 5px; background: currentColor; rotate: 0deg;
+}
+.gfsocial--instagram::before {
+  inset: 1px; border: 1.8px solid currentColor; border-radius: 5px;
+}
+.gfsocial--instagram::after {
+  top: 50%; left: 50%; width: 7px; height: 7px; translate: -50% -50%;
+  border: 1.8px solid currentColor; border-radius: 50%;
+}
+
+.gftome__lang { align-self: center; margin-top: 1.2rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE TAB BAR — phone only.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gftabs {
+  display: none;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 997;
+  height: calc(var(--gftabs-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid color-mix(in srgb, var(--primary-color) 32%, transparent);
+  background: rgba(var(--gfnav-void), 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 -8px 30px -18px rgba(0, 0, 0, 0.95);
+}
+
+.gftabs__tab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--gfnav-dim);
+  transition: color 0.2s var(--gfnav-ease);
+}
+.gftabs__tab .gfrune { color: currentColor; }
+.gftabs__label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.gftabs__tab.is-active { color: var(--primary-color); }
+/* A lit seam over the active tab, matching the bar's underseam. */
+.gftabs__tab.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 26px; height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--primary-color);
+  box-shadow: 0 0 10px var(--primary-color);
+}
+.gftabs__tab { position: relative; }
 
 /* ── Focus ─────────────────────────────────────────────────────────────── */
 
 .gfnav a:focus-visible,
 .gfnav button:focus-visible,
-.gftome a:focus-visible {
+.gftome a:focus-visible,
+.gftome button:focus-visible,
+.gftabs a:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 3px;
   border-radius: 8px;
@@ -647,51 +752,63 @@
 
 /* ── Breakpoints ───────────────────────────────────────────────────────── */
 
-/* Narrow desktop: the row is tight at 1280px. Drop the hints before the
-   halls — LIVE and the language toggle earn their space last. */
-@media (max-width: 1240px) {
-  .gfnav__link { padding-inline: 0.4rem; font-size: 0.76rem; }
-  .gfnav__centre { gap: 0.1rem; }
+/* The row carries a lockup, seven halls and four status controls. Shed the
+   least load-bearing pieces first as it narrows, rather than letting the
+   halls collide with the pills the way the old bar did at 1280px. */
+@media (max-width: 1380px) {
+  .gfpill--rank .gfpill__rank-title { display: none; }
 }
-
-@media (max-width: 1100px) {
-  .gfnav__link--live { display: none; }
+@media (max-width: 1240px) {
+  .gfnav__hall { font-size: 0.68rem; padding-inline: 0.32rem; }
+  .gfnav__creed { display: none; }
+}
+@media (max-width: 1120px) {
   .gfnav__count { display: none; }
+  .gfnav__keeper { display: none; }   /* the rank pill already goes there */
+}
+@media (max-width: 1010px) {
+  .gfpill--essence { display: none; }
 }
 
 /* Drawer breakpoint — matches MOBILE_NAV_BREAKPOINT in the component. */
 @media (max-width: 960px) {
-  .gfnav__centre { display: none; }
+  .gfnav__halls { display: none; }
   .gfnav__burger { display: grid; }
-  .gfnav__xp { display: none; }          /* the tome carries the full bar */
-  .gfnav__keeper { display: none; }      /* reachable as a hall in the tome */
+  .gfnav__lang { display: none; }      /* the tome carries it */
+  .gfnav__keeper { display: none; }
+  .gfpill--essence { display: inline-flex; }
+  .gftabs { display: flex; }
 }
 
 @media (max-width: 720px) {
-  :host { --gfnav-h: 48px; --gfnav-h-compact: 44px; }
-  .gfnav__wordmark { font-size: 0.95rem; }
-  .gfnav__lang { display: none; }        /* language lives in the tome below */
-  .gftome__lang { display: inline-flex; }
+  :host { --gfnav-h: 52px; --gfnav-h-compact: 48px; }
+  .gfpill { padding: 0 0.5rem; }
+  .gfpill__val { font-size: 0.68rem; }
+  .gfpill--rank .gfpill__rank-title { display: none; }
 }
 
-@media (max-width: 400px) {
-  .gfnav__gold ::ng-deep .cr__chip--essence { display: none; }
-  .gfnav__wordmark { font-size: 0.88rem; }
+@media (max-width: 420px) {
+  .gfnav__row { gap: 0.35rem; padding-inline: 0.6rem; }
+  .gfnav__wordmark { font-size: 0.74rem; letter-spacing: 0.1em; }
+  .gfpill { padding: 0 0.45rem; gap: 0.28rem; }
+  .gfpill__val { font-size: 0.64rem; }
+}
+
+/* Very narrow: the wallet moves out of the bar entirely and lives in the
+   tome, where it is already rendered at full size. */
+@media (max-width: 360px) {
+  .gfnav__standing .gfpill--essence { display: none; }
 }
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .gfnav,
-  .gfnav__row,
-  .gfnav__menu,
-  .gftome,
-  .gftome__backdrop,
-  .gfnav__burger span,
-  .gfnav__link,
-  .gfnav__sigil,
-  .gfnav__keeper { transition: none; }
-  .gfnav__live-dot { animation: none; opacity: 1; }
+  .gfnav, .gfnav__row, .gftome, .gftome__backdrop,
+  .gfnav__burger span, .gfnav__hall, .gfnav__sigil,
+  .gfnav__keeper, .gfxp__fill, .gftabs__tab { transition: none; }
+  .gfsigil-scene__ring--outer,
+  .gfsigil-scene__ring--inner,
+  .gfsigil-scene__core { animation: none; }
   /* Static end state, not "no drawer": it still opens, it just does not slide. */
   .gftome { transform: translateX(0); display: none; }
   .gftome.is-open { display: block; }
