@@ -28,7 +28,7 @@ const AD_SLOT   = '0000000000';
 
 @Component({
   selector: 'app-adsense',
-  standalone: false,
+  standalone: true,
   template: `
     <div class="adsense-wrap" [attr.aria-label]="label">
       <span class="adsense-label">{{ label }}</span>

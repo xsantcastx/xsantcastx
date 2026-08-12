@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService, EASTER_EGGS, EasterEgg } from '../shared/easter-eggs/easter-egg.service';
+import { RouterModule } from '@angular/router';
 
 export interface GameCard {
   id: string;
@@ -17,7 +18,8 @@ export interface GameCard {
   selector: 'app-games',
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [RouterModule]
 })
 export class GamesComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

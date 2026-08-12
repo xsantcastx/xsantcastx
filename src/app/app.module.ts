@@ -8,9 +8,6 @@ import { TitleStrategy } from '@angular/router';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';
-import { SkillsComponent } from './skills/skills.component';
-import { ProjectsComponent } from './projects/projects.component';
-import { ContactComponent } from './contact/contact.component';
 import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
@@ -18,51 +15,33 @@ import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
-import { DonationFormComponent } from './donation-form/donation-form.component';
-import { DonationFeedComponent } from './donation-feed/donation-feed.component';
-import { DonateComponent } from './donate/donate.component';
-import { LandingComponent } from './landing/landing.component';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
 import { ScrollTrackingDirective } from './scroll-tracking.directive';
 import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
-import { LiveComponent } from './live/live.component';
-import { AdsenseComponent } from './shared/adsense/adsense.component';
-import { NotFoundComponent } from './not-found/not-found.component';
 import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { EggDiscoveryComponent } from './shared/easter-eggs/egg-discovery.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { GamesComponent } from './games/games.component';
-import { McpComponent } from './mcp/mcp.component';
 
 
 @NgModule({
+  // Every routed page is standalone and lazy-loaded (see app-routing.module.ts).
+  // What is left here is the app shell — the pieces AppComponent renders on
+  // every route.
   declarations: [
     AppComponent,
     HeaderComponent,
-    SkillsComponent,
-    ProjectsComponent,
-    ContactComponent,
     FooterComponent,
-    DonationFormComponent,
-    DonationFeedComponent,
-    DonateComponent,
-    LandingComponent,
     CookieBannerComponent,
     ScrollTrackingDirective,
     FocusTrapDirective,
-    LiveComponent,
-    AdsenseComponent,
-    NotFoundComponent,
     EmbedBarComponent,
     MilestoneEffectComponent,
     EggDiscoveryComponent,
-    CommandPaletteComponent,
-    GamesComponent,
-    McpComponent
+    CommandPaletteComponent
   ],
   bootstrap: [AppComponent],
   imports: [

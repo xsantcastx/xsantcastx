@@ -1,21 +1,15 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { SkillsComponent } from './skills/skills.component';
-import { ProjectsComponent } from './projects/projects.component';
-import { ContactComponent } from './contact/contact.component';
-import { DonateComponent } from './donate/donate.component';
-import { LandingComponent } from './landing/landing.component';
-import { NotFoundComponent } from './not-found/not-found.component';
-import { GamesComponent } from './games/games.component';
-import { McpComponent } from './mcp/mcp.component';
 import { RouteTitles } from './shared/title-strategy.service';
+// Every page below is loaded with loadComponent(). Importing a routed
+// component here instead would pull it — and its whole transitive graph —
+// into the initial bundle, which is what kept 9 pages eager until now.
 import { SITE_URL } from './seo.service';
-import { LiveComponent } from './live/live.component';
 
 const routes: Routes = [
   {
       path: 'home',
-      component: LandingComponent,
+      loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
       title: 'xsantcastx | Full-Stack Developer & Free Browser Tools',
       data: {
         description: 'xsantcastx — Full-Stack Developer building modern web apps and free browser tools. CSS Box Shadow Generator, Email Deliverability Auditor, SSL Inspector, SVG to Code & more. No sign-up.',
@@ -48,7 +42,7 @@ const routes: Routes = [
     },
   {
       path: 'skills',
-      component: SkillsComponent,
+      loadComponent: () => import('./skills/skills.component').then(m => m.SkillsComponent),
       title: RouteTitles.skills,
       data: {
         description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more. Full-stack expertise for modern web and mobile applications.',
@@ -67,7 +61,7 @@ const routes: Routes = [
     },
   {
       path: 'projects',
-      component: ProjectsComponent,
+      loadComponent: () => import('./projects/projects.component').then(m => m.ProjectsComponent),
       title: RouteTitles.projects,
       data: {
         description: 'Portfolio of real-world projects: e-commerce platforms, web applications, and developer tools built with Angular, Firebase, and TypeScript.',
@@ -86,7 +80,7 @@ const routes: Routes = [
     },
   {
       path: 'contact',
-      component: ContactComponent,
+      loadComponent: () => import('./contact/contact.component').then(m => m.ContactComponent),
       title: RouteTitles.contact,
       data: {
         description: 'Get in touch for freelance web development, project collaboration, or consulting. Based in Spain, working globally.',
@@ -101,7 +95,7 @@ const routes: Routes = [
     },
   {
       path: 'donate',
-      component: DonateComponent,
+      loadComponent: () => import('./donate/donate.component').then(m => m.DonateComponent),
       title: RouteTitles.donate,
       data: {
         description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.',
@@ -116,7 +110,7 @@ const routes: Routes = [
     },
   {
       path: 'live',
-      component: LiveComponent,
+      loadComponent: () => import('./live/live.component').then(m => m.LiveComponent),
       title: 'Watch Live Work — AI Mission Control | xsantcastx',
       data: {
         description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
@@ -135,7 +129,7 @@ const routes: Routes = [
     },
   {
       path: 'mcp',
-      component: McpComponent,
+      loadComponent: () => import('./mcp/mcp.component').then(m => m.McpComponent),
       title: 'xsantcastx MCP Server — 14 Developer Tools for AI Agents',
       data: {
         description: 'A local MCP server with 14 developer tools: JSON formatting, UUID generation, Base64, JWT decoding, regex, hashing, color contrast, and cron expression tools.',
@@ -155,7 +149,7 @@ const routes: Routes = [
     },
   {
       path: 'games',
-      component: GamesComponent,
+      loadComponent: () => import('./games/games.component').then(m => m.GamesComponent),
       title: 'Games & Easter Eggs — Unlock Hidden Games | xsantcastx',
       data: {
         description: 'Use tools to discover Easter eggs and unlock hidden mini-games. 106 secrets across 135 tools.',
@@ -299,7 +293,7 @@ const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   {
       path: '**',
-      component: NotFoundComponent,
+      loadComponent: () => import('./not-found/not-found.component').then(m => m.NotFoundComponent),
       title: '404 — Page Not Found | xsantcastx',
       data: {
         // Firebase serves the SPA shell with a 200 for unknown paths, so this

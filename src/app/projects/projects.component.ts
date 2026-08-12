@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { TranslationService } from '../translation.service';
+import { CommonModule } from '@angular/common';
 
 interface ProjectConfig {
   titleKey: string;
@@ -16,7 +17,8 @@ interface ProjectConfig {
   selector: 'app-projects',
   templateUrl: './projects.component.html',
   styleUrls: ['./projects.component.css'],
-  standalone: false
+  standalone: true,
+    imports: [CommonModule]
 })
 export class ProjectsComponent implements OnInit {
   private translationService = inject(TranslationService);
