@@ -55,6 +55,16 @@ interface Hall {
   hintKey?: string;
 }
 
+/**
+ * A bottom tab. Carries both painted states, because the tab bar cross-fades
+ * between them rather than swapping one <img> src — see the note in the
+ * template.
+ */
+interface Tab extends Hall {
+  iconInactive: string;
+  iconActive: string;
+}
+
 interface TomeSection {
   titleKey: string;
   halls: Hall[];
@@ -125,12 +135,17 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * The five fixed destinations along the bottom of a phone. Deliberately the
    * five a visitor returns to, not the five that happen to be most recent.
    */
-  readonly tabs: Hall[] = [
-    { route: '/home',         key: 'gfnav.home',    glyph: 'home' },
-    { route: '/tools',        key: 'gfnav.tools',   glyph: 'tools' },
-    { route: '/arena',        key: 'gfnav.arena',   glyph: 'arena' },
-    { route: '/codex',        key: 'gfnav.codex',   glyph: 'codex' },
-    { route: '/forge-keeper', key: 'gfnav.profile', glyph: 'profile' }
+  readonly tabs: Tab[] = [
+    { route: '/home',         key: 'gfnav.home',    glyph: 'home',
+      iconInactive: 'assets/icons/tabs/home-inactive.png',    iconActive: 'assets/icons/tabs/home-active.png' },
+    { route: '/tools',        key: 'gfnav.tools',   glyph: 'tools',
+      iconInactive: 'assets/icons/tabs/tools-inactive.png',   iconActive: 'assets/icons/tabs/tools-active.png' },
+    { route: '/arena',        key: 'gfnav.arena',   glyph: 'arena',
+      iconInactive: 'assets/icons/tabs/arena-inactive.png',   iconActive: 'assets/icons/tabs/arena-active.png' },
+    { route: '/codex',        key: 'gfnav.codex',   glyph: 'codex',
+      iconInactive: 'assets/icons/tabs/codex-inactive.png',   iconActive: 'assets/icons/tabs/codex-active.png' },
+    { route: '/forge-keeper', key: 'gfnav.profile', glyph: 'profile',
+      iconInactive: 'assets/icons/tabs/profile-inactive.png', iconActive: 'assets/icons/tabs/profile-active.png' }
   ];
 
   /**
