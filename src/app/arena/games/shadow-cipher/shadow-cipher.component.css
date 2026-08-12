@@ -1,0 +1,156 @@
+/* Shadow Cipher — the Codex page and its lines. */
+
+.sc-warn { color: rgba(164, 139, 255, 0.85); font-size: 0.86rem; }
+
+.sc-page { margin-top: 0.5rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+
+.sc-page--restored {
+  border-color: rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 40px -14px rgba(0, 255, 204, 0.9);
+}
+
+.sc-page__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.sc-page__title { margin: 0; font-size: 1rem; font-weight: 600; }
+
+.sc-lang {
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.sc-lang[data-lang='css']  { color: #4dffe0; }
+.sc-lang[data-lang='js']   { color: #C9A84C; }
+.sc-lang[data-lang='html'] { color: #ff6dd7; }
+
+/* ── lines ────────────────────────────────────────────────── */
+
+.sc-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+
+.sc-line {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+  border: 1px solid var(--ag-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.sc-line--placed {
+  border-color: rgba(0, 255, 204, 0.4);
+  background: rgba(0, 255, 204, 0.06);
+}
+
+.sc-line--selected {
+  border-color: var(--ag-violet);
+  background: rgba(164, 139, 255, 0.12);
+  box-shadow: 0 0 18px -6px rgba(164, 139, 255, 0.9);
+}
+
+.sc-line__grab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--ag-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sc-line__num {
+  flex: none;
+  width: 1.5rem;
+  color: var(--ag-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sc-line__code {
+  flex: 1;
+  min-width: 0;
+  font: 0.82rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  overflow-x: auto;
+  color: #cfe4f5;
+}
+
+.sc-line--placed .sc-line__code { color: #d9fff5; }
+
+.sc-line__hint {
+  flex: none;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(164, 139, 255, 0.18);
+  border: 1px solid rgba(164, 139, 255, 0.5);
+  color: #d6ccff;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/* Side by side, not stacked. Stacked, each arrow was 44x22 — half the 44px
+   minimum every standalone control on this site has to clear. */
+.sc-line__moves {
+  flex: none;
+  display: flex;
+  border-left: 1px solid var(--ag-line);
+}
+
+.sc-move {
+  width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ag-dim);
+  font-size: 0.62rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sc-move + .sc-move { border-left: 1px solid var(--ag-line); }
+.sc-move:hover:not(:disabled), .sc-move:focus-visible:not(:disabled) {
+  background: rgba(0, 255, 204, 0.12);
+  color: var(--ag-cyan);
+}
+.sc-move:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.sc-restored {
+  margin: 1rem 0 0;
+  text-align: center;
+  color: var(--ag-cyan);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  animation: agPulse 0.85s ease-in-out infinite;
+}
+
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 1.1rem;
+}
+
+.sc-toll { font-weight: 400; font-size: 0.78rem; opacity: 0.75; }
+.ag-end__line--muted { font-size: 0.82rem; opacity: 0.8; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-restored { animation: none; }
+}

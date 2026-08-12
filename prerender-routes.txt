@@ -193,6 +193,7 @@
 /arena
 /arena/color-memory
 /arena/realm-rush
+/arena/shadow-cipher
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor
