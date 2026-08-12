@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.30.0',
+  version: '2.31.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Eternal Archive',
+  codename: 'Unbroken',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,22 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.31.0',
+    codename: 'Unbroken',
+    date: '2026-08-12',
+    highlights: [
+      'The Forge Flame counts combos. Consecutive strikes stack a multiplier beside the ember, and ten rungs escalate from a purple "COMBO x10!" through ON FIRE, UNSTOPPABLE and GODFORGE AWAKENS to THE FIRST SUN SHATTERS at x9,999',
+      'The strike itself pitches up as the ladder climbs — same anvil, struck harder — and the upper rungs each add a channel rather than just volume: an overtone, a decay tail, a bass impact under a high ring, and finally an ascending arpeggio onto a held chord',
+      'The screen escalates with it. Purple along the viewport edges from x50, a hard shake at x100, the ember doubling at x250, a full vignette from x500, a bright frame at x1,000 and a whiteout into flooding purple at x5,000',
+      'Two seconds of silence ends a run. Against the existing 500ms strike cooldown that leaves 1.5s of slack per strike and caps the rate at two a second — which is what makes x9,999 mean something: 83 minutes of unbroken rhythm, and one missed beat puts it back to zero',
+      'At exactly x666 the screen inverts for a fifth of a second, a detuned rumble rolls under a chain, and THE NAMELESS STIRS. Once, ever — the achievement is the gate, so a second run past it passes in silence',
+      'Eight new achievements, from Rapid Strike at x10 to First Sun Shatter at the cap, the only ones on the wall priced in time held rather than in a thing done',
+      'Every screen-level effect is switched off under prefers-reduced-motion — the counter, the shouts and all eight achievements remain, so the ladder is fully collectable without a single flash',
+      'Fixed a floater that could swallow a strike: the "+1" rising off the ember is a sibling of the button with pointer events on, and at two strikes a second there is always one crossing the target',
+      'Fixed the reduced-motion floater fade, which had never once run — Angular scopes @keyframes per component but leaves an animation reference inside a @media block unscoped, so it pointed at a name that did not exist'
+    ]
+  },
   {
     version: '2.30.0',
     codename: 'The Eternal Archive',

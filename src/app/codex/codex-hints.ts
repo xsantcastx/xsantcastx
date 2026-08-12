@@ -29,6 +29,18 @@ export const EGG_HINTS: Record<string, string> = {
   'forge-self-aware': 'Somewhere in the Godforge there is a sheet with your own name on it.',
   'cloud-eternal-archive': 'Your progress transcends devices. The Godforge remembers across all realms.',
 
+  // ── The combo ladder ──────────────────────────────────────────────────────
+  // These gesture at rhythm rather than at a number, per rule 1 — naming the
+  // count would turn the whole ladder into a checklist with a stopwatch.
+  'combo-rapid-strike': 'Strike the ember, then strike it again before the last one has finished.',
+  'combo-forge-frenzy': 'Keep the hammer falling long past the point it stops being a habit.',
+  'combo-century-forge': 'A hundred without a pause. The anvil starts to notice.',
+  'combo-relentless': 'Hold the rhythm until the realm leans in at the edges.',
+  'combo-millennium-strike': 'A thousand unbroken. Somewhere underneath, something answers.',
+  'combo-eclipse-breaker': 'Forty minutes of not stopping. The light gives out before you do.',
+  'combo-first-sun': 'There is a number the counter cannot go past. Reach it in one breath.',
+  'combo-forbidden-count': 'Between five hundred and a thousand there is a count nobody says aloud. Pass through it.',
+
   // ── Luminous — light, colour and the making of surfaces ───────────────────
   'shadow-lord': 'A shadow with five layers holds power.',
   'monochrome': 'Ask which of two identical things is brighter, and listen to the silence.',
