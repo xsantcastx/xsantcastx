@@ -79,7 +79,7 @@ import { QuestCardComponent } from './quest-card.component';
     .qd__backdrop {
       position: fixed; inset: 0; z-index: 90;
       background:
-        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0, 255, 204, 0.06), transparent 65%),
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(139, 92, 246, 0.06), transparent 65%),
         radial-gradient(ellipse 60% 50% at 50% 100%, rgba(123, 97, 255, 0.08), transparent 65%),
         rgba(3, 2, 10, 0.72);
       animation: qdFade .3s ease;
@@ -96,9 +96,9 @@ import { QuestCardComponent } from './quest-card.component';
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 18px 16px 32px;
-      border-left: 1px solid rgba(0, 255, 204, 0.18);
+      border-left: 1px solid rgba(139, 92, 246, 0.18);
       background:
-        radial-gradient(ellipse 80% 40% at 20% 0%, rgba(0, 255, 204, 0.08), transparent 65%),
+        radial-gradient(ellipse 80% 40% at 20% 0%, rgba(139, 92, 246, 0.08), transparent 65%),
         radial-gradient(ellipse 70% 40% at 90% 100%, rgba(123, 97, 255, 0.10), transparent 65%),
         rgba(6, 4, 18, 0.96);
       box-shadow: -20px 0 60px -30px rgba(0, 0, 0, 0.95);
@@ -125,14 +125,14 @@ import { QuestCardComponent } from './quest-card.component';
     }
     @keyframes qdDot { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 
-    .qd__title { margin: 0; font: 700 18px/1.2 'Orbitron', system-ui, sans-serif; color: #eafff9; }
+    .qd__title { margin: 0; font: 700 18px/1.2 'Orbitron', system-ui, sans-serif; color: #F2ECFF; }
 
     .qd__close {
       min-width: 44px; min-height: 44px;
       border: none; background: none; color: #9fb4ae;
       font-size: 16px; cursor: pointer;
     }
-    .qd__close:hover { color: #4dffe0; }
+    .qd__close:hover { color: #A78BFA; }
 
     .qd__timer { margin: 6px 0 12px; font-size: 11px; color: #8fa09b; }
 

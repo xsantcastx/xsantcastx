@@ -113,7 +113,7 @@
 .mde-toolbar-btn:hover {
   color: var(--primary-color);
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  border-color: rgba(0, 255, 204, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 .mde-toolbar-btn:active {
   transform: scale(0.92);
@@ -212,7 +212,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .mde-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Ghost/small buttons ───────────────────────────────────── */
@@ -234,12 +234,12 @@
 }
 .mde-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .mde-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .mde-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .mde-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -287,9 +287,9 @@
   color: var(--primary-color);
   margin: 0 0 1rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgba(0, 255, 204, 0.15);
+  border-bottom: 2px solid rgba(139, 92, 246, 0.15);
   letter-spacing: -0.02em;
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.25);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
 }
 
 :host ::ng-deep .mde-preview-content h2 {
@@ -346,7 +346,7 @@
 :host ::ng-deep .mde-preview-content a {
   color: var(--primary-color);
   text-decoration: none;
-  border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
   transition: border-color 0.2s ease, opacity 0.2s ease;
 }
 :host ::ng-deep .mde-preview-content a:hover {
@@ -366,7 +366,7 @@
 /* Inline code */
 :host ::ng-deep .mde-preview-content .mde-inline-code {
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: 4px;
   padding: 0.15rem 0.4rem;
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
@@ -509,7 +509,7 @@
 }
 
 :host ::ng-deep .mde-preview-content .mde-table tr:hover td {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 /* Horizontal rule */

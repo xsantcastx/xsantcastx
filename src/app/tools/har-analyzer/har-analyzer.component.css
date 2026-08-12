@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    HAR File Analyzer — Component Styles
-   Cosmic theme: cyan #00ffcc primary, category colours from the
+   Cosmic theme: cyan #8B5CF6 primary, category colours from the
    site palette (see CLAUDE.md §2). No new colours are introduced.
    ══════════════════════════════════════════════════════════════ */
 
@@ -12,7 +12,7 @@
   /* Resource-type palette — one hue per type, reused by dots, chips,
      bar fills and chart rows so a colour always means the same thing. */
   --ha-document: #5fb6ff;
-  --ha-stylesheet: #4dffe0;
+  --ha-stylesheet: #A78BFA;
   --ha-script: #ffc669;
   --ha-image: #c48bff;
   --ha-font: #ff6dd7;
@@ -43,7 +43,7 @@
   margin-bottom: 1.25rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -53,7 +53,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 
@@ -118,8 +118,8 @@
   color: var(--text-color);
 }
 .ha-btn--ghost:hover:not(:disabled) {
-  border-color: rgba(0, 255, 204, 0.45);
-  color: #00ffcc;
+  border-color: rgba(139, 92, 246, 0.45);
+  color: #8B5CF6;
   transform: translateY(-1px);
 }
 .ha-btn:disabled { opacity: 0.5; cursor: progress; }
@@ -127,10 +127,10 @@
 /* ── Dropzone ──────────────────────────────────────────────── */
 .ha-drop {
   position: relative;
-  border: 1px dashed rgba(0, 255, 204, 0.28);
+  border: 1px dashed rgba(139, 92, 246, 0.28);
   border-radius: 16px;
   background:
-    radial-gradient(ellipse 60% 60% at 30% 20%, rgba(0, 255, 204, 0.05), transparent 65%),
+    radial-gradient(ellipse 60% 60% at 30% 20%, rgba(139, 92, 246, 0.05), transparent 65%),
     radial-gradient(ellipse 50% 50% at 75% 80%, rgba(123, 97, 255, 0.06), transparent 65%),
     var(--ha-panel-bg);
   padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 1.25rem;
@@ -138,8 +138,8 @@
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 .ha-drop--active {
-  border-color: rgba(0, 255, 204, 0.8);
-  box-shadow: 0 0 32px -10px rgba(0, 255, 204, 0.6);
+  border-color: rgba(139, 92, 246, 0.8);
+  box-shadow: 0 0 32px -10px rgba(139, 92, 246, 0.6);
 }
 .ha-drop--error { border-color: rgba(255, 109, 215, 0.4); }
 
@@ -164,21 +164,21 @@
   padding: 1rem;
 }
 .ha-drop__inner:focus-visible {
-  outline: 2px solid #00ffcc;
+  outline: 2px solid #8B5CF6;
   outline-offset: 3px;
 }
 
 /* The dropzone orb reuses the site's star-orb formula (CLAUDE.md §3.2). */
 .ha-drop__orb {
-  --star-color: #00ffcc;
-  --star-glow: rgba(0, 255, 204, 0.6);
-  --star-inner: #eafff9;
+  --star-color: #8B5CF6;
+  --star-glow: rgba(139, 92, 246, 0.6);
+  --star-inner: #F2ECFF;
   position: relative;
   display: grid;
   place-items: center;
   width: 68px; height: 68px;
   border-radius: 50%;
-  color: #eafff9;
+  color: #F2ECFF;
   background:
     radial-gradient(circle at 32% 28%, var(--star-inner) 0%, rgba(255,255,255,0.32) 18%, rgba(255,255,255,0) 42%),
     radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8,3,24,0.92) 88%);
@@ -221,9 +221,9 @@
   padding: 0.6rem 1.35rem;
   margin-top: 0.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.08);
-  color: #00ffcc;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.08);
+  color: #8B5CF6;
   font-weight: 700;
   font-size: 0.86rem;
 }
@@ -281,7 +281,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.5rem;
 }
 .ha-howto__step ol { margin: 0; padding-left: 1.1rem; }
@@ -320,7 +320,7 @@
 .ha-loading__fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #00ffcc, var(--info-color));
+  background: linear-gradient(90deg, #8B5CF6, var(--info-color));
   transition: width 0.25s ease;
 }
 .ha-loading__file {
@@ -362,7 +362,7 @@
   color: var(--text-color);
   margin: 0;
 }
-.ha-panel__title svg { color: #00ffcc; }
+.ha-panel__title svg { color: #8B5CF6; }
 .ha-panel__count {
   font-size: 0.78rem;
   font-family: var(--ha-mono);
@@ -397,8 +397,8 @@
   padding: 0.9rem 1.15rem;
   margin-bottom: 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(0, 255, 204, 0.18);
-  background: rgba(0, 255, 204, 0.03);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  background: rgba(139, 92, 246, 0.03);
 }
 .ha-filebar__id { min-width: 0; }
 .ha-filebar__name {
@@ -406,7 +406,7 @@
   font-family: var(--ha-mono);
   font-size: 0.9rem;
   font-weight: 600;
-  color: #00ffcc;
+  color: #8B5CF6;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -465,7 +465,7 @@
   position: absolute;
   top: -1px; left: 12%; right: 12%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.5) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5) 50%, transparent);
 }
 .ha-stat--bad::before { background: linear-gradient(90deg, transparent, rgba(255, 109, 215, 0.6) 50%, transparent); }
 .ha-stat__num {
@@ -481,7 +481,7 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
 }
 .ha-stat__sub { font-size: 0.75rem; color: var(--text-muted); }
 
@@ -573,7 +573,7 @@
   transition: background 0.18s ease, border-color 0.18s ease;
 }
 .ha-bar-row:hover { background: rgba(255, 255, 255, 0.03); border-color: var(--ha-panel-border); }
-.ha-bar-row--active { border-color: rgba(0, 255, 204, 0.45); background: rgba(0, 255, 204, 0.05); }
+.ha-bar-row--active { border-color: rgba(139, 92, 246, 0.45); background: rgba(139, 92, 246, 0.05); }
 .ha-bar-row__label {
   display: inline-flex;
   align-items: center;
@@ -597,7 +597,7 @@
   background: var(--ha-other);
   transition: width 0.35s ease;
 }
-.ha-bar-row__fill--domain { background: linear-gradient(90deg, #00ffcc, var(--info-color)); }
+.ha-bar-row__fill--domain { background: linear-gradient(90deg, #8B5CF6, var(--info-color)); }
 .ha-bar-row__value { font-size: 0.76rem; font-family: var(--ha-mono); color: var(--text-color); text-align: right; }
 .ha-bar-row__count { font-size: 0.74rem; font-family: var(--ha-mono); color: var(--text-muted); text-align: right; }
 
@@ -667,7 +667,7 @@
   border: none;
   padding: 0.4rem 0;
   min-height: 32px;
-  color: #00ffcc;
+  color: #8B5CF6;
   font-family: var(--font-body);
   font-size: 0.79rem;
   font-weight: 600;
@@ -724,7 +724,7 @@
   cursor: pointer;
   max-width: 220px;
 }
-.ha-field select option { background: #0a0f1e; color: var(--text-color); }
+.ha-field select option { background: #0a0a0f; color: var(--text-color); }
 
 .ha-chip {
   display: inline-flex;
@@ -745,8 +745,8 @@
 .ha-chip:hover { color: var(--text-color); border-color: rgba(255, 255, 255, 0.18); }
 .ha-chip--on {
   color: var(--text-color);
-  background: rgba(0, 255, 204, 0.07);
-  border-color: rgba(0, 255, 204, 0.45);
+  background: rgba(139, 92, 246, 0.07);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 
 .ha-toggle {
@@ -758,7 +758,7 @@
   color: var(--text-muted);
   cursor: pointer;
 }
-.ha-toggle input { accent-color: #00ffcc; width: 15px; height: 15px; cursor: pointer; }
+.ha-toggle input { accent-color: #8B5CF6; width: 15px; height: 15px; cursor: pointer; }
 
 /* ── Waterfall legend ──────────────────────────────────────── */
 .ha-legend {
@@ -813,8 +813,8 @@
   text-align: left;
   font-weight: 700;
   padding: 0;
-  background: #0a0f1e;
-  border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+  background: #0a0a0f;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
   white-space: nowrap;
 }
 .ha-th button {
@@ -833,7 +833,7 @@
   cursor: pointer;
   transition: color 0.18s ease;
 }
-.ha-th button:hover { color: #00ffcc; }
+.ha-th button:hover { color: #8B5CF6; }
 .ha-th--num { text-align: right; }
 .ha-th--num button { text-align: right; }
 .ha-th--name { padding-left: 1.25rem; }
@@ -880,8 +880,8 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.035);
   transition: background 0.15s ease;
 }
-.ha-row:hover { background: rgba(0, 255, 204, 0.035); }
-.ha-row--open { background: rgba(0, 255, 204, 0.06); }
+.ha-row:hover { background: rgba(139, 92, 246, 0.035); }
+.ha-row--open { background: rgba(139, 92, 246, 0.06); }
 .ha-row--cached .ha-td { opacity: 0.72; }
 
 .ha-td {
@@ -920,7 +920,7 @@
   line-height: 1;
   transition: transform 0.2s ease;
 }
-.ha-chevron--open { transform: rotate(90deg); color: #00ffcc; }
+.ha-chevron--open { transform: rotate(90deg); color: #8B5CF6; }
 .ha-row__name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -970,13 +970,13 @@
   border-radius: 3px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 8px -3px rgba(0, 255, 204, 0.5);
+  box-shadow: 0 0 8px -3px rgba(139, 92, 246, 0.5);
 }
 .ha-wf__seg { display: block; height: 100%; min-width: 0; }
 
 /* ── Row detail ────────────────────────────────────────────── */
 .ha-detailrow { background: rgba(0, 0, 0, 0.28); }
-.ha-detailcell { padding: 0; border-bottom: 1px solid rgba(0, 255, 204, 0.18); }
+.ha-detailcell { padding: 0; border-bottom: 1px solid rgba(139, 92, 246, 0.18); }
 .ha-detail { padding: 1rem 1.25rem 1.25rem; }
 
 .ha-detail__url {
@@ -992,8 +992,8 @@
   padding: 0.05rem 0.35rem;
   margin-right: 0.4rem;
   border-radius: 4px;
-  background: rgba(0, 255, 204, 0.1);
-  color: #00ffcc;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
   font-weight: 700;
 }
 
@@ -1017,7 +1017,7 @@
   transition: color 0.18s ease, border-color 0.18s ease;
 }
 .ha-detail__tab:hover { color: var(--text-color); }
-.ha-detail__tab--on { color: #00ffcc; border-bottom-color: #00ffcc; }
+.ha-detail__tab--on { color: #8B5CF6; border-bottom-color: #8B5CF6; }
 
 .ha-detail__cols {
   display: grid;
@@ -1029,7 +1029,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin: 0.75rem 0 0.4rem;
 }
 .ha-detail__h:first-child { margin-top: 0; }

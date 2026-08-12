@@ -225,7 +225,7 @@ export class PasswordGeneratorComponent implements OnDestroy {
       case 'weak': return '#ff4d6a';
       case 'fair': return '#ffaa2a';
       case 'strong': return '#00cc88';
-      case 'very strong': return '#00ffcc';
+      case 'very strong': return '#8B5CF6';
     }
   }
 

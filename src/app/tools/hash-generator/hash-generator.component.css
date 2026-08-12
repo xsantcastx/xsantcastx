@@ -164,7 +164,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .hg-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .hg-textarea--compact {
@@ -191,13 +191,13 @@
 }
 .hg-dropzone:hover,
 .hg-dropzone--over {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
   color: var(--text-color);
 }
 .hg-dropzone--has-file {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.04);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .hg-dropzone__icon {
@@ -284,10 +284,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.hg-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.hg-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .hg-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -331,7 +331,7 @@
 
 .hg-toggle input:checked ~ .hg-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .hg-toggle input:checked ~ .hg-toggle__track .hg-toggle__thumb {
   left: 20px;
@@ -379,12 +379,12 @@
 }
 .hg-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .hg-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .hg-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .hg-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -417,7 +417,7 @@
 
 .hg-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -495,7 +495,7 @@
   border-bottom: none;
 }
 .hg-hash-row:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .hg-hash-row__header {
@@ -585,7 +585,7 @@
 }
 .hg-compare-icon--match {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border: 2px solid rgba(0, 255, 204, 0.35);
+  border: 2px solid rgba(139, 92, 246, 0.35);
   color: var(--primary-color);
 }
 .hg-compare-icon--mismatch {

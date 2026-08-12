@@ -87,8 +87,8 @@ export class TransitionGeneratorComponent {
     switch (this.property) {
       case 'opacity': return '1';
       case 'transform': case 'all': return 'translateX(0)';
-      case 'background-color': return '#00ffcc';
-      case 'color': return '#00ffcc';
+      case 'background-color': return '#8B5CF6';
+      case 'color': return '#8B5CF6';
       case 'width': return '60px';
       case 'height': return '60px';
       default: return 'initial';

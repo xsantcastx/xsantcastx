@@ -183,13 +183,13 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.bt-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.bt-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .bt-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
 }
 
 .bt-seg-btn--sm {
@@ -237,7 +237,7 @@
 }
 
 .bt-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* -- Options panel -------------------------------------------- */
@@ -302,12 +302,12 @@
 }
 .bt-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .bt-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .bt-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .bt-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -334,7 +334,7 @@
 
 .bt-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -374,7 +374,7 @@
 .bt-output-value--binary {
   color: var(--primary-color);
   letter-spacing: 0.08em;
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.15);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
 }
 
 /* -- Empty / error states ------------------------------------- */
@@ -437,7 +437,7 @@
 }
 
 .bt-breakdown-row:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .bt-breakdown-col--char {
@@ -451,7 +451,7 @@
   width: 30px;
   height: 30px;
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 6px;
   font-family: 'Fira Code', monospace;
   font-size: 0.85rem;
@@ -475,7 +475,7 @@
   font-size: 0.78rem;
   color: var(--primary-color);
   letter-spacing: 0.06em;
-  text-shadow: 0 0 12px rgba(0, 255, 204, 0.1);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
 }
 
 .bt-breakdown-col--bytes {

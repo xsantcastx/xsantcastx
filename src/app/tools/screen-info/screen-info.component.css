@@ -83,12 +83,12 @@
 }
 
 .si-stat-card:hover {
-  border-color: rgba(0, 255, 204, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .si-stat-card--primary {
-  border-color: rgba(0, 255, 204, 0.25);
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.06);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.06);
 }
 
 .si-stat-card--accent {
@@ -296,7 +296,7 @@
 
 .si-toggle input:checked ~ .si-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .si-toggle input:checked ~ .si-toggle__track .si-toggle__thumb {
   left: 16px;
@@ -363,8 +363,8 @@
 }
 
 .si-input:focus {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.02);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .si-input::placeholder {
@@ -395,7 +395,7 @@
   gap: 0.25rem;
   padding: 1.2rem 1rem;
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-md);
   text-align: center;
 }
@@ -406,7 +406,7 @@
   font-weight: 700;
   color: var(--primary-color);
   line-height: 1;
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
 .si-ppi-result__label {
@@ -428,7 +428,7 @@
   align-items: center;
   padding: 0.15rem 0.55rem;
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: 999px;
   font-family: 'Fira Code', monospace;
   font-size: 0.75rem;
@@ -464,8 +464,8 @@
 
 .si-bp-segment--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
 }
 
 .si-bp-segment__label {
@@ -485,7 +485,7 @@
   white-space: nowrap;
 }
 .si-bp-segment--active .si-bp-segment__range {
-  color: rgba(0, 255, 204, 0.6);
+  color: rgba(139, 92, 246, 0.6);
 }
 
 .si-breakpoint-current {
@@ -533,18 +533,18 @@
 .si-btn--primary {
   flex: 1;
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
   color: var(--primary-color);
 }
 .si-btn--primary:hover {
   background: color-mix(in srgb, var(--primary-color) 18%, transparent);
-  border-color: rgba(0, 255, 204, 0.5);
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.1);
 }
 
 .si-btn--success {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent) !important;
-  border-color: rgba(0, 255, 204, 0.5) !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
 }
 
 .si-btn--ghost {
@@ -554,7 +554,7 @@
 }
 .si-btn--ghost:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 /* ── Device Reference Table ────────────────────────────────── */
@@ -610,7 +610,7 @@
 }
 
 .si-table-row:not(.si-table-row--header):hover {
-  background: rgba(0, 255, 204, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .si-table-row--match {

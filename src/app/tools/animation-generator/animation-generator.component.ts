@@ -72,7 +72,7 @@ export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, Do
 
   // ── Preview ────────────────────────────────────────────
   previewBgColor = '#0a0a0f';
-  previewBoxColor = '#00ffcc';
+  previewBoxColor = '#8B5CF6';
   previewBorderRadius = 12;
   isPlaying = true;
 
@@ -88,73 +88,73 @@ export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, Do
     {
       name: 'Fade In',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 0, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 0, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.6, timingFunction: 'ease', delay: 0, iterationCount: '1', direction: 'normal'
     },
     {
       name: 'Slide Up',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 80, rotate: 0, scaleX: 1, scaleY: 1, opacity: 0, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 80, rotate: 0, scaleX: 1, scaleY: 1, opacity: 0, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.5, timingFunction: 'ease-out', delay: 0, iterationCount: '1', direction: 'normal'
     },
     {
       name: 'Bounce',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 25, translateX: 0, translateY: -40, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 75, translateX: 0, translateY: -20, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 25, translateX: 0, translateY: -40, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 75, translateX: 0, translateY: -20, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.8, timingFunction: 'ease', delay: 0, iterationCount: 'infinite', direction: 'normal'
     },
     {
       name: 'Spin',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 360, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 360, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 1, timingFunction: 'linear', delay: 0, iterationCount: 'infinite', direction: 'normal'
     },
     {
       name: 'Pulse',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1.15, scaleY: 1.15, opacity: 0.8, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1.15, scaleY: 1.15, opacity: 0.8, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 1.2, timingFunction: 'ease-in-out', delay: 0, iterationCount: 'infinite', direction: 'normal'
     },
     {
       name: 'Shake',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 25, translateX: -10, translateY: 0, rotate: -3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 50, translateX: 10, translateY: 0, rotate: 3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 75, translateX: -10, translateY: 0, rotate: -3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 25, translateX: -10, translateY: 0, rotate: -3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 50, translateX: 10, translateY: 0, rotate: 3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 75, translateX: -10, translateY: 0, rotate: -3, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.5, timingFunction: 'ease-in-out', delay: 0, iterationCount: 'infinite', direction: 'normal'
     },
     {
       name: 'Flip',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' },
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' },
         { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: -1, scaleY: 1, opacity: 0.6, backgroundColor: '#ff6bcb' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.8, timingFunction: 'ease-in-out', delay: 0, iterationCount: '1', direction: 'normal'
     },
     {
       name: 'Zoom',
       keyframes: [
-        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 0, scaleY: 0, opacity: 0, backgroundColor: '#00ffcc' },
-        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1.2, scaleY: 1.2, opacity: 0.8, backgroundColor: '#00ffcc' },
-        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#00ffcc' }
+        { percent: 0, translateX: 0, translateY: 0, rotate: 0, scaleX: 0, scaleY: 0, opacity: 0, backgroundColor: '#8B5CF6' },
+        { percent: 50, translateX: 0, translateY: 0, rotate: 0, scaleX: 1.2, scaleY: 1.2, opacity: 0.8, backgroundColor: '#8B5CF6' },
+        { percent: 100, translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1, backgroundColor: '#8B5CF6' }
       ],
       duration: 0.6, timingFunction: 'ease-out', delay: 0, iterationCount: '1', direction: 'normal'
     }
@@ -222,7 +222,7 @@ export class AnimationGeneratorComponent implements AfterViewInit, OnDestroy, Do
       scaleX: 1,
       scaleY: 1,
       opacity: 1,
-      backgroundColor: '#00ffcc'
+      backgroundColor: '#8B5CF6'
     };
     this.keyframes.push(kf);
     this.keyframes.sort((a, b) => a.percent - b.percent);

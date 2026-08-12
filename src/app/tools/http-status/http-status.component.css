@@ -102,7 +102,7 @@
   overflow: hidden;
 }
 .hs-search:focus-within {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .hs-search__icon {
@@ -440,11 +440,11 @@
 }
 .hs-btn-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .hs-btn-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 /* -- Responsive ----------------------------------------------- */

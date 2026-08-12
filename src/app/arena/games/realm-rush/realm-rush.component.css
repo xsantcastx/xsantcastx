@@ -17,7 +17,7 @@
   border: 1px solid currentColor;
 }
 
-.rr-legend__item--css   { color: #4dffe0; }
+.rr-legend__item--css   { color: #A78BFA; }
 .rr-legend__item--js    { color: #C9A84C; }
 .rr-legend__item--regex { color: #a48bff; }
 .rr-legend__item--html  { color: #ff6dd7; }
@@ -63,7 +63,7 @@
   width: 100%;
   min-height: 52px;
   padding: 0.8rem 1rem;
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: 14px;
   background: rgba(10, 16, 32, 0.9);
   color: var(--ag-cyan);
@@ -76,7 +76,7 @@
 
 .rr-input:focus {
   border-color: var(--ag-cyan);
-  box-shadow: 0 0 24px -8px rgba(0, 255, 204, 0.9);
+  box-shadow: 0 0 24px -8px rgba(139, 92, 246, 0.9);
 }
 
 .rr-input::placeholder { color: rgba(143, 160, 184, 0.55); font-weight: 400; }

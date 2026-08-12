@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    Media Query Builder — Component Styles
-   xsantcastx design system: dark navy, cyan #00ffcc, glassmorphism
+   xsantcastx design system: dark navy, cyan #8B5CF6, glassmorphism
    ══════════════════════════════════════════════════════════════ */
 
 .mq-page {
@@ -25,7 +25,7 @@
   margin-bottom: 1.75rem;
   transition: color 0.2s ease;
 }
-.back-link:hover { color: #00ffcc; }
+.back-link:hover { color: #8B5CF6; }
 
 /* ── Tool header ───────────────────────────────────────────── */
 .tool-header { margin-bottom: 2rem; }
@@ -34,7 +34,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #00ffcc;
+  color: #8B5CF6;
   margin-bottom: 0.4rem;
 }
 .tool-header__title {
@@ -73,7 +73,7 @@
   color: var(--text-color);
   margin-bottom: 1rem;
 }
-.mq-card__title svg { color: #00ffcc; flex-shrink: 0; }
+.mq-card__title svg { color: #8B5CF6; flex-shrink: 0; }
 .mq-card__header {
   display: flex;
   align-items: center;
@@ -99,11 +99,11 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.mq-type-btn:hover { border-color: rgba(0, 255, 204, 0.3); color: var(--text-color); }
+.mq-type-btn:hover { border-color: rgba(139, 92, 246, 0.3); color: var(--text-color); }
 .mq-type-btn--active {
-  background: rgba(0, 255, 204, 0.1);
-  border-color: #00ffcc;
-  color: #00ffcc;
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #8B5CF6;
+  color: #8B5CF6;
 }
 
 /* ── Add button ────────────────────────────────────────────── */
@@ -113,17 +113,17 @@
   gap: 0.35rem;
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
-  border: 1px solid rgba(0, 255, 204, 0.25);
-  background: rgba(0, 255, 204, 0.06);
-  color: #00ffcc;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.06);
+  color: #8B5CF6;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .mq-add-btn:hover {
-  background: rgba(0, 255, 204, 0.12);
-  border-color: #00ffcc;
+  background: rgba(139, 92, 246, 0.12);
+  border-color: #8B5CF6;
 }
 
 /* ── Rules ──────────────────────────────────────────────────── */
@@ -149,9 +149,9 @@
   outline: none;
   transition: border-color 0.2s ease;
 }
-.mq-select:focus, .mq-input:focus { border-color: rgba(0, 255, 204, 0.5); }
+.mq-select:focus, .mq-input:focus { border-color: rgba(139, 92, 246, 0.5); }
 .mq-select { min-width: 120px; cursor: pointer; }
-.mq-select option { background: #0a0f1e; color: #e0e0e0; }
+.mq-select option { background: #0a0a0f; color: #e0e0e0; }
 .mq-select--val { min-width: 100px; }
 .mq-input--num { width: 70px; }
 .mq-unit {
@@ -166,7 +166,7 @@
   cursor: pointer;
 }
 .mq-check input[type="checkbox"] {
-  accent-color: #00ffcc;
+  accent-color: #8B5CF6;
   width: 14px;
   height: 14px;
   cursor: pointer;
@@ -196,7 +196,7 @@
 }
 
 /* ── Output ─────────────────────────────────────────────────── */
-.mq-card--output { border-color: rgba(0, 255, 204, 0.12); }
+.mq-card--output { border-color: rgba(139, 92, 246, 0.12); }
 .mq-output-block {
   position: relative;
   margin-bottom: 1rem;
@@ -211,7 +211,7 @@
   border-radius: 8px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 0.82rem;
-  color: #00ffcc;
+  color: #8B5CF6;
   line-height: 1.6;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -233,8 +233,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.mq-copy-btn:hover { border-color: rgba(0, 255, 204, 0.4); color: var(--text-color); }
-.mq-copy-btn--done { color: #00ffcc; border-color: #00ffcc; }
+.mq-copy-btn:hover { border-color: rgba(139, 92, 246, 0.4); color: var(--text-color); }
+.mq-copy-btn--done { color: #8B5CF6; border-color: #8B5CF6; }
 
 /* ── Section title ──────────────────────────────────────────── */
 .mq-section-title {
@@ -247,7 +247,7 @@
   color: var(--text-color);
   margin: 2.5rem 0 1.25rem;
 }
-.mq-section-title svg { color: #00ffcc; }
+.mq-section-title svg { color: #8B5CF6; }
 
 /* ── Presets ─────────────────────────────────────────────────── */
 .mq-preset-group { margin-bottom: 1.5rem; }
@@ -279,12 +279,12 @@
   transition: all 0.2s ease;
 }
 .mq-preset-card:hover {
-  border-color: rgba(0, 255, 204, 0.25);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.03);
 }
 .mq-preset-card--active {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.06);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.06);
 }
 .mq-preset-card__name {
   font-size: 0.82rem;
@@ -303,8 +303,8 @@
   right: 0.5rem;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: rgba(0, 255, 204, 0.15);
-  color: #00ffcc;
+  background: rgba(139, 92, 246, 0.15);
+  color: #8B5CF6;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.06em;

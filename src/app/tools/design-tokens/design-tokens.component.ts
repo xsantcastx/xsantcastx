@@ -285,7 +285,7 @@ export class DesignTokensComponent implements OnDestroy {
       "colors": {
         "brand": {
           "primary": {
-            "$value": "#00ffcc",
+            "$value": "#8B5CF6",
             "$type": "color"
           },
           "secondary": {

@@ -164,7 +164,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .je-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -198,7 +198,7 @@
 
 .je-option-hint code {
   font-family: 'Fira Code', monospace;
-  background: rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.1);
   color: var(--primary-color);
   padding: 0.1em 0.3em;
   border-radius: 3px;
@@ -229,10 +229,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.je-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.je-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .je-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -256,12 +256,12 @@
 }
 .je-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .je-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .je-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .je-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -288,7 +288,7 @@
 
 .je-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 

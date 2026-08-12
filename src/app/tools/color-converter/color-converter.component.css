@@ -155,12 +155,12 @@
 }
 .cc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .cc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .cc-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .cc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -188,7 +188,7 @@
   transition: border-color 0.2s ease;
 }
 .cc-native-picker:hover {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .cc-native-picker::-webkit-color-swatch-wrapper { padding: 2px; }
 .cc-native-picker::-webkit-color-swatch {
@@ -258,8 +258,8 @@
   transition: border-color 0.2s ease;
 }
 .cc-format-input-wrap:focus-within {
-  border-color: rgba(0, 255, 204, 0.4);
-  background: rgba(0, 255, 204, 0.015);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .cc-format-input {
@@ -365,7 +365,7 @@
 }
 .cc-harmony-swatch:hover {
   transform: translateY(-2px);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .cc-harmony-hex {
@@ -414,12 +414,12 @@
 }
 .cc-tint-swatch:hover {
   transform: translateY(-2px);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .cc-tint-swatch--base {
   flex: 2;
-  border-color: rgba(0, 255, 204, 0.35);
+  border-color: rgba(139, 92, 246, 0.35);
 }
 
 /* ── CSS Variables output ──────────────────────────────────── */
