@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.48.1',
+  version: '2.49.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Anvil',
+  codename: 'Codex',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.49.0',
+    codename: 'Codex',
+    date: '2026-08-13',
+    highlights: [
+      'The Rune Forge now turns up Lore Scrolls alongside runes — twenty-five fragments of the Eclipse Realms codex, in five chapters of five',
+      'The better the rune, the likelier the page: a Common carries a scroll one strike in ten, an Epic three in five, and the Void every time',
+      'A new Lore tab on /codex holds the wall — parchment and serif rather than neon, with sealed fragments showing nothing but their number until you find them',
+      'The Prophecy of the Final Eclipse needs an Epic rune or better, and its last page has never come up for anything but the Void',
+      'Two achievements: Lore Hunter at ten fragments, and The Full Codex at all twenty-five — which cannot be finished without the rarest rune in the table',
+    ]
+  },
   {
     version: '2.48.1',
     codename: 'Anvil',

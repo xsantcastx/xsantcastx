@@ -582,7 +582,101 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 4 — Secrets
+       Panel 4 — Lore Scrolls
+
+       Every fragment the Rune Forge turns up. Rendered sealed on the server —
+       `buildScrolls()` gates on `hydrated` like every other builder here — so
+       the five shelves and twenty-five slots are in the prerendered HTML and
+       hydration only fills in what has been found.
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-scrolls"
+    aria-labelledby="cx-tab-scrolls"
+    [hidden]="activeTab !== 'scrolls'">
+
+    <div class="cx-secrets__hd">
+      <h2 class="cx-secrets__count">{{ scrollsFound }} of {{ scrollsTotal }} fragments recovered</h2>
+      <p class="cx-secrets__blurb">
+        The codex is not written; it is dug up. Every fragment here came off the
+        anvil alongside a rune, and the better the rune the likelier the page.
+        One of them has never come up for anything but the Void.
+      </p>
+    </div>
+
+    @for (shelf of scrollShelves; track shelf.chapter.id) {
+      <!-- `--realm` drives the shared section heading and rule. Gold rather
+           than the default violet, so the chapter headers belong to the
+           parchment below them instead of to the neon above. -->
+      <div class="cx-section cx-section--scrolls" style="--realm: #C9A84C; --realm-glow: rgba(201, 168, 76, 0.6)">
+        <div class="cx-section__hd">
+          <h3 class="cx-section__title">
+            <span aria-hidden="true">📜</span>
+            {{ shelf.chapter.name }}
+          </h3>
+          <span class="cx-section__count">{{ shelf.found }} / {{ shelf.cards.length }}</span>
+        </div>
+        <p class="cx-section__blurb">
+          {{ shelf.found > 0 ? shelf.chapter.epigraph : shelf.chapter.hint }}
+        </p>
+
+        <div class="cx-scrolls">
+          @for (card of shelf.cards; track card.scroll.id) {
+            <article
+              class="cx-scroll"
+              [class.cx-scroll--locked]="!card.found"
+              [class.cx-scroll--open]="openScroll === card.scroll.id"
+              [style.--tier]="card.rarity.color"
+              [style.--tier-glow]="card.rarity.glow">
+
+              <button
+                type="button"
+                class="cx-scroll__hd"
+                [disabled]="!card.found"
+                [attr.aria-expanded]="card.found ? openScroll === card.scroll.id : null"
+                (click)="toggleScroll(card)">
+
+                <span class="cx-scroll__num">{{ card.scroll.partNumber }}</span>
+
+                <span class="cx-scroll__names">
+                  <span class="cx-scroll__title">
+                    {{ card.found ? card.scroll.subtitle : '???' }}
+                    @if (card.unread) {
+                      <span class="cx-scroll__dot" aria-label="unread"></span>
+                    }
+                  </span>
+                  <span class="cx-scroll__sub">{{ card.scroll.title }}</span>
+                </span>
+
+                <span class="cx-scroll__badge">{{ card.rarity.label }}</span>
+              </button>
+
+              @if (card.found && openScroll === card.scroll.id) {
+                <div class="cx-scroll__body">
+                  @for (para of card.paragraphs; track $index) {
+                    <p class="cx-scroll__para">{{ para }}</p>
+                  }
+                  <p class="cx-scroll__found">Recovered {{ formatDate(card.at) }}</p>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </div>
+    }
+
+    @if (scrollsFound === 0) {
+      <p class="cx-scrolls__empty">
+        Nothing recovered yet. The scrolls come off the anvil —
+        <a routerLink="/rune-forge">strike it</a> and the codex fills in.
+      </p>
+    }
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 5 — Secrets
   ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"

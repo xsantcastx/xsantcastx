@@ -33,7 +33,17 @@ import {
   RARITIES,
   RARITY_ORDER,
   RarityDefinition,
+  rarityOf,
 } from '../shared/rarity/rarity.model';
+import { RuneTier } from '../shared/rune-forge/rune.model';
+import {
+  LORE_CHAPTERS,
+  LORE_SCROLLS,
+  LoreChapterDefinition,
+  LoreScroll,
+  scrollsOfChapter,
+} from '../shared/rune-forge/lore-scroll.model';
+import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import {
@@ -68,7 +78,7 @@ import {
   SecretRecord,
 } from './codex-secrets.service';
 
-export type CodexTab = 'achievements' | 'progression' | 'bestiary' | 'secrets' | 'leaderboard';
+export type CodexTab = 'achievements' | 'progression' | 'bestiary' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
   key: CodexTab;
@@ -153,6 +163,43 @@ const ZERO_SNAPSHOT: XpSnapshot = {
   toolsUsed: 0,
 };
 
+/** One scroll on the wall. */
+interface ScrollCard {
+  scroll: LoreScroll;
+  found: boolean;
+  /** Found but never opened. Drives the dot. */
+  unread: boolean;
+  at: string | null;
+  /** The tier badge, borrowed from the achievement ladder so the wall matches. */
+  rarity: RarityDefinition;
+  paragraphs: string[];
+}
+
+/** One chapter's shelf. */
+interface ScrollShelf {
+  chapter: LoreChapterDefinition;
+  cards: ScrollCard[];
+  found: number;
+}
+
+/**
+ * A scroll's rune tier, as a rarity on the Codex's own ladder.
+ *
+ * The two scales exist for different reasons and neither is going away: rune
+ * tiers name a drop rate, Eclipse rarities name how loud a discovery is. This
+ * is the one place they have to meet, so it is stated once here rather than
+ * being re-derived at three call sites that would eventually disagree.
+ */
+const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
+  common: 'mortal',
+  uncommon: 'eclipsed',
+  rare: 'sacred',
+  epic: 'anomalous',
+  legendary: 'anomalous',
+  mythic: 'mythic',
+  singular: 'singular',
+};
+
 @Component({
   selector: 'app-codex',
   standalone: true,
@@ -166,6 +213,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly xp = inject(XpService);
   private readonly masteryService = inject(ToolMasteryService);
   private readonly secretsService = inject(CodexSecretsService);
+  private readonly scrollsService = inject(LoreScrollService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -184,6 +232,7 @@ export class CodexComponent implements OnInit, OnDestroy {
     { key: 'achievements', label: 'Achievements', icon: '✦', hint: 'every fragment, found and unfound' },
     { key: 'progression',  label: 'Progression',  icon: '◆', hint: 'rank, energy and the streak' },
     { key: 'bestiary',     label: 'Bestiary',     icon: '❖', hint: 'every tool, and how well you know it' },
+    { key: 'scrolls',      label: 'Lore',         icon: '📜', hint: 'the codex, one fragment at a time' },
     { key: 'secrets',      label: 'Secrets',      icon: '✧', hint: 'the hidden content, clued not spoiled' },
     { key: 'leaderboard',  label: 'Leaderboard',  icon: '◇', hint: 'when the Eclipse aligns' },
   ];
@@ -262,8 +311,15 @@ export class CodexComponent implements OnInit, OnDestroy {
     this.secrets = this.buildSecrets();
     this.snap = this.xp.snapshot;
 
+    this.scrollsService.init();
+    this.scrollShelves = this.buildScrolls();
+
     this.subs.push(this.xp.snapshot$.subscribe(s => (this.snap = s)));
     this.subs.push(this.secretsService.changed$.subscribe(() => (this.secrets = this.buildSecrets())));
+    // `changed$` is a BehaviorSubject, so this also covers the case where a
+    // scroll was granted before this page was ever opened — which is the normal
+    // case, since scrolls are found at the anvil and read here.
+    this.subs.push(this.scrollsService.changed$.subscribe(() => (this.scrollShelves = this.buildScrolls())));
 
     // The page itself is an achievement. Triggering unconditionally is safe —
     // EasterEggService only pays out and only toasts on the first discovery.
@@ -456,6 +512,68 @@ export class CodexComponent implements OnInit, OnDestroy {
   /** Jump to a category from anywhere — used by the section headers. */
   focusCategory(id: CodexCategoryId): void {
     this.categoryFilter = this.categoryFilter === id ? 'all' : id;
+  }
+
+  // ── Lore Scrolls ──────────────────────────────────────────────────────────
+
+  /**
+   * The scroll wall, one shelf per chapter.
+   *
+   * Built from the registry rather than from what has been found, so the server
+   * renders all five chapters with all twenty-five fragments sealed and the
+   * layout does not move when the ledger arrives — same contract every other
+   * builder on this page keeps via `hydrated`.
+   */
+  private buildScrolls(): ScrollShelf[] {
+    return LORE_CHAPTERS.map(chapter => {
+      const cards: ScrollCard[] = scrollsOfChapter(chapter.id).map(scroll => {
+        const found = this.hydrated && this.scrollsService.isFound(scroll.id);
+        return {
+          scroll,
+          found,
+          unread: found && !this.scrollsService.isRead(scroll.id),
+          at: found ? this.scrollsService.foundAt(scroll.id) : null,
+          rarity: rarityOf(SCROLL_TIER_TO_RARITY[scroll.rarity]),
+          // Split here, not in the template: a getter would re-split twenty-five
+          // scrolls on every change-detection pass of an always-rendered panel.
+          paragraphs: found ? scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean) : [],
+        };
+      });
+      return { chapter, cards, found: cards.filter(c => c.found).length };
+    });
+  }
+
+  /**
+   * Built at construction, not in `hydrate()`.
+   *
+   * `buildScrolls()` gates every card on `hydrated`, which is false here, so
+   * this produces the fully-sealed wall — which is exactly what the server
+   * should render and exactly what the browser's first frame must match. An
+   * empty array here would prerender an empty panel and then pop five shelves
+   * in after hydration.
+   */
+  scrollShelves: ScrollShelf[] = this.buildScrolls();
+
+  /** The scroll currently open on the wall, by id. Only one at a time. */
+  openScroll: string | null = null;
+
+  toggleScroll(card: ScrollCard): void {
+    if (!card.found) return;
+    this.openScroll = this.openScroll === card.scroll.id ? null : card.scroll.id;
+    if (this.openScroll) {
+      this.scrollsService.markRead(card.scroll.id);
+      // `markRead` pushes `changed$`, which rebuilds the shelves — but the
+      // rebuild replaces `card`, so the flag is cleared from the new object
+      // rather than this one. Nothing else to do here.
+    }
+  }
+
+  get scrollsFound(): number {
+    return this.hydrated ? this.scrollsService.foundCount : 0;
+  }
+
+  get scrollsTotal(): number {
+    return LORE_SCROLLS.length;
   }
 
   formatDate(iso: string | null): string {
