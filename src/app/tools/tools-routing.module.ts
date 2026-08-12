@@ -10,7 +10,7 @@ const routes: Routes = [
       data: {
         description: 'Free browser tools: CSS Box Shadow Generator, Email Deliverability Auditor, Gmail Checker, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor & more.',
         keywords: 'free online tools, css box shadow generator, email deliverability checker, gmail deliverability, ssl certificate checker, svg to react component, pdf catalog generator, color palette extractor, wcag contrast checker, image compressor, browser tools, no sign up',
-        ogImage: `${SITE_URL}/assets/og/og-tools.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'ItemList',
@@ -187,7 +187,7 @@ const routes: Routes = [
       data: {
         description: 'Free online PDF catalog generator. Upload product images, add names, prices and descriptions, choose a layout template, and download a professional PDF. No sign-up needed.',
         keywords: 'free pdf catalog maker, product catalog pdf, image to pdf online, pdf generator no sign up, catalog builder online, product brochure maker',
-        ogImage: `${SITE_URL}/assets/og/og-pdf-generator.jpg`,
+        ogImage: `${SITE_URL}/assets/og/og-default.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
