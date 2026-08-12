@@ -10,6 +10,12 @@ export interface EasterEgg {
   tool?: string;        // tool slug or 'global' for site-wide
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   icon: string;         // emoji
+  /**
+   * Overrides the standard easter-egg XP award for this one egg. Left unset on
+   * every egg that is genuinely hidden; used for the handful that are simply
+   * *noticed* rather than hunted, which should not pay the same as a hunt.
+   */
+  xp?: number;
 }
 
 export interface EggDiscovery {
@@ -178,13 +184,33 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'uuid-factory',       name: 'UUID Factory',         description: 'Generated 100 UUIDs in a single visit',               tool: 'uuid-generator',            rarity: 'rare',      icon: '🏭' },
   { id: 'hash-miner',         name: 'Hash Miner',           description: 'Produced a hash starting with four zeros',            tool: 'hash-generator',            rarity: 'legendary', icon: '⛏️' },
   { id: 'grocery-big-shop',   name: 'The Big Shop',         description: 'Checked out a cart of 20 or more items',              tool: 'grocery-manager',           rarity: 'rare',      icon: '🛒' },
+
+  // ── Batch 10: the Codex ────────────────────────────────────
+  // Awarded for opening /codex. It is not hidden — it is on the nav — so it
+  // pays 25 rather than the standard 200: finding the record of every secret is
+  // the start of the hunt, not a result of one.
+  { id: 'codex-archivist',    name: 'The Archivist',        description: 'Opened the Codex for the first time',                 tool: 'global',                    rarity: 'rare',      icon: '📜', xp: 25 },
 ];
+
+/** localStorage key holding the array of discovered egg ids. */
+export const EGGS_FOUND_KEY = 'easter-eggs-found';
+/**
+ * localStorage key holding `{ eggId: ISO timestamp }`.
+ *
+ * A second key rather than a richer value under the first: the found-ids array
+ * has been written by every build since the egg system shipped, and changing its
+ * shape would strand everyone's existing discoveries behind a migration. Eggs
+ * found before this key existed simply have no date, which the Codex renders as
+ * "found before the Codex opened" rather than inventing one.
+ */
+export const EGGS_DATES_KEY = 'easter-eggs-dates';
 
 @Injectable({ providedIn: 'root' })
 export class EasterEggService {
   private firestore = inject(Firestore);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private discovered = new Set<string>();
+  private dates: Record<string, string> = {};
 
   discovery$ = new BehaviorSubject<EggDiscovery | null>(null);
 
@@ -193,14 +219,28 @@ export class EasterEggService {
 
   async init(): Promise<void> {
     if (!this.isBrowser) return;
-    const stored = localStorage.getItem('easter-eggs-found');
+    const stored = localStorage.getItem(EGGS_FOUND_KEY);
     if (stored) {
-      JSON.parse(stored).forEach((id: string) => this.discovered.add(id));
+      try {
+        JSON.parse(stored).forEach((id: string) => this.discovered.add(id));
+      } catch { /* unparseable blob — start clean rather than throw on boot */ }
+    }
+    const dates = localStorage.getItem(EGGS_DATES_KEY);
+    if (dates) {
+      try {
+        const parsed = JSON.parse(dates);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) this.dates = parsed;
+      } catch { /* same */ }
     }
   }
 
   isFound(id: string): boolean {
     return this.discovered.has(id);
+  }
+
+  /** ISO timestamp of first discovery, or null when unknown. */
+  foundAt(id: string): string | null {
+    return this.dates[id] ?? null;
   }
 
   /**
@@ -217,7 +257,13 @@ export class EasterEggService {
     this.discovered.add(id);
 
     // Persist locally
-    localStorage.setItem('easter-eggs-found', JSON.stringify([...this.discovered]));
+    try {
+      localStorage.setItem(EGGS_FOUND_KEY, JSON.stringify([...this.discovered]));
+      if (isNew) {
+        this.dates = { ...this.dates, [id]: new Date().toISOString() };
+        localStorage.setItem(EGGS_DATES_KEY, JSON.stringify(this.dates));
+      }
+    } catch { /* quota or private mode — the drop still fires, it just won't stick */ }
 
     if (isNew) {
       // Track in Firestore (global discovery count)

@@ -934,9 +934,89 @@
     animation: none;
   }
 
-  .nav-menu .nav-games-link {
+  .nav-menu .nav-games-link,
+  .nav-menu .nav-codex-link {
     min-height: 48px;
   }
+
+  /* In the drawer there is horizontal room, so the badge sits on the trailing
+     edge of the row rather than tucked against the label. */
+  .nav-menu .nav-codex-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+}
+
+/* ── Codex nav link ─────────────────────────────────────────────────────
+   The badge is a counter, not a call to action: it is deliberately quieter
+   than the LIVE pill next to it, because a number that never stops being
+   incomplete should not also be the loudest thing in the bar. */
+.nav-codex-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-codex-badge {
+  font-family: var(--font-heading, 'Orbitron', sans-serif);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #4dffe0;
+  background: rgba(0, 255, 204, 0.09);
+  border: 1px solid rgba(0, 255, 204, 0.24);
+  white-space: nowrap;
+}
+
+.nav-codex-link:hover .nav-codex-badge,
+.nav-codex-link.active .nav-codex-badge {
+  color: #eafff9;
+  background: rgba(0, 255, 204, 0.2);
+  border-color: rgba(0, 255, 204, 0.5);
+}
+
+/* ── Nav row fit, 960px → 1440px ────────────────────────────────────────
+   The desktop row was already over-full before the Codex link existed: at
+   1280px .nav-menu measured 855px of content in a 660px box, which is why the
+   LIVE pill painted over the EN/ES toggle. The Codex link would have taken it
+   to 944px.
+
+   The space is not being consumed by the links themselves — it is gap and
+   padding. Ten links carry 252px of gap and 224px of horizontal padding
+   between them at 1280px. Tightening both, dropping the badge, and easing the
+   letter-spacing brings the row to ~620px, i.e. inside its container for the
+   first time. Above 1440px nothing changes; there is room to be airy there.
+
+   This does NOT touch the progression readout — see the note below. That
+   element was never what was consuming the space. */
+@media (min-width: 961px) {
+  /* The original `clamp(1.1rem, 3vw, 2.5rem)` grew the gap with the viewport,
+     so the row got *worse* as the screen got wider: nine gaps came to 360px at
+     1512px against 126px at 1280px. Capping it removes 210px there. */
+  .nav-menu { gap: clamp(0.4rem, 1.1vw, 1.25rem); }
+
+  .nav-menu a {
+    padding: 0.35rem 0.25rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+/* The row is still over-full below ~1440px even with the gap capped — see the
+   note under the progression readout; ten links do not fit and the LIVE pill
+   has painted over the EN/ES toggle since before the Codex existed. The Codex
+   link is therefore placed mid-row in the template (after Tools, before
+   Blueprint) rather than at the end, so it sits well clear of that zone
+   instead of joining it.
+
+   The badge is the one part of the link that can be dropped without losing
+   anything: it restates a number the page itself leads with. */
+@media (min-width: 961px) and (max-width: 1440px) {
+  .nav-codex-badge { display: none; }
 }
 
 /* ── Progression readout ────────────────────────────────────────────────

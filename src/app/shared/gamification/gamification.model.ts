@@ -136,7 +136,18 @@ export interface ProgressState {
   toolsUsed: string[];
   /** Achievement ids already awarded, so a tier never drops twice. */
   achievements: string[];
+  /**
+   * XP earned per local day, keyed YYYY-MM-DD. Feeds the Codex streak calendar.
+   *
+   * Trimmed to `HISTORY_DAYS` on every write so the blob cannot grow without
+   * bound in a browser that keeps localStorage for years — the heatmap only ever
+   * renders the last month, and nothing else reads further back.
+   */
+  history: Record<string, number>;
 }
+
+/** How many days of daily-XP history are kept. The calendar renders 30. */
+export const HISTORY_DAYS = 60;
 
 export function emptyProgress(): ProgressState {
   return {
@@ -149,5 +160,6 @@ export function emptyProgress(): ProgressState {
     bestStreak: 0,
     toolsUsed: [],
     achievements: [],
+    history: {},
   };
 }
