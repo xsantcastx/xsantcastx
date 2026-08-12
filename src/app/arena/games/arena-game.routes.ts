@@ -33,7 +33,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     loadComponent: () =>
       import('./eclipse-fragments/eclipse-fragments.component')
         .then(m => m.EclipseFragmentsComponent),
-    title: 'Eclipse Fragments — Match the fragments | The Arena',
+    title: 'Eclipse Fragments — The Arena',
     data: {
       description: 'A memory game in the Eclipse Realms: turn the scattered fragments face up two at a time and put the realms back together. Three difficulties, no sign-up.',
       keywords: 'memory game, matching game, browser game, free game, eclipse realms, color memory',
@@ -49,7 +49,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     path: 'arena/realm-rush',
     loadComponent: () =>
       import('./realm-rush/realm-rush.component').then(m => m.RealmRushComponent),
-    title: 'Realm Rush — Type before the Verge closes | The Arena',
+    title: 'Realm Rush — The Arena',
     data: {
       description: 'A typing speed game for developers: CSS properties, JS keywords, regex fragments and HTML tags fall out of the rift. Type them before they land. WPM and accuracy scored.',
       keywords: 'typing game, typing speed test, wpm, developer typing game, browser game, free game',
@@ -65,7 +65,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     path: 'arena/shadow-cipher',
     loadComponent: () =>
       import('./shadow-cipher/shadow-cipher.component').then(m => m.ShadowCipherComponent),
-    title: 'Shadow Cipher — Restore the Codex | The Arena',
+    title: 'Shadow Cipher — The Arena',
     data: {
       description: 'A code-ordering puzzle across ten pages: every line of the snippet is shuffled, and you put it back. CSS, JavaScript and HTML, increasing in length.',
       keywords: 'code puzzle, programming puzzle, reorder code, logic game, browser game, free game',
@@ -81,7 +81,7 @@ export const ARENA_GAME_ROUTES: Routes = [
     path: 'arena/forge-strike',
     loadComponent: () =>
       import('./forge-strike/forge-strike.component').then(m => m.ForgeStrikeComponent),
-    title: 'Forge Strike — Sixty seconds at the anvil | The Arena',
+    title: 'Forge Strike — The Arena',
     data: {
       description: 'A reaction game: squash bugs, ship features, never touch a live error. Sixty-second rounds with a chain multiplier that rewards a clean run over a fast one.',
       keywords: 'reaction game, reflex game, whack a mole, click game, browser game, free game',

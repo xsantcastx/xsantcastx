@@ -53,12 +53,9 @@ export const ECONOMY_ACHIEVEMENTS: EconomyAchievement[] = [
     id: 'forge-click-frenzy',
     met: e => e.clicksLastMinute >= FRENZY_CLICKS,
   },
-  {
-    id: 'forge-striker',
-    met: e => e.snapshot.totalClicks >= 1_000,
-  },
-  {
-    id: 'forge-obsidian-hammer',
-    met: e => e.snapshot.totalClicks >= 10_000,
-  },
+  // No strike-count predicate here. The Ambient Forge already registered
+  // 'idle-forge-striker' (1,000) and 'idle-obsidian-hammer' (10,000), and the
+  // Forge Flame drives IdleService's counter on every strike, so both still
+  // fire. Adding a second pair keyed on the same act would put two cards on the
+  // Codex wall for one thing.
 ];

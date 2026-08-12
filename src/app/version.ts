@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.23.0',
+  version: '2.26.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Coin and Ember',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.23.0',
+    version: '2.26.0',
     codename: 'Coin and Ember',
     date: '2026-08-12',
     highlights: [
@@ -48,6 +48,61 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'Ranks and streak weeks are paid against a counter, not an event. XpService settles the daily streak during its own hydration, before anything in the economy is subscribed, so an event-driven reading would miss it on every load and pay nothing forever',
       'Cosmetics are published as data attributes on the document root, in the same style the realm layer already uses. Five slots, seventeen variants, zero new composited layers — the theme variant repoints the two brand custom properties the site already draws from rather than adding a tint surface over it',
       'Eight new achievements on the Codex wall, registered in the egg registry like every other one so they inherit the rarity drop, the XP payout, the discovery date and the hint on the locked card rather than reimplementing all five',
+      'The Ambient Forge and the Market each shipped a Forge Flame within a day of each other — one in the header paying XP per strike, one in the corner paying Gold — so the two were merged into the corner one. It drives both ledgers: XP, the Century Strike bonus and the thousand/ten-thousand strike achievements all still land, from a button that is now reachable on a phone without opening the drawer',
+    ]
+  },
+  {
+    version: '2.25.0',
+    codename: "The Maker's Mark",
+    date: '2026-08-12',
+    highlights: [
+      'The site is The Godforge. "xsantcastx" is the maker\'s mark, not the product name, and it has left the browser tab entirely — the home page reads "The Godforge — Free Developer Tools Forged in the Eclipse", and pages already carrying a name of their own stand alone: The Arena, The Codex, The War Table, The Standing Orders, Fuel the Forge',
+      'Pages with a generic name take the product on the end for context — Contact, Skills, Projects, Guestbook, Mission Control, MCP Server — while /tools is The Five Realms and /sponsors is Sponsor The Godforge',
+      'All 128 tool titles swapped their "| xsantcastx" suffix for "· The Godforge" and kept every keyword ahead of it: a title is the strongest on-page ranking signal there is, and rewriting those phrases to bare tool names would have cost real traffic to buy nothing',
+      'The wordmark now appears only where it earns its place: the header logo, the footer copyright, /about, the npm package name, the Person entity in the structured data, and the SEO keywords. The WebSite entity is now named The Godforge with xsantcastx as its alternateName, so search keeps the association without the product answering to the maker\'s name',
+      'og:site_name, the social card titles and the share-image alt text all say The Godforge; the embed bar that ships on other people\'s sites now reads "Powered by The Godforge"',
+      'Navigation labels are deliberately untouched — Tools, Blueprint, MCP and Quests are what a visitor scans for, and renaming them to lore is a usability decision rather than a branding one'
+    ]
+  },
+  {
+    version: '2.24.0',
+    codename: 'Portable Progress',
+    date: '2026-08-12',
+    highlights: [
+      'Progression is now a portable document rather than a browser-shaped blob — it carries its own identity, rank and timestamps, so signing in later becomes a swap instead of a rewrite',
+      'Storage moved behind an async contract (load / save / exists / clear / migrate). localStorage does not need the await, but a synchronous interface would have grown callers that assume storage resolves in the same tick, and Phase 2 is a network round trip',
+      'Achievements are stored with the moment they were earned instead of as bare ids, so a synced profile carries its own chronology rather than depending on a second store agreeing with it',
+      'Writes are debounced and flushed on the way out — a quest claim that awards XP and banks an achievement in the same tick is now one write, not two',
+      'Existing progress migrates in place: XP, energies, streak, best streak, tools and daily history all carry across, verified against a real v1 blob and pinned by 12 unit tests'
+    ]
+  },
+  {
+    version: '2.23.1',
+    codename: 'Ambient Forge',
+    date: '2026-08-12',
+    highlights: [
+      'Browser tabs read as a platform rather than a personal site — the default title is "xsantcastx · The Godforge", and every named page follows "<Page> · xsantcastx": The Five Realms, The War Table, The Arena, The Codex, Mission Control, Sponsors, MCP Server',
+      'The phrase "Full-Stack Developer" is gone from every title, meta description, Open Graph tag and structured-data block outside the tool pages, along with the portfolio framing that came with it',
+      'The 128 individual tool titles are deliberately untouched: their keyword phrasing is what those pages rank on, and a title is the strongest on-page signal there is. /tools itself was renamed on request and did give up its keywords — the meta description still carries them',
+      'The route-title map had been carrying nine unused entries with copy like "About Me - Experience & Skills" and "Resume - Professional Experience"; the dead keys are deleted and the four live ones now read as platform pages',
+      'Every prerendered page had been shipping the same generic og:title and twitter:title — SeoService read the title back off the document and beat the title strategy to it during prerender. It now reads the route\'s own title, through the same branding helper the strategy uses so the two cannot drift apart',
+      'Fixed a corrupted line on /about that was rendering a fragment of a code-edit payload — literal `", "oldString": "` followed by a stray "Santiago - Full-Stack Developer" — as visible page text'
+    ]
+  },
+  {
+    version: '2.23.0',
+    codename: 'Ambient Forge',
+    date: '2026-08-12',
+    highlights: [
+      'Time spent with the site open and visible now earns XP — 1/min anywhere, 2/min on a tool page, 1.5/min in the Arena — shown by a forge flame beside the XP bar that breathes while it is earning and dims to an ember the moment the tab is hidden',
+      'Hidden earns nothing. The Page Visibility API gates every credit, so this rewards having the site in front of you rather than having it open in a tab you forgot about',
+      'Credits come from measured visible milliseconds rather than from counting timer fires, and a single accounting step is clamped to one interval — so a throttled background tab under-reports nothing and a laptop asleep for six hours pays out nothing',
+      'Thirty credited minutes a day, held against the local date rather than the page load: the brief called it a per-session cap, but a cap kept in memory resets on Cmd+R, which is the first thing an idler does',
+      'The rate stacks — the realm you have worked most adds 0.5 on its own tools, a live quest pointing at the tool underfoot doubles it, and a 7- or 30-day streak multiplies by 1.5 or 2 — with the tooltip naming every term rather than showing an unexplained number',
+      'The flame is strikeable: +1 XP a hit on a 500ms cooldown, a spark every tenth and a Century Strike worth 10 more every hundredth',
+      'Seven achievements join the egg registry rather than a parallel list, so they arrive through the rarity drop, land on the Codex wall and count toward the global total like everything else — at 40-200 XP rather than a hunt\'s 200, because they are earned by presence',
+      'The idle ledger is read-modify-write, so two open tabs share one thirty-minute allowance instead of quietly earning two and overwriting each other\'s totals',
+      'Nineteen unit tests cover the parts only a clock can prove: the cap, the visibility gate, the sleeping laptop, the day rollover, the unbroken-run milestone and the strike cooldown'
     ]
   },
   {

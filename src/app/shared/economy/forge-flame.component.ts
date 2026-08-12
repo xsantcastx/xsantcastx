@@ -38,6 +38,7 @@ import { Subscription } from 'rxjs';
 import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
+import { IdleService } from '../idle/idle.service';
 
 /** One "+5" rising off the flame. */
 interface Floater {
@@ -355,6 +356,7 @@ interface Banner {
 })
 export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
+  private readonly idle = inject(IdleService);
   private readonly audio = inject(ForgeAudioService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
@@ -402,6 +404,20 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   }
 
   onStrike(): void {
+    // One flame, two ledgers.
+    //
+    // The Ambient Forge shipped its own flame in the header, paying XP for the
+    // same swing this one pays Gold for. Two clickable flames on the same page
+    // is two answers to "what does striking the forge do", so that one was
+    // retired and this one drives both: `IdleService.strike()` keeps the XP, the
+    // Century Strike XP, and the two strike-count achievements
+    // ('idle-forge-striker' at a thousand, 'idle-obsidian-hammer' at ten
+    // thousand) exactly as they were before the Market existed.
+    //
+    // Called first and unconditionally: it enforces its own cooldown, and a
+    // visitor must not lose XP because the Gold ledger happened to say no.
+    this.idle.strike();
+
     const hit = this.economy.strike();
     // Inside the cooldown. Silently ignored rather than flashed — a held mouse
     // button would otherwise strobe the whole corner of the screen.

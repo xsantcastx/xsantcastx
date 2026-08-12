@@ -50,6 +50,24 @@ export const DEV_LOG_CATEGORIES: {
 
 export const DEV_LOG: DevLogEntry[] = [
   {
+    id: 'portable-progress',
+    date: '2026-08-12',
+    title: 'Making progression portable before there is anywhere to port it to',
+    summary:
+      'The XP ledger already worked. The problem was that it only worked here — in this browser, in this tab, keyed to nothing. Fixing that before accounts exist is cheaper than fixing it afterwards.',
+    category: 'architecture',
+    tags: ['Progression', 'Architecture', 'Storage', 'Firestore'],
+    body: [
+      'Progression was a blob in localStorage: XP, energies, streak, a list of tool slugs, a list of achievement ids. Everything the site renders today, and nothing a second device could ever make sense of. There is no account system yet, so nothing was broken — but the shape of the data quietly decided how expensive accounts would be later, and it was deciding badly.',
+      'Three things changed, none of which do anything visible. The blob now carries a `userId` — a UUID minted in the browser today, the Firebase Auth UID the day sign-in exists — so it is already keyed the way a database wants rather than being an anonymous object that has to be given an identity retroactively. It carries `level` and `levelTitle` even though both are derivable from XP, because derived-on-read is right for a local object and wrong for a database: a leaderboard cannot sort by a number that only exists after you run a function over every row. And achievements are stored with the moment they were earned instead of as bare ids, so a synced profile carries its own chronology instead of depending on a second store agreeing with it.',
+      'The bigger change is that the storage interface went async. localStorage does not need an await, which is exactly why it was tempting to leave it synchronous — and exactly why that would have been the mistake. A synchronous `load()` grows callers that assume storage resolves in the same tick, and by the time Firestore is behind it every one of those callers is a bug. Paying for the await now costs five call sites. Paying for it later costs an audit.',
+      'That audit is worth describing, because it is the part that could have gone wrong silently. Most consumers render from an observable and correct themselves when hydration lands — the homepage marks a tool card as already-struck through a template getter, so it simply repaints. But three read the ledger once and never look again: the Bestiary backfills from the tool list, the Codex builds its streak calendar from the daily history, and an Arena gate banks a first-clear achievement. Each of those would have read an empty blob and written the emptiness back. They now await hydration explicitly. The failure mode was not a crash — it was a returning visitor quietly losing their Bestiary.',
+      'Writes are debounced at 800ms with a synchronous flush on pagehide. A quest claim that awards XP and banks an achievement in the same tick used to be two writes; it is one now. localStorage would not have cared, but a persistence pattern that only works for the free backend is not a migration path.',
+      'What is deliberately still not built: the Firestore adapter throws on every method. It is a real class rather than a comment block so the compiler keeps proving it satisfies the interface, and it throws rather than returning an empty blob so that wiring it up by accident looks like an error instead of a wiped profile. Its docblock carries the security rule it will need, and the non-negotiable half of that rule is that XP must not be client-writable to an arbitrary value — a document the browser can set to nine million XP makes every rank on the site meaningless the moment one person opens devtools.',
+      'Existing progress migrates in place, which is the only part with no room for judgment. A migration that drops a streak looks exactly like a visitor who stopped coming back, so it is pinned by twelve unit tests and verified against a real v1 blob in a browser: XP, both energies, streak, best streak, tool list and daily history all carry across, bare achievement ids are promoted to records, and a hand-edited or truncated blob degrades to a usable level-1 state instead of throwing.'
+    ]
+  },
+  {
     id: 'open-roadmap',
     date: '2026-08-10',
     title: 'Open Roadmap: why the whole plan is public',

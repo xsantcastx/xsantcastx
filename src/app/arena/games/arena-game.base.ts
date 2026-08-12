@@ -43,10 +43,13 @@ export abstract class ArenaGameBase {
     if (!this.isBrowser) return;
 
     this.scores.init();
-    this.xp.init();
     this.best = this.scores.best(this.gameId);
 
-    await this.eggs.init();
+    // Awaited, not fired and forgotten: `finishRun` calls `claimAchievement`,
+    // which reads the ledger synchronously. A first clear banked before storage
+    // resolved would be written into the empty blob and then overwritten by
+    // hydration — the visitor would clear the gate and get nothing for it.
+    await Promise.all([this.xp.init(), this.eggs.init()]);
     this.locked = !this.eggs.isFound(this.game.unlockEggId);
   }
 
