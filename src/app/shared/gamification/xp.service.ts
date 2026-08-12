@@ -26,6 +26,7 @@ import {
   levelProgress,
   nextLevelForXp,
   streakBonus,
+  withLevel,
 } from './gamification.model';
 
 /** What the XP bar renders. Derived, never persisted. */
@@ -87,7 +88,17 @@ export class XpService {
   private readonly storage = inject(ProgressStorageService);
 
   private state: ProgressState = emptyProgress();
-  private initialised = false;
+  /**
+   * The in-flight (or settled) hydration. Every caller of `init()` gets the same
+   * promise, so the half-dozen components that each want progression can all
+   * await readiness without coordinating who is first.
+   */
+  private hydration: Promise<void> | null = null;
+
+  /** Coalesce writes: a burst of awards should be one save, not five. */
+  private saveHandle: ReturnType<typeof setTimeout> | null = null;
+  private static readonly SAVE_DEBOUNCE_MS = 800;
+  private unloadBound = false;
 
   private readonly snapshot$$ = new BehaviorSubject<XpSnapshot>(this.snapshotOf(this.state));
   private readonly gain$$ = new Subject<XpGain>();
@@ -102,14 +113,37 @@ export class XpService {
   /**
    * Hydrate from storage and settle the daily streak. Idempotent — safe to call
    * from every component that wants progression without coordinating who is
-   * first.
+   * first, and repeat callers get the same promise rather than a second load.
+   *
+   * Async because storage is: with Firestore behind the adapter this is a
+   * network round trip. Callers that only render from `snapshot$` can ignore the
+   * promise — the subject republishes once hydration lands. Callers that read
+   * state *synchronously and once* (`toolsUsed`, `history`) must await it, or
+   * they will read the empty blob and never look again.
    */
-  init(): void {
-    if (!this.isBrowser || this.initialised) return;
-    this.initialised = true;
-    this.state = this.storage.load();
-    this.settleStreak();
-    this.publish();
+  init(): Promise<void> {
+    if (!this.isBrowser) return Promise.resolve();
+    if (this.hydration) return this.hydration;
+
+    this.hydration = this.storage.load()
+      .then(loaded => {
+        this.state = loaded;
+        this.settleStreak();
+        this.publish();
+        this.bindUnloadFlush();
+      })
+      .catch(() => {
+        // A failed load leaves the empty blob in place, which is a usable
+        // level-1 state. Publishing keeps the HUD consistent with it.
+        this.publish();
+      });
+
+    return this.hydration;
+  }
+
+  /** Resolves once storage has been read. Sugar for `init()` at a call site that already ran it. */
+  get ready(): Promise<void> {
+    return this.hydration ?? this.init();
   }
 
   /**
@@ -159,6 +193,9 @@ export class XpService {
     else this.state.aether += amount;
     this.recordDay(amount);
     const after = levelForXp(this.state.xp);
+    // Keep the denormalised rank in step. Stored rather than derived so a Phase
+    // 2 leaderboard can orderBy it — see the note on ProgressState.
+    this.state = withLevel(this.state);
 
     this.persist();
     this.publish();
@@ -218,28 +255,91 @@ export class XpService {
 
   /** True once this achievement has been banked, so a drop never repeats. */
   hasAchievement(id: string): boolean {
-    return this.state.achievements.includes(id);
+    return this.state.achievements.some(a => a.id === id);
   }
 
-  /** Bank an achievement id. Returns false when it was already held. */
+  /**
+   * Bank an achievement. Returns false when it was already held.
+   *
+   * Records the unlock time alongside the id: the Codex renders "unlocked on"
+   * from the egg service today, but a synced profile has to carry its own
+   * chronology rather than depending on a second store agreeing with it.
+   */
   claimAchievement(id: string): boolean {
     if (!this.isBrowser || this.hasAchievement(id)) return false;
-    this.state.achievements = [...this.state.achievements, id];
+    this.state.achievements = [
+      ...this.state.achievements,
+      { id, unlockedAt: new Date().toISOString() },
+    ];
     this.persist();
     this.publish();
     return true;
   }
 
+  /** Achievement ids banked so far, in the order they were earned. */
+  get achievementIds(): string[] {
+    return this.state.achievements.map(a => a.id);
+  }
+
+  /** When an achievement was banked, or null if it has not been. */
+  achievementUnlockedAt(id: string): string | null {
+    return this.state.achievements.find(a => a.id === id)?.unlockedAt ?? null;
+  }
+
+  /** The identity this progression is filed under. A local UUID until sign-in exists. */
+  get userId(): string {
+    return this.state.userId;
+  }
+
   /** Wipe progression. Exposed for the console and for a future settings toggle. */
   reset(): void {
     if (!this.isBrowser) return;
+    this.cancelPendingSave();
     this.state = emptyProgress();
-    this.storage.clear();
+    void this.storage.clear();
     this.publish();
   }
 
+  /**
+   * Schedule a write. Storage is async now, and a single quest claim can award
+   * XP and bank an achievement in the same tick — that should be one save, not
+   * two round trips.
+   */
   private persist(): void {
-    this.storage.save(this.state);
+    if (this.saveHandle !== null) clearTimeout(this.saveHandle);
+    this.saveHandle = setTimeout(() => {
+      this.saveHandle = null;
+      void this.storage.save(this.state).catch(() => {
+        // A failed write must never break a session. The next debounce tick
+        // retries with the newer state anyway.
+      });
+    }, XpService.SAVE_DEBOUNCE_MS);
+  }
+
+  private cancelPendingSave(): void {
+    if (this.saveHandle === null) return;
+    clearTimeout(this.saveHandle);
+    this.saveHandle = null;
+  }
+
+  /**
+   * Flush on the way out. `pagehide` will not await a promise, so this goes
+   * through the adapter's synchronous path — without it, closing the tab within
+   * the debounce window would cost the visitor their last award.
+   */
+  private bindUnloadFlush(): void {
+    if (this.unloadBound || typeof window === 'undefined') return;
+    this.unloadBound = true;
+
+    const flush = () => {
+      this.cancelPendingSave();
+      this.storage.saveNow(this.state);
+    };
+
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush();
+    });
   }
 
   private publish(): void {

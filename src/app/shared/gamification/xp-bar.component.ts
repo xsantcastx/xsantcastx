@@ -208,7 +208,9 @@ export class XpBarComponent implements OnInit, OnDestroy {
   snap: XpSnapshot = this.xp.snapshot;
 
   ngOnInit(): void {
-    this.xp.init();
+    // Fire-and-forget: the subscription below repaints the bar when hydration
+    // lands, so there is nothing to wait for here.
+    void this.xp.init();
     this.sub = this.xp.snapshot$.subscribe(s => {
       this.snap = s;
       this.cdr.markForCheck();
