@@ -25,6 +25,7 @@ import { EconomyService } from '../economy/economy.service';
 import { ForgeAudioService } from '../economy/forge-audio.service';
 import { formatCurrency } from '../economy/economy.model';
 import { RuneForgeService, RuneFind } from './rune-forge.service';
+import { LoreScrollService } from './lore-scroll.service';
 import {
   RUNES,
   RUNEWORDS,
@@ -81,6 +82,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly forge = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
   private readonly audio = inject(ForgeAudioService);
+  private readonly scrolls = inject(LoreScrollService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
@@ -110,6 +112,8 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   /** The rune the anvil just produced. Null between strikes. */
   reveal: RuneFind | null = null;
   revealTier: RuneTierDefinition | null = null;
+  /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
+  scrollParagraphs: string[] = [];
   /** True while the hammer animation runs, so a second click cannot land. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
@@ -194,6 +198,12 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
     this.reveal = find;
     this.revealTier = tier;
+    // Split once, here, rather than in a template getter that would re-split on
+    // every change-detection pass for the whole time the card is up.
+    this.scrollParagraphs = find.scroll
+      ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+      : [];
+    if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);
     this.cdr.markForCheck();
 
@@ -207,8 +217,13 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
   /** Dismiss the reveal card early. The cinematic tiers are worth sitting through. */
   dismissReveal(): void {
+    // Dismissing is how you finish reading, so it is also what marks the scroll
+    // read — the alternative is a Codex that shows a "new" dot on a page the
+    // visitor has just had open in front of them.
+    if (this.reveal?.scroll) this.scrolls.markRead(this.reveal.scroll.id);
     this.reveal = null;
     this.revealTier = null;
+    this.scrollParagraphs = [];
     this.cdr.markForCheck();
   }
 

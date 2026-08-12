@@ -244,6 +244,15 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'rune-void-voice',           name: 'Voice of the Void',       description: 'The Void rune fell. It falls once in two thousand.',  tool: 'global', rarity: 'legendary', icon: '👁️', xp: 2000 },
   { id: 'rune-breath-of-void',       name: 'Breath of the Void',      description: 'Completed the last Runeword in the Archivum',         tool: 'global', rarity: 'legendary', icon: '🕳️', xp: 5000 },
 
+  // ── Lore Scrolls ────────────────────────────────────────────────
+  // Two, not eight. The scrolls already pay out as they are found — every one
+  // is a page of the codex that was not readable before — so the wall only
+  // needs to mark the two thresholds a collector actually aims at. A rung at
+  // one, five, fifteen and twenty as well would be four more cards for the same
+  // act, which is the mistake the strike-count note above records not making.
+  { id: 'scroll-lore-hunter',        name: 'Lore Hunter',             description: 'Turned up ten of the twenty-five Lore Scrolls',       tool: 'global', rarity: 'epic',   icon: '📜', xp: 300 },
+  { id: 'scroll-full-codex',         name: 'The Full Codex',          description: 'Every scroll, including the page that is blank',      tool: 'global', rarity: 'legendary', icon: '📖', xp: 2500 },
+
   // ── The character sheet ─────────────────────────────────────────
   // Paid at 25 like The Archivist, and for the same reason: this one is
   // *noticed* rather than hunted, and a page you can reach from the navbar

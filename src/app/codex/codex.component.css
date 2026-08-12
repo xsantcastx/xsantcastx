@@ -979,3 +979,182 @@
 /* Realm sigils on filter chips, section headers and card meta lines. */
 .cx-cat-icon { width: 18px; height: 18px; flex: none; vertical-align: -4px; }
 .cx-cat-icon--lg { width: 26px; height: 26px; vertical-align: -6px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE LORE CODEX — the scroll wall
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Parchment rather than starlight, matching ToolLoreComponent: gold #C9A84C,
+   a Georgia serif, and a torn top rule instead of a clean border. The rest of
+   this page is Orbitron and neon on purpose, and the lore is the deliberate
+   exception — it should read as something found rather than something built.
+
+   The tier badge still uses --tier / --tier-glow from the achievement ladder,
+   so a Singular scroll and a Singular achievement are the same pink.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cx-scrolls {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.cx-scroll {
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse 70% 60% at 10% 0%, rgba(201, 168, 76, 0.05), transparent 65%),
+    rgba(10, 8, 18, 0.6);
+  overflow: hidden;
+}
+
+.cx-scroll--locked {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(10, 8, 18, 0.4);
+}
+
+.cx-scroll--open {
+  border-color: rgba(201, 168, 76, 0.5);
+  box-shadow: 0 0 30px -10px rgba(201, 168, 76, 0.5);
+}
+
+.cx-scroll__hd {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  /* 44px is the floor for anything a finger has to hit. */
+  min-height: 56px;
+  padding: 0.7rem 0.95rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cx-scroll__hd:disabled {
+  cursor: default;
+}
+
+.cx-scroll__num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 50%;
+  font: 600 0.78rem/1 Georgia, 'Times New Roman', serif;
+  color: #C9A84C;
+}
+
+.cx-scroll--locked .cx-scroll__num {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #6b6353;
+}
+
+.cx-scroll__names {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cx-scroll__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font: 600 0.92rem/1.35 Georgia, 'Times New Roman', serif;
+  color: #d9c27f;
+}
+
+.cx-scroll--locked .cx-scroll__title {
+  color: #6b6353;
+}
+
+/* Found but never opened. The one piece of state the wall carries that the
+   achievement wall does not — a scroll can be granted mid-strike while the
+   visitor is watching a rune, so "new" and "read" are genuinely different. */
+.cx-scroll__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #C9A84C;
+  box-shadow: 0 0 8px rgba(201, 168, 76, 0.9);
+}
+
+.cx-scroll__sub {
+  font: italic 400 0.74rem/1.4 Georgia, 'Times New Roman', serif;
+  color: #8a8071;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cx-scroll__badge {
+  flex: none;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--tier, rgba(255, 255, 255, 0.2));
+  border-radius: 999px;
+  font: 600 0.6rem/1.6 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tier, #8a8071);
+}
+
+.cx-scroll--locked .cx-scroll__badge {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #6b6353;
+}
+
+.cx-scroll__body {
+  padding: 0 0.95rem 1rem;
+}
+
+/* The torn rule, above the prose rather than above the card — the header is a
+   button and a rule through it would read as a divider, not as an edge. */
+.cx-scroll__body::before {
+  content: '';
+  display: block;
+  height: 2px;
+  margin: 0 -0.95rem 0.9rem;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(201, 168, 76, 0.5) 20%,
+    rgba(201, 168, 76, 0.18) 50%,
+    rgba(201, 168, 76, 0.5) 80%,
+    transparent);
+}
+
+.cx-scroll__para {
+  margin: 0 0 0.9rem;
+  max-width: 68ch;
+  font: 400 0.92rem/1.75 Georgia, 'Times New Roman', serif;
+  color: #cdc6b8;
+}
+
+.cx-scroll__found {
+  margin: 0;
+  font: italic 400 0.72rem/1.5 Georgia, 'Times New Roman', serif;
+  color: #6b6353;
+}
+
+.cx-scrolls__empty {
+  margin: 2rem 0 0;
+  text-align: center;
+  font: italic 400 0.88rem/1.6 Georgia, 'Times New Roman', serif;
+  color: #8a8071;
+}
+
+.cx-scrolls__empty a {
+  color: #C9A84C;
+}
+
+@media (max-width: 640px) {
+  /* The badge is the first thing to go — the tier is also readable from the
+     number's colour, and the title needs the width more. */
+  .cx-scroll__badge {
+    display: none;
+  }
+}
