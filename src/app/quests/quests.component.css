@@ -1,0 +1,181 @@
+/* /quests — the full mission board.
+   Reuses the cosmic section vocabulary from CLAUDE.md §3: eyebrow + title +
+   tagline pill, dual-radial nebula wash, gradient cap lines. */
+
+.quests-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 116px 20px 80px; /* clears the 64px navbar — see the v2.7.0 note */
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.quests-header { text-align: center; margin-bottom: 44px; }
+
+.quests-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0 0 10px;
+  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .16em; text-transform: uppercase; color: #7fd5a3;
+}
+.quests-eyebrow__pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #7fd5a3; box-shadow: 0 0 10px rgba(127, 213, 163, .8);
+  animation: hpEyebrowPulse 3s ease-in-out infinite;
+}
+@keyframes hpEyebrowPulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
+
+.quests-title {
+  margin: 0 0 12px;
+  font: 700 clamp(28px, 5vw, 44px)/1.15 'Orbitron', system-ui, sans-serif;
+  background: linear-gradient(90deg, #4dffe0, #7b61ff, #ff6dd7);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+.quests-tagline {
+  display: inline-block;
+  margin: 0 0 26px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 204, 0.14);
+  background: rgba(0, 255, 204, 0.05);
+  font-size: 14px; color: #9fb4ae;
+}
+
+.quests-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; max-width: 460px; margin: 0 auto;
+}
+.quests-stats div { text-align: center; }
+.quests-stats dt {
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #7d918c;
+}
+.quests-stats dd {
+  margin: 4px 0 0;
+  font: 700 clamp(20px, 4vw, 28px)/1 'Orbitron', system-ui, sans-serif;
+  color: #eafff9;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+
+.quests-section {
+  position: relative;
+  margin-bottom: 40px;
+  padding: 26px 20px;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.05), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.06), transparent 65%),
+    rgba(5, 8, 18, 0.55);
+}
+.quests-section::before,
+.quests-section::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 1px;
+}
+.quests-section::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.45) 50%, transparent); }
+.quests-section::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.45) 50%, transparent); }
+
+.quests-section--epic::before { background: linear-gradient(90deg, transparent, rgba(255, 45, 77, 0.5) 50%, transparent); }
+
+.quests-section__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.quests-section__title {
+  margin: 0;
+  font: 700 clamp(18px, 3vw, 24px)/1 'Orbitron', system-ui, sans-serif;
+  color: #eafff9; letter-spacing: .04em;
+}
+.quests-section__timer {
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  color: #C9A84C;
+}
+.quests-section__note {
+  margin: 8px 0 18px;
+  font: italic 400 13px/1.6 Georgia, 'Times New Roman', serif;
+  color: #8fa09b;
+}
+
+.quests-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* ── History ────────────────────────────────────────────────────────────── */
+
+.quests-history__toggle {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 44px; padding: 8px 0;
+  border: none; background: none; cursor: pointer;
+  font: 600 14px/1 'Orbitron', system-ui, sans-serif;
+  color: #c6d4d0; text-align: left;
+}
+.quests-history__toggle:hover { color: #4dffe0; }
+
+.quests-history__chevron { transition: transform .25s ease; color: #7b61ff; }
+.quests-history__chevron--open { transform: rotate(90deg); }
+
+.quests-history__count {
+  margin-left: auto;
+  padding: 2px 9px; border-radius: 999px;
+  background: rgba(123, 97, 255, 0.16);
+  font-size: 12px; color: #c48bff;
+}
+
+.quests-history { margin-top: 16px; display: grid; gap: 18px; }
+
+.quests-history__label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0 0 8px;
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .08em; text-transform: uppercase; color: #7d918c;
+}
+.quests-history__label span { color: #7fd5a3; }
+
+.quests-history__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.quests-history__list li {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 13px;
+}
+.quests-history__name { color: #c6d4d0; flex: 1; }
+.quests-history__type {
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #6d817c;
+}
+.quests-history__xp { font: 600 12px/1 'Orbitron', system-ui, sans-serif; color: #4dffe0; }
+
+.quests-history__empty { margin: 12px 0 0; font-style: italic; font-size: 13px; color: #6d817c; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.quests-whisper {
+  margin: 34px 0 20px;
+  text-align: center;
+  font: italic 400 13px/1.6 Georgia, 'Times New Roman', serif;
+  color: #6d817c;
+}
+
+.quests-cta {
+  display: block; width: fit-content; margin: 0 auto;
+  min-height: 44px; padding: 13px 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 204, 0.35);
+  background: rgba(0, 255, 204, 0.07);
+  color: #4dffe0; text-decoration: none;
+  font: 600 13px/1 'Orbitron', system-ui, sans-serif;
+}
+.quests-cta:hover { background: rgba(0, 255, 204, 0.14); }
+
+@media (max-width: 640px) {
+  .quests-page { padding: 100px 14px 60px; }
+  .quests-section { padding: 20px 14px; }
+  .quests-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quests-eyebrow__pulse { animation: none; opacity: 1; }
+  .quests-history__chevron { transition: none; }
+}

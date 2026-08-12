@@ -137,7 +137,7 @@
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             }
-            {{ linkCopied ? 'Copied!' : 'Copy &lt;link&gt; Tags' }}
+            @if (linkCopied) { Copied! } @else { Copy &lt;link&gt; Tags }
           </button>
         </div>
       </div>

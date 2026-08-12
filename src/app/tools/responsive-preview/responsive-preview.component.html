@@ -58,7 +58,7 @@
             (click)="selectDevice(device)"
             [title]="device.name + ' (' + device.width + 'x' + device.height + ')'"
             >
-            <span class="rp-device-chip__icon">{{ device.icon === 'phone_iphone' ? '&#128241;' : device.icon === 'tablet_mac' ? '&#128195;' : device.icon === 'laptop_mac' ? '&#128187;' : '&#128421;' }}</span>
+            <span class="rp-device-chip__icon">{{ device.icon === 'phone_iphone' ? '📱' : device.icon === 'tablet_mac' ? '📓' : device.icon === 'laptop_mac' ? '💻' : '🖥️' }}</span>
             <span class="rp-device-chip__label">{{ device.name }}</span>
             <span class="rp-device-chip__size">{{ device.width }}&times;{{ device.height }}</span>
           </button>

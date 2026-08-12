@@ -25,48 +25,57 @@ export interface UserProperties {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  // The Analytics SDK is fetched on demand. `@angular/fire/analytics` was the
-  // reason @firebase/auth (~100 kB raw) sat in the initial chunk: its
-  // UserTrackingService pulls the whole auth SDK in statically, even though
-  // this site has no signed-in users outside /guestbook. Talking to the raw
-  // modular SDK instead — behind a dynamic import — drops both.
-  //
-  // Calls made before the SDK lands are queued and replayed, so every
-  // track*() method keeps its fire-and-forget signature.
-  private analytics: Analytics | null = null;
-  private api: AnalyticsApi | null = null;
-  private queue: Array<() => void> = [];
-  private loader: Promise<void> | null = null;
   private consentService = inject(ConsentService);
   private debugService = inject(AnalyticsDebugService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
+  private analyticsRef: Analytics | null = null;
+  private api: AnalyticsApi | null = null;
+  private queue: Array<() => void> = [];
+  private loader: Promise<void> | null = null;
+
   constructor() {
     // Initialize consent service to set up gtag
     this.consentService;
-    
-    // Set initial user properties if browser
+
+    // Deferred, not called inline: setInitialUserProperties() ends up in
+    // canTrack(), and resolving Analytics is what makes AngularFire call
+    // getAnalytics() and pull in gtag.js (~150 kB). HeaderComponent is
+    // app-shell mounted and injects this service, so doing that in the
+    // constructor put a third-party script on the critical path of every
+    // route. Nothing here is time-sensitive — the properties are attached to
+    // events, and no event can fire before the user has interacted.
     if (this.isBrowser) {
-      this.setInitialUserProperties();
+      this.whenIdle(() => this.setInitialUserProperties());
     }
   }
 
-  private canTrack(): boolean {
-    return this.isBrowser && this.consentService.hasConsent();
-  }
-
-  /** Run against the Analytics SDK, downloading it first if need be. */
+  /**
+   * Load the Analytics SDK on first real use, then replay anything queued.
+   *
+   * This was `inject(Analytics)` from @angular/fire, and before that a
+   * constructor injection. Two separate costs were being paid: resolving the
+   * token booted Firebase Analytics (and gtag.js, ~150 kB) — fixed upstream by
+   * deferring the injection — and, separately, `@angular/fire/analytics`
+   * *statically imports* `@angular/fire/auth`, so merely referencing the module
+   * put the ~100 kB auth SDK in the initial chunk for a site whose only
+   * sign-in lives on /guestbook and /admin. Talking to the raw modular SDK
+   * behind a dynamic import removes both.
+   *
+   * Calls made before the SDK lands are queued, so every public track*()
+   * method keeps its synchronous fire-and-forget signature.
+   */
   private enqueue(run: (api: AnalyticsApi, analytics: Analytics) => void): void {
     if (!this.isBrowser) return;
 
-    if (this.api && this.analytics) {
-      run(this.api, this.analytics);
+    if (this.api && this.analyticsRef) {
+      run(this.api, this.analyticsRef);
       return;
     }
 
     this.queue.push(() => {
-      if (this.api && this.analytics) run(this.api, this.analytics);
+      if (this.api && this.analyticsRef) run(this.api, this.analyticsRef);
     });
     this.load();
   }
@@ -83,7 +92,7 @@ export class AnalyticsService {
         }
         const app = getApps().length ? getApp() : initializeApp(environment.firebase);
         this.api = api;
-        this.analytics = api.getAnalytics(app);
+        this.analyticsRef = api.getAnalytics(app);
         this.queue.splice(0).forEach(fn => fn());
       })
       .catch((err) => {
@@ -96,6 +105,31 @@ export class AnalyticsService {
   private log(name: string, params?: Record<string, any>): void {
     if (!this.canTrack()) return;
     this.enqueue((api, analytics) => api.logEvent(analytics, name as any, params as any));
+  }
+
+  /**
+   * Consent is checked BEFORE anything touches the SDK, and the order
+   * matters: loading it has the side effect of booting Firebase Analytics.
+   * With the old ordering, a visitor who never accepted the cookie banner
+   * still paid for gtag.js on every page — consent mode denied what it
+   * *stored*, not what it *downloaded*. Now neither the SDK chunk nor the
+   * script is fetched until the user has actually opted in.
+   */
+  private canTrack(): boolean {
+    return this.isBrowser && this.consentService.hasConsent();
+  }
+
+  /** Run work in the first idle window, or shortly after on older browsers. */
+  private whenIdle(work: () => void): void {
+    const idle = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    }).requestIdleCallback;
+
+    if (typeof idle === 'function') {
+      idle(() => work(), { timeout: 2500 });
+    } else {
+      window.setTimeout(work, 1500);
+    }
   }
 
   /**
@@ -348,12 +382,11 @@ export class AnalyticsService {
   trackConsentDecision(decision: 'accepted' | 'denied'): void {
     if (!this.isBrowser) return;
     // This should track even without consent (for compliance reporting)
-    const payload = {
+    this.log('consent_decision', {
       decision,
       page_location: window.location.href,
       timestamp: new Date().toISOString()
-    };
-    this.enqueue((api, analytics) => api.logEvent(analytics, 'consent_decision' as any, payload));
+    });
   }
 
   /**

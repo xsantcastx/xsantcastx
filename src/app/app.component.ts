@@ -6,6 +6,13 @@ import { SeoService } from './seo.service';
 import { EmbedService } from './shared/embed.service';
 import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
+import { XpWiringService } from './shared/gamification/xp-wiring.service';
+import { RealmService } from './shared/realms/realm.service';
+import { QuestWiringService } from './shared/quests/quest-wiring.service';
+import { EconomyWiringService } from './shared/economy/economy-wiring.service';
+import { IdleService } from './shared/idle/idle.service';
+import { CodexSecretsService } from './codex/codex-secrets.service';
+import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
     selector: 'app-root',
@@ -21,6 +28,12 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly embed = inject(EmbedService);
   private visitCounter = inject(VisitCounterService);
   private eggTriggers = inject(GlobalEggTriggersService);
+  private xpWiring = inject(XpWiringService);
+  private realms = inject(RealmService);
+  private questWiring = inject(QuestWiringService);
+  private economyWiring = inject(EconomyWiringService);
+  private idle = inject(IdleService);
+  private codexSecrets = inject(CodexSecretsService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -44,11 +57,49 @@ export class AppComponent implements OnInit, OnDestroy {
 
     if (!isPlatformBrowser(this.platformId)) return;
 
+    // Queue Firebase App Check for the first idle window. Initializing it at
+    // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
+    // route; see app-check.bootstrap.ts.
+    scheduleAppCheck();
+
     // Track site visit and trigger milestone celebration if applicable
     this.visitCounter.recordVisit();
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
+
+    // The Godforge economy goes first, ahead of progression, because it owns
+    // the XP multiplier that enchantments and artifacts are sold on. XpService
+    // pays out for the landing route synchronously inside `xpWiring.init()`,
+    // so a multiplier installed after it would miss the first award of every
+    // full page load — measurably: a visitor holding the Fragment of the First
+    // Sun was paid 5 XP for the landing page instead of 10.
+    //
+    // It calls `xp.init()` itself before reading the rank, so ordering it here
+    // does not cost progression its own hydration; XpService.init() is
+    // idempotent and the call below is then a no-op.
+    this.economyWiring.init();
+
+    // Progression: hydrate XP from localStorage, settle the daily streak and
+    // subscribe the ledger to route changes, copies and egg discoveries.
+    this.xpWiring.init();
+
+    // Realm tinting: resolve every route to a realm and publish it to CSS.
+    this.realms.init();
+
+    // Mission board: roll the daily and weekly quests over, and start turning
+    // interactions into quest progress and lore unlocks.
+    this.questWiring.init();
+
+    // Ambient forge: start the visible-time heartbeat. Gated on the Page
+    // Visibility API, so a backgrounded tab earns nothing.
+    this.idle.init();
+
+    // Codex: passively note the secrets that are not easter eggs — ritual mode,
+    // the command palette, the unlinked routes. Global rather than page-local so
+    // a secret found on /home is recorded on /home, not the next time /codex is
+    // opened.
+    this.codexSecrets.init();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {

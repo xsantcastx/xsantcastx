@@ -1,0 +1,80 @@
+/* Forge Strike — the anvil and the key. */
+
+.fs-key {
+  list-style: none;
+  margin: 0 auto 1.5rem;
+  padding: 0;
+  max-width: 34rem;
+  display: grid;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.fs-key__row {
+  display: grid;
+  grid-template-columns: 1.8rem auto 3rem;
+  grid-template-areas:
+    'glyph name pts'
+    'glyph note note';
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--ag-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.fs-key__glyph { grid-area: glyph; font-size: 1.25rem; }
+.fs-key__name { grid-area: name; font-weight: 600; font-size: 0.9rem; }
+.fs-key__pts {
+  grid-area: pts;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.fs-key__pts--good { color: #7fd5a3; }
+.fs-key__pts--bad  { color: var(--ag-danger); }
+.fs-key__note { grid-area: note; font-size: 0.76rem; color: var(--ag-dim); }
+
+/* ── the anvil ────────────────────────────────────────────── */
+
+.fs-anvil {
+  position: relative;
+  margin: 0 auto;
+  max-width: 46rem;
+  height: clamp(340px, 56vh, 480px);
+  border: 1px solid rgba(255, 154, 90, 0.24);
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(255, 140, 60, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 20% 15%, rgba(201, 168, 76, 0.09), transparent 70%),
+    linear-gradient(180deg, rgba(8, 12, 26, 0.85), rgba(14, 9, 6, 0.92));
+}
+
+.fs-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Without this a tap on a target also scrolls the page or fires a
+     double-tap zoom, and the strike registers late or not at all. */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.fs-stat--hot {
+  border-color: rgba(255, 154, 90, 0.5);
+  background: rgba(255, 140, 60, 0.1);
+}
+.fs-stat--hot .ag-stat__num { color: #ff9a5a; }
+
+.fs-tip {
+  max-width: 46rem;
+  margin: 0.6rem auto 0;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--ag-dim);
+}
+
+.fs-pb { color: var(--ag-cyan); font-size: 0.85rem; }
+.ag-end__line--muted { font-size: 0.82rem; opacity: 0.8; }

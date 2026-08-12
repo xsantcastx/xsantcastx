@@ -6,7 +6,7 @@ const routes: Routes = [
   {
       path: '',
       loadComponent: () => import('../embed-landing/embed-landing.component').then(m => m.EmbedLandingComponent),
-      title: 'Embed Developer Tools on Your Site — Free Widgets | xsantcastx',
+      title: 'Embed Developer Tools on Your Site — Free Widgets · The Godforge',
       data: {
         description: 'Embed free developer tools on your blog, docs, or app. JSON Formatter, Base64 Encoder, Regex Tester, and more. One iframe tag, zero setup.',
         keywords: 'embed developer tools, embeddable widgets, iframe tools, json formatter widget, developer tool embed, free embed',
@@ -39,6 +39,7 @@ const routes: Routes = [
   { path: 'meta-tag-generator', loadComponent: () => import('./meta-tag-generator/meta-tag-generator.component').then(m => m.MetaTagGeneratorComponent), data: { embed: true } },
   { path: 'env-validator', loadComponent: () => import('./env-validator/env-validator.component').then(m => m.EnvValidatorComponent), data: { embed: true } },
   { path: 'font-pairer', loadComponent: () => import('./font-pairer/font-pairer.component').then(m => m.FontPairerComponent), data: { embed: true } },
+  { path: 'har-analyzer', loadComponent: () => import('./har-analyzer/har-analyzer.component').then(m => m.HarAnalyzerComponent), data: { embed: true } },
   { path: 'regex-builder', loadComponent: () => import('./regex-builder/regex-builder.component').then(m => m.RegexBuilderComponent), data: { embed: true } },
   { path: 'cron-builder', loadComponent: () => import('./cron-builder/cron-builder.component').then(m => m.CronBuilderComponent), data: { embed: true } },
   { path: 'api-request-builder', loadComponent: () => import('./api-request-builder/api-request-builder.component').then(m => m.ApiRequestBuilderComponent), data: { embed: true } },

@@ -593,6 +593,15 @@
     right: 0;
     display: flex;
     flex-direction: column;
+    /* The 1100px rule sets flex-wrap: wrap, which is right for the horizontal
+       nav between 960px and 1100px and wrong for the drawer below it. A column
+       that wraps does not scroll: once the content passes max-height it starts
+       a SECOND COLUMN outside the 375px panel instead of overflowing into the
+       overflow-y: auto below. Adding the XP bar as a tenth child crossed that
+       threshold and threw it off-screen to x=424. nowrap restores the intent —
+       taller-than-the-drawer content scrolls, which is what the overflow-y and
+       overscroll-behavior on this rule were always written for. */
+    flex-wrap: nowrap;
     gap: 1.2rem;
     padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
     background:
@@ -925,7 +934,221 @@
     animation: none;
   }
 
-  .nav-menu .nav-games-link {
+  .nav-menu .nav-games-link,
+  .nav-menu .nav-codex-link {
     min-height: 48px;
+  }
+
+  /* In the drawer there is horizontal room, so the badge sits on the trailing
+     edge of the row rather than tucked against the label. */
+  .nav-menu .nav-codex-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+}
+
+/* ── Codex nav link ─────────────────────────────────────────────────────
+   The badge is a counter, not a call to action: it is deliberately quieter
+   than the LIVE pill next to it, because a number that never stops being
+   incomplete should not also be the loudest thing in the bar. */
+.nav-codex-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-codex-badge {
+  font-family: var(--font-heading, 'Orbitron', sans-serif);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #4dffe0;
+  background: rgba(0, 255, 204, 0.09);
+  border: 1px solid rgba(0, 255, 204, 0.24);
+  white-space: nowrap;
+}
+
+.nav-codex-link:hover .nav-codex-badge,
+.nav-codex-link.active .nav-codex-badge {
+  color: #eafff9;
+  background: rgba(0, 255, 204, 0.2);
+  border-color: rgba(0, 255, 204, 0.5);
+}
+
+/* ── Nav row fit, 960px → 1440px ────────────────────────────────────────
+   The desktop row was already over-full before the Codex link existed: at
+   1280px .nav-menu measured 855px of content in a 660px box, which is why the
+   LIVE pill painted over the EN/ES toggle. The Codex link would have taken it
+   to 944px.
+
+   The space is not being consumed by the links themselves — it is gap and
+   padding. Ten links carry 252px of gap and 224px of horizontal padding
+   between them at 1280px. Tightening both, dropping the badge, and easing the
+   letter-spacing brings the row to ~620px, i.e. inside its container for the
+   first time. Above 1440px nothing changes; there is room to be airy there.
+
+   This does NOT touch the progression readout — see the note below. That
+   element was never what was consuming the space. */
+@media (min-width: 961px) {
+  /* The original `clamp(1.1rem, 3vw, 2.5rem)` grew the gap with the viewport,
+     so the row got *worse* as the screen got wider: nine gaps came to 360px at
+     1512px against 126px at 1280px. Capping it removes 210px there. */
+  .nav-menu { gap: clamp(0.4rem, 1.1vw, 1.25rem); }
+
+  .nav-menu a {
+    padding: 0.35rem 0.25rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+/* The row is still over-full below ~1440px even with the gap capped — see the
+   note under the progression readout; ten links do not fit and the LIVE pill
+   has painted over the EN/ES toggle since before the Codex existed. The Codex
+   link is therefore placed mid-row in the template (after Tools, before
+   Blueprint) rather than at the end, so it sits well clear of that zone
+   instead of joining it.
+
+   The badge is the one part of the link that can be dropped without losing
+   anything: it restates a number the page itself leads with. */
+@media (min-width: 961px) and (max-width: 1440px) {
+  .nav-codex-badge { display: none; }
+}
+
+/* ── Progression readout ────────────────────────────────────────────────
+   Two instances live in the template: one for desktop, one inside the mobile
+   drawer. Exactly one is ever visible.
+
+   The desktop instance is taken OUT of the navbar's flex row and docked under
+   the bar instead. That is not a style choice — the row has no horizontal room
+   to give. Measured on this build at 1600x900 with the bar removed entirely,
+   .nav-menu's children already overflow their container and the LIVE link
+   already paints over the EN/ES toggle (LIVE right edge 1558 against a toggle
+   starting at 1433); the same holds at 1280. A flex sibling in that row shifts
+   the collision around rather than fitting into it. Docked, the row measures
+   byte-for-byte identical to having no XP bar at all, and the readout keeps a
+   full 44px target that is always inside the viewport.
+
+   The pre-existing nav overflow is tracked separately — do not "fix" it by
+   shrinking this element, which is not what is consuming the space. */
+.nav-xp {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+@media (min-width: 961px) {
+  .nav-xp {
+    position: absolute;
+    top: 100%;
+    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
+    margin-top: 8px;
+    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
+    z-index: 5;
+  }
+}
+
+.nav-xp--drawer {
+  display: none;
+}
+
+/* The nav row has no spare width at 1280px, so the Quests link is drawer-only.
+   On desktop the docked sword is the way in, and its panel links to /quests. */
+@media (min-width: 961px) {
+  .nav-quests-link {
+    display: none;
+  }
+}
+
+/* ── Quest dock ──────────────────────────────────────────────────────────────
+   The sword and the XP bar share one docked cluster on desktop, so the pair
+   costs the nav row exactly as much as the XP bar alone used to: nothing. */
+.nav-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+@media (min-width: 961px) {
+  .nav-dock {
+    position: absolute;
+    top: 100%;
+    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
+    margin-top: 8px;
+    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
+    z-index: 5;
+  }
+
+  /* The dock now owns the positioning the XP bar used to do for itself. */
+  .nav-xp {
+    position: static;
+    margin-top: 0;
+  }
+
+  .nav-quests--mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-dock {
+    display: none;
+  }
+
+  .nav-quests--mobile {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-xp {
+    display: none;
+  }
+
+  .nav-xp--drawer {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    align-self: flex-start;
+  }
+}
+
+/* ── Godforge wallet ─────────────────────────────────────────────────────────
+   Gold and Essence join the docked cluster rather than the nav row, for exactly
+   the reason the XP bar and the quest sword are there: at 1280px .nav-menu
+   already measures more content than its box, and a flex sibling added to that
+   row moves the collision with the EN/ES toggle around rather than fitting
+   into it. Docked, the wallet costs the row nothing.
+
+   Same reasoning puts the Market *link* behind the drawer on desktop, matching
+   .nav-quests-link — on a wide screen the coin chips are the way in, and they
+   are always visible. */
+.nav-coins {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.nav-coins--drawer {
+  display: none;
+}
+
+@media (min-width: 961px) {
+  .nav-market-link {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-coins {
+    display: none;
+  }
+
+  .nav-coins--drawer {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    align-self: flex-start;
   }
 }

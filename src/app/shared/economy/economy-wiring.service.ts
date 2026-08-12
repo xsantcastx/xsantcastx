@@ -1,0 +1,239 @@
+/**
+ * economy-wiring.service.ts — connects the ledger to everything already running.
+ *
+ * The same shape as XpWiringService and QuestWiringService, and for the same
+ * reason: every signal the economy needs already exists somewhere in the app as
+ * an observable. Tool work is the quest board's interaction beat, quest claims
+ * are `QuestService.claim$`, ranks are `XpService.gain$`, and Mythic drops are
+ * `EasterEggService.discovery$`. Nothing is added to 126 tool components, and
+ * "using a tool" cannot come to mean one thing on the mission board and a
+ * different thing in the Market — there is one beat and both read it.
+ *
+ * It also runs in the other direction. Three things the economy sells only
+ * mean anything if a system that predates it consults the ledger:
+ *   • enchantments and two artifacts multiply XP, via `XpService`'s multiplier
+ *     hook — a settable function rather than an injected EconomyService, so
+ *     progression does not gain a dependency on the shop;
+ *   • the Codex Solarii halves lore thresholds, via `LoreService`'s scale hook;
+ *   • cosmetics are painted onto `<html>` as data attributes, in the same style
+ *     RealmService already publishes the active realm.
+ */
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { filter } from 'rxjs/operators';
+import { EconomyService } from './economy.service';
+import {
+  COSMETICS,
+  ESSENCE_PER_LEVEL,
+  ESSENCE_PER_MYTHIC,
+  ESSENCE_PER_STREAK_WEEK,
+  ESSENCE_PER_WEEKLY,
+  GOLD_PER_TOOL_ACTION,
+  goldForQuestXp,
+  loreThresholdScale,
+  xpMultiplier,
+} from './economy.model';
+import { ECONOMY_ACHIEVEMENTS } from './economy-achievements';
+
+import { XpService } from '../gamification/xp.service';
+import { QuestService } from '../quests/quest.service';
+import { QuestWiringService } from '../quests/quest-wiring.service';
+import { LoreService } from '../lore/lore.service';
+import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import { tierForEgg } from '../rarity/rarity.model';
+
+@Injectable({ providedIn: 'root' })
+export class EconomyWiringService {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly economy = inject(EconomyService);
+  private readonly xp = inject(XpService);
+  private readonly quests = inject(QuestService);
+  private readonly questWiring = inject(QuestWiringService);
+  private readonly lore = inject(LoreService);
+  private readonly eggs = inject(EasterEggService);
+
+  private started = false;
+
+  init(): void {
+    if (!this.isBrowser || this.started) return;
+    this.started = true;
+
+    this.economy.init();
+    this.installHooks();
+
+    // Hydrate progression before reading a rank off it. This service is
+    // initialised ahead of XpWiringService precisely so the multiplier is in
+    // place before the first award of the page — which means XpService has not
+    // been touched yet, and `snapshot` would still be the empty level-1 state.
+    // `init()` is idempotent, so the call XpWiringService makes next is a no-op.
+    this.xp.init();
+
+    this.settleBackPay();
+    this.paintCosmetics();
+
+    // ── Gold in ─────────────────────────────────────────────────────────────
+
+    // One interaction beat on a tool page. The beat is coalesced to one per six
+    // seconds per tool upstream, which is what stops a slider drag from paying
+    // four hundred times.
+    this.questWiring.beat$.subscribe(() => {
+      this.economy.earnGold(GOLD_PER_TOOL_ACTION, 'tool');
+    });
+
+    // A claimed quest. Gold is derived from the XP the quest already pays
+    // rather than authored a second time — see `goldForQuestXp`.
+    this.quests.claim$.subscribe(({ quest }) => {
+      const base = goldForQuestXp(quest.rewards.xp);
+      // The Relic of the Third Dawn doubles quest rewards. It doubles the XP
+      // through the multiplier hook, so it has to double the Gold here or the
+      // artifact would only be half true.
+      const doubled = this.economy.ownsArtifact('relic-third-dawn') ? base * 2 : base;
+      this.economy.earnGold(doubled, 'quest');
+
+      if (quest.type === 'weekly') {
+        this.economy.earnEssence(ESSENCE_PER_WEEKLY, 'weekly quest');
+      }
+    });
+
+    // ── Essence in ──────────────────────────────────────────────────────────
+
+    // A new rank. `gain$` reports the rank held *after* the award, and a single
+    // large payout can cross two, so the difference against what has been paid
+    // for is what settles — not one flat award per level-up event.
+    this.xp.gain$.pipe(filter(g => g.levelUp)).subscribe(g => {
+      this.payLevels(g.level.level);
+    });
+
+    // Mythic and Singular only. The ladder below them pays XP, which is what
+    // the ladder below them is for.
+    this.eggs.discovery$.pipe(filter(d => !!d && d.isNew)).subscribe(d => {
+      const tier = tierForEgg(d!.egg.id, d!.egg.rarity);
+      if (tier === 'mythic' || tier === 'singular') {
+        this.economy.earnEssence(ESSENCE_PER_MYTHIC, 'mythic');
+      }
+    });
+
+    // ── Achievements out ────────────────────────────────────────────────────
+
+    this.economy.purchase$.subscribe(() => this.checkAchievements());
+    this.economy.milestone$.subscribe(() => this.checkAchievements());
+    this.economy.snapshot$.subscribe(() => this.checkAchievements());
+    // A snapshot lands on init, so the first check has already run by here —
+    // this catches the state a returning visitor arrives holding.
+    this.checkAchievements();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Hooks into the systems that predate the economy
+  // ───────────────────────────────────────────────────────────────────────────
+
+  private installHooks(): void {
+    // Enchantments, the Mirrorblade, the Relic and the Fragment all land here.
+    this.xp.setMultiplierSource(ctx => {
+      const e = this.economy.economy;
+      const snap = this.xp.snapshot;
+      // "Whichever energy you have less of" — resolved against lifetime totals
+      // at the moment of the award, so the blade keeps pointing at whichever
+      // realm the visitor has been neglecting rather than at a fixed one.
+      const weaker = ctx.energy === (snap.aether <= snap.nox ? 'aether' : 'nox');
+      return xpMultiplier(e, Date.now(), {
+        questReward: ctx.type === 'quest',
+        weakerEnergy: weaker,
+      });
+    });
+
+    // The Codex Solarii.
+    this.lore.setThresholdScale(() => loreThresholdScale(this.economy.economy));
+
+    // Repaint whenever a cosmetic is bought or swapped.
+    this.economy.snapshot$.subscribe(() => this.paintCosmetics());
+  }
+
+  /**
+   * Pay for ranks and streak weeks reached before the economy could watch them.
+   *
+   * Both are settled against a counter rather than an event, because both can
+   * be crossed while nothing is subscribed: `XpService.init()` settles the daily
+   * streak during its own hydration, long before this service is constructed,
+   * and a visitor who reached Convergent last month was never going to receive
+   * an event for it. Comparing the state against what has been paid for is the
+   * only version of this that is correct on the second page load.
+   */
+  private settleBackPay(): void {
+    this.payLevels(this.xp.snapshot.level.level);
+    this.payStreakWeeks(this.xp.snapshot.streak);
+  }
+
+  private payLevels(level: number): void {
+    const owed = level - this.economy.levelsPaid;
+    if (owed <= 0) return;
+    this.economy.markLevelsPaid(level);
+    this.economy.earnEssence(owed * ESSENCE_PER_LEVEL, 'rank');
+  }
+
+  private payStreakWeeks(streak: number): void {
+    const weeks = Math.floor(streak / 7);
+    const owed = weeks - this.economy.streakWeeksPaid;
+    if (owed <= 0) return;
+    this.economy.markStreakWeeksPaid(weeks);
+    this.economy.earnEssence(owed * ESSENCE_PER_STREAK_WEEK, 'streak');
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Cosmetics
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Write the equipped cosmetics onto `<html>` as `data-cos-*` attributes, and
+   * remove the ones that are not worn.
+   *
+   * Attributes rather than classes so the CSS can key on the *variant* —
+   * `[data-cos-theme="umbral"]` is one selector where a class would need one
+   * per combination — and on the root rather than the body so a cosmetic can
+   * reach the fixed layers that sit outside `<app-root>`.
+   */
+  private paintCosmetics(): void {
+    if (!this.isBrowser) return;
+    const root = document.documentElement;
+
+    for (const cosmetic of COSMETICS) {
+      const attr = `data-cos-${cosmetic.slot}`;
+      const worn = this.economy.ownsCosmetic(cosmetic.id)
+        ? this.economy.equippedIn(cosmetic.slot)
+        : null;
+      if (worn) root.setAttribute(attr, worn);
+      else root.removeAttribute(attr);
+    }
+
+    // The title prefix is a string the XP bar renders, not a style — published
+    // as a CSS custom property so a purely presentational consumer (the `::before`
+    // on the rank chip) can read it without a second binding.
+    const prefixSlot = COSMETICS.find(c => c.slot === 'prefix');
+    const prefixId = prefixSlot && this.economy.ownsCosmetic(prefixSlot.id)
+      ? this.economy.equippedIn('prefix')
+      : null;
+    const label = prefixSlot?.variants.find(v => v.id === prefixId)?.label;
+    if (label) root.style.setProperty('--cos-title-prefix', `"${label} "`);
+    else root.style.removeProperty('--cos-title-prefix');
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Achievements
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Test every economy achievement against the current ledger.
+   *
+   * Cheap enough to run on every snapshot: eight predicates over numbers the
+   * snapshot already carries, and `EasterEggService.trigger()` is a no-op on an
+   * id that is already found, so a condition that stays true forever fires
+   * exactly once and then costs a set lookup.
+   */
+  private checkAchievements(): void {
+    for (const a of ECONOMY_ACHIEVEMENTS) {
+      if (this.eggs.isFound(a.id)) continue;
+      if (a.met(this.economy)) void this.eggs.trigger(a.id);
+    }
+  }
+
+}

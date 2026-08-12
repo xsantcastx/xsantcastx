@@ -9,6 +9,7 @@ import { EmbedCodeGeneratorComponent } from '../shared/embed-code-generator/embe
 import { AffiliateCTAComponent } from '../shared/affiliate/affiliate-cta.component';
 import { CarbonAdComponent } from '../shared/carbon-ad/carbon-ad.component';
 import { SponsorSlotComponent } from '../shared/sponsor-slot/sponsor-slot.component';
+import { ToolLoreComponent } from '../shared/lore/tool-lore.component';
 
 /**
  * ToolsSharedModule — declares + exports the shared presentational components
@@ -19,6 +20,7 @@ import { SponsorSlotComponent } from '../shared/sponsor-slot/sponsor-slot.compon
 @NgModule({
   declarations: [
     RelatedToolsComponent,
+    ToolLoreComponent,
     ToolUsageCounterComponent,
     NewsletterCaptureComponent,
     EmbedCodeGeneratorComponent,
@@ -32,6 +34,7 @@ import { SponsorSlotComponent } from '../shared/sponsor-slot/sponsor-slot.compon
     FormsModule,
     RouterModule,
     RelatedToolsComponent,
+    ToolLoreComponent,
     ToolUsageCounterComponent,
     NewsletterCaptureComponent,
     EmbedCodeGeneratorComponent,

@@ -10,6 +10,12 @@ export interface EasterEgg {
   tool?: string;        // tool slug or 'global' for site-wide
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   icon: string;         // emoji
+  /**
+   * Overrides the standard easter-egg XP award for this one egg. Left unset on
+   * every egg that is genuinely hidden; used for the handful that are simply
+   * *noticed* rather than hunted, which should not pay the same as a hunt.
+   */
+  xp?: number;
 }
 
 export interface EggDiscovery {
@@ -178,13 +184,65 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'uuid-factory',       name: 'UUID Factory',         description: 'Generated 100 UUIDs in a single visit',               tool: 'uuid-generator',            rarity: 'rare',      icon: '🏭' },
   { id: 'hash-miner',         name: 'Hash Miner',           description: 'Produced a hash starting with four zeros',            tool: 'hash-generator',            rarity: 'legendary', icon: '⛏️' },
   { id: 'grocery-big-shop',   name: 'The Big Shop',         description: 'Checked out a cart of 20 or more items',              tool: 'grocery-manager',           rarity: 'rare',      icon: '🛒' },
+
+  // ── Batch 10: the Codex ────────────────────────────────────
+  // Awarded for opening /codex. It is not hidden — it is on the nav — so it
+  // pays 25 rather than the standard 200: finding the record of every secret is
+  // the start of the hunt, not a result of one.
+  { id: 'codex-archivist',    name: 'The Archivist',        description: 'Opened the Codex for the first time',                 tool: 'global',                    rarity: 'rare',      icon: '📜', xp: 25 },
+
+  // ── Batch 11: the Ambient Forge ────────────────────────────
+  // Earned by presence rather than by hunting, so every one of them carries an
+  // explicit `xp` well under the standard 200. Paying a hunt's price for
+  // sitting still would quietly out-earn the quests these are meant to sit
+  // alongside — a capped day of idling is worth ~60 XP, and a single 200 XP
+  // drop for reaching it would be three days' allowance in one moment.
+  { id: 'idle-patient-one',      name: 'The Patient One',        description: 'Earned 100 XP from ambient forge energy',              tool: 'global', rarity: 'rare',      icon: '🕯️', xp: 40 },
+  { id: 'idle-forge-meditation', name: 'Forge Meditation',       description: 'Kept the forge in sight for thirty unbroken minutes',  tool: 'global', rarity: 'epic',      icon: '🧘', xp: 60 },
+  { id: 'idle-vigil',            name: 'The Vigil',              description: 'Earned 500 XP from ambient forge energy',              tool: 'global', rarity: 'epic',      icon: '🌙', xp: 80 },
+  { id: 'idle-eternal-flame',    name: 'Eternal Flame',          description: 'Earned 2000 XP from ambient forge energy',             tool: 'global', rarity: 'legendary', icon: '🔥', xp: 150 },
+  { id: 'idle-never-sleeps',     name: 'The Godforge Never Sleeps', description: 'Had the forge open as the date rolled over',        tool: 'global', rarity: 'rare',      icon: '🌌', xp: 50 },
+  { id: 'idle-forge-striker',    name: 'Forge Striker',          description: 'Struck the forge one thousand times',                  tool: 'global', rarity: 'epic',      icon: '🔨', xp: 80 },
+  { id: 'idle-obsidian-hammer',  name: 'Obsidian Hammer',        description: 'Struck the forge ten thousand times',                  tool: 'global', rarity: 'legendary', icon: '⚒️', xp: 200 },
+
+  // ── Batch 12: the Godforge Market ──────────────────────────
+  // Six awarded by the ledger rather than by an input into a tool. They pay
+  // below the standard 200 for the same reason The Archivist does: the Market
+  // is linked from the header and the Forge Flame is on every page, so these
+  // are the record of a habit rather than the result of a hunt.
+  //
+  // There is no strike-count achievement here. 'idle-forge-striker' and
+  // 'idle-obsidian-hammer' above already pay at a thousand and ten thousand,
+  // and the Market's flame drives that same counter — a second pair keyed on
+  // the same act would put two cards on the wall for one thing and let a
+  // visitor bank both for a single swing.
+  { id: 'forge-first-purchase',      name: 'First Purchase',          description: 'Bought anything at all in the Godforge Market',       tool: 'global', rarity: 'common', icon: '🪙',  xp: 25 },
+  { id: 'forge-investor',            name: 'Forge Investor',          description: 'Owned five upgrades across the two ladders',          tool: 'global', rarity: 'rare',   icon: '📈', xp: 50 },
+  { id: 'forge-market-mogul',        name: 'Market Mogul',            description: 'Owned fifteen upgrades across the two ladders',       tool: 'global', rarity: 'epic',   icon: '🏦', xp: 100 },
+  { id: 'forge-artifact-collector',  name: 'Artifact Collector',      description: 'Held three of the five artifacts at once',            tool: 'global', rarity: 'legendary', icon: '💠', xp: 200 },
+  { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
+  { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
 ];
+
+/** localStorage key holding the array of discovered egg ids. */
+export const EGGS_FOUND_KEY = 'easter-eggs-found';
+/**
+ * localStorage key holding `{ eggId: ISO timestamp }`.
+ *
+ * A second key rather than a richer value under the first: the found-ids array
+ * has been written by every build since the egg system shipped, and changing its
+ * shape would strand everyone's existing discoveries behind a migration. Eggs
+ * found before this key existed simply have no date, which the Codex renders as
+ * "found before the Codex opened" rather than inventing one.
+ */
+export const EGGS_DATES_KEY = 'easter-eggs-dates';
 
 @Injectable({ providedIn: 'root' })
 export class EasterEggService {
   private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private discovered = new Set<string>();
+  private dates: Record<string, string> = {};
 
   discovery$ = new BehaviorSubject<EggDiscovery | null>(null);
 
@@ -193,14 +251,28 @@ export class EasterEggService {
 
   async init(): Promise<void> {
     if (!this.isBrowser) return;
-    const stored = localStorage.getItem('easter-eggs-found');
+    const stored = localStorage.getItem(EGGS_FOUND_KEY);
     if (stored) {
-      JSON.parse(stored).forEach((id: string) => this.discovered.add(id));
+      try {
+        JSON.parse(stored).forEach((id: string) => this.discovered.add(id));
+      } catch { /* unparseable blob — start clean rather than throw on boot */ }
+    }
+    const dates = localStorage.getItem(EGGS_DATES_KEY);
+    if (dates) {
+      try {
+        const parsed = JSON.parse(dates);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) this.dates = parsed;
+      } catch { /* same */ }
     }
   }
 
   isFound(id: string): boolean {
     return this.discovered.has(id);
+  }
+
+  /** ISO timestamp of first discovery, or null when unknown. */
+  foundAt(id: string): string | null {
+    return this.dates[id] ?? null;
   }
 
   /**
@@ -217,7 +289,13 @@ export class EasterEggService {
     this.discovered.add(id);
 
     // Persist locally
-    localStorage.setItem('easter-eggs-found', JSON.stringify([...this.discovered]));
+    try {
+      localStorage.setItem(EGGS_FOUND_KEY, JSON.stringify([...this.discovered]));
+      if (isNew) {
+        this.dates = { ...this.dates, [id]: new Date().toISOString() };
+        localStorage.setItem(EGGS_DATES_KEY, JSON.stringify(this.dates));
+      }
+    } catch { /* quota or private mode — the drop still fires, it just won't stick */ }
 
     // Announce first, persist second. The global counter now travels through
     // a lazily-downloaded Firestore SDK, and the player should never wait on a

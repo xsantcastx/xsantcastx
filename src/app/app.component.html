@@ -27,12 +27,32 @@
   <app-milestone-effect></app-milestone-effect>
 }
 
-<!-- Easter egg discovery toast -->
+<!-- Achievement drop — rarity-tiered replacement for the flat egg toast -->
 @if (!isEmbedMode) {
-  <app-egg-discovery></app-egg-discovery>
+  <app-achievement-drop></app-achievement-drop>
+}
+
+<!-- Quest board. Deliberately a sibling of <app-header>, not a child of it:
+     inside .navbar it would join a z-index:1000 stacking context and paint over
+     the logo and the language toggle. -->
+@if (!isEmbedMode) {
+  <app-quest-drawer></app-quest-drawer>
+}
+
+<!-- Quest claims and lore unlocks -->
+@if (!isEmbedMode) {
+  <app-quest-toast></app-quest-toast>
 }
 
 <!-- Site-wide Cmd+K / Ctrl+K command palette -->
 @if (!isEmbedMode) {
   <app-command-palette></app-command-palette>
+}
+
+<!-- The Forge Flame. A sibling of <main>, not a child of any routed component:
+     routeFadeIn leaves a transform on every routed host, which makes it a
+     containing block, and a position:fixed flame inside one would be pinned to
+     the page rather than the viewport and would scroll away. -->
+@if (!isEmbedMode) {
+  <app-forge-flame></app-forge-flame>
 }

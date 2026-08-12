@@ -3,10 +3,11 @@ import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
 import { filter } from 'rxjs/operators';
+import { brandTitle } from './shared/title-strategy.service';
 
 export const SITE_URL = 'https://xsantcastx.com';
 
-const SITE_NAME   = 'xsantcastx';
+const SITE_NAME   = 'The Godforge';
 const DEFAULT_IMG = `${SITE_URL}/assets/og/og-cosmic.svg`;
 const DEFAULT_IMG_FALLBACK = `${SITE_URL}/assets/og/og-default.jpg`;
 
@@ -28,12 +29,24 @@ export class SeoService {
         const data = r.snapshot.data;
         const url  = this.router.url.split('?')[0].split('#')[0];
         const lang = r.snapshot.queryParamMap.get('lang') === 'es' ? 'es' : 'en';
-        this.apply(this.title.getTitle(), data, url, lang);
+
+        // Brand the route's own resolved title rather than reading the
+        // document's. AppTitleStrategy and this subscriber both run off
+        // NavigationEnd, and during prerender this one wins the race — so
+        // getTitle() handed back whatever index.html shipped with, and every
+        // static page went out with the same generic og:title and
+        // twitter:title regardless of what stood in its <title>. Going
+        // through the same brandTitle() the strategy uses means the two
+        // cannot disagree, including on routes that declare a title without
+        // the wordmark. getTitle() remains the fallback for a route with no
+        // title of its own.
+        const routeTitle = brandTitle(r.snapshot.title ?? this.title.getTitle());
+        this.apply(routeTitle, data, url, lang);
       });
   }
 
   private apply(pageTitle: string, data: Record<string, string | object>, url: string, lang: 'en' | 'es'): void {
-    const desc      = (data['description'] as string) || 'xsantcastx — Full-Stack Developer & Studio Utilities';
+    const desc      = (data['description'] as string) || 'The Godforge — free developer tools forged in the Eclipse.';
     const keywords  = data['keywords']  as string | undefined;
     const ogImage   = (data['ogImage']  as string | undefined) || DEFAULT_IMG;
 
@@ -72,7 +85,7 @@ export class SeoService {
     this.meta.updateTag({ property: 'og:image:width',   content: '1200' });
     this.meta.updateTag({ property: 'og:image:height',  content: '630' });
     this.meta.updateTag({ property: 'og:image:type',    content: ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg' });
-    this.meta.updateTag({ property: 'og:image:alt',     content: 'xsantcastx — a cosmic constellation of free browser tools' });
+    this.meta.updateTag({ property: 'og:image:alt',     content: 'The Godforge — a cosmic constellation of free browser tools' });
     this.meta.updateTag({ property: 'og:site_name',     content: SITE_NAME });
     this.meta.updateTag({ property: 'og:type',          content: 'website' });
     this.meta.updateTag({ property: 'og:locale',          content: lang === 'es' ? 'es_ES' : 'en_US' });
@@ -83,7 +96,7 @@ export class SeoService {
     this.meta.updateTag({ name: 'twitter:title',       content: pageTitle });
     this.meta.updateTag({ name: 'twitter:description', content: desc });
     this.meta.updateTag({ name: 'twitter:image',       content: ogImage });
-    this.meta.updateTag({ name: 'twitter:image:alt',   content: 'xsantcastx — a cosmic constellation of free browser tools' });
+    this.meta.updateTag({ name: 'twitter:image:alt',   content: 'The Godforge — a cosmic constellation of free browser tools' });
 
     // ── Canonical ─────────────────────────────────────────────────────────
     let link = this.doc.querySelector<HTMLLinkElement>('link[rel="canonical"]');

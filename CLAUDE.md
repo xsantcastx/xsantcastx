@@ -21,6 +21,12 @@ The vibe target: **"feel like Anthropic's Earth demo"** — alive, interactive, 
 | **Arcane seal** | hidden ✧ in bottom-right corner | `.arcane-seal` (toggles `body.ritual-open`) |
 | **Ritual mode** | activated occult mode (Konami code, seal click, console reveal) | `body.ritual-open` |
 | **Warp** | the 3D zoom-into-star animation when clicking a tool star | `.tool-card--warping`, `.cosmic-warp-overlay` |
+| **Godforge** | the home page entrance — the engine of creation | `.gf-hero`, `.gf-core` (the CSS furnace) |
+| **Realm** | one of the five Eclipse Realms a tool category belongs to | `REALMS` in `realm.model.ts`, `--realm-color` |
+| **Forge station** | one realm's accordion on the home page | `.gf-station`, `.gf-station--open`, `.gf-station--lit` |
+| **Artifact** | a tool, in forge vocabulary | `.gf-card`, the Forge's Pulse counter |
+| **Fragment** | an easter egg, in forge vocabulary | `EASTER_EGGS`, `/arena` gates |
+| **Rank** | the visitor's level, Wanderer → Eclipse Lord | `LEVELS` in `gamification.model.ts`, `.gf-rank` |
 
 ---
 
@@ -51,6 +57,44 @@ CSS vars on a card or orb:
 ```
 
 Brand globals: `--primary-color: #00ffcc`, `--secondary-color: #7b61ff`, `--highlight-color: #ff00ff`.
+
+### Forge palette (Eclipse Realms, v2.19.0)
+
+An atmosphere layer over the cosmic palette, **not** a replacement — it belongs to the Godforge surfaces on `/home` and nothing else. Tokens live in `styles.css`.
+
+| Use | Token | Value |
+|---|---|---|
+| Ember — the forge's own accent, CTAs, glows | `--forge-ember` | `#E8752A` |
+| Gold — rules, rims, borders | `--forge-gold` | `#C9A84C` |
+| Gold, text weight (the raw token is 3.6:1 and fails on the dark base) | `--forge-gold-text` | `#E0A857` |
+| Crimson — the rim of the well, the cold end of a gradient | `--forge-crimson` | `#8B2252` |
+| Void — the base the forge sits in | `--forge-void` | `#0a0f1e` |
+| Lore voice — serif titles and codex quotes | `--font-lore` | `ui-serif, Georgia, …` (system stack, never a webfont) |
+
+Realm accents are **not** listed here on purpose: they come from `REALMS` in `realm.model.ts` and are bound onto each station as `--realm-color` / `--realm-glow`, so adding a realm is a data edit and never a stylesheet edit.
+
+### Realm palette (Eclipse Realms layer)
+
+The five realms group the twelve registry categories into a world. These are the **only** realm colors — `RealmService` writes the active one to `<html>` as `--realm-color` / `--realm-glow` / `--realm-name` on every tool route.
+
+| Realm | Covers | Color | Glow | Energy |
+|---|---|---|---|---|
+| **Luminous** | CSS Tools, CSS, CSS Generators, SVG Tools | `#E8D44D` gold | `rgba(232, 212, 77, 0.6)` | Aether |
+| **Umbral** | Security Tools | `#8B2252` wine | `rgba(139, 34, 82, 0.7)` | Nox |
+| **Verge** | Code Converters, DevOps, Reference | `#00d4ff` cyan | `rgba(0, 212, 255, 0.6)` | Nox |
+| **Archivum** | Productivity, Text & Data, SEO Tools | `#C9A84C` brass | `rgba(201, 168, 76, 0.6)` | Aether |
+| **Nexus** | Email Tools | `#10B981` emerald | `rgba(16, 185, 129, 0.6)` | Aether |
+
+### Rarity palette (drop ladder)
+
+| Tier | Color | Screen effect |
+|---|---|---|
+| **Mortal** | `#e8ecf1` white | corner toast |
+| **Eclipsed** | `#5fb6ff` blue | corner toast |
+| **Sacred** | `#a48bff` violet | corner toast + bell |
+| **Anomalous** | `#C9A84C` brass | corner toast + horn |
+| **Mythic** | `#ff2d4d` red | white flash, veil, centered card, particle burst, bass impact |
+| **Singular** | `#ff6dd7` magenta | as Mythic, plus a prismatic arpeggio — first-in-realm only |
 
 ---
 
@@ -171,18 +215,20 @@ A single inline script runs five interactive systems. **All SSR-safe** with `typ
 - **Cosmic OG image**: replaced the flat `og-default.jpg` with a hand-built `og-cosmic.svg` (1200×630, ~7.7KB) that mirrors the on-site cosmic identity — deep violet backdrop, central white→cyan→violet→pink pulsar bloom, 28 brand-palette stars connected with constellation lines, a faint rotating sigil on the right, "● FREE BROWSER TOOLS" eyebrow, gradient "xsantcastx" wordmark, "Tools forged in the void." subtitle, three-stat row (123+ Free Tools cyan / Always Free violet / Built in Public pink), and the URL. Wired through both `index.html` static meta and `SeoService.DEFAULT_IMG` (with the old JPG as a fallback for crawlers that don't render SVG), plus added `og:image:type`, `og:image:alt`, and `twitter:image:alt`. Every social share now broadcasts the cosmos.
 - **Mobile rescue pass — v2.1.0** (latest): the owner reported mobile as "horrible — can't navigate and very laggy". Four defects made the drawer unusable: the hamburger was a 32×20 button (under the 44px minimum); `.mobile-backdrop` is a positioned z-index:998 sibling inside `.navbar`'s stacking context while `.logo`/`.mobile-controls` are static, so the backdrop painted *over* them and ate every tap on the X and the EN/ES toggle; the drawer's `top` was hardcoded to 80px/64px while `viewport-fit=cover` makes the navbar 64px + `env(safe-area-inset-top)` on notched devices, so it opened underneath the header; and `max-height: 100vh` is the *large* viewport on mobile, hiding the last links behind the URL bar. The drawer now positions off a `--nav-h` variable written from the navbar's measured `offsetHeight`, uses `100dvh`, closes on Escape / NavigationEnd / resize past 960px, and locks scroll with the out-of-flow technique iOS actually honours. **Perf**: the lag was the wallpaper, not the app — eight fixed full-viewport layers (a 1600px sigil, two blurred nebula washes at blur(80px)/blur(55px), a 980px blurred pulsar animating `top`/`left`, a blend-mode canvas, four `will-change`-pinned runes) is ~380 MB of GPU texture on a DPR-3 phone, so the compositor thrashed. Below 768px that stack collapses to five static layers, `backdrop-filter` is off globally (300+ declarations, four stacked in the header), the type-on heading split and scroll parallax are skipped, and the unthrottled `:root` custom-property writes on scroll are rAF-coalesced. Also fixed: `/live`'s grid track resolved to 462px in a 375px viewport (`min-width:auto` floor), the header row overflowed by ~4px, three donation modals and a duplicated route veil were permanently composited, and every standalone control is now ≥44px. **Verified live at 375×812 across 10 routes**: zero horizontal overflow, zero sub-44px standalone controls, all 9 drawer links pass an `elementFromPoint` hit test.
 - **Cosmic mobile menu**: the hamburger menu on mobile got the full cosmic treatment — backdrop swapped from `rgba(0,0,0,0.75)` to dual-radial cosmic wash (cyan top + violet bottom) with 6px blur; the menu panel itself now uses radial cosmic gradients + 88%-alpha deep-indigo base + cyan-violet-cyan border accents + a top gradient cap line (matches every cosmic section) + a baked-in starfield in `::after` with 5 brand-color speck radial-gradients. Hamburger bars glow cyan on hover and switch to bright cyan with cyan+violet box-shadow when the menu is open. Slide-in transition upgraded to cubic-bezier(0.22, 1, 0.36, 1) for cosmic ease. Mobile users now feel the cosmos the moment they touch nav.
-- **Hero carousel void on mobile — v2.2.1**: the first thing every phone visitor saw under the header was a 210px black rectangle. All five `.hc-card`s were stuck at their base `opacity: 0`. Cause: Angular's emulated encapsulation rewrites `@keyframes` names to `_ngcontent-<id>_<name>` and rewrites the matching `animation` shorthands to suit — but it did **not** rewrite the one inside the `@media (max-width: 768px)` block. That rule kept the raw name `hcCardCycleFade`, which matches no keyframes rule in the document, so the animation was never instantiated (`getComputedStyle` reported `animation-play-state: running` while `element.getAnimations()` returned `[]` — the tell for a dangling animation reference) and the base `opacity: 0` stood forever. Desktop was unaffected because its rule sits outside any media query and *was* rewritten correctly. **Fix**: deleted the mobile-only `hcCardCycleFade` keyframes entirely and let mobile inherit `hcCardCycle` from the base rule; the existing `transform: none !important` already outranks the animation in the cascade, so the 3D tilt is dropped and only the opacity channel animates — identical compositor cost to the fade-only keyframe, with one fewer name for Angular to fumble. **Audit**: a CSSOM sweep comparing every `animation-name` reference against every defined `@keyframes` across all 11 stylesheets found this was the site's *only* dangling reference (82 defined, 120 references). Worth re-running after any CSS refactor: the failure is completely silent — no console error, no build warning.
+- **Hero carousel void on mobile — v2.2.1** (latest): the first thing every phone visitor saw under the header was a 210px black rectangle. All five `.hc-card`s were stuck at their base `opacity: 0`. Cause: Angular's emulated encapsulation rewrites `@keyframes` names to `_ngcontent-<id>_<name>` and rewrites the matching `animation` shorthands to suit — but it did **not** rewrite the one inside the `@media (max-width: 768px)` block. That rule kept the raw name `hcCardCycleFade`, which matches no keyframes rule in the document, so the animation was never instantiated (`getComputedStyle` reported `animation-play-state: running` while `element.getAnimations()` returned `[]` — the tell for a dangling animation reference) and the base `opacity: 0` stood forever. Desktop was unaffected because its rule sits outside any media query and *was* rewritten correctly. **Fix**: deleted the mobile-only `hcCardCycleFade` keyframes entirely and let mobile inherit `hcCardCycle` from the base rule; the existing `transform: none !important` already outranks the animation in the cascade, so the 3D tilt is dropped and only the opacity channel animates — identical compositor cost to the fade-only keyframe, with one fewer name for Angular to fumble. **Audit**: a CSSOM sweep comparing every `animation-name` reference against every defined `@keyframes` across all 11 stylesheets found this was the site's *only* dangling reference (82 defined, 120 references). Worth re-running after any CSS refactor: the failure is completely silent — no console error, no build warning.
+- **The Godforge — v2.19.0**: the home page became the entrance to the Eclipse Realms forge. **Hero**: the two-column "Best Free Tools for Developers" split is gone. In its place a single centred column — serif title `The Godforge` (system serif via a new `--font-lore` token, deliberately *not* a webfont: this is the LCP element and the Google Fonts CDN was removed for exactly that reason), an italic serif subtitle, a CSS-only forge core, the visitor's rank read from `XpService`, and `Enter the Forge`. The core is five composited layers — blurred haze, two counter-rotating rims, a well whose radial stops run white-hot → ember → crimson → void, and a molten heart on an offset cycle — plus five ember sparks positioned by `--ex` and staggered by `--ed`. **The hero carousel is deleted**: `HeroCarouselCard`, `HERO_CAROUSEL_MAX`, `hcCardCycle` and every `.hc-card` rule are gone from the component, the stylesheet and the engine's hover/paint-containment selectors. **Forges**: the flat "latest 8" grid is now five realm accordions driven by `REALMS`, one open at a time, each with its sigil, codex quote, artifact count and up to six of its newest tools. Collapsed stations keep their cards in the markup (`content-visibility: hidden` + `max-height: 0`) so all 26 tool links are still crawled — only the visitor's view is filtered, and the cards are `tabindex="-1"` while shut. **Pulse**: four stats that cannot drift, because each is derived from what it counts — `tools.length`, `EASTER_EGGS.length`, `REALMS.length`, and `PRERENDERED_PATHS` from a new generated `src/app/prerender-stats.ts` that `scripts/generate-sitemap.js` rewrites from `prerender-routes.txt` on every `prebuild`. **Chronicle**: the changelog gains a realm badge, but only when an entry names a registry tool that can actually be placed — platform work stays unbadged rather than filed under a guess. **Journey**: a closing section with rank, XP bar, a recommended first tool (the first featured tool the visitor has not opened, from local progress — the site has no per-tool analytics and does not pretend to), and doors to `/blueprint` and `/arena`. **Two traps hit and worth remembering**: (1) the section id stays `services` even though nothing calls it that any more — `HeaderComponent` keys both `scrollToSection()` and its active-link observer off a hardcoded `['hero','services','projects','about','contact']`, so renaming the anchor silently breaks the SERVICES nav link; (2) the typewriter (`typeOn`) rewrites a heading into per-character `<span>`s, which is fatal for a heading painted through `background-clip: text` — each span clips its own slice of a gradient sized to that span and the title renders as a smear, so `.gf-hero__title` is excluded from `typedSelector`. The same char-splitting also lets a line break fall between any two letters, which is why the Chronicle title is sized to fit its 640px column. **Verified in a real browser at 1440×900 and 375×812**: zero horizontal overflow, zero sub-44px standalone controls on mobile, zero console errors, accordion works by mouse and by keyboard with correct `aria-expanded`, `Enter the Forge` lands on the forges, every string translated in ES, and reduced motion parks the core hot rather than dark.
 
 ---
 
-- **Bundle diet — v2.10.0 "Lean"** (latest): the initial download was 408 kB gzip (1.68 MB raw), and 178 kB of that was code no first paint touches. Now 230 kB gzip / 894 kB raw — **-44%**.
-  - **Firestore (-116 kB gzip)**: `provideFirestore()` lived in the root injector, so the ~450 kB SDK shipped eagerly to serve a visit counter, a changelog, a newsletter form and some usage counters — all of which run after hydration, most of which most visitors never trigger. New `src/app/shared/lazy-firestore.service.ts` dynamically imports `firebase/firestore` on first use and hands callers `{db, api}`. Ten consumers migrated. **Two traps if you extend this**: (1) raw-SDK callbacks fire *outside* the Angular zone, so anything pushing to a subject or component field from an `onSnapshot` must go through `lazyFirestore.runInZone()` — `await` in a component method is fine, because zone.js captures the zone at `.then()` registration; (2) don't `await` a Firestore write before showing UI feedback — the easter-egg service now announces the discovery first and persists fire-and-forget, so the toast doesn't wait on a 116 kB chunk.
-  - **Auth + re2js (-27 kB gzip)**: `provideAuth()` had already been route-scoped, yet `@firebase/auth` was still eager. The cause is non-obvious and worth remembering: **`@angular/fire/analytics` and `@angular/fire/functions` both statically import `@angular/fire/auth`** (analytics for `UserTrackingService`). Any eager `provideAnalytics()`/`provideFunctions()` drags the whole auth SDK in, no matter how carefully you scope `provideAuth()`. Fix was to drop both providers and talk to the raw modular SDKs (`firebase/analytics`, `firebase/functions`) behind dynamic imports. `AnalyticsService` keeps its synchronous fire-and-forget API by queueing calls until the SDK lands; `ScreenTrackingService`'s `page_view` is now emitted from `AppTitleStrategy`, which runs at the same point in the navigation lifecycle.
-  - **9 eager routes (-35 kB gzip)**: `/home`, `/skills`, `/projects`, `/contact`, `/donate`, `/live`, `/mcp`, `/games` and the 404 were declared in `AppModule` and routed with `component:`. All nine are now `standalone: true` + `loadComponent()`. `AdsenseComponent`, `DonationFormComponent` and `DonationFeedComponent` went standalone with them (a non-standalone child can't be imported by a standalone parent). `AppModule.declarations` is now just the app shell.
+- **Bundle diet — v2.27.0 "Lean"** (latest): the initial download was 480 kB gzip (1.94 MB raw). Now **297 kB gzip / 1.13 MB raw — -38%** — with no visible change to the site. Measured against `origin/main` at v2.26.0; the same work measured -44% against the smaller v2.9.0 tree it was originally written on.
+  - **Firestore (-116 kB gzip)**: `provideFirestore()` lived in the root injector, so the ~450 kB SDK shipped eagerly to serve a visit counter, a changelog, a newsletter form and some usage counters — all of which run after hydration, most of which most visitors never trigger. New `src/app/shared/lazy-firestore.service.ts` dynamically imports `firebase/firestore` on first use and hands callers `{db, api}`. Ten consumers migrated. **Three traps if you extend this**: (1) raw-SDK callbacks fire *outside* the Angular zone, so anything pushing to a subject or component field from an `onSnapshot` must go through `lazyFirestore.runInZone()` — plain `await` in a component method is fine, because zone.js captures the zone at `.then()` registration, not at resolution; (2) don't `await` a Firestore write before showing UI feedback — the easter-egg service announces the discovery first and persists fire-and-forget, so the toast doesn't wait on a 116 kB chunk; (3) `/admin` still uses AngularFire's Firestore bindings, so `provideFirestore()` lives in `admin.routes.ts` with `AdminDataService` listed beside it — a `providedIn:'root'` service cannot see route-level providers and throws NG0201. Its factory try/catches `initializeFirestore()` because `LazyFirestoreService` may have started Firestore already.
+  - **Auth + re2js (-27 kB gzip)**: `provideAuth()` had already been route-scoped, yet `@firebase/auth` was still eager. The cause is non-obvious and worth remembering: **`@angular/fire/analytics` and `@angular/fire/functions` both statically import `@angular/fire/auth`** (analytics for `UserTrackingService`). Any eager `provideAnalytics()`/`provideFunctions()` drags the whole auth SDK in, no matter how carefully you scope `provideAuth()`. Fix was to drop both providers and talk to the raw modular SDKs (`firebase/analytics`, `firebase/functions`) behind dynamic imports. `AnalyticsService` keeps its synchronous fire-and-forget API by queueing calls until the SDK lands, and still resolves nothing until consent — so a visitor who declines the banner downloads neither the chunk nor gtag.js. `ScreenTrackingService`'s `page_view` is now emitted from `AppTitleStrategy`, which runs at the same point in the navigation lifecycle.
+  - **9 eager routes (-35 kB gzip)**: `/home`, `/skills`, `/projects`, `/contact`, `/donate`, `/live`, `/mcp`, `/arena` and the 404 were declared in `AppModule` and routed with `component:`. All nine are now `standalone: true` + `loadComponent()`. `AdsenseComponent`, `DonationFormComponent` and `DonationFeedComponent` went standalone with them (a non-standalone child can't be imported by a standalone parent). `AppModule.declarations` is now just the app shell. **There are zero `component:` routes left — keep it that way.**
   - **Dead code**: deleted 12 components/services left from the original crypto-portfolio scaffold (wallet-summary, transaction-list, crypto-card, news-feed, grid-sections, aboutme-card, resume-card, eg, hero, `app.routes.ts`, `firestore.service.ts`, `firebase-error-handler.service.ts`) plus `models/crypto.models.ts`. **`src/app/skills/` and `src/app/projects/` are NOT dead** — they are live routed pages, and `portfolio.service.ts` + `models/portfolio.models.ts` back `SkillsComponent`. `auth-service.service.ts` is live too (pdf-generator).
   - **Assets**: `og-tools.jpg` and `og-pdf-generator.jpg` were byte-identical copies of `og-default.jpg` (-442 kB).
-  - **Budgets**: added to the production config. Note **Angular budgets measure the RAW bundle, not gzip** — a "300kb initial" budget would fail instantly at 894 kB raw. Set as ratchets on today's actuals: initial warn 925kb / fail 1mb, anyComponentStyle warn 60kb / fail 100kb (landing.component.css is 52 kB built).
-  - **Not done — `/embed/*` prerendering stays.** The 126 embed routes look like free dist weight (10 MB of 39 MB), but hosting is static: `firebase.json` rewrites `**` to `/index.csr.html` and there is no SSR server. Un-prerendering them would serve Googlebot the CSR shell, which carries `<meta name="robots" content="index, follow">` — while `src/robots.txt` deliberately *allows* crawling these URLs precisely so the crawler can read the `noindex` that only the prerendered HTML contains (see the comment at the top of robots.txt). Dropping the prerender would silently undo that, and blank the iframe until JS boots. Revisit only if a real SSR target is added.
+  - **Budgets**: added to the production config. Note **Angular budgets measure the RAW bundle, not gzip** — a "300kb initial" budget fails instantly against 1.13 MB raw. Set as ratchets on today's actuals: initial warn 1200kb / fail 1400kb, anyComponentStyle warn 70kb / fail 100kb (`landing.component.css` is 60.1 kB built, the largest). They already earned their keep once: merging 83 commits of upstream work into this branch tripped both, which is exactly the signal they exist to give.
+  - **Not done — `/embed/*` prerendering stays.** The 128 embed routes look like free dist weight (10 MB of 47 MB), but hosting is static: `firebase.json` rewrites `**` to `/index.csr.html` and there is no SSR server. Un-prerendering them would serve Googlebot the CSR shell, which carries `<meta name="robots" content="index, follow">` — while `src/robots.txt` deliberately *allows* crawling these URLs precisely so the crawler can read the `noindex` that only the prerendered HTML contains (see the comment at the top of robots.txt). Dropping the prerender would silently undo that and blank the iframe until JS boots. Revisit only if a real SSR target is added.
+  - **Next lever, if more is wanted**: the app shell is now the bulk of what remains eager — quest drawer, XP bar, forge flame, currency rail and achievement drop all mount on every route. Deferring those behind an idle callback (the pattern `app-check.bootstrap.ts` already uses) is the obvious next cut.
 
 ## 6. Roadmap — what's next (prioritized)
 
@@ -242,7 +288,9 @@ src/
 ├── index.html                           # cosmic engine (inline JS) + matrix-background, pulsar, runes, seal
 ├── styles.css                           # global: matrix-bg, sigil, nebula, pulsar, runes, scroll-reveal, cursor
 ├── app/
-│   ├── landing/                         # /home — hero, stats, tools grid, spotlight, live, changelog, footer-CTA
+│   ├── landing/                         # /home — Godforge hero, forge's pulse, five realm accordions,
+│   │                                    #   spotlight, anchor planet, live, chronicle, journey, footer-CTA
+│   ├── prerender-stats.ts               # GENERATED by scripts/generate-sitemap.js — PRERENDERED_PATHS
 │   ├── tools/                           # /tools — galaxy map → star system → flat search grid
 │   ├── skills/                          # /skills — star constellation grid
 │   ├── projects/                        # /projects — preview-window project cards
@@ -252,8 +300,35 @@ src/
 │   ├── header/                          # global header (already on-brand)
 │   ├── live/                            # /live — terminal feed
 │   ├── games/                           # /games — easter egg gallery
-│   └── mcp/                             # /mcp — npm package landing
+│   ├── mcp/                             # /mcp — npm package landing
+│   └── shared/gamification/             # the progression ledger — see below
 ```
+
+### Progression storage (`src/app/shared/gamification/`)
+
+`XpService` is the only thing that mutates progression, and it **never touches localStorage**. It goes through `ProgressStorageService`, which owns a swappable `ProgressAdapter`. That indirection is the whole reason Phase 2 (progress that follows a signed-in visitor) is cheap — do not route around it.
+
+```
+gamification.model.ts        # ProgressState + LEVELS + migrateProgress + mergeProgress + withLevel.
+                             # Pure data and pure functions — no browser APIs, safe to import on the server.
+gamification.model.spec.ts   # pins the migration and merge contract (12 specs).
+progress-storage.service.ts  # ProgressAdapter strategy: LocalStorageAdapter (live), NullAdapter (SSR),
+                             # FirestoreAdapter (inert stub carrying its security rule + TODOs), migrate().
+xp.service.ts                # the ledger: award(), streak settling, debounced writes, pagehide flush.
+xp-wiring.service.ts         # one subscriber that turns navigation/copy/egg events into awards.
+tool-mastery.service.ts      # the Bestiary's per-tool counts, backfilled from the ledger.
+xp-bar.component.ts          # the rank HUD in the header.
+```
+
+Three fields on `ProgressState` exist for Phase 2 rather than for anything shipping today, and should not be "simplified away":
+
+- **`userId`** — a locally minted UUID now, the Firebase Auth UID later. Sign-in swaps an id instead of inventing an identity model.
+- **`level` / `levelTitle`** — denormalised from `xp`. A leaderboard cannot `orderBy` a value that only exists after running a function over every document. `withLevel()` keeps them in step.
+- **`createdAt` / `updatedAt`** — what `mergeProgress` uses to decide which of two devices is authoritative.
+
+**`init()` is async.** Anything that reads the ledger *synchronously and once* (`toolsUsed`, `history`, `claimAchievement` on a first clear) must `await xp.init()` first, or it will read the empty blob and never look again. Anything that renders from `snapshot$` can fire-and-forget — the subject republishes when hydration lands.
+
+**Phase 2** is `ProgressStorageService.migrate(new FirestoreAdapter(uid))` on first sign-in. The security rule to start from is in the `FirestoreAdapter` docblock; the non-negotiable part is that `xp` must not be client-writable to an arbitrary value.
 
 ---
 

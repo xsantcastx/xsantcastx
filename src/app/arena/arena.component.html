@@ -1,0 +1,149 @@
+<div class="games-page arena-page">
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <section class="gp-hero">
+    <div class="gp-hero__bg">
+      <div class="gp-hero__glow gp-hero__glow--cyan"></div>
+      <div class="gp-hero__glow gp-hero__glow--purple"></div>
+    </div>
+    <div class="gp-hero__inner">
+      <p class="gp-eyebrow">
+        <span class="gp-dot"></span>
+        Hidden inside the tools
+      </p>
+      <h1 class="gp-hero__title">The Arena</h1>
+      <p class="gp-hero__sub">
+        Where Convergents prove their worth. Every gate here is held shut by a secret
+        buried in a tool — find it, and the gate opens.
+        {{ playableCount }} of them lead to a real game.
+      </p>
+
+      <!-- Arena stats -->
+      <div class="ar-stats">
+        <div class="ar-stat">
+          <span class="ar-stat__num">{{ unlockedCount }}<span class="ar-stat__of">/{{ games.length }}</span></span>
+          <span class="ar-stat__label">Gates opened</span>
+        </div>
+        <div class="ar-stat">
+          <span class="ar-stat__num">{{ foundCount }}<span class="ar-stat__of">/{{ totalEggs }}</span></span>
+          <span class="ar-stat__label">Secrets found</span>
+        </div>
+        <div class="ar-stat ar-stat--rarest"
+          [attr.data-tier]="rarestUnlocked?.tier || null"
+          [style.--tier]="rarestUnlocked?.rarity?.color || '#7d918c'"
+          [style.--tier-glow]="rarestUnlocked?.rarity?.glow || 'transparent'">
+          @if (rarestUnlocked) {
+            <span class="ar-stat__num ar-stat__num--tier">{{ rarestUnlocked.rarity.label }}</span>
+            <span class="ar-stat__label">Rarest gate — {{ rarestUnlocked.title }}</span>
+          } @else {
+            <span class="ar-stat__num ar-stat__num--empty">—</span>
+            <span class="ar-stat__label">No gate opened yet</span>
+          }
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="gp-progress-wrap">
+        <div class="gp-progress-bar">
+          <div class="gp-progress-fill" [style.width.%]="progressPercent"></div>
+        </div>
+        <span class="gp-progress-label">{{ progressPercent }}% of the realm's secrets uncovered</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ────────────────────────────────────── -->
+  <section class="gp-how">
+    <div class="gp-how__inner">
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">01</span>
+        <h2>Walk a realm</h2>
+        <p>Head to <a routerLink="/tools">the tools</a> and explore. Every tool hides at least one secret.</p>
+      </div>
+      <div class="gp-how-step__arrow">→</div>
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">02</span>
+        <h2>Trip a secret</h2>
+        <p>Do something unexpected — nest JSON ten levels deep, roll a UUID starting 000, set chmod 777…</p>
+      </div>
+      <div class="gp-how-step__arrow">→</div>
+      <div class="gp-how-step">
+        <span class="gp-how-step__num">03</span>
+        <h2>Open a gate</h2>
+        <p>Each secret breaks the chain on one gate. The rarer the secret, the rarer the gate behind it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── GATES ───────────────────────────────────────────── -->
+  <section class="gp-grid-section">
+    <div class="gp-grid-section__inner">
+      <h2 class="gp-section-title">The Gates</h2>
+
+      <div class="gp-grid">
+        @for (game of games; track game.id) {
+          <div
+            class="gp-card glass-card ar-card"
+            [class.gp-card--locked]="game.locked"
+            [class.gp-card--unlocked]="!game.locked"
+            [class.ar-card--locked]="game.locked"
+            [attr.data-tier]="game.tier"
+            [style.--tier]="game.rarity.color"
+            [style.--tier-glow]="game.rarity.glow"
+            >
+            @if (game.isNew) {
+              <span class="ar-new" aria-label="Never played">NEW</span>
+            }
+            <div class="gp-card__top">
+              <span class="gp-card__icon ar-card__icon" [class.gp-card__icon--locked]="game.locked">
+                @if (game.locked) {
+                  <!-- Chain: the gate is held, not merely hidden -->
+                  <svg class="ar-chain" viewBox="0 0 24 24" width="24" height="24" fill="none"
+                       stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                       stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                } @else {
+                  {{ game.icon }}
+                }
+              </span>
+              <span class="gp-card__rarity ar-card__tier">{{ game.rarity.label }}</span>
+            </div>
+            <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
+            <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
+
+            @if (!game.locked && game.bestLabel) {
+              <p class="ar-card__best">
+                <span class="ar-card__best-dot" aria-hidden="true"></span>
+                Best — {{ game.bestLabel }}
+              </p>
+            }
+
+            <div class="gp-card__footer">
+              @if (game.locked) {
+                <span class="gp-locked-label ar-locked">Chained — find the secret to break it</span>
+              } @else if (game.route) {
+                <a [routerLink]="game.route" class="gp-play-btn">Enter &rarr;</a>
+              } @else {
+                <!-- Open, but there is nothing behind it yet. Saying so beats a
+                     button that does nothing when pressed. -->
+                <span class="gp-locked-label ar-forging">Unchained — still in the forge</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ────────────────────────────────────────────── -->
+  <section class="gp-cta">
+    <div class="gp-cta__inner">
+      <h2>Go find a secret</h2>
+      <p>{{ totalEggs }} secrets are buried across the five realms. The Arena remembers every one you turn up.</p>
+      <a routerLink="/tools" class="cta-button">Walk the realms &rarr;</a>
+    </div>
+  </section>
+
+</div>

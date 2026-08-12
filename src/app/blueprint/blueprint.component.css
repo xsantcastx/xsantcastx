@@ -1491,3 +1491,247 @@
     padding-top: 2rem;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   THE ECLIPSE ARC
+   Six phases under the Now/Next/Later columns. Status drives the colour:
+   gold for complete, cyan for in progress, muted for planned, violet for a
+   vision with no date behind it.
+   ════════════════════════════════════════════════════════════════════════════ */
+.bp-arc__hd {
+  margin-top: 4rem;
+}
+
+.bp-arc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bp-phase {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(10, 6, 26, 0.55);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.bp-phase:hover,
+.bp-phase--open {
+  border-color: color-mix(in srgb, var(--phase-color) 45%, transparent);
+  box-shadow: 0 0 30px -14px var(--phase-glow);
+}
+
+/* A vision phase should read as less solid than a committed one. */
+.bp-phase[data-status='vision'] {
+  border-style: dashed;
+}
+
+.bp-phase[data-status='planned'] {
+  opacity: 0.82;
+}
+
+.bp-phase__hd {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bp-phase__orb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #eafff9;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.28) 18%, rgba(255, 255, 255, 0) 44%),
+    radial-gradient(circle at 50% 50%, var(--phase-color) 0%, rgba(8, 3, 24, 0.92) 86%);
+  box-shadow: 0 0 16px var(--phase-glow);
+}
+
+.bp-phase__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.bp-phase__name-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.bp-phase__name {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--phase-color);
+}
+
+.bp-phase__badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  color: var(--phase-color);
+  border: 1px solid color-mix(in srgb, var(--phase-color) 40%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 10%, transparent);
+}
+
+.bp-phase__window {
+  font-size: 0.7rem;
+  color: #7d918c;
+}
+
+.bp-phase__premise {
+  font-size: 0.85rem;
+  color: #b9cdc7;
+}
+
+.bp-phase__meter {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  width: 84px;
+}
+
+.bp-phase__count {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.72rem;
+  color: var(--phase-color);
+}
+
+.bp-phase__track {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.bp-phase__fill {
+  display: block;
+  height: 100%;
+  background: var(--phase-color);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bp-phase__chevron {
+  flex: none;
+  color: #7d918c;
+  transition: transform 0.25s ease;
+}
+
+.bp-phase--open .bp-phase__chevron {
+  transform: rotate(180deg);
+}
+
+.bp-phase__body {
+  padding: 0 1.15rem 1.15rem 4.15rem;
+}
+
+.bp-phase__quote {
+  margin: 0 0 0.9rem;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--phase-color);
+  opacity: 0.8;
+}
+
+.bp-phase__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.bp-phase__item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.bp-phase__mark {
+  flex: none;
+  width: 1rem;
+  color: #4a5754;
+  line-height: 1.5;
+}
+
+.bp-phase__item--done .bp-phase__mark {
+  color: var(--phase-color);
+}
+
+.bp-phase__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.bp-phase__item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #eafff9;
+}
+
+.bp-phase__item-detail {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #9fb4ae;
+}
+
+@media (max-width: 640px) {
+  .bp-phase__hd {
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  /* The meter would squeeze the premise into a two-word column at 375px, so
+     it drops below the title row and spans the full width instead. */
+  .bp-phase__meter {
+    order: 3;
+    width: 100%;
+    align-items: stretch;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .bp-phase__body {
+    padding-left: 1.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-phase__fill,
+  .bp-phase__chevron {
+    transition: none;
+  }
+}
