@@ -43,6 +43,9 @@ function metaFor(route) {
   if (route === '/blueprint')   return { changefreq: 'weekly',  priority: '0.8' };
   if (route === '/sponsors')    return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/codex')       return { changefreq: 'weekly',  priority: '0.7' };
+  // Every visitor's is different and none of it is indexable content, so the
+  // Forge is listed low: it is here so the URL is discoverable, not so it ranks.
+  if (route === '/forge-keeper') return { changefreq: 'monthly', priority: '0.5' };
   if (route.startsWith('/tools/')) return { changefreq: 'monthly', priority: '0.6' };
   return { changefreq: 'monthly', priority: '0.5' }; // fallback for anything new
 }

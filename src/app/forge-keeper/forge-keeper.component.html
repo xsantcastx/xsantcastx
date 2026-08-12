@@ -1,0 +1,474 @@
+<!--
+  forge-keeper.component.html — the character sheet.
+
+  Everything below renders in a complete, correct, *empty* state on the server:
+  the full inventory in silhouette, the whole rank ladder, thirty cold calendar
+  cells. Nothing here is behind an `@if (hydrated)`, because a panel that only
+  exists after hydration is a panel that pops in.
+-->
+<section class="fk"
+         [style.--fk-affinity]="affinityColor"
+         [style.--fk-affinity-glow]="affinityGlow">
+
+  <!-- ══ Masthead ═══════════════════════════════════════════════════════ -->
+  <header class="fk__head">
+    <p class="fk__eyebrow">
+      <span class="fk__eyebrow-pulse" aria-hidden="true"></span>
+      Your Forge
+    </p>
+    <h1 class="fk__title">The Forge Keeper</h1>
+    <p class="fk__tagline">everything the realm has written down about you</p>
+  </header>
+
+  <!-- ══ 1. Identity card ═══════════════════════════════════════════════ -->
+  <section class="fk-id" aria-labelledby="fk-id-title">
+
+    <!-- The sigil. Point count *is* the rank — see the note in the component. -->
+    <div class="fk-id__sigil" aria-hidden="true">
+      <svg viewBox="0 0 200 200" class="fk-sigil" role="presentation" focusable="false">
+        <circle class="fk-sigil__ring fk-sigil__ring--outer" cx="100" cy="100" r="88" />
+        <circle class="fk-sigil__ring fk-sigil__ring--inner" cx="100" cy="100" r="66" />
+        @if (sigilPolygon) {
+          <polygon class="fk-sigil__star" [attr.points]="sigilPolygon" />
+        }
+        @for (p of sigilPoints; track $index) {
+          <circle class="fk-sigil__point" [attr.cx]="p.x" [attr.cy]="p.y" r="5" />
+        }
+        <circle class="fk-sigil__core" cx="100" cy="100" r="34" />
+        <text class="fk-sigil__numeral" x="100" y="100"
+              text-anchor="middle" dominant-baseline="central">{{ snap.level.level }}</text>
+      </svg>
+    </div>
+
+    <div class="fk-id__body">
+      <p class="fk-id__rank" id="fk-id-title">
+        @if (titlePrefix) {
+          <span class="fk-id__prefix">{{ titlePrefix }}</span>
+        }
+        <span class="fk-id__rank-name">{{ rankTitle }}</span>
+        <span class="fk-id__rank-sep" aria-hidden="true">·</span>
+        <span class="fk-id__rank-level">Level {{ snap.level.level }}</span>
+      </p>
+
+      <!-- XP to the next rank -->
+      <div class="fk-id__xp">
+        <div class="fk-id__xp-bar"
+             role="progressbar"
+             [attr.aria-valuenow]="xpPercent"
+             aria-valuemin="0"
+             aria-valuemax="100"
+             [attr.aria-label]="'Progress to the next rank: ' + xpPercent + '%'">
+          <span class="fk-id__xp-fill" [style.width.%]="xpPercent"></span>
+        </div>
+        <p class="fk-id__xp-nums">
+          <span class="fk-id__xp-count">{{ toNextLabel }}</span>
+          @if (snap.next) {
+            <span class="fk-id__xp-next">
+              {{ money(snap.toNext) }} XP to <strong>{{ snap.next.title }}</strong>
+            </span>
+          }
+        </p>
+      </div>
+
+      <!-- Wallet -->
+      <div class="fk-id__wallet">
+        <span class="fk-id__coin fk-id__coin--gold">
+          <span class="fk-id__coin-icon" aria-hidden="true">🪙</span>
+          <span class="fk-id__coin-val">{{ money(wallet.gold) }}</span>
+          <span class="fk-id__coin-label">Gold</span>
+        </span>
+        <span class="fk-id__coin fk-id__coin--essence">
+          <span class="fk-id__coin-icon" aria-hidden="true">⚡</span>
+          <span class="fk-id__coin-val">{{ money(wallet.essence) }}</span>
+          <span class="fk-id__coin-label">Eclipse Essence</span>
+        </span>
+      </div>
+
+      <!-- Provenance -->
+      <dl class="fk-id__meta">
+        <div>
+          <dt>First struck</dt>
+          <dd>{{ memberSinceLabel ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Time in the Forge</dt>
+          <dd>{{ forgeTimeLabel }}</dd>
+        </div>
+        <div>
+          <dt>Convergent</dt>
+          <dd class="fk-id__uid">{{ shortId }}</dd>
+        </div>
+      </dl>
+
+      <!--
+        Honest about where progression lives. There is no sign-in to offer: the
+        Firestore adapter behind ProgressStorageService is an inert Phase 2 stub,
+        so a "Sign in to save across devices" button would be a button that does
+        nothing. The sheet says what is true instead.
+      -->
+      @if (isCloudSaved) {
+        <p class="fk-id__save fk-id__save--cloud">
+          <span aria-hidden="true">☁</span>
+          This Forge follows you across devices.
+        </p>
+      } @else {
+        <p class="fk-id__save">
+          <span aria-hidden="true">🔒</span>
+          This Forge lives in this browser. Cloud save is not open yet — clear your
+          site data and the Convergent starts over.
+        </p>
+      }
+    </div>
+  </section>
+
+  <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-stats-title">
+    <h2 class="fk-block__title" id="fk-stats-title">The Ledger</h2>
+    <p class="fk-block__note">every number the realm has counted since you arrived</p>
+
+    <ul class="fk-stats">
+      @for (stat of stats; track stat.label) {
+        <li class="fk-stat" [style.--stat]="stat.color">
+          <span class="fk-stat__icon" aria-hidden="true">{{ stat.icon }}</span>
+          <span class="fk-stat__value">{{ stat.value }}</span>
+          <span class="fk-stat__label">{{ stat.label }}</span>
+          <span class="fk-stat__note">{{ stat.note }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
+  <section class="fk-block fk-affinity" aria-labelledby="fk-affinity-title">
+    <h2 class="fk-block__title" id="fk-affinity-title">Realm Affinity</h2>
+    <p class="fk-block__note">which energy your lifetime XP has fed</p>
+
+    <div class="fk-affinity__grid">
+      <!--
+        A conic gradient rather than a drawn path: the two arcs are then exact by
+        construction at any split, and the only thing left to place is the pair
+        of eyes, which is one rotation each.
+      -->
+      <div class="fk-affinity__disc"
+           [style.--aether-stop.%]="aetherPercent"
+           role="img"
+           [attr.aria-label]="'Luminous affinity ' + aetherPercent + ' percent, Umbral affinity ' + noxPercent + ' percent'">
+        <span class="fk-affinity__eye fk-affinity__eye--aether"
+              [style.transform]="'rotate(' + aetherEyeAngle + 'deg)'" aria-hidden="true"></span>
+        <span class="fk-affinity__eye fk-affinity__eye--nox"
+              [style.transform]="'rotate(' + noxEyeAngle + 'deg)'" aria-hidden="true"></span>
+      </div>
+
+      <div class="fk-affinity__read">
+        <p class="fk-affinity__verdict">
+          <span class="fk-affinity__verdict-icon" aria-hidden="true">{{ affinityVerdict.icon }}</span>
+          <span class="fk-affinity__verdict-title">{{ affinityVerdict.title }}</span>
+        </p>
+        <p class="fk-affinity__line">{{ affinityVerdict.line }}</p>
+
+        <div class="fk-affinity__split">
+          <span class="fk-affinity__split-fill fk-affinity__split-fill--aether"
+                [style.width.%]="aetherPercent"></span>
+          <span class="fk-affinity__split-fill fk-affinity__split-fill--nox"
+                [style.width.%]="noxPercent"></span>
+        </div>
+
+        <dl class="fk-affinity__nums">
+          <div class="fk-affinity__num fk-affinity__num--aether">
+            <dt>Luminous Affinity</dt>
+            <dd>{{ aetherPercent }}%</dd>
+            <span class="fk-affinity__num-raw">{{ money(snap.aether) }} Aether</span>
+          </div>
+          <div class="fk-affinity__num fk-affinity__num--nox">
+            <dt>Umbral Affinity</dt>
+            <dd>{{ noxPercent }}%</dd>
+            <span class="fk-affinity__num-raw">{{ money(snap.nox) }} Nox</span>
+          </div>
+        </dl>
+
+        @if (dominantRealm) {
+          <p class="fk-affinity__realm" [style.--realm]="dominantRealm.realm.color">
+            You spend most of your time in
+            <strong>{{ dominantRealm.realm.name }}</strong> —
+            {{ dominantRealm.realm.domain }},
+            {{ money(dominantRealm.uses) }} {{ dominantRealm.uses === 1 ? 'visit' : 'visits' }}.
+          </p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 4. Inventory ═══════════════════════════════════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-inv-title">
+    <h2 class="fk-block__title" id="fk-inv-title">The Vault</h2>
+    <p class="fk-block__note">everything the Godforge sells, and which of it is yours</p>
+
+    <div class="fk-inv__tabs" role="tablist" aria-label="Inventory shelves">
+      @for (tab of inventoryTabs; track tab.key) {
+        <button type="button"
+                class="fk-inv__tab"
+                [class.fk-inv__tab--active]="inventoryFilter === tab.key"
+                role="tab"
+                [attr.aria-selected]="inventoryFilter === tab.key"
+                (click)="selectInventory(tab.key)">
+          <span class="fk-inv__tab-icon" aria-hidden="true">{{ tab.icon }}</span>
+          {{ tab.label }}
+          <span class="fk-inv__tab-count">{{ tabCount(tab.key).owned }}/{{ tabCount(tab.key).total }}</span>
+        </button>
+      }
+    </div>
+
+    <ul class="fk-inv__grid">
+      @for (item of visibleInventory; track item.id) {
+        <li class="fk-inv__card"
+            [class.fk-inv__card--locked]="!item.owned"
+            [attr.data-kind]="item.kind"
+            [style.--tier]="item.rarity.color"
+            [style.--tier-glow]="item.rarity.glow">
+
+          <span class="fk-inv__icon" aria-hidden="true">{{ item.icon }}</span>
+
+          <div class="fk-inv__body">
+            <p class="fk-inv__name">
+              {{ item.name }}
+              @if (item.level > 1) {
+                <span class="fk-inv__level">Lv.{{ item.level }}</span>
+              }
+              @if (item.owned && item.kind === 'artifact') {
+                <span class="fk-inv__owned" aria-label="Owned">✅</span>
+              }
+              @if (item.equipped) {
+                <span class="fk-inv__equipped">✨ {{ item.equipped }}</span>
+              }
+            </p>
+            <p class="fk-inv__effect">{{ item.effect }}</p>
+            <p class="fk-inv__flavour">{{ item.flavour }}</p>
+
+            @if (item.owned && item.kind === 'enchantment') {
+              <p class="fk-inv__timer">⏳ {{ timeLeft(item) ?? 'expiring' }}</p>
+            }
+            @if (!item.owned) {
+              <p class="fk-inv__price">
+                <a routerLink="/market" class="fk-inv__price-link">
+                  {{ item.currency === 'gold' ? '🪙' : '⚡' }} {{ money(item.cost) }} in The Market
+                </a>
+              </p>
+            }
+          </div>
+
+          <span class="fk-inv__tier">{{ item.rarity.label }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- ══ 5. Achievement showcase ════════════════════════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-case-title">
+    <div class="fk-block__head-row">
+      <div>
+        <h2 class="fk-block__title" id="fk-case-title">The Case</h2>
+        <p class="fk-block__note">
+          @if (isCustomised) {
+            the {{ pinSlots }} you chose to show
+          } @else {
+            your {{ pinSlots }} rarest finds, chosen for you until you say otherwise
+          }
+        </p>
+      </div>
+      <button type="button" class="fk-case__customise" (click)="togglePicker()"
+              [attr.aria-expanded]="picking">
+        {{ picking ? 'Done' : 'Customise' }}
+      </button>
+    </div>
+
+    <ul class="fk-case__slots">
+      @for (a of pinned; track a.id) {
+        <li class="fk-case__slot"
+            [style.--tier]="a.rarity.color"
+            [style.--tier-glow]="a.rarity.glow">
+          <span class="fk-case__icon" aria-hidden="true">{{ a.icon }}</span>
+          <p class="fk-case__name">{{ a.name }}</p>
+          <p class="fk-case__desc">{{ a.description }}</p>
+          <p class="fk-case__meta">
+            <span class="fk-case__tier">{{ a.rarity.label }}</span>
+            <span class="fk-case__date">{{ formatDate(a.unlockedAt) }}</span>
+          </p>
+        </li>
+      }
+      @for (slot of emptySlots; track slot) {
+        <li class="fk-case__slot fk-case__slot--empty">
+          <span class="fk-case__icon" aria-hidden="true">✧</span>
+          <p class="fk-case__name">Empty plinth</p>
+          <p class="fk-case__desc">
+            <a routerLink="/codex">Find something worth standing here.</a>
+          </p>
+        </li>
+      }
+    </ul>
+
+    @if (picking) {
+      <div class="fk-case__picker">
+        <div class="fk-case__picker-head">
+          <p class="fk-case__picker-note">
+            Pick up to {{ pinSlots }} from the {{ unlockedAchievements.length }} you have found.
+          </p>
+          @if (isCustomised) {
+            <button type="button" class="fk-case__reset" (click)="resetPins()">
+              Back to my rarest
+            </button>
+          }
+        </div>
+
+        @if (unlockedAchievements.length === 0) {
+          <p class="fk-case__picker-empty">
+            Nothing found yet. The <a routerLink="/codex">Codex</a> lists every fragment
+            there is, with a clue for each.
+          </p>
+        } @else {
+          <ul class="fk-case__picker-grid">
+            @for (a of unlockedAchievements; track a.id) {
+              <li>
+                <button type="button"
+                        class="fk-case__pick"
+                        [class.fk-case__pick--on]="isPinned(a.id)"
+                        [disabled]="pinDisabled(a.id)"
+                        [style.--tier]="a.rarity.color"
+                        [attr.aria-pressed]="isPinned(a.id)"
+                        (click)="togglePin(a.id)">
+                  <span class="fk-case__pick-icon" aria-hidden="true">{{ a.icon }}</span>
+                  <span class="fk-case__pick-name">{{ a.name }}</span>
+                  <span class="fk-case__pick-tier">{{ a.rarity.label }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- ══ 6. Streak calendar ═════════════════════════════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-cal-title">
+    <h2 class="fk-block__title" id="fk-cal-title">The Coals</h2>
+    <p class="fk-block__note">the last thirty days, coloured by the XP each one earned</p>
+
+    <div class="fk-cal__summary">
+      <span class="fk-cal__streak">🔥 {{ snap.streak }} {{ snap.streak === 1 ? 'day' : 'days' }}</span>
+      <span class="fk-cal__stat">Best <strong>{{ snap.bestStreak }}</strong></span>
+      <span class="fk-cal__stat"><strong>{{ activeDays }}</strong>/30 days lit</span>
+      <span class="fk-cal__stat"><strong>{{ money(calendarXp) }}</strong> XP this month</span>
+    </div>
+
+    <!-- Scrolls horizontally on a phone rather than shrinking to unreadable cells. -->
+    <div class="fk-cal__scroll">
+      <ol class="fk-cal__grid">
+        @for (day of calendar; track trackByDate($index, day)) {
+          <li class="fk-cal__day"
+              [attr.data-heat]="day.heat"
+              [class.fk-cal__day--today]="day.isToday"
+              [attr.title]="day.label + ' — ' + money(day.xp) + ' XP'">
+            <span class="fk-cal__day-weekday" aria-hidden="true">{{ day.weekday }}</span>
+            <span class="fk-cal__day-cell"></span>
+            <span class="fk-cal__sr">{{ day.label }}: {{ money(day.xp) }} XP</span>
+          </li>
+        }
+      </ol>
+    </div>
+
+    <div class="fk-cal__foot">
+      <p class="fk-cal__legend" aria-hidden="true">
+        <span>cold</span>
+        <span class="fk-cal__key" data-heat="0"></span>
+        <span class="fk-cal__key" data-heat="1"></span>
+        <span class="fk-cal__key" data-heat="2"></span>
+        <span class="fk-cal__key" data-heat="3"></span>
+        <span class="fk-cal__key" data-heat="4"></span>
+        <span>white-hot</span>
+      </p>
+      @if (nextMilestone) {
+        <p class="fk-cal__next">
+          Next milestone: <strong>{{ milestoneDaysToGo }}</strong>
+          more {{ milestoneDaysToGo === 1 ? 'day' : 'days' }}
+          for <strong>{{ nextMilestone.name }}</strong>
+        </p>
+      } @else {
+        <p class="fk-cal__next">Every named milestone is behind you. The Forge has stopped counting.</p>
+      }
+      @if (hottestDay) {
+        <p class="fk-cal__hottest">
+          Hottest day: {{ hottestDay.label }}, {{ money(hottestDay.xp) }} XP.
+        </p>
+      }
+    </div>
+  </section>
+
+  <!-- ══ 7. Tool mastery ════════════════════════════════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-mastery-title">
+    <div class="fk-block__head-row">
+      <div>
+        <h2 class="fk-block__title" id="fk-mastery-title">The Familiar Five</h2>
+        <p class="fk-block__note">the tools you actually reach for</p>
+      </div>
+      <a routerLink="/codex" [queryParams]="{ tab: 'bestiary' }" class="fk-mastery__all">See all →</a>
+    </div>
+
+    @if (mastery.length === 0) {
+      <p class="fk-empty">
+        Nothing on the board yet. Open a tool and it starts keeping score —
+        <a routerLink="/tools">there are {{ toolCount }} of them</a>.
+      </p>
+    } @else {
+      <ul class="fk-mastery">
+        @for (row of mastery; track row.id) {
+          <li class="fk-mastery__row" [style.--realm]="row.realm.color" [style.--mastery]="row.mastery.color">
+            <a [routerLink]="row.route" class="fk-mastery__link">
+              <span class="fk-mastery__icon" aria-hidden="true">{{ row.icon }}</span>
+              <span class="fk-mastery__body">
+                <span class="fk-mastery__name">{{ row.title }}</span>
+                <span class="fk-mastery__realm">{{ row.realm.name }}</span>
+              </span>
+              <!-- role="img" so the label is authoritative: without it the five
+                   star glyphs read out identically whether they are filled or
+                   not, because the difference between them is only a colour. -->
+              <span class="fk-mastery__stars" role="img"
+                    [attr.aria-label]="row.mastery.label + ', ' + row.mastery.stars + ' of 5'">
+                @for (filled of row.stars; track $index) {
+                  <span class="fk-mastery__star" [class.fk-mastery__star--on]="filled" aria-hidden="true">★</span>
+                }
+              </span>
+              <span class="fk-mastery__uses">{{ money(row.uses) }} {{ row.uses === 1 ? 'use' : 'uses' }}</span>
+              <span class="fk-mastery__bar">
+                <span class="fk-mastery__fill" [style.width.%]="row.progress * 100"></span>
+              </span>
+              <span class="fk-mastery__level">{{ row.mastery.label }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <!-- ══ 8. Quick links ═════════════════════════════════════════════════ -->
+  <nav class="fk-links" aria-label="Elsewhere in the Godforge">
+    <a routerLink="/market" class="fk-link">
+      <span class="fk-link__icon" aria-hidden="true">🏪</span>
+      <span class="fk-link__name">The Market</span>
+      <span class="fk-link__note">spend the Gold</span>
+    </a>
+    <a routerLink="/codex" class="fk-link">
+      <span class="fk-link__icon" aria-hidden="true">📜</span>
+      <span class="fk-link__name">The Codex</span>
+      <span class="fk-link__note">every fragment there is</span>
+    </a>
+    <a routerLink="/arena" class="fk-link">
+      <span class="fk-link__icon" aria-hidden="true">⚔️</span>
+      <span class="fk-link__name">The Arena</span>
+      <span class="fk-link__note">gates that fight back</span>
+    </a>
+    <a routerLink="/blueprint" class="fk-link">
+      <span class="fk-link__icon" aria-hidden="true">🗺️</span>
+      <span class="fk-link__name">The War Table</span>
+      <span class="fk-link__note">what is being built</span>
+    </a>
+  </nav>
+</section>

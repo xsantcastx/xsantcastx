@@ -602,6 +602,24 @@
        taller-than-the-drawer content scrolls, which is what the overflow-y and
        overscroll-behavior on this rule were always written for. */
     flex-wrap: nowrap;
+    /* The same 1100px rule also sets justify-content: flex-end, and that leaks
+       into the drawer exactly the way flex-wrap did — with the same shape of
+       consequence and a worse failure mode.
+
+       A column flex container whose content is taller than its box does not
+       distribute the overflow: with flex-end it puts *all* of it past the START
+       edge, and content overflowing a scroll container's start edge is
+       unreachable. scrollHeight reports 747 against a clientHeight of 747, so
+       the panel believes it has nothing to scroll while ~300px of links sit
+       above y=0. Measured on a 375×812 viewport with the drawer open: the first
+       four links were at y=-234 through y=-8 and `elementFromPoint` at their
+       centres returned null or the backdrop.
+
+       The list has been over the threshold for a while — adding "Your Forge"
+       as a fifteenth child pushed one more link over the edge rather than
+       causing it. flex-start is the intent for a drawer anyway: it reads top
+       down, and anything past the fold is now genuinely scrollable. */
+    justify-content: flex-start;
     gap: 1.2rem;
     padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1.5rem, 6vw, 3rem) calc(env(safe-area-inset-bottom) + 2.5rem);
     background:
@@ -1138,6 +1156,69 @@
 @media (min-width: 961px) {
   .nav-market-link {
     display: none;
+  }
+}
+
+/* ── The Forge sigil ─────────────────────────────────────────────────────────
+   Same split as the Market and the Quests links, for the same reason: at 1280px
+   .nav-menu already measures more content than its box, so the row gets the
+   drawer copy and the dock gets the control. */
+.nav-forge {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  /* The 44px touch minimum the 2.1.0 mobile pass established for every
+     standalone control, met here rather than relying on the emoji's own box. */
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 255, 204, 0.22);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(234, 255, 249, 0.3) 0%, rgba(255, 255, 255, 0) 46%),
+    radial-gradient(circle at 50% 50%, rgba(232, 117, 42, 0.32) 0%, rgba(8, 3, 24, 0.92) 86%);
+  box-shadow: 0 0 14px -4px rgba(232, 117, 42, 0.7);
+  text-decoration: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.nav-forge:hover,
+.nav-forge.active {
+  border-color: rgba(0, 255, 204, 0.6);
+  box-shadow: 0 0 22px -5px rgba(0, 255, 204, 0.8);
+  transform: translateY(-1px);
+}
+
+.nav-forge:focus-visible {
+  outline: 2px solid #4dffe0;
+  outline-offset: 3px;
+}
+
+.nav-forge__sigil {
+  font-size: 17px;
+  line-height: 1;
+  color: #ffd0a8;
+}
+
+@media (min-width: 961px) {
+  .nav-forge-link {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-forge {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-forge {
+    transition: none;
+  }
+
+  .nav-forge:hover,
+  .nav-forge.active {
+    transform: none;
   }
 }
 
