@@ -538,13 +538,13 @@
         // Hover-grow on interactive elements
         document.addEventListener('mouseover', function (e) {
           var t = e.target;
-          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card,.hc-card'))) {
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card'))) {
             cursor.classList.add('cosmic-cursor--hover');
           }
         }, { passive: true });
         document.addEventListener('mouseout', function (e) {
           var t = e.target;
-          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card,.hc-card'))) {
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card'))) {
             cursor.classList.remove('cosmic-cursor--hover');
           }
         }, { passive: true });
@@ -582,7 +582,9 @@
             '.donate-section',
             '.contact-section',
             '.info-card',
-            '.hp-cl-day'
+            '.hp-cl-day',
+            '.gf-station',
+            '.gf-door'
           ];
           var nodes = document.querySelectorAll(selectors.join(','));
           for (var i = 0; i < nodes.length; i++) {
@@ -871,7 +873,13 @@
           el.classList.add('cosmic-typed');
         }
 
-        var typedSelector = '[data-typewriter], .hp-hero__title, .hp-section-title, .skills h2, .section-title, .hp-live__title, .hp-spotlight__name, .tools-header__title';
+        // The Godforge title is excluded on purpose. typeOn() rewrites the
+        // heading's text nodes into per-character <span>s, and this heading
+        // paints through `background-clip: text` — once the text is split,
+        // each span clips its own slice of a gradient sized to the span, and
+        // the title renders as a smear of colour instead of words. It is also
+        // the LCP element, so leaving it un-split is the faster answer anyway.
+        var typedSelector = '[data-typewriter], .hp-hero__title:not(.gf-hero__title), .hp-section-title, .skills h2, .section-title, .hp-live__title, .hp-spotlight__name, .tools-header__title';
         var typedIO = new IntersectionObserver(function (entries) {
           entries.forEach(function (e) {
             if (e.isIntersecting) {
