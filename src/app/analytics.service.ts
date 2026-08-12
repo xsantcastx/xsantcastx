@@ -1,8 +1,12 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Analytics, logEvent, setUserProperties, setUserId } from '@angular/fire/analytics';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import type { Analytics } from 'firebase/analytics';
+import { environment } from '../environments/environment';
 import { ConsentService } from './consent.service';
 import { AnalyticsDebugService } from './analytics-debug.service';
+
+type AnalyticsApi = typeof import('firebase/analytics');
 
 export interface CustomEventData {
   [key: string]: string | number | boolean;
@@ -21,8 +25,18 @@ export interface UserProperties {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  // null on server (Analytics not provided); canTrack() guards all call sites
-  private analytics = inject(Analytics, { optional: true }) as Analytics;
+  // The Analytics SDK is fetched on demand. `@angular/fire/analytics` was the
+  // reason @firebase/auth (~100 kB raw) sat in the initial chunk: its
+  // UserTrackingService pulls the whole auth SDK in statically, even though
+  // this site has no signed-in users outside /guestbook. Talking to the raw
+  // modular SDK instead — behind a dynamic import — drops both.
+  //
+  // Calls made before the SDK lands are queued and replayed, so every
+  // track*() method keeps its fire-and-forget signature.
+  private analytics: Analytics | null = null;
+  private api: AnalyticsApi | null = null;
+  private queue: Array<() => void> = [];
+  private loader: Promise<void> | null = null;
   private consentService = inject(ConsentService);
   private debugService = inject(AnalyticsDebugService);
   private platformId = inject(PLATFORM_ID);
@@ -39,7 +53,49 @@ export class AnalyticsService {
   }
 
   private canTrack(): boolean {
-    return this.isBrowser && !!this.analytics && this.consentService.hasConsent();
+    return this.isBrowser && this.consentService.hasConsent();
+  }
+
+  /** Run against the Analytics SDK, downloading it first if need be. */
+  private enqueue(run: (api: AnalyticsApi, analytics: Analytics) => void): void {
+    if (!this.isBrowser) return;
+
+    if (this.api && this.analytics) {
+      run(this.api, this.analytics);
+      return;
+    }
+
+    this.queue.push(() => {
+      if (this.api && this.analytics) run(this.api, this.analytics);
+    });
+    this.load();
+  }
+
+  private load(): void {
+    if (this.loader) return;
+
+    this.loader = import('firebase/analytics')
+      .then(async (api) => {
+        // Analytics needs cookies + IndexedDB; bail cleanly where it can't run.
+        if (!(await api.isSupported())) {
+          this.queue.length = 0;
+          return;
+        }
+        const app = getApps().length ? getApp() : initializeApp(environment.firebase);
+        this.api = api;
+        this.analytics = api.getAnalytics(app);
+        this.queue.splice(0).forEach(fn => fn());
+      })
+      .catch((err) => {
+        console.warn('[Analytics] unavailable:', err);
+        this.queue.length = 0;
+      });
+  }
+
+  /** Consent-gated event log. */
+  private log(name: string, params?: Record<string, any>): void {
+    if (!this.canTrack()) return;
+    this.enqueue((api, analytics) => api.logEvent(analytics, name as any, params as any));
   }
 
   /**
@@ -48,7 +104,7 @@ export class AnalyticsService {
   setUserProperties(properties: UserProperties): void {
     if (!this.canTrack()) return;
 
-    setUserProperties(this.analytics, properties);
+    this.enqueue((api, analytics) => api.setUserProperties(analytics, properties));
     this.debugService.logEvent('user_properties_set', properties);
   }
 
@@ -58,7 +114,7 @@ export class AnalyticsService {
   setUserId(userId: string): void {
     if (!this.canTrack()) return;
 
-    setUserId(this.analytics, userId);
+    this.enqueue((api, analytics) => api.setUserId(analytics, userId));
     this.debugService.logEvent('user_id_set', { user_id: userId });
   }
 
@@ -68,7 +124,7 @@ export class AnalyticsService {
   clearUserId(): void {
     if (!this.canTrack()) return;
 
-    setUserId(this.analytics, null);
+    this.enqueue((api, analytics) => api.setUserId(analytics, null));
     this.debugService.logEvent('user_id_cleared', {});
   }
 
@@ -153,7 +209,7 @@ export class AnalyticsService {
   trackPageView(pagePath: string, pageTitle?: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'page_view', {
+    this.log('page_view', {
       page_location: window.location.href,
       page_path: pagePath,
       page_title: pageTitle || document.title
@@ -174,7 +230,7 @@ export class AnalyticsService {
     };
 
     this.debugService.logEvent('generate_lead', eventData);
-    logEvent(this.analytics, 'generate_lead', eventData);
+    this.log('generate_lead', eventData);
   }
 
   /**
@@ -183,7 +239,7 @@ export class AnalyticsService {
   trackProjectClick(projectName: string, projectUrl?: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'select_content', {
+    this.log('select_content', {
       content_type: 'project',
       item_id: projectName,
       item_name: projectName,
@@ -198,7 +254,7 @@ export class AnalyticsService {
   trackCTAClick(ctaType: 'hire_me' | 'download_resume' | 'view_portfolio' | 'contact' | 'social'): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'cta_click', {
+    this.log('cta_click', {
       cta_type: ctaType,
       page_location: window.location.href,
       timestamp: new Date().toISOString()
@@ -211,7 +267,7 @@ export class AnalyticsService {
   trackSocialClick(platform: 'github' | 'linkedin' | 'twitter' | 'email'): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'social_click', {
+    this.log('social_click', {
       platform,
       page_location: window.location.href
     });
@@ -223,7 +279,7 @@ export class AnalyticsService {
   trackSkillInteraction(skillName: string, interactionType: 'view' | 'click' | 'hover'): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'skill_interaction', {
+    this.log('skill_interaction', {
       skill_name: skillName,
       interaction_type: interactionType,
       page_location: window.location.href
@@ -236,7 +292,7 @@ export class AnalyticsService {
   trackDonation(method: 'paypal' | 'stripe' | 'crypto', amount?: number, currency?: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'donation', {
+    this.log('donation', {
       payment_method: method,
       value: amount || 0,
       currency: currency || 'USD',
@@ -250,7 +306,7 @@ export class AnalyticsService {
   trackLanguageChange(newLanguage: 'en' | 'es', previousLanguage: 'en' | 'es'): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'language_change', {
+    this.log('language_change', {
       new_language: newLanguage,
       previous_language: previousLanguage,
       page_location: window.location.href
@@ -266,7 +322,7 @@ export class AnalyticsService {
     // Only track at 25%, 50%, 75%, 100%
     const milestones = [25, 50, 75, 100];
     if (milestones.includes(percentage)) {
-      logEvent(this.analytics, 'scroll', {
+      this.log('scroll', {
         percent_scrolled: percentage,
         page_location: window.location.href
       });
@@ -279,7 +335,7 @@ export class AnalyticsService {
   trackFileDownload(fileName: string, fileType: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'file_download', {
+    this.log('file_download', {
       file_name: fileName,
       file_type: fileType,
       page_location: window.location.href
@@ -290,13 +346,14 @@ export class AnalyticsService {
    * Track consent banner interactions
    */
   trackConsentDecision(decision: 'accepted' | 'denied'): void {
-    if (!this.isBrowser || !this.analytics) return;
+    if (!this.isBrowser) return;
     // This should track even without consent (for compliance reporting)
-    logEvent(this.analytics, 'consent_decision', {
+    const payload = {
       decision,
       page_location: window.location.href,
       timestamp: new Date().toISOString()
-    });
+    };
+    this.enqueue((api, analytics) => api.logEvent(analytics, 'consent_decision' as any, payload));
   }
 
   /**
@@ -305,7 +362,7 @@ export class AnalyticsService {
   trackCustomEvent(eventName: string, eventData?: CustomEventData): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, eventName, {
+    this.log(eventName, {
       ...eventData,
       page_location: window.location.href,
       timestamp: new Date().toISOString()
@@ -318,7 +375,7 @@ export class AnalyticsService {
   trackSearch(searchTerm: string, resultCount?: number): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'search', {
+    this.log('search', {
       search_term: searchTerm,
       result_count: resultCount || 0,
       page_location: window.location.href
@@ -333,7 +390,7 @@ export class AnalyticsService {
 
     try {
       const domain = new URL(url).hostname;
-      logEvent(this.analytics, 'click', {
+      this.log('click', {
         link_domain: domain,
         link_url: url,
         link_text: linkText || '',
@@ -351,7 +408,7 @@ export class AnalyticsService {
   trackPageNotFound(attemptedPath: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'page_not_found', {
+    this.log('page_not_found', {
       page_path: attemptedPath,
       referrer: document.referrer,
       page_location: window.location.href
@@ -376,13 +433,13 @@ export class AnalyticsService {
 
     switch (action) {
       case 'start':
-        logEvent(this.analytics, 'form_start', eventData);
+        this.log('form_start', eventData);
         break;
       case 'submit':
-        logEvent(this.analytics, 'form_submit', eventData);
+        this.log('form_submit', eventData);
         break;
       case 'error':
-        logEvent(this.analytics, 'form_error', eventData);
+        this.log('form_error', eventData);
         break;
     }
   }
@@ -393,7 +450,7 @@ export class AnalyticsService {
   trackPerformance(metricName: string, value: number, unit: 'ms' | 'bytes' | 'count'): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'performance_metric', {
+    this.log('performance_metric', {
       metric_name: metricName,
       metric_value: value,
       metric_unit: unit,
@@ -432,7 +489,7 @@ export class AnalyticsService {
   trackError(error: Error, context?: string): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'exception', {
+    this.log('exception', {
       description: error.message,
       fatal: false,
       context: context || 'unknown',
@@ -446,7 +503,7 @@ export class AnalyticsService {
   trackVideoInteraction(videoId: string, action: 'play' | 'pause' | 'complete', currentTime?: number): void {
     if (!this.canTrack()) return;
 
-    logEvent(this.analytics, 'video_' + action, {
+    this.log('video_' + action, {
       video_id: videoId,
       video_current_time: currentTime || 0,
       page_location: window.location.href
@@ -462,7 +519,7 @@ export class AnalyticsService {
     // Track at 1, 5, 10, 30 minute milestones
     const milestones = [1, 5, 10, 30];
     if (milestones.includes(minutes)) {
-      logEvent(this.analytics, 'session_milestone', {
+      this.log('session_milestone', {
         session_duration_minutes: minutes,
         page_location: window.location.href
       });

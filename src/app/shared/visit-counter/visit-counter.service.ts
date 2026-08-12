@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, doc, runTransaction } from '@angular/fire/firestore';
 import { BehaviorSubject } from 'rxjs';
+import { LazyFirestoreService } from '../lazy-firestore.service';
 
 export interface MilestoneEvent {
   count: number;
@@ -27,7 +27,7 @@ const MILESTONES = [
 
 @Injectable({ providedIn: 'root' })
 export class VisitCounterService {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   milestone$ = new BehaviorSubject<MilestoneEvent | null>(null);
@@ -42,8 +42,12 @@ export class VisitCounterService {
     }
 
     try {
-      const ref = doc(this.firestore, 'site-stats', 'visits');
-      const newCount = await runTransaction(this.firestore, async (tx) => {
+      const handle = await this.lazyFirestore.get();
+      if (!handle) return;
+      const { db, api } = handle;
+
+      const ref = api.doc(db, 'site-stats', 'visits');
+      const newCount = await api.runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         const current = snap.exists() ? (snap.data()['count'] ?? 0) : 0;
         const next = current + 1;
@@ -52,18 +56,23 @@ export class VisitCounterService {
       });
 
       sessionStorage.setItem('visit-counted', '1');
-      this.visitCount$.next(newCount);
 
-      // Check for milestone
-      const hit = MILESTONES.find(m => m.at === newCount);
-      if (hit) {
-        this.milestone$.next({
-          count: newCount,
-          milestone: hit.at,
-          label: hit.label,
-          tier: hit.tier,
-        });
-      }
+      // The transaction resolved outside the Angular zone (raw SDK), so push
+      // the subjects back inside it or subscribers never re-render.
+      this.lazyFirestore.runInZone(() => {
+        this.visitCount$.next(newCount);
+
+        // Check for milestone
+        const hit = MILESTONES.find(m => m.at === newCount);
+        if (hit) {
+          this.milestone$.next({
+            count: newCount,
+            milestone: hit.at,
+            label: hit.label,
+            tier: hit.tier,
+          });
+        }
+      });
     } catch (err: any) {
       // Permission-denied means firestore.rules haven't been deployed yet
       // (common in dev). That's expected and shouldn't paint the console red.

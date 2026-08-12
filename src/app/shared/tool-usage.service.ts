@@ -1,10 +1,10 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, doc, getDoc, setDoc, increment } from '@angular/fire/firestore';
+import { LazyFirestoreService } from './lazy-firestore.service';
 
 @Injectable({ providedIn: 'root' })
 export class ToolUsageService {
-  private firestore = inject(Firestore);
+  private lazyFirestore = inject(LazyFirestoreService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private tracked = new Set<string>();
 
@@ -16,13 +16,17 @@ export class ToolUsageService {
   async recordUsage(toolSlug: string): Promise<number> {
     if (!this.isBrowser) return 0;
 
+    const handle = await this.lazyFirestore.get();
+    if (!handle) return 0;
+    const { db, api } = handle;
+
     const sessionKey = `tool-used-${toolSlug}`;
     const alreadyCounted = sessionStorage.getItem(sessionKey);
-    const ref = doc(this.firestore, 'tool-usage', toolSlug);
+    const ref = api.doc(db, 'tool-usage', toolSlug);
 
     if (!alreadyCounted && !this.tracked.has(toolSlug)) {
       try {
-        await setDoc(ref, { count: increment(1) }, { merge: true });
+        await api.setDoc(ref, { count: api.increment(1) }, { merge: true });
         sessionStorage.setItem(sessionKey, '1');
         this.tracked.add(toolSlug);
       } catch (err) {
@@ -37,8 +41,10 @@ export class ToolUsageService {
   async getCount(toolSlug: string): Promise<number> {
     if (!this.isBrowser) return 0;
     try {
-      const ref = doc(this.firestore, 'tool-usage', toolSlug);
-      const snap = await getDoc(ref);
+      const handle = await this.lazyFirestore.get();
+      if (!handle) return 0;
+      const { db, api } = handle;
+      const snap = await api.getDoc(api.doc(db, 'tool-usage', toolSlug));
       return snap.exists() ? (snap.data()['count'] ?? 0) : 0;
     } catch {
       return 0;

@@ -15,9 +15,6 @@ import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
-import { provideFunctions, getFunctions } from '@angular/fire/functions';
-import { provideAnalytics, getAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
@@ -76,9 +73,14 @@ import { McpComponent } from './mcp/mcp.component';
 ],
   providers: [
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    // Analytics, Performance and AppCheck require browser APIs — skip on server
+    // Performance and AppCheck require browser APIs — skip on server.
+    //
+    // provideAnalytics() is gone: @angular/fire/analytics statically imports
+    // @angular/fire/auth (for UserTrackingService), which put the ~100 kB auth
+    // SDK in the initial chunk. AnalyticsService now loads `firebase/analytics`
+    // on demand instead, and AppTitleStrategy logs the page_view that
+    // ScreenTrackingService used to emit.
     ...(isBrowserEnv ? [
-      provideAnalytics(() => getAnalytics()),
       providePerformance(() => getPerformance()),
       provideAppCheck(() => {
         const siteKey = environment.appCheck?.siteKey ?? '';
@@ -106,32 +108,19 @@ import { McpComponent } from './mcp/mcp.component';
 
         return globalScope.__xsantcastxAppCheck;
       }),
-      // Firebase Analytics automatic tracking services (browser only)
-      ScreenTrackingService,
-      UserTrackingService
     ] as any[] : []),
-    provideFirestore(() => {
-      const app = getApp();
-      // Calling initializeFirestore() twice (once on the SSR pass, once on
-      // client hydration) throws "Firestore has already been started" and
-      // leaves us with two different SDK instances — the source of the
-      // "Type does not match the expected instance. Did you pass a reference
-      // from a different Firestore SDK?" red wall in the console.
-      // Fall back to the already-initialized instance on subsequent calls so
-      // every consumer shares one Firestore reference.
-      try {
-        return initializeFirestore(app, {
-          experimentalForceLongPolling: true
-        });
-      } catch (e) {
-        return getFirestore(app);
-      }
-    }),
-    // provideAuth()/provideDatabase() intentionally live on the lazy /guestbook
-    // route (see guestbook/guestbook.routes.ts) — that is the only consumer,
-    // and keeping them out of the root injector keeps @firebase/auth + re2js +
-    // the RTDB SDK out of the initial bundle.
-    provideFunctions(() => getFunctions()),
+    // provideFirestore() is deliberately absent. It forced the ~450 kB
+    // Firestore SDK into the initial chunk even though nothing on first paint
+    // touches the database. Every consumer now goes through
+    // shared/lazy-firestore.service.ts, which dynamically imports
+    // `firebase/firestore` on first use — see that file for the details.
+    //
+    // provideAuth()/provideDatabase() live on the lazy /guestbook and
+    // /tools/pdf-generator routes for the same reason: that keeps
+    // @firebase/auth + re2js + the RTDB SDK out of the initial bundle.
+    // provideFunctions() removed for the same reason as provideAnalytics():
+    // @angular/fire/functions statically imports @angular/fire/auth.
+    // PaymentService imports `firebase/functions` on demand instead.
     { provide: HTTP_INTERCEPTORS, useClass: AppCheckInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
     // Custom title strategy for better SEO and Analytics screen names
