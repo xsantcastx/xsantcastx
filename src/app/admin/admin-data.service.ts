@@ -196,7 +196,7 @@ export class AdminDataService {
   }
 
   /**
-   * Viewers currently on /live. The presence docs are written with a heartbeat
+   * Viewers currently on /mission-control. The presence docs are written with a heartbeat
    * and deleted on unload, but a hard tab-close leaves one behind — so anything
    * older than five minutes is treated as gone. This is the closest thing to a
    * real "active users now" the site has without GA4.
@@ -337,7 +337,7 @@ export class AdminDataService {
   }
 
   /**
-   * Activity written by the Claude Code hook that powers /live. Doubles as a
+   * Activity written by the Claude Code hook that powers /mission-control. Doubles as a
    * build-pulse indicator: if the newest entry is hours old, nothing is running.
    */
   async lastActivityAt(force = false): Promise<string | null> {
