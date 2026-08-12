@@ -67,6 +67,16 @@ interface IdleState {
   minutesToday: number;
   /** Longest unbroken visible run ever, in ms. Feeds Forge Meditation. */
   bestVigilMs: number;
+  /**
+   * Lifetime visible time in the Forge, in ms.
+   *
+   * Deliberately uncapped, unlike `minutesToday`. That number is an *allowance*
+   * — how much of today the forge is still willing to pay for — and reading it
+   * as time spent would tell someone who has been here nine hours that they
+   * have been here thirty minutes. This one is a record, not a payout, so it
+   * keeps counting long after the day's XP has run out.
+   */
+  lifetimeMs: number;
 }
 
 function emptyState(): IdleState {
@@ -78,6 +88,7 @@ function emptyState(): IdleState {
     dayKey: '',
     minutesToday: 0,
     bestVigilMs: 0,
+    lifetimeMs: 0,
   };
 }
 
@@ -95,6 +106,8 @@ export interface IdleSnapshot {
   strikeXp: number;
   minutesToday: number;
   minutesCap: number;
+  /** Lifetime visible time in the Forge, in ms. Uncapped — see `IdleState`. */
+  lifetimeMs: number;
   /** The tooltip's first line. */
   label: string;
   /** The tooltip's second line — why the rate is what it is. */
@@ -134,6 +147,8 @@ export class IdleService {
   private visibleSince: number | null = null;
   /** Fractional XP carried between credits. In memory — losing <1 XP is fine. */
   private carry = 0;
+  /** Visible ms observed but not yet written to `lifetimeMs`. See `creditLifetime`. */
+  private lifetimeCarryMs = 0;
   private lastStrikeAt = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -170,6 +185,16 @@ export class IdleService {
       if (document.visibilityState === 'visible') this.visibleSince = this.lastBeatAt;
 
       document.addEventListener('visibilitychange', () => this.onVisibilityChange(), { passive: true });
+      // Closing a window does not always produce a visibilitychange, and the
+      // lifetime counter buffers up to a minute in memory. `pagehide` is the
+      // one event that fires on every teardown path, and the flush behind it
+      // is a synchronous localStorage write.
+      window.addEventListener('pagehide', () => {
+        if (this.visibleSince !== null) {
+          this.creditLifetime(Math.min(Date.now() - this.lastBeatAt, HEARTBEAT_CLAMP_MS));
+        }
+        this.flushLifetime();
+      });
       this.timer = setInterval(() => this.beat(), HEARTBEAT_MS);
     });
 
@@ -191,6 +216,12 @@ export class IdleService {
       // drop the partial minute: a minute half-earned and then abandoned is not
       // a minute the visitor was here for.
       this.creditVigil(now);
+      // The lifetime counter *does* keep the tail. Up to one heartbeat of
+      // visible time has elapsed since the last beat, and time spent is time
+      // spent whether or not it completed a payable minute.
+      this.creditLifetime(Math.min(now - this.lastBeatAt, HEARTBEAT_CLAMP_MS));
+      this.flushLifetime();
+      this.lastBeatAt = now;
       this.visibleSince = null;
       this.accumMs = 0;
     }
@@ -207,6 +238,11 @@ export class IdleService {
     this.lastBeatAt = now;
 
     if (document.visibilityState !== 'visible' || this.visibleSince === null) return;
+
+    // Before the cap check below, which returns early: time in the Forge is a
+    // record of attendance, and attendance does not stop when the day's XP
+    // allowance runs out.
+    this.creditLifetime(delta);
 
     // Order matters: the crossing is detected by the day *changing*, so it has
     // to be read from rollDay's return value rather than by comparing the
@@ -321,6 +357,29 @@ export class IdleService {
   }
 
   /** Bank the length of the current unbroken visible run. */
+  /**
+   * Add visible time to the lifetime counter, buffered in memory.
+   *
+   * Flushed a minute at a time rather than written on every heartbeat: the
+   * counter is rendered to the minute, so six writes a minute would buy nothing
+   * but six times the localStorage traffic. `snapshotOf` adds the unflushed
+   * remainder back, so the number on screen is never behind what it should be —
+   * only the number on disk is, and by less than a minute.
+   */
+  private creditLifetime(deltaMs: number): void {
+    if (deltaMs <= 0) return;
+    this.lifetimeCarryMs += deltaMs;
+    if (this.lifetimeCarryMs >= MINUTE_MS) this.flushLifetime();
+  }
+
+  /** Write the buffered visible time through. Called on the minute and on hide. */
+  private flushLifetime(): void {
+    if (this.lifetimeCarryMs <= 0) return;
+    const pending = this.lifetimeCarryMs;
+    this.lifetimeCarryMs = 0;
+    this.mutate(s => { s.lifetimeMs += pending; });
+  }
+
   private creditVigil(now: number): void {
     if (this.visibleSince === null) return;
     const run = now - this.visibleSince;
@@ -483,6 +542,9 @@ export class IdleService {
       strikeXp: this.state.strikeXp,
       minutesToday: this.state.minutesToday,
       minutesCap: DAILY_MINUTE_CAP,
+      // Plus whatever has not been flushed yet, so the readout on /forge-keeper
+      // advances with the session rather than jumping a minute at a time.
+      lifetimeMs: this.state.lifetimeMs + this.lifetimeCarryMs,
       label: labelFor(state, breakdown.rate),
       note: noteFor(state, breakdown, this.state.minutesToday),
     };
