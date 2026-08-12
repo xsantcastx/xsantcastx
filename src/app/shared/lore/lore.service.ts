@@ -80,6 +80,16 @@ export class LoreService {
   private state: LoreState = emptyState();
   private initialised = false;
 
+  /**
+   * Scales every chapter threshold. The Codex Solarii artifact sets this to
+   * 0.5; with nothing installed it is 1 and no chapter moves.
+   *
+   * A settable function rather than an injected EconomyService, for the same
+   * reason XpService takes its multiplier the same way: the codex predates the
+   * shop and has to keep working with the shop deleted.
+   */
+  private thresholdScale: () => number = () => 1;
+
   private readonly changed$$ = new BehaviorSubject<number>(0);
   private readonly unlock$$ = new Subject<LoreUnlock>();
 
@@ -92,6 +102,31 @@ export class LoreService {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
     this.state = this.load();
+  }
+
+  /** Install a threshold scale. Called once by the economy's wiring layer. */
+  setThresholdScale(scale: () => number): void {
+    this.thresholdScale = scale;
+  }
+
+  /**
+   * What a chapter actually costs this visitor.
+   *
+   * Never below 1, so a discount cannot open a chapter that has not been
+   * reached at all — chapter one already sits at 0 and stays there, and every
+   * later chapter still needs at least one use behind it. Rounded up, so the
+   * halved 45 is 23 rather than 22: the artifact is generous, not arbitrary.
+   */
+  private thresholdFor(unlockAt: number): number {
+    if (unlockAt <= 0) return 0;
+    let scale = 1;
+    try {
+      scale = this.thresholdScale();
+    } catch {
+      scale = 1;
+    }
+    if (!Number.isFinite(scale) || scale <= 0 || scale > 1) return unlockAt;
+    return Math.max(1, Math.ceil(unlockAt * scale));
   }
 
   /**
@@ -114,9 +149,10 @@ export class LoreService {
     const after = before + 1;
     this.state.uses[slug] = after;
 
-    const opened = lore.chapters.filter(
-      c => c.unlockAt > before && c.unlockAt <= after && !this.state.announced.includes(c.id),
-    );
+    const opened = lore.chapters.filter(c => {
+      const at = this.thresholdFor(c.unlockAt);
+      return at > before && at <= after && !this.state.announced.includes(c.id);
+    });
     for (const chapter of opened) this.state.announced.push(chapter.id);
 
     this.persist();
@@ -141,11 +177,15 @@ export class LoreService {
 
     const uses = this.usesOf(slug);
     const chapters = lore.chapters.map<ResolvedChapter>(c => {
-      const unlocked = uses >= c.unlockAt;
+      // The discounted threshold, so a locked card counts down to the number
+      // this visitor actually has to reach rather than the authored one.
+      const at = this.thresholdFor(c.unlockAt);
+      const unlocked = uses >= at;
       return {
         ...c,
+        unlockAt: at,
         unlocked,
-        remaining: unlocked ? 0 : c.unlockAt - uses,
+        remaining: unlocked ? 0 : at - uses,
         paragraphs: unlocked ? splitParagraphs(c.content) : [],
       };
     });

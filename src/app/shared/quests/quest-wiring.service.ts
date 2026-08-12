@@ -24,6 +24,7 @@
 import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
+import { Observable, Subject } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { QuestService } from './quest.service';
 import { dayKey } from './quest.model';
@@ -92,6 +93,20 @@ export class QuestWiringService {
   private speedBankedOn = '';
 
   private minuteTimer: ReturnType<typeof setInterval> | null = null;
+
+  private readonly beat$$ = new Subject<ToolDefinition>();
+  /**
+   * One event per use beat, carrying the tool it happened on.
+   *
+   * Published so the Godforge economy can pay Gold for tool work without
+   * building a second interaction listener with its own idea of what counts.
+   * The cooldown, the `<main>` check and the furniture exclusions above are
+   * exactly the rules the economy wants, and there is no version of this where
+   * the two lists are maintained separately and stay in agreement.
+   *
+   * Not replayed: a beat is a moment, and a late subscriber missed it.
+   */
+  readonly beat$: Observable<ToolDefinition> = this.beat$$.asObservable();
 
   init(): void {
     if (!this.isBrowser || this.started) return;
@@ -186,6 +201,11 @@ export class QuestWiringService {
     this.quests.addToSet('realms', realm.id);
 
     this.checkSpeedRun(tool.id, now);
+
+    // Announced last, after every ledger this service owns has been written —
+    // a subscriber that throws must not be able to cost the visitor their
+    // quest progress.
+    this.beat$$.next(tool);
   }
 
   /**

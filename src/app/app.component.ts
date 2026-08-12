@@ -9,6 +9,7 @@ import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-trigge
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
+import { EconomyWiringService } from './shared/economy/economy-wiring.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
@@ -29,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private xpWiring = inject(XpWiringService);
   private realms = inject(RealmService);
   private questWiring = inject(QuestWiringService);
+  private economyWiring = inject(EconomyWiringService);
   private codexSecrets = inject(CodexSecretsService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
@@ -63,6 +65,18 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
+
+    // The Godforge economy goes first, ahead of progression, because it owns
+    // the XP multiplier that enchantments and artifacts are sold on. XpService
+    // pays out for the landing route synchronously inside `xpWiring.init()`,
+    // so a multiplier installed after it would miss the first award of every
+    // full page load — measurably: a visitor holding the Fragment of the First
+    // Sun was paid 5 XP for the landing page instead of 10.
+    //
+    // It calls `xp.init()` itself before reading the rank, so ordering it here
+    // does not cost progression its own hydration; XpService.init() is
+    // idempotent and the call below is then a no-op.
+    this.economyWiring.init();
 
     // Progression: hydrate XP from localStorage, settle the daily streak and
     // subscribe the ledger to route changes, copies and egg discoveries.

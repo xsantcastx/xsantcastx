@@ -190,6 +190,21 @@ export const EASTER_EGGS: EasterEgg[] = [
   // pays 25 rather than the standard 200: finding the record of every secret is
   // the start of the hunt, not a result of one.
   { id: 'codex-archivist',    name: 'The Archivist',        description: 'Opened the Codex for the first time',                 tool: 'global',                    rarity: 'rare',      icon: '📜', xp: 25 },
+
+  // ── Batch 11: the Godforge economy ─────────────────────────
+  // Eight awarded by the ledger rather than by an input into a tool. They pay
+  // below the standard 200 for the same reason The Archivist does: the Market
+  // is linked from the header and the Forge Flame is on every page, so these
+  // are the record of a habit rather than the result of a hunt. The two that
+  // take five figures of strikes are the exceptions and pay accordingly.
+  { id: 'forge-first-purchase',      name: 'First Purchase',          description: 'Bought anything at all in the Godforge Market',       tool: 'global', rarity: 'common', icon: '🪙',  xp: 25 },
+  { id: 'forge-investor',            name: 'Forge Investor',          description: 'Owned five upgrades across the two ladders',          tool: 'global', rarity: 'rare',   icon: '📈', xp: 50 },
+  { id: 'forge-market-mogul',        name: 'Market Mogul',            description: 'Owned fifteen upgrades across the two ladders',       tool: 'global', rarity: 'epic',   icon: '🏦', xp: 100 },
+  { id: 'forge-artifact-collector',  name: 'Artifact Collector',      description: 'Held three of the five artifacts at once',            tool: 'global', rarity: 'legendary', icon: '💠', xp: 200 },
+  { id: 'forge-complete-collection', name: 'The Complete Collection', description: 'Held every artifact the Market will ever sell',       tool: 'global', rarity: 'legendary', icon: '👑', xp: 500 },
+  { id: 'forge-click-frenzy',        name: 'Click Frenzy',            description: 'Struck the Forge Flame 100 times inside one minute',  tool: 'global', rarity: 'epic',   icon: '🌀', xp: 100 },
+  { id: 'forge-striker',             name: 'Forge Striker',           description: 'Struck the Forge Flame one thousand times',           tool: 'global', rarity: 'epic',   icon: '🔨', xp: 100 },
+  { id: 'forge-obsidian-hammer',     name: 'Obsidian Hammer',         description: 'Struck the Forge Flame ten thousand times',           tool: 'global', rarity: 'legendary', icon: '⚒️', xp: 300 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */

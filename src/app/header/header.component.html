@@ -54,6 +54,10 @@
       📜 Codex
       <span class="nav-codex-badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
     </a>
+    <!-- Mid-row for the same reason the Codex link is: the tail of this row
+         overflows into the EN/ES toggle below ~1440px, so a link appended at
+         the end is unreachable on a 1280px laptop. -->
+    <a routerLink="/market" routerLinkActive="active" class="nav-market-link" (click)="closeMobileMenu()">🪙 Market</a>
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
     <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
@@ -64,6 +68,10 @@
     <!-- Drawer copy of the progression readout. The header row is already at
          ~375px on a small phone, so the navbar instance is hidden below the
          drawer breakpoint and this one takes over. -->
+    <!-- Drawer copies of the wallet and the progression readout. The header row
+         is already at ~375px on a small phone, so the navbar instances are
+         hidden below the drawer breakpoint and these take over. -->
+    <app-currency-rail class="nav-coins nav-coins--drawer"></app-currency-rail>
     <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
   </nav>
 
@@ -73,6 +81,7 @@
        would push LIVE over the language toggle. -->
   <div class="nav-dock">
     <app-quest-trigger class="nav-quests"></app-quest-trigger>
+    <app-currency-rail class="nav-coins"></app-currency-rail>
     <app-xp-bar class="nav-xp"></app-xp-bar>
   </div>
 
