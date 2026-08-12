@@ -24,6 +24,10 @@
       <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
     </div>
 
+    <!-- Quest log trigger. The panel it opens is mounted next to the header,
+         not in it — see QuestDrawerComponent's header comment. -->
+    <app-quest-trigger class="nav-quests--mobile"></app-quest-trigger>
+
     <!-- Hamburger Menu -->
     <button class="hamburger" [class.active]="mobileMenuOpen" (click)="toggleMobileMenu()"
       aria-label="Toggle navigation menu"
@@ -53,6 +57,7 @@
     <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
     <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
     <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
+    <a routerLink="/quests" routerLinkActive="active" class="nav-quests-link" (click)="closeMobileMenu()">Quests</a>
     <a routerLink="/live" routerLinkActive="active" class="nav-live-link" (click)="closeMobileMenu()">
       <span class="nav-live-dot"></span>LIVE
     </a>
@@ -62,8 +67,14 @@
     <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
   </nav>
 
-  <!-- Progression readout — rank, split Aether/Nox bar, streak -->
-  <app-xp-bar class="nav-xp"></app-xp-bar>
+  <!-- Desktop dock: the quest sword and the progression readout, docked under
+       the navbar rather than in it. The nav row has no spare horizontal space
+       at 1280px (see .nav-xp in the stylesheet) — adding a 44px control to it
+       would push LIVE over the language toggle. -->
+  <div class="nav-dock">
+    <app-quest-trigger class="nav-quests"></app-quest-trigger>
+    <app-xp-bar class="nav-xp"></app-xp-bar>
+  </div>
 
   <!-- Desktop Language Toggle -->
   <div class="language-toggle desktop-only">
