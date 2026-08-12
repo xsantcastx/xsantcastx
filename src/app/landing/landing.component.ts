@@ -1,10 +1,22 @@
-import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
+/**
+ * landing.component.ts — /home.
+ *
+ * Four sections: the hero, the five realms, the pulse, the closing call. What
+ * this component used to also own — a shop-counter row, a creed row, a featured
+ * tool spotlight, a "watch AI build" panel, the changelog feed and a newsletter
+ * form — went with those sections. Every one of them was a second source of
+ * truth for something another page already owned, and the state they needed
+ * (a Firestore changelog subscription, a lazy Firestore handle for subscriber
+ * writes, a random spotlight index, a category filter and a search box that no
+ * markup on this page had rendered in months) went with them.
+ *
+ * What is left reads from registries and two progression services and stores
+ * nothing of its own.
+ */
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
-import { LazyFirestoreService } from '../shared/lazy-firestore.service';
-import { ChangelogService, ChangelogDay, ChangelogEntry } from '../changelog.service';
+import { getLiveTools, getFeaturedTools } from '../tools/tools-registry';
 import { Subscription } from 'rxjs';
-import { TOOLS_REGISTRY, getLiveTools, getFeaturedTools, ToolDefinition } from '../tools/tools-registry';
 import { TranslationService } from '../translation.service';
 import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
@@ -12,9 +24,7 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
-import { PROJECTS_LIVE } from '../projects/projects.data';
 import { PRERENDERED_PATHS } from '../prerender-stats';
-import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
 
@@ -54,27 +64,20 @@ export const FORGE_STATION_SIZE = 6;
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [FormsModule, RouterModule, AdsenseComponent]
+  imports: [RouterModule, AdsenseComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly doc = inject(DOCUMENT);
-  private lazyFirestore = inject(LazyFirestoreService);
-  private router = inject(Router);
-  private changelogService = inject(ChangelogService);
   private translationService = inject(TranslationService);
   private readonly xpService = inject(XpService);
   private readonly economyService = inject(EconomyService);
-  private changelogSub?: Subscription;
   private xpSub?: Subscription;
   private ecoSub?: Subscription;
 
   translate(key: string): string {
     return this.translationService.translate(key);
   }
-
-  changelogDays: ChangelogDay[] = [];
-  changelogLoading = true;
 
   /**
    * Progression, for the hero welcome and the closing call.
@@ -88,14 +91,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Exposed for the hero + journey rank sigils. */
   readonly rankSigil = rankSigil;
 
-  activeCategory = 'All';
-  searchQuery = '';
-  spotlightIndex = 0;
-  subscribeEmail = '';
-  subscribeStatus: 'idle' | 'loading' | 'success' | 'error' = 'idle';
-
-  readonly categories = ['All', 'CSS Tools', 'Email Tools', 'Security Tools', 'Code Converters', 'Productivity'];
-
   /** Derive landing-page Tool view models from the single registry source of truth */
   readonly tools: Tool[] = getLiveTools().map(t => ({
     id: t.id,
@@ -107,9 +102,6 @@ export class LandingComponent implements OnInit, OnDestroy {
     features: t.features,
     tags: t.tags,
   }));
-
-  /** Latest 8 tools for homepage showcase — most recently added (last in registry) */
-  readonly latestTools: Tool[] = this.tools.slice(-8).reverse();
 
   /** Featured tools, for the recommendation in the closing call. */
   private readonly featuredTools: Tool[] = getFeaturedTools().map(t => ({
@@ -165,9 +157,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Realms in the codex. */
   readonly realmCount = REALMS.length;
 
-  /** Shipped projects, counted from the same array the /projects page renders. */
-  readonly projectsLive = PROJECTS_LIVE;
-
   /**
    * Wallet, for the hero's standing panel. Seeded from the service's current
    * value so the server renders a coherent zero state during prerender; the
@@ -180,62 +169,9 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** The XP the next rank begins at, for the "1,364 / 2,500" readout. */
   get xpTarget(): number { return this.xp.next ? this.xp.next.minXp : this.xp.xp; }
 
-  /**
-   * The five counters of the forge, from the concept's shop sheet.
-   *
-   * Gold, Essence and the two cosmetic counters all resolve to the Market,
-   * which is where every one of them is actually spent — it has five tabs
-   * over one ledger. The Relic Forge has no tab and no Relic Dust ledger
-   * anywhere in the app, so it is marked sealed rather than given a link
-   * that lands on a page with nothing to buy.
-   */
-  readonly counters: ReadonlyArray<{
-    id: string;
-    nameKey: string;
-    subKey: string;
-    route: string | null;
-    icon: string;
-  }> = [
-    { id: 'gold',    nameKey: 'godforge.shop.gold',    subKey: 'godforge.shop.goldSub',    route: '/market', icon: 'assets/icons/shops/gold-shop.png' },
-    { id: 'essence', nameKey: 'godforge.shop.essence', subKey: 'godforge.shop.essenceSub', route: '/market', icon: 'assets/icons/shops/essence-shop.png' },
-    { id: 'aether',  nameKey: 'godforge.shop.aether',  subKey: 'godforge.shop.aetherSub',  route: '/market', icon: 'assets/icons/shops/aether-shop.png' },
-    { id: 'nox',     nameKey: 'godforge.shop.nox',     subKey: 'godforge.shop.noxSub',     route: '/market', icon: 'assets/icons/shops/nox-shop.png' },
-    { id: 'relic',   nameKey: 'godforge.shop.relic',   subKey: 'godforge.shop.relicSub',   route: null,      icon: 'assets/icons/shops/relic-forge.png' }
-  ];
-
-  /** The three promises, from the concept's value-prop row. */
-  readonly creeds: ReadonlyArray<{ id: string; titleKey: string; lineKey: string }> = [
-    { id: 'tools',     titleKey: 'godforge.creed.toolsTitle',     lineKey: 'godforge.creed.toolsLine' },
-    { id: 'impact',    titleKey: 'godforge.creed.impactTitle',    lineKey: 'godforge.creed.impactLine' },
-    { id: 'community', titleKey: 'godforge.creed.communityTitle', lineKey: 'godforge.creed.communityLine' }
-  ];
-
-  get filteredTools(): Tool[] {
-    const q = this.searchQuery.toLowerCase();
-    return this.tools.filter(t => {
-      const matchCat = this.activeCategory === 'All' || t.category === this.activeCategory;
-      const matchQ = !q || t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
-      return matchCat && matchQ;
-    });
-  }
-
-  get spotlightTool(): Tool {
-    return this.tools[this.spotlightIndex];
-  }
-
   ngOnInit(): void {
     this.addHeroPreloads();
     this.markArtRoute(true);
-    this.spotlightIndex = Math.floor(Math.random() * this.tools.length);
-    this.changelogSub = this.changelogService.getGroupedChangelog().subscribe({
-      next: (days) => {
-        this.changelogDays = days;
-        this.changelogLoading = false;
-      },
-      error: () => {
-        this.changelogLoading = false;
-      }
-    });
 
     // No-ops on the server; on the client this reads stored progress and
     // settles the daily streak, then pushes the real rank into the hero.
@@ -315,36 +251,19 @@ export class LandingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.removeHeroPreloads();
     this.markArtRoute(false);
-    this.changelogSub?.unsubscribe();
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
   }
 
   // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
-  // on change detection. Critical for the tool grid + changelog where the
-  // arrays are stable but the parent component re-renders frequently.
+  // on change detection. Critical for the tool grid where the arrays are stable
+  // but the parent component re-renders frequently.
   trackToolById(_index: number, tool: Tool): string {
     return tool.id;
   }
 
   trackStation(_index: number, station: ForgeStation): string {
     return station.realm.id;
-  }
-
-  trackChangelogDay(_index: number, day: ChangelogDay): string {
-    return day.dateLabel;
-  }
-
-  trackChangelogEntry(index: number, entry: { title: string }): string {
-    return `${index}-${entry.title}`;
-  }
-
-  trackFeature(index: number, feature: string): string {
-    return `${index}-${feature}`;
-  }
-
-  toggleChangelogDay(day: ChangelogDay): void {
-    day.expanded = !day.expanded;
   }
 
   // ─── The Forges ───────────────────────────────────────────────────────
@@ -386,9 +305,8 @@ export class LandingComponent implements OnInit, OnDestroy {
    * Where "Enter the Forge" goes. Scrolls rather than routes: the forges are
    * on this page, and a hash jump would fight the scroll-reveal observer.
    *
-   * The target id is "services", not "forges" — the header keys its nav
-   * scrolling and active-link state off a fixed id list, so the section
-   * keeps that anchor even though nothing calls it Services any more.
+   * The target id is "services", not "forges" — historical, and kept because
+   * the anchor is linked from outside this component.
    */
   enterTheForge(): void {
     if (!this.isBrowser) return;
@@ -407,77 +325,5 @@ export class LandingComponent implements OnInit, OnDestroy {
     return this.featuredTools.find(t => !this.xpService.hasUsedTool(t.id))
       ?? this.featuredTools[0]
       ?? this.tools[0];
-  }
-
-  // ─── The Chronicle ────────────────────────────────────────────────────
-
-  /**
-   * The realm a changelog entry touched, or null when it touched none.
-   *
-   * Derived by looking for a registry tool named in the entry, which is a real
-   * signal — entries about a specific tool say its name. Entries about the
-   * platform itself (a build fix, an SEO pass) legitimately match nothing and
-   * get no realm badge rather than an invented one.
-   */
-  realmForEntry(entry: ChangelogEntry): RealmDefinition | null {
-    const haystack = `${entry.title} ${entry.details}`.toLowerCase();
-    const hit = TOOLS_REGISTRY.find(t =>
-      haystack.includes(t.title.toLowerCase()) || haystack.includes(t.id.toLowerCase())
-    );
-    return hit ? realmForCategory(hit.category) : null;
-  }
-
-  @HostListener('document:keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent): void {
-    if (!this.isBrowser) return;
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      this.focusSearch();
-    }
-  }
-
-  setCategory(cat: string): void {
-    this.activeCategory = cat;
-    this.searchQuery = '';
-  }
-
-  focusSearch(): void {
-    if (!this.isBrowser) return;
-    const el = document.getElementById('tool-search-input') as HTMLInputElement | null;
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => el.focus(), 380);
-    }
-  }
-
-  async onSubscribe(): Promise<void> {
-    // RFC 5322 lite — tight enough to reject "foo@", loose enough to accept
-    // weird-but-valid corporate emails. Mirrors the firestore.rules regex so
-    // a request that passes here can't fail server-side just for syntax.
-    const email = (this.subscribeEmail || '').trim();
-    const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && email.length >= 5 && email.length <= 254;
-    if (!valid) {
-      this.subscribeStatus = 'error';
-      return;
-    }
-    this.subscribeStatus = 'loading';
-    try {
-      const handle = await this.lazyFirestore.get();
-      if (!handle) {
-        this.subscribeStatus = 'error';
-        return;
-      }
-      const { db, api } = handle;
-      const col = api.collection(db, 'homepage_subscribers');
-      await api.addDoc(col, {
-        email: email,
-        subscribedAt: new Date().toISOString(),
-        source: 'homepage_footer_cta'
-      });
-      this.subscribeStatus = 'success';
-      this.subscribeEmail = '';
-    } catch {
-      this.subscribeStatus = 'error';
-    }
   }
 }

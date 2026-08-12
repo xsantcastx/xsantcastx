@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.39.0',
+  version: '2.40.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Three Layers',
+  codename: 'Lean',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,20 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.40.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The command bar carries five halls instead of seven: Realms, Arena, Codex, War Table, Market. HOME went because the wordmark beside it already goes there, GAMES because that is what the Arena is under an older name, and MCP because it is one landing page for a different audience',
+      'Nothing from the old portfolio site is reachable from the primary nav any more — Services, Projects, About, Contact, Live and Donate are all out of the bar and out of the tome\'s main list. Every one of them keeps its route and is linked from the footer, so nothing became unreachable',
+      'The tome is two sections instead of three: the same five halls as the bar plus your own sheet, then a MORE group holding the three old surfaces that still have real routes. ABOUT is absent rather than shipped as a link to the 404 page, because there is no about route to point it at',
+      'The homepage is four sections and the footer: the hero, the five realms, the pulse, the closing call. The shop counters, the creed row, the featured-tool spotlight, the "watch AI build" panel, the changelog feed and the newsletter form are gone from it — six screens of persuasion stood between a visitor and the tools',
+      'The chronicle moved to /blueprint, which is the page about what is being built, and the newsletter moved to the tool pages, where somebody has just got value out of one. Neither was deleted; both were taken off the front door',
+      'Cloud save is reachable. The profile sheet said "Cloud save is not open yet" while CloudSaveService was signing in with Google, binding the uid, merging blobs and pushing on a timer — the message was true when it was written and had been false for a release. The only thing missing was a mounted button: the component that held it was the XP bar, which is not rendered anywhere in the app',
+      '1,200 lines of stylesheet went with the deleted sections, and the audit that follows any CSS cut of that size found no @keyframes reference left pointing at a rule that no longer exists'
+    ]
+  },
   {
     version: '2.39.0',
     codename: 'Three Layers',

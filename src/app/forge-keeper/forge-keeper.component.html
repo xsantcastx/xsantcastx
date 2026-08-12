@@ -104,23 +104,16 @@
       </dl>
 
       <!--
-        Honest about where progression lives. There is no sign-in to offer: the
-        Firestore adapter behind ProgressStorageService is an inert Phase 2 stub,
-        so a "Sign in to save across devices" button would be a button that does
-        nothing. The sheet says what is true instead.
+        Cloud save, live. The note that used to sit here said "Cloud save is not
+        open yet" and was written when the Firestore adapter behind
+        ProgressStorageService really was an inert stub. It is not: CloudSaveService
+        signs in with Google (popup, falling back to redirect), binds the uid,
+        merges the local blobs against the remote ones and pushes on a timer. The
+        only reason the visitor could not reach any of it is that the one component
+        that mounted the button — the XP bar — is not rendered anywhere in the app.
+        So the button is mounted here, on the sheet the message was on.
       -->
-      @if (isCloudSaved) {
-        <p class="fk-id__save fk-id__save--cloud">
-          <span aria-hidden="true">☁</span>
-          This Forge follows you across devices.
-        </p>
-      } @else {
-        <p class="fk-id__save">
-          <span aria-hidden="true">🔒</span>
-          This Forge lives in this browser. Cloud save is not open yet — clear your
-          site data and the Convergent starts over.
-        </p>
-      }
+      <app-cloud-save-button></app-cloud-save-button>
     </div>
   </section>
 
