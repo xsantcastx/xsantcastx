@@ -171,6 +171,15 @@ export const EGG_HINTS: Record<string, string> = {
   // ── Nexus — messages, and whether they arrive ─────────────────────────────
   'email-santa': 'Test delivery to the one address every child already knows by heart.',
   'gmail-self': 'Check whether your own mail arrives before you check anyone else\'s.',
+
+  // ── The Ambient Forge — presence, not pursuit ─────────────────────────────
+  'idle-patient-one': 'The flame gives to whoever is still watching it. A hundred of anything is a start.',
+  'idle-forge-meditation': 'Half an hour. Do not look away, and do not go anywhere.',
+  'idle-vigil': 'Five hundred, gathered a minute at a time. There is no faster road to it.',
+  'idle-eternal-flame': 'Two thousand. At this rate that is a season of afternoons.',
+  'idle-never-sleeps': 'Be watching when one day becomes the next.',
+  'idle-forge-striker': 'A thousand blows. The flame counts every one.',
+  'idle-obsidian-hammer': 'Ten thousand. Nobody arrives here by accident.',
 };
 
 /**
