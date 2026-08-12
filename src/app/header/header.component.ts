@@ -16,6 +16,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
+import { EASTER_EGGS, EasterEggService } from '../shared/easter-eggs/easter-egg.service';
 
 @Component({
   selector: 'app-header',
@@ -61,6 +62,16 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   mobileMenuOpen = false;
   currentSection = 'hero';
 
+  /**
+   * Codex nav badge: fragments found over fragments that exist.
+   *
+   * Starts at zero on both server and client so the header's first frame matches
+   * the prerendered HTML; the real count lands after `init()` resolves, which is
+   * a microtask later and therefore after hydration.
+   */
+  codexFound = 0;
+  readonly codexTotal = EASTER_EGGS.length;
+
   readonly inspirationWords: string[] = [
     'innovate',
     'iterate',
@@ -77,6 +88,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   wordSwapToggle = false;
   private lastWordChangeProgress = 0;
   private readonly wordChangeThreshold = 6;
+
+  private eggs = inject(EasterEggService);
 
   constructor(
     private elRef: ElementRef,
@@ -103,6 +116,16 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.routerSub = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(() => this.closeMobileMenu());
+
+    // Codex badge. Read once — the count only moves on a discovery, and a
+    // discovery already interrupts the page with a drop toast, so a live
+    // subscription here would buy a number nobody is looking at.
+    if (this.isBrowser) {
+      void this.eggs.init().then(() => {
+        this.codexFound = this.eggs.foundCount;
+        this.cdr.markForCheck();
+      });
+    }
   }
 
   ngAfterViewInit(): void {

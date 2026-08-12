@@ -11,8 +11,9 @@ import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { XpService } from './xp.service';
+import { ToolMasteryService } from './tool-mastery.service';
 import { energyForCategory } from './gamification.model';
-import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import { EASTER_EGGS, EasterEggService } from '../easter-eggs/easter-egg.service';
 import { TOOLS_REGISTRY } from '../../tools/tools-registry';
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,7 @@ export class XpWiringService {
   private readonly zone = inject(NgZone);
   private readonly xp = inject(XpService);
   private readonly eggs = inject(EasterEggService);
+  private readonly mastery = inject(ToolMasteryService);
 
   private started = false;
   /** Routes already paid for this session — a page visit earns XP once. */
@@ -35,6 +37,9 @@ export class XpWiringService {
     this.started = true;
 
     this.xp.init();
+    // Everyone who used the site before the Bestiary existed still gets credit
+    // for the tools the XP ledger already knows they opened.
+    this.mastery.backfill(this.xp.toolsUsed);
 
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
@@ -49,9 +54,13 @@ export class XpWiringService {
       document.addEventListener('copy', () => this.onCopy(), { passive: true });
     });
 
+    // An egg may override the standard award (see `EasterEgg.xp`), so read the
+    // registry rather than assuming every discovery is worth the same.
     this.eggs.discovery$
       .pipe(filter(d => !!d && d.isNew))
-      .subscribe(() => this.xp.award('easter-egg'));
+      .subscribe(d => this.xp.award('easter-egg', {
+        amount: EASTER_EGGS.find(e => e.id === d!.egg.id)?.xp,
+      }));
   }
 
   /** Called by share buttons. Public so a component can pay out explicitly. */
@@ -81,6 +90,11 @@ export class XpWiringService {
         toolId: tool.id,
         energy: energyForCategory(tool.category),
       });
+      // Mastery counts every navigation, unlike XP which pays once — the
+      // Bestiary is measuring habit, not discovery, so coming back to a tool is
+      // the whole point. It buys nothing but a star, so there is no reason to
+      // rate-limit it the way the XP faucet is rate-limited.
+      this.mastery.record(tool.id);
     }
   }
 

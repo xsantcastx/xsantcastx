@@ -8,6 +8,8 @@ import {
   rarityOf,
   tierForEgg,
 } from '../shared/rarity/rarity.model';
+import { ARENA_PLAYABLE, formatScore, playableById } from './games/arena-game.model';
+import { ArenaScoresService } from './games/arena-scores.service';
 
 export interface ArenaGame {
   id: string;
@@ -19,6 +21,16 @@ export interface ArenaGame {
   unlockHint: string;
   locked: boolean;
   /**
+   * Where "Enter" leads, or null for a gate that is still flavour text. The
+   * distinction is drawn on the card: an unplayable gate says so rather than
+   * offering a button that does nothing.
+   */
+  route: string | null;
+  /** Formatted personal best, empty when the gate has never been finished. */
+  bestLabel: string;
+  /** True for a playable gate the visitor has never finished — the NEW badge. */
+  isNew: boolean;
+  /**
    * Derived, never authored: a game inherits the tier of the egg that unlocks
    * it. That way the ladder means one thing across the whole site — a red
    * border on an arena card and a red drop toast are the same claim.
@@ -27,8 +39,8 @@ export interface ArenaGame {
   rarity: RarityDefinition;
 }
 
-/** The registry, before tiers are resolved from the egg ladder. */
-type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity'>;
+/** The registry, before tiers and progress are resolved. */
+type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLabel' | 'isNew'>;
 
 @Component({
   selector: 'app-arena',
@@ -44,7 +56,22 @@ export class ArenaComponent implements OnInit {
   totalEggs = EASTER_EGGS.length;
   foundCount = 0;
 
+  private readonly scores = inject(ArenaScoresService);
+
+  /**
+   * The playable gates come first. Every entry in `ARENA_PLAYABLE` leads to a
+   * real game; the ones after it are still flavour, and the card says so rather
+   * than offering an "Enter" that goes nowhere.
+   */
   private readonly seeds: GameSeed[] = [
+    ...ARENA_PLAYABLE.map(g => ({
+      id: g.id,
+      title: g.title,
+      description: g.description,
+      icon: g.icon,
+      unlockEggId: g.unlockEggId,
+      unlockHint: g.unlockHint,
+    })),
     {
       id: 'shadow-puzzle',
       title: 'Shadow Puzzle',
@@ -76,14 +103,6 @@ export class ArenaComponent implements OnInit {
       icon: '🎰',
       unlockEggId: 'uuid-lucky',
       unlockHint: 'Generate a UUID starting with "000" in the UUID Generator',
-    },
-    {
-      id: 'color-memory',
-      title: 'Color Memory',
-      description: 'Match hex colors to their names from memory. Progressively harder palettes.',
-      icon: '🎨',
-      unlockEggId: 'color-void',
-      unlockHint: 'Convert pure black #000000 in the Color Converter',
     },
     {
       id: 'chmod-chess',
@@ -122,20 +141,46 @@ export class ArenaComponent implements OnInit {
       seed.unlockEggId,
       EASTER_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
     );
-    return { ...seed, locked: true, tier, rarity: rarityOf(tier) };
+    return {
+      ...seed,
+      locked: true,
+      tier,
+      rarity: rarityOf(tier),
+      route: playableById(seed.id)?.route ?? null,
+      // Filled in on hydration. The server has no ledger to read, so a
+      // prerendered card shows no score and no badge rather than a wrong one.
+      bestLabel: '',
+      isNew: false,
+    };
   });
 
   async ngOnInit(): Promise<void> {
     if (!this.isBrowser) return;
+    this.scores.init();
     await this.eggs.init();
     this.foundCount = this.eggs.foundCount;
+
     for (const game of this.games) {
       game.locked = !this.eggs.isFound(game.unlockEggId);
-      // The Arena Champion quest counts gates you have opened. The gates are
-      // not yet playable, so "opened" is the honest signal available — and it
-      // is the one the quest's own wording promises.
-      if (!game.locked) this.quests.recordArenaGame(game.id);
+
+      const playable = playableById(game.id);
+      if (!playable) continue;
+      const best = this.scores.best(game.id);
+      game.bestLabel = best > 0 ? formatScore(playable.scoreKind, best) : '';
+      // NEW means never finished a run — and only worth saying on a gate the
+      // visitor can actually walk through.
+      game.isNew = !game.locked && this.scores.isNew(game.id);
+
+      // The Arena Champion quest asks for three games *played*. Now that the
+      // gates lead somewhere, a cleared run is a real signal and the quest no
+      // longer has to settle for counting gates that were merely unlocked.
+      if (this.scores.hasCleared(game.id)) this.quests.recordArenaGame(game.id);
     }
+  }
+
+  /** Playable gates, for the count in the hero. */
+  get playableCount(): number {
+    return this.games.filter(g => g.route).length;
   }
 
   get unlockedCount(): number {

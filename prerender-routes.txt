@@ -8,6 +8,7 @@
 /blueprint
 /quests
 /sponsors
+/codex
 /tools
 /tools/box-shadow-generator
 /tools/char-map
@@ -192,6 +193,11 @@
 /embed/image-resizer
 /mcp
 /arena
+/arena/color-memory
+/arena/realm-rush
+/arena/shadow-cipher
+/arena/forge-strike
+/arena/convergents-path
 /tools/gradient-text
 /embed/gradient-text
 /tools/hex-editor

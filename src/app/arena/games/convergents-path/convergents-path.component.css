@@ -1,0 +1,145 @@
+/* The Convergent's Path — board, balance meter, movement pad. */
+
+.cp-energies {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.cp-energies__item--aether { color: #C9A84C; }
+.cp-energies__item--nox    { color: #a48bff; }
+.cp-energies__item--exit   { color: #4dffe0; }
+
+.cp-controls-note { font-size: 0.8rem; margin-bottom: 1.4rem; }
+
+/* ── balance meter ────────────────────────────────────────── */
+
+.cp-balance {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 34rem;
+  margin: 0 auto 0.85rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--ag-line);
+  border-radius: 999px;
+  background: var(--ag-panel);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cp-balance--edge {
+  border-color: rgba(255, 45, 77, 0.6);
+  box-shadow: 0 0 24px -8px rgba(255, 45, 77, 0.9);
+}
+
+.cp-balance__end {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cp-balance__end--nox    { color: #a48bff; }
+.cp-balance__end--aether { color: #C9A84C; }
+
+.cp-balance__track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #a48bff, rgba(255, 255, 255, 0.18) 50%, #C9A84C);
+  opacity: 0.85;
+}
+
+.cp-balance__centre {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+}
+
+.cp-balance__needle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #eafff9;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+  transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── board ────────────────────────────────────────────────── */
+
+.cp-board {
+  margin: 0 auto;
+  width: min(100%, 30rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--ag-line);
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 60% at 85% 85%, rgba(0, 255, 204, 0.10), transparent 70%),
+    radial-gradient(ellipse 60% 60% at 15% 15%, rgba(140, 110, 255, 0.10), transparent 70%),
+    linear-gradient(160deg, rgba(10, 15, 30, 0.9), rgba(6, 9, 20, 0.95));
+}
+
+.cp-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Swipes drive the walker; without this the page pans instead. */
+  touch-action: none;
+}
+
+/* ── movement pad ─────────────────────────────────────────── */
+
+.cp-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(2, 52px);
+  gap: 0.35rem;
+  justify-content: center;
+  margin: 1rem auto 0;
+}
+
+.cp-pad__btn {
+  min-width: 52px;
+  min-height: 52px;
+  border: 1px solid var(--ag-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ag-text);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cp-pad__btn:hover, .cp-pad__btn:focus-visible {
+  border-color: rgba(0, 255, 204, 0.5);
+  background: rgba(0, 255, 204, 0.1);
+}
+.cp-pad__btn:active { background: rgba(0, 255, 204, 0.18); }
+
+.cp-pad__btn--up    { grid-column: 2; grid-row: 1; }
+.cp-pad__btn--left  { grid-column: 1; grid-row: 2; }
+.cp-pad__btn--down  { grid-column: 2; grid-row: 2; }
+.cp-pad__btn--right { grid-column: 3; grid-row: 2; }
+
+.cp-pb { color: var(--ag-cyan); font-size: 0.85rem; }
+.cp-scaled { font-weight: 400; font-size: 0.78rem; opacity: 0.75; }
+.ag-end__line--muted { font-size: 0.82rem; opacity: 0.8; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-balance__needle { transition: none; }
+}
