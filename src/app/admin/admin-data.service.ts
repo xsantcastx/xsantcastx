@@ -9,6 +9,7 @@ import { catchError } from 'rxjs/operators';
 
 import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { CACHE_TTL, FirestoreCacheService } from '../shared/firestore-cache.service';
 
 /**
  * Every panel on the dashboard is one of these. `state` is what the template
@@ -94,10 +95,44 @@ const GITHUB_REPO = 'xsantcastx/xsantcastx';
  * something useful even when half its sources are unreachable, so every read
  * here resolves rather than rejects.
  */
+/** Prefix every cached admin panel shares, so one call can drop them all. */
+const ADMIN_CACHE_PREFIX = 'admin/';
+
 @Injectable()
 export class AdminDataService {
   private firestore = inject(Firestore);
+  private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  /**
+   * Read a panel through the five-minute cache.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THE DASHBOARD IS THE WORST OFFENDER PER LOAD
+   * ───────────────────────────────────────────────────────────────────────────
+   * Two of these panels are whole-collection scans: every tool-usage counter and
+   * every easter egg. There is no `limit` that would help, because the panels
+   * are totals — they have to see every document to add them up. One dashboard
+   * open is therefore several hundred reads, and it used to be several hundred
+   * reads *per render*.
+   *
+   * Five minutes, with a Refresh button next to the timestamp, is the shape that
+   * fits: the numbers move slowly, the person reading them knows when they want
+   * a fresh one, and nothing here is a figure anybody acts on within the minute.
+   */
+  private cached<T>(key: string, loader: () => Promise<T>, force = false): Promise<T> {
+    return this.cache.through(ADMIN_CACHE_PREFIX + key, CACHE_TTL.admin, loader, { force });
+  }
+
+  /** Drop every cached panel, so the next load is live. Drives the Refresh button. */
+  bustCache(): void {
+    this.cache.bustPrefix(ADMIN_CACHE_PREFIX);
+  }
+
+  /** When the oldest cached panel was read, for the "last updated" line. */
+  cachedAt(): number | null {
+    return this.cache.writtenAt(ADMIN_CACHE_PREFIX + 'tool-usage');
+  }
 
   /** True for the failure modes we treat as "not wired up yet", not as bugs. */
   private isExpectedFailure(err: any): boolean {
@@ -148,11 +183,13 @@ export class AdminDataService {
    * Site-wide visit count. Written by VisitCounterService on every page view,
    * publicly readable, so this is a genuine number rather than an estimate.
    */
-  async totalVisits(): Promise<number | null> {
+  async totalVisits(force = false): Promise<number | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('visits', async () => {
       const snap = await getDoc(doc(this.firestore, 'site-stats', 'visits'));
       return snap.exists() ? (snap.data()['count'] ?? 0) : 0;
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'totalVisits');
     }
@@ -164,9 +201,10 @@ export class AdminDataService {
    * older than five minutes is treated as gone. This is the closest thing to a
    * real "active users now" the site has without GA4.
    */
-  async activeViewers(): Promise<number | null> {
+  async activeViewers(force = false): Promise<number | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('active-viewers', async () => {
       const snap = await getDocs(collection(this.firestore, 'live-viewers'));
       const cutoff = Date.now() - 5 * 60 * 1000;
       let live = 0;
@@ -178,6 +216,7 @@ export class AdminDataService {
         if (ms >= cutoff) live++;
       });
       return live;
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'activeViewers');
     }
@@ -188,9 +227,10 @@ export class AdminDataService {
    * titles rather than slugs. Counters are session-deduped by ToolUsageService,
    * so one row is roughly one session that opened that tool.
    */
-  async toolUsage(): Promise<ToolUsageRow[] | null> {
+  async toolUsage(force = false): Promise<ToolUsageRow[] | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('tool-usage', async () => {
       const snap = await getDocs(collection(this.firestore, 'tool-usage'));
       const byId = new Map(TOOLS_REGISTRY.map(t => [t.id, t]));
       const rows: ToolUsageRow[] = [];
@@ -204,6 +244,7 @@ export class AdminDataService {
         });
       });
       return rows.sort((a, b) => b.count - a.count);
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'toolUsage');
     }
@@ -214,9 +255,10 @@ export class AdminDataService {
    * eggs nobody has found still appear (at zero) — the interesting number is
    * which eggs are undiscoverable, and those have no Firestore doc at all.
    */
-  async eggDiscoveries(): Promise<EggRow[] | null> {
+  async eggDiscoveries(force = false): Promise<EggRow[] | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('egg-discoveries', async () => {
       const snap = await getDocs(collection(this.firestore, 'easter-eggs'));
       const counts = new Map<string, number>();
       snap.forEach(d => counts.set(d.id, d.data()['discoveries'] ?? 0));
@@ -227,6 +269,7 @@ export class AdminDataService {
         rarity: egg.rarity,
         discoveries: counts.get(egg.id) ?? 0
       })).sort((a, b) => b.discoveries - a.discoveries);
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'eggDiscoveries');
     }
@@ -236,9 +279,10 @@ export class AdminDataService {
    * Tool suggestions from /blueprint. Admin-only in firestore.rules — an
    * empty array here on a wrong-email session is the rules doing their job.
    */
-  async suggestions(): Promise<Suggestion[] | null> {
+  async suggestions(force = false): Promise<Suggestion[] | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('suggestions', async () => {
       const q = query(
         collection(this.firestore, 'blueprint-suggestions'),
         orderBy('submittedAt', 'desc'),
@@ -246,6 +290,7 @@ export class AdminDataService {
       );
       const snap = await getDocs(q);
       return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Suggestion[];
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'suggestions');
     }
@@ -268,10 +313,25 @@ export class AdminDataService {
    * a project where nothing has been pushed to it this is legitimately empty
    * rather than broken.
    */
-  recentChangelog(): Observable<any[]> {
+  recentChangelog(force = false): Observable<any[]> {
     if (!this.isBrowser) return of([]);
-    const q = query(collection(this.firestore, 'changelog'), orderBy('date', 'desc'), limit(10));
-    return collectionData(q, { idField: 'id' }).pipe(
+    // `collectionData` opens a standing listener, which on a dashboard left open
+    // in a tab re-bills for every write to the collection for as long as it sits
+    // there. Nothing on this card needs to move without the Refresh button.
+    return this.cache.read$(ADMIN_CACHE_PREFIX + 'changelog', CACHE_TTL.admin, async () => {
+      const q = query(collection(this.firestore, 'changelog'), orderBy('date', 'desc'), limit(10));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => {
+        const data = d.data() as Record<string, any>;
+        return {
+          id: d.id,
+          ...data,
+          // Timestamps do not survive the cache's JSON; flatten to ISO so the
+          // card renders the same value on a hit as on a miss.
+          date: data['date']?.toDate?.().toISOString() ?? data['date'] ?? null,
+        };
+      });
+    }, { force }).pipe(
       catchError(err => of(this.degrade(err, [], 'recentChangelog')))
     );
   }
@@ -280,9 +340,10 @@ export class AdminDataService {
    * Activity written by the Claude Code hook that powers /live. Doubles as a
    * build-pulse indicator: if the newest entry is hours old, nothing is running.
    */
-  async lastActivityAt(): Promise<string | null> {
+  async lastActivityAt(force = false): Promise<string | null> {
     if (!this.isBrowser) return null;
     try {
+      return await this.cached('last-activity', async () => {
       const q = query(collection(this.firestore, 'claude-activity'), orderBy('timestamp', 'desc'), limit(1));
       const snap = await getDocs(q);
       if (snap.empty) return null;
@@ -290,6 +351,7 @@ export class AdminDataService {
       if (typeof ts === 'string') return ts;
       if (typeof ts === 'number') return new Date(ts).toISOString();
       return ts?.toDate?.().toISOString() ?? null;
+      }, force);
     } catch (err) {
       return this.degrade(err, null, 'lastActivityAt');
     }

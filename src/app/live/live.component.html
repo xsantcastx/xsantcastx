@@ -17,6 +17,15 @@
       <p class="broadcast-subtitle">Claude AI &mdash; Mission Control</p>
     </div>
     <div class="broadcast-right">
+      <!-- The feed suspends itself on a hidden tab or after a quarter hour
+           untouched. Saying so is the difference between a paused stream and a
+           broken one; any click, key or scroll brings it straight back. -->
+      @if (paused) {
+        <div class="feed-paused" role="status">
+          <span class="feed-paused__dot" aria-hidden="true"></span>
+          <span>Feed paused &mdash; interact to resume</span>
+        </div>
+      }
       <!-- Viewer count -->
       <div class="viewer-count">
         <span class="viewer-eye">&#128065;</span>

@@ -1319,3 +1319,39 @@
     padding-top: 0;
   }
 }
+
+/* ── Suspended feed ────────────────────────────────────────────────────────
+   Shown when the tab is hidden or the page has sat untouched for a quarter
+   hour and polling has stopped. Amber rather than red: nothing is wrong. */
+.feed-paused {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 198, 105, 0.3);
+  background: rgba(255, 198, 105, 0.08);
+  color: #ffc669;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.feed-paused__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: #ffc669;
+  box-shadow: 0 0 8px rgba(255, 198, 105, 0.8);
+  animation: feedPausedBreathe 2.4s ease-in-out infinite;
+}
+
+@keyframes feedPausedBreathe {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-paused__dot { animation: none; opacity: 1; }
+}

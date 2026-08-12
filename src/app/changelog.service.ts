@@ -1,7 +1,9 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { LazyFirestoreService } from './shared/lazy-firestore.service';
+import { CACHE_TTL, FirestoreCacheService } from './shared/firestore-cache.service';
 import { whenAppCheckReady } from './app-check.bootstrap';
 
 export interface ChangelogEntry {
@@ -24,52 +26,62 @@ export interface ChangelogDay {
 @Injectable({ providedIn: 'root' })
 export class ChangelogService {
   private lazyFirestore = inject(LazyFirestoreService);
+  private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
+  /**
+   * The dev log, grouped by day.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS IS NO LONGER A LIVE LISTENER
+   * ───────────────────────────────────────────────────────────────────────────
+   * This was an `onSnapshot` over `orderBy(date desc).limit(50)`. Attaching one
+   * bills fifty document reads before it has told you anything, and it re-bills
+   * for every document that changes for as long as the page is open — for a
+   * changelog, which by construction changes when its author ships something,
+   * not while somebody is reading it. Nobody has ever needed this page to update
+   * under them mid-visit.
+   *
+   * A one-shot read behind an hour-long cache gets the same content, costs those
+   * fifty reads roughly once an hour per visitor instead of once per page view,
+   * and drops a standing listener that had to be torn down correctly.
+   *
+   * The limit came down to 20 as well: the template groups by day and shows the
+   * most recent, so entries past the first couple of weeks were being paid for
+   * and then never rendered.
+   */
   getGroupedChangelog(): Observable<ChangelogDay[]> {
     if (!this.isBrowser) {
       return of([]);
     }
 
-    return new Observable<ChangelogDay[]>(observer => {
-      let unsubscribe: (() => void) | null = null;
-      let torndown = false;
-
+    return this.cache.read$('changelog/recent', CACHE_TTL.changelog, async () => {
       // App Check initializes on idle now rather than at bootstrap (see
-      // app-check.bootstrap.ts), and this read fires from the landing page's
-      // ngOnInit. Waiting for App Check keeps the query token-bearing if
-      // enforcement is ever switched on in the Firebase console; the changelog
-      // renders below the fold, so the delay is not user-visible. The Firestore
-      // SDK itself is fetched on demand — see shared/lazy-firestore.service.ts.
-      Promise.all([whenAppCheckReady(), this.lazyFirestore.get()])
-        .then(([, handle]) => {
-          if (!handle || torndown) return;
-          const { db, api } = handle;
+      // app-check.bootstrap.ts), and this read fires from a page's ngOnInit.
+      // Waiting for App Check keeps the query token-bearing if enforcement is
+      // ever switched on in the Firebase console; the changelog renders below
+      // the fold, so the delay is not user-visible. The Firestore SDK itself is
+      // fetched on demand — see shared/lazy-firestore.service.ts.
+      const [, handle] = await Promise.all([whenAppCheckReady(), this.lazyFirestore.get()]);
+      if (!handle) return [];
+      const { db, api } = handle;
 
-          const q = api.query(
-            api.collection(db, 'changelog'),
-            api.orderBy('date', 'desc'),
-            api.limit(50)
-          );
+      const q = api.query(
+        api.collection(db, 'changelog'),
+        api.orderBy('date', 'desc'),
+        api.limit(20),
+      );
+      const snap = await api.getDocs(q);
 
-          // Raw-SDK snapshot callbacks fire outside the Angular zone; re-enter
-          // it so the async pipe in the template actually repaints.
-          unsubscribe = api.onSnapshot(
-            q,
-            snap => {
-              const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChangelogEntry));
-              this.lazyFirestore.runInZone(() => observer.next(this.groupByDay(entries)));
-            },
-            err => this.lazyFirestore.runInZone(() => this.degrade(err, observer))
-          );
-        })
-        .catch(err => this.degrade(err, observer));
-
-      return () => {
-        torndown = true;
-        unsubscribe?.();
-      };
-    });
+      // Cached as plain days rather than raw docs, because a Firestore
+      // Timestamp does not survive JSON — `groupByDay` reads `.toDate()` off it,
+      // and a revived entry would have a bare object there instead.
+      return this.groupByDay(
+        snap.docs.map(d => ({ id: d.id, ...d.data() } as ChangelogEntry)),
+      );
+    }).pipe(
+      catchError(err => of(this.degradeTo(err, [] as ChangelogDay[]))),
+    );
   }
 
   /**
@@ -78,7 +90,7 @@ export class ChangelogService {
    * changelog falls back to "No updates yet" instead of bleeding red into the
    * console. Surface anything else as a warn.
    */
-  private degrade(err: any, observer: { next: (v: ChangelogDay[]) => void }): void {
+  private degradeTo<T>(err: any, fallback: T): T {
     const code = err?.code || '';
     const msg = err?.message || '';
     const expected =
@@ -89,7 +101,7 @@ export class ChangelogService {
     if (!expected) {
       console.warn('[ChangelogService] degraded:', err);
     }
-    observer.next([]);
+    return fallback;
   }
 
   private groupByDay(entries: ChangelogEntry[]): ChangelogDay[] {
