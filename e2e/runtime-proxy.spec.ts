@@ -15,96 +15,63 @@ test.describe('runtime proxy / 375px', () => {
     reducedMotion: 'no-preference',
   });
 
-  // (a) Hero carousel cycles: hc-card elements have different --ci values
-  // which map to animation-delay stagger. We assert that the computed
-  // animationDelay differs across cards, confirming each is on its own
-  // cycle phase. We cannot wait 6s in headless CI, so we use the delay
-  // property as the proxy for "each card is at a different point in the cycle."
-  test('carousel cards have staggered animation-delay (cycle proxy)', async ({ page }) => {
+  // (a) Sibling cards sit on staggered animation-delays, so they breathe out of
+  // phase rather than pulsing in unison. We cannot wait out a 6s cycle in
+  // headless CI, so the computed animationDelay is the proxy for "each card is
+  // at a different point in the cycle".
+  //
+  // This used to target the hero carousel's `.hc-card`. That component was
+  // deleted in v2.19.0 when the home page became the entrance to the forge, and
+  // the selector matches nothing in the DOM today — so the test had been failing
+  // on `waitForSelector` for sixteen releases, against markup that no longer
+  // exists. It is retargeted here at `.hp-tool-card__icon-wrap`, which carries
+  // the same nth-child stagger (landing.component.css) and is the surviving
+  // instance of the pattern this test was written to protect.
+  test('tool card icons have staggered animation-delay (cycle proxy)', async ({ page }) => {
     await page.goto('/home');
-    await page.waitForSelector('.hc-card', { timeout: 10000 });
+    await page.waitForSelector('.hp-tool-card__icon-wrap', { timeout: 10000 });
 
     const delays = await page.evaluate(() => {
-      const cards = Array.from(document.querySelectorAll('.hc-card'));
-      return cards.slice(0, 5).map(card => {
-        const style = window.getComputedStyle(card);
-        return style.animationDelay;
-      });
+      const icons = Array.from(document.querySelectorAll('.hp-tool-card__icon-wrap'));
+      return icons.slice(0, 6).map(icon => window.getComputedStyle(icon).animationDelay);
     });
 
-    expect(delays.length, 'should find at least 2 hc-card elements').toBeGreaterThanOrEqual(2);
+    expect(delays.length, 'should find at least 2 .hp-tool-card__icon-wrap elements').toBeGreaterThanOrEqual(2);
 
     // At least 2 distinct delay values means stagger is active
     const uniqueDelays = new Set(delays);
     expect(
       uniqueDelays.size,
-      `Expected staggered animation-delays but all cards share the same delay: ${JSON.stringify(delays)}`,
+      `Expected staggered animation-delays but all icons share the same delay: ${JSON.stringify(delays)}`,
     ).toBeGreaterThanOrEqual(2);
   });
 
-  // (b) Planet has a running CSS animation — check .cosmic-planet__surface which
-  // has an independent drifting background-position animation distinct from the
-  // sphere's rotation. Angular scopes keyframe names with _ngcontent hashes so we
-  // just assert animationName !== 'none', not the exact name.
-  test('cosmic-planet has active animation (surface layer)', async ({ page }) => {
-    await page.goto('/home');
-    await page.waitForSelector('.cosmic-planet', { timeout: 10000 });
-
-    // Scroll planet into view so it is not offscreen (display:none etc.)
-    await page.evaluate(() => {
-      const el = document.querySelector('.cosmic-planet');
-      if (el) el.scrollIntoView({ block: 'center' });
-    });
-
-    const animInfo = await page.evaluate(() => {
-      // Check multiple planet layers; return the first one with a non-none animation.
-      const selectors = [
-        '.cosmic-planet__surface',
-        '.cosmic-planet__clouds',
-        '.cosmic-planet__sphere',
-        '.cosmic-planet__atmosphere',
-      ];
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (!el) continue;
-        const style = window.getComputedStyle(el);
-        if (style.animationName && style.animationName !== 'none') {
-          return {
-            found: true,
-            selector: sel,
-            animationName: style.animationName,
-            animationPlayState: style.animationPlayState,
-          };
-        }
-      }
-      // Fallback: report what the sphere has even if none
-      const sphere = document.querySelector('.cosmic-planet__sphere');
-      const style = sphere ? window.getComputedStyle(sphere) : null;
-      return {
-        found: !!sphere,
-        selector: '.cosmic-planet__sphere (fallback)',
-        animationName: style?.animationName ?? 'element not found',
-        animationPlayState: style?.animationPlayState ?? '',
-      };
-    });
-
-    expect(animInfo.found, '.cosmic-planet and its layers not found in DOM').toBe(true);
-    expect(
-      animInfo.animationName,
-      `Planet layer "${animInfo.selector}" has no animation — prefers-reduced-motion may still be active or Angular hydration not complete`,
-    ).not.toBe('none');
-  });
-
-  // Belt-and-suspenders: planet element exists
-  test('cosmic-planet element exists at 375px', async ({ page }) => {
-    await page.goto('/home');
-    await expect(page.locator('.cosmic-planet').first()).toBeAttached({ timeout: 10000 });
-  });
+  // (b) The CSS planet's animation checks used to live here — two tests on
+  // `.cosmic-planet` and its surface/cloud/sphere layers.
+  //
+  // v2.39.0 deleted the planet outright ("sphere, rings, clouds, terminator,
+  // night lights, the moon and the beacon, six hundred and ninety-five lines of
+  // stylesheet") when the painted hero replaced the CSS impression of one. The
+  // selector matches nothing anywhere in src/ now, so both tests could only ever
+  // time out on waitForSelector. They are removed rather than retargeted: the
+  // thing they guarded was deliberately deleted, and there is no successor
+  // element that means the same thing.
+  //
+  // The stagger check above (a) still covers "component animations are alive and
+  // out of phase", which is the property this group exists to protect.
 
   // (c) Orbitron font is available after page load
   test('Orbitron font is available after document.fonts.ready', async ({ page }) => {
-    await page.goto('/home');
-    await page.waitForLoadState('networkidle');
+    // 'load', not 'networkidle'. This page keeps Firestore long-polling and
+    // analytics connections open, so it never reaches two consecutive idle
+    // network seconds and the wait always burned the full 30s timeout — the
+    // same trap embed-smoke.spec.ts already documents and avoids.
+    //
+    // Nothing is lost by dropping it: document.fonts.ready below is the actual
+    // synchronisation point for a font assertion, and it resolves only once
+    // every pending font load has settled. networkidle was never what made this
+    // test correct.
+    await page.goto('/home', { waitUntil: 'load' });
 
     const orbitronReady = await page.evaluate(async () => {
       await document.fonts.ready;

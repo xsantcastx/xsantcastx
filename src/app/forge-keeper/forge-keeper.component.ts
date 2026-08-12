@@ -56,6 +56,7 @@ import {
   masteryProgress,
 } from '../shared/gamification/tool-mastery.service';
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
+import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
 import {
   ARTIFACTS,
   COSMETICS,
@@ -245,7 +246,7 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, CloudSaveButtonComponent],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
 })
@@ -445,10 +446,12 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   /**
    * Whether progression is following a signed-in identity.
    *
-   * False today and honestly so — `ProgressStorageService` is on the
-   * localStorage adapter and the Firestore one is an inert Phase 2 stub. The
-   * sheet says which of the two it is rather than showing a sign-in button
-   * that would lead nowhere.
+   * True once CloudSaveService has bound a uid and swapped
+   * `ProgressStorageService` onto its Firestore adapter. The identity block
+   * itself no longer renders off this — `<app-cloud-save-button>` reports its own
+   * sync state, which is finer-grained than a boolean (syncing, synced, error).
+   * Kept because it is the one place that reads the *storage* rather than the
+   * auth session, which is what "is my progress actually going anywhere" means.
    */
   get isCloudSaved(): boolean {
     return this.hydrated && this.storage.isRemote;
