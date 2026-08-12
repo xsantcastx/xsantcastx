@@ -41,12 +41,8 @@ export class TranslationService {
     'gfnav.mcp':          { en: 'MCP',           es: 'MCP' },
     'gfnav.profile':      { en: 'Profile',       es: 'Perfil' },
     'gfnav.warTable':     { en: 'War Table',     es: 'Mesa de guerra' },
-    'gfnav.skills':       { en: 'Services',      es: 'Servicios' },
-    'gfnav.projects':     { en: 'Projects',      es: 'Proyectos' },
-    'gfnav.contact':      { en: 'Contact',       es: 'Contacto' },
     'gfnav.quests':       { en: 'Quests',        es: 'Misiones' },
     'gfnav.sponsors':     { en: 'Sponsors',      es: 'Patrocinadores' },
-    'gfnav.guestbook':    { en: 'Guestbook',     es: 'Libro de visitas' },
     'gfnav.live':         { en: 'Live',          es: 'En vivo' },
     'gfnav.donate':       { en: 'Donate',        es: 'Donar' },
     'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },
@@ -75,10 +71,6 @@ export class TranslationService {
     'gfnav.hint.keeper':    { en: 'Your rank and everything you own', es: 'Tu rango y todo lo que posees' },
     'gfnav.hint.mcp':       { en: 'Tools for AI agents',             es: 'Herramientas para agentes de IA' },
     'gfnav.hint.sponsors':  { en: 'Back the forge',                  es: 'Apoya la forja' },
-    'gfnav.hint.skills':    { en: 'What I build, and with what',     es: 'Que construyo, y con que' },
-    'gfnav.hint.projects':  { en: 'Shipped and running',             es: 'Enviado y funcionando' },
-    'gfnav.hint.contact':   { en: 'Open a channel',                  es: 'Abre un canal' },
-    'gfnav.hint.guestbook': { en: 'Leave a mark',                    es: 'Deja una marca' },
 
     'gffoot.forgedBy':    { en: 'Forged by xsantcastx',            es: 'Forjado por xsantcastx' },
     'gffoot.forge':       { en: 'Forge',        es: 'Forja' },
@@ -1113,29 +1105,14 @@ export class TranslationService {
     // ─── Cosmic eyebrows + taglines ────────────────────────────────────────
     'cosmic.eyebrow.latestTools':         { en: 'Latest Tools',           es: 'Ultimas herramientas' },
     'cosmic.eyebrow.whatsNew':            { en: "What's New",             es: 'Novedades' },
-    'cosmic.eyebrow.openChannel':         { en: 'Open Channel',           es: 'Canal abierto' },
-    'cosmic.eyebrow.builtShipped':        { en: 'Built & Shipped',        es: 'Construido y enviado' },
-    'cosmic.eyebrow.skillConstellation':  { en: 'Skill Constellation',    es: 'Constelacion de habilidades' },
-    'cosmic.eyebrow.visitorConstellation':{ en: 'Visitor Constellation',  es: 'Constelacion de visitantes' },
     'cosmic.eyebrow.fuelMission':         { en: 'Fuel the Mission',       es: 'Alimenta la mision' },
 
     'cosmic.tagline.latestTools':         { en: 'new stars born this week in the xsantcastx universe',                  es: 'nuevas estrellas nacidas esta semana en el universo xsantcastx' },
     'cosmic.tagline.whatsNew':            { en: 'tracking every star added to the universe',                            es: 'siguiendo cada estrella anadida al universo' },
-    'cosmic.tagline.openChannel':         { en: "a signal flare into the universe — drop one and I'll catch it",        es: 'una bengala al universo — lanza una y la atrapo' },
-    'cosmic.tagline.builtShipped':        { en: 'galaxies of work — each one a real product orbiting a real audience',  es: 'galaxias de trabajo — cada una un producto real orbitando una audiencia real' },
-    'cosmic.tagline.skillConstellation':  { en: 'a constellation of crafts I orbit through every project',              es: 'una constelacion de oficios que orbito en cada proyecto' },
-    'cosmic.tagline.visitorConstellation':{ en: 'every name here is a star that passed through',                        es: 'cada nombre aqui es una estrella que paso por este lugar' },
     'cosmic.tagline.fuelMission':         { en: 'every coin keeps another star alive in the universe',                  es: 'cada moneda mantiene viva otra estrella en el universo' },
     'cosmic.tagline.chooseGalaxy':        { en: 'Choose a galaxy — each is a constellation of free tools',              es: 'Elige una galaxia — cada una es una constelacion de herramientas gratis' },
 
     // ─── Guestbook cosmic copy ─────────────────────────────────────────────
-    'cosmic.guestbook.title':       { en: 'Sign the cosmic wall',          es: 'Firma el muro cosmico' },
-    'cosmic.guestbook.loading':     { en: 'Tuning the signal...',          es: 'Sintonizando la senal...' },
-    'cosmic.guestbook.loadingMore': { en: 'Pulling more echoes...',        es: 'Tirando mas ecos...' },
-    'cosmic.guestbook.loadMore':    { en: '✦ Reveal older messages',       es: '✦ Revelar mensajes antiguos' },
-    'cosmic.guestbook.nickname':    { en: 'Your call sign',                es: 'Tu nombre clave' },
-    'cosmic.guestbook.message':     { en: 'Drop a message into the void...', es: 'Lanza un mensaje al vacio...' },
-    'cosmic.guestbook.submit':      { en: 'Send into the void →',          es: 'Enviar al vacio →' },
 
     // ─── Cosmic anchor planet ──────────────────────────────────────────────
     'cosmic.anchor.whisper':        { en: 'look closer — those lights down there aren\'t ours.', es: 'mira mas de cerca — esas luces de ahi abajo no son nuestras.' },

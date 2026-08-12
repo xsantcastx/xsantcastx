@@ -1,10 +1,6 @@
 /home
-/skills
-/projects
-/contact
 /donate
 /live
-/guestbook
 /blueprint
 /quests
 /market
