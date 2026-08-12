@@ -50,8 +50,7 @@ describe('tint', () => {
 describe('atmosphereForSegment', () => {
   const places = [
     'tools', 'arena', 'codex', 'market', 'blueprint', 'sponsors',
-    'quests', 'live', 'skills', 'projects', 'contact',
-    'donate', 'mcp', 'guestbook',
+    'quests', 'live', 'donate', 'mcp',
   ];
 
   it('gives every place-route a wash', () => {
@@ -74,8 +73,13 @@ describe('atmosphereForSegment', () => {
 
   it('has no entry for the routes that only ever redirect', () => {
     // /games 301s to /arena and the service resolves on urlAfterRedirects, so an
-    // entry here would be dead code that looks like coverage.
-    expect(atmosphereForSegment('games')).toBeNull();
+    // entry here would be dead code that looks like coverage. The rest are the
+    // portfolio pages the full migration deleted, which redirect the same way.
+    for (const gone of ['games', 'skills', 'projects', 'contact', 'guestbook', 'about', 'services']) {
+      expect(atmosphereForSegment(gone))
+        .withContext(`/${gone} redirects, so it must not carry an atmosphere`)
+        .toBeNull();
+    }
   });
 
   it('keeps every wash inside the subtle band', () => {

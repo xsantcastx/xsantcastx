@@ -163,17 +163,14 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * The tome — two sections, not three.
    *
    * MAIN is the same five halls as the bar plus the visitor's own sheet, so the
-   * drawer and the bar name the same places. MORE holds the three surfaces that
-   * belong to the old portfolio site and still have real routes: Services
-   * (`path: 'skills'`), MCP and Contact. There is no `path: 'about'` and no
-   * `path: 'settings'` in app-routing.module.ts, and an <a routerLink> to a path
-   * with no route is a link that silently lands on the 404 page — so ABOUT is
-   * absent rather than shipped dead.
+   * drawer and the bar name the same places.
    *
-   * What left the tome in this pass — Projects, Quests, Sponsors, Guestbook —
-   * kept its routes and moved to the footer. The drawer is primary navigation on
-   * a phone; nine secondary destinations in it made the five that matter harder
-   * to find, which was the whole complaint.
+   * MORE is down to the surfaces that are still part of the product. Services
+   * (`path: 'skills'`) and Contact left with the rest of the portfolio in the
+   * full migration; both are now `redirectTo` stubs, and a drawer entry
+   * pointing at a redirect is a link that bounces the visitor somewhere they
+   * did not ask to go — worse than no link. Quests earns the slot instead: it
+   * has a real page and it belongs to the Godforge.
    */
   readonly tomeSections: TomeSection[] = [
     {
@@ -190,9 +187,9 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     {
       titleKey: 'gfnav.section.more',
       halls: [
-        { route: '/skills',  key: 'gfnav.skills',  glyph: 'skills',  hintKey: 'gfnav.hint.skills' },
-        { route: '/mcp',     key: 'gfnav.mcp',     glyph: 'mcp',     hintKey: 'gfnav.hint.mcp' },
-        { route: '/contact', key: 'gfnav.contact', glyph: 'contact', hintKey: 'gfnav.hint.contact' }
+        { route: '/quests',   key: 'gfnav.quests',   glyph: 'quests',   hintKey: 'gfnav.hint.quests' },
+        { route: '/mcp',      key: 'gfnav.mcp',      glyph: 'mcp',      hintKey: 'gfnav.hint.mcp' },
+        { route: '/sponsors', key: 'gfnav.sponsors', glyph: 'sponsors', hintKey: 'gfnav.hint.sponsors' }
       ]
     }
   ];
