@@ -211,6 +211,18 @@ export const EGG_HINTS: Record<string, string> = {
   'forge-artifact-collector': 'Essence buys permanence. Own enough permanence to make a shelf.',
   'forge-complete-collection': 'Every shelf, empty. Nothing left in the case with a price on it.',
   'forge-click-frenzy': 'The ember pays twice a second at most. Spend a whole minute finding out.',
+
+  // ── The Rune Forge ── the hints name the price, never the odds. A hint that
+  // says "one in two thousand" turns a run of bad luck into a grievance; one
+  // that says "keep striking" leaves it a run of bad luck.
+  'rune-first': 'Ten Gold on the anvil buys one answer. Any answer counts.',
+  'rune-collector': 'Ten different answers. The anvil repeats itself far more than it surprises you.',
+  'rune-master': 'Twenty different answers. By here you know the common five by their colour alone.',
+  'rune-complete-set': 'Every rune the Archivum has a name for. Including the one it will not say aloud.',
+  'rune-first-word': 'Runes are not the point. Runes in the right order are the point.',
+  'rune-word-scholar': 'Three words held at once. The runes each one takes do not come back.',
+  'rune-void-voice': 'Something in the table does not want to be found. Keep striking anyway.',
+  'rune-breath-of-void': 'Six runes. One of them is the one that does not want to be found, and one of them you will need twice.',
 };
 
 /**

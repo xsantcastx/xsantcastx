@@ -23,6 +23,7 @@ export type XpEventType =
   | 'streak'
   | 'quest'
   | 'game-win'
+  | 'craft'
   | 'idle';
 
 /** Canonical XP award per event. Kept in one place so the economy is auditable. */
@@ -40,6 +41,10 @@ export const XP_VALUES: Record<XpEventType, number> = {
   // Base for clearing an Arena gate. The gate itself passes an `amount` scaled
   // by how well it was cleared, so this is the floor, not the usual payout.
   'game-win': 40,
+  // A rune off the anvil, or a Runeword set. Always passed an explicit amount:
+  // the payout is the rune's tier, and a table value here would either
+  // undercount a Godstone or make a Common worth as much as one.
+  'craft': 0,
   // Ambient forge energy. Always passed an explicit amount — the rate depends
   // on where the visitor is standing, their streak and what quest is live, so
   // there is no single table value to state here.

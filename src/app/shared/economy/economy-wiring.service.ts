@@ -30,6 +30,7 @@ import {
   ESSENCE_PER_WEEKLY,
   GOLD_PER_TOOL_ACTION,
   goldForQuestXp,
+  runewordQuestMultiplier,
   loreThresholdScale,
   xpMultiplier,
 } from './economy.model';
@@ -98,7 +99,12 @@ export class EconomyWiringService {
       // through the multiplier hook, so it has to double the Gold here or the
       // artifact would only be half true.
       const doubled = this.economy.ownsArtifact('relic-third-dawn') ? base * 2 : base;
-      this.economy.earnGold(doubled, 'quest');
+      // Shadow Step and Godforge Mastery both raise quest Gold specifically.
+      // Applied here for the same reason the Relic is: the quest payout is
+      // authored in this subscriber, so a multiplier that is not applied here
+      // is not applied at all.
+      const worded = doubled * runewordQuestMultiplier(this.economy.economy);
+      this.economy.earnGold(worded, 'quest');
 
       if (quest.type === 'weekly') {
         this.economy.earnEssence(ESSENCE_PER_WEEKLY, 'weekly quest');
