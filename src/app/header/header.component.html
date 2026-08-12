@@ -65,6 +65,13 @@
          ~375px on a small phone, so the navbar instance is hidden below the
          drawer breakpoint and this one takes over. -->
     <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
+
+    <!-- Drawer copy of the forge. It is NOT in .mobile-controls: that row is
+         already 259px of a 375px viewport, and a fourth 44px control clipped
+         the wordmark from six characters to four. The forge accrues from a
+         service, not from this component, so idling still works on a phone
+         whether or not the drawer is open. -->
+    <app-forge-flame class="nav-forge--drawer"></app-forge-flame>
   </nav>
 
   <!-- Desktop dock: the quest sword and the progression readout, docked under
@@ -72,6 +79,7 @@
        at 1280px (see .nav-xp in the stylesheet) — adding a 44px control to it
        would push LIVE over the language toggle. -->
   <div class="nav-dock">
+    <app-forge-flame class="nav-forge"></app-forge-flame>
     <app-quest-trigger class="nav-quests"></app-quest-trigger>
     <app-xp-bar class="nav-xp"></app-xp-bar>
   </div>
