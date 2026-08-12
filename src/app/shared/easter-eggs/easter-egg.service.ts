@@ -237,6 +237,28 @@ export const EASTER_EGGS: EasterEgg[] = [
   // Eclipsed rather than Mortal for the same reason: most visitors will use
   // every tool on the site and never make it.
   { id: 'cloud-eternal-archive',     name: 'The Eternal Archive',     description: 'Bound your progress to the cloud',                    tool: 'global', rarity: 'rare',   icon: '☁️', xp: 50 },
+
+  // ── The combo ladder ────────────────────────────────────────────
+  // Consecutive paid strikes on the Forge Flame. The 500ms cooldown caps the
+  // rate at two a second, so these are the only achievements on the wall priced
+  // in *time held* rather than in a thing done: x9,999 is 83 minutes of unbroken
+  // rhythm, and a single gap over two seconds puts it back to zero.
+  //
+  // The payouts climb steeply because the difficulty does. x10 is an accident on
+  // the way to somewhere else; x5,000 is forty minutes of not stopping. Every
+  // one carries an explicit `xp` — the standard 200 would be robbery at the
+  // bottom of the ladder and an insult at the top.
+  { id: 'combo-rapid-strike',        name: 'Rapid Strike',            description: 'Reached a x10 strike combo',                          tool: 'global', rarity: 'common',    icon: '⚡',  xp: 25 },
+  { id: 'combo-forge-frenzy',        name: 'Forge Frenzy',            description: 'Reached a x50 strike combo',                          tool: 'global', rarity: 'rare',      icon: '🔥',  xp: 60 },
+  { id: 'combo-century-forge',       name: 'Century Forge',           description: 'Reached a x100 strike combo',                         tool: 'global', rarity: 'epic',      icon: '💯',  xp: 120 },
+  // 666 is passed through on the way to a thousand rather than climbed to, so
+  // it pays less than the rung below it despite the rarer tier. It is a thing
+  // you find, not a thing you hold.
+  { id: 'combo-forbidden-count',     name: 'The Forbidden Count',     description: 'Struck the number that must not be named',            tool: 'global', rarity: 'legendary', icon: '🜏',  xp: 100 },
+  { id: 'combo-relentless',          name: 'The Relentless',          description: 'Reached a x500 strike combo',                         tool: 'global', rarity: 'epic',      icon: '⛓️',  xp: 200 },
+  { id: 'combo-millennium-strike',   name: 'Millennium Strike',       description: 'Reached a x1,000 strike combo',                       tool: 'global', rarity: 'legendary', icon: '🌩️', xp: 350 },
+  { id: 'combo-eclipse-breaker',     name: 'Eclipse Breaker',         description: 'Reached a x5,000 strike combo',                       tool: 'global', rarity: 'legendary', icon: '🌘',  xp: 700 },
+  { id: 'combo-first-sun',           name: 'First Sun Shatter',       description: 'Reached the maximum x9,999 strike combo',             tool: 'global', rarity: 'legendary', icon: '☀️',  xp: 1_500 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */
