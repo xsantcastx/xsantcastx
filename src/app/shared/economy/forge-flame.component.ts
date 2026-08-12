@@ -231,11 +231,38 @@ interface Shout {
       border: none; border-radius: 50%;
       background: transparent;
       cursor: pointer;
-      transition: transform .18s cubic-bezier(.22, 1, .36, 1);
+      /* Release is the spring — it overshoots 1 then settles, and it is the
+         half of a tap the thumb actually feels. The press itself is re-timed
+         to .09s below, because a slow squash reads as lag. */
+      transition:
+        transform .34s cubic-bezier(.22, 1.28, .44, 1),
+        filter .2s cubic-bezier(0.4, 0, 0.2, 1);
       -webkit-tap-highlight-color: transparent;
     }
-    .ff__btn:active { transform: scale(.9); }
+
+    /* .96, not the .9 this used to hold: the flame is a 64px target under a
+       thumb, and a deeper squash reads as the button shrinking away from the
+       finger rather than taking the press. */
+    .ff__btn:active { transform: scale(.96); transition-duration: .09s; }
+
+    /* Glow intensifies while held, on touch as well as pointer — :active is the
+       one state a finger can reach, since there is no hover on a phone.
+       The filter goes on the BUTTON, not on .ff__core: the core runs ffBreathe,
+       which animates the filter property, and a running animation outranks a
+       plain declaration for the property it animates. A filter rule on .ff__core
+       would have been dead CSS with nothing to warn about it. */
+    .ff__btn:active,
+    .ff__btn:hover {
+      filter: brightness(1.18) drop-shadow(0 0 16px rgba(232, 117, 42, .75));
+    }
+
     .ff__btn:focus-visible { outline: 2px solid #A78BFA; outline-offset: 6px; border-radius: 50%; }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* The brightness cue stays; the movement goes. */
+      .ff__btn { transition: filter .01s linear; }
+      .ff__btn:active { transform: none; }
+    }
 
     /* The ember itself. Warm gradient per the forge palette: #E8752A → #C9A84C. */
     .ff__core {

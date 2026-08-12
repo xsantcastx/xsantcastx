@@ -77,9 +77,14 @@ const DWELL_MS = 5200;
         rgba(6, 4, 18, 0.96);
       box-shadow: 0 18px 48px -20px rgba(0, 0, 0, .95), 0 0 30px -14px var(--tint-glow);
       cursor: pointer;
+      /* Springs up on its own axis. It does NOT slide in from the right: this
+         toast is bottom-centre, and the bottom-right is already three deep
+         (flame, achievement drop stacked above it, cookie banner across the
+         base). A toast animating into that corner has silently eaten clicks on
+         the flame once before. */
       transform: translate(-50%, 18px);
       opacity: 0;
-      transition: transform .38s cubic-bezier(.22, 1, .36, 1), opacity .38s ease;
+      transition: transform .38s cubic-bezier(.22, 1.28, .44, 1), opacity .38s ease;
     }
     .qt--on { transform: translate(-50%, 0); opacity: 1; }
 
