@@ -30,7 +30,7 @@
   <meta property="og:image:type"       content="image/jpeg">
   <meta property="og:image:width"      content="1200">
   <meta property="og:image:height"     content="630">
-  <meta property="og:image:alt"        content="The Godforge — an eclipsed sun ringed in violet fire over a field of stars">
+  <meta property="og:image:alt"        content="The Godforge — a violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars">
   <meta property="og:locale"           content="en_US">
 
   <!-- Twitter Card -->
@@ -40,7 +40,7 @@
   <meta name="twitter:title"       content="The Godforge — Free Developer Tools Forged in the Eclipse">
   <meta name="twitter:description" content="Free CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code Converter & more — runs entirely in your browser. No sign-up.">
   <meta name="twitter:image"       content="https://xsantcastx.com/assets/og/og-godforge.jpg">
-  <meta name="twitter:image:alt"   content="The Godforge — an eclipsed sun ringed in violet fire over a field of stars">
+  <meta name="twitter:image:alt"   content="The Godforge — a violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars">
 
   <!-- Canonical: set dynamically per route by SeoService -->
 
@@ -54,10 +54,16 @@
   <link rel="alternate" hreflang="es"        href="https://xsantcastx.com/home?lang=es">
   <link rel="alternate" hreflang="x-default" href="https://xsantcastx.com/home">
 
-  <!-- Favicons -->
+  <!-- Favicons — the Void X sigil. favicon.svg is a redraw of the sigil art for
+       browsers that take SVG icons; the PNGs are the same mark rasterised, and
+       favicon.ico is the multi-resolution fallback older crawlers still ask for
+       at /favicon.ico whether or not it is linked. -->
   <link rel="icon"           type="image/svg+xml" href="favicon.svg">
-  <link rel="shortcut icon"  type="image/svg+xml" href="favicon.svg">
+  <link rel="icon"           type="image/png" sizes="32x32" href="assets/brand/icon-32.png">
+  <link rel="icon"           type="image/png" sizes="16x16" href="assets/brand/icon-16.png">
+  <link rel="shortcut icon"  type="image/x-icon"            href="favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180"    href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
 
   <!-- Preconnects for performance -->
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">

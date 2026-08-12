@@ -141,11 +141,11 @@ interface Shout {
            a phone, so this is a real panel: hover opens it on a pointer device,
            and the long-press-free path is the Market link inside it. -->
       <div class="ff__hud" [class.ff__hud--open]="hudOpen" aria-hidden="true">
-        <span class="ff__hud-gold">{{ gold }} <span class="ff__hud-coin">&#129689;</span></span>
+        <span class="ff__hud-gold">{{ gold }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"></span>
         <span class="ff__hud-rate">+{{ rate }}/min</span>
         <span class="ff__hud-hint">Click to forge</span>
         @if (snap.essence > 0) {
-          <span class="ff__hud-essence">&#9889; {{ essence }} Essence</span>
+          <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
         <a class="ff__hud-market" routerLink="/market">Open the Market &rarr;</a>
       </div>
@@ -162,7 +162,9 @@ interface Shout {
         <span class="ff__core" aria-hidden="true"></span>
         <span class="ff__ring" aria-hidden="true"></span>
         <span class="ff__ring ff__ring--outer" aria-hidden="true"></span>
-        <span class="ff__glyph" aria-hidden="true">&#128293;</span>
+        <img class="ff__glyph forge-flame" src="assets/icons/forge-flame-128.png"
+             alt="" aria-hidden="true" width="34" height="34"
+             decoding="async" draggable="false">
 
         @for (s of sparks; track s.key) {
           <span class="ff__spark"
@@ -248,7 +250,7 @@ interface Shout {
       50%      { transform: scale(1.06); filter: brightness(1.18); }
     }
 
-    .ff__glyph { position: relative; font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+    .ff__glyph { position: relative; width: 34px; height: 34px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
 
     /* Orbital rings. Tier decides how many are visible — see the tier block. */
     .ff__ring {
@@ -272,16 +274,16 @@ interface Shout {
 
     .ff[data-tier="2"] .ff__btn { width: 72px; height: 72px; }
     .ff[data-tier="2"] .ff__ring, .ff[data-tier="2"] .ff__ring--outer { opacity: .55; }
-    .ff[data-tier="2"] .ff__glyph { font-size: 25px; }
+    .ff[data-tier="2"] .ff__glyph { width: 38px; height: 38px; }
 
     .ff[data-tier="3"] .ff__btn { width: 78px; height: 78px; }
     .ff[data-tier="3"] .ff__ring, .ff[data-tier="3"] .ff__ring--outer { opacity: .7; }
-    .ff[data-tier="3"] .ff__glyph { font-size: 27px; }
+    .ff[data-tier="3"] .ff__glyph { width: 42px; height: 42px; }
     .ff[data-tier="3"] .ff__core { box-shadow: 0 0 26px rgba(232,117,42,.7), 0 0 64px -8px rgba(201,168,76,.7), inset 0 -4px 10px rgba(0,0,0,.45); }
 
     .ff[data-tier="4"] .ff__btn { width: 84px; height: 84px; }
     .ff[data-tier="4"] .ff__ring, .ff[data-tier="4"] .ff__ring--outer { opacity: .85; }
-    .ff[data-tier="4"] .ff__glyph { font-size: 30px; }
+    .ff[data-tier="4"] .ff__glyph { width: 46px; height: 46px; }
     .ff[data-tier="4"] .ff__core {
       background: radial-gradient(circle at 36% 30%, #fffaf0 0%, #ffd97a 20%, #E8752A 55%, #7b1f4a 94%);
       box-shadow: 0 0 32px rgba(232,117,42,.8), 0 0 80px -10px rgba(255,109,215,.5), inset 0 -4px 12px rgba(0,0,0,.5);
@@ -289,7 +291,7 @@ interface Shout {
 
     .ff[data-tier="5"] .ff__btn { width: 90px; height: 90px; }
     .ff[data-tier="5"] .ff__ring, .ff[data-tier="5"] .ff__ring--outer { opacity: 1; border-color: rgba(255, 214, 122, .8); }
-    .ff[data-tier="5"] .ff__glyph { font-size: 33px; }
+    .ff[data-tier="5"] .ff__glyph { width: 50px; height: 50px; }
     .ff[data-tier="5"] .ff__core {
       background: radial-gradient(circle at 36% 30%, #ffffff 0%, #ffe9a8 16%, #E8752A 50%, #7b61ff 96%);
       box-shadow: 0 0 40px rgba(255,214,122,.9), 0 0 110px -12px rgba(123,97,255,.6), inset 0 -5px 14px rgba(0,0,0,.5);
@@ -374,7 +376,7 @@ interface Shout {
     }
     .ff__hud--open { opacity: 1; visibility: visible; transform: none; }
     .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #ffd97a; }
-    .ff__hud-coin { font-size: 12px; }
+    .ff__hud-coin { width: 13px; height: 13px; vertical-align: -2px; }
     .ff__hud-rate { font-size: 11px; color: #A78BFA; }
     .ff__hud-essence { font-size: 11px; color: #c48bff; }
     .ff__hud-hint { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
@@ -603,7 +605,7 @@ interface Shout {
     @media (max-width: 768px) {
       .ff { right: 10px; bottom: 76px; }
       .ff__btn { width: 52px !important; height: 52px !important; }
-      .ff__glyph { font-size: 19px !important; }
+      .ff__glyph { width: 30px !important; height: 30px !important; }
       .ff__hud, .ff__banner { min-width: 154px; font-size: 11px; }
       /* The counter shares the row with the ember on a 375px viewport. */
       .ff__combo { font-size: 13px; right: calc(100% + 7px); }
