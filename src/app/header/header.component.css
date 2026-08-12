@@ -1051,8 +1051,17 @@
   }
 }
 
-.nav-xp--drawer {
+.nav-xp--drawer,
+.nav-forge--drawer {
   display: none;
+}
+
+@media (max-width: 960px) {
+  .nav-forge--drawer {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    align-self: flex-start;
+  }
 }
 
 /* The nav row has no spare width at 1280px, so the Quests link is drawer-only.
