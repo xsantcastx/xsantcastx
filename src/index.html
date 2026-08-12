@@ -209,6 +209,27 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
        crossorigin="anonymous"></script>
   -->
+
+  <!-- ░▒▓█ GODFORGE BOOT — first-visit vs. returning-visit cut █▓▒░
+       Inline, synchronous, and in <head> on purpose. The boot sequence is
+       driven entirely by CSS on the prerendered <app-godforge-loader>, so the
+       full-vs-short decision has to be on the element before the first frame —
+       Angular has not booted yet, and localStorage does not exist during
+       prerender, so neither can make this call. First visit gets all 2.9s;
+       every visit after starts at stage 5 and runs 1.3s. -->
+  <script>
+    (function () {
+      try {
+        var k = 'godforge-boot-seen';
+        if (localStorage.getItem(k)) {
+          document.documentElement.classList.add('gf-boot-short');
+        }
+        localStorage.setItem(k, '1');
+      } catch (e) {
+        /* Private mode or storage disabled — fall through to the full cut. */
+      }
+    })();
+  </script>
 </head>
 <body>
   <!--
@@ -221,12 +242,6 @@
   <canvas class="cosmic-canvas" aria-hidden="true"></canvas>
   <div class="cosmic-pulsar" aria-hidden="true"></div>
   <div class="cosmic-cursor" aria-hidden="true"></div>
-  <div class="cosmic-boot" aria-hidden="true">
-    <div class="cosmic-boot__star"></div>
-    <div class="cosmic-boot__ring cosmic-boot__ring--1"></div>
-    <div class="cosmic-boot__ring cosmic-boot__ring--2"></div>
-    <p class="cosmic-boot__label">✦ booting universe ✦</p>
-  </div>
   <span class="rune-whisper rune-whisper--tl" aria-hidden="true">✦ ⟡ ⚝</span>
   <span class="rune-whisper rune-whisper--tr" aria-hidden="true">☽ ✧ ☾</span>
   <span class="rune-whisper rune-whisper--bl" aria-hidden="true">⚜ ⧫ ❂</span>

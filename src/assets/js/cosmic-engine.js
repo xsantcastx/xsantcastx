@@ -13,21 +13,10 @@
       // ─────────────────────────────────────────────────────────────
       // Splash is part of SSR HTML so it's painted instantly. We dismiss it
       // after a short delay (or immediately on reduced-motion).
-      (function () {
-        var boot = document.querySelector('.cosmic-boot');
-        if (!boot) return;
-        if (prefersReduced) { boot.parentNode && boot.parentNode.removeChild(boot); return; }
-        var dismiss = function () {
-          boot.classList.add('cosmic-boot--dismissed');
-          setTimeout(function () { boot.parentNode && boot.parentNode.removeChild(boot); }, 700);
-        };
-        // Wait until DOM is interactive + give the engine ~750ms to start its first frame
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function () { setTimeout(dismiss, 750); });
-        } else {
-          setTimeout(dismiss, 750);
-        }
-      })();
+      // The boot curtain used to be dismissed from here. It is now
+      // <app-godforge-loader>, which runs and clears itself entirely in CSS —
+      // see src/app/shared/loading/godforge-loader.component.css for why the
+      // engine must not be on that path.
 
       // rAF-throttled debouncer — coalesces bursty mutations into 1 scan per frame
       function rafThrottle(fn) {
