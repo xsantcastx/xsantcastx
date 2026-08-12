@@ -144,6 +144,37 @@
         "source": "/games",
         "destination": "/arena",
         "type": 301
+      },
+      {
+        "//": "The portfolio pages deleted in the full migration. Same reasoning as /games: the Angular redirectTo entries only cover in-app navigation, so these 301s are what stop indexed URLs and inbound links from hitting the SPA fallback. Each points at the nearest surviving surface rather than blanket-redirecting to /home, so the inbound link keeps some of its meaning.",
+        "source": "/skills",
+        "destination": "/tools",
+        "type": 301
+      },
+      {
+        "source": "/services",
+        "destination": "/tools",
+        "type": 301
+      },
+      {
+        "source": "/projects",
+        "destination": "/blueprint",
+        "type": 301
+      },
+      {
+        "source": "/contact",
+        "destination": "/home",
+        "type": 301
+      },
+      {
+        "source": "/about",
+        "destination": "/home",
+        "type": 301
+      },
+      {
+        "source": "/guestbook",
+        "destination": "/home",
+        "type": 301
       }
     ],
     "rewrites": [

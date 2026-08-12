@@ -40,59 +40,20 @@ const routes: Routes = [
         }
       }
     },
-  {
-      path: 'skills',
-      loadComponent: () => import('./skills/skills.component').then(m => m.SkillsComponent),
-      title: RouteTitles.skills,
-      data: {
-        description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more. Full-stack expertise for modern web and mobile applications.',
-        keywords: 'angular, react, typescript, nodejs, firebase, full stack skills, web developer skills',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org', '@type': 'WebPage', name: 'Skills — The Godforge',
-          url: `${SITE_URL}/skills`,
-          description: 'Technical skills across Angular, React, TypeScript, Node.js, Firebase, and more.',
-          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
-            { '@type': 'ListItem', position: 2, name: 'Skills', item: `${SITE_URL}/skills` }
-          ]}
-        }
-      }
-    },
-  {
-      path: 'projects',
-      loadComponent: () => import('./projects/projects.component').then(m => m.ProjectsComponent),
-      title: RouteTitles.projects,
-      data: {
-        description: 'Portfolio of real-world projects: e-commerce platforms, web applications, and developer tools built with Angular, Firebase, and TypeScript.',
-        keywords: 'portfolio, web projects, angular projects, firebase projects, case studies, web applications',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Projects — The Godforge',
-          url: `${SITE_URL}/projects`,
-          description: 'Portfolio of real-world projects built with Angular, Firebase, and TypeScript.',
-          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
-            { '@type': 'ListItem', position: 2, name: 'Projects', item: `${SITE_URL}/projects` }
-          ]}
-        }
-      }
-    },
-  {
-      path: 'contact',
-      loadComponent: () => import('./contact/contact.component').then(m => m.ContactComponent),
-      title: RouteTitles.contact,
-      data: {
-        description: 'Get in touch for freelance web development, project collaboration, or consulting. Based in Spain, working globally.',
-        keywords: 'hire developer, freelance web development, contact, project consultation',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact — The Godforge',
-          url: `${SITE_URL}/contact`,
-          description: 'Get in touch for freelance web development, project collaboration, or consulting.'
-        }
-      }
-    },
+  /*
+   * The last of the portfolio. Skills, Projects and Contact described a
+   * freelancer for hire; The Godforge is a product, so the pages are gone
+   * rather than restyled — there was nothing under the styling worth keeping.
+   *
+   * These entries only cover in-app navigation, where no HTTP request is made.
+   * The 301s that search engines and external links need live in firebase.json,
+   * exactly as they do for the older /games → /arena move above.
+   */
+  { path: 'skills',   redirectTo: 'tools', pathMatch: 'full' },
+  { path: 'projects', redirectTo: 'blueprint', pathMatch: 'full' },
+  { path: 'contact',  redirectTo: 'home', pathMatch: 'full' },
+  { path: 'about',    redirectTo: 'home', pathMatch: 'full' },
+  { path: 'services', redirectTo: 'tools', pathMatch: 'full' },
   {
       path: 'donate',
       loadComponent: () => import('./donate/donate.component').then(m => m.DonateComponent),
@@ -207,19 +168,10 @@ const routes: Routes = [
       redirectTo: 'arena',
       pathMatch: 'full'
     },
-  {
-      path: 'guestbook',
-      // loadChildren (not loadComponent) so that provideAuth()/provideDatabase()
-      // live inside the lazy chunk too — importing them here would pull
-      // @firebase/auth back into the eager bundle via this module.
-      loadChildren: () => import('./guestbook/guestbook.routes').then(m => m.GUESTBOOK_ROUTES),
-      title: 'Guestbook — The Godforge',
-      data: {
-        description: 'Leave a message in the cosmic guestbook. A constellation of visitors who passed through.',
-        keywords: 'guestbook, visitors, leave a message, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`
-      }
-    },
+  // The guestbook was a portfolio visitor wall, and its Firestore reads were a
+  // real share of the quota. Redirected rather than kept; see firebase.json for
+  // the 301.
+  { path: 'guestbook', redirectTo: 'home', pathMatch: 'full' },
   {
       path: 'quests',
       loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
