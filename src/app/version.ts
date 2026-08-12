@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.40.0',
+  version: '2.41.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Lean',
+  codename: 'Five Rooms',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.41.0',
+    codename: 'Five Rooms',
+    date: '2026-08-12',
+    highlights: [
+      'Every page now has a colour of its own. The Arena is lit from below in crimson like a pit, the Codex by candlelight from the same direction, the War Table under overhead instrument cyan, the Market by forge energy above and the colour of money underfoot, and Realms by the Godforge core with Luminous and Verge bleeding in from the top corners',
+      'A tool page wears the colour of its own realm, taken from the same hex that paints its badge and its sigil glow, so the wash can never disagree with the header it sits under',
+      'The Forge Keeper wears the visitor rather than the route: above 55% Aether the page glows Solari gold, below 45% it goes Nocturne crimson, and the band between stays the neutral core because neither realm has claimed you yet',
+      'Walking between rooms fades rather than cuts. The five wash colours are registered custom properties, which is the one way a gradient can be made to interpolate — a plain background swap is a hard cut — so a route change cross-fades one palette into the next over half a second, and reduced motion takes the destination instantly',
+      'These are stand-ins for art that has not been painted yet, and they are built to be thrown away: when a page gets its own artwork, one entry is deleted and the painting takes the first slot of the same background',
+      'The home page is untouched. Its painted altar is the atmosphere, so it is the one route with no entry in the table and no wash at all behind it',
+    ],
+  },
   {
     version: '2.40.0',
     codename: 'Lean',
