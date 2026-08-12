@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostBinding, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import {
@@ -18,6 +18,12 @@ export interface ArenaGame {
   unlockHint: string;
   locked: boolean;
   /**
+   * Whether the gate leads anywhere yet. Opening a gate that has no game behind
+   * it used to render an "Enter →" button wired to nothing at all, which read
+   * as a broken site rather than as unfinished work.
+   */
+  playable: boolean;
+  /**
    * Derived, never authored: a game inherits the tier of the egg that unlocks
    * it. That way the ladder means one thing across the whole site — a red
    * border on an arena card and a red drop toast are the same claim.
@@ -27,7 +33,10 @@ export interface ArenaGame {
 }
 
 /** The registry, before tiers are resolved from the egg ladder. */
-type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity'>;
+type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'playable'>;
+
+/** Gate ids that have a game built behind them. Everything else is still forge work. */
+const BUILT_GAMES = new Set<string>(['color-memory']);
 
 @Component({
   selector: 'app-arena',
@@ -35,7 +44,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity'>;
   styleUrls: ['./arena.component.css'],
   standalone: false
 })
-export class ArenaComponent implements OnInit {
+export class ArenaComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
 
@@ -78,7 +87,7 @@ export class ArenaComponent implements OnInit {
     {
       id: 'color-memory',
       title: 'Color Memory',
-      description: 'Match hex colors to their names from memory. Progressively harder palettes.',
+      description: 'Match the Eclipse Fragments — pair every colour in the dark before the light fades.',
       icon: '🎨',
       unlockEggId: 'color-void',
       unlockHint: 'Convert pure black #000000 in the Color Converter',
@@ -120,7 +129,7 @@ export class ArenaComponent implements OnInit {
       seed.unlockEggId,
       EASTER_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
     );
-    return { ...seed, locked: true, tier, rarity: rarityOf(tier) };
+    return { ...seed, locked: true, playable: BUILT_GAMES.has(seed.id), tier, rarity: rarityOf(tier) };
   });
 
   async ngOnInit(): Promise<void> {
@@ -130,6 +139,48 @@ export class ArenaComponent implements OnInit {
     for (const game of this.games) {
       game.locked = !this.eggs.isFound(game.unlockEggId);
     }
+  }
+
+  ngOnDestroy(): void {
+    // never leave the page scroll-locked if the visitor navigates away mid-game
+    this.lockScroll(false);
+  }
+
+  /**
+   * The global `routeFadeIn` animation runs with `fill: forwards`, so every
+   * routed host keeps a transform and is therefore its own stacking context.
+   * A fixed overlay inside one cannot out-rank the z-index:1000 header on its
+   * own — the host has to be lifted instead.
+   */
+  @HostBinding('class.ar-game-open')
+  get gameOpen(): boolean {
+    return this.activeGameId !== null;
+  }
+
+  /** id of the gate currently open in the overlay, or null */
+  activeGameId: string | null = null;
+  /** id of an opened gate whose game is not built yet */
+  soonGameId: string | null = null;
+
+  enter(game: ArenaGame): void {
+    if (game.locked) return;
+    if (!game.playable) {
+      this.soonGameId = game.id;
+      return;
+    }
+    this.soonGameId = null;
+    this.activeGameId = game.id;
+    this.lockScroll(true);
+  }
+
+  closeGame(): void {
+    this.activeGameId = null;
+    this.lockScroll(false);
+  }
+
+  private lockScroll(locked: boolean): void {
+    if (!this.isBrowser) return;
+    document.body.style.overflow = locked ? 'hidden' : '';
   }
 
   get unlockedCount(): number {
