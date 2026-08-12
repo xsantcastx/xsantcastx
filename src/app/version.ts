@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.44.0',
+  version: '2.45.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Purge',
+  codename: 'Thrift',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,22 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.45.0',
+    codename: 'Thrift',
+    date: '2026-08-12',
+    highlights: [
+      'Firestore was serving 1.1 million document reads a day, and almost all of them came from one page: /live polled five collections on three-to-eight-second timers, each an unordered list call for up to two hundred documents, which is roughly eleven thousand reads per visitor-minute — and cost exactly the same for a tab left open in the background as for one being watched',
+      'Those polls are now bounded, ordered queries that tail from the newest entry already seen, so a feed nobody is writing to costs one read per poll instead of two hundred; measured live, /live went from ~10,900 to ~30 billed reads per visitor-minute',
+      'The feed also suspends itself entirely on a hidden tab or after fifteen minutes untouched, says so, and resumes on any click, key or scroll — a page opened in a background tab now polls nothing at all',
+      'Every other read goes through a new read-through localStorage cache with a per-caller TTL: counters for an hour, the visit total for thirty minutes, admin panels for five. A repeat page load makes zero Firestore requests where it used to make one per counter on screen',
+      'The visit counter stopped reading before it writes — increment(1) is atomic on the server, which is what the transaction was really for, and the total on screen comes from the cache',
+      'The changelog, donation feed and admin dev-log dropped their standing snapshot listeners, each of which billed a full page of documents just to attach and re-billed on every write',
+      'Admin panels are whole-collection scans that no limit can help, so they get a Refresh button and a "last updated" line instead, and the long lists paginate',
+      'Signing in with two saves that each hold something the other does not now asks which one wins — This Device, Cloud, or Merge Best — instead of silently taking the higher of every number. It only opens when the question is real: a cloud save simply ahead of this browser still merges without interrupting',
+      'The sign-in button says "Sign In" with the Google mark and "Sync across devices" under it, rather than "Save Progress" for a control that opens an account chooser'
+    ]
+  },
   {
     version: '2.44.0',
     codename: 'The Purge',
