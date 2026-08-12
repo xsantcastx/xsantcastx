@@ -1,0 +1,156 @@
+<div class="pro-page">
+
+  <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
+  <section class="pro-hero">
+    <div class="pro-hero__inner">
+
+      @if (justPurchased) {
+        <!-- Success banner. `data-success-burst` is the hook the cosmic
+             engine's confetti system (8d) watches for. -->
+        <div class="pro-owned-banner" data-success-burst role="status">
+          <span class="pro-owned-banner__mark" aria-hidden="true">✦</span>
+          <div>
+            <p class="pro-owned-banner__title">The forge remembers you.</p>
+            <p class="pro-owned-banner__body">
+              Pro is active. {{ goldBonus }} Gold and {{ essenceBonus }} Essence
+              have landed, your cosmetics are unlocked, and the ads are gone for good.
+            </p>
+          </div>
+        </div>
+      } @else if (isPro) {
+        <div class="pro-owned-banner" role="status">
+          <span class="pro-owned-banner__mark" aria-hidden="true">✦</span>
+          <div>
+            <p class="pro-owned-banner__title">You already hold the Pro Pack.</p>
+            <p class="pro-owned-banner__body">
+              Ads are off and your {{ xpMultiplier }}× multiplier is running.
+              Thank you for keeping the forge lit.
+            </p>
+          </div>
+        </div>
+      }
+
+      <p class="pro-eyebrow">
+        <span class="pro-eyebrow__pulse" aria-hidden="true"></span>
+        One payment · No subscription
+      </p>
+
+      <h1 class="pro-hero__title">
+        The Godforge <span class="pro-hero__title-accent">Pro Pack</span>
+      </h1>
+
+      <p class="pro-hero__price">
+        <span class="pro-hero__currency">$</span>{{ priceUsd }}
+        <span class="pro-hero__price-note">once — forever</span>
+      </p>
+
+      <p class="pro-hero__sub">
+        Every tool on this site is free and always will be. Pro is for the
+        people who want the ads gone, the progression doubled, and a mark on
+        their rank that says they were here early.
+      </p>
+
+      <div class="pro-hero__cta-row">
+        @if (checkoutReady) {
+          <a
+            class="pro-cta"
+            [href]="checkoutUrl"
+            rel="noopener"
+          >Forge Your Legacy — ${{ priceUsd }}</a>
+        } @else {
+          <!-- Waitlist mode: no checkout URL configured yet. An honest
+               disabled state beats a button that goes nowhere. -->
+          <a
+            class="pro-cta pro-cta--pending"
+            href="mailto:xsantcastx&#64;xsantcastx.com?subject=Pro%20Pack%20waitlist&body=Tell%20me%20when%20the%20Pro%20Pack%20is%20live."
+          >Tell me when it opens</a>
+        }
+        <a class="pro-cta pro-cta--ghost" routerLink="/tools">Browse the free tools</a>
+      </div>
+
+      @if (!checkoutReady) {
+        <p class="pro-hero__pending-note">
+          Checkout opens shortly — the store is being set up. Drop a line and
+          you will be the first to know.
+        </p>
+      }
+
+      <p class="pro-hero__trust">
+        🛡 Handled by LemonSqueezy · 30-day refund, no reason needed · This site
+        never sees your card
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ Anchor ═════════════════════════════════════════════════════════ -->
+  <section class="pro-anchor">
+    <p class="pro-anchor__line">
+      Most developer tools charge
+      <span class="pro-anchor__strike">$10–20 / month</span>.
+    </p>
+    <p class="pro-anchor__punch">This is ${{ priceUsd }}. <em>Once.</em> Forever.</p>
+    <p class="pro-anchor__note">
+      At $15/month, a year of the average dev-tool subscription is $180. The Pro
+      Pack costs less than one month and never renews.
+    </p>
+  </section>
+
+  <!-- ═══ Features ═══════════════════════════════════════════════════════ -->
+  <section class="pro-features" aria-labelledby="pro-features-hd">
+    <p class="pro-eyebrow">
+      <span class="pro-eyebrow__pulse" aria-hidden="true"></span>
+      What you get
+    </p>
+    <h2 class="pro-section__title" id="pro-features-hd">Nine things, one payment</h2>
+
+    <ul class="pro-feature-grid">
+      @for (f of features; track f.title) {
+        <li class="pro-feature" [class.pro-feature--headline]="f.headline">
+          <span class="pro-feature__check" aria-hidden="true">✓</span>
+          <span class="pro-feature__icon" aria-hidden="true">{{ f.icon }}</span>
+          <h3 class="pro-feature__title">{{ f.title }}</h3>
+          <p class="pro-feature__body">{{ f.body }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- ═══ FAQ ════════════════════════════════════════════════════════════ -->
+  <section class="pro-faq" aria-labelledby="pro-faq-hd">
+    <p class="pro-eyebrow">
+      <span class="pro-eyebrow__pulse" aria-hidden="true"></span>
+      Before you buy
+    </p>
+    <h2 class="pro-section__title" id="pro-faq-hd">The honest answers</h2>
+
+    <div class="pro-faq__list">
+      @for (faq of faqs; track faq.q) {
+        <details class="pro-faq__item">
+          <summary class="pro-faq__q">{{ faq.q }}</summary>
+          <p class="pro-faq__a">{{ faq.a }}</p>
+        </details>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Closing CTA ════════════════════════════════════════════════════ -->
+  @if (!isPro) {
+    <section class="pro-close">
+      <h2 class="pro-close__title">Keep the forge lit.</h2>
+      <p class="pro-close__body">
+        The tools stay free either way. This just makes them yours.
+      </p>
+      @if (checkoutReady) {
+        <a class="pro-cta" [href]="checkoutUrl" rel="noopener">
+          Forge Your Legacy — ${{ priceUsd }}
+        </a>
+      } @else {
+        <a
+          class="pro-cta pro-cta--pending"
+          href="mailto:xsantcastx&#64;xsantcastx.com?subject=Pro%20Pack%20waitlist"
+        >Tell me when it opens</a>
+      }
+    </section>
+  }
+
+</div>

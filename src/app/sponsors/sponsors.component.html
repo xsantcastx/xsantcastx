@@ -198,7 +198,11 @@
         Packages
       </p>
       <h2 class="sp-section__title" id="sp-pricing-hd">What it costs</h2>
-      <p class="sp-section__tagline">no contracts longer than the deal itself</p>
+      <p class="sp-section__tagline">starting at $200/month per tool category</p>
+      <p class="sp-section__note">
+        Flat monthly rate, no auction and no contract longer than the deal
+        itself. Cancel by not renewing.
+      </p>
     </div>
 
     <div class="sp-tiers">
@@ -274,6 +278,43 @@
           <p class="sp-faq__a">{{ faq.a }}</p>
         </details>
       }
+    </div>
+  </section>
+
+  <!-- ═══ Contact ════════════════════════════════════════════════════════ -->
+  <section class="sp-section" aria-labelledby="sp-contact-hd">
+    <div class="sp-section__hd">
+      <p class="sp-eyebrow">
+        <span class="sp-eyebrow__pulse" aria-hidden="true"></span>
+        Get in touch
+      </p>
+      <h2 class="sp-section__title" id="sp-contact-hd">Talk to a human</h2>
+      <p class="sp-section__tagline">one inbox, no sales team, no CRM</p>
+    </div>
+
+    <div class="sp-contact">
+      <div class="sp-contact__main">
+        <p class="sp-contact__label">Email</p>
+        <a class="sp-contact__email" [href]="'mailto:' + contactEmail">
+          {{ contactEmail }}
+        </a>
+        <p class="sp-contact__reply">
+          Replies {{ replyWindow }} — it comes straight to me, not a queue.
+        </p>
+      </div>
+
+      <div class="sp-contact__aside">
+        <p class="sp-contact__label">Include if you can</p>
+        <ul class="sp-contact__list">
+          <li>What you are selling, and the URL</li>
+          <li>Which category fits your audience</li>
+          <li>Which month you want, and for how long</li>
+        </ul>
+        <p class="sp-contact__note">
+          You will get current traffic straight from the dashboard, what is
+          still open, and a price back in the first reply.
+        </p>
+      </div>
     </div>
   </section>
 
