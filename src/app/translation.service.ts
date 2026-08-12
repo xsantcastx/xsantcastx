@@ -1192,7 +1192,7 @@ export class TranslationService {
     'tools.diffChecker.ph.original': { en: 'Paste or type original text here...', es: 'Pega o escribe el texto original aquí...' },
     'tools.diffChecker.ph.modified': { en: 'Paste or type modified text here...', es: 'Pega o escribe el texto modificado aquí...' },
     'tools.cssVariables.ph.name': { en: 'Variable name (e.g., primary-color)', es: 'Nombre de la variable (ej., primary-color)' },
-    'tools.cssVariables.ph.value': { en: 'Value (e.g., #00ffcc or 1rem)', es: 'Valor (ej., #00ffcc o 1rem)' },
+    'tools.cssVariables.ph.value': { en: 'Value (e.g., #8B5CF6 or 1rem)', es: 'Valor (ej., #8B5CF6 o 1rem)' },
     'tools.colorBlindness.ph.sampleText': { en: 'Enter sample text...', es: 'Introduce un texto de ejemplo...' },
 
     // Tool input placeholders — batch

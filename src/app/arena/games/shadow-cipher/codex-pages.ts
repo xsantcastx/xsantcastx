@@ -25,7 +25,7 @@ export const CODEX_PAGES: CodexPage[] = [
     lang: 'css',
     lines: [
       '.sigil {',
-      '  color: #4dffe0;',
+      '  color: #A78BFA;',
       '}',
     ],
   },

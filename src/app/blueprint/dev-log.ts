@@ -41,7 +41,7 @@ export const DEV_LOG_CATEGORIES: {
   color: string;
   glow: string;
 }[] = [
-  { key: 'problem-solved', label: 'Problem Solved', color: '#4dffe0', glow: 'rgba(0, 255, 204, 0.6)' },
+  { key: 'problem-solved', label: 'Problem Solved', color: '#A78BFA', glow: 'rgba(139, 92, 246, 0.6)' },
   { key: 'architecture',   label: 'Architecture',   color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.6)' },
   { key: 'milestone',      label: 'Milestone',      color: '#ffc669', glow: 'rgba(255, 180, 80, 0.6)' },
   { key: 'agent-log',      label: 'Agent Log',      color: '#c48bff', glow: 'rgba(180, 120, 255, 0.6)' },

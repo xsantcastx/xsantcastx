@@ -93,7 +93,7 @@
   justify-content: center;
   min-height: 120px;
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0, 255, 204, 0.04), var(--shadow-soft);
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.04), var(--shadow-soft);
 }
 
 .ac-preview__text {
@@ -247,8 +247,8 @@
   transition: border-color 0.2s ease;
 }
 .ac-color-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
-  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.08);
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.08);
 }
 .ac-color-input--error {
   border-color: rgba(255, 77, 106, 0.6) !important;
@@ -267,7 +267,7 @@
   width: 42px;
   height: 42px;
   border-radius: 8px;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.1);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
 }
 
 /* ── Font settings ─────────────────────────────────────────── */
@@ -298,7 +298,7 @@
   box-sizing: border-box;
 }
 .ac-number-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 
 .ac-range {
@@ -320,11 +320,11 @@
   background: var(--primary-color);
   cursor: pointer;
   border: 2px solid var(--surface-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
   transition: box-shadow 0.2s ease;
 }
 .ac-range::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 14px rgba(0, 255, 204, 0.6);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.6);
 }
 .ac-range::-moz-range-thumb {
   width: 16px;
@@ -333,7 +333,7 @@
   background: var(--primary-color);
   cursor: pointer;
   border: 2px solid var(--surface-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
 }
 
 /* ── Presets ────────────────────────────────────────────────── */
@@ -361,7 +361,7 @@
 }
 .ac-preset-btn:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .ac-preset-dot {
@@ -370,7 +370,7 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.ac-preset-dot--pass { background: #00ffcc; box-shadow: 0 0 6px rgba(0, 255, 204, 0.5); }
+.ac-preset-dot--pass { background: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.5); }
 .ac-preset-dot--warn { background: #ffaa00; box-shadow: 0 0 6px rgba(255, 170, 0, 0.5); }
 .ac-preset-dot--fail { background: var(--error-color); box-shadow: 0 0 6px rgba(255, 77, 106, 0.5); }
 
@@ -405,14 +405,14 @@
 }
 
 .ac-score-card--pass-high {
-  border-color: rgba(0, 255, 204, 0.4);
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.08), 0 0 60px rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.08), 0 0 60px rgba(139, 92, 246, 0.03);
 }
 .ac-score-card--pass-high::before { background: var(--primary-color); }
 
 .ac-score-card--pass {
-  border-color: rgba(0, 255, 204, 0.25);
-  box-shadow: 0 0 15px rgba(0, 255, 204, 0.05);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.05);
 }
 .ac-score-card--pass::before { background: var(--primary-color); }
 
@@ -448,7 +448,7 @@
 .ac-score-card--pass-high .ac-score-card__value,
 .ac-score-card--pass .ac-score-card__value {
   color: var(--primary-color);
-  text-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 .ac-score-card--warn .ac-score-card__value {
   color: #ffaa00;
@@ -511,10 +511,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.ac-tab-btn:hover { color: var(--text-color); border-color: rgba(0, 255, 204, 0.2); }
+.ac-tab-btn:hover { color: var(--text-color); border-color: rgba(139, 92, 246, 0.2); }
 .ac-tab-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -555,7 +555,7 @@
 }
 
 .ac-table tbody tr:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .ac-mono {
@@ -587,10 +587,10 @@
   text-transform: uppercase;
 }
 .ac-result-tag--pass {
-  background: rgba(0, 255, 204, 0.12);
-  color: #00ffcc;
-  border: 1px solid rgba(0, 255, 204, 0.3);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.1);
+  background: rgba(139, 92, 246, 0.12);
+  color: #8B5CF6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.1);
 }
 .ac-result-tag--fail {
   background: rgba(255, 77, 106, 0.1);
@@ -636,7 +636,7 @@
 .ac-btn-primary {
   padding: 0.5rem 1.1rem;
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.4);
+  border: 1px solid rgba(139, 92, 246, 0.4);
   border-radius: var(--radius-md);
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -648,7 +648,7 @@
 }
 .ac-btn-primary:hover {
   background: color-mix(in srgb, var(--primary-color) 22%, transparent);
-  box-shadow: 0 0 16px rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
 }
 
 /* ── Ghost/small buttons ───────────────────────────────────── */
@@ -670,12 +670,12 @@
 }
 .ac-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .ac-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .ac-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .ac-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }

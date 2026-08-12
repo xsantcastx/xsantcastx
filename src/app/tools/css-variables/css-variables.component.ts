@@ -26,7 +26,7 @@ const CATEGORY_LABELS: Record<VariableCategory, string> = {
 };
 
 const SAMPLE_VARIABLES: CssVariable[] = [
-  { id: 's1', name: 'primary', value: '#00ffcc', category: 'colors' },
+  { id: 's1', name: 'primary', value: '#8B5CF6', category: 'colors' },
   { id: 's2', name: 'secondary', value: '#7b61ff', category: 'colors' },
   { id: 's3', name: 'bg-dark', value: '#0a0e1a', category: 'colors' },
   { id: 's4', name: 'text-main', value: '#d6ddeb', category: 'colors' },
@@ -46,7 +46,7 @@ const SAMPLE_VARIABLES: CssVariable[] = [
   { id: 's18', name: 'radius-lg', value: '16px', category: 'borders' },
   { id: 's19', name: 'border-default', value: '1px solid rgba(255,255,255,0.08)', category: 'borders' },
   { id: 's20', name: 'shadow-soft', value: '0 2px 12px rgba(0,0,0,0.4)', category: 'shadows' },
-  { id: 's21', name: 'shadow-glow', value: '0 0 20px rgba(0,255,204,0.15)', category: 'shadows' },
+  { id: 's21', name: 'shadow-glow', value: '0 0 20px rgba(139,92,246,0.15)', category: 'shadows' },
 ];
 
 @Component({
@@ -475,7 +475,7 @@ export class CssVariablesComponent implements OnDestroy {
   }
 
   get previewPrimary(): string {
-    return this.getColorValue('primary') || '#00ffcc';
+    return this.getColorValue('primary') || '#8B5CF6';
   }
 
   get previewSecondary(): string {

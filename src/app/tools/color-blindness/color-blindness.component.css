@@ -161,7 +161,7 @@
   transition: border-color 0.2s ease;
 }
 .cbs-hex-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 
 .cbs-text-input {
@@ -177,7 +177,7 @@
   transition: border-color 0.2s ease;
 }
 .cbs-text-input:focus {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 
 /* -- Picker row (section 1) ----------------------------------- */
@@ -234,7 +234,7 @@
   transition: border-color 0.2s ease, transform 0.15s ease;
 }
 .cbs-swatch-card:hover {
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
   transform: translateY(-2px);
 }
 
@@ -284,7 +284,7 @@
   gap: 0.4rem;
   padding: 0.55rem 1.1rem;
   background: color-mix(in srgb, var(--primary-color) 14%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: var(--radius-md);
   color: var(--primary-color);
   font-family: var(--font-body);
@@ -297,7 +297,7 @@
 }
 .cbs-btn:hover {
   background: color-mix(in srgb, var(--primary-color) 22%, transparent);
-  border-color: rgba(0, 255, 204, 0.55);
+  border-color: rgba(139, 92, 246, 0.55);
   transform: translateY(-1px);
 }
 
@@ -309,7 +309,7 @@
 .cbs-btn--ghost:hover {
   background: none;
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 /* -- Contrast results grid ------------------------------------ */
@@ -330,7 +330,7 @@
   transition: border-color 0.2s ease;
 }
 .cbs-contrast-card:hover {
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .cbs-contrast-preview {
@@ -384,9 +384,9 @@
 }
 
 .cbs-badge--pass {
-  background: color-mix(in srgb, #00ffcc 15%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.3);
-  color: #00ffcc;
+  background: color-mix(in srgb, #8B5CF6 15%, transparent);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #8B5CF6;
 }
 
 .cbs-badge--fail {
@@ -414,8 +414,8 @@
 }
 .cbs-dropzone:hover,
 .cbs-dropzone--over {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
   color: var(--text-color);
 }
 
@@ -467,7 +467,7 @@
   transition: border-color 0.2s ease;
 }
 .cbs-select:focus {
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .cbs-select option {
   background: var(--surface-strong);

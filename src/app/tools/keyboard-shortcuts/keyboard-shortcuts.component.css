@@ -124,7 +124,7 @@
   overflow: hidden;
 }
 .ks-search:focus-within {
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .ks-search__icon {
@@ -313,14 +313,14 @@
   font-size: 0.82rem;
   border-radius: 7px;
   border-bottom-width: 3px;
-  background: linear-gradient(180deg, rgba(0, 255, 204, 0.12) 0%, rgba(0, 255, 204, 0.03) 100%);
-  border-color: rgba(0, 255, 204, 0.2);
-  border-bottom-color: rgba(0, 255, 204, 0.15);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.03) 100%);
+  border-color: rgba(139, 92, 246, 0.2);
+  border-bottom-color: rgba(139, 92, 246, 0.15);
   color: var(--primary-color);
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(0, 255, 204, 0.08),
-    inset 0 1px 0 rgba(0, 255, 204, 0.1);
+    0 0 12px rgba(139, 92, 246, 0.08),
+    inset 0 1px 0 rgba(139, 92, 246, 0.1);
 }
 
 .ks-kbd--alt {
@@ -556,11 +556,11 @@
 }
 .ks-btn-copy:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 .ks-btn-copy--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 /* -- Responsive ----------------------------------------------- */

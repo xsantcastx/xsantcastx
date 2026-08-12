@@ -136,7 +136,7 @@ import { REALMS } from '../realms/realm.model';
       border-radius: 999px;
       border: 1px solid var(--tier);
       background: color-mix(in srgb, var(--tier) 14%, transparent);
-      color: #eafff9;
+      color: #F2ECFF;
       font: 600 12px/1 'Orbitron', system-ui, sans-serif;
       cursor: pointer;
       animation: qcReady 2.4s ease-in-out infinite;
@@ -176,7 +176,7 @@ export class QuestCardComponent {
   /** A quest with no realm is a Wanderer quest — it takes the brand cyan. */
   get realmColor(): string {
     const realm = REALMS.find(r => r.id === this.quest.realm);
-    return realm?.color ?? '#4dffe0';
+    return realm?.color ?? '#A78BFA';
   }
 
   get rewardLabel(): string {

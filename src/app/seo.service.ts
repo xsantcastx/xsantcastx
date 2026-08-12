@@ -8,8 +8,9 @@ import { brandTitle } from './shared/title-strategy.service';
 export const SITE_URL = 'https://xsantcastx.com';
 
 const SITE_NAME   = 'The Godforge';
-const DEFAULT_IMG = `${SITE_URL}/assets/og/og-cosmic.svg`;
-const DEFAULT_IMG_FALLBACK = `${SITE_URL}/assets/og/og-default.jpg`;
+const DEFAULT_IMG = `${SITE_URL}/assets/og/og-godforge.jpg`;
+const DEFAULT_IMG_ALT =
+  'The Godforge — an eclipsed sun ringed in violet fire over a field of stars';
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {
@@ -84,8 +85,8 @@ export class SeoService {
     this.meta.updateTag({ property: 'og:image',         content: ogImage });
     this.meta.updateTag({ property: 'og:image:width',   content: '1200' });
     this.meta.updateTag({ property: 'og:image:height',  content: '630' });
-    this.meta.updateTag({ property: 'og:image:type',    content: ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg' });
-    this.meta.updateTag({ property: 'og:image:alt',     content: 'The Godforge — a cosmic constellation of free browser tools' });
+    this.meta.updateTag({ property: 'og:image:type',    content: ogImage.endsWith('.png') ? 'image/png' : 'image/jpeg' });
+    this.meta.updateTag({ property: 'og:image:alt',     content: DEFAULT_IMG_ALT });
     this.meta.updateTag({ property: 'og:site_name',     content: SITE_NAME });
     this.meta.updateTag({ property: 'og:type',          content: 'website' });
     this.meta.updateTag({ property: 'og:locale',          content: lang === 'es' ? 'es_ES' : 'en_US' });
@@ -96,7 +97,7 @@ export class SeoService {
     this.meta.updateTag({ name: 'twitter:title',       content: pageTitle });
     this.meta.updateTag({ name: 'twitter:description', content: desc });
     this.meta.updateTag({ name: 'twitter:image',       content: ogImage });
-    this.meta.updateTag({ name: 'twitter:image:alt',   content: 'The Godforge — a cosmic constellation of free browser tools' });
+    this.meta.updateTag({ name: 'twitter:image:alt',   content: DEFAULT_IMG_ALT });
 
     // ── Canonical ─────────────────────────────────────────────────────────
     let link = this.doc.querySelector<HTMLLinkElement>('link[rel="canonical"]');

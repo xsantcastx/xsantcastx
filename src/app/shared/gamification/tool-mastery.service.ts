@@ -36,7 +36,7 @@ export interface MasteryDefinition {
 export const MASTERY_LEVELS: MasteryDefinition[] = [
   { id: 'untouched', label: 'Untouched', min: 0,  next: 1,    stars: 0, color: '#5a6b78', glow: 'rgba(90, 107, 120, 0.4)' },
   { id: 'novice',    label: 'Novice',    min: 1,  next: 6,    stars: 2, color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.5)' },
-  { id: 'adept',     label: 'Adept',     min: 6,  next: 21,   stars: 3, color: '#4dffe0', glow: 'rgba(0, 255, 204, 0.5)' },
+  { id: 'adept',     label: 'Adept',     min: 6,  next: 21,   stars: 3, color: '#A78BFA', glow: 'rgba(139, 92, 246, 0.5)' },
   { id: 'expert',    label: 'Expert',    min: 21, next: 51,   stars: 4, color: '#a48bff', glow: 'rgba(140, 110, 255, 0.6)' },
   { id: 'master',    label: 'Master',    min: 51, next: null, stars: 5, color: '#C9A84C', glow: 'rgba(201, 168, 76, 0.65)' },
 ];

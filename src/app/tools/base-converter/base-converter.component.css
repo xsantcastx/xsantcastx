@@ -193,13 +193,13 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.bc-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.bc-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .bc-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.08);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
 }
 
 .bc-seg-btn--sm {
@@ -265,7 +265,7 @@
 }
 
 .bc-input:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Options panel ─────────────────────────────────────────── */
@@ -336,7 +336,7 @@
 
 .bc-toggle input:checked ~ .bc-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .bc-toggle input:checked ~ .bc-toggle__track .bc-toggle__thumb {
   left: 20px;
@@ -384,12 +384,12 @@
 }
 .bc-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .bc-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .bc-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .bc-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -417,9 +417,9 @@
 }
 
 .bc-quick-btn:hover {
-  border-color: rgba(0, 255, 204, 0.3);
+  border-color: rgba(139, 92, 246, 0.3);
   background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-  box-shadow: 0 0 10px rgba(0, 255, 204, 0.05);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.05);
 }
 
 .bc-quick-btn__label {
@@ -459,7 +459,7 @@
 
 .bc-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -497,7 +497,7 @@
 }
 
 .bc-result-row:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .bc-result-row--source {
@@ -529,7 +529,7 @@
   min-width: 2rem;
   padding: 0.1rem 0.35rem;
   background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-  border: 1px solid rgba(0, 255, 204, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 4px;
   font-family: 'Fira Code', monospace;
   font-size: 0.65rem;
@@ -624,9 +624,9 @@
 
 .bc-bit-cell--on {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
   color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(0, 255, 204, 0.15), inset 0 0 6px rgba(0, 255, 204, 0.05);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.15), inset 0 0 6px rgba(139, 92, 246, 0.05);
 }
 
 .bc-bit-cell--off {

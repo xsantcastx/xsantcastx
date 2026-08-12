@@ -168,8 +168,8 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .hm-input:focus {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.015);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 .hm-secret-row {
@@ -197,7 +197,7 @@
 }
 .hm-btn-icon:hover {
   color: var(--text-color);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .hm-hint {
@@ -227,7 +227,7 @@
   color: rgba(214, 221, 235, 0.28);
 }
 .hm-textarea:focus {
-  background: rgba(0, 255, 204, 0.015);
+  background: rgba(139, 92, 246, 0.015);
 }
 
 /* ── Drop zone ─────────────────────────────────────────────── */
@@ -249,13 +249,13 @@
 }
 .hm-dropzone:hover,
 .hm-dropzone--over {
-  border-color: rgba(0, 255, 204, 0.45);
-  background: rgba(0, 255, 204, 0.03);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.03);
   color: var(--text-color);
 }
 .hm-dropzone--has-file {
-  border-color: rgba(0, 255, 204, 0.35);
-  background: rgba(0, 255, 204, 0.04);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .hm-dropzone__icon {
@@ -335,10 +335,10 @@
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.hm-seg-btn:hover { color: var(--text-color); border-color: rgba(0,255,204,0.2); }
+.hm-seg-btn:hover { color: var(--text-color); border-color: rgba(139,92,246,0.2); }
 .hm-seg-btn--active {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border-color: rgba(0, 255, 204, 0.4);
+  border-color: rgba(139, 92, 246, 0.4);
   color: var(--primary-color);
   font-weight: 600;
 }
@@ -382,7 +382,7 @@
 
 .hm-toggle input:checked ~ .hm-toggle__track {
   background: color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-color: rgba(0, 255, 204, 0.45);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .hm-toggle input:checked ~ .hm-toggle__track .hm-toggle__thumb {
   left: 20px;
@@ -430,12 +430,12 @@
 }
 .hm-btn-ghost:hover:not(:disabled) {
   color: var(--text-color);
-  border-color: rgba(0,255,204,0.25);
+  border-color: rgba(139,92,246,0.25);
 }
 .hm-btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
 .hm-btn-ghost--success {
   color: var(--primary-color) !important;
-  border-color: rgba(0, 255, 204, 0.35) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
 .hm-btn-sm { font-size: 0.73rem; padding: 0.25rem 0.55rem; }
@@ -468,7 +468,7 @@
 
 .hm-status-bar--valid {
   background: color-mix(in srgb, var(--primary-color) 7%, transparent);
-  border-color: rgba(0, 255, 204, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   color: var(--primary-color);
 }
 
@@ -546,7 +546,7 @@
   border-bottom: none;
 }
 .hm-hash-row:hover {
-  background: rgba(0, 255, 204, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .hm-hash-row__header {

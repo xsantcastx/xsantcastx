@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.27.0',
+  version: '2.28.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Lean',
+  codename: 'Eclipse',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,19 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.28.0',
+    codename: 'Eclipse',
+    date: '2026-08-12',
+    highlights: [
+      'The forge is violet. The brand accent moved from cyan to eclipse purple across every surface — around 2,300 colour references in 250 files, from card borders and button glows to the nebula wash behind the whole site',
+      'The Verge realm keeps its cyan, because that is what the boundary between light and shadow is meant to look like. Gold stays on the forge, the artifacts and the achievements; crimson stays on Umbral',
+      'Sharing a link no longer shows a flat placeholder. The social preview is a new 1200x630 image — an eclipsed sun ringed in violet fire over a constellation, with the forge ember burning along its lower limb',
+      'Every page pointed at one of four different preview images, two of which had already been deleted and were returning 404s to Twitter and Discord. All 152 references now point at the one image that exists',
+      'The preview was also advertised as an SVG with a JPEG listed underneath it as a fallback. og:image is not a fallback list, and Facebook, LinkedIn, Discord and iMessage all reject SVG outright — which is why the preview looked broken in exactly the places people share links',
+      'The page background dropped to a deeper near-black, and the browser chrome colour on mobile follows it'
+    ]
+  },
   {
     version: '2.27.0',
     codename: 'Lean',
