@@ -50,6 +50,25 @@ export const DEV_LOG_CATEGORIES: {
 
 export const DEV_LOG: DevLogEntry[] = [
   {
+    id: 'gold-per-second',
+    date: '2026-08-12',
+    title: 'An idle economy nobody could see running',
+    summary:
+      'The forge earned one Gold a minute and displayed it on a pill that changed once a minute, silently. Every mechanic underneath was correct. None of it was believable.',
+    category: 'problem-solved',
+    tags: ['Economy', 'Idle', 'Performance', 'Prestige'],
+    body: [
+      'The Godforge economy shipped priced per minute and settled per minute. That is a defensible engineering choice — background tabs get their timers clamped to once a minute at best, so settling on elapsed wall-clock rather than ticking is the only version that survives a laptop lid closing — and it produced a mechanic nobody believed in. A rate you can only observe by waiting sixty seconds for it to move once, on a pill with no animation, is indistinguishable from a static number. The whole idle layer read as a claim on a shop page.',
+      'The unit is now the second, from the price tables through the settlement loop to the readout. The prices did not move with it, so every existing ledger is worth sixty times more per unit of time than it was. That is deliberate: the old curve topped out at forty Gold a minute, and the new top rung costs ten million.',
+      'The settlement is still elapsed-based and still capped at eight hours, because none of the reasons for that changed. What changed is that the prompt now fires every second instead of every sixty, which meant two things had to be paid for. Writes are throttled to one every five seconds with an immediate flush on purchase, prestige and pagehide — safe only because Gold and the idle clock are written together, so a dropped write rewinds both and the next load re-settles exactly the span it did not save. And the settle returns before touching Angular at all when the tab is hidden: a foreground tab costs one change-detection pass a second for the counter, a background one costs nothing.',
+      'The counter itself is an odometer. Digits are keyed by distance from the right-hand end rather than by index, which sounds like a detail and is the whole thing: keyed by index, the tick that takes 999 to 1,000 destroys and rebuilds every column and the number flashes instead of rolling. Keyed from the right, the ones column is the ones column forever, three digits roll and two mount.',
+      'The shop went from ten purchasable things to twenty-two. Ten forge rungs instead of five, four one-off multipliers, three automatons. The automatons are the interesting one, because the obvious implementation is wrong: an auto-clicker that calls the click handler would inherit the 500ms cooldown, the combo ladder and three Codex achievements for striking the Flame yourself — so an Eclipse Automaton at twenty a second would hold a x1,000 combo indefinitely and collect all three overnight while the tab sat behind a text editor. They are income instead. The Gold lands in the per-second rate and the Flame is told to look struck once a second, whatever the rate, because twenty animated strikes a second is a strobe nobody can count.',
+      'Prestige is priced off the all-time total minus what has already been granted, which is not the obvious reading either. Shards follow a square root, so scoring them per-run would make four resets at ten million pay twice what one at forty million pays — the curve would reward bailing out at the threshold over playing on, which is the exact opposite of what a prestige mechanic is for.',
+      'What the Eclipse deliberately does not reset is rank. The usual shape of this mechanic takes the level with it, and here the level is not a score the economy owns: it gates lore chapters, drives quest availability, stamps discovery dates on the Codex and is the counter Essence has already been paid against. Wiping it would delete records of things the visitor actually did, in four systems that predate the Market and cannot tell a prestige from data loss. The confirmation step says so in as many words, because a reset whose scope is a surprise is a support ticket.',
+      'One near-miss worth recording. The reduced-motion fallback for the new rate floater was written as a fade keyframe declared inside the `prefers-reduced-motion` block — which is the exact failure this codebase has already shipped once. Angular rewrites `@keyframes` names for view encapsulation but does not rewrite an `animation` shorthand sitting inside a media query, so the reference resolves to nothing, the animation never runs, and there is no console error and no build warning to tell you. It was caught before it shipped and the block now only ever cancels animations, never names one. A CSSOM sweep across the built app confirms zero dangling references against 125 defined keyframes.'
+    ]
+  },
+  {
     id: 'portable-progress',
     date: '2026-08-12',
     title: 'Making progression portable before there is anywhere to port it to',

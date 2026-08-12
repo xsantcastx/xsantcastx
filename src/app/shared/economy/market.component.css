@@ -432,9 +432,317 @@
   .mk__tab--active .mk__tab-label { display: inline; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   The per-second economy: the headline rate, the breakdown, and the Eclipse
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── The headline rate ────────────────────────────────────────────────────
+   Given its own row above the stats grid. Every purchase in this shop exists
+   to move this number, and it was previously one cell of a four-cell <dl>. */
+.mk__rate {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+.mk__rate-num {
+  font: 800 clamp(30px, 6vw, 46px)/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .01em;
+  color: #ffd97a;
+  text-shadow: 0 0 26px rgba(232, 117, 42, .55);
+  font-variant-numeric: tabular-nums;
+}
+.mk__rate-unit {
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #9fb4ae;
+}
+
+/* "+2.5/sec" off the back of a purchase. Green, because it is the one number
+   in the shop that only ever goes up. */
+.mk__rate-float {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  font: 800 15px/1 'Orbitron', system-ui, sans-serif;
+  color: #7fd5a3;
+  text-shadow: 0 0 12px rgba(100, 220, 150, .8);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: mkRateFloat 1.2s cubic-bezier(.2, .8, .3, 1) forwards;
+}
+@keyframes mkRateFloat {
+  from { transform: translate(-50%, 6px) scale(.9); opacity: 0; }
+  22%  { opacity: 1; }
+  to   { transform: translate(-50%, -34px) scale(1.06); opacity: 0; }
+}
+
+/* One gold pulse across the wallet when anything is bought. */
+.mk__wallet--flash .mk__coin { animation: mkWalletFlash .52s cubic-bezier(.22, 1, .36, 1); }
+@keyframes mkWalletFlash {
+  0%   { border-color: rgba(201, 168, 76, .3); box-shadow: none; }
+  35%  { border-color: rgba(255, 217, 122, .95); box-shadow: 0 0 30px -6px rgba(255, 217, 122, .8); }
+  100% { border-color: rgba(201, 168, 76, .3); box-shadow: none; }
+}
+
+.mk__coin--shard { border-color: rgba(164, 139, 255, .34); }
+.mk__coin--shard .mk__coin-val { color: #d8c8ff; }
+.mk__coin-glyph {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* ── The breakdown ────────────────────────────────────────────────────────── */
+.mk__ledger {
+  max-width: 620px;
+  margin: 14px auto 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: rgba(10, 6, 26, .55);
+  text-align: left;
+}
+.mk__ledger-sum {
+  cursor: pointer;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #9fb4ae;
+  /* A 44px target on the one control in this block. */
+  padding: 8px 0;
+}
+.mk__ledger-sum:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+.mk__ledger-list { list-style: none; margin: 6px 0 0; padding: 0; }
+
+.mk__ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, .05);
+}
+.mk__ledger-label {
+  font: 600 12px/1.3 'Orbitron', system-ui, sans-serif;
+  color: #F2ECFF;
+}
+.mk__ledger-note {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #7d918c;
+  /* The note can name a dozen upgrades; it wraps rather than pushing the value
+     off the right-hand edge. */
+  overflow-wrap: anywhere;
+}
+.mk__ledger-val {
+  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
+  color: #ffd97a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mk__ledger-row--mult .mk__ledger-val { color: #c48bff; }
+/* A line doing nothing is kept, not hidden: "×1.00, no Eclipse taken" tells a
+   visitor there is a multiplier here they have not earned yet, which is the
+   more useful message than an absent row. */
+.mk__ledger-row--inert { opacity: .45; }
+.mk__ledger-row--total {
+  margin-top: 4px;
+  border-top: 1px solid rgba(232, 117, 42, .4);
+}
+.mk__ledger-row--total .mk__ledger-label,
+.mk__ledger-row--total .mk__ledger-val { color: #ffe9a8; font-weight: 800; }
+
+/* ── Tab glyphs, for the three shelves with no painted sigil ─────────────── */
+.mk__tab-glyph {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 17px;
+  line-height: 1;
+}
+.mk__tab--active[data-currency='shard'] {
+  color: #d8c8ff;
+  border-color: rgba(164, 139, 255, .55);
+  box-shadow: 0 0 24px -8px rgba(123, 97, 255, .9);
+}
+
+/* ── A held single-purchase row ──────────────────────────────────────────── */
+.mk__row--maxed { border-color: rgba(201, 168, 76, .4); }
+.mk__row-held {
+  margin: 0;
+  align-self: center;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .14em;
+  color: #ffd97a;
+  white-space: nowrap;
+}
+
+/* ── The Eclipse ─────────────────────────────────────────────────────────── */
+.mk__panel--shard { border-color: rgba(164, 139, 255, .2); }
+
+.mk__eclipse {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 26px 18px;
+  text-align: center;
+}
+
+/* The broken sun, in two gradients. Same trick as the cosmic planet: a
+   radial body with a second layer bitten out of one side. */
+.mk__eclipse-orb {
+  width: clamp(88px, 22vw, 128px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #14091f 58%, transparent 59%),
+    radial-gradient(circle at 50% 50%, #ffd97a 0%, #E8752A 46%, #7b2ff7 72%, transparent 78%);
+  box-shadow: 0 0 60px -10px rgba(232, 117, 42, .55);
+  animation: mkEclipseBreathe 7s ease-in-out infinite;
+}
+@keyframes mkEclipseBreathe {
+  0%, 100% { transform: scale(1);    filter: brightness(1); }
+  50%      { transform: scale(1.05); filter: brightness(1.2); }
+}
+
+.mk__eclipse-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+.mk__eclipse-stats div { text-align: center; }
+.mk__eclipse-stats dt {
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c;
+}
+.mk__eclipse-stats dd {
+  margin: 4px 0 0;
+  font: 700 17px/1 'Orbitron', system-ui, sans-serif;
+  color: #d8c8ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.mk__eclipse-ready { margin: 0; font-size: 13px; line-height: 1.6; color: #b9cdc7; }
+.mk__eclipse-ready strong { color: #ffd97a; }
+
+.mk__eclipse-btn {
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 117, 42, .6);
+  background: linear-gradient(135deg, rgba(232, 117, 42, .22), rgba(123, 47, 247, .22));
+  color: #ffe9a8;
+  font: 800 13px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .16em;
+  cursor: pointer;
+  transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
+}
+.mk__eclipse-btn:hover {
+  border-color: rgba(255, 217, 122, .9);
+  box-shadow: 0 0 34px -8px rgba(232, 117, 42, .9);
+}
+.mk__eclipse-btn:active { transform: scale(.96); }
+.mk__eclipse-btn:focus-visible { outline: 2px solid #A78BFA; outline-offset: 4px; }
+.mk__eclipse-btn--go {
+  border-color: rgba(255, 45, 77, .7);
+  background: linear-gradient(135deg, rgba(255, 45, 77, .26), rgba(123, 47, 247, .26));
+  color: #ffd0d8;
+  animation: mkEclipsePulse 1.8s ease-in-out infinite;
+}
+@keyframes mkEclipsePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 45, 77, .38); }
+  50%      { box-shadow: 0 0 26px 2px rgba(255, 45, 77, .5); }
+}
+
+.mk__eclipse-confirm {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 45, 77, .35);
+  background: rgba(28, 6, 16, .6);
+}
+.mk__eclipse-warn { margin: 0; font-size: 12px; line-height: 1.65; color: #d7c2c8; }
+.mk__eclipse-warn strong { color: #ffd97a; }
+.mk__eclipse-warn-final { display: block; margin-top: 6px; color: #ff8fa3; font-weight: 700; }
+.mk__eclipse-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.mk__eclipse-cancel {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: transparent;
+  color: #9fb4ae;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mk__eclipse-cancel:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .3); }
+.mk__eclipse-cancel:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+
+.mk__eclipse-locked { width: 100%; display: grid; gap: 10px; }
+.mk__eclipse-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  overflow: hidden;
+}
+.mk__eclipse-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #E8752A, #7b2ff7);
+  transition: width .6s cubic-bezier(.22, 1, .36, 1);
+}
+.mk__eclipse-gate { margin: 0; font-size: 12px; line-height: 1.6; color: #7d918c; }
+.mk__eclipse-gate strong { color: #c48bff; }
+.mk__eclipse-gate-now { display: block; margin-top: 4px; color: #9fb4ae; }
+
+.mk__eclipse-done {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, .45);
+  background: rgba(232, 117, 42, .1);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #ffe9a8;
+}
+
+@media (max-width: 640px) {
+  .mk__eclipse-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk__ledger-row { grid-template-columns: minmax(0, 1fr) auto; }
+  /* The note drops under the label rather than fighting it for a 375px row. */
+  .mk__ledger-note { grid-column: 1 / -1; }
+  .mk__rate-num { font-size: 34px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mk__eyebrow-pulse { animation: none; opacity: .9; }
   .mk__row--flash, .mk__card--flash, .mk__row--denied, .mk__card--denied { animation: none; }
   .mk__buy:active:not(:disabled) { transform: none; }
   .mk__row, .mk__card, .mk__buy, .mk__tab, .mk__variant, .mk__relic { transition: none; }
+
+  /* The rate floater still says what was gained; it stops travelling. It is
+     parked visible and the component's own timer removes it after 1.2s.
+     Deliberately NOT a fade keyframe declared in here: Angular rewrites
+     @keyframes names for scoping but does not rewrite an `animation` shorthand
+     that sits inside a @media block, so the reference would point at a rule
+     that does not exist and the floater would never appear at all — silently,
+     with no console error and no build warning. The Forge Flame shipped in
+     exactly that state for months. Cancel, never re-name, inside a query. */
+  .mk__rate-float { animation: none; opacity: 1; transform: translate(-50%, -18px); }
+  .mk__wallet--flash .mk__coin { animation: none; border-color: rgba(255, 217, 122, .8); }
+  .mk__eclipse-orb, .mk__eclipse-btn--go { animation: none; }
+  .mk__eclipse-fill { transition: none; }
 }

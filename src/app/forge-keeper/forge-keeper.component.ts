@@ -66,7 +66,12 @@ import {
   FORGE_UPGRADES,
   HAMMER_UPGRADES,
 } from '../shared/economy/economy.service';
-import { formatCurrency } from '../shared/economy/economy.model';
+import {
+  formatCompact,
+  formatCurrency,
+  formatMultiplier,
+  formatRate,
+} from '../shared/economy/economy.model';
 import { QuestService } from '../shared/quests/quest.service';
 import { IdleService } from '../shared/idle/idle.service';
 import { LoreService } from '../shared/lore/lore.service';
@@ -205,9 +210,20 @@ const ZERO_ECONOMY: EconomySnapshot = {
   gold: 0,
   essence: 0,
   totalGoldEarned: 0,
+  runGoldEarned: 0,
   totalClicks: 0,
+  autoClicks: 0,
+  perSecond: 0,
   perMinute: 0,
+  breakdown: { idle: 0, auto: 0, upgrades: 1, streak: 1, shards: 1, artifact: 1, total: 0 },
+  autoPerSecond: 0,
   perClick: 0,
+  shards: 0,
+  shardMult: 1,
+  prestigeCount: 0,
+  pendingShards: 0,
+  prestigeReady: false,
+  streakDays: 0,
   flameTier: 0,
   hammerVisual: 'none',
   upgradeLevels: 0,
@@ -545,7 +561,13 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     return this.achievements.length;
   }
 
-  /** The ten tiles, in reading order. */
+  /** The forge's live rate, compact past a thousand. */
+  get perSecond(): string { return formatCompact(this.wallet.perSecond); }
+  get autoRate(): string { return formatRate(this.wallet.autoPerSecond); }
+  /** "×1.35". What the shards are paying, everywhere they are shown. */
+  get shardMult(): string { return formatMultiplier(this.wallet.shardMult); }
+
+  /** The twelve tiles, in reading order. */
   get stats(): StatTile[] {
     return [
       { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#A78BFA' },
@@ -554,6 +576,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
       { label: 'Quests',        value: formatCurrency(this.questsCompleted),    note: 'completed',         icon: '⚔️', color: '#ff6dd7' },
       { label: 'Flame Strikes', value: formatCurrency(this.wallet.totalClicks), note: 'on the anvil',      icon: '🔨', color: '#E8752A' },
       { label: 'Gold Earned',   value: formatCurrency(this.wallet.totalGoldEarned), note: 'all time',      icon: '🪙', color: '#ffd97a' },
+      { label: 'Gold / Second', value: formatCompact(this.wallet.perSecond),    note: 'while you read',    icon: '⏱️', color: '#7fd5a3' },
+      { label: 'Eclipse Shards', value: formatCurrency(this.wallet.shards),     note: this.wallet.shards > 0 ? `${this.shardMult} forever` : 'no Eclipse taken', icon: '🌑', color: '#c48bff' },
       { label: 'Current Streak', value: String(this.snap.streak),               note: this.snap.streak === 1 ? 'day' : 'days', icon: '🔥', color: '#ff8a4c' },
       { label: 'Best Streak',   value: String(this.snap.bestStreak),            note: this.snap.bestStreak === 1 ? 'day' : 'days', icon: '🔥', color: '#ffb26b' },
       { label: 'Arena Runs',    value: formatCurrency(this.arenaPlays),         note: 'gates entered',     icon: '🏟️', color: '#5fb6ff' },
