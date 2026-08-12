@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.38.0',
+  version: '2.41.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'The Altar',
+  codename: 'Five Rooms',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,56 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.41.0',
+    codename: 'Five Rooms',
+    date: '2026-08-12',
+    highlights: [
+      'Every page now has a colour of its own. The Arena is lit from below in crimson like a pit, the Codex by candlelight from the same direction, the War Table under overhead instrument cyan, the Market by forge energy above and the colour of money underfoot, and Realms by the Godforge core with Luminous and Verge bleeding in from the top corners',
+      'A tool page wears the colour of its own realm, taken from the same hex that paints its badge and its sigil glow, so the wash can never disagree with the header it sits under',
+      'The Forge Keeper wears the visitor rather than the route: above 55% Aether the page glows Solari gold, below 45% it goes Nocturne crimson, and the band between stays the neutral core because neither realm has claimed you yet',
+      'Walking between rooms fades rather than cuts. The five wash colours are registered custom properties, which is the one way a gradient can be made to interpolate — a plain background swap is a hard cut — so a route change cross-fades one palette into the next over half a second, and reduced motion takes the destination instantly',
+      'These are stand-ins for art that has not been painted yet, and they are built to be thrown away: when a page gets its own artwork, one entry is deleted and the painting takes the first slot of the same background',
+      'The home page is untouched. Its painted altar is the atmosphere, so it is the one route with no entry in the table and no wash at all behind it',
+    ],
+  },
+  {
+    version: '2.40.0',
+    codename: 'Lean',
+    date: '2026-08-12',
+    highlights: [
+      'The command bar carries five halls instead of seven: Realms, Arena, Codex, War Table, Market. HOME went because the wordmark beside it already goes there, GAMES because that is what the Arena is under an older name, and MCP because it is one landing page for a different audience',
+      'Nothing from the old portfolio site is reachable from the primary nav any more — Services, Projects, About, Contact, Live and Donate are all out of the bar and out of the tome\'s main list. Every one of them keeps its route and is linked from the footer, so nothing became unreachable',
+      'The tome is two sections instead of three: the same five halls as the bar plus your own sheet, then a MORE group holding the three old surfaces that still have real routes. ABOUT is absent rather than shipped as a link to the 404 page, because there is no about route to point it at',
+      'The homepage is four sections and the footer: the hero, the five realms, the pulse, the closing call. The shop counters, the creed row, the featured-tool spotlight, the "watch AI build" panel, the changelog feed and the newsletter form are gone from it — six screens of persuasion stood between a visitor and the tools',
+      'The chronicle moved to /blueprint, which is the page about what is being built, and the newsletter moved to the tool pages, where somebody has just got value out of one. Neither was deleted; both were taken off the front door',
+      'Cloud save is reachable. The profile sheet said "Cloud save is not open yet" while CloudSaveService was signing in with Google, binding the uid, merging blobs and pushing on a timer — the message was true when it was written and had been false for a release. The only thing missing was a mounted button: the component that held it was the XP bar, which is not rendered anywhere in the app',
+      '1,200 lines of stylesheet went with the deleted sections, and the audit that follows any CSS cut of that size found no @keyframes reference left pointing at a rule that no longer exists'
+    ]
+  },
+  {
+    version: '2.39.1',
+    codename: 'Clean Cut',
+    date: '2026-08-12',
+    highlights: [
+      'The boot sequence never faded out. The rule that dismisses the curtain early set a plain opacity of zero, and a running CSS animation outranks a plain declaration — so gfCurtain, which pins the curtain opaque for the first 88%, won every time. Any early dismissal was a hard cut to the site. The rule is marked important now, which is what it takes to beat an animation',
+      'Holding at stage six no longer eats the ending. The hold pauses the CSS, but the stage-seven tick and the teardown were still armed against a clock that had stopped: the read-out jumped to a hundred over a frozen frame, and the teardown then dropped the curtain mid-hold, so the flash and the flight into the navbar were skipped and the site arrived in a cut. Those timers are cancelled going into the hold and re-armed against the remaining animation time coming out',
+      'The hold is bounded twice. Its own cap comes down from six seconds to six hundred milliseconds, and a single absolute deadline now fires once from boot regardless of what else is or is not happening — a wedged router event, a timer out of order — so the curtain can cover the site for at most about three and a half seconds in the worst case a user can actually reach',
+      'Teardown is idempotent. Four paths reach it and it now runs once, and it releases the pause on the way out so the sigil is not frozen mid-shake behind the fade'
+    ]
+  },
+  {
+    version: '2.39.0',
+    codename: 'Three Layers',
+    date: '2026-08-12',
+    highlights: [
+      'The homepage is down to three layers, the way a game studio builds one: the artwork, a single dark gradient for readability, and the glass UI on top. Nothing else is drawing atmosphere there any more',
+      'The CSS planet is gone — sphere, rings, clouds, terminator, night lights, the moon and the beacon, six hundred and ninety-five lines of stylesheet that existed to fake something the painting already has',
+      'On the homepage the site\'s whole CSS backdrop is switched off: the body gradient, the nebula wash, the generated starfield, the matrix layer, the drifting pulsar, the corner runes, the particle layer and the constellation canvas. Two atmospheres competing is worse than either',
+      'It is switched off for that route only. Every other page still has that backdrop, because it is the only thing behind them — there is no artwork for /tools or /codex yet, and stripping it there would leave twenty routes on flat black',
+      'The hero art is preloaded into the homepage document alone, one link per breakpoint matching the picture\'s own sources, so the preload resolves to the same file the element picks and no other route fetches a hero it never paints'
+    ]
+  },
   {
     version: '2.38.0',
     codename: 'The Forge Lit',

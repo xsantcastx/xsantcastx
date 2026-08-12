@@ -8,6 +8,7 @@ import { VisitCounterService } from './shared/visit-counter/visit-counter.servic
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
+import { PageAtmosphereService } from './shared/atmosphere/atmosphere.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
@@ -30,6 +31,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
   private realms = inject(RealmService);
+  private atmosphere = inject(PageAtmosphereService);
   private questWiring = inject(QuestWiringService);
   private economyWiring = inject(EconomyWiringService);
   private idle = inject(IdleService);
@@ -86,6 +88,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Realm tinting: resolve every route to a realm and publish it to CSS.
     this.realms.init();
+
+    // Per-route atmosphere: give every page the colour of the part of the
+    // Godforge it stands in. After xpWiring.init() on purpose — /forge-keeper's
+    // wash is the visitor's own realm, so the first paint should already have
+    // the hydrated Aether/Nox balance rather than the 50/50 default.
+    this.atmosphere.init();
 
     // Mission board: roll the daily and weekly quests over, and start turning
     // interactions into quest progress and lore unlocks.
