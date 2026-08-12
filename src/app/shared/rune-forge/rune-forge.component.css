@@ -1,0 +1,825 @@
+/* rune-forge.component.css — the anvil bay, the ledger grid and the recipe wall.
+ *
+ * Two rules this file follows deliberately, both of which have cost this repo a
+ * silent release before:
+ *
+ * 1. No `animation` shorthand inside a media query. Angular's emulated
+ *    encapsulation rewrites `@keyframes` names and the matching `animation`
+ *    declarations — but it has missed the ones nested in `@media`, leaving a
+ *    dangling name that matches nothing and an element stuck on its base
+ *    `opacity: 0`. Media queries here only ever set `animation: none`, which
+ *    names no keyframe and so cannot dangle.
+ *
+ * 2. Nothing sets `opacity`, `filter` or `transform` in a plain class expecting
+ *    to override an element that is also animating those properties. A running
+ *    animation outranks a plain declaration at every specificity, so the class
+ *    would be inert. Where a state has to win, it changes the animation.
+ */
+
+.rf {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 5rem;
+  color: #e8ecf1;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.rf-head {
+  text-align: center;
+  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.rf-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(164, 139, 255, 0.85);
+}
+
+.rf-eyebrow__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a48bff;
+  box-shadow: 0 0 10px rgba(140, 110, 255, 0.9);
+  animation: rfPulse 3s ease-in-out infinite;
+}
+
+.rf-title {
+  margin: 0 0 0.6rem;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  line-height: 1.05;
+  background: linear-gradient(100deg, #e8ecf1 0%, #a48bff 45%, #ff6dd7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.rf-tagline {
+  display: inline-block;
+  margin: 0;
+  padding: 0.4rem 1rem;
+  border: 1px solid rgba(164, 139, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(164, 139, 255, 0.05);
+  font-size: 0.86rem;
+  color: rgba(232, 236, 241, 0.72);
+}
+
+.rf-links {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.rf-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(164, 139, 255, 0.8);
+  text-decoration: none;
+}
+
+.rf-link:hover,
+.rf-link:focus-visible {
+  color: #ff6dd7;
+  text-decoration: underline;
+}
+
+/* ── The anvil bay ───────────────────────────────────────────────────────── */
+
+.rf-anvil-bay {
+  position: relative;
+  display: grid;
+  gap: 1.5rem;
+  place-items: center;
+  padding: clamp(2rem, 6vw, 3.5rem) 1rem;
+  border: 1px solid rgba(164, 139, 255, 0.14);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 78%, rgba(164, 139, 255, 0.14), transparent 68%),
+    radial-gradient(ellipse 50% 45% at 50% 20%, rgba(255, 109, 215, 0.06), transparent 65%),
+    rgba(10, 6, 26, 0.55);
+  overflow: hidden;
+}
+
+.rf-anvil-bay::before,
+.rf-anvil-bay::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.rf-anvil-bay::before {
+  top: 0;
+  background: linear-gradient(90deg, transparent, rgba(164, 139, 255, 0.5) 50%, transparent);
+}
+
+.rf-anvil-bay::after {
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 109, 215, 0.4) 50%, transparent);
+}
+
+.rf-anvil-scene {
+  position: relative;
+  width: min(280px, 70vw);
+  height: 180px;
+}
+
+.rf-anvil-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  width: 190px;
+  height: 90px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(164, 139, 255, 0.55), transparent 70%);
+  filter: blur(16px);
+  animation: rfForgeBreathe 5.5s ease-in-out infinite;
+}
+
+/* The anvil, in four boxes. A silhouette this simple does not need an SVG and
+   an SVG this simple does not need a request. */
+.rf-anvil {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 150px;
+  height: 92px;
+  transform: translateX(-50%);
+}
+
+.rf-anvil span {
+  position: absolute;
+  background: linear-gradient(180deg, #2a2440 0%, #16121f 100%);
+  border: 1px solid rgba(164, 139, 255, 0.22);
+}
+
+.rf-anvil__face {
+  left: 0;
+  top: 0;
+  width: 118px;
+  height: 22px;
+  border-radius: 4px 4px 2px 2px;
+  box-shadow: 0 0 18px -4px rgba(164, 139, 255, 0.5);
+}
+
+.rf-anvil__horn {
+  left: 108px;
+  top: 3px;
+  width: 40px;
+  height: 15px;
+  border-radius: 0 50% 50% 0;
+}
+
+.rf-anvil__waist {
+  left: 42px;
+  top: 22px;
+  width: 34px;
+  height: 40px;
+}
+
+.rf-anvil__base {
+  left: 20px;
+  top: 62px;
+  width: 80px;
+  height: 24px;
+  border-radius: 3px;
+}
+
+/* The hammer rests up and to the left, and falls only while striking. */
+.rf-hammer {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 74px;
+  height: 22px;
+  margin-left: -84px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3a3358 0%, #1d1830 100%);
+  border: 1px solid rgba(164, 139, 255, 0.3);
+  transform-origin: right center;
+  transform: rotate(-58deg);
+}
+
+.rf-anvil-bay--striking .rf-hammer {
+  animation: rfHammerFall 320ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+
+.rf-sparks {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  width: 2px;
+  height: 2px;
+}
+
+.rf-spark {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffc669;
+  box-shadow: 0 0 6px rgba(255, 198, 105, 0.9);
+  opacity: 0;
+}
+
+.rf-anvil-bay--striking .rf-spark {
+  animation: rfSpark 620ms ease-out forwards;
+  animation-delay: calc(var(--i) * 14ms);
+}
+
+/* Eight sparks, fanned. Authored rather than randomised so the burst reads the
+   same every strike — a random fan looks like a bug about one time in ten. */
+.rf-spark:nth-child(1) { --dx: -62px; --dy: -34px; }
+.rf-spark:nth-child(2) { --dx: -40px; --dy: -52px; }
+.rf-spark:nth-child(3) { --dx: -16px; --dy: -60px; }
+.rf-spark:nth-child(4) { --dx: 12px;  --dy: -58px; }
+.rf-spark:nth-child(5) { --dx: 38px;  --dy: -48px; }
+.rf-spark:nth-child(6) { --dx: 60px;  --dy: -28px; }
+.rf-spark:nth-child(7) { --dx: -74px; --dy: -12px; }
+.rf-spark:nth-child(8) { --dx: 72px;  --dy: -8px; }
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+
+.rf-controls {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.rf-strike {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 56px;
+  padding: 0.7rem 2.2rem;
+  border: 1px solid rgba(164, 139, 255, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(164, 139, 255, 0.22), rgba(164, 139, 255, 0.08));
+  color: #e8ecf1;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.rf-strike:hover:not(:disabled),
+.rf-strike:focus-visible:not(:disabled) {
+  border-color: rgba(255, 109, 215, 0.7);
+  box-shadow: 0 0 28px -6px rgba(164, 139, 255, 0.8);
+}
+
+.rf-strike:disabled {
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(232, 236, 241, 0.4);
+}
+
+.rf-strike__label {
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+}
+
+.rf-strike__cost {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 198, 105, 0.85);
+}
+
+.rf-purse {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.6);
+}
+
+.rf-purse__num {
+  color: #ffc669;
+  font-weight: 600;
+}
+
+.rf-broke {
+  margin: 0;
+  max-width: 30rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(255, 154, 90, 0.85);
+}
+
+.rf-broke a {
+  color: #ffc669;
+}
+
+/* ── The reveal ──────────────────────────────────────────────────────────── */
+
+.rf-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(6, 4, 14, 0.82);
+  cursor: pointer;
+  animation: rfRevealIn 220ms ease-out;
+}
+
+.rf-reveal__card {
+  max-width: 26rem;
+  text-align: center;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--star-color, #8f98a8);
+  border-radius: 16px;
+  background: rgba(10, 6, 26, 0.9);
+  box-shadow: 0 0 34px -6px var(--star-glow, transparent);
+}
+
+.rf-reveal__tier {
+  margin: 0 0 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--star-color, #8f98a8);
+}
+
+.rf-reveal__name {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.1;
+  color: var(--star-color, #e8ecf1);
+  text-shadow: 0 0 20px var(--star-glow, transparent);
+}
+
+.rf-reveal__lore {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: rgba(232, 236, 241, 0.72);
+}
+
+.rf-reveal__meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 236, 241, 0.45);
+}
+
+.rf-reveal__new {
+  color: #4dffe0;
+}
+
+.rf-reveal__essence {
+  color: #a48bff;
+}
+
+.rf-reveal__void {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.34em;
+  color: #e6dcff;
+  text-shadow: 0 0 24px rgba(230, 220, 255, 0.9);
+  animation: rfVoidSpeak 3s ease-out forwards;
+}
+
+/* The reveal escalates by tier. Each rung adds a channel rather than replacing
+   the one below, which is why these are separate declarations on the card and
+   not one shared animation with a variable. */
+.rf-reveal[data-reveal='burst'] .rf-reveal__card { animation: rfBurst 620ms ease-out; }
+.rf-reveal[data-reveal='shimmer'] .rf-reveal__card { animation: rfShimmer 1.6s ease-in-out; }
+.rf-reveal[data-reveal='edge'] .rf-reveal__card { animation: rfBurst 620ms ease-out; }
+.rf-reveal[data-reveal='flash'] .rf-reveal__card { animation: rfBurst 780ms ease-out; }
+.rf-reveal[data-reveal='void'] .rf-reveal__card { animation: rfVoidCard 3s cubic-bezier(0.2, 0, 0, 1); }
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+
+.rf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 2rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rf-stat {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 0.75rem;
+  text-align: center;
+  background: rgba(10, 6, 26, 0.75);
+}
+
+.rf-stat__num {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #e8ecf1;
+}
+
+.rf-stat__num em {
+  font-style: normal;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.4);
+}
+
+.rf-stat__num--rune {
+  font-size: 1.05rem;
+}
+
+.rf-stat__label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(232, 236, 241, 0.45);
+}
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+
+.rf-panel {
+  margin-top: 2.5rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  background: rgba(10, 6, 26, 0.55);
+}
+
+.rf-panel__title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  color: #e8ecf1;
+}
+
+.rf-panel__sub {
+  margin: 0 0 1.5rem;
+  max-width: 46rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(232, 236, 241, 0.55);
+}
+
+/* ── The ledger grid ─────────────────────────────────────────────────────── */
+
+.rf-tier {
+  margin-bottom: 1.5rem;
+}
+
+.rf-tier__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--star-color, #8f98a8);
+}
+
+.rf-tier__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--star-color, #8f98a8);
+  box-shadow: 0 0 10px var(--star-glow, transparent);
+}
+
+.rf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 0.6rem;
+}
+
+.rf-rune {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 68px;
+  padding: 0.5rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(6, 4, 14, 0.6);
+  color: rgba(232, 236, 241, 0.3);
+  font-family: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+
+.rf-rune--known {
+  border-color: var(--star-color, #8f98a8);
+  color: var(--star-color, #e8ecf1);
+  box-shadow: inset 0 0 18px -8px var(--star-glow, transparent);
+}
+
+/* Found once, none left — spent into a word. Dimmed, but still legible: the
+   name is knowledge and knowledge is not consumed by the recipe. */
+.rf-rune--known.rf-rune--empty {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(232, 236, 241, 0.35);
+  box-shadow: none;
+}
+
+.rf-rune:hover,
+.rf-rune:focus-visible,
+.rf-rune--open {
+  border-color: var(--star-color, rgba(255, 255, 255, 0.3));
+  box-shadow: 0 0 22px -8px var(--star-glow, transparent);
+}
+
+.rf-rune__glyph {
+  font-weight: 600;
+}
+
+.rf-rune__count {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  font-size: 0.68rem;
+  color: rgba(232, 236, 241, 0.5);
+}
+
+.rf-inspect {
+  margin-top: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--star-color, rgba(255, 255, 255, 0.1));
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: rgba(6, 4, 14, 0.6);
+}
+
+.rf-inspect__name {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  color: var(--star-color, #e8ecf1);
+}
+
+.rf-inspect__lore {
+  margin: 0 0 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: rgba(232, 236, 241, 0.75);
+}
+
+.rf-inspect__meta {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: rgba(232, 236, 241, 0.4);
+}
+
+/* ── The recipe wall ─────────────────────────────────────────────────────── */
+
+.rf-words {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.rf-word {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(6, 4, 14, 0.6);
+}
+
+/* Gold border once every rune is in hand — the one state on this wall worth
+   spotting from across the page. */
+.rf-word--ready {
+  border-color: #C9A84C;
+  box-shadow: 0 0 28px -8px rgba(255, 190, 90, 0.75);
+}
+
+.rf-word--crafted {
+  border-color: var(--star-color, rgba(255, 255, 255, 0.2));
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, var(--star-glow, transparent), transparent 70%),
+    rgba(6, 4, 14, 0.6);
+}
+
+.rf-word--hidden {
+  opacity: 0.55;
+}
+
+.rf-word__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.rf-word__name {
+  margin: 0;
+  font-size: 1.08rem;
+  color: #e8ecf1;
+}
+
+.rf-word__tier {
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--star-color, #8f98a8);
+  white-space: nowrap;
+}
+
+.rf-word__effect {
+  margin: 0;
+  font-size: 0.86rem;
+  color: rgba(232, 236, 241, 0.8);
+}
+
+.rf-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rf-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: rgba(232, 236, 241, 0.4);
+}
+
+.rf-slot--filled {
+  border-style: solid;
+  border-color: var(--star-color, rgba(255, 255, 255, 0.4));
+  color: var(--star-color, #e8ecf1);
+}
+
+.rf-slot__held {
+  font-size: 0.66rem;
+  color: rgba(232, 236, 241, 0.45);
+}
+
+.rf-word__lore {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  font-style: italic;
+  color: rgba(232, 236, 241, 0.45);
+}
+
+.rf-word__done {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: var(--star-color, #4dffe0);
+}
+
+.rf-forge-btn {
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border: 1px solid rgba(201, 168, 76, 0.6);
+  border-radius: 10px;
+  background: rgba(201, 168, 76, 0.12);
+  color: #ffc669;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: box-shadow 180ms ease, background 180ms ease;
+}
+
+.rf-forge-btn:hover:not(:disabled),
+.rf-forge-btn:focus-visible:not(:disabled) {
+  background: rgba(201, 168, 76, 0.22);
+  box-shadow: 0 0 24px -6px rgba(255, 190, 90, 0.8);
+}
+
+.rf-forge-btn:disabled {
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(232, 236, 241, 0.35);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+
+@keyframes rfPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
+@keyframes rfForgeBreathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+
+@keyframes rfHammerFall {
+  0%   { transform: rotate(-58deg); }
+  62%  { transform: rotate(4deg); }
+  100% { transform: rotate(-58deg); }
+}
+
+@keyframes rfSpark {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
+}
+
+@keyframes rfRevealIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rfBurst {
+  0%   { transform: scale(0.86); }
+  55%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rfShimmer {
+  0%, 100% { box-shadow: 0 0 34px -6px var(--star-glow, transparent); }
+  50%      { box-shadow: 0 0 60px 2px var(--star-glow, transparent); }
+}
+
+@keyframes rfVoidCard {
+  0%   { transform: scale(0.5); }
+  30%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rfVoidSpeak {
+  0%   { opacity: 0; letter-spacing: 0.8em; }
+  25%  { opacity: 1; letter-spacing: 0.34em; }
+  85%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .rf-anvil-scene {
+    height: 150px;
+  }
+
+  .rf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  }
+
+  .rf-words {
+    grid-template-columns: 1fr;
+  }
+
+  .rf-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Every continuous loop and every reveal flourish is decoration on top of text
+   that already says the same thing. `animation: none` names no keyframe, so it
+   cannot be broken by the encapsulation rewrite that has silently killed
+   media-query animations in this repo before — see the note at the top. */
+@media (prefers-reduced-motion: reduce) {
+  .rf-eyebrow__pulse,
+  .rf-anvil-glow,
+  .rf-hammer,
+  .rf-spark,
+  .rf-reveal,
+  .rf-reveal__card,
+  .rf-reveal__void,
+  .rf-anvil-bay--striking .rf-hammer,
+  .rf-anvil-bay--striking .rf-spark,
+  .rf-reveal[data-reveal='burst'] .rf-reveal__card,
+  .rf-reveal[data-reveal='shimmer'] .rf-reveal__card,
+  .rf-reveal[data-reveal='edge'] .rf-reveal__card,
+  .rf-reveal[data-reveal='flash'] .rf-reveal__card,
+  .rf-reveal[data-reveal='void'] .rf-reveal__card {
+    animation: none;
+  }
+
+  /* The sparks are the one element whose base state is invisible, so switching
+     the animation off has to be paired with a visible resting state or they
+     would simply never appear. Off is the correct resting state here — a spark
+     that does not fly is not a spark. */
+  .rf-spark {
+    display: none;
+  }
+}

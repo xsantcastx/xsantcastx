@@ -144,6 +144,8 @@ export interface EconomySnapshot {
   upgradeLevels: number;
   artifacts: string[];
   cosmetics: string[];
+  /** Runeword ids crafted at the Rune Forge. */
+  runewords: string[];
   equipped: Record<string, string>;
   /** The strongest enchantment running, with its expiry. */
   enchantment: { def: Enchantment; expiresAt: number } | null;
@@ -161,7 +163,7 @@ export interface CurrencyGain {
 
 /** Emitted when something is bought, so the Market can play the coin ping. */
 export interface PurchaseEvent {
-  kind: 'upgrade' | 'enchantment' | 'artifact' | 'cosmetic';
+  kind: 'upgrade' | 'enchantment' | 'artifact' | 'cosmetic' | 'runeword';
   id: string;
   name: string;
   cost: number;
@@ -347,6 +349,67 @@ export class EconomyService implements OnDestroy {
     this.state.runGoldEarned += amount;
     this.state.totalGoldEarned += amount;
   }
+
+  /**
+   * Take Gold for something that is not a catalog purchase.
+   *
+   * The four `buy*` methods each price their own item out of their own catalog
+   * and debit inline. This is the door for a system that sets its own price —
+   * the Rune Forge, whose strike costs a flat fee and returns a random rune
+   * rather than a known item — and it deliberately does not touch
+   * `totalGoldEarned` or `runGoldEarned`: those two count Gold *minted*, and a
+   * spend that reduced them would let a player lower their own prestige curve
+   * by gambling, which is the opposite of what the curve is for.
+   *
+   * False when the visitor cannot afford it. Never partially debits.
+   */
+  spendGold(amount: number, reason = 'spend'): boolean {
+    if (!this.isBrowser || amount <= 0) return false;
+    if (this.state.gold < amount) return false;
+
+    this.state.gold -= amount;
+    // A spend is the kind of thing that must survive the tab closing one frame
+    // later, so it flushes rather than joining the throttle — same reasoning as
+    // `buyUpgrade`.
+    this.flush();
+    this.publish();
+    this.gain$$.next({ currency: 'gold', amount: -amount, source: reason });
+    return true;
+  }
+
+  /**
+   * Record a Runeword as crafted.
+   *
+   * The runes were already checked and consumed by `RuneForgeService`; this is
+   * only the ledger half, and it lives here because `goldBreakdown()` has to be
+   * able to price a word's income bonus from the persisted blob alone during
+   * offline settlement. False on an unknown id or one already held.
+   */
+  grantRuneword(id: string, name = id): boolean {
+    if (!this.isBrowser) return false;
+    if (this.state.runewords.includes(id)) return false;
+
+    const before = goldPerSecond(this.state);
+
+    this.state.runewords = [...this.state.runewords, id];
+
+    this.flush();
+    this.publish();
+    this.purchase$$.next({
+      kind: 'runeword',
+      id,
+      name,
+      cost: 0,
+      currency: 'gold',
+      rateDelta: goldPerSecond(this.state) - before,
+    });
+    return true;
+  }
+
+  /** Runeword ids already crafted. */
+  get runewords(): string[] { return [...this.state.runewords]; }
+
+  hasRuneword(id: string): boolean { return this.state.runewords.includes(id); }
 
   /**
    * The single Essence mint. Not multiplied by the Fragment: Essence is the
@@ -831,6 +894,7 @@ export class EconomyService implements OnDestroy {
         upgrades: parsed.upgrades ?? {},
         artifacts: parsed.artifacts ?? [],
         cosmetics: parsed.cosmetics ?? [],
+        runewords: parsed.runewords ?? [],
         equipped: parsed.equipped ?? {},
         // Expired enchantments are dropped on read rather than left to
         // accumulate — a visitor who has run fifty of them over a month should
@@ -922,6 +986,7 @@ export class EconomyService implements OnDestroy {
       upgradeLevels: totalUpgradeLevels(state),
       artifacts: [...state.artifacts],
       cosmetics: [...state.cosmetics],
+      runewords: [...state.runewords],
       equipped: { ...state.equipped },
       enchantment: activeEnchantment(state, now),
       doubled: globalMultiplier(state) > 1,

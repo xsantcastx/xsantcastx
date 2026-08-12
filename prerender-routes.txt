@@ -8,6 +8,7 @@
 /sponsors
 /codex
 /forge-keeper
+/rune-forge
 /tools
 /tools/box-shadow-generator
 /tools/char-map

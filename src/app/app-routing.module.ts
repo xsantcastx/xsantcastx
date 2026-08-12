@@ -209,6 +209,31 @@ const routes: Routes = [
       }
     },
   {
+      path: 'rune-forge',
+      loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
+      title: 'The Rune Forge — Strike the Anvil | xsantcastx',
+      data: {
+        description: 'Twenty-five runes across seven rarity tiers, from Ash at one strike in eight to the Void at one in two thousand, and six Runewords that turn a handful of them into a permanent bonus. Ten Gold a strike. Everything is stored in your own browser.',
+        keywords: 'rune forge, runes, runewords, crafting, gacha, drop table, idle game, gold, eclipse realms, godforge, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/rune-forge`,
+          url: `${SITE_URL}/rune-forge`,
+          name: 'The Rune Forge',
+          description: 'Strike the anvil for one of twenty-five runes, then set them into Runewords for permanent Gold and XP bonuses.',
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+              { '@type': 'ListItem', position: 2, name: 'The Rune Forge', item: `${SITE_URL}/rune-forge` }
+            ]
+          }
+        }
+      }
+    },
+  {
       path: 'forge-keeper',
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
       title: 'Your Forge',
