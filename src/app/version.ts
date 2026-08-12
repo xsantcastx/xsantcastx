@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.29.0',
+  version: '2.30.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Character Sheet',
+  codename: 'The Eternal Archive',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,20 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.30.0',
+    codename: 'The Eternal Archive',
+    date: '2026-08-12',
+    highlights: [
+      'Progress follows you between devices. Sign in with Google from the progression panel and the whole Godforge — XP, rank, Aether and Nox, the streak, every achievement, the Gold and Essence ledger, upgrades, artifacts, cosmetics, quest history, arena scores, lore chapters and tool mastery — is kept in step across every browser you use',
+      'Two devices are reconciled rather than one overwriting the other: the higher number wins on every counter, id sets union, and the merge is commutative, so it does not matter which device you sign in on first. Nobody ever loses a purchase by signing in',
+      'localStorage stays the source of truth the page hydrates from, so the site still opens instantly, still works offline and still works signed out — the cloud is a second copy, not a dependency. Nothing about sync is on the critical path for first paint',
+      'Signing out keeps everything on the device. It unbinds the browser, it does not wipe a save',
+      'Both Firebase SDKs are fetched only when somebody actually signs in, so a visitor who never does downloads neither and the initial bundle is unchanged',
+      'Lifetime XP is monotonic in the cloud, which stops a device that has fallen behind from silently overwriting a larger total with its own — the rejected write is treated as a signal to re-merge rather than an error to swallow',
+      'New achievement: The Eternal Archive, Eclipsed, +50 XP — awarded the first time the forge is bound to the cloud'
+    ]
+  },
   {
     version: '2.29.0',
     codename: 'Character Sheet',
