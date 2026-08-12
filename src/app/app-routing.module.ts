@@ -246,6 +246,24 @@ const routes: Routes = [
       }
     },
   {
+      path: 'market',
+      loadComponent: () => import('./shared/economy/market.component').then(m => m.MarketComponent),
+      title: 'The Godforge Market — Spend Gold and Eclipse Essence | xsantcastx',
+      data: {
+        description: 'Ten forge and hammer upgrades bought with Gold, four enchantments and five permanent artifacts bought with Eclipse Essence, and five cosmetics. The forge earns while the tab is open.',
+        keywords: 'godforge market, idle game, gold, eclipse essence, upgrades, artifacts, cosmetics, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-cosmic.svg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/market`,
+          url: `${SITE_URL}/market`,
+          name: 'The Godforge Market',
+          description: 'Upgrades, enchantments, artifacts and cosmetics bought with Gold and Eclipse Essence.'
+        }
+      }
+    },
+  {
       path: 'blueprint',
       loadComponent: () => import('./blueprint/blueprint.component').then(m => m.BlueprintComponent),
       title: 'Blueprint — Public Roadmap & Architecture | xsantcastx',

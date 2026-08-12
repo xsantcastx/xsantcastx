@@ -1115,3 +1115,40 @@
     align-self: flex-start;
   }
 }
+
+/* ── Godforge wallet ─────────────────────────────────────────────────────────
+   Gold and Essence join the docked cluster rather than the nav row, for exactly
+   the reason the XP bar and the quest sword are there: at 1280px .nav-menu
+   already measures more content than its box, and a flex sibling added to that
+   row moves the collision with the EN/ES toggle around rather than fitting
+   into it. Docked, the wallet costs the row nothing.
+
+   Same reasoning puts the Market *link* behind the drawer on desktop, matching
+   .nav-quests-link — on a wide screen the coin chips are the way in, and they
+   are always visible. */
+.nav-coins {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.nav-coins--drawer {
+  display: none;
+}
+
+@media (min-width: 961px) {
+  .nav-market-link {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-coins {
+    display: none;
+  }
+
+  .nav-coins--drawer {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    align-self: flex-start;
+  }
+}

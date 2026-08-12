@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.22.0',
+  version: '2.23.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Standing Orders',
+  codename: 'Coin and Ember',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -34,6 +34,22 @@ export const APP_VERSION = {
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.23.0',
+    codename: 'Coin and Ember',
+    date: '2026-08-12',
+    highlights: [
+      'The forge earns money now. An ember in the bottom-right corner of every page pays Gold when struck and keeps paying while the tab is open, and /market spends it: ten upgrades across two ladders, four enchantments, five artifacts and five cosmetics',
+      'Idle Gold is settled against the wall clock rather than ticked by a timer. A background tab has its timers clamped and a sleeping laptop fires none at all, so the minute interval pays nothing — it only prompts a recalculation of the time that actually elapsed, which is why a tab left open across lunch pays for lunch and a fortnight-old session is capped at eight hours instead of minting two weeks',
+      'Hidden time is discarded rather than banked, unless the Obsidian Heart is held — that artifact buys exactly this, and it is the only thing that makes a closed tab worth anything',
+      'Gold for tool work comes from the quest board\'s own interaction beat rather than a second listener. The coalescing window, the "is this inside <main>" test and the list of furniture that is not the tool were all already written and already correct; a parallel copy would have been the second place "using a tool" could be answered differently',
+      'Quest payouts are derived from the XP a quest already pays rather than authored again — 43 quests would otherwise each need a Gold value maintained alongside their XP value, and the two would drift the first time one was rebalanced',
+      'Enchantments and two artifacts multiply XP, and one halves lore thresholds, through settable hooks on XpService and LoreService rather than an injected dependency: progression and the codex both predate the shop and both keep working with the shop deleted',
+      'Ranks and streak weeks are paid against a counter, not an event. XpService settles the daily streak during its own hydration, before anything in the economy is subscribed, so an event-driven reading would miss it on every load and pay nothing forever',
+      'Cosmetics are published as data attributes on the document root, in the same style the realm layer already uses. Five slots, seventeen variants, zero new composited layers — the theme variant repoints the two brand custom properties the site already draws from rather than adding a tint surface over it',
+      'Eight new achievements on the Codex wall, registered in the egg registry like every other one so they inherit the rarity drop, the XP payout, the discovery date and the hint on the locked card rather than reimplementing all five',
+    ]
+  },
   {
     version: '2.22.0',
     codename: 'Standing Orders',

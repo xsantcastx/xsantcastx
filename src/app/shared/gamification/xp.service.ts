@@ -56,6 +56,18 @@ export interface XpGain {
   level: LevelDefinition;
 }
 
+/**
+ * What a multiplier source is told about an award before it decides.
+ *
+ * Enough to answer "is this a quest reward" and "which energy is this", which
+ * is what the two artifacts that key off an award need — and no more, so the
+ * hook cannot grow into a second copy of `award()`.
+ */
+export interface MultiplierContext {
+  type: XpEventType;
+  energy: EnergyType;
+}
+
 export interface AwardOptions {
   /** Which energy the XP feeds. Defaults to Aether. */
   energy?: EnergyType;
@@ -88,6 +100,18 @@ export class XpService {
 
   private state: ProgressState = emptyProgress();
   private initialised = false;
+
+  /**
+   * Scales every award. The Godforge economy sets this from its enchantments
+   * and artifacts; with nothing installed it is the identity and no award moves.
+   *
+   * A settable function rather than an injected EconomyService on purpose:
+   * progression predates the shop and should keep working with the shop deleted,
+   * and a service that has to be *sold* something before XP can be awarded is a
+   * dependency pointing the wrong way. `1` is the answer until someone says
+   * otherwise.
+   */
+  private multiplierSource: (ctx: MultiplierContext) => number = () => 1;
 
   private readonly snapshot$$ = new BehaviorSubject<XpSnapshot>(this.snapshotOf(this.state));
   private readonly gain$$ = new Subject<XpGain>();
@@ -135,6 +159,15 @@ export class XpService {
   }
 
   /**
+   * Install a multiplier. Called once by the economy's wiring layer; calling it
+   * again replaces the source rather than composing with it, so there is never
+   * a question of what order two multipliers applied in.
+   */
+  setMultiplierSource(source: (ctx: MultiplierContext) => number): void {
+    this.multiplierSource = source;
+  }
+
+  /**
    * The single mutation point. Adds XP, routes it to an energy, persists, and
    * announces the gain.
    */
@@ -142,7 +175,20 @@ export class XpService {
     if (!this.isBrowser) return;
 
     const energy: EnergyType = opts.energy ?? 'aether';
-    const amount = opts.amount ?? XP_VALUES[type];
+    const base = opts.amount ?? XP_VALUES[type];
+    // A source that throws must not be able to stop XP being awarded — the
+    // shop is an ornament on progression, not a gate in front of it.
+    let scale = 1;
+    try {
+      scale = this.multiplierSource({ type, energy });
+    } catch {
+      scale = 1;
+    }
+    // Guard against a source returning NaN, Infinity or a number below one: a
+    // multiplier is only ever allowed to be generous.
+    const amount = Number.isFinite(scale) && scale > 1
+      ? Math.round(base * scale)
+      : base;
 
     // A tool only pays out the first time it is used, so leaving a page open and
     // hammering one button is not a progression strategy.
