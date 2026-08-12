@@ -60,7 +60,7 @@ import {
   goldPerClick,
   goldPerSecond,
   hammerVisual,
-  isSinglePurchase,
+  levelCap,
   pendingShards,
   shardMultiplier,
   shardsFor,
@@ -573,9 +573,15 @@ export class EconomyService implements OnDestroy {
     return def ? costOf(def.baseCost, this.levelOf(id)) : Infinity;
   }
 
-  /** True once a single-purchase item has been bought and cannot be bought again. */
+  /**
+   * True once an upgrade is held to its ceiling and cannot be bought again.
+   *
+   * Most ladders have no ceiling, so this is false for them forever. The
+   * multipliers cap at one and the expedition ladder caps at four — both answer
+   * through `levelCap`, so a third capped ladder needs no change here.
+   */
   isMaxed(id: string): boolean {
-    return isSinglePurchase(id) && this.levelOf(id) > 0;
+    return this.levelOf(id) >= levelCap(id);
   }
 
   /**
