@@ -1,4 +1,30 @@
 <footer>
+  <!-- ═══════════════════════════════════════════════════════════
+       THE MARK — the same sigil and wordmark that open the command
+       bar, closing the page. The link row is the tome's table of
+       contents; the halls it names are the halls the drawer names.
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="gffoot">
+    <a routerLink="/home" class="gffoot__brand" aria-label="The Godforge — home">
+      <span class="gffoot__sigil" aria-hidden="true">
+        <span class="gffoot__sigil-bar"></span>
+        <span class="gffoot__sigil-bar"></span>
+      </span>
+      <span class="gffoot__wordmark">The Godforge</span>
+    </a>
+
+    <nav class="gffoot__links" aria-label="Godforge sections">
+      <a routerLink="/tools">{{ translate('gfnav.realms') }}</a>
+      <a routerLink="/arena">{{ translate('gfnav.arena') }}</a>
+      <a routerLink="/codex">{{ translate('gfnav.codex') }}</a>
+      <a routerLink="/blueprint">{{ translate('gfnav.warTable') }}</a>
+      <a routerLink="/market">{{ translate('gfnav.market') }}</a>
+      <a routerLink="/sponsors">{{ translate('gfnav.sponsors') }}</a>
+    </nav>
+
+    <p class="gffoot__mark">{{ translate('gffoot.forgedBy') }}</p>
+  </div>
+
   <!-- Donate Section -->
   <div class="donate-section">
     <div class="donate-content">
