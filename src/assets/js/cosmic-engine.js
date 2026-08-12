@@ -547,38 +547,46 @@
         var io = new IntersectionObserver(function (entries) {
           entries.forEach(function (entry) {
             if (entry.isIntersecting) {
-              entry.target.classList.add('cosmic-in-view');
+              entry.target.classList.add('gf-in-view');
               io.unobserve(entry.target);
             }
           });
         }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
 
+        // Structural first, class-list second.
+        //
+        // The old list here was hand-written per page and had rotted: it still
+        // named .skill-card, .project-card and .contact-section — all deleted
+        // in the 2.44.0 purge — while naming nothing on /codex, /market,
+        // /quests, /forge-keeper, /arena or /sponsors, so most of the site
+        // scrolled with no reveal at all.
+        //
+        // `main section` covers every page that structures itself with
+        // sections, which is all of the Godforge ones, and keeps covering new
+        // pages nobody remembered to add here. The explicit entries below it
+        // are the surfaces that are not <section> elements.
+        var REVEAL_SELECTORS = [
+          'main section',
+          '.section-header',
+          '.hp-tools__hd',
+          '.hp-tool-card',
+          '.tool-card',
+          '.hp-spotlight__card',
+          '.hp-live__card',
+          '.hp-stats',
+          '.hp-footer-cta',
+          '.tools-cta',
+          '.donate-section',
+          '.hp-cl-day',
+          '.gf-station',
+          '.gf-door'
+        ].join(',');
+
         function attachReveal() {
-          var selectors = [
-            '.section-header',
-            '.hp-tools__hd',
-            '.hp-tool-card',
-            '.tool-card',
-            '.galaxy',
-            '.skill-card',
-            '.project-card',
-            '.hp-spotlight__card',
-            '.hp-live__card',
-            '.hp-stats',
-            '.hp-footer-cta',
-            '.tools-cta',
-            '.live-preview',
-            '.donate-section',
-            '.contact-section',
-            '.info-card',
-            '.hp-cl-day',
-            '.gf-station',
-            '.gf-door'
-          ];
-          var nodes = document.querySelectorAll(selectors.join(','));
+          var nodes = document.querySelectorAll(REVEAL_SELECTORS);
           for (var i = 0; i < nodes.length; i++) {
-            if (!nodes[i].classList.contains('cosmic-reveal')) {
-              nodes[i].classList.add('cosmic-reveal');
+            if (!nodes[i].classList.contains('gf-reveal')) {
+              nodes[i].classList.add('gf-reveal');
               io.observe(nodes[i]);
             }
           }
@@ -949,7 +957,7 @@
         }
         // Perf: this observer watches EVERY class change in the whole document
         // subtree. Angular flips classes constantly (routerLinkActive, form
-        // state) and the scroll-reveal observer above adds .cosmic-in-view as
+        // state) and the scroll-reveal observer above adds .gf-in-view as
         // you scroll — which re-triggered this one, so scrolling was paying for
         // a full-document querySelectorAll on top of everything else. Confetti
         // is a celebration, not a frame-critical effect: a 250ms trailing

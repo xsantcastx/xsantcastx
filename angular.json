@@ -33,7 +33,8 @@
             ],
             "styles": [
               "src/styles.css",
-              "src/styles/icon-animations.css"
+              "src/styles/icon-animations.css",
+              "src/styles/interactions.css"
             ],
             "scripts": [],
             "browser": "src/main.ts",
@@ -131,7 +132,8 @@
             ],
             "styles": [
               "src/styles.css",
-              "src/styles/icon-animations.css"
+              "src/styles/icon-animations.css",
+              "src/styles/interactions.css"
             ],
             "scripts": []
           }
