@@ -975,6 +975,55 @@
   display: none;
 }
 
+/* The nav row has no spare width at 1280px, so the Quests link is drawer-only.
+   On desktop the docked sword is the way in, and its panel links to /quests. */
+@media (min-width: 961px) {
+  .nav-quests-link {
+    display: none;
+  }
+}
+
+/* ── Quest dock ──────────────────────────────────────────────────────────────
+   The sword and the XP bar share one docked cluster on desktop, so the pair
+   costs the nav row exactly as much as the XP bar alone used to: nothing. */
+.nav-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+@media (min-width: 961px) {
+  .nav-dock {
+    position: absolute;
+    top: 100%;
+    right: var(--nav-padding-x, clamp(1.2rem, 3.4vw, 3.2rem));
+    margin-top: 8px;
+    /* Above the page, below the mobile drawer (9999) and backdrop (998). */
+    z-index: 5;
+  }
+
+  /* The dock now owns the positioning the XP bar used to do for itself. */
+  .nav-xp {
+    position: static;
+    margin-top: 0;
+  }
+
+  .nav-quests--mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav-dock {
+    display: none;
+  }
+
+  .nav-quests--mobile {
+    display: inline-flex;
+  }
+}
+
 @media (max-width: 960px) {
   .nav-xp {
     display: none;

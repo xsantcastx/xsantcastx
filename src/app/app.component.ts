@@ -8,6 +8,7 @@ import { VisitCounterService } from './shared/visit-counter/visit-counter.servic
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
+import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 
 @Component({
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
   private realms = inject(RealmService);
+  private questWiring = inject(QuestWiringService);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -66,6 +68,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Realm tinting: resolve every route to a realm and publish it to CSS.
     this.realms.init();
+
+    // Mission board: roll the daily and weekly quests over, and start turning
+    // interactions into quest progress and lore unlocks.
+    this.questWiring.init();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {
