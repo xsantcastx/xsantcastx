@@ -190,6 +190,20 @@ export const EASTER_EGGS: EasterEgg[] = [
   // pays 25 rather than the standard 200: finding the record of every secret is
   // the start of the hunt, not a result of one.
   { id: 'codex-archivist',    name: 'The Archivist',        description: 'Opened the Codex for the first time',                 tool: 'global',                    rarity: 'rare',      icon: '📜', xp: 25 },
+
+  // ── Batch 11: the Ambient Forge ────────────────────────────
+  // Earned by presence rather than by hunting, so every one of them carries an
+  // explicit `xp` well under the standard 200. Paying a hunt's price for
+  // sitting still would quietly out-earn the quests these are meant to sit
+  // alongside — a capped day of idling is worth ~60 XP, and a single 200 XP
+  // drop for reaching it would be three days' allowance in one moment.
+  { id: 'idle-patient-one',      name: 'The Patient One',        description: 'Earned 100 XP from ambient forge energy',              tool: 'global', rarity: 'rare',      icon: '🕯️', xp: 40 },
+  { id: 'idle-forge-meditation', name: 'Forge Meditation',       description: 'Kept the forge in sight for thirty unbroken minutes',  tool: 'global', rarity: 'epic',      icon: '🧘', xp: 60 },
+  { id: 'idle-vigil',            name: 'The Vigil',              description: 'Earned 500 XP from ambient forge energy',              tool: 'global', rarity: 'epic',      icon: '🌙', xp: 80 },
+  { id: 'idle-eternal-flame',    name: 'Eternal Flame',          description: 'Earned 2000 XP from ambient forge energy',             tool: 'global', rarity: 'legendary', icon: '🔥', xp: 150 },
+  { id: 'idle-never-sleeps',     name: 'The Godforge Never Sleeps', description: 'Had the forge open as the date rolled over',        tool: 'global', rarity: 'rare',      icon: '🌌', xp: 50 },
+  { id: 'idle-forge-striker',    name: 'Forge Striker',          description: 'Struck the forge one thousand times',                  tool: 'global', rarity: 'epic',      icon: '🔨', xp: 80 },
+  { id: 'idle-obsidian-hammer',  name: 'Obsidian Hammer',        description: 'Struck the forge ten thousand times',                  tool: 'global', rarity: 'legendary', icon: '⚒️', xp: 200 },
 ];
 
 /** localStorage key holding the array of discovered egg ids. */
