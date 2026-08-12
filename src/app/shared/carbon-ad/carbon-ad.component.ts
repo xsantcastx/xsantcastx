@@ -1,15 +1,23 @@
 /**
- * CarbonAdComponent
- * ─────────────────
- * Serves a single Carbon Ads unit — developer-focused, tasteful advertising.
+ * CarbonAdComponent — the in-tool ad slot.
  *
- * SETUP REQUIRED (one-time):
- *  1. Sign up at https://carbonads.com and submit xsantcastx.com for approval.
- *  2. Once approved, replace the `serve` param in CARBON_AD_SRC below with
- *     your real serve ID (the part after "serve=" in the snippet they provide).
- *  3. Replace `placement` with your registered placement slug if different.
+ * Despite the name (kept so the 39 tool templates using <app-carbon-ad> did not
+ * all have to change), this renders whichever network `activeAdNetwork()` says
+ * is live, and a **house ad** pointing at /sponsors when none is. See
+ * ../ads/ad-config.ts for how to switch a real network on.
  *
- * Current placeholder: serve=CWYD42JY  →  swap when account is live.
+ * Suppressed entirely — no markup, no script, no impression — when
+ * AdVisibilityService says so: Pro buyers, dashboard routes, and while the boot
+ * curtain is still up.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THE HOUSE AD IS NOT AN EMPTY DIV
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The site has ~39 tool pages carrying this slot and no advertiser yet. Leaving
+ * it blank wastes the only asset that actually sells sponsorship: proof that
+ * the inventory exists, is nicely placed, and looks good. The house card is a
+ * sales pitch aimed at the one visitor in ten thousand who runs a dev-tools
+ * company, and costs the other 9,999 a tasteful, dismissible card.
  */
 import {
   Component,
@@ -18,70 +26,117 @@ import {
   ElementRef,
   Inject,
   PLATFORM_ID,
-  ViewChild
+  ViewChild,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-
-const CARBON_AD_SRC =
-  '//cdn.carbonads.com/carbon.js?serve=CWYD42JY&placement=xsantcastxcom';
+import { Subscription } from 'rxjs';
+import { AdVisibilityService } from '../ads/ad-visibility.service';
+import { activeAdNetwork, carbonScriptSrc, AdNetwork } from '../ads/ad-config';
 
 @Component({
   selector: 'app-carbon-ad',
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="carbon-ad-wrap" #wrap aria-label="Sponsored content">
-      <span class="carbon-ad-label">Sponsored</span>
-      <div class="carbon-ad-slot" #slot></div>
-    </aside>
+    @if (visible) {
+      <aside class="carbon-ad-wrap" aria-label="Sponsored content">
+        @if (network === 'house') {
+          <app-house-ad></app-house-ad>
+        } @else {
+          <span class="carbon-ad-label">Sponsored</span>
+          <div class="carbon-ad-slot" #slot></div>
+        }
+      </aside>
+    }
   `,
-  styleUrls: ['./carbon-ad.component.css']
+  styleUrls: ['./carbon-ad.component.css'],
 })
 export class CarbonAdComponent implements OnInit, OnDestroy {
-  @ViewChild('slot', { static: true }) slotEl!: ElementRef<HTMLDivElement>;
+  /** `static: false` — the slot lives inside two @if branches, so it does not
+   *  exist at ngOnInit and cannot be resolved statically. */
+  @ViewChild('slot') slotEl?: ElementRef<HTMLDivElement>;
 
-  /** Kept so we can disconnect on destroy if the slot never scrolled in. */
+  readonly network: AdNetwork = activeAdNetwork();
+  visible = false;
+
   private observer?: IntersectionObserver;
+  private sub?: Subscription;
+  private scriptRequested = false;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private visibility: AdVisibilityService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
-    // Avoid double-loading if the component is re-created on the same page
-    if (document.getElementById('_carbonads_js')) return;
+    this.sub = this.visibility.canShowAds$.subscribe(can => {
+      if (this.visible === can) return;
+      this.visible = can;
+      // OnPush + an async source: the template will not re-evaluate `visible`
+      // without being told.
+      this.cdr.markForCheck();
 
-    // The ad slot sits below the tool UI, so on a phone it is almost always
-    // off-screen at load. Fetching carbon.js during initial load spent
-    // bandwidth and main-thread time on something the user could not see yet,
-    // competing with the LCP resource. Defer until the slot is close to the
-    // viewport instead — 200px of rootMargin gives the request a head start so
-    // the unit is usually painted by the time the user reaches it.
+      if (!can) {
+        this.teardown();
+        return;
+      }
+      // The house ad is pure markup — nothing to lazy-load.
+      if (this.network === 'house') return;
+
+      // The @if has only just flipped, so the slot div is not in the DOM until
+      // change detection runs. Defer observation by a microtask.
+      queueMicrotask(() => this.observeSlot());
+    });
+  }
+
+  /**
+   * Start watching for the slot to approach the viewport.
+   *
+   * The unit sits below the tool header, so on a phone it is often off-screen
+   * at load. Fetching the network script during initial load spends bandwidth
+   * and main-thread time on something the user cannot see, competing with the
+   * LCP resource. 200px of rootMargin gives the request a head start so the
+   * unit is usually painted by the time it is scrolled to.
+   */
+  private observeSlot(): void {
+    const el = this.slotEl?.nativeElement;
+    if (!el || this.scriptRequested) return;
+
     if (typeof IntersectionObserver === 'undefined') {
-      // Very old browser — fall back to the previous eager behaviour rather
-      // than silently never serving an ad.
       this.injectScript();
       return;
     }
 
-    this.observer = new IntersectionObserver(entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      this.disconnect();
-      this.injectScript();
-    }, { rootMargin: '200px' });
-
-    this.observer.observe(this.slotEl.nativeElement);
+    this.observer = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        this.disconnect();
+        this.injectScript();
+      },
+      { rootMargin: '200px' },
+    );
+    this.observer.observe(el);
   }
 
   private injectScript(): void {
-    // Re-check: two slots on one page could both fire before either injected.
-    if (document.getElementById('_carbonads_js')) return;
+    if (this.network !== 'carbon') return;
+    // Two slots on one page could both fire before either injected.
+    if (this.scriptRequested || document.getElementById('_carbonads_js')) return;
+    const el = this.slotEl?.nativeElement;
+    if (!el) return;
 
+    this.scriptRequested = true;
     const script = document.createElement('script');
     script.id = '_carbonads_js';
     script.type = 'text/javascript';
     script.async = true;
-    script.src = CARBON_AD_SRC;
-    this.slotEl.nativeElement.appendChild(script);
+    script.src = carbonScriptSrc();
+    el.appendChild(script);
   }
 
   private disconnect(): void {
@@ -89,15 +144,17 @@ export class CarbonAdComponent implements OnInit, OnDestroy {
     this.observer = undefined;
   }
 
+  /** Remove the injected script + Carbon's rendered node so a re-show re-loads. */
+  private teardown(): void {
+    this.disconnect();
+    if (!isPlatformBrowser(this.platformId)) return;
+    document.getElementById('_carbonads_js')?.remove();
+    document.getElementById('carbonads')?.remove();
+    this.scriptRequested = false;
+  }
+
   ngOnDestroy(): void {
-    // Clean up the injected script so re-navigation re-loads correctly
-    if (isPlatformBrowser(this.platformId)) {
-      this.disconnect();
-      const existing = document.getElementById('_carbonads_js');
-      existing?.parentNode?.removeChild(existing);
-      // Also remove the rendered ad container Carbon inserts
-      const rendered = document.getElementById('carbonads');
-      rendered?.parentNode?.removeChild(rendered);
-    }
+    this.sub?.unsubscribe();
+    this.teardown();
   }
 }
