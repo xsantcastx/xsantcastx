@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.22.1',
+  version: '2.23.1',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
-  codename: 'Standing Orders',
+  codename: 'Ambient Forge',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -35,15 +35,32 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.22.1',
-    codename: 'Standing Orders',
+    version: '2.23.1',
+    codename: 'Ambient Forge',
     date: '2026-08-12',
     highlights: [
       'Browser tabs read as a platform rather than a personal site — the default title is "xsantcastx · The Godforge", and every named page follows "<Page> · xsantcastx": The Five Realms, The War Table, The Arena, The Codex, Mission Control, Sponsors, MCP Server',
       'The phrase "Full-Stack Developer" is gone from every title, meta description, Open Graph tag and structured-data block outside the tool pages, along with the portfolio framing that came with it',
       'The 128 individual tool titles are deliberately untouched: their keyword phrasing is what those pages rank on, and a title is the strongest on-page signal there is. /tools itself was renamed on request and did give up its keywords — the meta description still carries them',
       'The route-title map had been carrying nine unused entries with copy like "About Me - Experience & Skills" and "Resume - Professional Experience"; the dead keys are deleted and the four live ones now read as platform pages',
+      'Every prerendered page had been shipping the same generic og:title and twitter:title — SeoService read the title back off the document and beat the title strategy to it during prerender. It now reads the route\'s own title, through the same branding helper the strategy uses so the two cannot drift apart',
       'Fixed a corrupted line on /about that was rendering a fragment of a code-edit payload — literal `", "oldString": "` followed by a stray "Santiago - Full-Stack Developer" — as visible page text'
+    ]
+  },
+  {
+    version: '2.23.0',
+    codename: 'Ambient Forge',
+    date: '2026-08-12',
+    highlights: [
+      'Time spent with the site open and visible now earns XP — 1/min anywhere, 2/min on a tool page, 1.5/min in the Arena — shown by a forge flame beside the XP bar that breathes while it is earning and dims to an ember the moment the tab is hidden',
+      'Hidden earns nothing. The Page Visibility API gates every credit, so this rewards having the site in front of you rather than having it open in a tab you forgot about',
+      'Credits come from measured visible milliseconds rather than from counting timer fires, and a single accounting step is clamped to one interval — so a throttled background tab under-reports nothing and a laptop asleep for six hours pays out nothing',
+      'Thirty credited minutes a day, held against the local date rather than the page load: the brief called it a per-session cap, but a cap kept in memory resets on Cmd+R, which is the first thing an idler does',
+      'The rate stacks — the realm you have worked most adds 0.5 on its own tools, a live quest pointing at the tool underfoot doubles it, and a 7- or 30-day streak multiplies by 1.5 or 2 — with the tooltip naming every term rather than showing an unexplained number',
+      'The flame is strikeable: +1 XP a hit on a 500ms cooldown, a spark every tenth and a Century Strike worth 10 more every hundredth',
+      'Seven achievements join the egg registry rather than a parallel list, so they arrive through the rarity drop, land on the Codex wall and count toward the global total like everything else — at 40-200 XP rather than a hunt\'s 200, because they are earned by presence',
+      'The idle ledger is read-modify-write, so two open tabs share one thirty-minute allowance instead of quietly earning two and overwriting each other\'s totals',
+      'Nineteen unit tests cover the parts only a clock can prove: the cap, the visibility gate, the sleeping laptop, the day rollover, the unbroken-run milestone and the strike cooldown'
     ]
   },
   {
