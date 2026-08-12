@@ -43,6 +43,9 @@
            the visitor's real title arrives after hydration. -->
       <div class="gf-rank">
         <p class="gf-rank__line">
+          <img class="gf-rank__sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
+               alt="" aria-hidden="true" width="34" height="34"
+               decoding="async" draggable="false">
           {{ translate('godforge.hero.welcome') }}
           <strong class="gf-rank__title">{{ xp.level.title }}</strong>
         </p>
@@ -154,7 +157,11 @@
                 [attr.aria-expanded]="isStationOpen(station)"
                 [attr.aria-controls]="'forge-' + station.realm.id"
                 >
-                <span class="gf-station__sigil" aria-hidden="true"></span>
+                <img class="gf-station__sigil realm-sigil"
+                     [src]="'assets/icons/realms/' + station.realm.sigil + '.png'"
+                     [class.realm-sigil--active]="isStationOpen(station)"
+                     alt="" aria-hidden="true" width="34" height="34"
+                     loading="lazy" decoding="async" draggable="false">
                 <span class="gf-station__names">
                   <span class="gf-station__name">{{ station.realm.name }}</span>
                   <span class="gf-station__domain">{{ station.realm.domain }}</span>
@@ -502,6 +509,9 @@
 
       <div class="gf-journey__rank">
         <p class="gf-journey__rank-line">
+          <img class="gf-journey__rank-sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
+               alt="" aria-hidden="true" width="44" height="44"
+               loading="lazy" decoding="async" draggable="false">
           <span class="gf-journey__rank-num">{{ xp.level.level }}</span>
           <span class="gf-journey__rank-title">{{ xp.level.title }}</span>
           <span class="gf-journey__rank-xp">{{ xp.xp }} XP</span>

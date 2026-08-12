@@ -54,17 +54,28 @@ type TabId = 'forge' | 'hammer' | 'enchant' | 'artifact' | 'cosmetic';
 interface Tab {
   id: TabId;
   label: string;
+  /** Path to the shop sigil under assets/icons/shops. */
   icon: string;
   /** Which currency this tab spends. Tints the whole panel. */
   currency: 'gold' | 'essence';
 }
 
+/**
+ * The shop sigils were painted for a five-shop layout (one per currency) that
+ * the Market does not have — it is five tabs over a single ledger. They are
+ * assigned here by what each panel *sells*, not by the name on the original
+ * sheet, so the pairing stays readable: the Gold Shop's anvil fronts Forge
+ * Upgrades, the Relic Forge's crafting circle fronts Hammers, the Essence
+ * Shop's crystals front Enchantments, the Nox orb fronts Artifacts, and the
+ * Aether shrine's sparkle fronts Cosmetics. Each tab gets a distinct sigil and
+ * every gold tab reads warm against every essence tab's violet.
+ */
 const TABS: Tab[] = [
-  { id: 'forge',    label: 'Forge Upgrades', icon: '🔥', currency: 'gold' },
-  { id: 'hammer',   label: 'Hammers',        icon: '🔨', currency: 'gold' },
-  { id: 'enchant',  label: 'Enchantments',   icon: '🕯️', currency: 'essence' },
-  { id: 'artifact', label: 'Artifacts',      icon: '💠', currency: 'essence' },
-  { id: 'cosmetic', label: 'Cosmetics',      icon: '✨', currency: 'gold' },
+  { id: 'forge',    label: 'Forge Upgrades', icon: 'gold-shop',    currency: 'gold' },
+  { id: 'hammer',   label: 'Hammers',        icon: 'relic-forge',  currency: 'gold' },
+  { id: 'enchant',  label: 'Enchantments',   icon: 'essence-shop', currency: 'essence' },
+  { id: 'artifact', label: 'Artifacts',      icon: 'nox-shop',     currency: 'essence' },
+  { id: 'cosmetic', label: 'Cosmetics',      icon: 'aether-shop',  currency: 'gold' },
 ];
 
 /** A row on either Gold ladder, with its price already resolved. */

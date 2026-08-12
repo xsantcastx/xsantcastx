@@ -24,7 +24,14 @@ export interface CodexCategory {
   id: CodexCategoryId;
   /** Name as it appears on a filter chip and a section header. */
   label: string;
+  /**
+   * Path to the category's mark. The five realms carry their painted sigil;
+   * Arena and Global have no art on the sheet and keep their glyph, so this is
+   * read as an image path only when `art` is true.
+   */
   icon: string;
+  /** True when `icon` is an image path rather than a glyph. */
+  art?: boolean;
   color: string;
   glow: string;
   /** One line under the section header. */
@@ -35,7 +42,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'luminous',
     label: 'Luminous Realm',
-    icon: '🕊',
+    icon: 'assets/icons/realms/luminous.png',
+    art: true,
     color: '#E8D44D',
     glow: 'rgba(232, 212, 77, 0.6)',
     blurb: 'Secrets buried in light — colour, type, shadow and the making of surfaces.',
@@ -43,7 +51,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'umbral',
     label: 'Umbral Realm',
-    icon: '🌒',
+    icon: 'assets/icons/realms/umbral.png',
+    art: true,
     color: '#8B2252',
     glow: 'rgba(139, 34, 82, 0.7)',
     blurb: 'What the Nocturne left in the keys, the hashes and the certificates.',
@@ -51,7 +60,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'verge',
     label: 'The Verge',
-    icon: '🌗',
+    icon: 'assets/icons/realms/celestial.png',
+    art: true,
     color: '#00d4ff',
     glow: 'rgba(0, 212, 255, 0.6)',
     blurb: 'The unstable border, where one form is translated into another.',
@@ -59,7 +69,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'archivum',
     label: 'The Archivum',
-    icon: '📜',
+    icon: 'assets/icons/realms/verdant.png',
+    art: true,
     color: '#C9A84C',
     glow: 'rgba(201, 168, 76, 0.6)',
     blurb: 'Everything the archive counted, timed, listed or filed away.',
@@ -67,7 +78,8 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'nexus',
     label: 'The Nexus',
-    icon: '⚡',
+    icon: 'assets/icons/realms/infernal.png',
+    art: true,
     color: '#10B981',
     glow: 'rgba(16, 185, 129, 0.6)',
     blurb: 'Threads between worlds. Every message, and whether it arrived.',

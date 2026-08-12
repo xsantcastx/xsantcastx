@@ -23,13 +23,16 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/favicon.svg",
+              "src/manifest.webmanifest",
+              "src/favicon.ico",
               "src/robots.txt",
               "src/sitemap.xml",
               "src/assets",
               "src/google2e3a7dbeefb8f27f.html"
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "src/styles/icon-animations.css"
             ],
             "scripts": [],
             "browser": "src/main.ts",
@@ -118,12 +121,15 @@
             "tsConfig": "tsconfig.spec.json",
             "assets": [
               "src/favicon.svg",
+              "src/manifest.webmanifest",
+              "src/favicon.ico",
               "src/robots.txt",
               "src/sitemap.xml",
               "src/assets"
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "src/styles/icon-animations.css"
             ],
             "scripts": []
           }

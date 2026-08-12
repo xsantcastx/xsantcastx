@@ -38,7 +38,9 @@ import { formatCurrency, formatRate } from './economy.model';
        routerLink="/market"
        [class.cr__chip--tick]="goldTick"
        [attr.aria-label]="goldLabel">
-      <span class="cr__icon" aria-hidden="true">&#129689;</span>
+      <img class="cr__icon gf-icon currency-icon"
+           src="assets/icons/currencies/gold.png" alt="" aria-hidden="true"
+           width="18" height="18" decoding="async" draggable="false">
       <span class="cr__val">{{ gold }}</span>
     </a>
 
@@ -47,7 +49,9 @@ import { formatCurrency, formatRate } from './economy.model';
          routerLink="/market"
          [class.cr__chip--tick]="essenceTick"
          [attr.aria-label]="essenceLabel">
-        <span class="cr__icon" aria-hidden="true">&#9889;</span>
+        <img class="cr__icon gf-icon currency-icon currency-icon--essence"
+             src="assets/icons/currencies/essence.png" alt="" aria-hidden="true"
+             width="18" height="18" decoding="async" draggable="false">
         <span class="cr__val">{{ essence }}</span>
       </a>
     }
@@ -64,7 +68,9 @@ import { formatCurrency, formatRate } from './economy.model';
       text-decoration: none;
       transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
     }
-    .cr__icon { font-size: 13px; line-height: 1; }
+    /* Fixed box, not intrinsic: the chip must not resize while the PNG decodes,
+       or the whole header row shifts on first paint. */
+    .cr__icon { width: 18px; height: 18px; display: block; }
     .cr__val {
       font: 700 12px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: .02em;
