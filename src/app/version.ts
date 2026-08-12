@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.23.0',
+  version: '2.24.0',
   buildDate: '2026-08-12',
   /** Each major release gets a codename */
   codename: 'Portable Progress',
@@ -35,7 +35,7 @@ export const APP_VERSION = {
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: '2.23.0',
+    version: '2.24.0',
     codename: 'Portable Progress',
     date: '2026-08-12',
     highlights: [
@@ -44,6 +44,22 @@ export const VERSION_HISTORY: VersionRelease[] = [
       'Achievements are stored with the moment they were earned instead of as bare ids, so a synced profile carries its own chronology rather than depending on a second store agreeing with it',
       'Writes are debounced and flushed on the way out — a quest claim that awards XP and banks an achievement in the same tick is now one write, not two',
       'Existing progress migrates in place: XP, energies, streak, best streak, tools and daily history all carry across, verified against a real v1 blob and pinned by 12 unit tests'
+    ]
+  },
+  {
+    version: '2.23.0',
+    codename: 'Ambient Forge',
+    date: '2026-08-12',
+    highlights: [
+      'Time spent with the site open and visible now earns XP — 1/min anywhere, 2/min on a tool page, 1.5/min in the Arena — shown by a forge flame beside the XP bar that breathes while it is earning and dims to an ember the moment the tab is hidden',
+      'Hidden earns nothing. The Page Visibility API gates every credit, so this rewards having the site in front of you rather than having it open in a tab you forgot about',
+      'Credits come from measured visible milliseconds rather than from counting timer fires, and a single accounting step is clamped to one interval — so a throttled background tab under-reports nothing and a laptop asleep for six hours pays out nothing',
+      'Thirty credited minutes a day, held against the local date rather than the page load: the brief called it a per-session cap, but a cap kept in memory resets on Cmd+R, which is the first thing an idler does',
+      'The rate stacks — the realm you have worked most adds 0.5 on its own tools, a live quest pointing at the tool underfoot doubles it, and a 7- or 30-day streak multiplies by 1.5 or 2 — with the tooltip naming every term rather than showing an unexplained number',
+      'The flame is strikeable: +1 XP a hit on a 500ms cooldown, a spark every tenth and a Century Strike worth 10 more every hundredth',
+      'Seven achievements join the egg registry rather than a parallel list, so they arrive through the rarity drop, land on the Codex wall and count toward the global total like everything else — at 40-200 XP rather than a hunt\'s 200, because they are earned by presence',
+      'The idle ledger is read-modify-write, so two open tabs share one thirty-minute allowance instead of quietly earning two and overwriting each other\'s totals',
+      'Nineteen unit tests cover the parts only a clock can prove: the cap, the visibility gate, the sleeping laptop, the day rollover, the unbroken-run milestone and the strike cooldown'
     ]
   },
   {
