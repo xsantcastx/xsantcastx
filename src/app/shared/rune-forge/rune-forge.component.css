@@ -329,12 +329,26 @@
   position: absolute;
   inset: 0;
   z-index: 5;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
   padding: 1rem;
   background: rgba(6, 4, 14, 0.82);
   cursor: pointer;
+  /* A scroll is two or three paragraphs and will not fit the bay on a phone.
+     The bay clips (`overflow: hidden`), so the overlay has to do its own
+     scrolling or the end of every scroll is unreachable. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: rfRevealIn 220ms ease-out;
+}
+
+/* With a scroll present the pair is taller than the bay, so it anchors to the
+   top and scrolls rather than centring and overflowing in both directions. */
+.rf-reveal:has(.rf-scroll) {
+  justify-content: flex-start;
 }
 
 .rf-reveal__card {
@@ -407,6 +421,93 @@
 .rf-reveal[data-reveal='edge'] .rf-reveal__card { animation: rfBurst 620ms ease-out; }
 .rf-reveal[data-reveal='flash'] .rf-reveal__card { animation: rfBurst 780ms ease-out; }
 .rf-reveal[data-reveal='void'] .rf-reveal__card { animation: rfVoidCard 3s cubic-bezier(0.2, 0, 0, 1); }
+
+/* ── The scroll ──────────────────────────────────────────────────────────────
+   Parchment, not starlight. The palette and the serif are lifted verbatim from
+   ToolLoreComponent, which already made this decision for the tool codex: the
+   site is cyan and violet and precise, and lore should feel like something
+   found rather than something built. A scroll styled like the rune card would
+   read as a second rune. */
+
+.rf-scroll {
+  width: min(52ch, 100%);
+  padding: 1.1rem 1.35rem 1.25rem;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse 70% 60% at 10% 0%, rgba(201, 168, 76, 0.06), transparent 65%),
+    rgba(10, 8, 18, 0.94);
+  box-shadow: 0 0 34px -10px rgba(201, 168, 76, 0.55);
+  cursor: auto;
+  animation: rfScrollUnfurl 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The torn top rule, same as the tool codex. */
+.rf-scroll::before {
+  content: '';
+  display: block;
+  height: 2px;
+  margin: -1.1rem -1.35rem 0.9rem;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(201, 168, 76, 0.55) 20%,
+    rgba(201, 168, 76, 0.2) 50%,
+    rgba(201, 168, 76, 0.55) 80%,
+    transparent);
+}
+
+.rf-scroll__flag {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  color: #C9A84C;
+}
+
+.rf-scroll__icon {
+  font-size: 0.9rem;
+}
+
+.rf-scroll__title {
+  margin: 0 0 0.15rem;
+  font: 600 0.95rem/1.35 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.03em;
+  color: #d9c27f;
+}
+
+.rf-scroll__subtitle {
+  margin: 0 0 0.9rem;
+  font: italic 400 0.84rem/1.5 Georgia, 'Times New Roman', serif;
+  color: #a08d5f;
+}
+
+/* Deliberately not its own scroller. The overlay above already scrolls, and a
+   scroller inside a scroller means the wheel does something different
+   depending on which half of the card the pointer is over — the prose moves,
+   then stops dead, then the whole overlay starts moving. One surface. */
+.rf-scroll__para {
+  margin: 0 0 0.85rem;
+  font: 400 0.9rem/1.75 Georgia, 'Times New Roman', serif;
+  color: #cdc6b8;
+}
+
+.rf-scroll__para:last-child {
+  margin-bottom: 0;
+}
+
+.rf-scroll__meta {
+  margin: 0.9rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.16);
+  font: 400 0.72rem/1.5 Georgia, 'Times New Roman', serif;
+  color: #8a8071;
+}
+
+.rf-scroll__meta a {
+  color: #C9A84C;
+}
 
 /* ── Stats ───────────────────────────────────────────────────────────────── */
 
@@ -766,6 +867,12 @@
   100% { transform: scale(1); }
 }
 
+@keyframes rfScrollUnfurl {
+  0%   { transform: scaleY(0.4) translateY(-8px); opacity: 0; }
+  60%  { transform: scaleY(1.02) translateY(0); opacity: 1; }
+  100% { transform: scaleY(1) translateY(0); opacity: 1; }
+}
+
 @keyframes rfVoidSpeak {
   0%   { opacity: 0; letter-spacing: 0.8em; }
   25%  { opacity: 1; letter-spacing: 0.34em; }
@@ -811,7 +918,8 @@
   .rf-reveal[data-reveal='shimmer'] .rf-reveal__card,
   .rf-reveal[data-reveal='edge'] .rf-reveal__card,
   .rf-reveal[data-reveal='flash'] .rf-reveal__card,
-  .rf-reveal[data-reveal='void'] .rf-reveal__card {
+  .rf-reveal[data-reveal='void'] .rf-reveal__card,
+  .rf-scroll {
     animation: none;
   }
 
