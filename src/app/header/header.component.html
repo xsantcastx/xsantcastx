@@ -1,113 +1,197 @@
-<nav class="navbar">
-  <!-- Glass blur layer (kept as a child so the navbar itself is not a containing
-       block for the fixed-position mobile menu/backdrop) -->
-  <span class="navbar__glass" aria-hidden="true"></span>
+<!-- ═══════════════════════════════════════════════════════════════════
+     THE GODFORGE COMMAND BAR
+     [sigil + wordmark]   [Realms ▾ · Arena · Codex · War Table · Market]
+                          [quests · gold · XP · keeper · EN/ES]
 
-  <!-- Mobile Menu Backdrop -->
-  <div class="mobile-backdrop" [class.show]="mobileMenuOpen" (click)="closeMobileMenu()" aria-hidden="true"></div>
+     Notes that are not obvious from the markup:
+     · .gfnav__glass is a CHILD, not a backdrop-filter on .gfnav itself —
+       a filter on the bar would make it a containing block and pin the
+       fixed-position drawer and backdrop inside it.
+     · The drawer and its backdrop are siblings of .gfnav__row so they
+       escape the row's flex context and cover the viewport.
+     · No emoji anywhere: every glyph here is a CSS-drawn shape.
+     ═══════════════════════════════════════════════════════════════════ -->
+<nav class="gfnav"
+     [class.gfnav--compact]="compact"
+     [class.gfnav--open]="mobileMenuOpen"
+     aria-label="Primary">
+  <span class="gfnav__glass" aria-hidden="true"></span>
 
-  <button type="button" class="logo" (click)="scrollToSection('hero')" aria-label="Jump to top">
-    <span class="logo-mark">
-      <img src="assets/logo-xsantcastx.svg" alt="xsantcastx logo" decoding="async" draggable="false" width="64" height="64" />
-    </span>
-    <span class="logo-lockup">
-      <span class="nav-glitch">xsantcastx</span>
-      <span class="nav-buzzword" aria-hidden="true" [attr.data-swap]="wordSwapToggle">{{ activeWord }}</span>
-    </span>
-  </button>
+  <div class="gfnav__row">
 
-  <!-- Mobile Controls -->
-  <div class="mobile-controls">
-    <!-- Language Toggle (always visible) -->
-    <div class="language-toggle">
-      <button class="lang-btn" [class.active]="currentLang === 'en'" (click)="setLanguage('en')">EN</button>
-      <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
+    <!-- ── LEFT — the mark ─────────────────────────────────────────── -->
+    <a routerLink="/home" class="gfnav__brand" aria-label="The Godforge — home">
+      <span class="gfnav__sigil" aria-hidden="true">
+        <span class="gfnav__sigil-bar"></span>
+        <span class="gfnav__sigil-bar"></span>
+      </span>
+      <span class="gfnav__wordmark">The Godforge</span>
+    </a>
+
+    <!-- ── CENTRE — the ways in (desktop) ──────────────────────────── -->
+    <div class="gfnav__centre">
+
+      <div class="gfnav__realms"
+           (mouseenter)="openRealms()"
+           (mouseleave)="closeRealms()">
+        <button type="button"
+                class="gfnav__link gfnav__realms-btn"
+                [class.is-active]="realmsOpen"
+                (click)="toggleRealms()"
+                aria-haspopup="true"
+                [attr.aria-expanded]="realmsOpen">
+          {{ translate('gfnav.realms') }}
+          <span class="gfnav__caret" aria-hidden="true"></span>
+        </button>
+
+        <!-- Kept in the DOM and hidden with opacity/visibility rather than
+             @if: the links are real crawlable routes into the tool filter. -->
+        <div class="gfnav__menu" [class.is-open]="realmsOpen" role="menu">
+          <p class="gfnav__menu-hd">{{ translate('gfnav.realmsHd') }}</p>
+          @for (realm of realms; track realm.id) {
+            <a class="gfnav__realm"
+               role="menuitem"
+               [routerLink]="['/tools']"
+               [queryParams]="{ realm: realm.id }"
+               [style.--realm-color]="realm.color"
+               [style.--realm-glow]="realm.glow"
+               (click)="closeAll()">
+              <span class="gfnav__realm-dot" aria-hidden="true"></span>
+              <span class="gfnav__realm-text">
+                <span class="gfnav__realm-name">{{ realm.name }}</span>
+                <span class="gfnav__realm-domain">{{ realm.domain }}</span>
+              </span>
+            </a>
+          }
+          <a class="gfnav__realm gfnav__realm--all"
+             role="menuitem"
+             routerLink="/tools"
+             (click)="closeAll()">
+            {{ translate('gfnav.allArtifacts') }}
+          </a>
+        </div>
+      </div>
+
+      <a routerLink="/arena" routerLinkActive="is-active" class="gfnav__link">
+        {{ translate('gfnav.arena') }}
+      </a>
+
+      <a routerLink="/codex" routerLinkActive="is-active" class="gfnav__link"
+         [attr.aria-label]="'Codex — ' + codexFound + ' of ' + codexTotal + ' fragments discovered'">
+        {{ translate('gfnav.codex') }}
+        <span class="gfnav__count" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
+      </a>
+
+      <a routerLink="/blueprint" routerLinkActive="is-active" class="gfnav__link">
+        {{ translate('gfnav.warTable') }}
+      </a>
+
+      <a routerLink="/market" routerLinkActive="is-active" class="gfnav__link">
+        {{ translate('gfnav.market') }}
+      </a>
+
+      <a routerLink="/live" routerLinkActive="is-active" class="gfnav__link gfnav__link--live">
+        <span class="gfnav__live-dot" aria-hidden="true"></span>LIVE
+      </a>
     </div>
 
-    <!-- Quest log trigger. The panel it opens is mounted next to the header,
-         not in it — see QuestDrawerComponent's header comment. -->
-    <app-quest-trigger class="nav-quests--mobile"></app-quest-trigger>
+    <!-- ── RIGHT — the visitor's standing ──────────────────────────── -->
+    <div class="gfnav__status">
+      <app-quest-trigger class="gfnav__quests"></app-quest-trigger>
+      <app-currency-rail class="gfnav__gold"></app-currency-rail>
+      <app-xp-bar class="gfnav__xp"></app-xp-bar>
 
-    <!-- Hamburger Menu -->
-    <button class="hamburger" [class.active]="mobileMenuOpen" (click)="toggleMobileMenu()"
-      aria-label="Toggle navigation menu"
-      [attr.aria-expanded]="mobileMenuOpen"
-      aria-haspopup="menu">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
+      <a routerLink="/forge-keeper" routerLinkActive="is-active" class="gfnav__keeper"
+         [attr.aria-label]="translate('gfnav.keeperLabel')">
+        <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
+      </a>
+
+      <div class="gfnav__lang">
+        <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'en'"
+                (click)="setLanguage('en')">EN</button>
+        <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'es'"
+                (click)="setLanguage('es')">ES</button>
+      </div>
+
+      <button type="button"
+              class="gfnav__burger"
+              [class.is-open]="mobileMenuOpen"
+              (click)="toggleMobileMenu()"
+              [attr.aria-expanded]="mobileMenuOpen"
+              aria-haspopup="menu"
+              [attr.aria-label]="translate('gfnav.menuLabel')">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+    </div>
   </div>
 
-  <!-- Navigation Menu -->
-  <nav class="nav-menu" [class.mobile-open]="mobileMenuOpen" aria-label="Main navigation">
-    <a href="#services" [class.active]="currentSection === 'services'" (click)="scrollToSection('services'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.services') }}</a>
-    <a href="#projects" [class.active]="currentSection === 'projects'" (click)="scrollToSection('projects'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.projects') }}</a>
-    <a href="#about" [class.active]="currentSection === 'about'" (click)="scrollToSection('about'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.about') }}</a>
-    <a href="#contact" [class.active]="currentSection === 'contact'" (click)="scrollToSection('contact'); closeMobileMenu(); $event.preventDefault()">{{ translate('nav.contact') }}</a>
-    <a routerLink="/tools" routerLinkActive="active" (click)="closeMobileMenu()">Tools</a>
-    <!-- Mid-row on purpose: the tail of this row overflows into the EN/ES
-         toggle below ~1440px (a pre-existing defect, see header.component.css),
-         so a link added at the end would be unreachable on a 1280px laptop. -->
-    <a routerLink="/codex" routerLinkActive="active" class="nav-codex-link" (click)="closeMobileMenu()"
-       [attr.aria-label]="'Codex — ' + codexFound + ' of ' + codexTotal + ' fragments discovered'">
-      📜 Codex
-      <span class="nav-codex-badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
-    </a>
-    <!-- Mid-row for the same reason the Codex link is: the tail of this row
-         overflows into the EN/ES toggle below ~1440px, so a link appended at
-         the end is unreachable on a 1280px laptop. -->
-    <a routerLink="/market" routerLinkActive="active" class="nav-market-link" (click)="closeMobileMenu()">🪙 Market</a>
-    <!-- Drawer-only, exactly like .nav-market-link and .nav-quests-link above:
-         the row has no spare width at 1280px, so the desktop way in is the
-         sigil docked under the navbar. -->
-    <a routerLink="/forge-keeper" routerLinkActive="active" class="nav-forge-link" (click)="closeMobileMenu()">⚒ Your Forge</a>
-    <a routerLink="/blueprint" routerLinkActive="active" (click)="closeMobileMenu()">Blueprint</a>
-    <a routerLink="/mcp" routerLinkActive="active" (click)="closeMobileMenu()">MCP</a>
-    <a routerLink="/arena" routerLinkActive="active" class="nav-games-link" (click)="closeMobileMenu()">⚔️ Arena</a>
-    <a routerLink="/quests" routerLinkActive="active" class="nav-quests-link" (click)="closeMobileMenu()">Quests</a>
-    <a routerLink="/live" routerLinkActive="active" class="nav-live-link" (click)="closeMobileMenu()">
-      <span class="nav-live-dot"></span>LIVE
-    </a>
-    <!-- Drawer copy of the progression readout. The header row is already at
-         ~375px on a small phone, so the navbar instance is hidden below the
-         drawer breakpoint and this one takes over. -->
-    <!-- Drawer copies of the wallet and the progression readout. The header row
-         is already at ~375px on a small phone, so the navbar instances are
-         hidden below the drawer breakpoint and these take over. -->
-    <app-currency-rail class="nav-coins nav-coins--drawer"></app-currency-rail>
-    <app-xp-bar class="nav-xp nav-xp--drawer"></app-xp-bar>
-
-    <!-- The forge's drawer copy used to sit here. The Godforge Market gave the
-         flame a fixed home in the bottom-right corner of every page, which is
-         reachable on a phone without opening the drawer at all — so this copy
-         was a second, smaller, worse button for the same swing. The Ambient
-         Forge still accrues from IdleService, not from any component, so
-         nothing about idling depends on this element having existed. -->
-  </nav>
-
-  <!-- Desktop dock: the quest sword and the progression readout, docked under
-       the navbar rather than in it. The nav row has no spare horizontal space
-       at 1280px (see .nav-xp in the stylesheet) — adding a 44px control to it
-       would push LIVE over the language toggle. -->
-  <div class="nav-dock">
-    <!-- The sigil is the desktop way into /forge-keeper. It sits beside the XP
-         bar on purpose: the bar is the summary, the sheet is the whole record,
-         and a visitor looking at one is one click from the other. -->
-    <a routerLink="/forge-keeper" routerLinkActive="active" class="nav-forge"
-       aria-label="Your Forge — rank, inventory and achievements">
-      <span class="nav-forge__sigil" aria-hidden="true">⚒</span>
-    </a>
-    <app-quest-trigger class="nav-quests"></app-quest-trigger>
-    <app-currency-rail class="nav-coins"></app-currency-rail>
-    <app-xp-bar class="nav-xp"></app-xp-bar>
-  </div>
-
-  <!-- Desktop Language Toggle -->
-  <div class="language-toggle desktop-only">
-    <button class="lang-btn" [class.active]="currentLang === 'en'" (click)="setLanguage('en')">EN</button>
-    <button class="lang-btn" [class.active]="currentLang === 'es'" (click)="setLanguage('es')">ES</button>
-  </div>
-
-  <div class="nav-progress"></div>
+  <div class="gfnav__progress" aria-hidden="true"></div>
 </nav>
+
+<!-- ── THE TOME — mobile drawer ──────────────────────────────────────
+     Siblings of .gfnav, not children: inside the bar's stacking context
+     the backdrop painted over the logo and ate taps on the close button
+     (see nav-drawer / routed-host notes in the project history). -->
+<div class="gftome__backdrop"
+     [class.is-open]="mobileMenuOpen"
+     (click)="closeMobileMenu()"
+     aria-hidden="true"></div>
+
+<div class="gftome" [class.is-open]="mobileMenuOpen" role="menu"
+     [attr.aria-hidden]="mobileMenuOpen ? null : 'true'">
+  <div class="gftome__inner">
+
+    <!-- Standing, at the top where a tome's frontispiece would be. -->
+    <div class="gftome__standing">
+      <app-quest-trigger class="gftome__quests"></app-quest-trigger>
+      <app-currency-rail class="gftome__gold"></app-currency-rail>
+    </div>
+    <app-xp-bar class="gftome__xp"></app-xp-bar>
+
+    <p class="gftome__hd">{{ translate('gfnav.realmsHd') }}</p>
+    <div class="gftome__realms">
+      @for (realm of realms; track realm.id) {
+        <a class="gftome__realm"
+           role="menuitem"
+           [routerLink]="['/tools']"
+           [queryParams]="{ realm: realm.id }"
+           [style.--realm-color]="realm.color"
+           [style.--realm-glow]="realm.glow"
+           [tabIndex]="mobileMenuOpen ? 0 : -1"
+           (click)="closeMobileMenu()">
+          <span class="gftome__realm-dot" aria-hidden="true"></span>
+          <span class="gftome__realm-name">{{ realm.name }}</span>
+          <span class="gftome__realm-domain">{{ realm.domain }}</span>
+        </a>
+      }
+    </div>
+
+    <p class="gftome__hd">{{ translate('gfnav.hallsHd') }}</p>
+    <div class="gftome__links">
+      @for (link of tomeLinks; track link.route) {
+        <a class="gftome__link"
+           role="menuitem"
+           [routerLink]="link.route"
+           routerLinkActive="is-active"
+           [tabIndex]="mobileMenuOpen ? 0 : -1"
+           (click)="closeMobileMenu()">
+          <span class="gftome__link-glyph" aria-hidden="true"></span>
+          <span class="gftome__link-name">{{ translate(link.key) }}</span>
+          <span class="gftome__link-hint">{{ translate(link.hintKey) }}</span>
+        </a>
+      }
+    </div>
+
+    <!-- Language lives here below 720px, where the bar's toggle is hidden. -->
+    <div class="gftome__lang">
+      <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'en'"
+              [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="setLanguage('en')">EN</button>
+      <button type="button" class="gfnav__lang-btn" [class.is-active]="currentLang === 'es'"
+              [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="setLanguage('es')">ES</button>
+    </div>
+
+    <p class="gftome__mark">{{ translate('gfnav.tomeMark') }}</p>
+  </div>
+</div>
