@@ -1,5 +1,5 @@
 /**
- * forge-view.component.ts — /live, the Forge View.
+ * forge-view.component.ts — /sanctum, the Inner Sanctum.
  *
  * A base-management screen over a progression that was, until now, only ever
  * visible as numbers in a header chip and a shop. The Keeper stands in the
