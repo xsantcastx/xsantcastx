@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.53.0',
+  version: '2.54.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Codex',
+  codename: 'Ladder',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,20 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.54.0',
+    codename: 'Ladder',
+    date: '2026-08-13',
+    highlights: [
+      'Every rank now pays three stat points across five lines — Forge Power for Gold, Luck for Magic Find, Endurance for what expeditions bring home, Wisdom for XP and Charisma for Market prices. Points are settled against a counter rather than a level-up event, so every rank already reached is back-paid on the first load and nothing that happened before this shipped is lost',
+      'Seven equipment slots around a Keeper silhouette on /forge-keeper, four worn and three for charms. Items roll their stats inside a per-rarity band when they are minted and keep them forever, so two Nexus sigils found an hour apart are worth comparing',
+      'Magic Find is real and it is honest: 50% pays 1.5x on rare-and-better, 100% pays 2x, 200% pays 3x — measured over 600,000 rolls per level, not asserted. Every roll it diverts is one that was going to be a Common',
+      'Explorers stopped being anonymous missions and became people, with generated names, six quality tiers, their own kit and up to six item slots each. A Mythic runs an hour-long expedition in six minutes and rolls the table six times at +200% loot. Missions already in flight when this shipped were adopted onto a real explorer rather than dropped',
+      'The Rune Forge got expensive. A strike is 100 Gold rather than 10, and the ladder now tops out at a million: the Void is a two-hundred-thousand-Gold expectation, where it used to be twenty thousand',
+      'Everything in the bag has a price. Commons sweep in one click; Rare and better ask first; artifacts are soulbound and have no Sell button at all',
+      '/live is now /sanctum, the Inner Sanctum — the room where the roster is managed. Both former addresses 301 at the CDN, not only in the router, because /live was prerendered for two releases and is indexed'
+    ]
+  },
   {
     version: '2.53.0',
     codename: 'Codex',
