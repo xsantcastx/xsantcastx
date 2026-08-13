@@ -324,6 +324,36 @@ export class TranslationService {
     'tools.page.subtitle': { en: 'Browser-based utilities for creative and developer workflows. No accounts. No uploads. Just open and use.', es: 'Utilidades basadas en el navegador para flujos creativos y de desarrollo. Sin cuentas. Sin subidas. Solo abre y usa.' },
     'tools.page.share.x': { en: 'Share on X', es: 'Compartir en X' },
     'tools.badge.soon': { en: 'Soon', es: 'Próximamente' },
+
+    // ── /tools — The Five Realms ──────────────────────────────────────────
+    // The map's own copy. `godforge.forges.*` says the same things on the
+    // landing page, but in the voice of a section inside a longer scroll;
+    // these are the words for a page that IS the map.
+    'tools.realms.eyebrow':     { en: 'The Realm Map',   es: 'El mapa de los reinos' },
+    'tools.realms.title':       { en: 'The Five Realms', es: 'Los cinco reinos' },
+    'tools.realms.sub':         { en: 'Each realm holds tools forged for a different purpose. Choose your path.', es: 'Cada reino guarda herramientas forjadas con un propósito distinto. Elige tu camino.' },
+    'tools.realms.ph.search':   { en: 'Seek a tool across all five realms...', es: 'Busca una herramienta en los cinco reinos...' },
+    'tools.realms.forged':      { en: 'Tools forged',    es: 'Herramientas forjadas' },
+    'tools.realms.enter':       { en: 'Enter the realm', es: 'Entrar al reino' },
+    'tools.realms.back':        { en: 'The map',         es: 'El mapa' },
+    'tools.realms.backToMap':   { en: 'Back to the map', es: 'Volver al mapa' },
+    'tools.realms.strike':      { en: 'Strike it',       es: 'Fórjala' },
+    'tools.realms.share':       { en: 'Spread the word', es: 'Corre la voz' },
+    'tools.realms.tool':        { en: 'tool',            es: 'herramienta' },
+    'tools.realms.tools':       { en: 'tools',           es: 'herramientas' },
+    'tools.realms.clearTag':    { en: 'Clear tag filter', es: 'Quitar el filtro de etiqueta' },
+    'tools.realms.clearAll':    { en: 'Clear all',       es: 'Limpiar todo' },
+    'tools.realms.emptyRealm':  { en: 'Nothing hangs on these walls yet.', es: 'Aún no cuelga nada de estas paredes.' },
+    'tools.realms.emptySearch': { en: 'No forge answers to', es: 'Ninguna forja responde a' },
+    'tools.realms.emptyTag':    { en: 'Nothing carries the mark', es: 'Nada lleva la marca' },
+
+    // One or two lines on what each realm holds — the gate's own description,
+    // distinct from the codex `quote` that sits beneath it.
+    'realm.luminous.blurb': { en: 'A hall of white marble and gold where light is cut into shape. Everything that decides how a page looks is forged here.', es: 'Un salón de mármol blanco y oro donde la luz se corta a medida. Aquí se forja todo lo que decide cómo se ve una página.' },
+    'realm.umbral.blurb':   { en: 'A vault lit by violet crystal. Keys, hashes and certificates are tested in the dark, where breaking a thing is how you learn to hold it.', es: 'Una cámara iluminada por cristal violeta. Claves, hashes y certificados se prueban en la oscuridad, donde romper algo es la forma de aprender a sostenerlo.' },
+    'realm.verge.blurb':    { en: 'An observatory beneath an eclipse, charting what one form becomes when it crosses into another. Every converter in the catalogue orbits here.', es: 'Un observatorio bajo un eclipse que traza en qué se convierte una forma al cruzar a otra. Cada conversor del catálogo orbita aquí.' },
+    'realm.archivum.blurb': { en: 'A glasshouse grown around a living archive. Text, data and the slow work of keeping a record all take root under its canopy.', es: 'Un invernadero crecido alrededor de un archivo vivo. Texto, datos y el trabajo lento de guardar registro echan raíces bajo su cúpula.' },
+    'realm.nexus.blurb':    { en: 'A forge of molten iron where every message is stamped before it leaves. Deliverability is decided at this furnace or nowhere.', es: 'Una forja de hierro fundido donde cada mensaje se sella antes de partir. La entregabilidad se decide en este horno o en ninguna parte.' },
     'tools.common.back': { en: 'All Tools', es: 'Todas las Herramientas' },
     'tools.common.share': { en: 'Share', es: 'Compartir' },
     // Shared button + UI panel labels — reusable across all tool templates (i18n batch 2026-04-26)

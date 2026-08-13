@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.55.2',
+  version: '2.56.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Ladder',
+  codename: 'Cartographer',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.56.0',
+    codename: 'Cartographer',
+    date: '2026-08-13',
+    highlights: [
+      '/tools was the last surface still speaking the pre-Eclipse vocabulary — spiral galaxies, orbiting stars, a warp animation on click — sitting under Godforge chrome that had moved on without it. It is now the realm map itself: five gates, each carrying its realm\'s painting, sigil, lore and count, and opening one walks into that realm with its art as a banner and its tools beneath as realm-tinted forge cards',
+      'The galaxy and star-system views are gone rather than restyled. They were a second navigation over the same 126 tools — categories in one hand, realms in the other, each clearing the other to avoid an empty set — and removing them takes the lazy chunk from 142 kB to 118 kB. Links minted with the old ?category= are resolved to the realm that holds that category rather than dropped',
+      'Three realm accents were re-cut against the art they sit in front of. Archivum and Nexus had in effect swapped — a gold accent on a green glasshouse, a green one on a lava-lit mail forge — and Umbral was wearing --forge-crimson inside a violet vault. That accent is also the badge on all 126 tool pages, so this corrects them everywhere, not just on the map',
+      'Text contrast is carried by a bed anchored to the copy rather than by one wash over the card. The five paintings disagree about where they are bright: bg-umbral is near-black while bg-verdant is a sunlit glasshouse, and a single scrim dark enough for the glasshouse turned the marble hall to mud. The card-wide veil now only sinks all five to a common depth',
+      'The scroll reveal deliberately does not gate visibility on a script. The usual opacity:0-until-observed shape would have put five full-bleed gates behind an IntersectionObserver, and an observer that failed to attach — an error earlier in the bundle, a hot-swap recreating the nodes — would leave the page looking empty with nothing logged. The gates paint from the SSR HTML and the observer only kindles their edge',
+      'The kindle keyframes carry no animation-fill-mode on purpose. An animation outranks a plain declaration for as long as it applies, so forwards or both there would have pinned the gate edge at its resting opacity and silently killed every :hover rule under it — the same class of failure that left a dangling keyframe name unnoticed in the hero carousel for a release',
+    ]
+  },
   {
     version: '2.55.2',
     codename: 'Ladder',
