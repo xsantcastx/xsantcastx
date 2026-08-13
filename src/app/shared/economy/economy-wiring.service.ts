@@ -43,6 +43,8 @@ import { LoreService } from '../lore/lore.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { tierForEgg } from '../rarity/rarity.model';
 import { ProService } from '../pro/pro.service';
+import { PlayerStatsService } from '../rpg/player-stats.service';
+import { InventoryService } from '../rpg/inventory.service';
 
 @Injectable({ providedIn: 'root' })
 export class EconomyWiringService {
@@ -54,8 +56,26 @@ export class EconomyWiringService {
   private readonly lore = inject(LoreService);
   private readonly eggs = inject(EasterEggService);
   private readonly pro = inject(ProService);
+  private readonly stats = inject(PlayerStatsService);
+  private readonly inventory = inject(InventoryService);
 
   private started = false;
+
+  /**
+   * Wisdom, plus every `xpBonus` on a worn item, as a multiplier.
+   *
+   * Both are authored as percentages and both add before the multiply, so 20
+   * points of Wisdom (+60%) and a Legendary rolling +25% pay ×1.85 rather than
+   * ×1.6 × ×1.25 — the same "bonuses add, the sum becomes one multiplier" rule
+   * `totalBonus` uses for Runewords, for the same reason: it is what the copy on
+   * the panel promises.
+   */
+  private rpgXpMultiplier(): number {
+    const fromWisdom = this.stats.xpMultiplier - 1;
+    const fromGear = this.inventory.equippedTotals.xpBonus / 100;
+    const total = 1 + fromWisdom + fromGear;
+    return Number.isFinite(total) && total > 1 ? total : 1;
+  }
 
   init(): void {
     if (!this.isBrowser || this.started) return;
@@ -158,10 +178,17 @@ export class EconomyWiringService {
       // silently deleted the enchantments, the Mirrorblade, the Relic and the
       // Fragment — a bug that only shows up as "my artifacts stopped working"
       // for the subset of visitors who paid.
+      // Wisdom and equipped `xpBonus` compose here for the same reason the Pro
+      // Pack does, and it is worth restating because this is now the third
+      // system to land in this one expression: `setMultiplierSource` REPLACES
+      // its source. An RPG wiring layer that called it again would have
+      // silently deleted the enchantments, the Mirrorblade, the Relic, the
+      // Fragment and Pro — presenting as "my artifacts stopped working" for
+      // every visitor with a stat point spent.
       return xpMultiplier(e, Date.now(), {
         questReward: ctx.type === 'quest',
         weakerEnergy: weaker,
-      }) * this.pro.xpMultiplier();
+      }) * this.pro.xpMultiplier() * this.rpgXpMultiplier();
     });
 
     // The Codex Solarii.

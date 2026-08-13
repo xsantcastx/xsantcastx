@@ -146,6 +146,18 @@
         "type": 301
       },
       {
+        "//": "/live became /sanctum in 2.53.0, when the page stopped being a rate readout and became the room where explorers are hired and kitted. Same reasoning as /games above: the Angular redirectTo only covers in-app navigation, so this entry is what stops every footer link shared before today, and every indexed /live URL, from hitting the SPA fallback as a 404. /live was in prerender-routes.txt for two releases, so it IS indexed.",
+        "source": "/live",
+        "destination": "/sanctum",
+        "type": 301
+      },
+      {
+        "//": "/forge-view was the alias for /live and has the same problem.",
+        "source": "/forge-view",
+        "destination": "/sanctum",
+        "type": 301
+      },
+      {
         "//": "The portfolio pages deleted in the full migration. Same reasoning as /games: the Angular redirectTo entries only cover in-app navigation, so these 301s are what stop indexed URLs and inbound links from hitting the SPA fallback. Each points at the nearest surviving surface rather than blanket-redirecting to /home, so the inbound link keeps some of its meaning.",
         "source": "/skills",
         "destination": "/tools",

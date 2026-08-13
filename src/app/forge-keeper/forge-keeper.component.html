@@ -162,6 +162,16 @@
     </ul>
   </section>
 
+  <!-- ══ 2b. Attributes and equipment ═══════════════════════════════════
+       The RPG layer. Both panels own their own state through their own
+       services, which is why they mount as components rather than as more
+       blocks on this template: this page's rule is that it owns no state, and
+       the cheapest way to keep that true is to not give it any. -->
+  <div class="fk-rpg">
+    <app-stat-panel />
+    <app-equipment-panel />
+  </div>
+
   <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
   <section class="fk-block fk-affinity" aria-labelledby="fk-affinity-title">
     <h2 class="fk-block__title" id="fk-affinity-title">Realm Affinity</h2>

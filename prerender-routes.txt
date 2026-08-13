@@ -1,6 +1,6 @@
 /home
 /donate
-/live
+/sanctum
 /mission-control
 /blueprint
 /quests

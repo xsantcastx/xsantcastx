@@ -28,13 +28,23 @@ import {
   RuneTier,
   Runeword,
   STRIKE_COST,
-  rollRune,
+  rollRuneWithMagicFind,
   runeById,
   runeCostOf,
   runewordById,
   tierOf,
   totalBonus,
 } from './rune.model';
+import { InventoryService } from '../rpg/inventory.service';
+import { MagicFindService } from '../rpg/magic-find.service';
+import { ExplorerRosterService } from '../rpg/explorer-roster.service';
+import { RosterExplorer } from '../rpg/explorer-roster.model';
+import {
+  GameItem,
+  mintCharm,
+  mintRuneItem,
+  rollCharmSeed,
+} from '../rpg/item.model';
 
 /** localStorage key holding the rune ledger. */
 export const RUNES_KEY = 'godforge-runes';
@@ -50,6 +60,16 @@ export const RUNES_KEY = 'godforge-runes';
  * can verify is the one the word keeps.
  */
 export const BRIDGE_ESSENCE_PER_STRIKE = 1;
+
+/**
+ * Chance that a find's equippable is a Magic Find charm rather than a sigil.
+ *
+ * Eight percent. Charms are the only meaningful source of flat MF, so this is
+ * effectively the rate at which the Luck build gets something to wear — low
+ * enough that a Void Fragment stays a story, high enough that a new player sees
+ * a Small Charm of Fortune within their first evening.
+ */
+export const CHARM_DROP_CHANCE = 0.08;
 
 interface RuneLedger {
   version: 1;
@@ -85,6 +105,17 @@ export interface RuneFind {
    * point of the drop is that one strike produced both.
    */
   scroll: LoreScroll | null;
+  /**
+   * An equippable minted alongside the rune, or null.
+   *
+   * Rune finds mint a matching item at their own tier; a strike may separately
+   * turn up a Magic Find charm. Both arrive on the find for the same reason the
+   * scroll does — one strike produced them, so one event should carry them, and
+   * two subjects would let the reveal cards race.
+   */
+  item: GameItem | null;
+  /** An explorer the same strike turned up, or null. 5% of strikes. */
+  explorer: RosterExplorer | null;
 }
 
 /** Everything the page renders, recomputed on every change. */
@@ -110,6 +141,9 @@ export class RuneForgeService {
   private readonly xp = inject(XpService);
   private readonly eggs = inject(EasterEggService);
   private readonly scrolls = inject(LoreScrollService);
+  private readonly inventory = inject(InventoryService);
+  private readonly magicFind = inject(MagicFindService);
+  private readonly roster = inject(ExplorerRosterService);
 
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
@@ -138,6 +172,13 @@ export class RuneForgeService {
     // first strike or `rollScroll` would be handed an empty found-set and could
     // re-award a scroll the visitor already has.
     this.scrolls.init();
+    // The bag and the roster have to be hydrated before the first strike for the
+    // same reason the scroll shelf does: `mintFor` adds into the inventory and
+    // `rollDrop` reads the roster's ceiling, and both would be operating on an
+    // empty store — silently evicting nothing and re-minting a starter explorer
+    // the visitor already has. Both are idempotent.
+    this.inventory.init();
+    this.roster.init();
     this.publish();
   }
 
@@ -166,7 +207,23 @@ export class RuneForgeService {
     this.ledger.strikes += 1;
     this.ledger.goldSpent += STRIKE_COST;
 
-    return this.grant(rollRune(random), random);
+    // Magic Find is read at the moment of the strike rather than cached, so a
+    // charm equipped between two strikes is live on the second one — which is
+    // what a player who just equipped it will check.
+    const rune = rollRuneWithMagicFind(this.magicFind.total, random);
+
+    // The explorer roll is the strike's alone: an expedition that banks a rune
+    // through `grant` must not be able to turn up an explorer, or the roster
+    // would grow while the player is away from the anvil and the 5% would
+    // compound against itself.
+    //
+    // Rolled *before* the grant and handed in, rather than attached to the
+    // returned find. `grant` announces on `find$` before it returns, so anything
+    // set on the find afterwards is invisible to every subscriber — the reveal
+    // would have shown the rune and silently dropped the explorer.
+    const explorer = this.roster.rollDrop(random);
+
+    return this.grant(rune, random, explorer);
   }
 
   /**
@@ -184,7 +241,11 @@ export class RuneForgeService {
    * achievements and the `find$` reveal. The only thing left outside is the
    * Gold, which is the part an expedition does not pay.
    */
-  grant(rune: Rune, random: () => number = Math.random): RuneFind | null {
+  grant(
+    rune: Rune,
+    random: () => number = Math.random,
+    explorer: RosterExplorer | null = null,
+  ): RuneFind | null {
     if (!this.isBrowser) return null;
 
     const held = (this.ledger.runes[rune.id] ?? 0) + 1;
@@ -225,11 +286,36 @@ export class RuneForgeService {
       this.xp.award('craft', { amount: tierOf(scroll.rarity).xp });
     }
 
+    const item = this.mintFor(rune, random);
+
     this.checkAchievements();
 
-    const find: RuneFind = { rune, held, isNew, essence, scroll };
+    const find: RuneFind = { rune, held, isNew, essence, scroll, item, explorer };
     this.find$$.next(find);
     return find;
+  }
+
+  /**
+   * Mint the equippable that comes with a rune find.
+   *
+   * Two rolls, in order:
+   *
+   *   • `CHARM_DROP_CHANCE` of the find being a Magic Find charm instead of a
+   *     rune sigil. Charms are the only source of large flat MF and they are
+   *     what makes the stat worth building toward, so they cannot be gated
+   *     behind the rune tier — a player who never sees a Rare would never see a
+   *     charm either, and Luck would have no equipment to pair with.
+   *   • Otherwise a sigil at the rune's own tier, with rolled stats.
+   *
+   * Returns null when the bag refused it, which the caller renders as a rune
+   * find with no item rather than as an error. The rune itself has already
+   * landed in the ledger by this point and is not at risk.
+   */
+  private mintFor(rune: Rune, random: () => number): GameItem | null {
+    const item = random() < CHARM_DROP_CHANCE
+      ? mintCharm(rollCharmSeed(random))
+      : mintRuneItem(rune.id, rune.name, rune.tier, rune.lore, random);
+    return this.inventory.add(item);
   }
 
   // ───────────────────────────────────────────────────────────────────────────

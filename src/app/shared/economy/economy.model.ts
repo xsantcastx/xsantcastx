@@ -81,6 +81,22 @@ export interface PlayerEconomy {
    * before progression has finished hydrating from its async store.
    */
   streakDays: number;
+  /**
+   * Flat Gold/sec from the RPG layer — Forge Power points plus equipped items.
+   *
+   * Mirrored here by the wiring layer for exactly the reason `streakDays` is:
+   * idle settlement prices offline time from this blob alone, on the first frame
+   * after a reload, before `PlayerStatsService` and `InventoryService` have read
+   * their own keys. A player with forty points of Forge Power and a Legendary in
+   * every slot would otherwise be paid nothing for the night — the bonus would
+   * appear only once the page had finished hydrating, which is both wrong and
+   * the kind of wrong that looks like the item is broken.
+   *
+   * It is a *flat* addend, not a multiplier, so it joins the furnace and the
+   * automatons on the left of the multiplier chain and is scaled by upgrades,
+   * streak, shards, artifacts and Runewords like every other source of Gold.
+   */
+  rpgFlatGold: number;
   /** upgrade id → levels purchased. Absent means zero. */
   upgrades: Record<string, number>;
   /** Artifact ids owned. Each can only ever appear once. */
@@ -141,6 +157,7 @@ export function emptyEconomy(): PlayerEconomy {
     shardsGranted: 0,
     prestigeCount: 0,
     streakDays: 0,
+    rpgFlatGold: 0,
     upgrades: {},
     artifacts: [],
     cosmetics: [],
@@ -991,6 +1008,8 @@ export interface GoldBreakdown {
   artifact: number;
   /** Every Runeword crafted at the Rune Forge, summed. ×1 when none are. */
   runeword: number;
+  /** Forge Power points and equipped items, flat. Zero with nothing invested. */
+  rpg: number;
   /** Every line above, resolved. */
   total: number;
 }
@@ -1001,6 +1020,11 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
     const up = FORGE_BY_ID.get(id);
     if (up) idle += up.ratePerSecond * level;
   }
+
+  // A hand-edited blob can put anything in here, and a NaN would propagate
+  // through `total` into the ticker and the offline payout. Clamped at the one
+  // place the value enters the arithmetic.
+  const rpg = Number.isFinite(e.rpgFlatGold) ? Math.max(0, e.rpgFlatGold) : 0;
 
   // Automatons pay whatever a strike is worth right now — at the *bare* rate,
   // because the shared multipliers are applied once below to the sum of both
@@ -1021,7 +1045,8 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
     shards,
     artifact,
     runeword,
-    total: (idle + auto) * upgrades * streak * shards * artifact * runeword,
+    rpg,
+    total: (idle + auto + rpg) * upgrades * streak * shards * artifact * runeword,
   };
 }
 

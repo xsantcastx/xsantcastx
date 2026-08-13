@@ -39,7 +39,7 @@ import { runeById } from '../rune-forge/rune.model';
 import {
   BASE_EXPLORER_SLOTS,
   EXPLORER_KEY,
-  Explorer,
+  Expedition,
   ExplorerReturn,
   ExplorerState,
   MAX_EXPLORER_SLOTS,
@@ -49,6 +49,12 @@ import {
   remainingMs,
   rollReward,
 } from './explorer.model';
+import { ExplorerRosterService } from '../rpg/explorer-roster.service';
+import { PlayerStatsService } from '../rpg/player-stats.service';
+import {
+  explorerTier,
+  missionDurationFor,
+} from '../rpg/explorer-roster.model';
 
 /** The Market id whose levels each buy one more explorer. */
 export const EXPLORER_SLOT_UPGRADE = 'explorer-slot';
@@ -63,6 +69,8 @@ export class ExplorerService implements OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly xp = inject(XpService);
   private readonly runeForge = inject(RuneForgeService);
+  private readonly roster = inject(ExplorerRosterService);
+  private readonly stats = inject(PlayerStatsService);
 
   private state: ExplorerState = emptyExplorerState();
   private initialised = false;
@@ -93,6 +101,13 @@ export class ExplorerService implements OnDestroy {
   init(): void {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
+
+    // The roster has to be hydrated before `load()`, because migrating a
+    // pre-roster mission means minting an explorer for it — and a roster that
+    // has not read its own key yet would mint a second starter alongside the one
+    // already in storage.
+    this.roster.init();
+    this.stats.init();
 
     this.state = this.load();
     // Settle before the first publish: a visitor returning to three finished
@@ -155,26 +170,52 @@ export class ExplorerService implements OnDestroy {
    * on top would make the first one unreachable for exactly the new visitor the
    * mechanic is meant to hook.
    */
-  dispatch(realm: RealmId, mission: MissionId): boolean {
+  dispatch(realm: RealmId, mission: MissionId, explorerId?: string): boolean {
     if (!this.isBrowser) return false;
     if (this.freeSlots <= 0) return false;
 
     const def = missionById(mission);
     if (!def || !realmById(realm)) return false;
 
-    const explorer: Explorer = {
+    // With no explorer named, the best one standing idle goes. `snapshot`
+    // returns the roster rarest-first, so "the best available" is the first one
+    // that is not already out — which is what a player clicking Dispatch with a
+    // roster of twelve expects, and saves them picking every time.
+    const chosen = explorerId
+      ? this.roster.byId(explorerId)
+      : this.roster.snapshot.explorers.find(e => !this.isOut(e.id));
+    if (!chosen || this.isOut(chosen.id)) return false;
+
+    const tier = explorerTier(chosen.rarity);
+
+    const expedition: Expedition = {
       id: `${realm}-${mission}-${Date.now()}-${this.state.missionsCompleted}`,
+      explorerId: chosen.id,
       realm,
       mission,
-      duration: def.duration,
+      // Speed is applied once, here, and frozen onto the record. See the note on
+      // `Expedition.duration`.
+      duration: missionDurationFor(def.duration, chosen.rarity),
       startedAt: Date.now(),
+      lootBonus: this.roster.lootBonusOf(chosen.id),
+      yieldMultiplier: this.stats.missionMultiplier,
     };
 
-    this.state = { ...this.state, active: [...this.state.active, explorer] };
+    this.state = { ...this.state, active: [...this.state.active, expedition] };
     this.persist();
     this.publish();
     this.syncTimer();
     return true;
+  }
+
+  /** True while this explorer is already on a mission. One at a time. */
+  isOut(explorerId: string): boolean {
+    return this.state.active.some(e => e.explorerId === explorerId);
+  }
+
+  /** Roster explorers not currently on a mission, rarest first. */
+  get available() {
+    return this.roster.snapshot.explorers.filter(e => !this.isOut(e.id));
   }
 
   /**
@@ -228,17 +269,29 @@ export class ExplorerService implements OnDestroy {
       const def = missionById(explorer.mission);
       if (!def) continue;
 
-      const reward = rollReward(def);
+      const who = this.roster.byId(explorer.explorerId);
+      // A mission whose explorer has since been dismissed still pays — the
+      // player earned the wait. It pays at Common rates, because there is no
+      // longer anybody to read a tier off.
+      const tier = explorerTier(who?.rarity ?? 'common');
+
+      const reward = rollReward(def, Math.random, {
+        inventorySlots: tier.inventorySlots,
+        // Both were frozen at dispatch. See the notes on the two fields.
+        lootBonus: explorer.lootBonus,
+        yieldMultiplier: explorer.yieldMultiplier,
+      });
 
       next = {
         ...next,
-        runesFound: next.runesFound + (reward.rune ? 1 : 0),
+        runesFound: next.runesFound + reward.runes.length,
         missionsCompleted: next.missionsCompleted + 1,
         goldRecovered: next.goldRecovered + reward.gold,
       };
 
       returns.push({
         explorer,
+        explorerName: who?.name,
         reward,
         returnedAt: explorer.startedAt + explorer.duration,
       });
@@ -251,6 +304,7 @@ export class ExplorerService implements OnDestroy {
     // ledger write threw, the expedition would otherwise have paid out and
     // still be sitting in `active` to pay out again on the next load.
     let scrollsFound = 0;
+    let itemsFound = 0;
     for (const landing of returns) {
       const realm = realmById(landing.explorer.realm);
       this.economy.earnGold(landing.reward.gold, 'expedition');
@@ -259,27 +313,42 @@ export class ExplorerService implements OnDestroy {
         energy: realm?.energy ?? 'aether',
       });
 
-      // The rune goes into the Rune Forge's ledger, not ours — that is where
+      // The runes go into the Rune Forge's ledger, not ours — that is where
       // duplicates are counted, Runewords are crafted and the Codex reads from.
-      if (landing.reward.rune) {
-        const rune = runeById(landing.reward.rune);
-        // `grant` also rolls the rune's Lore Scroll and banks it, so the scroll
-        // on the reward is read back off what it returned rather than rolled
-        // here — one find, one roll, one set of shelf rules.
-        const find = rune ? this.runeForge.grant(rune) : null;
+      // One grant per inventory slot that hit, so a Mythic explorer banks six.
+      const items: string[] = [];
+      for (const runeId of landing.reward.runes) {
+        const rune = runeById(runeId);
+        if (!rune) continue;
+        // `grant` also rolls the rune's Lore Scroll, mints the matching
+        // equippable and banks both, so the scroll and the item on the reward
+        // are read back off what it returned rather than rolled here — one
+        // find, one roll, one set of shelf rules.
+        const find = this.runeForge.grant(rune);
         if (find?.scroll) {
           landing.reward.scroll = find.scroll.id;
           scrollsFound++;
         }
+        if (find?.item) {
+          items.push(find.item.id);
+          itemsFound++;
+        }
       }
+      if (items.length) landing.reward.items = items;
 
+      this.roster.recordMission(landing.explorer.explorerId);
       this.returned$$.next(landing);
     }
 
-    // The scroll count is only knowable after the grants, so it lands in a
-    // second write. Cheap — this runs once per settlement, not per tick.
-    if (scrollsFound > 0) {
-      this.state = { ...this.state, scrollsFound: this.state.scrollsFound + scrollsFound };
+    // The scroll and item counts are only knowable after the grants, so they
+    // land in a second write. Cheap — this runs once per settlement, not per
+    // tick.
+    if (scrollsFound > 0 || itemsFound > 0) {
+      this.state = {
+        ...this.state,
+        scrollsFound: this.state.scrollsFound + scrollsFound,
+        itemsFound: this.state.itemsFound + itemsFound,
+      };
       this.persist();
       this.publish();
     }
@@ -341,9 +410,14 @@ export class ExplorerService implements OnDestroy {
       // blob is user-writable: a hand-edited `active` array carrying a string
       // where a number belongs would otherwise reach `remainingMs` and produce
       // a mission that is permanently 0:00 or permanently NaN.
+      const active = Array.isArray(parsed.active)
+        ? parsed.active.filter(isExpedition).map(e => this.adopt(e))
+        : empty.active;
+
       return {
         version: 1,
-        active: Array.isArray(parsed.active) ? parsed.active.filter(isExplorer) : empty.active,
+        active,
+        itemsFound: numberOr(parsed.itemsFound, 0),
         runesFound: numberOr(parsed.runesFound, 0),
         scrollsFound: numberOr(parsed.scrollsFound, 0),
         missionsCompleted: numberOr(parsed.missionsCompleted, 0),
@@ -352,6 +426,26 @@ export class ExplorerService implements OnDestroy {
     } catch {
       return emptyExplorerState();
     }
+  }
+
+  /**
+   * Give a mission written by a pre-roster build somebody to belong to.
+   *
+   * The old record had no `explorerId`, no `lootBonus` and no `yieldMultiplier`.
+   * Dropping those missions would be the simpler migration and it would take an
+   * hour-long expedition off a visitor who did nothing wrong, so instead they
+   * are adopted onto a real roster explorer and given the neutral bonuses —
+   * a Common's rates, which is exactly what the mission was dispatched at when
+   * every explorer was identical.
+   */
+  private adopt(e: Expedition): Expedition {
+    if (e.explorerId && this.roster.byId(e.explorerId)) return e;
+    return {
+      ...e,
+      explorerId: e.explorerId || this.roster.adoptOrphanMission(),
+      lootBonus: numberOr(e.lootBonus, 0),
+      yieldMultiplier: Math.max(1, numberOr(e.yieldMultiplier, 1)),
+    };
   }
 
   private persist(): void {
@@ -382,9 +476,17 @@ function numberOr(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
 }
 
-function isExplorer(v: unknown): v is Explorer {
+/**
+ * A mission record worth keeping.
+ *
+ * `explorerId`, `lootBonus` and `yieldMultiplier` are deliberately *not*
+ * required here: a blob written by the build before the roster existed carries
+ * none of them, and rejecting those records would silently delete every
+ * expedition in flight at upgrade time. `adopt` fills them in instead.
+ */
+function isExpedition(v: unknown): v is Expedition {
   if (!v || typeof v !== 'object') return false;
-  const e = v as Partial<Explorer>;
+  const e = v as Partial<Expedition>;
   return typeof e.id === 'string'
     && typeof e.realm === 'string'
     && typeof e.mission === 'string'

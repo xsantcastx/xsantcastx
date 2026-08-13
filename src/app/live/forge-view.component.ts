@@ -1,5 +1,5 @@
 /**
- * forge-view.component.ts — /live, the Forge View.
+ * forge-view.component.ts — /sanctum, the Inner Sanctum.
  *
  * A base-management screen over a progression that was, until now, only ever
  * visible as numbers in a header chip and a shop. The Keeper stands in the
@@ -73,9 +73,10 @@ import { rankSigil } from '../shared/gamification/gamification.model';
 import { QuestService, QuestBoard } from '../shared/quests/quest.service';
 import { Quest } from '../shared/quests/quest.model';
 import { ExplorerService } from '../shared/explorer/explorer.service';
+import { ExplorerRosterPanelComponent } from '../shared/rpg/explorer-roster-panel.component';
 import {
   EXPLORER_REALMS,
-  Explorer,
+  Expedition,
   ExplorerReturn,
   ExplorerState,
   MISSIONS,
@@ -171,7 +172,7 @@ const HUM_KEY = 'godforge-forge-hum';
 @Component({
   selector: 'app-forge-view',
   standalone: true,
-  imports: [CommonModule, RouterLink, ForgeFlameComponent],
+  imports: [CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './forge-view.component.html',
   styleUrls: ['./forge-view.component.css'],
@@ -450,7 +451,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     return this.explorerState.active.map(e => this.missionCard(e, now));
   }
 
-  private missionCard(e: Explorer, now: number): ActiveMission {
+  private missionCard(e: Expedition, now: number): ActiveMission {
     const left = remainingMs(e, now);
     return {
       id: e.id,
