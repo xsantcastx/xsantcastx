@@ -30,7 +30,8 @@
     <div class="gfnav__halls">
       @for (hall of primaryHalls; track hall.route) {
         <a [routerLink]="hall.route" routerLinkActive="is-active" class="gfnav__hall"
-           [class.gfnav__hall--secondary]="hall.secondary">
+           [class.gfnav__hall--shed-first]="hall.shed === 'first'"
+           [class.gfnav__hall--shed-second]="hall.shed === 'second'">
           {{ translate(hall.key) }}
           @if (hall.route === '/codex') {
             <span class="gfnav__count" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
