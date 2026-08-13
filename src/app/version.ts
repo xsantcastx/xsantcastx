@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.57.3',
+  version: '2.57.4',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Bazaar',
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.57.4',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'Every painting on the site was invisible in Safari. /arena, /market, /forge-keeper, /blueprint and /rune-forge all rendered as flat void behind their UI, and had done since the art scenes shipped. Chrome showed all five perfectly, which is why it went unnoticed through review',
+      'Nothing was broken in the way a missing image is broken, and that is what hid it. The WebP downloaded, decoded and laid out: naturalWidth 1536, the right currentSrc, visibility visible, opacity 1, sized to the viewport. Every check a person would run to find a missing image passed. The artwork was simply being painted underneath something opaque',
+      'Each scene is a position: fixed, z-index: -1 layer inside <body>. Painting order in the root stacking context is canvas background, then negative z-index descendants, then in-flow block backgrounds — so any opaque background on <body> paints in front of all of them. That is normally impossible, because a body background propagates to the canvas rather than painting in flow, but only while <html> has none of its own. styles.css sets html { background: #07090f }, so the propagation never happened and body.gf-art-route { background: #0a0a0f } was a genuine opaque sheet laid over every painting',
+      'Blink hoists body\'s background to the canvas anyway, so Chrome painted the scenes above it and the bug could not be reproduced in the browser the site is developed in. WebKit implements the specified order. The fix is to leave body transparent on art routes and let the floor colour come from <html>, which IS the canvas and paints below the scenes rather than over them — a five-hex difference no eye can resolve, and the scenes carry their own #0a0a0f behind the art regardless',
+      'Verified by rendering all five routes in both engines against the production build: the WebKit backdrop went from a flat 2.4-6.5 kB strip to 90-152 kB of painted detail, and the Chromium strips came back byte-identical before and after, so the change is a no-op in Blink. The 126 tool pages reach their realm art through a body background-image rather than a scene layer, are unaffected by this, and were confirmed to render identically in both engines',
+      'e2e/art-routes-paint.spec.ts now asserts the invariant directly on all five routes, in the webkit project the config already defines: body must not paint an opaque background on an art route. It was confirmed to fail against the old declaration and pass against the new one, because a regression test never run against the bug it guards is decoration',
+    ]
+  },
   {
     version: '2.57.3',
     codename: 'Bazaar',
