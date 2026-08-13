@@ -163,6 +163,17 @@ body {
      below them is exactly what it always was. */
   background-color: #07090f;
   background-image:
+    /* Slots 1 and 2 — a painted realm, and the veil that makes text legible on
+       top of it. This is the "when a page gets painted, the artwork takes the
+       first slot" case the ATMOSPHERE block describes, reached by the 126 tool
+       pages via `html[data-realm]`. Both default to `none`, so every route
+       without art is byte-for-byte the background it was before.
+
+       The veil is listed FIRST because background layers paint front-to-back:
+       layer one is nearest the viewer. Art in slot 1 with the veil under it
+       would be a veil behind a painting, which veils nothing. */
+    var(--atm-veil, none),
+    var(--atm-art, none),
     radial-gradient(ellipse 90% 70% at 50% 50%,   var(--atm-center) 0%, transparent 70%),
     radial-gradient(ellipse 95% 55% at 50% 0%,    var(--atm-top)    0%, transparent 65%),
     radial-gradient(ellipse 95% 60% at 50% 100%,  var(--atm-bottom) 0%, transparent 65%),
@@ -173,8 +184,16 @@ body {
      "Lit from below" has to mean the bottom of the screen — on a page several
      thousand pixels tall, a document-anchored glow would sit off-screen for the
      whole scroll. The base gradient keeps `scroll` so it stretches across the
-     full document exactly as before. */
-  background-attachment: fixed, fixed, fixed, fixed, fixed, scroll;
+     full document exactly as before.
+
+     The art and its veil are `fixed` for the same reason, and it matters more
+     for them: a tool page scrolls for several viewports, and a document-anchored
+     painting would be a strip of room at the top and bare gradient below it. */
+  background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed, scroll;
+  /* `cover` on the two art slots only. The gradients size themselves and must
+     keep `auto`, which is what the trailing entries are. */
+  background-size: cover, cover, auto, auto, auto, auto, auto, auto;
+  background-position: center, center, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
   background-repeat: no-repeat;
   min-height: 100vh;
   overflow-x: hidden;
@@ -997,6 +1016,96 @@ router-outlet + * {
    center  the wash a page sits inside      top     a glow overhead
    bottom  a glow underfoot                 tl / tr corner hints
    ════════════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════════════
+   REALM ART — the painted room behind a tool page
+   ════════════════════════════════════════════════════════════════════════════
+
+   Five paintings across 126 tool pages, keyed on the `data-realm` attribute
+   RealmService writes onto <html>. Route → tool → category → realm, resolved in
+   TypeScript; which painting that realm wears, resolved here.
+
+   ── WHY CSS AND NOT <app-art-scene> ────────────────────────────────────────
+   The four painted routes each own a component and can host the <picture> the
+   scene component renders. The tool pages do not: they are 126 separate lazily
+   loaded components with nothing in common but the shell around them. Adding a
+   scene to each is 126 edits that a 127th tool would silently not get — the
+   same trap `html[data-realm]` was introduced to avoid for the realm badge.
+
+   So this is genuinely the CSS-background case, and it pays for itself: a
+   selector that does not match downloads nothing, which is the whole of the
+   lazy-loading requirement. A visitor who only ever opens CSS tools never
+   fetches the other four paintings.
+
+   ── WHY url() AND NOT image-set() ──────────────────────────────────────────
+   image-set() would buy a JPEG fallback the way <picture> does, but it cannot
+   be reached through a custom property safely: an image-set() a browser cannot
+   parse makes `background-image` invalid at computed-value time, and that would
+   take the five atmosphere gradients and the base gradient down with it —
+   turning the page transparent rather than merely unpainted. A plain url() to a
+   WebP either loads or does not, and "does not" leaves the gradient underneath
+   exactly as it was. WebP has been in every engine since 2020.
+
+   ── THE VEIL ───────────────────────────────────────────────────────────────
+   Layer 2 of the three-layer pattern, as a gradient rather than an element. The
+   values match art-scene.component.ts so a tool page and /arena read as the
+   same house. Luminous is the exception and needs its own: it is a sunlit
+   marble hall, by far the brightest of the five, and body text over it at the
+   shared alpha is unreadable.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+html[data-realm] body {
+  --atm-veil: linear-gradient(
+    to bottom,
+    rgba(10, 10, 15, 0.62) 0%,
+    rgba(10, 10, 15, 0.88) 60%,
+    rgba(10, 10, 15, 0.95) 100%
+  );
+}
+
+/* Heavier than the shared veil at every stop. Measured against the others:
+   Luminous is a hall of white marble and gold under a stained-glass window, and
+   at 0.62 the tool panels' own text lost its contrast floor against it. */
+html[data-realm='luminous'] body {
+  --atm-veil: linear-gradient(
+    to bottom,
+    rgba(10, 10, 15, 0.78) 0%,
+    rgba(10, 10, 15, 0.92) 60%,
+    rgba(10, 10, 15, 0.96) 100%
+  );
+}
+
+/* Three of these five names do not match their realm id. That is not a typo:
+   the sigil sheet was painted against a later naming pass (Verge became
+   Celestial, Archivum became Verdant, Nexus became Infernal) which the lore and
+   the category tables have not taken yet. realm.model.ts records the same
+   mismatch on its `sigil` field, and the art is the newer artefact, so the file
+   keeps the new name until the rename lands everywhere at once. */
+html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-1536.webp'); }
+html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-1536.webp'); }
+html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-1536.webp'); }
+html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-1536.webp'); }
+html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-1536.webp'); }
+
+/* Narrower viewports take the smaller frames, mirroring the <source> widths in
+   art-scene.component.ts. The 768 file is a PORTRAIT crop rather than a scaled
+   landscape one — a phone showing the wide frame under `cover` gets a band of
+   floor and nothing else. */
+@media (max-width: 1280px) {
+  html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-1280.webp'); }
+  html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-1280.webp'); }
+  html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-1280.webp'); }
+  html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-1280.webp'); }
+  html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-1280.webp'); }
+}
+
+@media (max-width: 768px) {
+  html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-768.webp'); }
+  html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-768.webp'); }
+  html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-768.webp'); }
+  html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-768.webp'); }
+  html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-768.webp'); }
+}
 
 @property --atm-center { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @property --atm-top    { syntax: '<color>'; inherits: true; initial-value: transparent; }
