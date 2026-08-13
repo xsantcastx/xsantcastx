@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.50.1',
+  version: '2.51.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Keeper',
+  codename: 'Signpost',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.51.0',
+    codename: 'Signpost',
+    date: '2026-08-13',
+    highlights: [
+      'The Rune Forge is in the command bar, third of six halls, between the Arena and the Codex. It had been reachable from the footer, one line of Codex prose and the Forge View loot panel, and from nowhere in the primary nav',
+      'The row was widened to hold it rather than squeezed: the hall type is one size at every width now, the essence pill hides until 1480px, and the War Table — the one hall the tome and the footer both carry — sheds below 1300px',
+      'Which turned up a live bug on the way. The Spanish command bar was clearing the wallet by two pixels before any of this, and the sixth hall turned that into a 119px overlap with MERCADO and the gold odometer both refusing clicks. Every threshold is now measured in both languages, and the halls clip rather than paint over their neighbours if it ever happens again',
+      'A Strike the Anvil band on the homepage, under the artifacts, carrying live counts of runes, scrolls and runewords rather than adjectives',
+      'The ember in the corner opens the Rune Forge on a right-click or a long press, and says so in its readout and to a screen reader',
+    ]
+  },
   {
     version: '2.50.1',
     codename: 'Keeper',

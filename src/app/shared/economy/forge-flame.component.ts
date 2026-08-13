@@ -34,7 +34,7 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCompact, formatCurrency, formatRate } from './economy.model';
@@ -150,19 +150,37 @@ interface Shout {
         @if (snap.autoPerSecond > 0) {
           <span class="ff__hud-auto">⚙ Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'click' : 'clicks' }}/sec</span>
         }
-        <span class="ff__hud-hint">Click to forge</span>
+        <span class="ff__hud-hint">Click to forge · hold for runes</span>
         @if (snap.essence > 0) {
           <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
+        <a class="ff__hud-forge" routerLink="/rune-forge">Strike the Rune Forge &rarr;</a>
         <a class="ff__hud-market" routerLink="/market">Open the Market &rarr;</a>
       </div>
 
+      <!-- The Rune Forge is the ember's second destination, and on a phone it is
+           the one the HUD cannot be relied on to offer: pointerenter fires on
+           touch, but the panel is dismissed by the same tap that opens it. So
+           the gesture is bound directly.
+
+           contextmenu covers right-click on a pointer device and the
+           press-and-hold that raises the same event on touch; the pointer pair
+           below covers the long presses that do not. Both suppress the strike
+           they would otherwise be, which is what the pressed flag is for in
+           onStrike.
+
+           No backticks in this comment: it lives inside the component's
+           template literal, and one would end the string. -->
       <button
         type="button"
         class="ff__btn"
         (click)="onStrike()"
+        (contextmenu)="openRuneForge($event)"
+        (pointerdown)="onPressStart()"
+        (pointerup)="onPressEnd()"
+        (pointercancel)="onPressEnd()"
         (pointerenter)="hudOpen = true"
-        (pointerleave)="hudOpen = false"
+        (pointerleave)="onPressEnd(); hudOpen = false"
         (focus)="hudOpen = true"
         (blur)="hudOpen = false"
         [attr.aria-label]="label">
@@ -426,11 +444,20 @@ interface Shout {
     .ff__hud-auto { font-size: 11px; color: #7fd5a3; }
     .ff__hud-essence { font-size: 11px; color: #c48bff; }
     .ff__hud-hint { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
-    .ff__hud-market {
+    /* The Rune Forge takes the rule above it and the Market follows, so the two
+       destinations read as one group rather than as a link and an afterthought.
+       Gold on the forge, violet on the Market — the colours each page opens
+       with. */
+    .ff__hud-forge {
       margin-top: 4px; padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, .08);
+      font-size: 11px; color: #C9A84C; text-decoration: none;
+    }
+    .ff__hud-market {
+      margin-top: 2px;
       font-size: 11px; color: #A78BFA; text-decoration: none;
     }
+    .ff__hud-forge:hover,
     .ff__hud-market:hover { text-decoration: underline; }
 
     /* A banner and the HUD would otherwise occupy the same 10px above the
@@ -715,6 +742,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly inlineFlame = inject(InlineFlameService);
+  private readonly router = inject(Router);
   private readonly subs = new Subscription();
 
   /**
@@ -785,6 +813,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.inline) this.inlineFlame.release();
+    this.onPressEnd();
     this.subs.unsubscribe();
     this.timers.forEach(t => clearTimeout(t));
     this.timers.clear();
@@ -799,8 +828,11 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     const auto = this.snap.autoPerSecond > 0
       ? ` ${this.autoRate} automatic strikes a second.`
       : '';
+    // The HUD is aria-hidden, so its two links are invisible to a screen
+    // reader. The Rune Forge is named here instead — it is the one destination
+    // a visitor cannot otherwise discover from this control.
     return `The Forge Flame. ${formatCurrency(this.snap.gold)} Gold, earning ${this.rate} a second. `
-      + `Strike for ${this.snap.perClick} Gold.${auto}`;
+      + `Strike for ${this.snap.perClick} Gold.${auto} Press and hold to open the Rune Forge.`;
   }
 
   /**
@@ -821,7 +853,57 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  // ── The Rune Forge gesture ─────────────────────────────────────────────────
+
+  /** ms a press has to be held before it means "open the Rune Forge". */
+  private static readonly LONG_PRESS_MS = 450;
+
+  private pressTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Set when a press has already been spent opening the forge. */
+  private pressed = false;
+
+  onPressStart(): void {
+    if (!this.isBrowser) return;
+    this.pressed = false;
+    if (this.pressTimer !== null) clearTimeout(this.pressTimer);
+    // Outside the zone: the common case is a normal strike, where this timer is
+    // cancelled a moment later and should never have cost a change detection.
+    this.zone.runOutsideAngular(() => {
+      this.pressTimer = setTimeout(() => {
+        this.pressTimer = null;
+        this.pressed = true;
+        this.zone.run(() => this.goToRuneForge());
+      }, ForgeFlameComponent.LONG_PRESS_MS);
+    });
+  }
+
+  onPressEnd(): void {
+    if (this.pressTimer !== null) {
+      clearTimeout(this.pressTimer);
+      this.pressTimer = null;
+    }
+  }
+
+  /** Right-click, or the press-and-hold that raises the same event on touch. */
+  openRuneForge(event: Event): void {
+    event.preventDefault();
+    this.onPressEnd();
+    this.pressed = true;
+    this.goToRuneForge();
+  }
+
+  private goToRuneForge(): void {
+    this.pressed = true;
+    this.audio.coin();
+    void this.router.navigateByUrl('/rune-forge');
+  }
+
   onStrike(): void {
+    // A press that has already been spent opening the Rune Forge is not also a
+    // strike. Cleared here rather than in the press handlers because `click`
+    // fires after `pointerup`, so this is the last word on the gesture.
+    if (this.pressed) { this.pressed = false; return; }
+
     // One flame, two ledgers.
     //
     // The Ambient Forge shipped its own flame in the header, paying XP for the
