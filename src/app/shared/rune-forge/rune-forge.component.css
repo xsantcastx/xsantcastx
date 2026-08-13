@@ -16,7 +16,73 @@
  *    would be inert. Where a state has to win, it changes the animation.
  */
 
+/* ── Layer 1 — the artwork ───────────────────────────────────────────────────
+   Fixed, not absolute. This page scrolls to about four viewports and an
+   absolute scene would scroll away with it, leaving the ledger and the recipe
+   wall over bare void for three quarters of the page.
+
+   A note on the containing-block trap, because this file already documents the
+   other half of it for the reveal overlay: `app-rune-forge` IS a transformed
+   ancestor — `router-outlet + *` carries routeFadeIn with fill: forwards — so
+   in principle it should capture this fixed layer and size it to the host
+   instead of the viewport. Measured, it does not: the host is 2638px tall and
+   this element resolves to exactly the 900px viewport, because the animation
+   settles on an identity matrix and an identity transform establishes no
+   containing block.
+
+   That is a real dependency, so: if routeFadeIn ever ends on a transform that
+   is not identity, this scene stops being fixed. The failure is graceful —
+   `inset: 0` against the host still covers nearly the whole page, so the art
+   would scroll with the content rather than vanish — but it would no longer be
+   the parallax-still backdrop it is meant to be.
+
+   The site's own atmosphere behind it is switched off by `body.gf-art-route`,
+   set from the component, exactly as the homepage does it. */
+.rf-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  /* Painted behind the art so the route is never a white flash while the
+     image decodes, and so any letterboxing reads as void. */
+  background-color: #0a0a0f;
+  pointer-events: none;
+}
+
+.rf-scene__art { display: block; width: 100%; height: 100%; }
+
+.rf-scene__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The anvil sits a little above centre in the source, and the ritual circle
+     below it is the part that can be cropped without losing the subject. */
+  object-position: center 42%;
+}
+
+/* ── Layer 2 — the readability overlay ─────────────────────────────────────
+   Light at the top so the eclipse and the lightning vortex stay legible,
+   heavy from the middle down where the anvil bay, the ledger and the recipe
+   wall all land, and solid void at the bottom so the page ends without a seam.
+
+   Heavier at the top than the homepage's (0.3 against 0.2): this route stacks
+   far more UI over its art — a reveal card, twenty-five rune cells and six
+   recipes — where the homepage hero is mostly a title and two panels. */
+.rf-scene__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 15, 0.3) 0%,
+    rgba(10, 10, 15, 0.85) 70%,
+    #0a0a0f 100%
+  );
+}
+
+/* ── Layer 3 — the UI ────────────────────────────────────────────────────── */
+
 .rf {
+  position: relative;
   max-width: 1180px;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 5rem;
@@ -102,128 +168,18 @@
   display: grid;
   gap: 1.5rem;
   place-items: center;
-  padding: clamp(2rem, 6vw, 3.5rem) 1rem;
-  border: 1px solid rgba(164, 139, 255, 0.14);
-  border-radius: 20px;
-  background:
-    radial-gradient(ellipse 70% 60% at 50% 78%, rgba(164, 139, 255, 0.14), transparent 68%),
-    radial-gradient(ellipse 50% 45% at 50% 20%, rgba(255, 109, 215, 0.06), transparent 65%),
-    rgba(10, 6, 26, 0.55);
-  overflow: hidden;
-}
-
-.rf-anvil-bay::before,
-.rf-anvil-bay::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-
-.rf-anvil-bay::before {
-  top: 0;
-  background: linear-gradient(90deg, transparent, rgba(164, 139, 255, 0.5) 50%, transparent);
-}
-
-.rf-anvil-bay::after {
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 109, 215, 0.4) 50%, transparent);
-}
-
-.rf-anvil-scene {
-  position: relative;
-  width: min(280px, 70vw);
-  height: 180px;
-}
-
-.rf-anvil-glow {
-  position: absolute;
-  left: 50%;
-  bottom: 26px;
-  width: 190px;
-  height: 90px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(164, 139, 255, 0.55), transparent 70%);
-  filter: blur(16px);
-  animation: rfForgeBreathe 5.5s ease-in-out infinite;
-}
-
-/* The anvil, in four boxes. A silhouette this simple does not need an SVG and
-   an SVG this simple does not need a request. */
-.rf-anvil {
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  width: 150px;
-  height: 92px;
-  transform: translateX(-50%);
-}
-
-.rf-anvil span {
-  position: absolute;
-  background: linear-gradient(180deg, #2a2440 0%, #16121f 100%);
-  border: 1px solid rgba(164, 139, 255, 0.22);
-}
-
-.rf-anvil__face {
-  left: 0;
-  top: 0;
-  width: 118px;
-  height: 22px;
-  border-radius: 4px 4px 2px 2px;
-  box-shadow: 0 0 18px -4px rgba(164, 139, 255, 0.5);
-}
-
-.rf-anvil__horn {
-  left: 108px;
-  top: 3px;
-  width: 40px;
-  height: 15px;
-  border-radius: 0 50% 50% 0;
-}
-
-.rf-anvil__waist {
-  left: 42px;
-  top: 22px;
-  width: 34px;
-  height: 40px;
-}
-
-.rf-anvil__base {
-  left: 20px;
-  top: 62px;
-  width: 80px;
-  height: 24px;
-  border-radius: 3px;
-}
-
-/* The hammer rests up and to the left, and falls only while striking. */
-.rf-hammer {
-  position: absolute;
-  left: 50%;
-  top: 4px;
-  width: 74px;
-  height: 22px;
-  margin-left: -84px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #3a3358 0%, #1d1830 100%);
-  border: 1px solid rgba(164, 139, 255, 0.3);
-  transform-origin: right center;
-  transform: rotate(-58deg);
-}
-
-.rf-anvil-bay--striking .rf-hammer {
-  animation: rfHammerFall 320ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  /* Tall enough that the painted anvil has the room it needs above the button
+     — this section's whole job now is to not cover the artwork. */
+  padding: clamp(6rem, 22vh, 13rem) 1rem clamp(2rem, 5vw, 3rem);
 }
 
 .rf-sparks {
   position: absolute;
   left: 50%;
-  bottom: 96px;
+  top: 0;
   width: 2px;
   height: 2px;
+  pointer-events: none;
 }
 
 .rf-spark {
@@ -335,7 +291,7 @@
   justify-content: center;
   gap: 0.9rem;
   padding: 1rem;
-  background: rgba(6, 4, 14, 0.82);
+  background: rgba(6, 4, 14, 0.9);
   cursor: pointer;
   /* A scroll is two or three paragraphs and will not fit the bay on a phone.
      The bay clips (`overflow: hidden`), so the overlay has to do its own
@@ -527,7 +483,9 @@
   gap: 0.3rem;
   padding: 1rem 0.75rem;
   text-align: center;
-  background: rgba(10, 6, 26, 0.75);
+  background: rgba(10, 6, 26, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .rf-stat__num {
@@ -560,7 +518,9 @@
   padding: clamp(1.25rem, 3vw, 2rem);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
-  background: rgba(10, 6, 26, 0.55);
+  background: rgba(10, 6, 26, 0.66);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .rf-panel__title {
@@ -834,12 +794,6 @@
   50%      { opacity: 0.9; }
 }
 
-@keyframes rfHammerFall {
-  0%   { transform: rotate(-58deg); }
-  62%  { transform: rotate(4deg); }
-  100% { transform: rotate(-58deg); }
-}
-
 @keyframes rfSpark {
   0%   { opacity: 1; transform: translate(0, 0) scale(1); }
   100% { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
@@ -883,8 +837,10 @@
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .rf-anvil-scene {
-    height: 150px;
+  /* The phone gets the portrait crop, where the anvil fills more of the frame,
+     so the bay needs less headroom above the button than the desktop crop does. */
+  .rf-anvil-bay {
+    padding-top: clamp(4rem, 16vh, 8rem);
   }
 
   .rf-grid {
@@ -906,13 +862,10 @@
    media-query animations in this repo before — see the note at the top. */
 @media (prefers-reduced-motion: reduce) {
   .rf-eyebrow__pulse,
-  .rf-anvil-glow,
-  .rf-hammer,
   .rf-spark,
   .rf-reveal,
   .rf-reveal__card,
   .rf-reveal__void,
-  .rf-anvil-bay--striking .rf-hammer,
   .rf-anvil-bay--striking .rf-spark,
   .rf-reveal[data-reveal='burst'] .rf-reveal__card,
   .rf-reveal[data-reveal='shimmer'] .rf-reveal__card,
