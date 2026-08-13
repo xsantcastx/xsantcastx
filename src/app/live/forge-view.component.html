@@ -27,8 +27,8 @@
   </div>
 
   <header class="fv__head">
-    <p class="fv__eyebrow"><span class="fv__pulse"></span> The Forge View</p>
-    <h1 class="fv__title">Your forge, while you were away</h1>
+    <p class="fv__eyebrow"><span class="fv__pulse"></span> The Inner Sanctum</p>
+    <h1 class="fv__title">Where the keeper holds court</h1>
     <p class="fv__tagline">
       it has not stopped once since you closed the tab
     </p>
@@ -356,6 +356,11 @@
         <span>📜 {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }}</span>
         <span>◈ {{ goldRecovered }} recovered</span>
       </p>
+
+      <!-- The roster sits under the dispatch picker rather than beside it: this
+           is the column about explorers, and who they *are* belongs next to
+           where they are sent. It owns its own state through its own service. -->
+      <app-explorer-roster-panel />
     </section>
   </div>
 
