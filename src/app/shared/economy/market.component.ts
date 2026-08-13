@@ -55,7 +55,9 @@ import {
 } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { rarityOf } from '../rarity/rarity.model';
+import { CardArt, artifactCard } from '../rune-forge/rune-cards';
 import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
+import { ArtSceneComponent } from '../art-scene/art-scene.component';
 
 type TabId =
   | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition'
@@ -135,7 +137,7 @@ interface RateFloater {
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ArtSceneComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.css'],
@@ -439,6 +441,12 @@ export class MarketComponent implements OnInit, OnDestroy {
   colorOf(a: Artifact): string { return rarityOf(a.tier).color; }
   glowOf(a: Artifact): string { return rarityOf(a.tier).glow; }
   tierLabel(a: Artifact): string { return rarityOf(a.tier).label; }
+
+  /**
+   * The painted card for an artifact, or null if a future one has no art yet.
+   * Cheap enough to call from the binding — five rows, one object lookup each.
+   */
+  cardOf(a: Artifact): CardArt | null { return artifactCard(a.id); }
 
   buyArtifact(id: string): void {
     this.settle(id, this.economy.buyArtifact(id));
