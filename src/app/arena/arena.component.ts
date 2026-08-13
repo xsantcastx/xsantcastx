@@ -11,6 +11,7 @@ import {
 import { ARENA_PLAYABLE, formatScore, playableById } from './games/arena-game.model';
 import { ArenaScoresService } from './games/arena-scores.service';
 import { RouterModule } from '@angular/router';
+import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 
 export interface ArenaGame {
   id: string;
@@ -48,7 +49,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
   templateUrl: './arena.component.html',
   styleUrls: ['./arena.component.css'],
   standalone: true,
-  imports: [RouterModule]
+  imports: [RouterModule, ArtSceneComponent]
 })
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

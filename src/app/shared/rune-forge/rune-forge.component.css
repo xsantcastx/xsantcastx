@@ -317,6 +317,39 @@
   box-shadow: 0 0 34px -6px var(--star-glow, transparent);
 }
 
+/* ── The painted card ───────────────────────────────────────────────────────
+   When the reveal is showing artwork it stops being a panel and becomes a
+   frame: no border, no fill, no box shadow. The painting has all three painted
+   into it, and doubling them reads as a card inside a card.
+
+   The tier label above it stays. It is the one thing the painting does not
+   say — a visitor cannot know "Convergence" means Mythic until the ladder has
+   taught them, and the whole reveal is where that teaching happens. */
+.rf-reveal__card--art {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.rf-reveal__art {
+  display: block;
+  /* Bounded on both axes, not just width: the reveal sits inside the anvil bay
+     and a card sized by width alone overflows a landscape phone vertically.
+     `height: auto` with both caps keeps the aspect ratio, which matters because
+     the cards are not all the same shape — Void is half again as wide as Ash. */
+  width: auto;
+  height: auto;
+  max-width: min(20rem, 78vw);
+  max-height: 62vh;
+  margin: 0 auto;
+  border-radius: 10px;
+  /* The tier glow survives the panel it came from, moved onto the artwork so it
+     hugs the painted border instead of a box that is no longer drawn. This is
+     what still separates a Legendary reveal from a Common one at a glance. */
+  filter: drop-shadow(0 0 26px var(--star-glow, transparent));
+}
+
 .rf-reveal__tier {
   margin: 0 0 0.4rem;
   font-size: 0.7rem;
@@ -610,6 +643,42 @@
   font-weight: 600;
 }
 
+/* ── Ledger cells that hold a painted card ──────────────────────────────────
+   A cell showing artwork gives up its own padding and fill, the same trade the
+   reveal makes: the card is already a bordered, backed rectangle, so the cell
+   becomes a slot for it rather than a panel around it.
+
+   `:has()` rather than a class from the component because the condition is
+   exactly "does this cell contain an image" — a bound class would be a second
+   copy of that fact in TypeScript, free to disagree with the template. The
+   selector is already used in this file for the reveal-with-scroll case, so it
+   carries no new support cost. */
+.rf-rune:has(.rf-rune__art) {
+  padding: 0;
+  overflow: hidden;
+  background: none;
+}
+
+.rf-rune__art {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Slightly inside the cell's 10px so the painted border is not clipped square
+     at the corners by the cell's own rounding. */
+  border-radius: 9px;
+}
+
+/* Over artwork the count needs its own ground — the paintings run from near
+   black to a lit gold crystal, and 0.5-alpha text is unreadable on the latter. */
+.rf-rune:has(.rf-rune__art) .rf-rune__count {
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(6, 4, 14, 0.82);
+  color: rgba(232, 236, 241, 0.92);
+}
+
 .rf-rune__count {
   position: absolute;
   right: 6px;
@@ -685,15 +754,32 @@
 
 .rf-word__head {
   display: flex;
-  align-items: baseline;
+  /* Was `baseline`, which is right for text against text but drops a 60px
+     thumbnail so its bottom edge sits on the title's baseline — the card then
+     hangs most of its height above the row. */
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* A thumbnail, not a reveal: the recipe wall is six rows read against each
+   other, so the card identifies the row and the name still carries it. */
+.rf-word__art {
+  flex: none;
+  width: 42px;
+  height: auto;
+  border-radius: 5px;
+  box-shadow: 0 0 14px -4px var(--star-glow, transparent);
 }
 
 .rf-word__name {
   margin: 0;
   font-size: 1.08rem;
   color: #e8ecf1;
+  /* Takes the space the thumbnail left, so a long word wraps rather than
+     crushing the tier badge against the edge. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .rf-word__tier {

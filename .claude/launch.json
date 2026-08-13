@@ -82,6 +82,18 @@
       "port": 4372
     },
     {
+      "name": "art-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "-y",
+        "serve",
+        "dist/xsantcastx/browser",
+        "-l",
+        "4355"
+      ],
+      "port": 4355
+    },
+    {
       "name": "fsopt-dist",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
