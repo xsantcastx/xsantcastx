@@ -468,6 +468,102 @@
 .fk-inv__tab-icon { font-size: 14px; }
 .fk-inv__tab-count { font-variant-numeric: tabular-nums; opacity: .72; }
 
+/* ── Tier band ──────────────────────────────────────────────────────────── */
+
+.fk-inv__tiers { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.fk-inv__tier-chip {
+  --tier: #e8ecf1;
+  --tier-glow: rgba(232, 236, 241, 0.45);
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tier) 26%, transparent);
+  background: rgba(10, 6, 26, 0.5);
+  color: var(--fk-dim);
+  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .05em;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.fk-inv__tier-chip:hover { color: var(--tier); border-color: color-mix(in srgb, var(--tier) 55%, transparent); }
+.fk-inv__tier-chip--active {
+  color: var(--tier);
+  border-color: color-mix(in srgb, var(--tier) 70%, transparent);
+  box-shadow: 0 0 22px -8px var(--tier-glow), inset 0 0 22px -14px var(--tier-glow);
+}
+/* A rung nothing is sitting on stays clickable — it is telling you the shelf
+   behind it is empty, which is information — but it stops advertising. */
+.fk-inv__tier-chip--empty { opacity: .4; }
+.fk-inv__tier-chip:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+.fk-inv__tier-count { font-variant-numeric: tabular-nums; opacity: .7; }
+
+/* ── Search / sort row ──────────────────────────────────────────────────── */
+
+.fk-inv__controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.fk-inv__search {
+  display: inline-flex; align-items: center; gap: 8px;
+  flex: 1 1 240px; min-width: 0;
+  min-height: 44px; padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 6, 26, 0.55);
+}
+.fk-inv__search:focus-within { border-color: color-mix(in srgb, var(--fk-affinity) 55%, transparent); }
+.fk-inv__search-icon { font-size: 13px; opacity: .7; }
+.fk-inv__search-input {
+  flex: 1 1 auto; min-width: 0;
+  border: 0; background: none; outline: none;
+  color: var(--fk-ink);
+  font: 400 13px/1 system-ui, sans-serif;
+}
+.fk-inv__search-input::placeholder { color: var(--fk-faint); }
+
+.fk-inv__sort { display: inline-flex; }
+.fk-inv__sort-select {
+  min-height: 44px; padding: 0 34px 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    /* Hand-drawn caret: the native one is a different grey on every platform. */
+    linear-gradient(45deg, transparent 50%, var(--fk-dim) 50%) calc(100% - 17px) 50% / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--fk-dim) 50%, transparent 50%) calc(100% - 12px) 50% / 5px 5px no-repeat,
+    rgba(10, 6, 26, 0.55);
+  color: var(--fk-ink);
+  font: 400 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+}
+.fk-inv__sort-select:focus-visible,
+.fk-inv__search-input:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+.fk-inv__sort-select option { background: #0a061a; color: var(--fk-ink); }
+
+.fk-inv__clear {
+  min-height: 44px; padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 6, 26, 0.6);
+  color: var(--fk-dim);
+  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+}
+.fk-inv__clear:hover { color: var(--fk-ink); border-color: rgba(255, 255, 255, .28); }
+.fk-inv__clear:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+
+.fk-inv__result {
+  margin: 0 0 14px;
+  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fk-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The grid ───────────────────────────────────────────────────────────── */
+
 .fk-inv__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
@@ -475,30 +571,52 @@
   margin: 0; padding: 0; list-style: none;
 }
 
+/*
+ * The card is a fixed frame; the face inside it is the part that moves.
+ *
+ * The old rule put `transform: translateY(-2px)` on the element that carried
+ * `:hover`. Hit testing follows the transform, so entering the bottom two
+ * pixels of a card lifted it out from under the cursor, which dropped the
+ * hover, which dropped the lift, which put the card back under the cursor —
+ * a loop that runs as fast as the compositor can paint and reads as a flicker.
+ * Splitting the two means the box that answers `:hover` never moves, and the
+ * box that moves never answers anything.
+ */
 .fk-inv__card {
   --tier: #e8ecf1;
   --tier-glow: rgba(232, 236, 241, 0.45);
   position: relative;
   display: grid;
+}
+.fk-inv__card:hover { z-index: 3; }
+
+.fk-inv__face {
+  position: relative;
+  display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
+  height: 100%;
   padding: 14px 14px 32px;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--tier) 42%, transparent);
   background:
     radial-gradient(ellipse 80% 60% at 12% 0%, color-mix(in srgb, var(--tier) 9%, transparent), transparent 68%),
     rgba(10, 6, 26, 0.5);
-  transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+  /* Promoted up front rather than on hover: flipping will-change at the moment
+     the animation starts is a layer creation mid-transition, which is the
+     stutter it was meant to avoid. */
+  will-change: transform;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
-.fk-inv__card:hover {
-  box-shadow: 0 0 30px -12px var(--tier-glow);
+.fk-inv__card:hover .fk-inv__face {
   transform: translateY(-2px);
+  box-shadow: 0 0 30px -12px var(--tier-glow);
 }
 
 /* Locked items are a silhouette: the shape and the price stay legible, the
    identity does not. Filtering the icon rather than hiding it keeps the grid
    from reflowing when something is bought. */
-.fk-inv__card--locked {
+.fk-inv__card--locked .fk-inv__face {
   border-color: rgba(255, 255, 255, 0.06);
   background: rgba(8, 5, 20, 0.42);
 }
@@ -517,13 +635,107 @@
   font: 600 14px/1.25 'Orbitron', system-ui, sans-serif;
   color: var(--fk-ink);
 }
-.fk-inv__level {
-  padding: 2px 7px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tier) 50%, transparent);
-  font-size: 11px; color: var(--tier);
-  font-variant-numeric: tabular-nums;
-}
 .fk-inv__owned { font-size: 12px; }
+
+/* The stack count. Bottom-right, tinted by the tier it belongs to, sitting on
+   the face's own corner so it travels with the hover lift. */
+.fk-inv__count {
+  position: absolute; right: -6px; bottom: -6px;
+  display: grid; place-items: center;
+  min-width: 26px; height: 26px; padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tier) 70%, transparent);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .3), transparent 60%),
+    color-mix(in srgb, var(--tier) 62%, #0a061a);
+  box-shadow: 0 0 14px -4px var(--tier-glow);
+  color: #fff;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .65);
+}
+.fk-inv__card--locked .fk-inv__count { opacity: .5; }
+
+/* ── Opening a stack ────────────────────────────────────────────────────── */
+
+.fk-inv__expand {
+  margin-top: 9px; padding: 7px 0 0;
+  border: 0; border-top: 1px dashed rgba(255, 255, 255, .1);
+  background: none;
+  color: var(--tier);
+  font: 600 11px/1.3 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .05em;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.fk-inv__expand:hover { text-decoration: underline; }
+.fk-inv__expand:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
+
+.fk-inv__units { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.fk-inv__unit {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--tier) 55%, transparent);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px; line-height: 1.45;
+}
+.fk-inv__unit-label { color: var(--tier); font-weight: 600; white-space: nowrap; }
+.fk-inv__unit-note { color: var(--fk-faint); min-width: 0; }
+
+/* ── The hover card ─────────────────────────────────────────────────────── */
+
+/*
+ * Above the item, never on it. `pointer-events: none` is the load-bearing
+ * declaration: a tooltip the cursor can land on is a second hover target
+ * sitting on top of the first, and the two trade the hover back and forth.
+ * Only opacity animates, so it costs nothing and moves nothing.
+ */
+.fk-inv__tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0;
+  max-width: 100%;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--tier) 45%, transparent);
+  background: rgba(8, 5, 20, 0.96);
+  box-shadow: 0 8px 26px -10px rgba(0, 0, 0, .9), 0 0 18px -10px var(--tier-glow);
+  color: var(--tier);
+  font: 600 10px/1.4 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .06em; text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  transition: opacity .15s ease;
+}
+.fk-inv__card:hover .fk-inv__tip { opacity: 1; }
+
+.fk-inv__empty {
+  grid-column: 1 / -1;
+  display: grid; gap: 12px; justify-items: center;
+  padding: 34px 18px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(10, 6, 26, 0.35);
+  text-align: center;
+}
+.fk-inv__empty-line {
+  margin: 0;
+  font: italic 13px/1.6 Georgia, 'Times New Roman', serif;
+  color: var(--fk-faint);
+}
+
+/* Label text for controls whose meaning is carried by an icon. */
+.fk-sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 .fk-inv__equipped {
   padding: 2px 8px; border-radius: 999px;
   background: rgba(167, 139, 250, 0.09);
@@ -549,6 +761,10 @@
   border-bottom: 1px dotted currentColor;
 }
 .fk-inv__price-link:hover { color: #ffd97a; }
+
+/* The badge and the tier label share the bottom-right corner, so the label
+   steps aside when there is a badge to make room for. */
+.fk-inv__card--stacked .fk-inv__tier { right: 34px; }
 
 .fk-inv__tier {
   position: absolute; right: 12px; bottom: 10px;
@@ -736,8 +952,10 @@
 }
 .fk-cal__day--today .fk-cal__day-cell { outline: 1px solid var(--fk-affinity); outline-offset: 2px; }
 
-/* Visually hidden, but read out — the cell itself carries no text. */
-.fk-cal__sr {
+/* Visually hidden, but read out — the cell itself carries no text, and neither
+   do the vault's icon-labelled search and sort controls. */
+.fk-cal__sr,
+.fk-sr-only {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -930,12 +1148,15 @@
   .fk-id__xp-fill,
   .fk-affinity__split-fill,
   .fk-mastery__fill,
-  .fk-inv__card,
+  .fk-inv__face,
+  .fk-inv__tip,
   .fk-link,
   .fk-cal__day-cell {
     transition: none;
   }
-  .fk-inv__card:hover,
+  /* The tooltip still appears — it is information, not decoration. It just
+     appears rather than fades. */
+  .fk-inv__card:hover .fk-inv__face,
   .fk-link:hover { transform: none; }
   .fk-cal__day:hover .fk-cal__day-cell { transform: none; }
 }
