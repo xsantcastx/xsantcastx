@@ -17,6 +17,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { LoreChapter, ToolLore, loreForTool } from './lore.model';
 
 export const LORE_KEY = 'eclipse-lore';
@@ -76,6 +77,7 @@ export interface LoreUnlock {
 @Injectable({ providedIn: 'root' })
 export class LoreService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: LoreState = emptyState();
   private initialised = false;
@@ -102,6 +104,17 @@ export class LoreService {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
     this.state = this.load();
+
+    // `persist()` writes this whole blob from memory, so chapters merged in from
+    // another device would be dropped at the next tool use without this.
+    this.saves.register(LORE_KEY, {
+      rehydrate: () => {
+        this.state = this.load();
+        // Every panel re-resolves off this counter rather than holding chapters,
+        // so bumping it is the whole republish.
+        this.changed$$.next(this.changed$$.value + 1);
+      },
+    });
   }
 
   /** Install a threshold scale. Called once by the economy's wiring layer. */

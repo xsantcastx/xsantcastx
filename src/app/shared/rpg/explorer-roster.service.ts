@@ -23,6 +23,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from './inventory.service';
 import {
   ExplorerRarity,
@@ -80,6 +81,7 @@ export interface RosterSnapshot {
 export class ExplorerRosterService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly inventory = inject(InventoryService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private blob: RosterBlob = emptyBlob();
   private initialised = false;
@@ -113,6 +115,16 @@ export class ExplorerRosterService {
     }
 
     this.publish();
+
+    // `save()` writes the whole roster from memory. The merge unions explorers by
+    // id and ORs `seeded`, so a rehydrate cannot mint a second starter — which is
+    // the one thing the seeding above must not be made to do twice.
+    this.saves.register(ROSTER_KEY, {
+      rehydrate: () => {
+        this.blob = this.load();
+        this.publish();
+      },
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────

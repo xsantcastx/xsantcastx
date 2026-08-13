@@ -51,6 +51,7 @@ import {
 } from './explorer.model';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   explorerTier,
   missionDurationFor,
@@ -71,6 +72,7 @@ export class ExplorerService implements OnDestroy {
   private readonly runeForge = inject(RuneForgeService);
   private readonly roster = inject(ExplorerRosterService);
   private readonly stats = inject(PlayerStatsService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: ExplorerState = emptyExplorerState();
   private initialised = false;
@@ -127,6 +129,23 @@ export class ExplorerService implements OnDestroy {
         else this.zone.run(() => this.tick$$.next(Date.now()));
       };
       document.addEventListener('visibilitychange', this.visibilityHandler, { passive: true });
+    });
+
+    // `persist()` writes the whole log from memory, so the lifetime tallies
+    // merged in from another device would be dropped by the next dispatch.
+    //
+    // `mergeExpeditions` deliberately keeps *this* device's `active` list rather
+    // than unioning the two, because a mission in flight has a wall-clock
+    // deadline on the device that started it and adopting the other one's runs
+    // would pay them out twice. So the settle below can only ever be settling
+    // expeditions this tab already knew about.
+    this.saves.register(EXPLORER_KEY, {
+      rehydrate: () => {
+        this.state = this.load();
+        this.settle();
+        this.publish();
+        this.syncTimer();
+      },
     });
   }
 

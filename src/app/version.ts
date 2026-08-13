@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.57.2',
+  version: '2.57.3',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Bazaar',
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.57.3',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'Gold, XP and everything else really do follow you between a phone and a PC now. Signing in had been merging the two saves correctly and then throwing the result away, which is why the previous two fixes did not hold',
+      'The merge was never the broken part. Cloud save wrote the reconciled save to localStorage and then reloaded the tab to make the services read it — and `location.reload()` fires `pagehide`, which is exactly when the ledger and the XP store flush the copy they were still holding. The last write before the restart was always the pre-merge one, and the reload read it straight back',
+      'The ledger did not even need the reload to lose it: idle Gold settles on a one-second tick behind a five-second write throttle, so the merged save was usually overwritten within a second of being written. Both devices reported "Synced" the whole time, because the cloud copy was correct and the merge really had happened — only the adoption never landed',
+      'The eighteen services that own the save now expose two callbacks: settle anything in flight before the merge reads their blob, and re-read it in the same tick as the write. There is no window left for a stale flush to land in',
+      'Adopting cloud state no longer reloads the page. The numbers change in place, so the once-per-session reload guard is gone, and so is the class of blobs that a tab "could not safely adopt" — that restriction only existed because the reload could not be spent twice',
+      'A tab left open all day now picks up the other device\'s progress on its own push loop instead of waiting for a navigation, and the merge dialog reads the visitor\'s real Gold rather than a figure up to five seconds stale'
+    ]
+  },
   {
     version: '2.57.2',
     codename: 'Bazaar',

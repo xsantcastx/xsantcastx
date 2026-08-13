@@ -34,6 +34,7 @@
 import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   ARTIFACTS,
   AUTO_CLICKERS,
@@ -186,6 +187,7 @@ export interface PrestigeEvent {
 export class EconomyService implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly zone = inject(NgZone);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: PlayerEconomy = emptyEconomy();
   private initialised = false;
@@ -301,6 +303,40 @@ export class EconomyService implements OnDestroy {
       this.pageHideHandler = () => this.flush();
       window.addEventListener('pagehide', this.pageHideHandler, { passive: true });
     });
+
+    // Registered last, so that being registered always means "is holding a
+    // hydrated ledger". Cloud save calls `flush` before it reads the blob and
+    // `rehydrate` the instant it writes a merged one — without which this
+    // service's next write puts the pre-merge Gold straight back, which it did
+    // on a one-second tick and again on `pagehide`. See LocalSaveRegistry.
+    this.saves.register(ECONOMY_KEY, {
+      flush: () => this.flush(),
+      rehydrate: () => this.rehydrate(),
+    });
+  }
+
+  /**
+   * Re-read the ledger from storage, discarding the in-memory copy.
+   *
+   * Called only by cloud save, immediately after it has written a merged ledger
+   * over ours. Cancelling the trailing write first is the whole point: a timer
+   * scheduled a moment ago would otherwise fire after this has re-read and
+   * overwrite the merged Gold with the copy this service was holding.
+   *
+   * `settleIdle()` is deliberately *not* run here. The merged blob carries the
+   * later of the two devices' `lastIdleAt` — the merge takes the larger number —
+   * so there is nothing owed, and settling would price a span this device did
+   * not spend in front of the forge. The next tick pays from the merged clock.
+   */
+  private rehydrate(): void {
+    if (!this.isBrowser) return;
+    if (this.persistHandle !== null) {
+      clearTimeout(this.persistHandle);
+      this.persistHandle = null;
+    }
+    this.state = this.load();
+    if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
+    this.publish();
   }
 
   ngOnDestroy(): void {

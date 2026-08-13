@@ -27,6 +27,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { LocalSaveRegistry, SaveOwner } from '../../../shared/save/local-save-registry.service';
 import { ArenaShellComponent } from '../arena-shell.component';
 import { ArenaGameBase } from '../arena-game.base';
 import { RunResult } from '../arena-scores.service';
@@ -119,6 +120,7 @@ export class RealmRushComponent extends ArenaGameBase
 
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
+  private readonly saves = inject(LocalSaveRegistry);
 
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('typeInput') inputRef?: ElementRef<HTMLInputElement>;
@@ -151,13 +153,33 @@ export class RealmRushComponent extends ArenaGameBase
   private width = 0;
   private height = 0;
   private readonly onResize = () => this.sizeCanvas();
+  /**
+   * Held as a field rather than passed inline, so `ngOnDestroy` can hand the
+   * same object back — the registry unregisters by identity, which is what stops
+   * a component tearing down after its replacement has registered from
+   * unclaiming the live one.
+   */
+  private readonly boardOwner: SaveOwner = { rehydrate: () => this.rehydrateBoard() };
 
   async ngOnInit(): Promise<void> {
     await this.resolveGate();
     if (this.isBrowser) {
       this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       this.board = this.loadBoard();
+      // The only synced blob owned by a component rather than a service, so the
+      // only one whose registration has a lifetime shorter than the tab's.
+      // `saveBoard()` rebuilds the top five from `this.board`, so a board merged
+      // in from another device while this page is open would be dropped by the
+      // next game over.
+      this.saves.register(BOARD_KEY, this.boardOwner);
     }
+    this.cdr.markForCheck();
+  }
+
+  /** Re-read the board after cloud save merged in another device's runs. */
+  private rehydrateBoard(): void {
+    this.board = this.loadBoard();
+    // OnPush, and this is called from outside any template event.
     this.cdr.markForCheck();
   }
 
@@ -169,7 +191,13 @@ export class RealmRushComponent extends ArenaGameBase
   ngOnDestroy(): void {
     this.stopLoop();
     if (this.missTimer) clearTimeout(this.missTimer);
-    if (this.isBrowser) window.removeEventListener('resize', this.onResize);
+    if (this.isBrowser) {
+      window.removeEventListener('resize', this.onResize);
+      // Leaving the route means nobody is holding the board any more, which is
+      // exactly the state "no owner" is meant to describe — cloud save then
+      // writes the merged blob and correctly rehydrates nothing.
+      this.saves.unregister(BOARD_KEY, this.boardOwner);
+    }
   }
 
   // ── run lifecycle ───────────────────────────────────────────

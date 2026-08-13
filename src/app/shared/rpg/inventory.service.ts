@@ -28,6 +28,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   GameItem,
   ItemRarity,
@@ -84,6 +85,7 @@ export interface InventorySnapshot {
 export class InventoryService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly economy = inject(EconomyService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private blob: InventoryBlob = emptyBlob();
   private initialised = false;
@@ -104,6 +106,17 @@ export class InventoryService {
     this.initialised = true;
     this.blob = this.load();
     this.publish();
+
+    // `save()` writes this whole bag from memory, so items merged in from another
+    // device would be gone at the next equip. `load()` runs `dedupeSlots()` over
+    // whatever it reads, which is also what resolves the one case the merge
+    // cannot — the same item equipped in different slots on each device.
+    this.saves.register(INVENTORY_KEY, {
+      rehydrate: () => {
+        this.blob = this.load();
+        this.publish();
+      },
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
