@@ -1,7 +1,13 @@
 /* ── Layout ─────────────────────────────────────────────────── */
 .games-page {
   min-height: 100vh;
-  background: var(--color-bg, #0a0a0f);
+  /* Transparent, not #0a0a0f. There is a painted colosseum behind this route
+     now, and an opaque page root is a lid on it. Worth knowing when this looks
+     broken: the failure mode is not a missing image — the artwork renders,
+     loads and sits at the right size, and simply cannot be seen. The void this
+     used to paint is still painted one layer down by `.scene`'s own
+     background-color, so nothing is lost by dropping it. */
+  background: transparent;
   color: var(--color-text, #e2e8f0);
 }
 

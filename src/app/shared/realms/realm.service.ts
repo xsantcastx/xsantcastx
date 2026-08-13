@@ -10,8 +10,8 @@
  * editing 126 templates: they all share `<header class="tool-header">`, so one
  * global rule keyed on `html[data-realm]` reaches every one of them.
  */
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -20,8 +20,12 @@ import { RealmDefinition, realmForCategory } from './realm.model';
 
 @Injectable({ providedIn: 'root' })
 export class RealmService {
-  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly router = inject(Router);
+  /**
+   * Injected rather than reaching for the `document` global, which is what lets
+   * this run during prerender — see `init()`.
+   */
+  private readonly doc = inject(DOCUMENT);
 
   private started = false;
   private readonly current$$ = new BehaviorSubject<RealmDefinition | null>(null);
@@ -30,8 +34,22 @@ export class RealmService {
   readonly current$: Observable<RealmDefinition | null> = this.current$$.asObservable();
   get current(): RealmDefinition | null { return this.current$$.value; }
 
+  /**
+   * Runs on the server as well as in the browser.
+   *
+   * It was browser-only until the realms were painted, and that was fine while
+   * `data-realm` only drove a badge and two custom properties — a tint that
+   * arrives on hydration is a tint nobody sees arrive. It stopped being fine
+   * when the attribute started selecting a full-bleed background image: a tool
+   * page would prerender with no painting, then paint one the moment the
+   * bundle booted, which is a visible flash on every one of 126 routes.
+   *
+   * Nothing here touches a browser-only API — `DOCUMENT` is a real document
+   * under Angular's server renderer, and setting an attribute on <html> lands
+   * in the prerendered output.
+   */
   init(): void {
-    if (!this.isBrowser || this.started) return;
+    if (this.started) return;
     this.started = true;
 
     this.router.events
@@ -62,7 +80,8 @@ export class RealmService {
    * tool the visitor happened to open last.
    */
   private paint(realm: RealmDefinition | null): void {
-    const root = document.documentElement;
+    const root = this.doc.documentElement;
+    if (!root) return;
     if (!realm) {
       root.removeAttribute('data-realm');
       ['--realm-color', '--realm-glow', '--realm-name'].forEach(v => root.style.removeProperty(v));

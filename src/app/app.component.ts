@@ -83,6 +83,12 @@ export class AppComponent implements OnInit, OnDestroy {
     // on every embedded tool page.
     this.showCornerFlame = !this.isEmbedMode;
 
+    // Also before the guard, and for the same reason: `data-realm` selects the
+    // painted room behind all 126 tool pages. Resolved on the client only, the
+    // page would prerender bare and then paint a background the instant the
+    // bundle booted. RealmService touches no browser-only API.
+    this.realms.init();
+
     if (!isPlatformBrowser(this.platformId)) return;
 
     this.inlineFlameSub = this.inlineFlame.active$.subscribe(active => {
@@ -115,9 +121,6 @@ export class AppComponent implements OnInit, OnDestroy {
     // Progression: hydrate XP from localStorage, settle the daily streak and
     // subscribe the ledger to route changes, copies and egg discoveries.
     this.xpWiring.init();
-
-    // Realm tinting: resolve every route to a realm and publish it to CSS.
-    this.realms.init();
 
     // Per-route atmosphere: give every page the colour of the part of the
     // Godforge it stands in. After xpWiring.init() on purpose — /forge-keeper's

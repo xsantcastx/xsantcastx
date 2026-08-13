@@ -82,6 +82,7 @@ import { RealmDefinition, realmForCategory } from '../shared/realms/realm.model'
 import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { CodexAchievement, buildAchievements } from '../codex/codex.model';
 import { PIN_SLOTS, PinnedAchievementsService } from './pinned-achievements.service';
+import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
@@ -263,7 +264,7 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [CommonModule, RouterLink, CloudSaveButtonComponent],
+  imports: [CommonModule, RouterLink, CloudSaveButtonComponent, ArtSceneComponent],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
 })
