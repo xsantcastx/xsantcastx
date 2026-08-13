@@ -305,6 +305,22 @@ export const MF_FLOOR_TIER: RuneTier = 'rare';
 
 const MF_BOOSTED = new Set<RuneTier>(['rare', 'epic', 'legendary', 'mythic', 'singular']);
 
+/** Combined weight of every tier Magic Find lifts. Computed, never hardcoded. */
+const MF_BOOSTED_MASS = RUNES
+  .filter(r => MF_BOOSTED.has(r.tier))
+  .reduce((sum, r) => sum + r.dropRate, 0);
+
+/**
+ * The ceiling on the rare-and-better share, however much MF is stacked.
+ *
+ * At 580% MF the uncapped target would pass 1 and the arithmetic below would
+ * hand Common and Uncommon a negative weight — a table that returns the last
+ * rune it looked at. 95% is well past any reachable build and leaves the bottom
+ * of the ladder a thin but non-zero tail, which is the honest shape: Magic Find
+ * is a thumb on the scale, not a different game.
+ */
+const MF_MAX_RARE_SHARE = 0.95;
+
 /**
  * How much Magic Find multiplies the rare-and-better weights.
  *
@@ -347,14 +363,32 @@ export function rollRuneWithMagicFind(
   const boost = mfMultiplier(magicFind);
   if (boost <= 1) return rollRune(random);
 
+  // The boost is applied to the resulting *share*, not to the raw weights.
+  //
+  // Scaling the weights and renormalising is the obvious implementation and it
+  // quietly undershoots: multiplying the rare+ weights by 2 also grows the
+  // denominator, so the share lands at 1.74× rather than 2×, and 200% MF pays
+  // 2.31× where the panel promised 3×. Measured, not reasoned about — at 400k
+  // rolls the gap is far outside the noise.
+  //
+  // So the target share is computed first, and the two groups are scaled to hit
+  // it exactly: rare+ up by `rareScale`, common and uncommon down by whatever
+  // makes the total one again. Proportions *within* each group are untouched, so
+  // a Mythic is still 6× a Legendary's odds at every MF level.
+  const baseShare = MF_BOOSTED_MASS / DROP_TABLE_TOTAL;
+  const targetShare = Math.min(MF_MAX_RARE_SHARE, baseShare * boost);
+
+  const rareScale = targetShare / baseShare;
+  const lowScale = (1 - targetShare) / (1 - baseShare);
+
   let total = 0;
   for (const rune of RUNES) {
-    total += MF_BOOSTED.has(rune.tier) ? rune.dropRate * boost : rune.dropRate;
+    total += rune.dropRate * (MF_BOOSTED.has(rune.tier) ? rareScale : lowScale);
   }
 
   let roll = random() * total;
   for (const rune of RUNES) {
-    roll -= MF_BOOSTED.has(rune.tier) ? rune.dropRate * boost : rune.dropRate;
+    roll -= rune.dropRate * (MF_BOOSTED.has(rune.tier) ? rareScale : lowScale);
     if (roll <= 0) return rune;
   }
   return RUNES[0];
