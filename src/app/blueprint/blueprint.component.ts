@@ -13,6 +13,7 @@ import {
   PhaseStatus,
   phaseProgress,
 } from './eclipse-roadmap';
+import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 
 /**
  * blueprint.component.ts — the public roadmap + project documentation page.
@@ -100,7 +101,7 @@ const GITHUB_REPO = 'https://github.com/xsantcastx/xsantcastx';
 @Component({
   selector: 'app-blueprint',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ArtSceneComponent],
   templateUrl: './blueprint.component.html',
   styleUrls: ['./blueprint.component.css']
 })

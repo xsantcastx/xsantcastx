@@ -1,3 +1,8 @@
+<!-- The Market, painted. Layer 1 of the three-layer pattern; the gradient
+     overlay is layer 2, inside the component, and everything below is
+     layer 3. See art-scene.component.ts for why this is a <picture>. -->
+<app-art-scene art="bg-market" focus="center 50%" />
+
 <section class="mk" [attr.data-currency]="tabDef.currency">
 
   <!-- ── Masthead ──────────────────────────────────────────────────────── -->
@@ -276,7 +281,22 @@
               [style.--relic-color]="colorOf(a)"
               [style.--relic-glow]="glowOf(a)">
             <span class="mk__relic-tier">{{ tierLabel(a) }}</span>
-            <span class="mk__relic-icon" aria-hidden="true">{{ a.icon }}</span>
+            <!--
+              All five artifacts are painted, so this never falls through today.
+              The emoji branch stays anyway: ARTIFACTS is a list releases add
+              to, and a sixth artifact with no card should land on the glyph the
+              other five used before the sheet arrived, not a broken image.
+            -->
+            @if (cardOf(a); as card) {
+              <img class="mk__relic-art"
+                   [src]="card.src"
+                   [attr.width]="card.width"
+                   [attr.height]="card.height"
+                   alt="" aria-hidden="true"
+                   loading="lazy" decoding="async" draggable="false">
+            } @else {
+              <span class="mk__relic-icon" aria-hidden="true">{{ a.icon }}</span>
+            }
             <h3 class="mk__relic-name">{{ a.name }}</h3>
             <p class="mk__relic-effect">{{ a.effect }}</p>
             <blockquote class="mk__relic-lore">{{ a.lore }}</blockquote>

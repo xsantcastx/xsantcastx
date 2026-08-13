@@ -104,10 +104,30 @@
       aria-live="polite"
       (click)="dismissReveal()">
 
-      <div class="rf-reveal__card">
+      <!--
+        The painted card when there is one, the old text card when there is
+        not. Mote, Seam and Ledger were never painted, and the fallback is not
+        a degraded state — it is exactly what every rune looked like before the
+        sheet arrived.
+
+        `rf-reveal__card--art` drops the panel's own border and background: the
+        painting has its own painted border, and a second one around it reads
+        as a card in a frame in a frame.
+      -->
+      <div class="rf-reveal__card" [class.rf-reveal__card--art]="!!revealCard">
         <p class="rf-reveal__tier">{{ revealTier.label }}</p>
-        <p class="rf-reveal__name">{{ reveal.rune.name }}</p>
-        <p class="rf-reveal__lore">{{ reveal.rune.lore }}</p>
+
+        @if (revealCard) {
+          <img class="rf-reveal__art"
+               [src]="revealCard.src"
+               [attr.width]="revealCard.width"
+               [attr.height]="revealCard.height"
+               [alt]="reveal.rune.name + ' — ' + reveal.rune.lore"
+               decoding="async" draggable="false">
+        } @else {
+          <p class="rf-reveal__name">{{ reveal.rune.name }}</p>
+          <p class="rf-reveal__lore">{{ reveal.rune.lore }}</p>
+        }
 
         <p class="rf-reveal__meta">
           @if (reveal.isNew) {
@@ -225,7 +245,27 @@
                 ? cell.rune.name + ', ' + cell.tier.label + ', ' + cell.held + ' held'
                 : 'Undiscovered ' + cell.tier.label + ' rune'"
               (click)="inspect(cell)">
-              <span class="rf-rune__glyph">{{ cell.known ? cell.rune.name : '?' }}</span>
+              <!--
+                The card only once the rune is known. An undiscovered cell that
+                showed its painting would hand over the name written across the
+                top of it, which is the one thing the ledger is withholding —
+                and the same reason the glyph beside it is "?" rather than the
+                rune's name.
+
+                loading="lazy" because this grid is twenty-five cells three
+                screens down the page; eager, it competes with the artwork
+                behind the anvil, which is the thing actually on screen.
+              -->
+              @if (cell.known && cell.card) {
+                <img class="rf-rune__art"
+                     [src]="cell.card.src"
+                     [attr.width]="cell.card.width"
+                     [attr.height]="cell.card.height"
+                     alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" draggable="false">
+              } @else {
+                <span class="rf-rune__glyph">{{ cell.known ? cell.rune.name : '?' }}</span>
+              }
               @if (cell.held > 0) {
                 <span class="rf-rune__count">{{ cell.held }}</span>
               }
@@ -270,6 +310,21 @@
           [style.--star-glow]="row.tier.glow">
 
           <header class="rf-word__head">
+            <!--
+              The word's card sits in the header next to its name rather than
+              replacing it: unlike a rune reveal, this row has to stay scannable
+              against five siblings, and a wall of six paintings with no text is
+              a wall you have to squint at. `row.card` is already null while the
+              row is hidden, so the "???" state cannot leak the art.
+            -->
+            @if (row.card) {
+              <img class="rf-word__art"
+                   [src]="row.card.src"
+                   [attr.width]="row.card.width"
+                   [attr.height]="row.card.height"
+                   alt="" aria-hidden="true"
+                   loading="lazy" decoding="async" draggable="false">
+            }
             <h3 class="rf-word__name">{{ row.hidden ? '???' : row.word.name }}</h3>
             <span class="rf-word__tier">{{ row.tier.label }}</span>
           </header>
