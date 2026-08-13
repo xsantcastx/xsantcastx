@@ -1,10 +1,18 @@
 /**
- * market.component.css — dark glassmorphism, two currencies, one page.
+ * market.component.css — the Godforge Market floor.
  *
- * The tint is driven off `[data-currency]` on the host section, written from
- * the active tab: Gold surfaces get the warm forge pair (#E8752A → #C9A84C),
- * Essence surfaces get violet-into-crimson. Nothing here introduces a colour
- * that is not already in the brand palette or the Eclipse rarity ladder.
+ * A three-column shop: filters, inventory, activity. The tint is driven off
+ * `[data-currency]` on the host section, written from whichever shelf is
+ * showing — Gold surfaces get the warm forge pair (#E8752A → #C9A84C), Essence
+ * surfaces get violet. Rarity colours come in per-row as `--tier` / `--tier-glow`
+ * from the Eclipse ladder in rarity.model.ts. Nothing here introduces a colour
+ * that is not already in the brand palette or that ladder.
+ *
+ * Two rules this file is built around:
+ *   - Mobile drops to one column and drops the ornament with it. Per the mobile
+ *     rescue pass, `backdrop-filter` is off below 768px site-wide; these panels
+ *     use flat alpha there rather than a blur that will not run.
+ *   - Every animation over 1s has a static end state under reduced-motion.
  */
 
 .mk {
@@ -13,31 +21,81 @@
   --mk-gold-soft: rgba(201, 168, 76, 0.5);
   --mk-ess: #a48bff;
   --mk-ess-soft: rgba(164, 139, 255, 0.5);
+  --mk-shard: #ff6dd7;
 
-  /* The accent the panel is currently wearing. */
+  /* The accent the floor is currently wearing. */
   --mk-accent: var(--mk-gold);
   --mk-accent-soft: var(--mk-gold-soft);
 
+  /* Surfaces. One glass recipe, three depths. */
+  --mk-pane: rgba(15, 10, 30, 0.8);
+  --mk-pane-2: rgba(20, 14, 38, 0.72);
+  --mk-line: rgba(255, 255, 255, 0.07);
+  --mk-ink: #e8ecf1;
+  --mk-dim: rgba(232, 236, 241, 0.58);
+  --mk-faint: rgba(232, 236, 241, 0.4);
+
   position: relative;
-  max-width: 1080px;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: clamp(20px, 4vw, 44px) clamp(14px, 4vw, 28px) 80px;
+  padding: clamp(18px, 3.4vw, 40px) clamp(12px, 3vw, 28px) 80px;
+  color: var(--mk-ink);
 }
 
-.mk[data-currency='essence'] {
-  --mk-accent: var(--mk-ess);
-  --mk-accent-soft: var(--mk-ess-soft);
+.mk[data-currency='essence'] { --mk-accent: var(--mk-ess); --mk-accent-soft: var(--mk-ess-soft); }
+.mk[data-currency='shard']   { --mk-accent: var(--mk-shard); --mk-accent-soft: rgba(255, 109, 215, 0.5); }
+
+/* Visually hidden, still read. */
+.mk__sr {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* ── Masthead ─────────────────────────────────────────────────────────── */
+/* ── Hero ─────────────────────────────────────────────────────────────────
+   Purple forge-light from the two upper corners, so the masthead sits in a
+   glow rather than on a flat field. Painted with gradients rather than an
+   image: it is two paint ops and it cannot fail to load. */
 
-.mk__head { text-align: center; margin-bottom: clamp(22px, 4vw, 38px); }
+.mk__hero {
+  position: relative;
+  text-align: center;
+  padding: clamp(26px, 5vw, 56px) 16px clamp(20px, 3vw, 34px);
+  margin-bottom: clamp(16px, 2.4vw, 26px);
+  background:
+    radial-gradient(ellipse 46% 78% at 6% 0%, rgba(123, 97, 255, 0.2), transparent 62%),
+    radial-gradient(ellipse 46% 78% at 94% 0%, rgba(232, 117, 42, 0.16), transparent 62%),
+    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(10, 6, 26, 0.6), transparent 70%);
+}
+
+/* Gradient cap lines, top and bottom — the site's section signature. */
+.mk__hero::before, .mk__hero::after {
+  content: ''; position: absolute; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.55) 50%, transparent);
+}
+.mk__hero::before { top: 0; }
+.mk__hero::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
+
+.mk__sigil {
+  display: block;
+  font: 400 clamp(30px, 5vw, 46px)/1 'Orbitron', system-ui, sans-serif;
+  color: transparent;
+  background: linear-gradient(160deg, #c48bff, var(--mk-warm));
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(123, 97, 255, 0.55));
+  margin-bottom: 10px;
+  animation: mkSigil 12s ease-in-out infinite;
+}
+@keyframes mkSigil {
+  0%, 100% { opacity: .78; transform: rotate(0deg) scale(1); }
+  50%      { opacity: 1;   transform: rotate(180deg) scale(1.08); }
+}
 
 .mk__eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.16em; text-transform: uppercase;
+  letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--mk-gold);
 }
 .mk__eyebrow-pulse {
@@ -49,714 +107,949 @@
 @keyframes mkPulse { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
 
 .mk__title {
-  margin: 0 0 10px;
-  font: 700 clamp(26px, 5vw, 42px)/1.15 'Orbitron', system-ui, sans-serif;
+  margin: 0 auto 12px;
+  max-width: 20ch;
+  font: 700 clamp(28px, 5.6vw, 58px)/1.08 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   background: linear-gradient(92deg, #ffd97a, var(--mk-warm) 46%, #c48bff);
+  background-size: 200% auto;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
+  animation: mkSweep 7s ease-in-out infinite;
 }
+@keyframes mkSweep { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
 .mk__tagline {
   display: inline-block;
-  margin: 0 auto 20px;
-  padding: 7px 16px;
+  max-width: 62ch;
+  margin: 0;
+  padding: 8px 18px;
   border-radius: 999px;
   border: 1px solid rgba(201, 168, 76, 0.16);
   background: rgba(201, 168, 76, 0.05);
-  font-size: 14px; font-style: italic; color: #b9cdc7;
+  font-size: clamp(12px, 1.5vw, 14px);
+  line-height: 1.6;
+  color: var(--mk-dim);
 }
+
+/* ── Currency bar ─────────────────────────────────────────────────────── */
 
 .mk__wallet {
-  display: flex; justify-content: center; flex-wrap: wrap;
-  gap: 12px; margin-bottom: 18px;
-}
-.mk__coin {
-  display: grid; grid-template-columns: auto auto; align-items: center;
-  gap: 4px 10px;
-  padding: 12px 22px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(10, 6, 26, 0.55);
-}
-.mk__coin-icon { grid-row: 1 / span 2; width: 32px; height: 32px; align-self: center; }
-.mk__coin-val {
-  font: 700 24px/1 'Orbitron', system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-.mk__coin-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
-.mk__coin--gold { border-color: rgba(201, 168, 76, .3); }
-.mk__coin--gold .mk__coin-val { color: #ffd97a; }
-.mk__coin--essence { border-color: rgba(164, 139, 255, .3); }
-.mk__coin--essence .mk__coin-val { color: #c48bff; }
-
-.mk__stats {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px; max-width: 520px; margin: 0 auto 14px;
-}
-.mk__stats div { text-align: center; }
-.mk__stats dt { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
-.mk__stats dd {
-  margin: 3px 0 0;
-  font: 600 15px/1 'Orbitron', system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  color: #F2ECFF;
-}
-
-.mk__doubled {
-  margin: 0 0 8px;
-  font-size: 13px; color: #ffd97a;
-}
-.mk__running {
-  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  margin: 0;
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(164, 139, 255, .3);
-  background: rgba(164, 139, 255, .07);
-  font-size: 13px; color: #cfc4ff;
+  gap: 10px;
+  margin: 0 auto clamp(16px, 2.4vw, 26px);
 }
-.mk__running strong { color: #c48bff; }
-.mk__running-timer { font-variant-numeric: tabular-nums; color: #F2ECFF; }
 
-/* ── Tabs ─────────────────────────────────────────────────────────────── */
-
-.mk__tabs {
-  display: flex; flex-wrap: wrap; justify-content: center;
-  gap: 8px; margin-bottom: 20px;
-}
-.mk__tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  min-height: 44px; padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 6, 26, 0.55);
-  color: #9fb4ae;
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .04em;
-  cursor: pointer;
-  transition: border-color .25s ease, color .25s ease, box-shadow .25s ease;
-}
-.mk__tab:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .2); }
-.mk__tab--active[data-currency='gold'] {
-  color: #ffd97a;
-  border-color: rgba(201, 168, 76, .55);
-  box-shadow: 0 0 24px -8px rgba(232, 117, 42, .85);
-}
-.mk__tab--active[data-currency='essence'] {
-  color: #c48bff;
-  border-color: rgba(164, 139, 255, .55);
-  box-shadow: 0 0 24px -8px rgba(164, 139, 255, .85);
-}
-.mk__tab:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
-.mk__tab-icon { width: 28px; height: 28px; }
-
-/* ── Panels ───────────────────────────────────────────────────────────── */
-
-/* All five panels are in the DOM at once — see the note in market.component.ts
-   about why the shop is prerendered in full — so the inactive four have to be
-   taken out of both the layout and the accessibility tree. `[hidden]` gets
-   `display: none` from the UA stylesheet, but this file sets `display` on
-   `.mk__panel`'s descendants and a reset elsewhere could reach it first, so it
-   is restated here rather than relied upon. */
-.mk__panel[hidden] { display: none !important; }
-
-.mk__panel {
+.mk__coin {
   position: relative;
-  padding: clamp(16px, 3vw, 26px);
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background:
-    radial-gradient(ellipse 60% 50% at 18% 0%, rgba(232, 117, 42, 0.06), transparent 65%),
-    radial-gradient(ellipse 50% 45% at 86% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
-    rgba(6, 4, 18, 0.62);
-  backdrop-filter: blur(14px);
-}
-.mk__panel--essence {
-  background:
-    radial-gradient(ellipse 60% 50% at 18% 0%, rgba(164, 139, 255, 0.09), transparent 65%),
-    radial-gradient(ellipse 50% 45% at 86% 100%, rgba(139, 34, 82, 0.1), transparent 65%),
-    rgba(6, 4, 18, 0.62);
-}
-.mk__panel::before {
-  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--mk-accent-soft) 50%, transparent);
-}
-
-.mk__panel-note {
-  margin: 0 0 18px;
-  font-size: 13px; line-height: 1.6; color: #9fb4ae;
-}
-.mk__panel-note strong { color: #F2ECFF; }
-
-/* ── The two Gold ladders ─────────────────────────────────────────────── */
-
-.mk__ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-
-.mk__row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center; gap: 14px;
-  padding: 14px 16px;
+  display: flex; align-items: center; gap: 11px;
+  min-width: 168px;
+  padding: 11px 18px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 6, 26, 0.5);
-  transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
-}
-.mk__row:hover { border-color: rgba(201, 168, 76, .32); }
-.mk__row--owned { border-color: rgba(201, 168, 76, .3); background: rgba(28, 17, 10, 0.5); }
-
-.mk__row-icon { font-size: 24px; line-height: 1; }
-.mk__row-body { display: grid; gap: 3px; min-width: 0; }
-.mk__row-name {
-  font: 600 14px/1.2 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
-}
-.mk__row-owned {
-  margin-left: 7px; padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(201, 168, 76, .18);
-  color: #ffd97a; font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.mk__row-effect { font-size: 13px; color: #A78BFA; }
-.mk__row-flavour { font-size: 12px; font-style: italic; color: #6d817c; }
-
-/* ── Cards (enchantments and cosmetics) ───────────────────────────────── */
-
-.mk__grid {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-.mk__grid--artifact { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-
-.mk__card {
-  display: grid; align-content: start; gap: 7px;
-  padding: 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 6, 26, 0.5);
+  border: 1px solid var(--mk-line);
+  background: var(--mk-pane);
+  backdrop-filter: blur(14px);
   transition: border-color .25s ease, box-shadow .25s ease;
 }
-.mk__card:hover { border-color: rgba(201, 168, 76, .32); }
-.mk__card--essence:hover { border-color: rgba(164, 139, 255, .4); }
-.mk__card--running {
-  border-color: rgba(164, 139, 255, .6);
-  box-shadow: 0 0 30px -12px rgba(164, 139, 255, .9);
-}
-.mk__card--owned { border-color: rgba(201, 168, 76, .38); }
+.mk__coin--gold    { border-color: rgba(201, 168, 76, 0.22); }
+.mk__coin--essence { border-color: rgba(164, 139, 255, 0.22); }
+.mk__coin--shard   { border-color: rgba(255, 109, 215, 0.22); }
+.mk__coin--rate    { border-color: rgba(232, 117, 42, 0.26); }
 
-.mk__card-icon { font-size: 26px; line-height: 1; }
-.mk__card-name { margin: 0; font: 600 15px/1.2 'Orbitron', system-ui, sans-serif; color: #F2ECFF; }
-.mk__card-effect { margin: 0; font-size: 13px; color: #A78BFA; }
-.mk__card--essence .mk__card-effect { color: #c48bff; }
-.mk__card-flavour { margin: 0 0 6px; font-size: 12px; font-style: italic; line-height: 1.5; color: #6d817c; }
-.mk__card-timer { margin: 0; font-size: 12px; color: #ffd97a; font-variant-numeric: tabular-nums; }
-.mk__card-sold {
-  margin: 4px 0 0;
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .16em; color: var(--mk-gold);
+.mk__coin-icon, .mk__coin-glyph { flex: none; width: 34px; height: 34px; }
+.mk__coin-glyph {
+  display: grid; place-items: center;
+  font-size: 21px; line-height: 1;
 }
-
-/* ── Artifacts ────────────────────────────────────────────────────────── */
-
-.mk__relic {
-  position: relative;
-  display: grid; align-content: start; gap: 8px;
-  padding: 20px 18px 18px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--relic-color) 42%, transparent);
-  background:
-    radial-gradient(ellipse 90% 60% at 50% 0%, color-mix(in srgb, var(--relic-color) 10%, transparent), transparent 70%),
-    rgba(8, 5, 20, 0.72);
-  box-shadow: 0 0 34px -18px var(--relic-glow);
-  transition: box-shadow .3s ease, border-color .3s ease;
-}
-.mk__relic:hover { box-shadow: 0 0 44px -14px var(--relic-glow); }
-
-.mk__relic-tier {
-  position: absolute; top: 12px; right: 14px;
-  font: 700 9px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .16em; text-transform: uppercase;
-  color: var(--relic-color);
-}
-.mk__relic-icon { font-size: 30px; line-height: 1; }
-
-/* The painted artifact, where the emoji glyph above still stands in for a
-   future one. Sized by HEIGHT, not width: the five paintings run 230-372px
-   wide against a constant 255 tall, so sizing by width would make Fragment of
-   the First Sun two-thirds the height of Obsidian Heart and the row of relics
-   would step up and down. */
-.mk__relic-art {
-  width: auto;
-  height: 96px;
-  align-self: start;
-  border-radius: 6px;
-  box-shadow: 0 0 18px -6px var(--relic-glow, transparent);
-}
-
-.mk__relic-name {
-  margin: 0;
-  font: 700 16px/1.2 'Orbitron', system-ui, sans-serif;
-  color: var(--relic-color);
-}
-.mk__relic-effect { margin: 0; font-size: 13px; color: #F2ECFF; }
-.mk__relic-lore {
-  margin: 4px 0 8px;
-  padding-left: 12px;
-  border-left: 2px solid color-mix(in srgb, var(--relic-color) 40%, transparent);
-  font: italic 12.5px/1.6 Georgia, 'Times New Roman', serif;
-  color: #9fb4ae;
-}
-.mk__relic--owned {
-  border-color: var(--relic-color);
-  box-shadow: 0 0 46px -14px var(--relic-glow);
-}
-.mk__relic-sold {
-  margin: 0;
-  padding: 9px 0;
-  text-align: center;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--relic-color) 14%, transparent);
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .16em;
-  color: var(--relic-color);
-}
-
-/* ── Buy buttons ──────────────────────────────────────────────────────── */
-
-.mk__buy {
-  display: grid; gap: 2px; justify-items: center;
-  min-width: 108px; min-height: 44px;
-  padding: 9px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(201, 168, 76, .45);
-  background: linear-gradient(160deg, rgba(232, 117, 42, .22), rgba(201, 168, 76, .1));
-  color: #ffd97a;
-  cursor: pointer;
-  transition: transform .14s ease, box-shadow .22s ease, border-color .22s ease, filter .22s ease;
-}
-.mk__buy:hover:not(:disabled) {
-  border-color: var(--mk-warm);
-  box-shadow: 0 0 26px -8px rgba(232, 117, 42, .9);
-  filter: brightness(1.12);
-}
-/* The satisfying part: it gives under the finger, and springs back. */
-.mk__buy:active:not(:disabled) { transform: scale(.94); }
-.mk__buy:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
-.mk__buy:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.6); }
-
-.mk__buy-cost {
-  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
+.mk__coin-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mk__coin-val {
+  font: 700 clamp(15px, 1.9vw, 19px)/1 'Orbitron', system-ui, sans-serif;
+  color: #fff;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  /* The coin sits after the number, so the two are aligned on their centres
-     rather than the text baseline the emoji used to ride. */
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  /* `anywhere` rather than `break-all`: a late-game Gold figure must be allowed
+     to wrap rather than push the pill off screen, but it should only ever do so
+     once it genuinely does not fit. */
+  overflow-wrap: anywhere;
 }
-.mk__buy-cost img { width: 14px; height: 14px; }
-.mk__buy-word {
-  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-  color: #b9cdc7;
+.mk__coin-sub {
+  font-size: 11px; font-style: normal; font-weight: 600;
+  color: var(--mk-shard); margin-left: 4px;
 }
-
-.mk__buy--essence, .mk__buy--relic {
-  border-color: rgba(164, 139, 255, .45);
-  background: linear-gradient(160deg, rgba(139, 34, 82, .28), rgba(164, 139, 255, .12));
-  color: #d9ccff;
-}
-.mk__buy--essence:hover:not(:disabled), .mk__buy--relic:hover:not(:disabled) {
-  border-color: var(--mk-ess);
-  box-shadow: 0 0 26px -8px rgba(164, 139, 255, .9);
+.mk__coin-label {
+  font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--mk-faint); white-space: nowrap;
 }
 
-/* Landed. */
-.mk__row--flash, .mk__card--flash {
-  animation: mkFlash .42s cubic-bezier(.22, 1, .36, 1);
-}
-@keyframes mkFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(255, 217, 122, .7); }
-  40%  { box-shadow: 0 0 32px 4px rgba(255, 217, 122, .5); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 217, 122, 0); }
-}
+.mk__coin--gold    .mk__coin-val { color: var(--mk-gold); }
+.mk__coin--essence .mk__coin-val { color: var(--mk-ess); }
+.mk__coin--shard   .mk__coin-val { color: var(--mk-shard); }
+.mk__coin--rate    .mk__coin-val { color: var(--mk-warm); }
 
-/* Did not land. A shake rather than an error message: the price is already on
-   the button, so the only new information is "not yet". */
-.mk__row--denied, .mk__card--denied { animation: mkDeny .36s ease-in-out; }
-@keyframes mkDeny {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+/* One gold pulse across the whole bar, per purchase. */
+.mk__wallet--flash .mk__coin {
+  border-color: var(--mk-gold);
+  box-shadow: 0 0 26px -6px var(--mk-gold-soft);
 }
 
-/* ── Cosmetic variant pickers ─────────────────────────────────────────── */
+.mk__rate-float {
+  position: absolute; left: 50%; top: 2px;
+  transform: translateX(-50%);
+  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
+  color: #7fd5a3; text-shadow: 0 0 10px rgba(100, 220, 150, 0.7);
+  pointer-events: none;
+  animation: mkFloat 1.2s ease-out forwards;
+}
+@keyframes mkFloat {
+  0%   { opacity: 0; transform: translate(-50%, 6px); }
+  22%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -30px); }
+}
 
-.mk__variants { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
-.mk__variant {
-  display: inline-flex; align-items: center; gap: 6px;
-  min-height: 44px; padding: 6px 12px;
+.mk__running {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 7px;
+  max-width: 760px;
+  margin: 0 auto clamp(14px, 2vw, 22px);
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(164, 139, 255, 0.28);
+  background: rgba(164, 139, 255, 0.07);
+  font-size: 13px; color: var(--mk-dim); text-align: center;
+}
+.mk__running strong { color: var(--mk-ess); }
+.mk__running-timer { color: var(--mk-ess); font-variant-numeric: tabular-nums; }
+
+/* ── The floor ────────────────────────────────────────────────────────── */
+
+.mk__floor {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 288px;
+  gap: clamp(14px, 1.6vw, 22px);
+  align-items: start;
+}
+
+/* Scroll-reveal.
+   The hidden state keys off `data-reveal="armed"`, which only the component
+   writes and only in a browser, and only onto blocks that are below the fold
+   (see armReveal). The served attribute is a bare `data-reveal`, so the SSR
+   page — and anything that never ran the script — is fully visible. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal='armed'] {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .6s ease, transform .6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  [data-reveal='armed'].mk-in { opacity: 1; transform: none; }
+}
+
+/* Panels — one glass recipe with an ornate top edge. */
+.mk__aside, .mk__main {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid var(--mk-line);
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(123, 97, 255, 0.07), transparent 70%),
+    var(--mk-pane);
+  backdrop-filter: blur(14px);
+}
+.mk__aside::before, .mk__main::before {
+  content: ''; position: absolute; left: 14%; right: 14%; top: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mk-accent-soft) 50%, transparent);
+  transition: background .35s ease;
+}
+
+.mk__aside { padding: 16px 14px; position: sticky; top: 90px; }
+.mk__main  { padding: 14px clamp(10px, 1.2vw, 16px) 18px; }
+
+/* ── Search ───────────────────────────────────────────────────────────── */
+
+.mk__search {
+  position: relative;
+  display: flex; align-items: center;
+  margin-bottom: 18px;
+}
+.mk__search-icon {
+  position: absolute; left: 11px;
+  font-size: 15px; color: var(--mk-faint); pointer-events: none;
+}
+.mk__search-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 34px 10px 32px;
+  border-radius: 11px;
+  border: 1px solid var(--mk-line);
+  background: rgba(8, 5, 18, 0.7);
+  color: var(--mk-ink);
+  font: 500 13px/1 system-ui, sans-serif;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.mk__search-input::placeholder { color: var(--mk-faint); }
+.mk__search-input:focus-visible {
+  outline: none;
+  border-color: var(--mk-accent);
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.16);
+}
+.mk__search-clear {
+  position: absolute; right: 6px;
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border: 0; border-radius: 8px; background: transparent;
+  color: var(--mk-faint); font-size: 12px; cursor: pointer;
+}
+.mk__search-clear:hover { color: var(--mk-ink); background: rgba(255, 255, 255, 0.06); }
+
+/* ── Facets ───────────────────────────────────────────────────────────── */
+
+.mk__facet { margin-bottom: 20px; }
+
+.mk__facet-head {
+  margin: 0 0 9px;
+  padding-left: 2px;
+  font: 600 10.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--mk-gold);
+}
+
+.mk__facet-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.mk__facet-btn {
+  --tier: var(--mk-gold);
+  --tier-glow: var(--mk-gold-soft);
+  display: flex; align-items: center; gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--mk-dim);
+  font: 500 12.5px/1.2 system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.mk__facet-btn:hover { background: rgba(255, 255, 255, 0.045); color: var(--mk-ink); }
+.mk__facet-btn--on {
+  background: rgba(201, 168, 76, 0.09);
+  border-color: rgba(201, 168, 76, 0.3);
+  color: #fff;
+}
+.mk__facet-btn--on[data-currency='essence'] { background: rgba(164, 139, 255, 0.1); border-color: rgba(164, 139, 255, 0.32); }
+.mk__facet-btn--on[data-currency='shard']   { background: rgba(255, 109, 215, 0.1); border-color: rgba(255, 109, 215, 0.32); }
+
+.mk__facet-icon, .mk__facet-glyph { flex: none; width: 22px; height: 22px; }
+.mk__facet-glyph { display: grid; place-items: center; font-size: 14px; line-height: 1; opacity: .82; }
+.mk__facet-name { flex: 1; min-width: 0; }
+.mk__facet-count {
+  flex: none;
+  padding: 2px 7px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .1);
-  background: rgba(6, 4, 18, .6);
-  color: #9fb4ae; font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  font: 600 10.5px/1.4 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-faint);
+  font-variant-numeric: tabular-nums;
+}
+.mk__facet-btn--on .mk__facet-count { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+/* The rarity swatch — the ladder's own colour, nothing new. */
+.mk__facet-dot {
+  flex: none;
+  width: 11px; height: 11px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--tier);
+  box-shadow: 0 0 9px var(--tier-glow);
+}
+.mk__facet-btn--rarity.mk__facet-btn--on {
+  background: color-mix(in srgb, var(--tier) 12%, transparent);
+  border-color: var(--tier);
+}
+.mk__facet-btn--rarity.mk__facet-btn--on .mk__facet-name { color: var(--tier); }
+
+.mk__clear {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--mk-dim);
+  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.08em;
   cursor: pointer;
   transition: border-color .2s ease, color .2s ease;
 }
+.mk__clear:hover { border-color: var(--mk-accent); color: var(--mk-ink); }
+
+/* ── Tab strip ────────────────────────────────────────────────────────── */
+
+.mk__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--mk-line);
+}
+.mk__tab {
+  flex: none;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--mk-faint);
+  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+.mk__tab:hover { color: var(--mk-ink); background: rgba(255, 255, 255, 0.05); }
+.mk__tab--on {
+  color: #fff;
+  background: rgba(201, 168, 76, 0.12);
+  border-color: rgba(201, 168, 76, 0.36);
+  box-shadow: 0 0 18px -8px var(--mk-gold-soft);
+}
+.mk__tab--on[data-currency='essence'] { background: rgba(164, 139, 255, 0.13); border-color: rgba(164, 139, 255, 0.38); }
+.mk__tab--on[data-currency='shard']   { background: rgba(255, 109, 215, 0.13); border-color: rgba(255, 109, 215, 0.38); }
+
+.mk__note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-left: 2px solid var(--mk-accent);
+  border-radius: 0 8px 8px 0;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 12.5px; line-height: 1.65;
+  color: var(--mk-dim);
+}
+
+/* ── The list ─────────────────────────────────────────────────────────── */
+
+/* Row and legend share one track definition, so a column cannot drift. */
+.mk__legend, .mk__row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 116px 108px 82px 104px;
+  align-items: center;
+  gap: 12px;
+}
+
+.mk__legend {
+  padding: 0 14px 8px;
+  font: 600 9.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--mk-faint);
+}
+.mk__legend-item   { grid-column: 2; }
+.mk__legend-rarity { grid-column: 3; }
+.mk__legend-price  { grid-column: 4; text-align: right; }
+.mk__legend-yield  { grid-column: 5; text-align: right; }
+.mk__legend-action { grid-column: 6; text-align: center; }
+
+.mk__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+
+.mk__row {
+  --tier: var(--mk-gold);
+  --tier-glow: var(--mk-gold-soft);
+  position: relative;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--mk-line);
+  background: var(--mk-pane-2);
+  transition: border-color .22s ease, background .22s ease, box-shadow .22s ease, transform .22s ease;
+}
+
+/* The rarity stripe down the left edge — the row's tier, readable before a
+   word of it has been read. */
+.mk__row::before {
+  content: ''; position: absolute; left: 0; top: 12%; bottom: 12%;
+  width: 2px; border-radius: 0 2px 2px 0;
+  background: var(--tier);
+  box-shadow: 0 0 10px var(--tier-glow);
+  opacity: .8;
+}
+
+.mk__row:hover {
+  border-color: color-mix(in srgb, var(--tier) 45%, transparent);
+  background: rgba(26, 18, 48, 0.82);
+  box-shadow: 0 0 30px -12px var(--tier-glow);
+}
+
+.mk__row--owned { background: rgba(24, 18, 44, 0.8); }
+.mk__row--held  { opacity: .82; }
+
+.mk__row-icon {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--tier) 30%, transparent);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.14), rgba(8, 3, 24, 0.9) 78%);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 0 0 14px -6px var(--tier-glow);
+  font-size: 20px; line-height: 1;
+  overflow: hidden;
+}
+
+/* The painted artifact cards are tall portraits; the icon well is a square, so
+   the card is cropped to it rather than letterboxed inside it. */
+.mk__row-art {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.mk__row-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.mk__row-name {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  font: 600 14px/1.25 'Orbitron', system-ui, sans-serif;
+  color: #fff;
+}
+.mk__row-owned {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tier) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier) 40%, transparent);
+  font-size: 10.5px; color: var(--tier);
+  font-variant-numeric: tabular-nums;
+}
+.mk__row-timer { font-size: 10.5px; color: var(--mk-ess); font-family: system-ui, sans-serif; }
+
+.mk__row-effect { font-size: 12px; line-height: 1.45; color: var(--mk-dim); }
+.mk__row-lore {
+  font-size: 11.5px; line-height: 1.5; font-style: italic;
+  color: var(--mk-faint);
+  /* Two lines is a flavour note; five is a wall in a table. */
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.mk__row-rarity { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; min-width: 0; }
+.mk__badge {
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--tier) 52%, transparent);
+  background: color-mix(in srgb, var(--tier) 13%, transparent);
+  color: var(--tier);
+  font: 700 9.5px/1.3 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.mk__row-cat { font-size: 10px; color: var(--mk-faint); }
+
+.mk__row-price {
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.mk__row-price-num {
+  font: 600 13.5px/1 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-gold);
+}
+.mk__row[data-currency='essence'] .mk__row-price-num { color: var(--mk-ess); }
+.mk__row-price-num--paid {
+  color: var(--mk-faint); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+.mk__row-yield {
+  text-align: right;
+  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mk-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.mk__row-action { display: flex; justify-content: center; }
+
+/* ── The buy button ───────────────────────────────────────────────────── */
+
+.mk__buy {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 139, 255, 0.45);
+  background: linear-gradient(180deg, rgba(140, 110, 255, 0.9), rgba(96, 62, 200, 0.9));
+  color: #fff;
+  font: 700 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 20px -8px rgba(140, 110, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: transform .16s ease, box-shadow .22s ease, filter .22s ease;
+}
+.mk__buy:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+  box-shadow: 0 0 30px -6px rgba(140, 110, 255, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.mk__buy:active:not(:disabled) { transform: translateY(0); }
+.mk__buy:disabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: var(--mk-faint);
+  box-shadow: none;
+}
+.mk__buy:focus-visible { outline: 2px solid var(--mk-ess); outline-offset: 2px; }
+
+.mk__held {
+  display: grid; place-items: center;
+  width: 100%; min-height: 44px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--tier) 44%, transparent);
+  color: var(--tier);
+  font: 700 10px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em;
+}
+
+/* Purchase feedback. Both are under a second, so they need no static state. */
+.mk__row--flash {
+  border-color: var(--tier);
+  box-shadow: 0 0 34px -8px var(--tier-glow);
+  animation: mkFlash .42s ease-out;
+}
+@keyframes mkFlash {
+  0%   { background: color-mix(in srgb, var(--tier) 22%, rgba(20, 14, 38, 0.72)); }
+  100% { background: var(--mk-pane-2); }
+}
+.mk__row--denied { animation: mkShake .36s ease-in-out; border-color: rgba(255, 45, 77, 0.5); }
+@keyframes mkShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  45% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+}
+
+/* ── Cosmetic variants ────────────────────────────────────────────────── */
+
+.mk__variants { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.mk__variant {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--mk-dim);
+  font: 500 11px/1 system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+.mk__variant:hover { color: var(--mk-ink); border-color: var(--swatch); }
+.mk__variant--on {
+  color: #fff;
+  border-color: var(--swatch);
+  background: color-mix(in srgb, var(--swatch) 18%, transparent);
+}
 .mk__variant-dot {
-  width: 10px; height: 10px; border-radius: 50%;
+  width: 9px; height: 9px; border-radius: 50%;
   background: var(--swatch);
   box-shadow: 0 0 8px var(--swatch);
 }
-.mk__variant:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .26); }
-.mk__variant--on {
-  border-color: var(--swatch);
-  color: #F2ECFF;
-  box-shadow: 0 0 18px -8px var(--swatch);
+
+/* ── Empty state and pager ────────────────────────────────────────────── */
+
+.mk__empty {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 54px 20px;
+  margin: 0;
+  text-align: center;
+  color: var(--mk-dim);
+  font-size: 13.5px;
 }
-.mk__variant:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
+.mk__empty-glyph { font-size: 32px; opacity: .5; }
+.mk__empty-clear {
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: 1px solid var(--mk-accent);
+  background: transparent;
+  color: var(--mk-ink);
+  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.mk__empty-clear:hover { background: rgba(201, 168, 76, 0.1); }
+
+.mk__pager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--mk-line);
+}
+.mk__pager-btn {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--mk-line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--mk-ink);
+  font-size: 19px; line-height: 1;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+}
+.mk__pager-btn:hover:not(:disabled) { border-color: var(--mk-accent); background: rgba(255, 255, 255, 0.07); }
+.mk__pager-btn:disabled { opacity: .32; cursor: not-allowed; }
+.mk__pager-at {
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The board ────────────────────────────────────────────────────────── */
+
+.mk__board { margin-bottom: 20px; }
+.mk__board-sub { margin: -5px 0 10px; font-size: 11px; color: var(--mk-faint); font-style: italic; }
+.mk__board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: mk-rank; }
+
+.mk__seller {
+  --tier: var(--mk-gold);
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+}
+.mk__seller:hover { border-color: color-mix(in srgb, var(--tier) 45%, transparent); background: rgba(255, 255, 255, 0.06); }
+.mk__seller-rank {
+  flex: none;
+  display: grid; place-items: center;
+  width: 21px; height: 21px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tier) 16%, transparent);
+  color: var(--tier);
+  font: 700 10.5px/1 'Orbitron', system-ui, sans-serif;
+}
+.mk__seller-icon { flex: none; font-size: 16px; line-height: 1; }
+.mk__seller-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mk__seller-name {
+  font: 600 11.5px/1.3 system-ui, sans-serif; color: var(--mk-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mk__seller-detail { font-size: 10px; color: var(--mk-faint); }
+
+/* ── The patron card ──────────────────────────────────────────────────── */
+
+.mk__patron {
+  position: relative;
+  padding: 20px 16px 18px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(164, 139, 255, 0.3);
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(140, 110, 255, 0.2), transparent 70%),
+    rgba(18, 10, 38, 0.85);
+  text-align: center;
+  overflow: hidden;
+}
+/* Ornate corner ticks — four 1px rules, no image. */
+.mk__patron::before, .mk__patron::after {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+}
+.mk__patron::before { top: 7px; left: 7px; border-right: 0; border-bottom: 0; }
+.mk__patron::after  { bottom: 7px; right: 7px; border-left: 0; border-top: 0; }
+
+.mk__patron-sigil {
+  display: block; font-size: 22px; line-height: 1; margin-bottom: 8px;
+  color: var(--mk-gold);
+  text-shadow: 0 0 14px var(--mk-gold-soft);
+  animation: mkPulse 4.5s ease-in-out infinite;
+}
+.mk__patron-head {
+  margin: 0 0 5px;
+  font: 700 13px/1.3 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: #fff;
+}
+.mk__patron-sub {
+  margin: 0 0 10px;
+  font: 600 9.5px/1.4 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--mk-ess);
+}
+.mk__patron-lore { margin: 0 0 14px; font-size: 11.5px; line-height: 1.55; color: var(--mk-dim); }
+.mk__patron-cta {
+  display: block;
+  min-height: 44px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  background: linear-gradient(180deg, rgba(232, 117, 42, 0.92), rgba(170, 74, 20, 0.92));
+  color: #fff; text-decoration: none;
+  font: 700 11.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  box-shadow: 0 0 24px -8px rgba(232, 117, 42, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: filter .2s ease, transform .16s ease;
+}
+.mk__patron-cta:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.mk__patron-alt {
+  display: inline-block; margin-top: 9px;
+  font-size: 11px; color: var(--mk-faint); text-decoration: none;
+  border-bottom: 1px dotted rgba(232, 236, 241, 0.3);
+}
+.mk__patron-alt:hover { color: var(--mk-ink); }
+
+/* ── The ledger ───────────────────────────────────────────────────────── */
+
+.mk__ledger {
+  border-radius: 12px;
+  border: 1px solid var(--mk-line);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 11px 12px;
+}
+.mk__ledger-sum {
+  font: 600 10.5px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--mk-gold);
+  cursor: pointer;
+  min-height: 24px;
+  display: flex; align-items: center;
+}
+.mk__ledger-list { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mk__ledger-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+.mk__ledger-label { font-size: 11.5px; font-weight: 600; color: var(--mk-ink); }
+.mk__ledger-note { grid-column: 1; font-size: 10px; line-height: 1.45; color: var(--mk-faint); }
+.mk__ledger-val {
+  grid-row: 1; grid-column: 2;
+  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-gold);
+  font-variant-numeric: tabular-nums;
+}
+.mk__ledger-row--mult .mk__ledger-val { color: var(--mk-ess); }
+.mk__ledger-row--inert { opacity: .45; }
+.mk__ledger-row--total { border-bottom: 0; padding-bottom: 0; }
+.mk__ledger-row--total .mk__ledger-val { color: var(--mk-warm); font-size: 13px; }
+
+.mk__mini-stats {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-top: 11px;
+  border-top: 1px solid var(--mk-line);
+}
+.mk__mini-stats dt { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mk-faint); }
+.mk__mini-stats dd {
+  margin: 2px 0 0;
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── The Eclipse ──────────────────────────────────────────────────────── */
+
+.mk__eclipse {
+  position: relative;
+  padding: clamp(22px, 3vw, 38px) clamp(16px, 2.4vw, 30px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 109, 215, 0.2);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255, 109, 215, 0.09), transparent 70%),
+    rgba(12, 6, 26, 0.7);
+  text-align: center;
+}
+.mk__eclipse-orb {
+  width: clamp(72px, 12vw, 108px); height: clamp(72px, 12vw, 108px);
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #2a1240 0%, #0a0410 62%);
+  box-shadow: 0 0 0 1px rgba(255, 109, 215, 0.35), 0 0 60px -10px rgba(255, 109, 215, 0.7);
+  animation: mkEclipse 9s ease-in-out infinite;
+}
+@keyframes mkEclipse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 109, 215, 0.3), 0 0 46px -12px rgba(255, 109, 215, 0.55); }
+  50%      { box-shadow: 0 0 0 1px rgba(255, 109, 215, 0.6), 0 0 78px -6px rgba(255, 109, 215, 0.85); }
+}
+
+.mk__eclipse-lede { max-width: 62ch; margin: 0 auto 20px; font-size: 13px; line-height: 1.7; color: var(--mk-dim); }
+
+.mk__eclipse-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px; margin: 0 0 20px;
+}
+.mk__eclipse-stats dt { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mk-faint); }
+.mk__eclipse-stats dd {
+  margin: 5px 0 0;
+  font: 700 clamp(16px, 2.2vw, 21px)/1 'Orbitron', system-ui, sans-serif;
+  color: var(--mk-shard);
+  font-variant-numeric: tabular-nums;
+}
+
+.mk__eclipse-ready { margin: 0 0 16px; font-size: 13.5px; line-height: 1.6; color: var(--mk-ink); }
+.mk__eclipse-ready strong { color: var(--mk-shard); }
+
+.mk__eclipse-btn {
+  min-height: 48px;
+  padding: 14px 28px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 109, 215, 0.5);
+  background: linear-gradient(180deg, rgba(190, 60, 160, 0.9), rgba(110, 30, 100, 0.9));
+  color: #fff;
+  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  box-shadow: 0 0 30px -10px rgba(255, 109, 215, 0.9);
+  transition: filter .2s ease, transform .16s ease;
+}
+.mk__eclipse-btn:hover { filter: brightness(1.14); transform: translateY(-1px); }
+.mk__eclipse-btn--go { border-color: #ff2d4d; background: linear-gradient(180deg, rgba(220, 40, 70, 0.92), rgba(140, 16, 40, 0.92)); }
+
+.mk__eclipse-confirm {
+  max-width: 60ch; margin: 0 auto;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 45, 77, 0.34);
+  background: rgba(255, 45, 77, 0.05);
+}
+.mk__eclipse-warn { margin: 0 0 16px; font-size: 12.5px; line-height: 1.65; color: var(--mk-dim); }
+.mk__eclipse-warn strong { color: var(--mk-ink); }
+.mk__eclipse-warn-final { display: block; margin-top: 8px; font-weight: 700; color: #ff2d4d; letter-spacing: 0.05em; }
+.mk__eclipse-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.mk__eclipse-cancel {
+  min-height: 48px; padding: 14px 22px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent; color: var(--mk-dim);
+  font: 600 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.mk__eclipse-cancel:hover { color: var(--mk-ink); border-color: rgba(255, 255, 255, 0.3); }
+
+.mk__eclipse-locked { max-width: 60ch; margin: 0 auto; }
+.mk__eclipse-track {
+  height: 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden; margin-bottom: 14px;
+}
+.mk__eclipse-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--mk-ess), var(--mk-shard));
+  box-shadow: 0 0 14px rgba(255, 109, 215, 0.6);
+  transition: width .6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mk__eclipse-gate { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--mk-dim); }
+.mk__eclipse-gate strong { color: var(--mk-shard); }
+.mk__eclipse-gate-now { display: block; margin-top: 6px; color: var(--mk-faint); }
+
+.mk__eclipse-done {
+  margin: 20px auto 0; max-width: 60ch;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 109, 215, 0.4);
+  background: rgba(255, 109, 215, 0.08);
+  font-size: 13px; line-height: 1.65; color: var(--mk-ink);
+}
+.mk__eclipse-done strong { color: var(--mk-shard); }
 
 /* ── Footer ───────────────────────────────────────────────────────────── */
 
-.mk__foot { margin-top: 34px; text-align: center; }
-.mk__whisper { margin: 0 0 10px; font-size: 12.5px; font-style: italic; color: #6d817c; }
-.mk__links { margin: 0; font-size: 13px; color: #6d817c; }
-.mk__links a { color: #A78BFA; text-decoration: none; }
+.mk__foot { margin-top: clamp(30px, 5vw, 54px); text-align: center; }
+.mk__whisper { margin: 0 0 10px; font-size: 12px; font-style: italic; color: var(--mk-faint); }
+.mk__links { margin: 0; font-size: 12px; color: var(--mk-faint); }
+.mk__links a { color: var(--mk-gold); text-decoration: none; }
 .mk__links a:hover { text-decoration: underline; }
 
-/* ── Mobile: the Market is a full-width surface, not a narrowed desktop one.
-     The ladder collapses to two rows so the price never squeezes the name. ─ */
-@media (max-width: 640px) {
-  .mk { padding-left: 12px; padding-right: 12px; }
-  /* backdrop-filter is off below 768px site-wide (see the 2.1.0 mobile pass) —
-     the panel needs an opaque base or it reads as a flat wash. */
-  .mk__panel { backdrop-filter: none; background-color: rgba(6, 4, 18, 0.9); }
+/* ── Responsive ───────────────────────────────────────────────────────── */
 
-  .mk__row { grid-template-columns: auto minmax(0, 1fr); row-gap: 12px; }
-  .mk__buy { grid-column: 1 / -1; width: 100%; }
-
-  .mk__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mk__coin { flex: 1 1 140px; }
-  .mk__grid { grid-template-columns: 1fr; }
-  .mk__tabs { gap: 6px; }
-  .mk__tab { padding: 8px 12px; font-size: 11px; }
-  .mk__tab-label { display: none; }
-  .mk__tab--active .mk__tab-label { display: inline; }
+/* With the sidebar present there is room to show all nine shelves at once,
+   so the strip wraps rather than hiding its last tabs behind a scroll nobody
+   can see the edge of. Below this it goes back to being a scroller. */
+@media (min-width: 1024px) {
+  .mk__tabs { flex-wrap: wrap; overflow-x: visible; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   The per-second economy: the headline rate, the breakdown, and the Eclipse
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── The headline rate ────────────────────────────────────────────────────
-   Given its own row above the stats grid. Every purchase in this shop exists
-   to move this number, and it was previously one cell of a four-cell <dl>. */
-.mk__rate {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 10px;
-  margin: 18px 0 6px;
-}
-.mk__rate-num {
-  font: 800 clamp(30px, 6vw, 46px)/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .01em;
-  color: #ffd97a;
-  text-shadow: 0 0 26px rgba(232, 117, 42, .55);
-  font-variant-numeric: tabular-nums;
-}
-.mk__rate-unit {
-  font-size: 12px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: #9fb4ae;
+/* Below 1280 the right rail goes under the list; the filter rail stays. */
+@media (max-width: 1279px) {
+  .mk__floor { grid-template-columns: 232px minmax(0, 1fr); }
+  .mk__aside--board { grid-column: 1 / -1; position: static; }
+  .mk__aside--board > * { max-width: 620px; margin-left: auto; margin-right: auto; }
 }
 
-/* "+2.5/sec" off the back of a purchase. Green, because it is the one number
-   in the shop that only ever goes up. */
-.mk__rate-float {
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  font: 800 15px/1 'Orbitron', system-ui, sans-serif;
-  color: #7fd5a3;
-  text-shadow: 0 0 12px rgba(100, 220, 150, .8);
-  white-space: nowrap;
-  pointer-events: none;
-  animation: mkRateFloat 1.2s cubic-bezier(.2, .8, .3, 1) forwards;
-}
-@keyframes mkRateFloat {
-  from { transform: translate(-50%, 6px) scale(.9); opacity: 0; }
-  22%  { opacity: 1; }
-  to   { transform: translate(-50%, -34px) scale(1.06); opacity: 0; }
-}
-
-/* One gold pulse across the wallet when anything is bought. */
-.mk__wallet--flash .mk__coin { animation: mkWalletFlash .52s cubic-bezier(.22, 1, .36, 1); }
-@keyframes mkWalletFlash {
-  0%   { border-color: rgba(201, 168, 76, .3); box-shadow: none; }
-  35%  { border-color: rgba(255, 217, 122, .95); box-shadow: 0 0 30px -6px rgba(255, 217, 122, .8); }
-  100% { border-color: rgba(201, 168, 76, .3); box-shadow: none; }
+/* Below 1024 the price/supply columns fold into the body and the row becomes
+   a card: three tracks instead of six. */
+@media (max-width: 1023px) {
+  .mk__legend { display: none; }
+  .mk__row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon body rarity'
+      'icon meta meta'
+      'action action action';
+    row-gap: 10px;
+  }
+  .mk__row-icon   { grid-area: icon; align-self: start; }
+  .mk__row-body   { grid-area: body; }
+  .mk__row-rarity { grid-area: rarity; align-items: flex-end; }
+  .mk__row-price  { grid-area: meta; justify-content: flex-start; }
+  .mk__row-yield  { grid-area: meta; justify-self: end; text-align: right; }
+  .mk__row-action { grid-area: action; }
+  .mk__buy, .mk__held { width: 100%; }
 }
 
-.mk__coin--shard { border-color: rgba(164, 139, 255, .34); }
-.mk__coin--shard .mk__coin-val { color: #d8c8ff; }
-.mk__coin-glyph {
-  grid-row: 1 / span 2;
-  align-self: center;
-  font-size: 26px;
-  line-height: 1;
+/* Single column. The filter rail collapses into the tab strip, which is
+   already horizontally scrollable and is the only category control here. */
+@media (max-width: 767px) {
+  .mk {
+    padding-left: 12px; padding-right: 12px;
+    /* Site-wide: no backdrop-filter under 768px — it is the wallpaper, not the
+       app, that costs the frame budget. Flat alpha reads the same at this size. */
+    --mk-pane: rgba(15, 10, 30, 0.94);
+    --mk-pane-2: rgba(20, 14, 38, 0.92);
+  }
+  .mk__aside, .mk__main, .mk__coin { backdrop-filter: none; }
+
+  .mk__floor { grid-template-columns: minmax(0, 1fr); }
+  .mk__aside--filters { display: none; }
+  .mk__aside--board { padding: 14px 12px; }
+
+  .mk__main { padding: 12px 10px 16px; border-radius: 14px; }
+  .mk__hero { padding-top: 22px; }
+  .mk__wallet { gap: 8px; }
+  .mk__coin { min-width: 0; flex: 1 1 154px; padding: 10px 13px; }
+  /* Gold is the one figure with ten digits in it. Half a phone width breaks it
+     across two lines; a full row does not. */
+  .mk__coin--gold { flex-basis: 100%; }
+  .mk__coin-icon, .mk__coin-glyph { width: 28px; height: 28px; }
+  .mk__coin-glyph { font-size: 18px; }
+
+  .mk__row { padding: 12px 11px; }
+  .mk__row-icon { width: 40px; height: 40px; font-size: 18px; }
+  .mk__row-name { font-size: 13px; }
+  .mk__legend { display: none; }
+
+  /* The filter rail is gone at this width, which makes the tab strip the only
+     way to change shelf — so it has to clear the 44px target, not the 38px
+     that was fine while it was a secondary control beside a sidebar. */
+  .mk__tab { min-height: 44px; padding: 12px 15px; }
+  .mk__variant { min-height: 44px; padding: 11px 14px; }
+  .mk__patron-alt { min-height: 44px; padding: 13px 8px; }
 }
 
-/* ── The breakdown ────────────────────────────────────────────────────────── */
-.mk__ledger {
-  max-width: 620px;
-  margin: 14px auto 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, .07);
-  background: rgba(10, 6, 26, .55);
-  text-align: left;
-}
-.mk__ledger-sum {
-  cursor: pointer;
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: #9fb4ae;
-  /* A 44px target on the one control in this block. */
-  padding: 8px 0;
-}
-.mk__ledger-sum:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
-.mk__ledger-list { list-style: none; margin: 6px 0 0; padding: 0; }
-
-.mk__ledger-row {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 4px 10px;
-  padding: 7px 0;
-  border-top: 1px solid rgba(255, 255, 255, .05);
-}
-.mk__ledger-label {
-  font: 600 12px/1.3 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
-}
-.mk__ledger-note {
-  min-width: 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: #7d918c;
-  /* The note can name a dozen upgrades; it wraps rather than pushing the value
-     off the right-hand edge. */
-  overflow-wrap: anywhere;
-}
-.mk__ledger-val {
-  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
-  color: #ffd97a;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.mk__ledger-row--mult .mk__ledger-val { color: #c48bff; }
-/* A line doing nothing is kept, not hidden: "×1.00, no Eclipse taken" tells a
-   visitor there is a multiplier here they have not earned yet, which is the
-   more useful message than an absent row. */
-.mk__ledger-row--inert { opacity: .45; }
-.mk__ledger-row--total {
-  margin-top: 4px;
-  border-top: 1px solid rgba(232, 117, 42, .4);
-}
-.mk__ledger-row--total .mk__ledger-label,
-.mk__ledger-row--total .mk__ledger-val { color: #ffe9a8; font-weight: 800; }
-
-/* ── Tab glyphs, for the three shelves with no painted sigil ─────────────── */
-.mk__tab-glyph {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  font-size: 17px;
-  line-height: 1;
-}
-.mk__tab--active[data-currency='shard'] {
-  color: #d8c8ff;
-  border-color: rgba(164, 139, 255, .55);
-  box-shadow: 0 0 24px -8px rgba(123, 97, 255, .9);
-}
-
-/* ── A held single-purchase row ──────────────────────────────────────────── */
-.mk__row--maxed { border-color: rgba(201, 168, 76, .4); }
-.mk__row-held {
-  margin: 0;
-  align-self: center;
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .14em;
-  color: #ffd97a;
-  white-space: nowrap;
-}
-
-/* ── The Eclipse ─────────────────────────────────────────────────────────── */
-.mk__panel--shard { border-color: rgba(164, 139, 255, .2); }
-
-.mk__eclipse {
-  display: grid;
-  justify-items: center;
-  gap: 18px;
-  max-width: 620px;
-  margin: 0 auto;
-  padding: 26px 18px;
-  text-align: center;
-}
-
-/* The broken sun, in two gradients. Same trick as the cosmic planet: a
-   radial body with a second layer bitten out of one side. */
-.mk__eclipse-orb {
-  width: clamp(88px, 22vw, 128px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, #14091f 58%, transparent 59%),
-    radial-gradient(circle at 50% 50%, #ffd97a 0%, #E8752A 46%, #7b2ff7 72%, transparent 78%);
-  box-shadow: 0 0 60px -10px rgba(232, 117, 42, .55);
-  animation: mkEclipseBreathe 7s ease-in-out infinite;
-}
-@keyframes mkEclipseBreathe {
-  0%, 100% { transform: scale(1);    filter: brightness(1); }
-  50%      { transform: scale(1.05); filter: brightness(1.2); }
-}
-
-.mk__eclipse-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  width: 100%;
-  margin: 0;
-}
-.mk__eclipse-stats div { text-align: center; }
-.mk__eclipse-stats dt {
-  font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c;
-}
-.mk__eclipse-stats dd {
-  margin: 4px 0 0;
-  font: 700 17px/1 'Orbitron', system-ui, sans-serif;
-  color: #d8c8ff;
-  font-variant-numeric: tabular-nums;
-}
-
-.mk__eclipse-ready { margin: 0; font-size: 13px; line-height: 1.6; color: #b9cdc7; }
-.mk__eclipse-ready strong { color: #ffd97a; }
-
-.mk__eclipse-btn {
-  min-height: 52px;
-  padding: 0 26px;
-  border-radius: 999px;
-  border: 1px solid rgba(232, 117, 42, .6);
-  background: linear-gradient(135deg, rgba(232, 117, 42, .22), rgba(123, 47, 247, .22));
-  color: #ffe9a8;
-  font: 800 13px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .16em;
-  cursor: pointer;
-  transition: border-color .25s ease, box-shadow .25s ease, transform .18s ease;
-}
-.mk__eclipse-btn:hover {
-  border-color: rgba(255, 217, 122, .9);
-  box-shadow: 0 0 34px -8px rgba(232, 117, 42, .9);
-}
-.mk__eclipse-btn:active { transform: scale(.96); }
-.mk__eclipse-btn:focus-visible { outline: 2px solid #A78BFA; outline-offset: 4px; }
-.mk__eclipse-btn--go {
-  border-color: rgba(255, 45, 77, .7);
-  background: linear-gradient(135deg, rgba(255, 45, 77, .26), rgba(123, 47, 247, .26));
-  color: #ffd0d8;
-  animation: mkEclipsePulse 1.8s ease-in-out infinite;
-}
-@keyframes mkEclipsePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 45, 77, .38); }
-  50%      { box-shadow: 0 0 26px 2px rgba(255, 45, 77, .5); }
-}
-
-.mk__eclipse-confirm {
-  display: grid;
-  gap: 14px;
-  justify-items: center;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 45, 77, .35);
-  background: rgba(28, 6, 16, .6);
-}
-.mk__eclipse-warn { margin: 0; font-size: 12px; line-height: 1.65; color: #d7c2c8; }
-.mk__eclipse-warn strong { color: #ffd97a; }
-.mk__eclipse-warn-final { display: block; margin-top: 6px; color: #ff8fa3; font-weight: 700; }
-.mk__eclipse-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.mk__eclipse-cancel {
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: transparent;
-  color: #9fb4ae;
-  font-size: 12px;
-  cursor: pointer;
-}
-.mk__eclipse-cancel:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, .3); }
-.mk__eclipse-cancel:focus-visible { outline: 2px solid #A78BFA; outline-offset: 3px; }
-
-.mk__eclipse-locked { width: 100%; display: grid; gap: 10px; }
-.mk__eclipse-track {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .07);
-  overflow: hidden;
-}
-.mk__eclipse-fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #E8752A, #7b2ff7);
-  transition: width .6s cubic-bezier(.22, 1, .36, 1);
-}
-.mk__eclipse-gate { margin: 0; font-size: 12px; line-height: 1.6; color: #7d918c; }
-.mk__eclipse-gate strong { color: #c48bff; }
-.mk__eclipse-gate-now { display: block; margin-top: 4px; color: #9fb4ae; }
-
-.mk__eclipse-done {
-  margin: 0;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(201, 168, 76, .45);
-  background: rgba(232, 117, 42, .1);
-  font-size: 13px;
-  line-height: 1.6;
-  color: #ffe9a8;
-}
-
-@media (max-width: 640px) {
-  .mk__eclipse-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mk__ledger-row { grid-template-columns: minmax(0, 1fr) auto; }
-  /* The note drops under the label rather than fighting it for a 375px row. */
-  .mk__ledger-note { grid-column: 1 / -1; }
-  .mk__rate-num { font-size: 34px; }
-}
+/* ── Reduced motion ───────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .mk__eyebrow-pulse { animation: none; opacity: .9; }
-  .mk__row--flash, .mk__card--flash, .mk__row--denied, .mk__card--denied { animation: none; }
-  .mk__buy:active:not(:disabled) { transform: none; }
-  .mk__row, .mk__card, .mk__buy, .mk__tab, .mk__variant, .mk__relic { transition: none; }
-
-  /* The rate floater still says what was gained; it stops travelling. It is
-     parked visible and the component's own timer removes it after 1.2s.
-     Deliberately NOT a fade keyframe declared in here: Angular rewrites
-     @keyframes names for scoping but does not rewrite an `animation` shorthand
-     that sits inside a @media block, so the reference would point at a rule
-     that does not exist and the floater would never appear at all — silently,
-     with no console error and no build warning. The Forge Flame shipped in
-     exactly that state for months. Cancel, never re-name, inside a query. */
-  .mk__rate-float { animation: none; opacity: 1; transform: translate(-50%, -18px); }
-  .mk__wallet--flash .mk__coin { animation: none; border-color: rgba(255, 217, 122, .8); }
-  .mk__eclipse-orb, .mk__eclipse-btn--go { animation: none; }
+  /* Every loop stops at a legible frame rather than simply not running. */
+  .mk__sigil        { animation: none; opacity: .9; }
+  .mk__title        { animation: none; background-position: 0% 50%; }
+  .mk__eyebrow-pulse,
+  .mk__patron-sigil { animation: none; opacity: 1; }
+  .mk__eclipse-orb  { animation: none; box-shadow: 0 0 0 1px rgba(255, 109, 215, 0.45), 0 0 60px -10px rgba(255, 109, 215, 0.7); }
+  .mk__rate-float   { animation: none; opacity: 1; transform: translate(-50%, -18px); }
+  .mk__row--flash, .mk__row--denied { animation: none; }
   .mk__eclipse-fill { transition: none; }
+  .mk__buy:hover:not(:disabled), .mk__patron-cta:hover, .mk__eclipse-btn:hover { transform: none; }
 }
