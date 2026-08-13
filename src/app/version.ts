@@ -69,6 +69,18 @@ export const VERSION_HISTORY: VersionRelease[] = [
     ]
   },
   {
+    version: '2.56.1',
+    codename: 'Cartographer',
+    date: '2026-08-13',
+    highlights: [
+      'Signing in on a phone and on a PC produced two unrelated Godforges while both devices reported "Synced". The bag, the character sheet, the explorer roster, the expedition log, the rune ledger and the scroll collection were never in the sync registry at all — six blobs that went missing across five releases, because nothing fails when a key is left out of it. XP, Gold and the eggs reconciled correctly the whole time, which is exactly why this looked like sync and was not',
+      'Three of the six needed a rule of their own rather than the generous structural default. Taking the higher of two stat builds field by field hands out points nobody earned; an item\'s placement belongs to one device, so a merged one would be worn in a slot neither put it in; and an expedition in flight is a wall-clock timer that must not be adopted, or the mission pays out twice. The Pro pack rides along for the opposite complaint — bought on a desktop, it showed ads on the phone',
+      'The ten-second push loop overwrote the cloud outright, which undid the careful merge at sign-in every time. Earn 500 Gold on a phone and a desktop tab left open since the morning erased it on its next tick, silently, with both devices still reporting "Synced" — because from each one\'s side it was. Progression had the same shape of bug; the rule refusing a smaller xp caught the outright wipes and nothing else, so achievements and the daily history regressed quietly whenever it did not fire',
+      'Both write paths now read before they write and merge under the rules the sign-in already used, so two devices commute — whatever order they write in, they converge, and one that is behind can no longer erase one that is ahead. An explicit "keep this save" from the merge dialog still overwrites, because that is a visitor overruling the rules on purpose',
+      'Nothing ever pulled a second time. Reconciling happened once, at sign-in, so a tab left open never looked at the cloud again and an evening on a phone stayed invisible on the PC until the page happened to be reloaded. Returning to a hidden tab now re-runs the whole pass, floored at a minute — that is the moment somebody has put one device down and picked up another, and it costs nothing on the tabs nobody leaves',
+    ]
+  },
+  {
     version: '2.56.0',
     codename: 'Cartographer',
     date: '2026-08-13',

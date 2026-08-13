@@ -1,7 +1,7 @@
 /**
  * cloud-save.model.ts — what gets synced, and how two devices are reconciled.
  *
- * The Godforge keeps its state in ten independent localStorage blobs, each
+ * The Godforge keeps its state in eighteen independent localStorage blobs, each
  * owned by the service that understands it. Cloud save deliberately does *not*
  * take that ownership away: every service keeps reading and writing localStorage
  * synchronously, exactly as it does today, and this layer copies those blobs up
@@ -143,7 +143,282 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // a combo is a rhythm being held, and there is no honest way to store
     // "mid-run" or to hand one device a streak the other earned.
   },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The RPG layer
+  // ───────────────────────────────────────────────────────────────────────────
+  // Everything below arrived after this registry was written — the RuneForge in
+  // v2.47, Lore Scrolls in v2.49, the character sheet and expeditions in v2.55 —
+  // and none of it was added here. The effect was not a partial sync that looked
+  // partial: XP, Gold and eggs reconciled correctly, so both devices reported
+  // "Synced" while a visitor's entire bag, stat build, roster, rune ledger and
+  // scroll collection stayed device-local and silently diverged.
+  //
+  // The lesson is structural rather than a list of six oversights: the registry
+  // is the *only* thing that knows a blob exists, and nothing fails when a new
+  // one is missing from it. Any service that adds a localStorage key holding
+  // progression has to add it here in the same change.
+  {
+    key: 'godforge-inventory',
+    collection: 'progress',
+    doc: 'inventory',
+    label: 'inventory',
+    merge: mergeInventory,
+  },
+  {
+    key: 'godforge-stats',
+    collection: 'progress',
+    doc: 'stats',
+    label: 'character sheet',
+    merge: mergeStatBuild,
+  },
+  {
+    key: 'godforge-roster',
+    collection: 'progress',
+    doc: 'roster',
+    label: 'explorer roster',
+    merge: mergeRoster,
+  },
+  {
+    key: 'godforge-explorers',
+    collection: 'progress',
+    doc: 'expeditions',
+    label: 'expedition log',
+    merge: mergeExpeditions,
+  },
+  {
+    key: 'godforge-runes',
+    collection: 'progress',
+    doc: 'runes',
+    label: 'rune ledger',
+    merge: mergeRuneLedger,
+  },
+  {
+    key: 'godforge-scrolls',
+    collection: 'progress',
+    doc: 'scrolls',
+    label: 'lore scrolls',
+    merge: mergeScrollLedger,
+  },
+  {
+    key: 'godforge-pro',
+    collection: 'progress',
+    doc: 'pro',
+    label: 'Pro pack',
+    // Not progression — an entitlement somebody paid for, and the one blob where
+    // the visible bug was the reverse of the others: buying the pack on a
+    // desktop and then opening the site on a phone showed the ads again. The
+    // structural rules are already right for it (a flag that has been set stays
+    // set), and `grantsSettled` riding the same OR is what stops the currency
+    // grant being minted a second time on the device that adopts it.
+  },
 ];
+
+/**
+ * Bag ceiling. Mirrors MAX_INVENTORY in inventory.service.ts.
+ *
+ * Duplicated rather than imported so this file stays free of the game models —
+ * the registry is loaded by the header on every page, and item.model.ts is not.
+ */
+const MAX_INVENTORY = 250;
+
+/** Roster ceiling. Mirrors MAX_ROSTER in explorer-roster.service.ts. */
+const MAX_ROSTER = 20;
+
+/**
+ * Two bags into one, keyed by item id.
+ *
+ * The structural rules are wrong here in a way that is worth naming, because
+ * they fail quietly rather than loudly. `GameItem` carries `equipped`, `slot`
+ * and `explorerId` — where the item *is* — and merging those field by field
+ * takes the boolean OR of `equipped` and the greater of two `slot` strings,
+ * which is how a sword worn on one device and a hammer worn on the other end up
+ * both claiming the same slot and both paying stats. Identity is the right unit:
+ * an item exists in exactly one place, so the local record wins whole or the
+ * remote one is adopted whole, and nothing is ever half-merged.
+ *
+ * `InventoryService.load()` runs `dedupeSlots()` over whatever it reads, so the
+ * one case this cannot avoid — the same id equipped in different slots on each
+ * device — is resolved on the way in rather than defended against here.
+ *
+ * The cap is the reason this is not simply a union: two full bags merge to 500
+ * items, and the blob is parsed on every page load. Eviction follows the
+ * service's own rule — worn items are never dropped, then the most valuable are
+ * kept — so a merge cannot silently destroy what a visitor is wearing.
+ */
+function mergeInventory(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  const items = unionById(asArray(remote['items']), asArray(local['items']));
+
+  return {
+    ...local,
+    version: 1,
+    items: items.length > MAX_INVENTORY ? evictToCap(items, MAX_INVENTORY) : items,
+    goldFromSales: maxOf(remote['goldFromSales'], local['goldFromSales']),
+    sold: maxOf(remote['sold'], local['sold']),
+  };
+}
+
+/**
+ * Union of two object arrays by `id`, local first, with the local record kept
+ * whole wherever both sides hold the same id.
+ */
+function unionById(remote: unknown[], local: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+
+  for (const list of [local, remote]) {
+    for (const entry of list) {
+      const id = isPlainObject(entry) && typeof entry['id'] === 'string' ? entry['id'] : null;
+      const key = id ?? `j:${safeStringify(entry)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(entry);
+    }
+  }
+  return out;
+}
+
+/** Keep everything worn, then the most valuable, up to `cap`. */
+function evictToCap(items: unknown[], cap: number): unknown[] {
+  const worn = items.filter(isWorn);
+  const loose = items.filter(i => !isWorn(i))
+    .sort((a, b) => numberOf(valueOf(b)) - numberOf(valueOf(a)));
+  // Worn items are never evicted; on the pathological blob where more than `cap`
+  // items claim to be worn, the cap yields rather than the wardrobe.
+  return [...worn, ...loose].slice(0, Math.max(cap, worn.length));
+}
+
+function isWorn(item: unknown): boolean {
+  if (!isPlainObject(item)) return false;
+  return item['equipped'] === true || typeof item['explorerId'] === 'string';
+}
+
+function valueOf(item: unknown): unknown {
+  return isPlainObject(item) ? item['sellValue'] : 0;
+}
+
+/**
+ * Two stat builds into one — the one blob where the generous merge would mint
+ * something out of nothing.
+ *
+ * Stat points are *spent*, not accumulated: a visitor at rank 10 has a fixed
+ * number of them and has chosen where they went. Taking the field-wise maximum
+ * of two builds gives 5 Strength from the desktop and 5 Luck from the phone to
+ * somebody who only ever earned five points, and the character sheet then reads
+ * a total it was never paid for. So a build is adopted whole, and the side that
+ * has settled more ranks — the one that has been played further — is the one
+ * that wins. `respecs` is a lifetime tally and takes the larger, because that
+ * one really is a counter.
+ */
+function mergeStatBuild(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  const remoteRank = numberOf(remote['levelsGranted']);
+  const localRank = numberOf(local['levelsGranted']);
+  // Ties go to the device in the visitor's hands: two builds settled to the same
+  // rank are two valid answers, and the one they can see is the one they meant.
+  const winner = remoteRank > localRank ? remote : local;
+
+  return {
+    ...winner,
+    version: 1,
+    levelsGranted: Math.max(remoteRank, localRank),
+    respecs: maxOf(remote['respecs'], local['respecs']),
+  };
+}
+
+/**
+ * Two rosters into one. Explorers are hired, not levelled, so identity is again
+ * the unit — a merged explorer would be a half of each.
+ */
+function mergeRoster(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  const explorers = unionById(asArray(remote['explorers']), asArray(local['explorers']));
+
+  return {
+    ...local,
+    version: 1,
+    explorers: explorers.slice(0, MAX_ROSTER),
+    // Once either device has minted the starter, nobody gets a second one.
+    seeded: remote['seeded'] === true || local['seeded'] === true,
+    found: maxOf(remote['found'], local['found']),
+  };
+}
+
+/**
+ * Lifetime expedition tallies merge; expeditions in flight do not.
+ *
+ * `active` holds running missions with a wall-clock deadline on the device that
+ * started them. Unioning two devices' in-flight lists hands somebody a mission
+ * they never dispatched, and one of the two copies would then pay out twice.
+ * The device being used keeps its own runs; the counters underneath, which are
+ * genuinely lifetime totals, take the larger.
+ */
+function mergeExpeditions(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  return {
+    ...local,
+    version: 1,
+    active: asArray(local['active']),
+    itemsFound: maxOf(remote['itemsFound'], local['itemsFound']),
+    runesFound: maxOf(remote['runesFound'], local['runesFound']),
+    scrollsFound: maxOf(remote['scrollsFound'], local['scrollsFound']),
+    missionsCompleted: maxOf(remote['missionsCompleted'], local['missionsCompleted']),
+    goldRecovered: maxOf(remote['goldRecovered'], local['goldRecovered']),
+  };
+}
+
+/**
+ * The rune ledger. Counts take the larger; first-found dates take the earlier,
+ * for the same reason the egg dates do — these are the moments a rune was
+ * *first* pulled, and a later one is the same discovery made again elsewhere.
+ */
+function mergeRuneLedger(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  return {
+    ...local,
+    version: 1,
+    runes: mergeDeep(remote['runes'] ?? {}, local['runes'] ?? {}),
+    firstFound: mergeEarliestDates(remote['firstFound'], local['firstFound']),
+    strikes: maxOf(remote['strikes'], local['strikes']),
+    goldSpent: maxOf(remote['goldSpent'], local['goldSpent']),
+  };
+}
+
+/** Scrolls: found-dates take the earlier, read-ids union. */
+function mergeScrollLedger(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  return {
+    ...local,
+    version: 1,
+    found: mergeEarliestDates(remote['found'], local['found']),
+    read: mergeDeep(asArray(remote['read']), asArray(local['read'])),
+  };
+}
+
+function maxOf(a: unknown, b: unknown): number {
+  return Math.max(numberOf(a), numberOf(b));
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
 
 /** How many runs the Realm Rush board keeps. Mirrors BOARD_SIZE in its component. */
 const BOARD_SIZE = 5;
