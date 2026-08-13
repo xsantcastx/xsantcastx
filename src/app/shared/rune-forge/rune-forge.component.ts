@@ -17,7 +17,7 @@ import {
   PLATFORM_ID,
   inject,
 } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -83,6 +83,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly audio = inject(ForgeAudioService);
   private readonly scrolls = inject(LoreScrollService);
+  private readonly doc = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
@@ -121,8 +122,34 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   /** Set when a strike is refused for want of Gold. Cleared on the next strike. */
   broke = false;
 
+  /**
+   * The painted forge, preloaded per breakpoint.
+   *
+   * Scoped to this route rather than declared in index.html: a global preload
+   * would pull ~140KB of a single route's artwork on every page of the site,
+   * which is the opposite of what a preload is for. Added from the component
+   * so it lands in this route's prerendered HTML — the same arrangement the
+   * homepage hero uses, and the reason both are removed again in ngOnDestroy.
+   *
+   * The media queries mirror the <picture> sources exactly. If they disagree,
+   * the browser preloads one file and then downloads a different one.
+   */
+  private static readonly HERO_PRELOADS: ReadonlyArray<{ href: string; media: string }> = [
+    { href: 'assets/images/runeforge-hero-768.webp',  media: '(max-width: 768px)' },
+    { href: 'assets/images/runeforge-hero-1280.webp', media: '(min-width: 768.02px) and (max-width: 1280px)' },
+    { href: 'assets/images/runeforge-hero-1536.webp', media: '(min-width: 1280.02px)' },
+  ];
+
+  private static readonly ART_ROUTE_CLASS = 'gf-art-route';
+
   ngOnInit(): void {
     this.forge.init();
+    this.addHeroPreloads();
+    // Switches off the site's CSS atmosphere — the body gradient, the nebula,
+    // the starfield, the matrix layer, the pulsar, the corner runes and the
+    // constellation canvas — for this route. All of it was the stand-in for
+    // artwork this page now has, and running both is two forges at once.
+    this.markArtRoute(true);
     if (!this.isBrowser) return;
 
     this.subs.add(this.forge.snapshot$.subscribe(snap => {
@@ -148,7 +175,35 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     }));
   }
 
+  private addHeroPreloads(): void {
+    const head = this.doc.head;
+    if (!head || head.querySelector('link[data-rf-hero]')) return;
+    for (const p of RuneForgeComponent.HERO_PRELOADS) {
+      const link = this.doc.createElement('link');
+      link.setAttribute('rel', 'preload');
+      link.setAttribute('as', 'image');
+      link.setAttribute('type', 'image/webp');
+      link.setAttribute('media', p.media);
+      link.setAttribute('href', p.href);
+      link.setAttribute('data-rf-hero', '');
+      head.appendChild(link);
+    }
+  }
+
+  private removeHeroPreloads(): void {
+    this.doc.head?.querySelectorAll('link[data-rf-hero]').forEach(el => el.remove());
+  }
+
+  private markArtRoute(add: boolean): void {
+    const body = this.doc.body;
+    if (!body) return;
+    if (add) body.classList.add(RuneForgeComponent.ART_ROUTE_CLASS);
+    else body.classList.remove(RuneForgeComponent.ART_ROUTE_CLASS);
+  }
+
   ngOnDestroy(): void {
+    this.removeHeroPreloads();
+    this.markArtRoute(false);
     this.subs.unsubscribe();
     if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
