@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.52.0',
+  version: '2.53.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Obsidian',
+  codename: 'Codex',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.53.0',
+    codename: 'Codex',
+    date: '2026-08-13',
+    highlights: [
+      'Ten more tools have a story behind them, taking the codex from ten entries to twenty — fifty new chapters, around fifteen thousand words',
+      'The Architect\'s Grid, the Ward Reader, the Seal Breaker, the Living Scroll, the Time Keeper\'s Garden, the Seed Ledger, the Whispering Pages, the Flame Court, the Gauntlet of the Grand Gate and the Name Forge',
+      'Every story runs five chapters and each one opens at a use count — the first is always readable, the second at ten, then twenty-five, fifty and a hundred. Nothing is gated behind an account, a payment or a secret, only behind having actually used the thing',
+      'A locked chapter shows its numeral and how many uses are left, so the shape of what is missing is visible without spoiling it',
+      'Realms are still derived from the registry category rather than authored in the codex, so three of these landed somewhere other than planned and the prose was written to fit — the Seal Breaker turned out to share a building with the Ward Reader, and the two stories now reference each other'
+    ]
+  },
   {
     version: '2.52.0',
     codename: 'Obsidian',
