@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.57.1',
+  version: '2.57.2',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Bazaar',
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.57.2',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'Global CSS is 17% smaller raw and 14% smaller gzipped (48.7 kB to 40.4 kB squashed, 11.2 kB to 9.6 kB over the wire) on every page, /tools included. 77 rules and 161 class names went, all of them leftovers from a design the site stopped using several releases ago: the galaxy map and star system, the orbiting stars and the warp overlay, the CSS planet and its nine layers, the whole lp-* live-preview block, tools-cta, the old hp-hero/spotlight/live/sub/changelog surfaces, skill-card and project-card',
+      'Nothing removed here could change a pixel, and that was the bar for including it. Every one of the 161 was checked for being APPLIED — a class attribute, a [class.x] binding, an ngClass literal, a classList call or a className assignment — across every html, ts and js file, not merely mentioned somewhere. That distinction is what kept .tool-card (still used by /blueprint and /mcp), .cosmic-char and .cosmic-tilting (added at runtime by cosmic-engine.js, which the first sweep never read) and .btn-live-preview (a substring match on .live-preview) out of the list',
+      'Four keyframes nothing referenced any more went with them — nebulaHue, lp-line-in, lp-progress, lp-blink — and the dangling-animation sweep the design notes ask for after any CSS refactor was re-run over every stylesheet: zero dangling references remain. Its one cross-file hit, agPulse, is legitimate — shadow-cipher lists arena-game.css in its own styleUrls, so the two share an encapsulation scope',
+      'cosmic-engine.js had rotted the same way its own comments describe from the 2.44.0 purge. Its hover, cursor, tilt, reveal and typewriter selector lists between them named fourteen classes that exist nowhere — .galaxy, .orbit-star, .skill-card, .project-card, .hp-spotlight__card, .tools-cta, .tools-header__title and `.skills h2` among them, the last aimed at a component deleted outright. /tools was getting no reveal, no hover lines and no tilt because every selector pointed at it had been deleted out from under it',
+      '/tools stays out of the engine\'s reveal and tilt lists on purpose rather than by oversight. Its gates run their own reveal, which kindles an edge instead of gating opacity, and listing them globally would put the page\'s content back behind an observer — the exact failure 2.56.0 was built to avoid. A gate already answers the cursor with a lift and a parallax push, so a tilt on the same surface would be two alive interactions on one card',
+    ]
+  },
   {
     version: '2.57.1',
     codename: 'Bazaar',
