@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.56.1',
+  version: '2.57.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Cartographer',
+  codename: 'Bazaar',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,22 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.57.0',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      '/market was nine tabs over one ledger, each with its own hand-written panel — nine copies of a row, nine buy buttons, and nine places for a change to land on eight of them. Finding anything meant knowing which tab it lived on first, which is the one thing a shopper does not know. Every catalog is now projected into one item shape and rendered by one row, so category is a filter rather than a place',
+      'Search, rarity and price work across the whole inventory at once. Typing "hammer" returns hammers without the visitor having been told where hammers are kept, and the rarity facet pulls the Mythic rung out of all eight shelves together rather than one at a time',
+      'The floor is three columns: search, shelves and rarity tiers on the left with live counts; the inventory in the centre as one row shape — icon, name, effect, lore, rarity badge, price, yield, action — paginated eight at a time; and on the right a board of holdings, the Patron card, and the Gold income breakdown moved out of the masthead. The currency bar reads Gold, Essence, Shards, rate and total value up front, so what can be spent is known before anything to spend it on is shown',
+      'The Eclipse stayed a panel instead of becoming a row. It is not a purchase — it is a reset that takes every Gold ladder the visitor owns — and a BUY button on that in a list of BUY buttons would be a trap. Its two-click arming, and the full accounting of what it takes, are unchanged',
+      'Rarity is derived from the rung rather than authored onto 32 more catalog entries. Only Artifacts carry a real tier; everything else takes one from its position in its own catalog, mapped across the six Eclipse tiers. The ladders are already ordered by price, so the badge and the number cannot contradict each other, and adding an item re-grades its shelf rather than needing a decision. The tiers are the site\'s existing Eclipse ladder, not a second Common-to-Legendary vocabulary standing beside it',
+      'The board names what it is showing. It reads the visitor\'s own deepest holdings and says "deepest holdings" when it has them, and falls back to a curated realm-wide list under "most forged" only until there is real data — so a curated list never wears the words "in your forge"',
+      'The scroll reveal hides nothing that a script did not first arm. The usual opacity:0-until-observed shape would have left the entire shop invisible to anything that never ran the observer, and this page is prerendered precisely so its inventory reads without JS. The served markup is visible; only a browser that reached armReveal opts in, and only for blocks below the fold, so nothing is painted and then hidden',
+      'The item list is cached against the balances and holdings rather than rebuilt per getter. The template reads it through five accessors and the ledger publishes every second — without the cache that is five rebuilds of 37 items a second for a page where one number moved',
+      'On mobile the filter rail folds into the tab strip, which is why that strip moved to 44px there: it stops being a control beside a sidebar and becomes the only way to change shelf. Verified at 375 with zero horizontal overflow, and Gold takes a full-width row of its own so a ten-digit figure does not wrap mid-number',
+    ]
+  },
   {
     version: '2.56.1',
     codename: 'Cartographer',
