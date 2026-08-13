@@ -12,6 +12,7 @@ import { RealmService } from './shared/realms/realm.service';
 import { PageAtmosphereService } from './shared/atmosphere/atmosphere.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
+import { RpgWiringService } from './shared/rpg/rpg-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
 import { InlineFlameService } from './shared/economy/inline-flame.service';
@@ -36,6 +37,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private atmosphere = inject(PageAtmosphereService);
   private questWiring = inject(QuestWiringService);
   private economyWiring = inject(EconomyWiringService);
+  private rpgWiring = inject(RpgWiringService);
   private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
   private inlineFlame = inject(InlineFlameService);
@@ -99,6 +101,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
+
+    // The RPG layer hydrates ahead of the economy for the same reason the
+    // economy hydrates ahead of progression: the XP multiplier installed inside
+    // `economyWiring.init()` now reads Wisdom and equipped `xpBonus`, and the
+    // first award of a full page load happens synchronously inside
+    // `xpWiring.init()` a few lines below. Stats read from an unhydrated store
+    // are all zero, so a visitor with twenty points of Wisdom would be paid the
+    // unbonused amount for the landing route on every reload — the same bug the
+    // Fragment of the First Sun had, in the same place, for the same reason.
+    //
+    // It also puts the flat Gold/sec mirror in the ledger before the first idle
+    // settlement prices the time since the last visit.
+    this.rpgWiring.init();
 
     // The Godforge economy goes first, ahead of progression, because it owns
     // the XP multiplier that enchantments and artifacts are sold on. XpService
