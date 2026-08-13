@@ -291,10 +291,246 @@ describe('the trophy case', () => {
   });
 });
 
+/**
+ * The RPG layer, which was device-local for five releases.
+ *
+ * Every blob below existed, was written on both devices, and was never in
+ * SYNCED_BLOBS — so cloud save reported "Synced" while a visitor's bag, build,
+ * roster and rune ledger diverged completely between their phone and their PC.
+ * The registry test at the bottom of this file is the one that stops it
+ * happening again; these pin down that each of them merges *correctly* now that
+ * it does sync, because three of them are cases where the generous structural
+ * default would have been actively wrong.
+ */
+describe('the RPG layer', () => {
+  const blob = (key: string) => {
+    const found = SYNCED_BLOBS.find(b => b.key === key);
+    expect(found).withContext(`${key} is not registered for sync`).toBeDefined();
+    return found!;
+  };
+
+  describe('the bag', () => {
+    const merge = (r: unknown, l: unknown) => blob('godforge-inventory').merge!(r, l) as {
+      items: { id: string; equipped?: boolean; slot?: string }[];
+      goldFromSales: number;
+    };
+
+    const item = (id: string, extra: Record<string, unknown> = {}) => ({
+      id, name: id, type: 'weapon', rarity: 'common', stats: {},
+      sellValue: 10, equipped: false, foundAt: '2026-08-01T00:00:00.000Z',
+      soulbound: false, ...extra,
+    });
+
+    it('keeps items found on either device', () => {
+      const merged = merge(
+        { version: 1, items: [item('a'), item('b')], goldFromSales: 0, sold: 0 },
+        { version: 1, items: [item('b'), item('c')], goldFromSales: 0, sold: 0 },
+      );
+      expect(merged.items.map(i => i.id).sort()).toEqual(['a', 'b', 'c']);
+    });
+
+    it('does not half-merge where an item is worn', () => {
+      // The structural rules would OR the two `equipped` flags and take the
+      // greater `slot` string, producing an item that is worn in a slot neither
+      // device ever put it in. Identity is the unit: the local record wins whole.
+      const merged = merge(
+        { version: 1, items: [item('a', { equipped: true, slot: 'offhand' })], goldFromSales: 0, sold: 0 },
+        { version: 1, items: [item('a', { equipped: false })], goldFromSales: 0, sold: 0 },
+      );
+      expect(merged.items.length).toBe(1);
+      expect(merged.items[0].equipped).toBe(false);
+      expect(merged.items[0].slot).toBeUndefined();
+    });
+
+    it('takes the higher lifetime till', () => {
+      const merged = merge(
+        { version: 1, items: [], goldFromSales: 900, sold: 4 },
+        { version: 1, items: [], goldFromSales: 120, sold: 1 },
+      );
+      expect(merged.goldFromSales).toBe(900);
+    });
+
+    it('stays inside the bag cap, and never drops what is worn', () => {
+      const many = (prefix: string) => Array.from({ length: 200 }, (_, i) =>
+        item(`${prefix}${i}`, { sellValue: i }));
+      const merged = merge(
+        { version: 1, items: many('r'), goldFromSales: 0, sold: 0 },
+        { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'head', sellValue: 0 })], goldFromSales: 0, sold: 0 },
+      );
+      expect(merged.items.length).toBe(250);
+      expect(merged.items.some(i => i.id === 'worn')).toBe(true);
+    });
+  });
+
+  describe('the character sheet', () => {
+    const merge = (r: unknown, l: unknown) => blob('godforge-stats').merge!(r, l) as {
+      stats: Record<string, number>; levelsGranted: number; respecs: number;
+    };
+
+    it('adopts one build whole rather than maxing the five bars', () => {
+      // Five earned points spent on Strength here and on Luck there would come
+      // back as ten under the structural rules — a build nobody paid for.
+      const merged = merge(
+        { version: 1, stats: { strength: 5, luck: 0 }, levelsGranted: 6, respecs: 0 },
+        { version: 1, stats: { strength: 0, luck: 5 }, levelsGranted: 6, respecs: 0 },
+      );
+      const spent = Object.values(merged.stats).reduce((a, b) => a + b, 0);
+      expect(spent).toBe(5);
+    });
+
+    it('takes the build that has been played further', () => {
+      const merged = merge(
+        { version: 1, stats: { strength: 9 }, levelsGranted: 10, respecs: 0 },
+        { version: 1, stats: { luck: 2 }, levelsGranted: 3, respecs: 0 },
+      );
+      expect(merged.stats).toEqual({ strength: 9 });
+      expect(merged.levelsGranted).toBe(10);
+    });
+
+    it('keeps the device in hand on a tie, and the higher respec tally', () => {
+      const merged = merge(
+        { version: 1, stats: { strength: 3 }, levelsGranted: 4, respecs: 7 },
+        { version: 1, stats: { luck: 3 }, levelsGranted: 4, respecs: 1 },
+      );
+      expect(merged.stats).toEqual({ luck: 3 });
+      expect(merged.respecs).toBe(7);
+    });
+  });
+
+  describe('the roster and its expeditions', () => {
+    it('unions explorers and never re-mints the starter', () => {
+      const merged = blob('godforge-roster').merge!(
+        { version: 1, explorers: [{ id: 'x' }], seeded: true, found: 3 },
+        { version: 1, explorers: [{ id: 'y' }], seeded: false, found: 1 },
+      ) as { explorers: { id: string }[]; seeded: boolean; found: number };
+
+      expect(merged.explorers.map(e => e.id).sort()).toEqual(['x', 'y']);
+      expect(merged.seeded).toBe(true);
+      expect(merged.found).toBe(3);
+    });
+
+    it('merges lifetime hauls but leaves missions in flight alone', () => {
+      // An expedition is a wall-clock timer on the device that dispatched it.
+      // Adopting the other device's would pay out a mission never sent.
+      const merged = blob('godforge-explorers').merge!(
+        { version: 1, active: [{ id: 'remote-run' }], itemsFound: 40, goldRecovered: 900 },
+        { version: 1, active: [{ id: 'local-run' }], itemsFound: 12, goldRecovered: 100 },
+      ) as { active: { id: string }[]; itemsFound: number; goldRecovered: number };
+
+      expect(merged.active.map(e => e.id)).toEqual(['local-run']);
+      expect(merged.itemsFound).toBe(40);
+      expect(merged.goldRecovered).toBe(900);
+    });
+  });
+
+  describe('runes and scrolls', () => {
+    it('holds the most of each rune, and the earliest time it was pulled', () => {
+      const merged = blob('godforge-runes').merge!(
+        { version: 1, runes: { el: 3 }, firstFound: { el: '2026-08-09T00:00:00.000Z' }, strikes: 80, goldSpent: 400 },
+        { version: 1, runes: { el: 1, tir: 2 }, firstFound: { el: '2026-08-01T00:00:00.000Z' }, strikes: 20, goldSpent: 100 },
+      ) as { runes: Record<string, number>; firstFound: Record<string, string>; strikes: number };
+
+      expect(merged.runes).toEqual({ el: 3, tir: 2 });
+      expect(merged.firstFound['el']).toBe('2026-08-01T00:00:00.000Z');
+      expect(merged.strikes).toBe(80);
+    });
+
+    it('unions scrolls found and read', () => {
+      const merged = blob('godforge-scrolls').merge!(
+        { version: 1, found: { s1: '2026-08-05T00:00:00.000Z' }, read: ['s1'] },
+        { version: 1, found: { s2: '2026-08-02T00:00:00.000Z' }, read: ['s2'] },
+      ) as { found: Record<string, string>; read: string[] };
+
+      expect(Object.keys(merged.found).sort()).toEqual(['s1', 's2']);
+      expect([...merged.read].sort()).toEqual(['s1', 's2']);
+    });
+  });
+
+  it('carries a bought Pro pack to the visitor\'s other devices', () => {
+    // The structural default is already right here — a flag that has been set
+    // stays set — and `grantsSettled` riding the same rule is what stops the
+    // adopting device minting the currency grant a second time.
+    const merged = mergeDeep(
+      { active: true, grantsSettled: true, orderId: 'o-1', activatedAt: '2026-08-01T00:00:00.000Z' },
+      { active: false, grantsSettled: false, orderId: null, activatedAt: null },
+    ) as { active: boolean; grantsSettled: boolean; orderId: string };
+
+    expect(merged.active).toBe(true);
+    expect(merged.grantsSettled).toBe(true);
+    expect(merged.orderId).toBe('o-1');
+  });
+});
+
 describe('the registry', () => {
   it('files every blob under a unique document path', () => {
     const paths = SYNCED_BLOBS.map(b => `${b.collection}/${b.doc}`);
     expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  /**
+   * The registry, pinned key by key.
+   *
+   * Worth stating plainly what this does and does not do. It cannot discover a
+   * localStorage key that some service writes and nobody registered — that is
+   * the failure that put six blobs out of sync for five releases, and finding it
+   * from inside a unit test would mean parsing the whole source tree, which
+   * fails silently the first time a key is built from a template string.
+   *
+   * What it does do is make the list an explicit decision. Dropping a blob from
+   * SYNCED_BLOBS breaks this test rather than quietly un-syncing somebody's bag,
+   * and adding one means writing the key down here — which is the moment to ask
+   * whether it is progression or a device preference. The keys below are grouped
+   * by the answer.
+   */
+  it('syncs exactly the progression blobs, and nothing device-local', () => {
+    // Progression, minus `eclipse-progress` — that one rides the
+    // ProgressAdapter seam in progress-storage.service.ts instead of this list.
+    expect([...SYNCED_BLOBS.map(b => b.key)].sort()).toEqual([
+      'easter-eggs-dates',
+      'easter-eggs-found',
+      'eclipse-arena-scores',
+      'eclipse-combo',
+      'eclipse-idle',
+      'eclipse-lore',
+      'eclipse-quests',
+      'eclipse-realm-rush-board',
+      'godforge-economy',
+      'godforge-explorers',
+      'godforge-inventory',
+      'godforge-pinned',
+      'godforge-pro',
+      'godforge-roster',
+      'godforge-runes',
+      'godforge-scrolls',
+      'godforge-stats',
+      'tool-usage-counts',
+    ]);
+  });
+
+  /**
+   * Keys the Godforge writes that are deliberately *not* synced, each for a
+   * reason about the key itself rather than about nobody having got to it:
+   *
+   *   cloud-save-uid             which account this browser is bound to
+   *   preferred-language         a per-device chrome preference
+   *   godforge-forge-hum         whether this device makes noise
+   *   godforge-install-dismissed whether this device was offered the PWA
+   *   cm-recent-chars            a scratch MRU inside one tool
+   *   ep-recent-emojis           ditto
+   *   live-chat-username         a display name for one page
+   *   codex-secrets              console-entered codes, not progression
+   *   donations/recent           a read cache of public data
+   *   site-stats/visits          ditto
+   */
+  it('leaves device-local keys out of the registry', () => {
+    const synced = new Set(SYNCED_BLOBS.map(b => b.key));
+    for (const key of [
+      'cloud-save-uid', 'preferred-language', 'godforge-forge-hum',
+      'godforge-install-dismissed', 'cm-recent-chars', 'ep-recent-emojis',
+      'live-chat-username', 'codex-secrets', 'donations/recent', 'site-stats/visits',
+    ]) {
+      expect(synced.has(key)).withContext(`${key} should not sync`).toBe(false);
+    }
   });
 
   it('reads back exactly what it wrapped', () => {

@@ -84,6 +84,24 @@ const REDIRECT_PENDING = 'cloud-save-redirect';
 /** The achievement for opening cloud save. Registered in EASTER_EGGS. */
 export const CLOUD_SAVE_EGG = 'cloud-eternal-archive';
 
+/**
+ * Floor on the gap between two full reconciliations inside one page load.
+ *
+ * A reconciliation is not free: it reads every blob plus two for progression,
+ * so roughly twenty document reads. Returning to a tab is what triggers one, and
+ * a visitor alt-tabbing between a browser and an editor generates that event far
+ * more often than their progress on another device actually changes — without a
+ * floor, one restless afternoon would cost more reads than the rest of the site
+ * spends in a day.
+ *
+ * A minute is the balance. Long enough that flicking between windows costs
+ * nothing after the first look, short enough that the case this exists for —
+ * putting a phone down and turning to a desktop — is always outside the window.
+ * Opening the site fresh does not wait on this at all; that path binds, which
+ * reconciles on the spot.
+ */
+const RESYNC_INTERVAL_MS = 60_000;
+
 export type SyncState =
   /** Signed out. The local save is the only save, which is a fine way to live. */
   | 'off'
@@ -200,6 +218,9 @@ export class CloudSaveService {
   /** Last payload written per blob key, so an unchanged blob costs nothing. */
   private readonly pushed = new Map<string, string>();
   private pushing = false;
+  /** Epoch ms of the last full reconciliation, so returning to a tab is throttled. */
+  private lastReconcileAt = 0;
+  private resyncing = false;
 
   // ───────────────────────────────────────────────────────────────────────────
   // Boot
@@ -439,17 +460,8 @@ export class CloudSaveService {
     // dialog replies. Everything below then runs under whatever was chosen.
     const strategy = await this.chooseStrategy(fs, user.uid, adapter, canAdopt);
 
-    // Progression rides the adapter seam that was built for it. `migrate()`
-    // reconciles local against whatever is already up there and swaps itself in.
-    const before = readRaw(PROGRESS_KEY);
-    await this.progress.migrate(adapter, strategy);
     this.adapter = adapter;
-    let changed = readRaw(PROGRESS_KEY) !== before;
-
-    // The rest have no adapter seam, so they are reconciled directly.
-    for (const blob of SYNCED_BLOBS) {
-      if (await this.reconcile(fs, user.uid, blob, canAdopt, strategy)) changed = true;
-    }
+    const changed = await this.reconcileAll(fs, user.uid, adapter, strategy, canAdopt);
 
     this.markSynced();
     this.startPushing();
@@ -467,6 +479,37 @@ export class CloudSaveService {
       // so the guard it is releasing stays held and the loop stays impossible.
       this.clearAdoptGuard();
     }
+  }
+
+  /**
+   * One full reconciliation pass over every blob. Returns true when something on
+   * this device changed, which is what decides whether the tab has to restart.
+   *
+   * Split out of {@link bind} so that {@link resync} can run the same pass again
+   * later in the session without going back through auth — the two are the same
+   * operation, and the only reason it used to live inside `bind` was that
+   * binding was the only time it ever ran.
+   */
+  private async reconcileAll(
+    fs: FirestoreHandle,
+    uid: string,
+    adapter: FirestoreAdapter,
+    strategy: MergeStrategy,
+    canAdopt: boolean,
+  ): Promise<boolean> {
+    this.lastReconcileAt = Date.now();
+
+    // Progression rides the adapter seam that was built for it. `migrate()`
+    // reconciles local against whatever is already up there and swaps itself in.
+    const before = readRaw(PROGRESS_KEY);
+    await this.progress.migrate(adapter, strategy);
+    let changed = readRaw(PROGRESS_KEY) !== before;
+
+    // The rest have no adapter seam, so they are reconciled directly.
+    for (const blob of SYNCED_BLOBS) {
+      if (await this.reconcile(fs, uid, blob, canAdopt, strategy)) changed = true;
+    }
+    return changed;
   }
 
   /**
@@ -713,11 +756,97 @@ export class CloudSaveService {
   }
 
   private readonly flushOnLeave = (): void => { void this.pushAll(); };
+
+  /**
+   * Leaving flushes; coming back pulls.
+   *
+   * Until this existed, a bound tab only ever pushed. Reconciling happened once,
+   * at bind, and after that the desktop tab someone leaves open all day never
+   * looked at the cloud again — so an evening on a phone was invisible on the
+   * PC until the page happened to be reloaded, which on a site people navigate
+   * by clicking around can be a very long time.
+   *
+   * Returning to a tab is the honest moment to check: it is exactly when
+   * somebody has put one device down and picked another up, and it costs nothing
+   * on the tabs nobody leaves.
+   */
   private readonly flushOnHidden = (): void => {
     if (document.visibilityState === 'hidden') void this.pushAll();
+    else void this.resync();
   };
 
-  /** Upload every blob whose serialised form has changed since its last upload. */
+  /**
+   * Re-run the whole reconciliation against the cloud, mid-session.
+   *
+   * Push first, so the merge below runs against a cloud copy that already holds
+   * this device's own work and cannot hand it back as a "change" — that would
+   * reload the tab for nothing, every single time.
+   */
+  private async resync(): Promise<void> {
+    const uid = this.status.uid;
+    // A parked merge dialog is a question already on screen; a second pass would
+    // ask it again underneath. An error state is left to the retry button, which
+    // is the same operation with the visitor asking for it.
+    if (!uid || !this.adapter || this.resyncing || this.decide) return;
+    if (Date.now() - this.lastReconcileAt < RESYNC_INTERVAL_MS) return;
+
+    this.resyncing = true;
+    try {
+      await this.pushAll();
+
+      const fs = await this.firestore();
+      // The read-skip exists to make routine page loads cheap. This pass is
+      // asking for those reads, so its fingerprints have to go with it.
+      this.cache.bustPrefix(`cloud-save/${uid}/`);
+
+      const canAdopt = this.canAdopt();
+      const changed = await this.reconcileAll(fs, uid, this.adapter, 'merge', canAdopt);
+      this.markSynced();
+
+      // Progress that arrived from the other device is now on disk under ten
+      // services still holding the old copy. Same restart as at bind, same
+      // once-per-session guard, and the same self-releasing exit when a later
+      // pass finds nothing left to move.
+      if (changed && canAdopt) this.adoptAndReload();
+    } catch (err) {
+      this.fail(err);
+    } finally {
+      this.resyncing = false;
+    }
+  }
+
+  /**
+   * Upload every blob whose serialised form has changed since its last upload.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS READS BEFORE IT WRITES
+   * ───────────────────────────────────────────────────────────────────────────
+   * This used to `setDoc` the local blob outright, and that one line undid the
+   * careful merge at the other end of the file. Binding reconciles both devices
+   * correctly — and then, ten seconds later, this loop overwrote the result with
+   * whatever one device happened to be holding.
+   *
+   * The shape of the bug from the visitor's side: play on a phone, earn 500
+   * Gold, put it down. A desktop tab that has been open since the morning strikes
+   * the anvil once, notices its economy blob moved, and uploads its own copy over
+   * the phone's. The 500 Gold is gone, nothing reports an error, and both devices
+   * still say "Synced" — because from each one's point of view it *is* synced.
+   * Whichever device wrote last was simply the truth, which is not sync at all.
+   *
+   * So every push is now read-merge-write under the same rules the bind uses. The
+   * merge is monotone — higher number, union of every set — so two devices
+   * pushing in any order converge on the same answer, and a device that is behind
+   * can no longer erase one that is ahead.
+   *
+   * The merged result is deliberately *not* written back to localStorage. Ten
+   * services are holding their own copies in memory and would flush over it
+   * within the second (see the note at the top of this file). Cloud state that
+   * arrives here is left in the cloud, and the next page load — or the next
+   * return to this tab, see {@link resync} — adopts it properly.
+   *
+   * The extra read only happens for blobs that actually moved, so an idle tab
+   * still costs nothing.
+   */
   private async pushAll(): Promise<void> {
     const uid = this.status.uid;
     if (!uid || this.pushing) return;
@@ -732,11 +861,33 @@ export class CloudSaveService {
         if (raw === null) continue;
         if (this.pushed.get(blob.key) === raw) continue;
 
+        const local = readParsed(blob.key);
+        if (local === null) {
+          // Unparseable. The owning service is about to replace it; uploading a
+          // blob we could not read would only spread the damage.
+          this.pushed.set(blob.key, raw);
+          continue;
+        }
+
         const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
-        await fs.api.setDoc(ref, wrapBlob(JSON.parse(raw)));
+        const snap = await fs.api.getDoc(ref);
+        const remote = snap.exists() ? unwrapBlob(snap.data()) : null;
+        const merged = remote === null ? local : (blob.merge ?? mergeDeep)(remote, local);
+        const mergedRaw = JSON.stringify(merged);
+
+        // Silence when the cloud already holds exactly this.
+        if (remote === null || mergedRaw !== JSON.stringify(remote)) {
+          await fs.api.setDoc(ref, wrapBlob(merged));
+        }
         this.pushed.set(blob.key, raw);
-        // Keeps the bind-time read skip honest: what is up there is now `raw`.
-        this.cache.set(this.blobKey(uid, blob), raw, CACHE_TTL.cloudSave);
+
+        // The fingerprint is what lets the next bind skip a read, so it may only
+        // be recorded when the two copies genuinely agree. When the merge pulled
+        // something in from another device, the cloud is now *ahead* of this
+        // disk — and a fingerprint claiming otherwise would make the next bind
+        // skip the very read that was going to adopt it.
+        if (mergedRaw === raw) this.cache.set(this.blobKey(uid, blob), raw, CACHE_TTL.cloudSave);
+        else this.cache.bust(this.blobKey(uid, blob));
       }
       this.markSynced();
     } catch (err) {
