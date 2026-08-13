@@ -280,6 +280,73 @@
 
 
   <!-- ═══════════════════════════════════════════
+  SECTION 2b — THE RUNE FORGE
+  A band, not a card in the closing door row, and the header comment above is
+  the reason this needs a defence. Six sections were deleted from this page for
+  being "screens of persuasion" stacked below the fold, and every one of them
+  was a pitch: a spotlight, a changelog, a newsletter, a creed.
+
+  This is not a pitch. It is a door to the one page on the site people come
+  back to open, and until now it was reachable only from the footer and one
+  line of Codex prose. It sits directly under the artifacts because that is
+  where somebody who has just scrolled the tool grid is deciding what else
+  this place is for — and it carries live counts rather than adjectives, so it
+  goes quiet for a visitor who has never struck the anvil and turns into
+  progress the moment they have.
+  ═══════════════════════════════════════════ -->
+  <section class="gf-anvil">
+    <div class="gf-anvil__inner">
+
+      <div class="gf-anvil__copy">
+        <p class="hp-section-eyebrow">
+          <span class="hp-eyebrow-pulse"></span>
+          {{ translate('godforge.anvil.eyebrow') }}
+        </p>
+        <h2 class="hp-section-title gf-anvil__title">{{ translate('godforge.anvil.title') }}</h2>
+        <p class="gf-anvil__lede">{{ translate('godforge.anvil.lede') }}</p>
+
+        <div class="gf-anvil__stats">
+          <span class="gf-anvil__stat">
+            <b>{{ runesFound }}</b><i>/{{ runesTotal }}</i>
+            {{ translate('godforge.anvil.runes') }}
+          </span>
+          <span class="gf-anvil__stat">
+            <b>{{ scrollsFound }}</b><i>/{{ scrollsTotal }}</i>
+            {{ translate('godforge.anvil.scrolls') }}
+          </span>
+          <span class="gf-anvil__stat">
+            <b>{{ runewordsCrafted }}</b><i>/{{ runewordsTotal }}</i>
+            {{ translate('godforge.anvil.words') }}
+          </span>
+        </div>
+
+        <a routerLink="/rune-forge" class="gf-anvil__cta">
+          {{ translate('godforge.anvil.cta') }}
+          <span class="gf-anvil__cta-cost">{{ translate('godforge.anvil.cost') }}</span>
+        </a>
+      </div>
+
+      <!-- The anvil, in five boxes. Same silhouette the Rune Forge page draws,
+           so arriving there is a continuation rather than a new screen. -->
+      <div class="gf-anvil__scene" aria-hidden="true">
+        <span class="gf-anvil__glow"></span>
+        <span class="gf-anvil__hammer"></span>
+        <span class="gf-anvil__body">
+          <i class="gf-anvil__face"></i>
+          <i class="gf-anvil__horn"></i>
+          <i class="gf-anvil__waist"></i>
+          <i class="gf-anvil__base"></i>
+        </span>
+        @for (s of [1,2,3,4,5,6]; track s) {
+          <span class="gf-anvil__spark" [style.--i]="s"></span>
+        }
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
   SECTION 3 — THE FORGE'S PULSE
   Every number is derived from the thing it counts.
   ═══════════════════════════════════════════ -->
