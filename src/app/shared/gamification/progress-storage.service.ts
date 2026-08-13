@@ -59,6 +59,13 @@ export interface ProgressAdapter {
    * cannot write synchronously omits it and callers fall back to `save()`.
    */
   saveNow?(state: ProgressState): void;
+  /**
+   * Make the next upstream write replace what is stored rather than merge with
+   * it. Optional, and only ever called by {@link ProgressStorageService.migrate}
+   * when the visitor has explicitly chosen one save over the other — see the
+   * note on `writeMode` in {@link FirestoreAdapter}.
+   */
+  overwriteOnce?(): void;
 }
 
 /** Reads and writes the whole state blob as one localStorage key. */
@@ -169,6 +176,21 @@ export class FirestoreAdapter implements ProgressAdapter {
   private pending: ProgressState | null = null;
 
   /**
+   * Whether the next upstream write replaces the stored document or merges with
+   * it. Merging is the default and is what every ordinary award takes.
+   *
+   * The exception is a visitor who has been shown both saves and picked one.
+   * "Keep this device" has to mean the other save loses, and a merge would
+   * quietly hand back the very numbers they asked to discard — so `migrate()`
+   * raises this for exactly that one write. It is consumed by the write it
+   * applies to, and re-raised if that write fails, so a retry still honours the
+   * choice rather than silently reverting to a merge.
+   */
+  private writeMode: 'merge' | 'overwrite' = 'merge';
+
+  overwriteOnce(): void { this.writeMode = 'overwrite'; }
+
+  /**
    * Takes a resolved {@link FirestoreHandle} rather than an injected `Firestore`.
    * `provideFirestore()` is no longer in the root injector — the SDK is ~450 kB
    * and nothing on first paint touches it, so it is imported on demand and
@@ -233,24 +255,75 @@ export class FirestoreAdapter implements ProgressAdapter {
     }
   }
 
-  /** Push whatever is pending, now. */
+  /**
+   * Push whatever is pending, now.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS READS FIRST
+   * ───────────────────────────────────────────────────────────────────────────
+   * This wrote the local state over the document outright, which made every
+   * upload a last-writer-wins race between a visitor's devices. Sign-in merged
+   * the two correctly and then the first award on either one threw the merge
+   * away: an evening of XP on a phone lasted until the desktop tab that was
+   * still open granted a single achievement.
+   *
+   * The Firestore rule refusing a smaller `xp` caught the worst version of this
+   * — a straight wipe — but only the worst version, and only on this one
+   * document. Everything beside `xp` in the blob (achievements, `toolsUsed`, the
+   * daily history) regressed silently whenever the rejection did not fire, and
+   * the visitor's only signal was the sync chip flicking to an error.
+   *
+   * Merging on the way up fixes both. `mergeProgress` is commutative and takes
+   * the higher of every number, so two devices converge on the same document
+   * whatever order they write in, and a device that has fallen behind uploads a
+   * result that is *ahead* of what it holds — which is also why the monotonic
+   * rule now passes instead of rejecting it.
+   *
+   * The merged state is not written back to localStorage from here. The bind
+   * pass owns adopting cloud progress, because only it can restart the tab
+   * afterwards; a write here would be flushed over by `XpService` within the
+   * second.
+   */
   async flush(): Promise<void> {
     const state = this.pending;
     if (!state) return;
     this.pending = null;
     this.lastWriteAt = Date.now();
+
+    const overwrite = this.writeMode === 'overwrite';
+    this.writeMode = 'merge';
+
     try {
-      // Whole-document write, not a merge: `ProgressState` is a closed shape and
-      // a field removed locally should not survive in the cloud copy forever.
-      await this.fs.api.setDoc(this.ref(), state as unknown as Record<string, unknown>);
+      const payload = overwrite ? state : await this.mergedWithRemote(state);
+      // Whole-document write, not `merge: true`: `ProgressState` is a closed
+      // shape, the reconciliation above is field-aware in a way Firestore's
+      // merge is not, and a field removed locally should not survive in the
+      // cloud copy forever.
+      await this.fs.api.setDoc(this.ref(), payload as unknown as Record<string, unknown>);
       this.onWrite(null);
     } catch (err) {
       // Put it back so the next tick retries rather than dropping it. A newer
       // state may have replaced it already, which is fine — that one is newer.
       this.pending ??= state;
+      // A retry of an explicit "this save wins" is still that choice.
+      if (overwrite) this.writeMode = 'overwrite';
       this.onWrite(err);
       throw err;
     }
+  }
+
+  /**
+   * `state` reconciled with whatever is in the document right now.
+   *
+   * A read that fails is deliberately not swallowed: it propagates to `flush()`,
+   * which puts the state back in `pending` and retries. Falling through to an
+   * unmerged write instead would reintroduce exactly the clobber this exists to
+   * prevent, at the moment the network is least trustworthy.
+   */
+  private async mergedWithRemote(state: ProgressState): Promise<ProgressState> {
+    const snap = await this.fs.api.getDoc(this.ref());
+    if (!snap.exists()) return state;
+    return { ...mergeProgress(migrateProgress(snap.data()), state), userId: this.uid };
   }
 
   saveNow(state: ProgressState): void {
@@ -375,6 +448,12 @@ export class ProgressStorageService {
     } else {
       resolved = { ...mergeProgress(remote, local), userId };
     }
+
+    // Ordinary writes merge with the stored document, which is what stops two
+    // devices overwriting each other. An explicit choice is the one case where
+    // that is wrong: the visitor has looked at both saves and said this one
+    // wins, and merging would hand back the numbers they just discarded.
+    if (strategy !== 'merge') target.overwriteOnce?.();
 
     await target.save(resolved);
     this.adapter = target;
