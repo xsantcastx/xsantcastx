@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.57.4',
+  version: '2.58.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Bazaar',
+  codename: 'Wayfinding',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.58.0',
+    codename: 'Wayfinding',
+    date: '2026-08-13',
+    highlights: [
+      'The Inner Sanctum is in the command bar. It had one link on the whole site — the footer\'s second row — which on a phone is a scroll past every section of whatever page you are on, so the hub the game is played from was, as reported, effectively impossible to reach',
+      'Mission Control came out of the same rename worse off: it kept its page and lost its only link when /sanctum became the hub, so nothing on the site pointed at it at all. It is in the tome now, alongside Donate, which had never been anywhere but the footer',
+      'Every route that renders a page is now one click from the homepage on both desktop and mobile — measured from the DOM rather than assumed. `npm run audit:nav` resolves every routerLink against the route table and every page route against the header, tome, tab bar and footer, and fails the build on a dead link or an orphan',
+      'A seventh hall does not fit a Spanish row: measured with a seven-figure balance it needs a 1600px window and was 131px over at 1450. So the shed is two-tier now — the War Table leaves at 1600 and the Sanctum at 1300, rather than both going at once and emptying two slots on a 1440px laptop',
+      'The Essence pill, the rank title and the creed all shed earlier to pay for the hall. Each was picked for having somewhere else to be: Essence is printed on the Market page it links to, the rank title is on /forge-keeper, and the creed is a tagline',
+      'Every threshold was measured in Spanish against a seven-figure odometer and the longest rank title — the row that has broken before — because a fresh save\'s zero is the one balance guaranteed to fit'
+    ]
+  },
   {
     version: '2.57.4',
     codename: 'Bazaar',
