@@ -89,10 +89,33 @@ import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
 
+/** Which tier band is showing. 'all' is every rung of the Eclipse ladder. */
+export type RarityFilter = 'all' | EclipseRarity;
+
+/**
+ * How the shelf is ordered.
+ *
+ * There is deliberately no "date acquired": nothing in the economy ledger
+ * records *when* a thing was bought. `EconomySnapshot.artifacts` is an array in
+ * purchase order, but upgrades are a level map and cosmetics an id list, so an
+ * ordering derived from it would be right for one shelf and invented for the
+ * other three. "Owned first" answers the question that one was really asked —
+ * show me my things — without pretending to a timestamp nobody stored.
+ *
+ * "Value" sorts on catalog price for the same reason: the Godforge has no sell
+ * mechanic, so price is the only number that stands for what a thing is worth.
+ */
+export type InventorySort = 'rarity' | 'name' | 'value' | 'owned';
+
 interface InventoryTab {
   key: InventoryFilter;
   label: string;
   icon: string;
+}
+
+interface SortOption {
+  key: InventorySort;
+  label: string;
 }
 
 /** One card in the inventory grid, owned or in silhouette. */
@@ -116,6 +139,40 @@ interface InventoryItem {
   equipped: string | null;
   /** Epoch ms this enchantment stops applying, for the countdown. */
   expiresAt: number | null;
+}
+
+/**
+ * One card in the grid: an item, plus however many of it this visitor holds.
+ *
+ * Two things collapse into a stack. Catalog entries that share a name *and* a
+ * tier — which is what "the same item" means to a player, who has never seen
+ * the ids — and the levels of the two repeatable ladders, where holding Bellows
+ * at level 3 is holding three of them and the shelf used to say so in a corner
+ * badge that read `Lv.3` and nothing else.
+ *
+ * Unowned items stack too, at a count of one, so the silhouette shelf keeps its
+ * shape and buying something changes a number rather than the layout.
+ */
+interface InventoryStack {
+  /** The lead item's id. Stable across rebuilds, so it is the `track` key. */
+  id: string;
+  /** What the card renders. The first member, or the highest-level one. */
+  lead: InventoryItem;
+  /** Everything that collapsed into this card, in catalog order. */
+  items: InventoryItem[];
+  /**
+   * How many units are held. Levels count; an unowned shelf item counts one.
+   *
+   * Anything above one earns a badge and can be opened, which is why there is
+   * no second boolean saying so.
+   */
+  count: number;
+}
+
+/** One line in an opened stack. */
+interface StackUnit {
+  label: string;
+  note: string;
 }
 
 /** One cell of the thirty-day heatmap. */
@@ -335,8 +392,35 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     { key: 'cosmetics',    label: 'Cosmetics',    icon: '✨' },
     { key: 'enchantments', label: 'Enchantments', icon: '🕯️' },
   ];
+  readonly sortOptions: SortOption[] = [
+    { key: 'rarity', label: 'Rarity — rarest first' },
+    { key: 'name',   label: 'Name — A to Z' },
+    { key: 'value',  label: 'Value — dearest first' },
+    { key: 'owned',  label: 'Owned first' },
+  ];
+  /** Every rung of the ladder, plus the All chip, for the tier filter row. */
+  readonly rarityFilters: RarityFilter[] = ['all', ...RARITY_ORDER];
+
   inventoryFilter: InventoryFilter = 'all';
+  rarityFilter: RarityFilter = 'all';
+  inventorySort: InventorySort = 'rarity';
+  /** Raw contents of the search box. Matched against name, effect and flavour. */
+  inventorySearch = '';
+
   inventory: InventoryItem[] = this.buildInventory(ZERO_ECONOMY);
+
+  /**
+   * The cards actually on screen, filtered, sorted and stacked.
+   *
+   * A field rather than a getter on purpose. This page runs a one-second ticker
+   * and sits under a live XP bar, so a getter here would re-filter, re-sort and
+   * re-group the whole catalog several times a second for a list that only
+   * changes when a control is touched or the ledger moves.
+   */
+  visibleStacks: InventoryStack[] = this.computeStacks();
+
+  /** The stack whose contents are open, or null. One at a time. */
+  openStackId: string | null = null;
 
   // ── Calendar & mastery ────────────────────────────────────────────────────
   calendar: ForgeDay[] = this.buildCalendarShell();
@@ -406,6 +490,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
     const counts = this.masteryService.all();
     this.inventory = this.buildInventory(this.wallet);
+    this.refreshInventoryView();
     this.calendar = this.buildCalendar(this.xp.history);
     this.mastery = this.buildMastery(counts);
     this.toolsMastered = Object.values(counts).filter(uses => masteryForUses(uses).stars >= 4).length;
@@ -423,6 +508,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     this.subs.push(this.economy.snapshot$.subscribe(e => {
       this.wallet = e;
       this.inventory = this.buildInventory(e);
+      this.refreshInventoryView();
     }));
     this.subs.push(this.idle.snapshot$.subscribe(i => (this.forgeMs = i.lifetimeMs)));
     this.subs.push(this.quests.board$.subscribe(b => (this.questsCompleted = b.totalCompleted)));
@@ -770,10 +856,100 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     return items;
   }
 
-  get visibleInventory(): InventoryItem[] {
-    if (this.inventoryFilter === 'all') return this.inventory;
-    const kind = this.inventoryFilter.slice(0, -1) as InventoryItem['kind'];
-    return this.inventory.filter(i => i.kind === kind);
+  /**
+   * How many units of a thing are held.
+   *
+   * A level-4 upgrade is four purchases and reads as four. Everything else is
+   * one-of-a-kind, and an unowned item is one silhouette rather than none —
+   * a shelf that hid what it does not have would not be a shelf.
+   */
+  private unitsOf(item: InventoryItem): number {
+    return item.owned ? Math.max(1, item.level) : 1;
+  }
+
+  /**
+   * Does this item survive the shelf, tier and search filters?
+   *
+   * `tier` is a parameter rather than read off `this` so the tier chips can ask
+   * the same question about a rung they are not currently on — the grid and the
+   * chip counts then cannot disagree about what a filter means.
+   */
+  private survivesFilters(item: InventoryItem, tier: RarityFilter): boolean {
+    if (this.inventoryFilter !== 'all'
+      && item.kind !== this.inventoryFilter.slice(0, -1)) return false;
+    if (tier !== 'all' && item.tier !== tier) return false;
+
+    const needle = this.inventorySearch.trim().toLowerCase();
+    if (!needle) return true;
+    return item.name.toLowerCase().includes(needle)
+      || item.effect.toLowerCase().includes(needle)
+      || item.flavour.toLowerCase().includes(needle);
+  }
+
+  /** Filter, sort, then collapse duplicates. In that order, and only on demand. */
+  private computeStacks(): InventoryStack[] {
+    const matched = this.inventory.filter(i => this.survivesFilters(i, this.rarityFilter));
+
+    // Grouped on what a player can see — the name and the tier — rather than on
+    // the id, because two things that read identically on the shelf are the same
+    // thing to the person reading it.
+    const byKey = new Map<string, InventoryStack>();
+    for (const item of matched) {
+      const key = `${item.name.toLowerCase()}|${item.tier}`;
+      const stack = byKey.get(key);
+      if (!stack) {
+        byKey.set(key, {
+          id: item.id,
+          lead: item,
+          items: [item],
+          count: this.unitsOf(item),
+        });
+        continue;
+      }
+      stack.items.push(item);
+      stack.count += this.unitsOf(item);
+      // An owned member always leads, so a stack never renders as a silhouette
+      // while something inside it is held.
+      if (item.owned && !stack.lead.owned) stack.lead = item;
+    }
+
+    return [...byKey.values()].sort((a, b) => this.compareStacks(a, b));
+  }
+
+  /** The comparator behind the sort dropdown. Ties always fall back to name. */
+  private compareStacks(a: InventoryStack, b: InventoryStack): number {
+    const byName = a.lead.name.localeCompare(b.lead.name);
+    switch (this.inventorySort) {
+      case 'name':
+        return byName;
+      case 'value':
+        // Gold and Essence are different scales, so comparing raw costs across
+        // currencies would rank a 40-Essence artifact under a 50-Gold hammer.
+        // The tier is the cross-currency price band, and inside one currency
+        // the cost breaks the tie.
+        return b.lead.rarity.weight - a.lead.rarity.weight
+          || (a.lead.currency === b.lead.currency ? b.lead.cost - a.lead.cost : 0)
+          || byName;
+      case 'owned':
+        return Number(b.lead.owned) - Number(a.lead.owned)
+          || b.count - a.count
+          || byName;
+      case 'rarity':
+      default:
+        return b.lead.rarity.weight - a.lead.rarity.weight
+          || Number(b.lead.owned) - Number(a.lead.owned)
+          || byName;
+    }
+  }
+
+  /** Re-derive the visible shelf. Every control and every ledger tick calls this. */
+  private refreshInventoryView(): void {
+    this.visibleStacks = this.computeStacks();
+    // A stack that filtered out cannot stay open behind the scenes, or it
+    // reappears expanded the next time its filter comes back.
+    if (this.openStackId !== null && !this.visibleStacks.some(s => s.id === this.openStackId)) {
+      this.openStackId = null;
+    }
   }
 
   /** Owned-of-total for one shelf, for the tab badge. */
@@ -784,8 +960,109 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     return { owned: of.filter(i => i.owned).length, total: of.length };
   }
 
+  /**
+   * How many items sit on one rung, under the *other* filters.
+   *
+   * Counting against the current shelf and search rather than the whole catalog
+   * is what makes the row honest: a chip reading 0 is telling you that clicking
+   * it lands on an empty grid, which is worth knowing before you click.
+   */
+  rarityCount(key: RarityFilter): number {
+    return this.inventory.filter(i => this.survivesFilters(i, key)).length;
+  }
+
+  /** The definition behind a chip. `all` has none, so the chip wears the ink. */
+  rarityDef(key: RarityFilter): RarityDefinition | null {
+    return key === 'all' ? null : RARITIES[key];
+  }
+
+  rarityLabel(key: RarityFilter): string {
+    return key === 'all' ? 'All tiers' : RARITIES[key].label;
+  }
+
   selectInventory(key: InventoryFilter): void {
     this.inventoryFilter = key;
+    this.refreshInventoryView();
+  }
+
+  selectRarity(key: RarityFilter): void {
+    this.rarityFilter = key;
+    this.refreshInventoryView();
+  }
+
+  selectSort(key: string): void {
+    this.inventorySort = key as InventorySort;
+    this.refreshInventoryView();
+  }
+
+  onInventorySearch(value: string): void {
+    this.inventorySearch = value;
+    this.refreshInventoryView();
+  }
+
+  /** True when anything is narrowing the shelf — drives the Clear button. */
+  get inventoryFiltered(): boolean {
+    return this.inventoryFilter !== 'all'
+      || this.rarityFilter !== 'all'
+      || this.inventorySearch.trim() !== '';
+  }
+
+  clearInventoryFilters(): void {
+    this.inventoryFilter = 'all';
+    this.rarityFilter = 'all';
+    this.inventorySearch = '';
+    this.refreshInventoryView();
+  }
+
+  /** Units on screen, for the result line. Stacks count as their contents. */
+  get visibleUnitCount(): number {
+    return this.visibleStacks.reduce((sum, s) => sum + s.count, 0);
+  }
+
+  // ── Stacks ────────────────────────────────────────────────────────────────
+
+  /** Only stacks that stand for more than one thing can be opened. */
+  canOpen(stack: InventoryStack): boolean {
+    return stack.count > 1;
+  }
+
+  isOpen(stack: InventoryStack): boolean {
+    return this.openStackId === stack.id;
+  }
+
+  toggleStack(stack: InventoryStack): void {
+    if (!this.canOpen(stack)) return;
+    this.openStackId = this.isOpen(stack) ? null : stack.id;
+  }
+
+  /**
+   * What an opened stack lists.
+   *
+   * Genuinely distinct members list themselves. A single item held at level N
+   * lists its N levels instead, because that is what the count counted — and
+   * inventing N identical rows for one upgrade would be a lie the badge told.
+   */
+  stackUnits(stack: InventoryStack): StackUnit[] {
+    if (stack.items.length > 1) {
+      return stack.items.map(i => ({
+        label: i.name,
+        note: i.owned ? i.effect : `not yet yours — ${this.money(i.cost)} ${i.currency}`,
+      }));
+    }
+    const item = stack.lead;
+    return Array.from({ length: stack.count }, (_, i) => ({
+      label: `Level ${i + 1}`,
+      note: i === stack.count - 1 ? `${item.effect} — current` : item.effect,
+    }));
+  }
+
+  /** "Mythic · Artifact · 3 held" — the hover card's one meta line. */
+  stackMeta(stack: InventoryStack): string {
+    const kind = stack.lead.kind.charAt(0).toUpperCase() + stack.lead.kind.slice(1);
+    const held = stack.lead.owned
+      ? (stack.count > 1 ? `${stack.count} held` : 'held')
+      : `${this.money(stack.lead.cost)} ${stack.lead.currency}`;
+    return `${stack.lead.rarity.label} · ${kind} · ${held}`;
   }
 
   /** "3h 12m left" on a running enchantment, or null when it is not running. */
