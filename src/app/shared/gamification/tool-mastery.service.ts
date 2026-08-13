@@ -14,6 +14,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
 export const TOOL_USAGE_KEY = 'tool-usage-counts';
@@ -66,6 +67,7 @@ export function masteryProgress(uses: number): number {
 export class ToolMasteryService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private counts: Record<string, number> | null = null;
 
@@ -126,7 +128,7 @@ export class ToolMasteryService {
       },
     });
     try {
-      const raw = localStorage.getItem(TOOL_USAGE_KEY);
+      const raw = this.store.readRaw(TOOL_USAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
       // Guard the shape: a hand-edited or half-written blob should degrade to an
       // empty tally, not throw inside a template binding on every card.
@@ -141,10 +143,6 @@ export class ToolMasteryService {
 
   private persist(counts: Record<string, number>): void {
     this.counts = counts;
-    try {
-      localStorage.setItem(TOOL_USAGE_KEY, JSON.stringify(counts));
-    } catch {
-      /* quota or private mode — a lost tally is not worth breaking a page over */
-    }
+      this.store.write(TOOL_USAGE_KEY, counts);
   }
 }

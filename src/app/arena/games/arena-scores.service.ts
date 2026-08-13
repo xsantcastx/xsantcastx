@@ -13,6 +13,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { XpService } from '../../shared/gamification/xp.service';
+import { GameStateGateway } from '../../shared/save/game-state.gateway';
 import { LocalSaveRegistry } from '../../shared/save/local-save-registry.service';
 import { REPEAT_WIN_XP, playableById } from './arena-game.model';
 
@@ -53,6 +54,7 @@ export class ArenaScoresService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly xp = inject(XpService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private ledger: ArenaLedger = { version: 1, games: {} };
   private loaded = false;
@@ -78,7 +80,7 @@ export class ArenaScoresService {
   /** Replace the ledger from storage. Hydration, and cloud save's rehydrate. */
   private read(): void {
     try {
-      const raw = localStorage.getItem(ARENA_SCORES_KEY);
+      const raw = this.store.readRaw(ARENA_SCORES_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<ArenaLedger>;
       if (parsed && typeof parsed === 'object' && parsed.games) {
@@ -163,10 +165,6 @@ export class ArenaScoresService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(ARENA_SCORES_KEY, JSON.stringify(this.ledger));
-    } catch {
-      /* quota or private mode — a lost high score is not worth an exception */
-    }
+      this.store.write(ARENA_SCORES_KEY, this.ledger);
   }
 }

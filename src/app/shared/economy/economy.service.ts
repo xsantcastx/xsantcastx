@@ -34,6 +34,7 @@
 import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   ARTIFACTS,
@@ -188,6 +189,7 @@ export class EconomyService implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly zone = inject(NgZone);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: PlayerEconomy = emptyEconomy();
   private initialised = false;
@@ -986,7 +988,7 @@ export class EconomyService implements OnDestroy {
     this.state = emptyEconomy();
     this.state.lastIdleAt = Date.now();
     this.recentClicks = [];
-    try { localStorage.removeItem(ECONOMY_KEY); } catch { /* private mode */ }
+    this.store.remove(ECONOMY_KEY);
     this.publish();
   }
 
@@ -996,7 +998,7 @@ export class EconomyService implements OnDestroy {
 
   private load(): PlayerEconomy {
     try {
-      const raw = localStorage.getItem(ECONOMY_KEY);
+      const raw = this.store.readRaw(ECONOMY_KEY);
       if (!raw) return emptyEconomy();
       const parsed = JSON.parse(raw) as Partial<PlayerEconomy>;
       const now = Date.now();
@@ -1039,11 +1041,7 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.lastPersistAt = Date.now();
-    try {
-      localStorage.setItem(ECONOMY_KEY, JSON.stringify(this.state));
-    } catch {
-      /* quota or private mode — a forge is not worth breaking a page over */
-    }
+      this.store.write(ECONOMY_KEY, this.state);
   }
 
   /**

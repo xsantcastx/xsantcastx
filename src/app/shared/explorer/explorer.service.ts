@@ -51,6 +51,7 @@ import {
 } from './explorer.model';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   explorerTier,
@@ -73,6 +74,7 @@ export class ExplorerService implements OnDestroy {
   private readonly roster = inject(ExplorerRosterService);
   private readonly stats = inject(PlayerStatsService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: ExplorerState = emptyExplorerState();
   private initialised = false;
@@ -420,7 +422,7 @@ export class ExplorerService implements OnDestroy {
 
   private load(): ExplorerState {
     try {
-      const raw = localStorage.getItem(EXPLORER_KEY);
+      const raw = this.store.readRaw(EXPLORER_KEY);
       if (!raw) return emptyExplorerState();
       const parsed = JSON.parse(raw) as Partial<ExplorerState>;
       const empty = emptyExplorerState();
@@ -469,13 +471,7 @@ export class ExplorerService implements OnDestroy {
 
   private persist(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(EXPLORER_KEY, JSON.stringify(this.state));
-    } catch {
-      // Private mode, or the quota is full. An expedition that cannot be
-      // written still runs for this session; losing it on reload is a better
-      // outcome than a thrown error taking the panel down with it.
-    }
+      this.store.write(EXPLORER_KEY, this.state);
   }
 
   /** Wipes expeditions and the collection. Used by the progression reset. */

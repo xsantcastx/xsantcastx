@@ -31,6 +31,7 @@ import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   COMBO_RESET_MS,
@@ -84,6 +85,7 @@ export class ComboService {
   private readonly zone = inject(NgZone);
   private readonly eggs = inject(EasterEggService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private record: ComboRecord = emptyRecord();
   private loaded = false;
@@ -227,7 +229,7 @@ export class ComboService {
     });
 
     try {
-      const raw = localStorage.getItem(COMBO_KEY);
+      const raw = this.store.readRaw(COMBO_KEY);
       if (!raw) return this.record;
       const parsed = JSON.parse(raw) as Partial<ComboRecord>;
       // Clamped on read as well as on write: a hand-edited blob should not be
@@ -243,11 +245,7 @@ export class ComboService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(COMBO_KEY, JSON.stringify(this.record));
-    } catch {
-      /* quota or private mode — a lost record is not worth breaking a page over */
-    }
+      this.store.write(COMBO_KEY, this.record);
   }
 
   /** Wipe the record. Exposed alongside the other resets. */
@@ -256,7 +254,7 @@ export class ComboService {
     this.break();
     this.record = emptyRecord();
     this.loaded = true;
-    try { localStorage.removeItem(COMBO_KEY); } catch { /* private mode */ }
+    this.store.remove(COMBO_KEY);
     this.publish();
   }
 }

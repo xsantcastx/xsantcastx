@@ -26,6 +26,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { SECRETS } from './codex-secrets';
 
 export const SECRETS_KEY = 'codex-secrets';
@@ -53,6 +54,14 @@ export class CodexSecretsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly router = inject(Router);
   private readonly zone = inject(NgZone);
+  /**
+   * Storage goes through the gateway like every other blob, but this key is
+   * deliberately *not* in `SYNCED_BLOBS` — the registry spec names it as
+   * device-local, and unknown keys are written locally and never queued. Routing
+   * it here anyway keeps one storage API in the app, and means syncing it later
+   * is a one-line decision rather than a rewrite.
+   */
+  private readonly store = inject(GameStateGateway);
 
   private started = false;
   private ledger: SecretLedger = {};
@@ -159,7 +168,7 @@ export class CodexSecretsService {
 
   private load(): void {
     try {
-      const raw = localStorage.getItem(SECRETS_KEY);
+      const raw = this.store.readRaw(SECRETS_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         // Drop ids the registry no longer knows. `foundCount` is the number of
@@ -178,10 +187,6 @@ export class CodexSecretsService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(SECRETS_KEY, JSON.stringify(this.ledger));
-    } catch {
-      /* quota or private mode — the secret still reads as found this session */
-    }
+    this.store.write(SECRETS_KEY, this.ledger);
   }
 }

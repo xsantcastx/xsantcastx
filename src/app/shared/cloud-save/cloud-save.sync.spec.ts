@@ -1,30 +1,20 @@
 /**
- * cloud-save.sync.spec.ts — the reported bug, end to end.
+ * cloud-save.sync.spec.ts — the save, end to end, across two devices.
  *
- * The complaint this exists for, in the words it was reported in: "Gold and other
- * data is STILL different between mobile and PC after signing into the same
- * account." It had survived two fixes, because both of them fixed the *merge* and
- * the merge was never the broken part. The reconciliation was correct, the cloud
- * document was correct, and the blob written to localStorage was correct — and
- * then the service that owned that blob wrote its own pre-merge copy back over
- * it, because nothing had told it the disk had moved.
+ * These tests drive the real `GameStateGateway`, the real `EconomyService` and
+ * the real `XpService` against an in-memory Firestore. Everything on this side
+ * of the network is shipping code; only the SDK is faked, because the real one
+ * needs a Google sign-in a headless suite cannot perform.
  *
- * So this drives the real `CloudSaveService` and the real `EconomyService` through
- * the whole shape of the report:
- *
- *   1. earn Gold on device A, and let it push
- *   2. clear localStorage — a second device, same account
- *   3. bind again, which is what signing in does
- *   4. assert the Gold is *in the service*, not merely on disk
- *
- * Step 4 is the one that matters and the one that was missing. Asserting on
- * localStorage alone passes against the broken build: the merged blob really was
- * written there, and was then overwritten a second later by a ledger nobody had
- * refreshed.
- *
- * Firestore is faked because the real thing needs a Google sign-in this suite
- * cannot perform. Everything on this side of the network — the merge rules, the
- * adopt path, the registry, the ledger — is the shipping code.
+ * The property under test has not changed even though the architecture has: a
+ * visitor's Gold has to be the same number on their phone and on their PC, and
+ * it has to still be that number after the next thing they do. What changed is
+ * where that is decided — the gateway is the record now, and localStorage is its
+ * cache — so these also pin the parts of "source of truth" that are easy to
+ * write and hard to notice going wrong: that a pull actually reaches the live
+ * services, that a flush batches instead of writing nineteen documents, that a
+ * refused write does not take the other eighteen down with it, and that being
+ * offline degrades to the local-only game rather than to a broken one.
  */
 import { TestBed } from '@angular/core/testing';
 import { LazyFirestoreService } from '../lazy-firestore.service';
@@ -32,75 +22,159 @@ import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { ECONOMY_KEY, EconomyService } from '../economy/economy.service';
 import { PROGRESS_KEY } from '../gamification/progress-storage.service';
 import { XpService } from '../gamification/xp.service';
+import { GameStateGateway, STATE_ENTRIES } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { CloudSaveService } from './cloud-save.service';
-import { SYNCED_BLOBS } from './cloud-save.model';
 
-/** Every key this suite touches, so one test cannot leak into the next. */
-const ALL_KEYS = [PROGRESS_KEY, 'cloud-save-uid', ...SYNCED_BLOBS.map(b => b.key)];
+const ALL_KEYS = [...STATE_ENTRIES.map(e => e.key), 'cloud-save-uid'];
 
 /**
- * An in-memory stand-in for the slice of the Firestore API cloud save uses.
+ * The slice of the Firestore API the gateway uses, in memory.
  *
- * Documents are keyed by path and deep-copied on the way in and out, so a test
- * cannot accidentally pass because two sides are sharing one object — which is
- * exactly the illusion a sync bug hides behind.
+ * Documents are deep-copied in and out so a test cannot pass because two sides
+ * happen to share one object — which is precisely the illusion a sync bug hides
+ * behind. Every call is counted, because several of the properties under test
+ * are about *how many* round trips happen rather than about the data.
  */
 class FakeFirestore {
   readonly docs = new Map<string, unknown>();
-  /** Every path read, so a test can assert the read-skip did or did not fire. */
-  readonly reads: string[] = [];
+  readonly counts = { getDoc: 0, getDocs: 0, setDoc: 0, batch: 0, batchWrites: 0, deleteDoc: 0 };
+  /** Paths that refuse writes, standing in for a security rule. */
+  readonly refuse = new Set<string>();
+  /** When set, every network call rejects — the offline case. */
+  down = false;
 
   readonly api = {
-    doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join('/') }),
+    doc: (_db: unknown, ...seg: string[]) => ({ path: seg.join('/') }),
+    collection: (_db: unknown, ...seg: string[]) => ({ path: seg.join('/') }),
+
     getDoc: async (ref: { path: string }) => {
-      this.reads.push(ref.path);
+      this.guard();
+      this.counts.getDoc++;
       const held = this.docs.get(ref.path);
+      return { exists: () => held !== undefined, data: () => copy(held) };
+    },
+
+    getDocs: async (ref: { path: string }) => {
+      this.guard();
+      this.counts.getDocs++;
+      const prefix = ref.path + '/';
+      const hits = [...this.docs.entries()].filter(([p]) => p.startsWith(prefix));
       return {
-        exists: () => held !== undefined,
-        data: () => copy(held),
+        forEach: (fn: (d: { id: string; data: () => unknown }) => void) =>
+          hits.forEach(([p, v]) => fn({ id: p.slice(prefix.length), data: () => copy(v) })),
       };
     },
+
     setDoc: async (ref: { path: string }, data: unknown) => {
-      this.docs.set(ref.path, copy(data));
+      this.guard();
+      this.counts.setDoc++;
+      this.commit(ref.path, data);
     },
+
     deleteDoc: async (ref: { path: string }) => {
+      this.guard();
+      this.counts.deleteDoc++;
       this.docs.delete(ref.path);
+    },
+
+    writeBatch: (_db: unknown) => {
+      const staged: { path: string; data: unknown }[] = [];
+      return {
+        set: (ref: { path: string }, data: unknown) => { staged.push({ path: ref.path, data }); },
+        commit: async () => {
+          this.guard();
+          this.counts.batch++;
+          // Atomic, like the real thing: one refusal fails the whole batch and
+          // nothing is written. This is the behaviour the per-document retry
+          // exists to survive.
+          for (const w of staged) {
+            if (this.refuse.has(w.path)) throw Object.assign(new Error('refused'), { code: 'permission-denied' });
+          }
+          this.counts.batchWrites += staged.length;
+          for (const w of staged) this.commit(w.path, w.data);
+        },
+      };
     },
   };
 
-  get handle(): any {
-    return { db: {}, api: this.api };
+  private guard(): void {
+    if (this.down) throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
+  }
+
+  private commit(path: string, data: unknown): void {
+    if (this.refuse.has(path)) {
+      throw Object.assign(new Error('refused'), { code: 'permission-denied' });
+    }
+    this.docs.set(path, copy(data));
+  }
+
+  get handle(): any { return { db: {}, api: this.api }; }
+
+  /** The gold stored in the ledger document, or null. */
+  goldInCloud(uid = 'u1'): number | null {
+    const d = this.docs.get(`users/${uid}/economy/state`) as { v?: { gold?: number } } | undefined;
+    return d?.v?.gold ?? null;
+  }
+
+  seedGold(gold: number, uid = 'u1'): void {
+    this.docs.set(`users/${uid}/economy/state`, {
+      v: { version: 2, gold, totalGoldEarned: gold, lastIdleAt: Date.now() },
+      updatedAt: new Date().toISOString(),
+    });
   }
 }
 
-function copy<T>(value: T): T {
-  return value === undefined ? value : JSON.parse(JSON.stringify(value));
+function copy<T>(v: T): T {
+  return v === undefined ? v : JSON.parse(JSON.stringify(v));
 }
 
-/** Eggs reach for the network on `trigger`, which this suite has no use for. */
+/** Eggs reach for the network on trigger, which none of this needs. */
 class FakeEggs {
   isFound(): boolean { return false; }
   async trigger(): Promise<void> { /* no-op */ }
   async init(): Promise<void> { /* no-op */ }
 }
 
-describe('cloud save — Gold across two devices', () => {
-  let cloud: CloudSaveService;
-  let economy: EconomyService;
-  let xp: XpService;
-  let registry: LocalSaveRegistry;
+describe('cloud save — Firestore as the record', () => {
   let fake: FakeFirestore;
 
-  /** What signing in does, minus the Google round trip `bind` never sees. */
-  function bind(uid = 'test-uid'): Promise<void> {
-    return (cloud as unknown as {
-      bind(u: { uid: string; email: null; displayName: null; photoURL: null }): Promise<void>;
-    }).bind({ uid, email: null, displayName: null, photoURL: null });
+  /**
+   * Stand up one device's services.
+   *
+   * Deliberately does *not* reset the TestBed — see {@link teardownDevice}. The
+   * two steps are separate because the order between them is the difference
+   * between a real test and one that quietly tests nothing.
+   */
+  function build() {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: LazyFirestoreService, useValue: { get: async () => fake.handle } },
+        { provide: EasterEggService, useValue: new FakeEggs() },
+      ],
+    });
+    return {
+      gateway: TestBed.inject(GameStateGateway),
+      economy: TestBed.inject(EconomyService),
+      xp: TestBed.inject(XpService),
+      registry: TestBed.inject(LocalSaveRegistry),
+    };
   }
 
-  function pushAll(): Promise<void> {
-    return (cloud as unknown as { pushAll(): Promise<void> }).pushAll();
+  /**
+   * Destroy the current device's services, then wipe its storage.
+   *
+   * The order matters and is the whole reason this is a named function.
+   * `resetTestingModule()` destroys the providers, and `EconomyService`
+   * implements `OnDestroy` by flushing its in-memory ledger — so wiping storage
+   * first and resetting second puts the ledger straight back, and the "second
+   * device" starts with the first device's Gold already on disk. The test then
+   * passes without ever having proved that anything came down from the cloud.
+   *
+   * Two real browsers cannot do this to each other. The harness can, and did.
+   */
+  function teardownDevice(): void {
+    TestBed.resetTestingModule();
+    localStorage.clear();
   }
 
   function goldOnDisk(): number {
@@ -108,91 +182,53 @@ describe('cloud save — Gold across two devices', () => {
   }
 
   beforeEach(() => {
-    ALL_KEYS.forEach(k => localStorage.removeItem(k));
+    // Reset before clearing, for the reason `teardownDevice` documents: the
+    // previous spec's services flush on destroy.
+    TestBed.resetTestingModule();
+    localStorage.clear();
     sessionStorage.clear();
     fake = new FakeFirestore();
-
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: LazyFirestoreService, useValue: { get: async () => fake.handle } },
-        { provide: EasterEggService, useValue: new FakeEggs() },
-      ],
-    });
-
-    cloud = TestBed.inject(CloudSaveService);
-    economy = TestBed.inject(EconomyService);
-    xp = TestBed.inject(XpService);
-    registry = TestBed.inject(LocalSaveRegistry);
   });
 
-  afterEach(() => {
-    // `bind` starts a ten-second push loop and window listeners.
-    (cloud as unknown as { stopPushing(): void }).stopPushing();
-    ALL_KEYS.forEach(k => localStorage.removeItem(k));
-    sessionStorage.clear();
-  });
+  // ───────────────────────────────────────────────────────────────────────────
+  // The property the last three releases were spent on
+  // ───────────────────────────────────────────────────────────────────────────
 
   it('carries Gold from one device to the next', async () => {
-    // ── Device A ───────────────────────────────────────────────────────────────
-    economy.init();
-    await xp.init();
-    economy.earnGold(1000, 'test');
-    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(1000);
+    const a = build();
+    a.economy.init();
+    await a.xp.init();
+    a.economy.earnGold(1000, 'test');
 
-    await bind();
-    await pushAll();
+    await a.gateway.attach('u1', fake.handle);
+    await a.gateway.flushNow();
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(1000);
 
-    // The ledger reached the cloud.
-    const remote = fake.docs.get('users/test-uid/economy/state') as { v: { gold: number } };
-    expect(remote.v.gold).toBeGreaterThanOrEqual(1000);
+    // A second device: same account, nothing on disk, its own services.
+    teardownDevice();
+    const b = build();
+    b.economy.init();
+    await b.xp.init();
+    expect(localStorage.getItem(ECONOMY_KEY)).toBeNull();
+    expect(b.economy.snapshot.gold).toBe(0);
 
-    // ── Device B: same account, nothing on disk ────────────────────────────────
-    // A fresh TestBed rather than reusing the one above, because the second
-    // device is a second set of services — reusing them would leave the ledger
-    // already holding 1000 and the test would prove nothing.
-    TestBed.resetTestingModule();
-    ALL_KEYS.forEach(k => localStorage.removeItem(k));
-    sessionStorage.clear();
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: LazyFirestoreService, useValue: { get: async () => fake.handle } },
-        { provide: EasterEggService, useValue: new FakeEggs() },
-      ],
-    });
-    const cloudB = TestBed.inject(CloudSaveService);
-    const economyB = TestBed.inject(EconomyService);
-    const xpB = TestBed.inject(XpService);
+    await b.gateway.attach('u1', fake.handle);
 
-    economyB.init();
-    await xpB.init();
-    expect(economyB.snapshot.gold).toBe(0);
-
-    await (cloudB as unknown as {
-      bind(u: { uid: string; email: null; displayName: null; photoURL: null }): Promise<void>;
-    }).bind({ uid: 'test-uid', email: null, displayName: null, photoURL: null });
-
-    // The assertion the old build failed. Not "is it on disk" — is it in the
-    // service the Flame, the Market and the currency rail all render from.
-    expect(economyB.snapshot.gold).toBeGreaterThanOrEqual(1000);
+    // In the service the Flame and the Market render from — not merely on disk,
+    // which is the assertion that passed against every broken version of this.
+    expect(b.economy.snapshot.gold).toBeGreaterThanOrEqual(1000);
     expect(goldOnDisk()).toBeGreaterThanOrEqual(1000);
-
-    (cloudB as unknown as { stopPushing(): void }).stopPushing();
   });
 
-  it('keeps the adopted Gold through the next write, which is where it used to go', async () => {
-    fake.docs.set('users/test-uid/economy/state', {
-      v: { version: 2, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now() },
-      updatedAt: new Date().toISOString(),
-    });
-
+  it('keeps the pulled Gold through the next write', async () => {
+    fake.seedGold(5000);
+    const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();
-    await bind();
+    await gateway.attach('u1', fake.handle);
 
     expect(economy.snapshot.gold).toBeGreaterThanOrEqual(5000);
 
-    // The write that used to lose it. On the old build this was `pagehide` firing
-    // inside `location.reload()`, flushing a ledger that still held 0.
     economy.earnGold(1, 'test');
     (economy as unknown as { flush(): void }).flush();
 
@@ -200,53 +236,175 @@ describe('cloud save — Gold across two devices', () => {
     expect(economy.snapshot.gold).toBeGreaterThanOrEqual(5000);
   });
 
-  it('adopts Gold that lands in the cloud mid-session, on the push loop', async () => {
+  // ───────────────────────────────────────────────────────────────────────────
+  // What "source of truth" bought
+  // ───────────────────────────────────────────────────────────────────────────
+
+  it('pulls the whole account in two round trips, not one per blob', async () => {
+    fake.seedGold(10);
+    const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();
-    await bind();
-    await pushAll();
+    await gateway.attach('u1', fake.handle);
 
-    // A phone banks 900 Gold while this tab sits open. Nothing here has reloaded.
-    fake.docs.set('users/test-uid/economy/state', {
-      v: { version: 2, gold: 900, totalGoldEarned: 900, lastIdleAt: Date.now() },
-      updatedAt: new Date().toISOString(),
-    });
-
-    // Something moves on this device, so the loop has a reason to look at the blob.
-    economy.earnGold(10, 'test');
-    await pushAll();
-
-    // Before this change `pushAll` deliberately left the merged result in the
-    // cloud — correct for a build whose services could not be refreshed, and the
-    // reason a desktop tab left open all day never saw the phone's evening.
-    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(900);
+    // One `getDocs` per subcollection. The old bind made a `getDoc` per blob,
+    // which was nineteen round trips on every page load of a signed-in visitor.
+    expect(fake.counts.getDocs).toBe(2);
+    expect(fake.counts.getDoc).toBe(0);
   });
 
-  it('does not reload the tab to adopt', async () => {
-    fake.docs.set('users/test-uid/economy/state', {
-      v: { version: 2, gold: 2500, totalGoldEarned: 2500, lastIdleAt: Date.now() },
-      updatedAt: new Date().toISOString(),
-    });
-
+  it('sends a burst of changes as one batch', async () => {
+    const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();
-    await bind();
+    await gateway.attach('u1', fake.handle);
 
-    // The old adopt path set this flag immediately before calling
-    // `location.reload()`. Nothing writes it any more, and its absence is the
-    // cheapest available proof that adoption happened in place.
-    expect(sessionStorage.getItem('cloud-save-adopted')).toBeNull();
-    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(2500);
+    const batchesAfterAttach = fake.counts.batch;
+    const docsAfterAttach = fake.counts.setDoc;
+
+    // Three separate blobs move, the way a minute of play moves several.
+    economy.earnGold(50, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    xp.award('tool-use', { toolId: 'spec-tool' });
+    (xp as unknown as { flushNow(): void }).flushNow();
+
+    await gateway.flushNow();
+
+    // One commit covering everything dirty, rather than a document write each.
+    expect(fake.counts.batch).toBe(batchesAfterAttach + 1);
+    expect(fake.counts.setDoc).toBe(docsAfterAttach);
+    expect(fake.counts.batchWrites).toBeGreaterThanOrEqual(2);
   });
 
-  it('leaves every owner registered holding what is on disk after a bind', async () => {
+  it('writes nothing when a pull changed nothing', async () => {
+    const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();
-    await bind();
+    await gateway.attach('u1', fake.handle);
+    await gateway.flushNow();
 
-    // The contract the registry exists to keep. Both blobs that clobbered the
-    // merge on the old build are claimed by the time a bind completes.
-    expect(registry.hasOwner(ECONOMY_KEY)).toBe(true);
-    expect(registry.hasOwner(PROGRESS_KEY)).toBe(true);
+    const writesBefore = fake.counts.batch + fake.counts.setDoc + fake.counts.batchWrites;
+
+    // A second attach with both sides already agreeing. Progression stamps a
+    // fresh `updatedAt` on every merge, so without the volatile-field rule this
+    // would report a change and cost a write on every page load, forever.
+    await gateway.attach('u1', fake.handle);
+
+    expect(fake.counts.batch + fake.counts.setDoc + fake.counts.batchWrites).toBe(writesBefore);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The ways the cloud says no
+  // ───────────────────────────────────────────────────────────────────────────
+
+  it('lands the other blobs when one document is refused', async () => {
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+    await gateway.flushNow();
+
+    // Stand in for the monotonic-XP rule refusing a write. A batch is atomic, so
+    // without the per-document retry this would hold the ledger hostage too.
+    fake.refuse.add('users/u1/progress/state');
+    economy.earnGold(777, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    xp.award('tool-use', { toolId: 'refused-tool' });
+    (xp as unknown as { flushNow(): void }).flushNow();
+
+    await gateway.flushNow().catch(() => { /* the refusal propagates; expected */ });
+
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(777);
+  });
+
+  it('keeps the game playable and the queue held while offline', async () => {
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+    await gateway.flushNow();
+
+    fake.down = true;
+    economy.earnGold(250, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    await gateway.flushNow().catch(() => { /* offline; expected */ });
+
+    // The visitor keeps playing and keeps their Gold; the write is still owed.
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(250);
+    expect(goldOnDisk()).toBeGreaterThanOrEqual(250);
+    expect(gateway.link).toBe('offline');
+    expect(gateway.pending).toBeGreaterThan(0);
+
+    // Back online, the queue drains without anything else prompting it.
+    fake.down = false;
+    await gateway.flushNow();
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(250);
+    expect(gateway.link).toBe('synced');
+    expect(gateway.pending).toBe(0);
+  });
+
+  it('reads from the cache when signed out, and queues nothing', async () => {
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    economy.earnGold(400, 'test');
+    (economy as unknown as { flush(): void }).flush();
+
+    // The anonymous majority: the game works and the cloud is never touched.
+    expect(gateway.attached).toBe(false);
+    expect(gateway.link).toBe('local');
+    expect(gateway.pending).toBe(0);
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(400);
+    expect(fake.counts.getDocs + fake.counts.setDoc + fake.counts.batch).toBe(0);
+  });
+
+  it('leaves the local save alone on sign-out', async () => {
+    fake.seedGold(3000);
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(3000);
+
+    await gateway.detach();
+
+    // Signing out is not a request to forget months of progress.
+    expect(gateway.attached).toBe(false);
+    expect(goldOnDisk()).toBeGreaterThanOrEqual(3000);
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(3000);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Progression's own rules, which the structural ones get wrong
+  // ───────────────────────────────────────────────────────────────────────────
+
+  it('keeps the earlier createdAt and adopts the signed-in identity', async () => {
+    const early = '2024-01-01T00:00:00.000Z';
+    const late = '2026-01-01T00:00:00.000Z';
+
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+      version: 2, xp: 10, aether: 10, nox: 0, level: 1, achievements: [],
+      toolsUsed: [], history: {}, streak: 1, bestStreak: 1, lastVisit: null,
+      userId: 'local-uuid', createdAt: late, updatedAt: late,
+    }));
+    fake.docs.set('users/u1/progress/state', {
+      version: 2, xp: 50, aether: 50, nox: 0, level: 1, achievements: [],
+      toolsUsed: [], history: {}, streak: 1, bestStreak: 1, lastVisit: null,
+      userId: 'u1', createdAt: early, updatedAt: early,
+    });
+
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+
+    const stored = JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
+    // The structural rule takes the greater of two strings, which is right for
+    // every other date in the save and wrong for this one — it is when the
+    // visitor first struck the forge, so the earlier value is the true one.
+    expect(stored.createdAt).toBe(early);
+    // Adopting the signed-in identity is most of what attaching means.
+    expect(stored.userId).toBe('u1');
+    expect(xp.snapshot.xp).toBeGreaterThanOrEqual(50);
   });
 });

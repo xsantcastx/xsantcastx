@@ -17,6 +17,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { LORE_SCROLLS, LoreScroll, scrollById } from './lore-scroll.model';
 
@@ -39,6 +40,7 @@ function emptyLedger(): ScrollLedger {
 export class LoreScrollService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private ledger: ScrollLedger = emptyLedger();
   private initialised = false;
@@ -153,7 +155,7 @@ export class LoreScrollService {
   reset(): void {
     if (!this.isBrowser) return;
     this.ledger = emptyLedger();
-    try { localStorage.removeItem(SCROLLS_KEY); } catch { /* private mode */ }
+    this.store.remove(SCROLLS_KEY);
     this.changed$$.next(this.changed$$.value + 1);
   }
 
@@ -163,7 +165,7 @@ export class LoreScrollService {
 
   private load(): ScrollLedger {
     try {
-      const raw = localStorage.getItem(SCROLLS_KEY);
+      const raw = this.store.readRaw(SCROLLS_KEY);
       if (!raw) return emptyLedger();
       const parsed = JSON.parse(raw) as Partial<ScrollLedger>;
 
@@ -190,8 +192,6 @@ export class LoreScrollService {
 
   private save(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(SCROLLS_KEY, JSON.stringify(this.ledger));
-    } catch { /* quota or private mode — the session works, it just forgets */ }
+      this.store.write(SCROLLS_KEY, this.ledger);
   }
 }
