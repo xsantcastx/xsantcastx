@@ -136,6 +136,18 @@
   gap: clamp(0.05rem, 0.5vw, 0.35rem);
   margin-inline: auto;
   min-width: 0;
+  /* A backstop, not a layout tool. `min-width: 0` lets this box be squeezed
+     below its content while the halls themselves are `white-space: nowrap` and
+     the standing group is `flex-shrink: 0` — so when the row runs out, the
+     links spill *out of this box* and paint underneath the wallet, where they
+     silently eat its clicks. That is the failure this bar has now shipped
+     three times, and every fix so far has been another measured threshold.
+
+     Clipping does not fix the arithmetic; the thresholds above still have to
+     be right. What it does is change the failure mode from "two controls
+     stopped working and nobody can see why" to "a label is visibly cut off",
+     which is the kind of bug that gets reported. */
+  overflow: hidden;
 }
 
 .gfnav__hall {
@@ -144,10 +156,16 @@
   align-items: center;
   gap: 0.3rem;
   min-height: 44px;
-  padding: 0 clamp(0.3rem, 0.75vw, 0.6rem);
+  padding: 0 clamp(0.28rem, 0.6vw, 0.45rem);
   border-radius: 8px;
   font-family: var(--font-body);
-  font-size: 0.74rem;
+  /* 0.68rem at every width, where this used to be 0.74rem above 1240px.
+     The sixth hall does not fit at 0.74 in either language — Spanish was 123px
+     over at 1401px — and the row has always dropped to 0.68 on any laptop
+     narrower than 1240, so this is the size most visitors were already reading.
+     One size everywhere is also one less thing that changes under you as the
+     window resizes. */
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -367,6 +385,20 @@
 .gfrune--tools::after {
   bottom: 2px; left: 50%; width: 13px; height: 3px; translate: -50% 0;
   background: currentColor; border-radius: 1px 1px 2px 2px;
+}
+
+/* rune forge — a rune cut into a stone.
+   Not an anvil: `--tools` is already a hammer over one, and two marks in the
+   same list that both read "anvil" is worse than one that reads "rune". The
+   lozenge is the stone, the stroke and its shadow are the cut. */
+.gfrune--forge::before {
+  inset: 2px; border: 1.5px solid currentColor; border-radius: 2px;
+  rotate: 45deg;
+}
+.gfrune--forge::after {
+  top: 4px; bottom: 4px; left: 50%; width: 1.5px; translate: -50% 0;
+  background: currentColor;
+  box-shadow: 3px -2px 0 -0.25px currentColor;
 }
 
 /* codex — a bound book */
@@ -788,17 +820,60 @@
    keeper glyph and the essence pill now come back later, and the two pieces
    chosen are the ones with somewhere else to be — the glyph duplicates the rank
    pill's destination, and essence is on the Market page it links to. */
+/* The Rune Forge is the sixth hall and it costs 110px at full size, so the row
+   had to find the width somewhere. Two pieces pay for it, and both are the kind
+   the note above identifies as having somewhere else to be.
+
+   The first is the hall type itself, which is now 0.68rem at every width rather
+   than only below 1240 — see the base rule, where the reasoning lives.
+
+   The second is the essence pill, which is on the Market page it links to. It
+   is hidden to 1480px, not to 1400: measured with a seven-figure balance at
+   1401px, the Spanish row was 123px over with everything shown and still 32px
+   over with only the type shrunk. English cleared by 35px on the same test,
+   which is exactly how a threshold picked off the English row ends up shipping
+   a Spanish overlap. 1480 is the crossover plus margin, so both languages clear
+   with the pill back. */
+@media (max-width: 1480px) {
+  .gfpill--essence { display: none; }
+}
 @media (max-width: 1380px) {
   .gfpill--rank .gfpill__rank-title { display: none; }
 }
 @media (max-width: 1240px) {
-  .gfnav__hall { font-size: 0.68rem; padding-inline: 0.32rem; }
   .gfnav__creed { display: none; }
   .gfnav__keeper { display: none; }   /* the rank pill already goes there */
 }
+
+/* The band between the drawer breakpoint and 1180px is the tightest place the
+   halls are still drawn, and it is where the sixth one has to be paid for a
+   second time — in Spanish, not in English.
+
+   Every label in this row is longer in Spanish: REINOS, FORJA DE RUNAS, CODICE,
+   MESA DE GUERRA, MERCADO. Measured at 961px with a seven-figure balance, the
+   five-hall Spanish row cleared the standing group by 2px — the same hair's
+   breadth the note above says kept letting this bug back in — and the sixth
+   hall turned that into a 119px overlap, with MERCADO and the gold odometer
+   both refusing clicks.
+
+   So the War Table sheds here. It is the one hall in the six that is a
+   shortcut rather than a destination: the tome's MAIN section and the footer
+   both carry /blueprint, and neither is more than one tap away at these
+   widths. With it gone and the type trimmed, Spanish clears by 34px and
+   English by ~97px.
+
+   1300 and not 1180, which is where this was first set: Spanish six-hall rows
+   were measured overlapping by 12px at 1181 and by 10px at 1241, and only came
+   clear at about 1260. A threshold picked off the English row would have left
+   Spanish clipped across an eighty-pixel band — the same mistake as tuning
+   against a fresh save's zero balance, in a different dimension. */
+@media (max-width: 1300px) {
+  .gfnav__hall--secondary { display: none; }
+  .gfnav__hall { font-size: 0.64rem; padding-inline: 0.18rem; }
+}
+
 @media (max-width: 1120px) {
   .gfnav__count { display: none; }
-  .gfpill--essence { display: none; }
 }
 
 /* Drawer breakpoint — matches MOBILE_NAV_BREAKPOINT in the component. */
