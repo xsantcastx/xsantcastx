@@ -1,3 +1,27 @@
+<!--
+  The painted forge, full-bleed behind everything. Same three-layer pattern the
+  homepage hero uses — artwork, dark gradient, glass UI — and the same markup,
+  which is a <picture> rather than a CSS background for the two reasons the
+  homepage records: art direction (the phone gets a portrait crop of the anvil,
+  not a squeezed landscape) and a JPEG fallback for browsers without WebP. A
+  background-image can do neither without image-set, whose type() branch is
+  exactly what older Safari lacks.
+
+  fetchpriority="high" because on this route the artwork IS the largest
+  contentful paint; left to default it queues behind the app's own scripts.
+-->
+<div class="rf-scene" aria-hidden="true">
+  <picture class="rf-scene__art">
+    <source media="(max-width: 768px)"  type="image/webp" srcset="assets/images/runeforge-hero-768.webp">
+    <source media="(max-width: 1280px)" type="image/webp" srcset="assets/images/runeforge-hero-1280.webp">
+    <source type="image/webp" srcset="assets/images/runeforge-hero-1536.webp">
+    <img src="assets/images/runeforge-hero-1536.jpg" alt=""
+         width="1536" height="1024"
+         fetchpriority="high" decoding="async" draggable="false">
+  </picture>
+  <span class="rf-scene__overlay"></span>
+</div>
+
 <div class="rf">
 
   <!-- ── Header ─────────────────────────────────────────────────────────── -->
@@ -29,22 +53,17 @@
   -->
   <section class="rf-anvil-bay" [class.rf-anvil-bay--striking]="striking">
 
-    <div class="rf-anvil-scene">
-      <div class="rf-anvil-glow" aria-hidden="true"></div>
-      <div class="rf-hammer" aria-hidden="true"></div>
-      <div class="rf-anvil" aria-hidden="true">
-        <span class="rf-anvil__horn"></span>
-        <span class="rf-anvil__face"></span>
-        <span class="rf-anvil__waist"></span>
-        <span class="rf-anvil__base"></span>
-      </div>
-      <div class="rf-sparks" aria-hidden="true">
-        @for (n of [1,2,3,4,5,6,7,8]; track n) {
-          <span class="rf-spark" [style.--i]="n"></span>
-        }
-      </div>
-    </div>
+    <!--
+      No drawn anvil, no drawn hammer. There is a painted forge behind this
+      section now and it is the whole point of the route; a CSS silhouette on
+      top of it is a second, worse anvil, and a glass panel over it is a lid on
+      the best thing in the picture. The homepage recorded the same lesson when
+      its art landed — the art carries what the CSS used to stand in for.
 
+      What the painting cannot do is react, so that is all this bay still owns:
+      the sparks fly off the strike button on the impact frame, and the button
+      itself is the only opaque thing between the visitor and the artwork.
+    -->
     <div class="rf-controls">
       <button
         type="button"
@@ -53,6 +72,11 @@
         (click)="strike()">
         <span class="rf-strike__label">Strike the Forge</span>
         <span class="rf-strike__cost">{{ money(strikeCost) }} Gold</span>
+        <span class="rf-sparks" aria-hidden="true">
+          @for (n of [1,2,3,4,5,6,7,8]; track n) {
+            <span class="rf-spark" [style.--i]="n"></span>
+          }
+        </span>
       </button>
 
       <p class="rf-purse">
