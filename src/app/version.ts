@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.50.0',
+  version: '2.50.1',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Keeper',
@@ -52,6 +52,16 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.50.1',
+    codename: 'Keeper',
+    date: '2026-08-13',
+    highlights: [
+      'The Google sign-in sheet used to say "Continue to xsantcastx-1694b.firebaseapp.com" — a project id nobody recognises, on the one screen where a visitor decides whether to trust the page with their account. It now says "Continue to xsantcastx.com"',
+      'One line of config: authDomain in the environment files. The OAuth redirect goes to https://<authDomain>/__/auth/handler, and xsantcastx.com already serves it — Firebase Hosting answers the reserved /__/* namespace ahead of the "**" SPA rewrite, and the domain was already in the project\'s authorised list, so nothing had to be opened up to make this work',
+      'Changed in all four environment files, not just the two that ship. scripts/build-env.sh copies environment.template.ts over environment.ts, so a template left on the old value would have quietly reverted this the first time that script ran',
+    ]
+  },
   {
     version: '2.50.0',
     codename: 'Keeper',
