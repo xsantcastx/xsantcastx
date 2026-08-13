@@ -53,6 +53,10 @@ export class TranslationService {
     // moves. Renaming the key as well would be a rename in two places to buy
     // nothing a reader of the templates can see.
     'gfnav.live':         { en: 'The Inner Sanctum', es: 'El santuario interior' },
+    // The bar's label for the same page. "The Inner Sanctum" is the name, and
+    // it is what the footer and the page itself say; a hall is a slot roughly
+    // one word wide, and "El santuario interior" is 175px of it in Spanish.
+    'gfnav.sanctum':      { en: 'Sanctum',       es: 'Santuario' },
     'gfnav.missionControl': { en: 'Mission Control', es: 'Control de misión' },
     'gfnav.donate':       { en: 'Donate',        es: 'Donar' },
     'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },
@@ -96,6 +100,9 @@ export class TranslationService {
     'gfnav.hint.keeper':    { en: 'Your rank and everything you own', es: 'Tu rango y todo lo que posees' },
     'gfnav.hint.mcp':       { en: 'Tools for AI agents',             es: 'Herramientas para agentes de IA' },
     'gfnav.hint.sponsors':  { en: 'Back the forge',                  es: 'Apoya la forja' },
+    'gfnav.hint.sanctum':   { en: 'Your explorers, your expeditions', es: 'Tus exploradores, tus expediciones' },
+    'gfnav.hint.missionControl': { en: 'Watch the forge being built', es: 'Mira como se construye la forja' },
+    'gfnav.hint.donate':    { en: 'Keep the fire lit',               es: 'Manten el fuego encendido' },
 
     'gffoot.forgedBy':    { en: 'Forged by xsantcastx',            es: 'Forjado por xsantcastx' },
     'gffoot.forge':       { en: 'Forge',        es: 'Forja' },
