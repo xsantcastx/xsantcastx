@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.55.1',
+  version: '2.55.2',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Ladder',
@@ -52,6 +52,17 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.55.2',
+    codename: 'Ladder',
+    date: '2026-08-13',
+    highlights: [
+      'Google sign-in could end in silence. signInWithPopup polls the popup\'s .closed to notice a visitor giving up on it; when COOP severs the opener the read is blocked, Firebase concludes the window is gone, and it rejects with auth/popup-closed-by-user while the visitor is still on Google\'s consent screen. That code means "they changed their mind", so it was swallowed on purpose — the sign-in completed in a popup nothing was listening to and the page sat there signed out with no error to report',
+      'The two causes share one error code and no way to tell them apart, so neither attempt is reported — but a popup that ends without a credential now marks itself, and the next click takes signInWithRedirect, which has no opener to sever. Someone who genuinely cancelled and came back pays one page navigation; someone whose browser severs the popup gets in on the second click instead of never',
+      'Cross-Origin-Opener-Policy is now set explicitly to same-origin-allow-popups. Production was sending no COOP at all, so the default unsafe-none was carrying the popup by accident — any later hardening pass on firebase.json, or a browser shipping a stricter default, would have broken sign-in with no code change and nothing to connect it to',
+      'Verified before shipping that the header cannot reach the popup\'s own page: Firebase Hosting serves the reserved /__/* namespace ahead of the headers config and strips custom headers from it, so /__/auth/handler returns 200 with no CSP and no COOP. A COOP landing there could have severed the postMessage that completes the sign-in — the fix would have caused the bug it was written for',
+    ]
+  },
   {
     version: '2.55.1',
     codename: 'Ladder',
