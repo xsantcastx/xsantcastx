@@ -57,6 +57,8 @@ import {
 } from '../shared/gamification/tool-mastery.service';
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
+import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
+import { EquipmentPanelComponent } from '../shared/rpg/equipment-panel.component';
 import {
   ARTIFACTS,
   COSMETICS,
@@ -263,7 +265,13 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [CommonModule, RouterLink, CloudSaveButtonComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    CloudSaveButtonComponent,
+    StatPanelComponent,
+    EquipmentPanelComponent,
+  ],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
 })
