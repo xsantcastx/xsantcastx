@@ -169,12 +169,21 @@ interface Shout {
            they would otherwise be, which is what the pressed flag is for in
            onStrike.
 
+           What contextmenu does NOT cover is iOS, which answers a long press
+           with the native callout sheet and never raises the event at all —
+           that one is suppressed in CSS with -webkit-touch-callout, and the
+           note on .ff__btn is the long version. touchstart is bound here rather
+           than on the host so that preventDefaulting it cannot reach the HUD's
+           two links; see onTouchStrike.
+
            No backticks in this comment: it lives inside the component's
            template literal, and one would end the string. -->
       <button
         type="button"
         class="ff__btn"
+        [class.is-tapping]="tapping"
         (click)="onStrike()"
+        (touchstart)="onTouchStrike($event)"
         (contextmenu)="openRuneForge($event)"
         (pointerdown)="onPressStart()"
         (pointerup)="onPressEnd()"
@@ -270,6 +279,59 @@ interface Shout {
         transform .34s cubic-bezier(.22, 1.28, .44, 1),
         filter .2s cubic-bezier(0.4, 0, 0.2, 1);
       -webkit-tap-highlight-color: transparent;
+
+      /* ── What makes this tappable on a phone ──────────────────────────────
+         Four declarations, and every one of them is fixing a real thing a
+         finger was doing to this button.
+
+         -webkit-touch-callout is the one the bug report was about. The
+         template binds (contextmenu) and preventDefaults it, which handles a
+         right-click and handles Android's long-press — but iOS Safari does not
+         raise contextmenu from touch at all. It raises the native callout
+         sheet instead, and the only thing that suppresses that sheet is this
+         property. With an <img> inside the button the sheet even had a menu to
+         offer: Save Image, Copy, Share. That is the "popup instead of the
+         click".
+
+         user-select stops the same press selecting the button's text — there
+         is none, but a selection started here still drags across whatever is
+         behind it and leaves the page in a text-selection gesture.
+
+         touch-action: manipulation is the other half of the report. Without it
+         double-tap-to-zoom is live on this element, which means (a) the browser
+         holds every click for ~300ms waiting to see if a second tap is coming,
+         and (b) a fast clicker — the entire point of this button — zooms the
+         page instead of forging. manipulation keeps panning and pinch and drops
+         only the double-tap, which is exactly the trade we want. */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* The strike, as the finger sees it.
+       On touch the press is handled on touchstart and preventDefaulted, and a
+       preventDefaulted touchstart does not produce the :active state (or focus,
+       or a compatibility mouse event) — so the squash below has to be driven by
+       a class the component sets, or a tap would land with no feedback at all.
+       Same shape as :active so the two paths look identical, a hair deeper
+       because a thumb covers the button it is pressing and needs the edges to
+       move to see anything.
+
+       On .ff__btn rather than on .ff: .ff carries the translateX(-50%) that
+       centres the flame on a phone, and a transform here would overwrite it and
+       throw the button half its own width off-centre mid-tap. */
+    .ff__btn.is-tapping { transform: scale(.92); transition-duration: .09s; }
+
+    /* The glyph is an image, and an image is a long-press target in its own
+       right — the callout suppression above has to reach it too, and the
+       cleanest way is to make it invisible to the pointer entirely so every
+       touch resolves to the button. Same for the two HUD currency icons. */
+    .ff img {
+      pointer-events: none;
+      -webkit-touch-callout: none;
+      -webkit-user-drag: none;
+      user-select: none;
     }
 
     /* .96, not the .9 this used to hold: the flame is a 64px target under a
@@ -291,9 +353,10 @@ interface Shout {
     .ff__btn:focus-visible { outline: 2px solid #A78BFA; outline-offset: 6px; border-radius: 50%; }
 
     @media (prefers-reduced-motion: reduce) {
-      /* The brightness cue stays; the movement goes. */
+      /* The brightness cue stays; the movement goes. Both press states, since
+         on touch it is .is-tapping and not :active that carries the squash. */
       .ff__btn { transition: filter .01s linear; }
-      .ff__btn:active { transform: none; }
+      .ff__btn:active, .ff__btn.is-tapping { transform: none; }
     }
 
     /* The ember itself. Warm gradient per the forge palette: #E8752A → #C9A84C. */
@@ -688,20 +751,54 @@ interface Shout {
     /* The shout still names the tier; it stops rising. */
     .ff--still .ff__shout { animation: ffShoutStill 2s linear forwards; }
 
-    /* ── Mobile: smaller, and further from the thumb's resting arc so it does
-         not sit on top of a tool's own controls. ─────────────────────────── */
+    /* ── Mobile: bigger, and under the thumb rather than beside it ─────────
+         Every rule in both queries is written against .ff:not(.ff--inline).
+         No backticks anywhere in these comments: they sit inside the styles
+         template literal, and one would end the string — the same trap the
+         note above the button describes, and it catches every edit to this
+         block.
+
+         The inline flame is position: relative, and the bottom property on a
+         relatively positioned element is an offset, not an anchor — the rule
+         in the 960px query below
+         used to apply to it too and shunted the Forge View's centrepiece
+         ~94px up and out of its own panel on every phone. It reads as a
+         layout bug with no obvious cause, because the rule that causes it
+         names a class the element is not supposed to match. */
     /* The five-tab bar appears at 960px, not 768px, so the flame has to clear
        it from 960px down — otherwise between 769 and 960 it sits behind the
        CODEX and PROFILE tabs. Kept as its own query so the size changes below
        still happen at the phone breakpoint where they belong. */
     @media (max-width: 960px) {
-      .ff { bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 18px); }
+      .ff:not(.ff--inline) { bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 18px); }
     }
 
     @media (max-width: 768px) {
-      .ff { right: 10px; }
-      .ff__btn { width: 52px !important; height: 52px !important; }
-      .ff__glyph { width: 30px !important; height: 30px !important; }
+      /* Bottom-centre, not bottom-right. A corner is where you put a thing you
+         want out of the way, and on a phone the Godforge's one interaction was
+         pinned under the right edge where a right thumb has to reach across its
+         own hand and a left thumb cannot reach at all. Centred, it is the
+         easiest point on the screen to hit repeatedly, which is what a clicker
+         needs to be.
+
+         The offset stays the calc from the 960px query above rather than the
+         flat 70px it is tempting to write here: the five-tab bar is 58px PLUS
+         env(safe-area-inset-bottom), which is 34px on a home-indicator iPhone.
+         A hard 70px would put the ember on top of the middle tab on exactly the
+         devices this hotfix is for, and the tab it would cover is a navigation
+         control — a worse bug than the one being fixed. */
+      .ff:not(.ff--inline) {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      /* 80px, up from 52px. The old size cleared the 44px minimum but only
+         just, and this is a target meant to be hit dozens of times in a row. */
+      .ff:not(.ff--inline) .ff__btn { width: 80px !important; height: 80px !important; }
+      .ff:not(.ff--inline) .ff__glyph { width: 44px !important; height: 44px !important; }
+      .ff--inline .ff__btn { width: 52px !important; height: 52px !important; }
+      .ff--inline .ff__glyph { width: 30px !important; height: 30px !important; }
+
       .ff__hud, .ff__banner { min-width: 154px; font-size: 11px; }
       /* The counter shares the row with the ember on a 375px viewport. */
       .ff__combo { font-size: 13px; right: calc(100% + 7px); }
@@ -898,11 +995,103 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     void this.router.navigateByUrl('/rune-forge');
   }
 
+  // ── Touch ──────────────────────────────────────────────────────────────────
+
+  /** Drives the squash on touch, where :active never arrives. See the CSS. */
+  tapping = false;
+  private tapSeq = 0;
+
+  /**
+   * When the last touch paid a strike. Read by `onStrike` to throw away the
+   * compatibility click.
+   *
+   * A preventDefaulted touchstart is *supposed* to suppress the click entirely,
+   * and in every browser that follows the spec it does — but "the click did not
+   * fire" is not something this component can check, and a strike paid twice
+   * for one tap is the bug the report actually leads with ("no ghost clicks or
+   * double-fires"). So the click path is guarded by a window rather than
+   * trusted: the compatibility click lands within ~300ms of the touch that
+   * spawned it, 700ms is comfortably past that, and it is far short of the
+   * interval between two deliberate taps by a real thumb.
+   */
+  private lastTouchAt = 0;
+
+  /**
+   * The strike, on touchstart instead of click.
+   *
+   * Two reasons, and only one of them is speed. Speed is the obvious one —
+   * touchstart is the first event of the gesture and click is the last, and on
+   * a button whose entire job is being hit repeatedly the gap is felt. The
+   * other is that preventDefaulting here is what stops the press ever becoming
+   * something else: no compatibility mouse event, no text selection, and no
+   * drag started from the glyph.
+   *
+   * Bound on the button, not on the host. A @HostListener('touchstart') with a
+   * preventDefault would cover the whole component — including the HUD's two
+   * routerLinks — and a preventDefaulted touchstart on an anchor is an anchor
+   * that cannot be followed by a finger. The Market and the Rune Forge would
+   * have become desktop-only links, quietly.
+   */
+  onTouchStrike(e: TouchEvent): void {
+    if (!this.isBrowser) return;
+    // A second finger is a pinch or a stray palm, not a strike. Left alone
+    // rather than preventDefaulted so the page can still be zoomed from here.
+    if (e.touches.length > 1) return;
+
+    e.preventDefault();
+    this.lastTouchAt = Date.now();
+
+    // Held for a fixed 110ms rather than until touchend, and that is the whole
+    // reason this is not simply :active with a different name. A deliberate tap
+    // on a clicker is 30-60ms of contact; releasing the class on touchend would
+    // put the squash on screen for less than two frames on a fast tap and for
+    // none at all on the fastest, so the taps that most need to feel answered
+    // would be the ones that felt like nothing. The token guards the overlap:
+    // a second tap inside the window owns the class, and the first tap's timer
+    // finds a newer token and leaves it alone.
+    const token = ++this.tapSeq;
+    this.tapping = true;
+    this.after(() => {
+      if (this.tapSeq !== token) return;
+      this.tapping = false;
+      this.cdr.markForCheck();
+    }, 110);
+
+    this.buzz();
+    this.strike();
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * 10ms. Long enough to register as a tick under the finger, short enough that
+   * a run of them reads as texture rather than as the phone going off.
+   *
+   * Guarded on both sides: `vibrate` is absent on every iOS browser, and on the
+   * ones that have it a call outside a user gesture throws rather than
+   * returning false. This is inside a gesture, but a NotAllowedError from a
+   * decoration must never be the thing that stops a strike from paying.
+   */
+  private buzz(): void {
+    try { navigator.vibrate?.(10); } catch { /* haptics are optional */ }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+
   onStrike(): void {
+    // The compatibility click behind a touch that has already paid. See
+    // `lastTouchAt`.
+    if (Date.now() - this.lastTouchAt < 700) return;
+
     // A press that has already been spent opening the Rune Forge is not also a
     // strike. Cleared here rather than in the press handlers because `click`
     // fires after `pointerup`, so this is the last word on the gesture.
     if (this.pressed) { this.pressed = false; return; }
+
+    this.strike();
+  }
+
+  /** The strike itself, once a gesture has been judged to be one. */
+  private strike(): void {
 
     // One flame, two ledgers.
     //

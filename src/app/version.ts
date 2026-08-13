@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.55.0',
+  version: '2.55.1',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Ladder',
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.55.1',
+    codename: 'Ladder',
+    date: '2026-08-13',
+    highlights: [
+      'Tapping the Forge Flame on an iPhone raised the Save Image / Copy sheet instead of striking. The button bound (contextmenu) and preventDefaulted it, which is the whole fix on a desktop and on Android — but iOS Safari does not raise contextmenu from a touch at all. It answers a long press with the native callout, and the only thing that suppresses that is -webkit-touch-callout: none, which nothing on this button set',
+      'Rapid tapping zoomed the page. Without touch-action on the button, double-tap-to-zoom was live on the one control whose entire purpose is being hit repeatedly, and every tap was also held ~300ms while the browser waited to see whether a second one was coming. touch-action: manipulation drops the double-tap and keeps pan and pinch',
+      'The strike now lands on touchstart rather than click, so it answers at the start of the gesture instead of the end. Bound on the button and not on the host: a preventDefaulted touchstart across the whole component would have turned the HUD\'s Market and Rune Forge links into anchors a finger could not follow. The compatibility click behind it is discarded by a 700ms window, so one tap can never pay twice',
+      'Bottom-centre and 80px, up from a 52px ember under the right edge that a left thumb could not reach. The offset stays 58px + env(safe-area-inset-bottom) + 18px rather than a flat number, because on a home-indicator iPhone the five-tab bar is 92px tall and a hard 70px would have parked the flame on top of a navigation control',
+      'A tap now visibly squashes the ember. It has to be driven by a class rather than :active, because a preventDefaulted touchstart never produces :active — and it is held for a fixed 110ms, because a deliberate tap is 30-60ms of contact and releasing on touchend would have shown the squash for less than two frames. Plus a 10ms haptic tick where the browser offers one',
+      'Fixed a separate mobile bug the audit turned up: the Forge View\'s in-page flame is position: relative, and the rule that lifts the corner flame above the tab bar was matching it too — an anchor on a fixed element is an offset on a relative one, so the Sanctum\'s centrepiece was being shoved ~76px up and out of its own panel on every phone. Both mobile queries are now scoped to :not(.ff--inline)',
+    ]
+  },
   {
     version: '2.55.0',
     codename: 'Ladder',
