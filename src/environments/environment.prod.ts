@@ -2,7 +2,13 @@ export const environment = {
   production: true,
   firebase: {
     apiKey: "AIzaSyAABzajHVAd6NbLjMGk4IIVA9pB1T-P7To",
-    authDomain: "xsantcastx-1694b.firebaseapp.com",
+    // The custom domain, not xsantcastx-1694b.firebaseapp.com: this string is
+    // what the Google account chooser reads out, and "Continue to xsantcastx.com"
+    // is the difference between looking like the site the visitor is on and
+    // looking like a phishing page. Requires xsantcastx.com to serve
+    // /__/auth/handler, which Firebase Hosting does ahead of the "**" SPA
+    // rewrite. See environment.ts for the full reasoning.
+    authDomain: "xsantcastx.com",
     databaseURL: "https://xsantcastx-1694b-default-rtdb.firebaseio.com",
     projectId: "xsantcastx-1694b",
     storageBucket: "xsantcastx-1694b.firebasestorage.app",

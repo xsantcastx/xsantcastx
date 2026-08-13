@@ -2,7 +2,21 @@ export const environment = {
   production: false,
   firebase: {
     apiKey: "AIzaSyAABzajHVAd6NbLjMGk4IIVA9pB1T-P7To",
-    authDomain: "xsantcastx-1694b.firebaseapp.com",
+    // The custom domain, not xsantcastx-1694b.firebaseapp.com. This string is
+    // the one the Google account chooser reads out — "Continue to
+    // xsantcastx.com" rather than a project id nobody recognises, which is the
+    // difference between looking like the site the visitor is on and looking
+    // like a phishing page.
+    //
+    // Safe because the OAuth flow's redirect_uri is
+    // https://<authDomain>/__/auth/handler, and xsantcastx.com serves it:
+    // Firebase Hosting answers the reserved /__/* namespace ahead of the "**"
+    // SPA rewrite in firebase.json. Verified against production 2026-08-13 —
+    // /__/auth/handler returns the real fireauth.oauthhelper page, not
+    // index.csr.html. If that ever stops being true, sign-in fails with
+    // auth/unauthorized-domain, which CloudSaveService already surfaces as a
+    // sentence rather than a silent no-op.
+    authDomain: "xsantcastx.com",
     databaseURL: "https://xsantcastx-1694b-default-rtdb.firebaseio.com",
     projectId: "xsantcastx-1694b",
     storageBucket: "xsantcastx-1694b.firebasestorage.app",
