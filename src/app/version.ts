@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.53.0',
+  version: '2.54.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Codex',
+  codename: 'Atlas',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,20 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.54.0',
+    codename: 'Atlas',
+    date: '2026-08-13',
+    highlights: [
+      'Every realm has a room. Santiago\'s nine location paintings hang behind the routes they were painted for — the colosseum behind the Arena, the shop aisle behind the Market, the war table behind the Blueprint, the keeper\'s chamber behind your Forge, and the five realm halls behind all 126 tool pages',
+      'Which room a tool page stands in is the realm it already belonged to: route → tool → category → realm, the same resolution that has been putting a realm badge on those pages, now choosing a painting as well',
+      'A tool page downloads its own realm and no other. The paintings are chosen by a CSS attribute, so the browser fetches the one whose selector matches and never sees the other four',
+      'The rooms prerender. Realms now resolve on the server too, so a tool page arrives with its painting rather than acquiring one a moment after it loads',
+      'The rune sheet is in. A strike turns up the painted card instead of a name and a line of lore, the ledger fills with the cards you hold, the recipe wall carries all six runewords, and the Market shows the five artifacts as the paintings they are',
+      'Mote, Seam and Ledger were never painted, and they keep the plain name-plate the whole ladder wore before the sheet arrived',
+      '33 cards for 426 KB — not one of them had any transparency to preserve, so not one of them pays for an alpha channel',
+    ],
+  },
   {
     version: '2.53.0',
     codename: 'Codex',
