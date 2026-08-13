@@ -2242,3 +2242,235 @@
   .gfh__descend-chev { animation: none; }
   .gfstat__fill { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2b — THE RUNE FORGE BAND
+   ═══════════════════════════════════════════════════════════════════════════
+   Violet and gold rather than the page's orange, because it is a door to the
+   Godforge's own colour and the arrival should not be a surprise. The anvil is
+   drawn in boxes for the same reason the nav runes are: at this size a painted
+   asset is another request for a silhouette CSS can state exactly.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gf-anvil {
+  position: relative;
+  padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2rem);
+  background:
+    radial-gradient(ellipse 60% 70% at 78% 50%, rgba(164, 139, 255, 0.13), transparent 68%),
+    radial-gradient(ellipse 50% 60% at 12% 40%, rgba(201, 168, 76, 0.07), transparent 65%),
+    rgba(8, 6, 20, 0.5);
+}
+
+.gf-anvil::before,
+.gf-anvil::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+}
+.gf-anvil::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(164, 139, 255, 0.45) 50%, transparent); }
+.gf-anvil::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.35) 50%, transparent); }
+
+.gf-anvil__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+.gf-anvil__title {
+  margin: 0 0 0.6rem;
+}
+
+.gf-anvil__lede {
+  margin: 0 0 1.2rem;
+  max-width: 46ch;
+  font-size: clamp(0.88rem, 2vw, 0.98rem);
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.gf-anvil__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  margin-bottom: 1.4rem;
+}
+
+.gf-anvil__stat {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gf-anvil__stat b {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #a48bff;
+}
+
+.gf-anvil__stat i {
+  font-style: normal;
+  font-size: 0.8rem;
+  color: rgba(232, 236, 241, 0.35);
+  margin-right: 0.35rem;
+}
+
+.gf-anvil__cta {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 52px;
+  justify-content: center;
+  padding: 0.7rem 1.8rem;
+  border: 1px solid rgba(164, 139, 255, 0.5);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(164, 139, 255, 0.2), rgba(164, 139, 255, 0.07));
+  color: var(--text-color);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.gf-anvil__cta:hover,
+.gf-anvil__cta:focus-visible {
+  border-color: rgba(255, 109, 215, 0.7);
+  box-shadow: 0 0 34px -8px rgba(164, 139, 255, 0.9);
+  transform: translateY(-2px);
+}
+
+.gf-anvil__cta-cost {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 198, 105, 0.85);
+}
+
+/* ── The anvil ──────────────────────────────────────────────────────────── */
+
+.gf-anvil__scene {
+  position: relative;
+  height: 200px;
+  min-width: 0;
+}
+
+.gf-anvil__glow {
+  position: absolute;
+  left: 50%; bottom: 34px;
+  width: 210px; height: 96px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(164, 139, 255, 0.5), transparent 70%);
+  filter: blur(18px);
+  animation: gfAnvilBreathe 5.5s ease-in-out infinite;
+}
+
+.gf-anvil__body {
+  position: absolute;
+  left: 50%; bottom: 18px;
+  width: 150px; height: 92px;
+  transform: translateX(-50%);
+}
+
+.gf-anvil__body i {
+  position: absolute;
+  background: linear-gradient(180deg, #2a2440 0%, #16121f 100%);
+  border: 1px solid rgba(164, 139, 255, 0.24);
+}
+
+.gf-anvil__face  { left: 0;     top: 0;    width: 118px; height: 22px; border-radius: 4px 4px 2px 2px;
+                   box-shadow: 0 0 20px -4px rgba(164, 139, 255, 0.55); }
+.gf-anvil__horn  { left: 108px; top: 3px;  width: 40px;  height: 15px; border-radius: 0 50% 50% 0; }
+.gf-anvil__waist { left: 42px;  top: 22px; width: 34px;  height: 40px; }
+.gf-anvil__base  { left: 20px;  top: 62px; width: 80px;  height: 24px; border-radius: 3px; }
+
+.gf-anvil__hammer {
+  position: absolute;
+  left: 50%; top: 8px;
+  width: 74px; height: 22px;
+  margin-left: -86px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3a3358 0%, #1d1830 100%);
+  border: 1px solid rgba(164, 139, 255, 0.32);
+  transform-origin: right center;
+  animation: gfAnvilStrike 3.4s cubic-bezier(0.5, 0, 0.75, 0) infinite;
+}
+
+.gf-anvil__spark {
+  position: absolute;
+  left: 50%; bottom: 104px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: #ffc669;
+  box-shadow: 0 0 6px rgba(255, 198, 105, 0.9);
+  opacity: 0;
+  animation: gfAnvilSpark 3.4s ease-out infinite;
+  animation-delay: calc(var(--i) * 30ms);
+}
+
+/* The scene's first three children are the glow, the hammer and the body, so
+   the six sparks are children 4 through 9. Off-by-one here leaves the last
+   spark with no --dx/--dy, sitting still at the origin while the other five
+   fly — which reads as a rendering glitch rather than as a missing rule. */
+.gf-anvil__spark:nth-child(4) { --dx: -54px; --dy: -30px; }
+.gf-anvil__spark:nth-child(5) { --dx: -30px; --dy: -46px; }
+.gf-anvil__spark:nth-child(6) { --dx: -6px;  --dy: -52px; }
+.gf-anvil__spark:nth-child(7) { --dx: 22px;  --dy: -46px; }
+.gf-anvil__spark:nth-child(8) { --dx: 48px;  --dy: -28px; }
+.gf-anvil__spark:nth-child(9) { --dx: 66px;  --dy: -10px; }
+
+@keyframes gfAnvilBreathe {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.9; }
+}
+
+/* The strike lands at 18% and the rest of the cycle is the arm coming back up,
+   so the hammer rests far more than it swings — a loop that struck continuously
+   would be a metronome in the corner of the page. */
+@keyframes gfAnvilStrike {
+  0%   { transform: rotate(-56deg); }
+  12%  { transform: rotate(6deg); }
+  18%  { transform: rotate(2deg); }
+  46%  { transform: rotate(-56deg); }
+  100% { transform: rotate(-56deg); }
+}
+
+@keyframes gfAnvilSpark {
+  0%, 11% { opacity: 0; transform: translate(0, 0) scale(1); }
+  14%     { opacity: 1; transform: translate(0, 0) scale(1); }
+  30%     { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
+  100%    { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
+}
+
+@media (max-width: 860px) {
+  .gf-anvil__inner {
+    grid-template-columns: 1fr;
+  }
+  /* The anvil moves above the copy on a phone: it is the thing that says what
+     this band is, and burying it under three counts and a button makes it
+     decoration nobody scrolls to. */
+  .gf-anvil__scene { order: -1; height: 160px; }
+  .gf-anvil__lede { max-width: none; }
+}
+
+/* Every loop here is ambient. The band states what it is in text, so a static
+   anvil loses nothing. `animation: none` names no keyframe and so cannot be
+   broken by the encapsulation rewrite that has silently killed media-query
+   animations in this repo before. */
+@media (prefers-reduced-motion: reduce) {
+  .gf-anvil__glow,
+  .gf-anvil__hammer,
+  .gf-anvil__spark {
+    animation: none;
+  }
+  .gf-anvil__hammer { transform: rotate(-56deg); }
+  .gf-anvil__spark { display: none; }
+}

@@ -27,6 +27,10 @@ import { formatCurrency } from '../shared/economy/economy.model';
 import { PRERENDERED_PATHS } from '../prerender-stats';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
+import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
+import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
+import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
+import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
 
 export interface Tool {
   id: string;
@@ -72,8 +76,12 @@ export class LandingComponent implements OnInit, OnDestroy {
   private translationService = inject(TranslationService);
   private readonly xpService = inject(XpService);
   private readonly economyService = inject(EconomyService);
+  private readonly runeForge = inject(RuneForgeService);
+  private readonly scrolls = inject(LoreScrollService);
   private xpSub?: Subscription;
   private ecoSub?: Subscription;
+  private runeSub?: Subscription;
+  private scrollSub?: Subscription;
 
   translate(key: string): string {
     return this.translationService.translate(key);
@@ -154,6 +162,18 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly prerenderedPaths = PRERENDERED_PATHS;
   /** Registered easter eggs. */
   readonly fragmentCount = EASTER_EGGS.length;
+
+  // ── The Rune Forge band ────────────────────────────────────────────────────
+  // Totals come from the registries, so the denominators are correct on the
+  // server and can never drift from the tables themselves. The numerators are
+  // browser-only and read zero during prerender, which is the honest thing for
+  // a crawler to index and the same contract the wallet and the rank keep.
+  readonly runesTotal = RUNES.length;
+  readonly scrollsTotal = LORE_SCROLLS.length;
+  readonly runewordsTotal = RUNEWORDS.length;
+  runesFound = 0;
+  scrollsFound = 0;
+  runewordsCrafted = 0;
   /** Realms in the codex. */
   readonly realmCount = REALMS.length;
 
@@ -184,6 +204,19 @@ export class LandingComponent implements OnInit, OnDestroy {
     // panel tracks Gold and Essence as the ambient forge ticks them.
     this.economyService.init();
     this.ecoSub = this.economyService.snapshot$.subscribe(eco => { this.eco = eco; });
+
+    // The Rune Forge band's three counts. Both services are idempotent and
+    // browser-guarded, and both replay, so this is correct whether the visitor
+    // has never opened the forge or has been striking it for a month.
+    this.runeForge.init();
+    this.runeSub = this.runeForge.snapshot$.subscribe(snap => {
+      this.runesFound = snap.unique;
+      this.runewordsCrafted = snap.crafted.length;
+    });
+    this.scrolls.init();
+    this.scrollSub = this.scrolls.changed$.subscribe(() => {
+      this.scrollsFound = this.scrolls.foundCount;
+    });
   }
 
 
@@ -253,6 +286,8 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.markArtRoute(false);
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
+    this.runeSub?.unsubscribe();
+    this.scrollSub?.unsubscribe();
   }
 
   // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
