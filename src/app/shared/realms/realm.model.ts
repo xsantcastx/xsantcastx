@@ -39,6 +39,26 @@ export interface RealmDefinition {
   sigil: string;
 }
 
+/**
+ * Three of these colours were re-cut against the painted art (2026-08-13).
+ *
+ * `color` is the realm's accent everywhere — the badge on all 126 tool pages,
+ * the gate on /tools — and every one of those surfaces now sits in front of the
+ * realm's `bg-<sigil>` painting. Three had drifted out of step with it, which
+ * only became visible once the art went full-bleed:
+ *
+ *   umbral   #8B2252 crimson -> #A855F7 violet.  The vault is lit by violet
+ *            crystals; the old crimson belonged to `--forge-crimson`, not here.
+ *   archivum #C9A84C gold    -> #10B981 emerald. bg-verdant is a green
+ *            conservatory. The gold read as a second Luminous.
+ *   nexus    #10B981 emerald -> #EF4444 crimson. bg-infernal is a lava-lit mail
+ *            forge, so a green accent fought the whole frame.
+ *
+ * Archivum and Nexus had, in effect, swapped: each wore the other's colour.
+ * Luminous (gold hall) and Verge (blue observatory) already matched and are
+ * untouched. Note the violet is lighter than the codex's `#6B21A8` — that value
+ * only reaches ~2.2:1 on `--forge-void` and cannot carry text.
+ */
 export const REALMS: RealmDefinition[] = [
   {
     id: 'luminous',
@@ -55,8 +75,8 @@ export const REALMS: RealmDefinition[] = [
     id: 'umbral',
     name: 'Umbral',
     domain: 'Security & Secrets',
-    color: '#8B2252',
-    glow: 'rgba(139, 34, 82, 0.7)',
+    color: '#A855F7',
+    glow: 'rgba(168, 85, 247, 0.6)',
     quote: 'The Nocturne build with what the light discards.',
     energy: 'nox',
     categories: ['Security Tools'],
@@ -77,8 +97,8 @@ export const REALMS: RealmDefinition[] = [
     id: 'archivum',
     name: 'Archivum',
     domain: 'Productivity & Record',
-    color: '#C9A84C',
-    glow: 'rgba(201, 168, 76, 0.6)',
+    color: '#10B981',
+    glow: 'rgba(16, 185, 129, 0.6)',
     quote: 'Truth transcends divine conflict.',
     energy: 'aether',
     categories: ['Productivity', 'Text & Data', 'SEO Tools'],
@@ -88,8 +108,8 @@ export const REALMS: RealmDefinition[] = [
     id: 'nexus',
     name: 'Nexus',
     domain: 'Mail & Delivery',
-    color: '#10B981',
-    glow: 'rgba(16, 185, 129, 0.6)',
+    color: '#EF4444',
+    glow: 'rgba(239, 68, 68, 0.6)',
     quote: 'Every message is a thread between worlds. Cut one and something goes dark.',
     energy: 'aether',
     categories: ['Email Tools'],
