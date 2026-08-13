@@ -1,274 +1,303 @@
-<div class="tools-page">
-  <div class="tools-header">
-    <div class="tools-header__top">
-      <div class="tools-header__text">
-        <div class="tools-header__eyebrow">{{ translate('tools.page.eyebrow') }}</div>
-        <h1 class="tools-header__title">{{ translate('tools.page.title') }}</h1>
-        <p class="tools-header__subtitle">{{ translate('tools.page.subtitle') }}</p>
-      </div>
-      <div class="tools-search-wrap">
-        <span class="tools-search__icon" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
-        <input
-          id="tools-search-input"
-          class="tools-search__input"
-          type="text"
-          [(ngModel)]="searchQuery"
-          [placeholder]="translate('tools.page.ph.search')"
-          autocomplete="off"
-          spellcheck="false"
-          />
-        <span class="tools-search__kbd" aria-hidden="true">⌘K</span>
-      </div>
+<div class="tools-page" [attr.data-view]="currentView">
+
+  <!-- ═════════════════════════════════════════════════════════════
+       HERO — the approach to the map. Embers drift, the title burns.
+       ═════════════════════════════════════════════════════════════ -->
+  <header class="realm-hero">
+    <div class="realm-hero__embers" aria-hidden="true">
+      @for (ember of [1,2,3,4,5,6,7,8,9,10,11,12]; track ember) {
+        <span class="realm-hero__ember" [style.--i]="ember"></span>
+      }
     </div>
-    <div class="tools-header__share">
-      <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--twitter" aria-label="Share on X / Twitter">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        {{ translate('tools.page.share.x') }}
-      </a>
-      <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="share-btn share-btn--linkedin" aria-label="Share on LinkedIn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-        LinkedIn
-      </a>
-    </div>
-  </div>
 
-  <!-- Category filter buttons -->
-  <div class="tools-categories">
-    @for (cat of categories; track cat) {
-      <button
-        class="tools-cat-btn"
-        [class.tools-cat-btn--active]="activeCategory === cat"
-        (click)="setCategory(cat)"
-      >{{ cat }}</button>
-    }
-  </div>
+    <p class="realm-hero__eyebrow">
+      <span class="realm-hero__pulse" aria-hidden="true"></span>
+      {{ translate('tools.realms.eyebrow') }}
+    </p>
+    <h1 class="realm-hero__title">{{ translate('tools.realms.title') }}</h1>
+    <p class="realm-hero__sub">{{ translate('tools.realms.sub') }}</p>
 
-  <!-- Active tag filter bar -->
-  <!-- ═════ REALM RAIL ═════
-       Five realms, each a different cut of the same registry. Selecting one
-       switches to the realm-grouped grid below. -->
-  <div class="realm-rail" role="group" aria-label="Browse by realm">
-    @for (realm of realms; track realm.id) {
-      <button
-        type="button"
-        class="realm-chip"
-        [class.realm-chip--active]="isRealmActive(realm.id)"
-        [attr.data-realm]="realm.id"
-        [style.--realm-color]="realm.color"
-        [style.--realm-glow]="realm.glow"
-        [attr.aria-pressed]="isRealmActive(realm.id)"
-        (click)="setRealm(realm.id)">
-        <span class="realm-chip__orb" aria-hidden="true"></span>
-        <span class="realm-chip__text">
-          <span class="realm-chip__name">{{ realm.name }}</span>
-          <span class="realm-chip__domain">{{ realm.domain }}</span>
-        </span>
-        <span class="realm-chip__count">{{ realmCount(realm) }}</span>
-      </button>
-    }
-  </div>
-
-  @if (activeTag) {
-    <div class="tools-filter-bar">
-      <span class="tools-filter-bar__label">Filtered by:</span>
-      <span class="tools-filter-bar__tag">
-        {{ activeTag }}
-        <button class="tools-filter-bar__clear" (click)="clearTag()" aria-label="Clear tag filter">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+    <div class="realm-hero__seek">
+      <span class="realm-hero__seek-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </span>
-      <span class="tools-filter-bar__count">{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
+      <input
+        id="tools-search-input"
+        class="realm-hero__seek-input"
+        type="search"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchInput()"
+        [placeholder]="translate('tools.realms.ph.search')"
+        [attr.aria-label]="translate('tools.realms.ph.search')"
+        autocomplete="off"
+        spellcheck="false"
+        />
+      <span class="realm-hero__seek-kbd" aria-hidden="true">⌘K</span>
     </div>
-  }
+  </header>
 
-  <!-- ═════ GALAXY MAP ═════ -->
-  @if (currentView === 'galaxies') {
-    <div class="cosmic-tagline">
-      <span class="cosmic-tagline__dot"></span>
-      <span>{{ translate('cosmic.tagline.chooseGalaxy') }}</span>
-    </div>
 
-    <div class="galaxy-map">
-      @for (galaxy of galaxies; track galaxy.name) {
+  <!-- ═════════════════════════════════════════════════════════════
+       THE MAP — five gates. Each is the realm's own painting.
+       ═════════════════════════════════════════════════════════════ -->
+  @if (currentView === 'map') {
+    <div class="realm-map">
+      @for (gate of gates; track trackRealm($index, gate)) {
         <button
           type="button"
-          class="galaxy"
-          [style.--galaxy-hue]="galaxy.hue"
-          [style.--galaxy-glow]="galaxy.glow"
-          (click)="enterGalaxy(galaxy.name)"
-          [attr.aria-label]="'Enter ' + galaxy.name + ' galaxy — ' + galaxy.count + ' tools'"
-        >
-          <span class="galaxy__arms" aria-hidden="true"></span>
-          <span class="galaxy__dust" aria-hidden="true"></span>
-          <span class="galaxy__ring" aria-hidden="true"></span>
-          <span class="galaxy__core" aria-hidden="true"></span>
-          <span class="galaxy__meta">
-            <span class="galaxy__name">{{ galaxy.name }}</span>
-            <span class="galaxy__count">{{ galaxy.count }} star{{ galaxy.count === 1 ? '' : 's' }}</span>
+          class="realm-gate"
+          data-reveal
+          [attr.data-realm]="gate.realm.id"
+          [style.--realm-color]="gate.realm.color"
+          [style.--realm-glow]="gate.realm.glow"
+          [style.--gate-index]="$index"
+          (click)="setRealm(gate.realm.id)"
+          [attr.aria-label]="gate.realm.name + ' — ' + gate.realm.domain + ' — ' + gate.count + ' tools'">
+
+          <img
+            class="realm-gate__art"
+            [src]="artSrc(gate.art)"
+            [srcset]="artSrcset(gate.art)"
+            sizes="(max-width: 900px) 100vw, 1120px"
+            alt=""
+            aria-hidden="true"
+            [attr.loading]="$index === 0 ? 'eager' : 'lazy'"
+            [attr.fetchpriority]="$index === 0 ? 'high' : 'low'"
+            decoding="async"
+            draggable="false">
+
+          <span class="realm-gate__veil" aria-hidden="true"></span>
+          <span class="realm-gate__edge" aria-hidden="true"></span>
+
+          <span class="realm-gate__body">
+            <img class="realm-gate__sigil realm-sigil"
+                 [src]="sigilSrc(gate.art)"
+                 alt="" aria-hidden="true" width="46" height="46"
+                 loading="lazy" decoding="async" draggable="false">
+
+            <span class="realm-gate__names">
+              <span class="realm-gate__name">{{ gate.realm.name }}</span>
+              <span class="realm-gate__domain">{{ gate.realm.domain }}</span>
+            </span>
+
+            <span class="realm-gate__blurb">{{ realmBlurb(gate.realm) }}</span>
+            <span class="realm-gate__quote">{{ gate.realm.quote }}</span>
+          </span>
+
+          <span class="realm-gate__aside">
+            <span class="realm-gate__count">
+              <span class="realm-gate__count-num">{{ gate.count }}</span>
+              <span class="realm-gate__count-word">{{ translate('tools.realms.forged') }}</span>
+            </span>
+            <span class="realm-gate__enter">
+              {{ translate('tools.realms.enter') }}
+              <span class="realm-gate__arrow" aria-hidden="true">&rarr;</span>
+            </span>
           </span>
         </button>
       }
     </div>
   }
 
-  <!-- ═════ STAR SYSTEM ═════ -->
-  @if (currentView === 'stars') {
-    <div
-      class="star-system"
-      [style.--galaxy-hue]="selectedGalaxyHue"
-      [style.--galaxy-glow]="selectedGalaxyGlow"
-    >
-      <button type="button" class="star-system__back" (click)="exitGalaxy()">
-        ← back to galaxies
-      </button>
 
-      <div class="star-system__hud" [class.star-system__hud--active]="hoveredTool">
-        @if (hoveredTool) {
-          <span class="star-system__hud-title">{{ hoveredTool.title }}</span>
-          <span class="star-system__hud-desc">{{ hoveredTool.description }}</span>
-          <span class="star-system__hud-tags">
-            @for (tag of hoveredTool.tags; track tag) {
-              <span class="star-system__hud-tag">{{ tag }}</span>
-            }
-          </span>
-        } @else {
-          <span class="star-system__hud-title">{{ activeCategory }}</span>
-          <span class="star-system__hud-desc">{{ orbitStars.length }} stars in orbit — hover to probe, click to warp in</span>
-        }
+  <!-- ═════════════════════════════════════════════════════════════
+       ONE REALM — its painting as a banner, its tools beneath.
+       ═════════════════════════════════════════════════════════════ -->
+  @if (currentView === 'realm' && openRealm) {
+    <section
+      class="realm-view"
+      [attr.data-realm]="openRealm!.id"
+      [style.--realm-color]="openRealm!.color"
+      [style.--realm-glow]="openRealm!.glow">
+
+      <div class="realm-banner">
+        <img
+          class="realm-banner__art"
+          [src]="artSrc(openRealm!.sigil)"
+          [srcset]="artSrcset(openRealm!.sigil)"
+          sizes="100vw"
+          alt=""
+          aria-hidden="true"
+          fetchpriority="high"
+          decoding="async"
+          draggable="false">
+        <span class="realm-banner__veil" aria-hidden="true"></span>
+
+        <div class="realm-banner__body">
+          <button type="button" class="realm-banner__back" (click)="exitRealm()">
+            <span aria-hidden="true">&larr;</span> {{ translate('tools.realms.back') }}
+          </button>
+
+          <div class="realm-banner__head">
+            <img class="realm-banner__sigil realm-sigil"
+                 [src]="sigilSrc(openRealm!.sigil)"
+                 alt="" aria-hidden="true" width="58" height="58"
+                 decoding="async" draggable="false">
+            <div class="realm-banner__names">
+              <h1 class="realm-banner__name">{{ openRealm!.name }}</h1>
+              <p class="realm-banner__domain">{{ openRealm!.domain }}</p>
+            </div>
+            <span class="realm-banner__count">
+              <span class="realm-banner__count-num">{{ filteredTools.length }}</span>
+              <span class="realm-banner__count-word">{{ translate('tools.realms.forged') }}</span>
+            </span>
+          </div>
+
+          <p class="realm-banner__quote">{{ openRealm!.quote }}</p>
+        </div>
       </div>
 
-      <div class="star-system__scene" aria-hidden="false">
-        <div class="star-system__core">
-          <span class="star-system__core-label">{{ activeCategory }}</span>
-        </div>
-
-        @for (ring of orbitRings; track ring.radius) {
-          <div class="orbit-ring" [style.--ring-radius.px]="ring.radius" aria-hidden="true"></div>
+      <!-- The other four, so the map is always one click away. -->
+      <nav class="realm-switch" aria-label="Switch realm">
+        @for (gate of gates; track trackRealm($index, gate)) {
+          <button
+            type="button"
+            class="realm-switch__chip"
+            [class.realm-switch__chip--active]="isRealmActive(gate.realm.id)"
+            [attr.aria-current]="isRealmActive(gate.realm.id) ? 'true' : null"
+            [style.--realm-color]="gate.realm.color"
+            [style.--realm-glow]="gate.realm.glow"
+            (click)="setRealm(gate.realm.id)">
+            <img class="realm-switch__sigil realm-sigil"
+                 [src]="sigilSrc(gate.art)"
+                 alt="" aria-hidden="true" width="20" height="20"
+                 loading="lazy" decoding="async" draggable="false">
+            {{ gate.realm.name }}
+            <span class="realm-switch__count">{{ gate.count }}</span>
+          </button>
         }
+      </nav>
 
-        @for (star of orbitStars; track star.tool.id) {
+      <div class="tools-grid">
+        @for (tool of filteredTools; track trackTool($index, tool)) {
           <a
-            class="orbit-star"
-            [class.orbit-star--live]="star.tool.status === 'live'"
-            [class.orbit-star--soon]="star.tool.status === 'coming-soon'"
-            [class.orbit-star--warping]="warpingToolId === star.tool.id"
-            [class.orbit-star--hovered]="hoveredStarId === star.tool.id"
-            [attr.data-category]="star.tool.category"
-            [attr.data-tags]="star.tool.tags.join(',')"
-            [attr.aria-label]="star.tool.title + ' — ' + star.tool.description"
-            [style.--orbit-radius.px]="star.radius"
-            [style.--orbit-duration]="star.duration + 's'"
-            [style.--orbit-delay]="star.delay + 's'"
-            [style.--orbit-direction]="star.direction"
-            [style.--star-size]="star.size"
-            [style.--star-z]="star.zOffset + 'px'"
-            [href]="star.tool.status === 'live' ? star.tool.route : null"
-            (click)="handleCardClick($event, star.tool)"
-            (mouseenter)="setHoveredStar(star.tool.id)"
-            (mouseleave)="setHoveredStar(null)"
-            (focus)="setHoveredStar(star.tool.id)"
-            (blur)="setHoveredStar(null)"
-          >
-            <span class="orbit-star__anchor">
-              <span class="orbit-star__core" [innerHTML]="getIconHtml(star.tool)"></span>
-              @if (star.tool.status === 'coming-soon') {
-                <span class="orbit-star__badge">soon</span>
-              }
+            class="forge-card"
+            [class.forge-card--soon]="tool.status === 'coming-soon'"
+            [attr.data-category]="tool.category"
+            [attr.data-tags]="tool.tags.join(',')"
+            [routerLink]="tool.route"
+            [attr.aria-disabled]="tool.status === 'live' ? null : 'true'"
+            [attr.tabindex]="tool.status === 'live' ? null : -1">
+            <span class="forge-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></span>
+            <span class="forge-card__body">
+              <span class="forge-card__title-row">
+                <span class="forge-card__title">{{ tool.title }}</span>
+                @if (tool.status === 'coming-soon') {
+                  <span class="forge-card__soon">{{ translate('tools.badge.soon') }}</span>
+                }
+              </span>
+              <span class="forge-card__desc">{{ tool.description }}</span>
             </span>
+            <span class="forge-card__cta" aria-hidden="true">{{ translate('tools.realms.strike') }} &rarr;</span>
           </a>
         }
       </div>
-    </div>
+
+      @if (filteredTools.length === 0) {
+        <div class="tools-empty">
+          <span class="tools-empty__mark" aria-hidden="true">&#x2727;</span>
+          <p>{{ translate('tools.realms.emptyRealm') }}</p>
+          <button class="tools-empty__clear" (click)="clearAll()">{{ translate('tools.realms.backToMap') }}</button>
+        </div>
+      }
+    </section>
   }
 
-  <!-- ═════ SEARCH GRID (flat cosmic list) ═════ -->
-  @if (currentView === 'search') {
-    @if (searchQuery || activeCategory !== 'All' || activeTag) {
-      <div class="tools-results-count">
-        <span>{{ filteredTools.length }} tool{{ filteredTools.length !== 1 ? 's' : '' }}</span>
-        <button class="tools-results-count__clear" (click)="clearAll()">Clear filters</button>
-      </div>
-    }
 
-    <!-- Grouped by realm: a header with the realm's lore line, then its stars. -->
+  <!-- ═════════════════════════════════════════════════════════════
+       SEARCH — results, still cut by realm so the world holds.
+       ═════════════════════════════════════════════════════════════ -->
+  @if (currentView === 'search') {
+    <div class="tools-results">
+      <span class="tools-results__count">
+        {{ filteredTools.length }} {{ filteredTools.length === 1 ? translate('tools.realms.tool') : translate('tools.realms.tools') }}
+        @if (activeTag) {
+          <span class="tools-results__tag">
+            {{ activeTag }}
+            <button class="tools-results__tag-clear" (click)="clearTag()" [attr.aria-label]="translate('tools.realms.clearTag')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </span>
+        }
+      </span>
+      <button class="tools-results__clear" (click)="clearAll()">{{ translate('tools.realms.clearAll') }}</button>
+    </div>
+
     @for (group of realmGroups; track group.realm.id) {
       <section
         class="realm-section"
+        data-reveal
         [attr.data-realm]="group.realm.id"
         [style.--realm-color]="group.realm.color"
         [style.--realm-glow]="group.realm.glow">
+
         <header class="realm-section__head">
-          <span class="realm-section__orb" aria-hidden="true"></span>
+          <img class="realm-section__sigil realm-sigil"
+               [src]="sigilSrc(group.realm.sigil)"
+               alt="" aria-hidden="true" width="30" height="30"
+               loading="lazy" decoding="async" draggable="false">
           <div class="realm-section__text">
             <h2 class="realm-section__name">
-              {{ group.realm.name }}
+              <button type="button" class="realm-section__link" (click)="setRealm(group.realm.id)">
+                {{ group.realm.name }}
+              </button>
               <span class="realm-section__domain">{{ group.realm.domain }}</span>
             </h2>
-            <p class="realm-section__quote">{{ group.realm.quote }}</p>
           </div>
           <span class="realm-section__count">{{ group.tools.length }}</span>
         </header>
 
         <div class="tools-grid">
-      @for (tool of group.tools; track tool.id) {
-        <a
-          class="tool-card"
-          [class.tool-card--live]="tool.status === 'live'"
-          [class.tool-card--soon]="tool.status === 'coming-soon'"
-          [class.tool-card--warping]="warpingToolId === tool.id"
-          [attr.data-category]="tool.category"
-          [attr.data-tags]="tool.tags.join(',')"
-          [attr.aria-label]="tool.title + ' — ' + tool.description"
-          [href]="tool.status === 'live' ? tool.route : null"
-          (click)="handleCardClick($event, tool)"
-          >
-          <div class="tool-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></div>
-          <div class="tool-card__body">
-            <div class="tool-card__title-row">
-              <h2 class="tool-card__title">{{ tool.title }}</h2>
-              @if (tool.status === 'coming-soon') {
-                <span class="tool-badge-soon">{{ translate('tools.badge.soon') }}</span>
-              }
-            </div>
-            <p class="tool-card__desc">{{ tool.description }}</p>
-            <div class="tool-card__tags">
-              @for (tag of tool.tags; track tag) {
-                <button
-                  class="tool-tag"
-                  [class.tool-tag--active]="isTagActive(tag)"
-                  (click)="filterByTag(tag, $event)"
-                  [attr.aria-pressed]="isTagActive(tag)"
-                  [attr.aria-label]="'Filter by ' + tag"
-                >{{ tag }}</button>
-              }
-            </div>
-          </div>
-        </a>
-      }
+          @for (tool of group.tools; track trackTool($index, tool)) {
+            <a
+              class="forge-card"
+              [class.forge-card--soon]="tool.status === 'coming-soon'"
+              [attr.data-category]="tool.category"
+              [attr.data-tags]="tool.tags.join(',')"
+              [routerLink]="tool.route"
+              [attr.aria-disabled]="tool.status === 'live' ? null : 'true'"
+              [attr.tabindex]="tool.status === 'live' ? null : -1">
+              <span class="forge-card__icon" aria-hidden="true" [innerHTML]="getIconHtml(tool)"></span>
+              <span class="forge-card__body">
+                <span class="forge-card__title-row">
+                  <span class="forge-card__title">{{ tool.title }}</span>
+                  @if (tool.status === 'coming-soon') {
+                    <span class="forge-card__soon">{{ translate('tools.badge.soon') }}</span>
+                  }
+                </span>
+                <span class="forge-card__desc">{{ tool.description }}</span>
+              </span>
+              <span class="forge-card__cta" aria-hidden="true">{{ translate('tools.realms.strike') }} &rarr;</span>
+            </a>
+          }
         </div>
       </section>
     }
 
     @if (filteredTools.length === 0) {
       <div class="tools-empty">
-        <span class="tools-empty__icon">◌</span>
+        <span class="tools-empty__mark" aria-hidden="true">&#x2727;</span>
         @if (searchQuery) {
-          <p>No tools match "{{ searchQuery }}"</p>
+          <p>{{ translate('tools.realms.emptySearch') }} &ldquo;{{ searchQuery }}&rdquo;</p>
+        } @else {
+          <p>{{ translate('tools.realms.emptyTag') }} &ldquo;{{ activeTag }}&rdquo;</p>
         }
-        @if (!searchQuery && activeTag) {
-          <p>No tools match the tag "{{ activeTag }}"</p>
-        }
-        @if (!searchQuery && !activeTag && activeCategory !== 'All') {
-          <p>No tools in "{{ activeCategory }}" yet</p>
-        }
-        <button class="tools-empty__clear" (click)="clearAll()">Show all tools</button>
+        <button class="tools-empty__clear" (click)="clearAll()">{{ translate('tools.realms.backToMap') }}</button>
       </div>
     }
   }
 
-  @if (warpingToolId) {
-    <div class="cosmic-warp-overlay" aria-hidden="true"></div>
-  }
+
+  <!-- Share, kept out of the way at the foot rather than under the title. -->
+  <footer class="tools-share">
+    <span class="tools-share__label">{{ translate('tools.realms.share') }}</span>
+    <a [href]="twitterShareUrl" target="_blank" rel="noopener noreferrer" class="tools-share__btn" aria-label="Share on X / Twitter">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.902-5.638Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      {{ translate('tools.page.share.x') }}
+    </a>
+    <a [href]="linkedInShareUrl" target="_blank" rel="noopener noreferrer" class="tools-share__btn" aria-label="Share on LinkedIn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      LinkedIn
+    </a>
+  </footer>
 </div>
