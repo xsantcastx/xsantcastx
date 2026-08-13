@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.57.0',
+  version: '2.57.1',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Bazaar',
@@ -52,6 +52,17 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.57.1',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'The Vault flickered under the cursor. Hovering a card lifted it two pixels, and hit testing follows a transform, so entering the bottom two pixels of a card lifted that card out from under the cursor that had just entered it — mouseenter, mouseleave, coming to rest lifted and unhovered. A hand keeps emitting mousemove, each one re-running the hit test and re-entering the loop, which is the flicker. The card is now a frame that never moves with a face inside it that carries every hover effect: the box that answers :hover is stationary, and the box that moves answers nothing',
+      'The hover detail moved off the card and into a tooltip above it, with pointer-events: none. A panel the cursor can land on is a second hover target stacked on the first, and the two trade the hover back and forth — the same bug wearing a different hat',
+      'The Vault learned to filter. Chips for every rung of the Eclipse ladder, counted against the shelf and search you already have so a chip reading 0 warns you before you click it; a search across name, effect and flavour; and a sort by rarity, name, value or owned-first. No "date acquired" and no "sell value" — the ledger records neither, and a sort order invented from nothing is worse than one that is missing',
+      'Identical things stack. Bellows held at level four is one card with a ×4 badge instead of four lines of the same name, and opening the stack lists what the badge counted. The shelf is also no longer re-filtered and re-sorted several times a second: it is recomputed when a control is touched or the ledger moves, which on a page with a one-second ticker under a live XP bar is the difference between a list and a treadmill',
+    ]
+  },
   {
     version: '2.57.0',
     codename: 'Bazaar',
