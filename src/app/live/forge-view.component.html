@@ -356,6 +356,11 @@
         <span>📜 {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }}</span>
         <span>◈ {{ goldRecovered }} recovered</span>
       </p>
+
+      <!-- The roster sits under the dispatch picker rather than beside it: this
+           is the column about explorers, and who they *are* belongs next to
+           where they are sent. It owns its own state through its own service. -->
+      <app-explorer-roster-panel />
     </section>
   </div>
 
