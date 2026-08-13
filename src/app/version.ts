@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.51.0',
+  version: '2.52.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Signpost',
+  codename: 'Obsidian',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -52,6 +52,18 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.52.0',
+    codename: 'Obsidian',
+    date: '2026-08-13',
+    highlights: [
+      'The Rune Forge has its painting. Santiago\'s obsidian anvil — the X maker\'s mark on its face, rune crystals in the four rarity colours around it, the lightning vortex and the eclipse above — is the full-bleed backdrop for the route',
+      'Three layers, the same pattern the homepage hero uses: the artwork, a dark gradient for readability, and the UI in glass on top',
+      'Four derived files from the source PNG: three WebP widths and a JPEG fallback, 443 KB of WebP against a 2.4 MB source. The phone gets a portrait centre crop rather than a squeezed landscape, so the anvil still fills the frame at 375px',
+      'Preloaded per breakpoint from the route itself rather than from index.html, so no other page on the site pays for artwork it does not show',
+      'The drawn anvil and hammer are gone. There is a real one behind the glass now, and the strike button sits on its face',
+    ]
+  },
   {
     version: '2.51.0',
     codename: 'Signpost',
