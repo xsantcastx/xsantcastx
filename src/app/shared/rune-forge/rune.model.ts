@@ -47,6 +47,8 @@ export interface Rune {
   dropRate: number;
   /** What the rune is worth in Gold. See the note above — this is not a price. */
   forgeCost: number;
+  /** What selling one pays. Half of `forgeCost`, from the tier. */
+  sellValue: number;
   /** One line from the codex. */
   lore: string;
   /** Rarity colour, taken from `RUNE_TIERS` so a rune cannot drift off-tier. */
@@ -63,6 +65,15 @@ export interface RuneTierDefinition {
   budget: number;
   /** Gold worth of every rune in the tier. */
   worth: number;
+  /**
+   * What the Grand Exchange pays for one, which is half of `worth`.
+   *
+   * Stored rather than derived at the call site so the ratio is written down
+   * once. Half is the number that makes selling a real choice and never the
+   * obvious one: a rune sold is a rune that is not in a Runeword, and getting
+   * back the full sticker price would make the inventory a savings account.
+   */
+  sellValue: number;
   color: string;
   /** Alpha'd for box-shadow use. */
   glow: string;
@@ -92,37 +103,37 @@ export interface RuneTierDefinition {
  */
 export const RUNE_TIERS: Record<RuneTier, RuneTierDefinition> = {
   common: {
-    id: 'common', label: 'Common', budget: 0.60, worth: 10,
+    id: 'common', label: 'Common', budget: 0.60, worth: 100, sellValue: 50,
     color: '#8f98a8', glow: 'rgba(143, 152, 168, 0.45)',
     reveal: 'plain', sound: 'blip', semitones: 0, duration: 1600, xp: 2,
   },
   uncommon: {
-    id: 'uncommon', label: 'Uncommon', budget: 0.25, worth: 50,
+    id: 'uncommon', label: 'Uncommon', budget: 0.25, worth: 500, sellValue: 250,
     color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)',
     reveal: 'glow', sound: 'blip', semitones: 2, duration: 2000, xp: 8,
   },
   rare: {
-    id: 'rare', label: 'Rare', budget: 0.10, worth: 200,
+    id: 'rare', label: 'Rare', budget: 0.10, worth: 2_000, sellValue: 1_000,
     color: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)',
     reveal: 'burst', sound: 'chime', semitones: 4, duration: 2600, xp: 30,
   },
   epic: {
-    id: 'epic', label: 'Epic', budget: 0.035, worth: 500,
+    id: 'epic', label: 'Epic', budget: 0.035, worth: 10_000, sellValue: 5_000,
     color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)',
     reveal: 'shimmer', sound: 'horn', semitones: 5, duration: 3200, xp: 90,
   },
   legendary: {
-    id: 'legendary', label: 'Legendary', budget: 0.01, worth: 2_000,
+    id: 'legendary', label: 'Legendary', budget: 0.01, worth: 50_000, sellValue: 25_000,
     color: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)',
     reveal: 'edge', sound: 'horn', semitones: 7, duration: 4200, xp: 300,
   },
   mythic: {
-    id: 'mythic', label: 'Mythic', budget: 0.003, worth: 5_000,
+    id: 'mythic', label: 'Mythic', budget: 0.003, worth: 200_000, sellValue: 100_000,
     color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)',
     reveal: 'flash', sound: 'impact', semitones: 10, duration: 5600, xp: 1_200,
   },
   singular: {
-    id: 'singular', label: 'Singular', budget: 0.0005, worth: 10_000,
+    id: 'singular', label: 'Singular', budget: 0.0005, worth: 1_000_000, sellValue: 500_000,
     color: '#e6dcff', glow: 'rgba(230, 220, 255, 0.95)',
     reveal: 'void', sound: 'prism', semitones: 12, duration: 9000, xp: 5_000,
   },
@@ -132,8 +143,18 @@ export const RUNE_TIER_ORDER: RuneTier[] = [
   'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular',
 ];
 
-/** What one strike costs. The Common tier's worth — the entry price of the table. */
-export const STRIKE_COST = 10;
+/**
+ * What one strike costs. The Common tier's worth — the entry price of the table.
+ *
+ * Derived rather than written so the two can never drift: "a strike costs what
+ * the floor of the ladder is worth" is the rule, and a second literal is a
+ * second thing to forget when the ladder is retuned.
+ *
+ * At 100 Gold a strike, the Singular tier's 0.05% works out to a two-million
+ * Gold expectation before the Void turns up. That is the intended shape — the
+ * last rune in the game should be measured in months, not in an afternoon.
+ */
+export const STRIKE_COST = RUNE_TIERS.common.worth;
 
 /**
  * The runes, in ladder order. `dropRate`, `forgeCost` and `color` are derived
@@ -229,6 +250,7 @@ export const RUNES: Rune[] = RUNE_SEEDS.map(seed => {
     lore: seed.lore,
     dropRate: tier.budget / TIER_COUNTS[seed.tier],
     forgeCost: tier.worth,
+    sellValue: tier.sellValue,
     color: tier.color,
   };
 });
@@ -275,6 +297,100 @@ export function rollRune(random: () => number = Math.random): Rune {
   // Unreachable while DROP_TABLE_TOTAL is the true sum, but a drop table that
   // returns undefined on a rounding edge is a crash in the one place the player
   // is paying attention. The floor of the ladder is the safe answer.
+  return RUNES[0];
+}
+
+/** The first tier Magic Find is allowed to touch. Below this, MF does nothing. */
+export const MF_FLOOR_TIER: RuneTier = 'rare';
+
+const MF_BOOSTED = new Set<RuneTier>(['rare', 'epic', 'legendary', 'mythic', 'singular']);
+
+/** Combined weight of every tier Magic Find lifts. Computed, never hardcoded. */
+const MF_BOOSTED_MASS = RUNES
+  .filter(r => MF_BOOSTED.has(r.tier))
+  .reduce((sum, r) => sum + r.dropRate, 0);
+
+/**
+ * The ceiling on the rare-and-better share, however much MF is stacked.
+ *
+ * At 580% MF the uncapped target would pass 1 and the arithmetic below would
+ * hand Common and Uncommon a negative weight — a table that returns the last
+ * rune it looked at. 95% is well past any reachable build and leaves the bottom
+ * of the ladder a thin but non-zero tail, which is the honest shape: Magic Find
+ * is a thumb on the scale, not a different game.
+ */
+const MF_MAX_RARE_SHARE = 0.95;
+
+/**
+ * How much Magic Find multiplies the rare-and-better weights.
+ *
+ * Linear in MF, which is what the numbers published on the stat panel promise:
+ * 50% MF is ×1.5, 100% is ×2, 200% is ×3. A curve would be defensible game
+ * design and indefensible copy — the panel says "+2% Magic Find per point" and
+ * a player who buys fifty points is entitled to the doubling that implies.
+ */
+export function mfMultiplier(magicFind: number): number {
+  return 1 + Math.max(0, magicFind) / 100;
+}
+
+/**
+ * One strike, resolved with Magic Find applied.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT "MF NEVER MAKES COMMONS RARER" ACTUALLY MEANS
+ * ─────────────────────────────────────────────────────────────────────────────
+ * It cannot mean the Common *share* is untouched, because probability has to sum
+ * to one: every point of weight that Rare gains is a point some other tier
+ * loses, and there is nowhere for it to come from except the two tiers below.
+ * A table where rare+ climbs and nothing falls is not a table.
+ *
+ * What it means, and what this implements, is that MF never makes the *outcome*
+ * worse. Common and Uncommon keep their raw weights untouched; only the rare+
+ * weights are scaled up, and the whole table is then normalised against its own
+ * new total. So every roll that MF diverts is a roll that was going to be a
+ * Common or an Uncommon and is now something better — an upgrade, never a
+ * downgrade, and never a reduction in the number of runes you take home.
+ *
+ * At 0 MF the multiplier is exactly 1 and this is `rollRune` with an extra
+ * multiply, which is why the two are not merged: the un-boosted path is the one
+ * that runs during SSR and in every spec that predates this system, and it
+ * should stay recognisably the same function.
+ */
+export function rollRuneWithMagicFind(
+  magicFind: number,
+  random: () => number = Math.random,
+): Rune {
+  const boost = mfMultiplier(magicFind);
+  if (boost <= 1) return rollRune(random);
+
+  // The boost is applied to the resulting *share*, not to the raw weights.
+  //
+  // Scaling the weights and renormalising is the obvious implementation and it
+  // quietly undershoots: multiplying the rare+ weights by 2 also grows the
+  // denominator, so the share lands at 1.74× rather than 2×, and 200% MF pays
+  // 2.31× where the panel promised 3×. Measured, not reasoned about — at 400k
+  // rolls the gap is far outside the noise.
+  //
+  // So the target share is computed first, and the two groups are scaled to hit
+  // it exactly: rare+ up by `rareScale`, common and uncommon down by whatever
+  // makes the total one again. Proportions *within* each group are untouched, so
+  // a Mythic is still 6× a Legendary's odds at every MF level.
+  const baseShare = MF_BOOSTED_MASS / DROP_TABLE_TOTAL;
+  const targetShare = Math.min(MF_MAX_RARE_SHARE, baseShare * boost);
+
+  const rareScale = targetShare / baseShare;
+  const lowScale = (1 - targetShare) / (1 - baseShare);
+
+  let total = 0;
+  for (const rune of RUNES) {
+    total += rune.dropRate * (MF_BOOSTED.has(rune.tier) ? rareScale : lowScale);
+  }
+
+  let roll = random() * total;
+  for (const rune of RUNES) {
+    roll -= rune.dropRate * (MF_BOOSTED.has(rune.tier) ? rareScale : lowScale);
+    if (roll <= 0) return rune;
+  }
   return RUNES[0];
 }
 

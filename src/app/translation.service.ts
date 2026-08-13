@@ -47,9 +47,12 @@ export class TranslationService {
     // Left untranslated in both languages on purpose — "Pro" is the product
     // name, and it is what the badge, the title prefix and the receipt all say.
     'gfnav.pro':          { en: 'Pro',           es: 'Pro' },
-    // /live is the Forge View now, not the AI feed. The key keeps its name so
-    // every template pointing at it keeps working; the copy is what moved.
-    'gfnav.live':         { en: 'The Forge View', es: 'La forja en vivo' },
+    // The page at this key has been the AI feed, then the Forge View, and is now
+    // the Inner Sanctum at /sanctum. The key keeps its original name through all
+    // three so every template pointing at it keeps working; the copy is what
+    // moves. Renaming the key as well would be a rename in two places to buy
+    // nothing a reader of the templates can see.
+    'gfnav.live':         { en: 'The Inner Sanctum', es: 'El santuario interior' },
     'gfnav.missionControl': { en: 'Mission Control', es: 'Control de misión' },
     'gfnav.donate':       { en: 'Donate',        es: 'Donar' },
     'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },
@@ -1149,7 +1152,7 @@ export class TranslationService {
     'godforge.hero.toNext':    { en: 'XP to',                                      es: 'XP para' },
     'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
     'godforge.hero.cta':       { en: 'Enter the Forge',                            es: 'Entra en la forja' },
-    'godforge.hero.ctaLive':   { en: 'Watch Your Forge',                           es: 'Mira tu forja' },
+    'godforge.hero.ctaLive':   { en: 'Enter the Sanctum',                          es: 'Entra al santuario' },
     'godforge.hero.orExplore': { en: 'or explore',                                 es: 'o explora' },
     'godforge.hero.theCodex':  { en: 'The Codex',                                  es: 'el Codice' },
 

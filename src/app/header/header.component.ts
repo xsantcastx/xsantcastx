@@ -140,7 +140,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * shipped twice (see the threshold note in the stylesheet).
    *
    * Labelled "Rune Forge", never "Forge". Four things on this site now carry
-   * that word — the Forge View at /live, the Forge Keeper, the Godforge Market
+   * that word — the Inner Sanctum at /sanctum, the Forge Keeper, the Godforge Market
    * and this — and a bare FORGE in the primary nav would be the only one of
    * them a visitor could not disambiguate from where they are standing.
    *
