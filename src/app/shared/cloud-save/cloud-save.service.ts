@@ -163,6 +163,36 @@ export class CloudSaveService {
   }
 
   private booted = false;
+
+  /**
+   * A popup sign-in in this session ended without a credential. The next
+   * attempt goes straight to redirect.
+   *
+   * `auth/popup-closed-by-user` has two causes and no way to tell them apart at
+   * the call site. One is the visitor shutting the window, which is an answer
+   * and not a failure. The other is COOP: `signInWithPopup` polls
+   * `popupWin.closed` to notice the first case, and if the opener and the popup
+   * land in different browsing context groups that read is blocked — Chrome
+   * logs "Cross-Origin-Opener-Policy policy would block the window.closed
+   * call" — so Firebase concludes the window is gone and rejects with the same
+   * code while the visitor is still looking at Google's consent screen. Signing
+   * in then completes in a popup nothing is listening to, and the page they
+   * came from sits there signed out with no error, because a cancellation is
+   * not something to report.
+   *
+   * Guessing between them on timing would get it wrong in both directions, so
+   * neither attempt is reported — but the second one takes the redirect, which
+   * has no opener to sever and cannot fail this way. A visitor who genuinely
+   * changed their mind and later changes it back pays one full-page navigation;
+   * a visitor whose browser severs the popup gets in on the second click
+   * instead of never.
+   *
+   * Deliberately per-instance rather than persisted: the condition is a
+   * property of this page's opener relationship, not of the browser, and a
+   * sticky flag would push everyone onto redirect forever after one stray
+   * cancellation.
+   */
+  private popupUnreliable = false;
   /** Resolved auth module, kept so the SDK is only ever fetched once. */
   private authModule: Promise<typeof import('@angular/fire/auth')> | null = null;
   private adapter: FirestoreAdapter | null = null;
@@ -264,6 +294,10 @@ export class CloudSaveService {
    * is the fallback for the environments where a popup genuinely cannot open:
    * an in-app browser, a hardened popup blocker, an embedded webview. Both land
    * in the same place, because `resume()` picks the session up on the way back.
+   *
+   * It is also the fallback for a popup that opened and then reported itself
+   * closed without producing a credential, which is the one failure that used
+   * to be terminal here — see `popupUnreliable`.
    */
   async signIn(): Promise<void> {
     if (!this.isBrowser) return;
@@ -278,12 +312,25 @@ export class CloudSaveService {
       // Google session would bind somebody else's Godforge to this browser.
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      let user: AuthUser;
-      try {
-        const cred = await mod.signInWithPopup(auth, provider);
-        user = cred.user as AuthUser;
-      } catch (err) {
-        if (!isPopupUnavailable(err)) throw err;
+      let user: AuthUser | null = null;
+      // Set when a popup in this session already came back closed without a
+      // credential. See `popupUnreliable`.
+      let viaRedirect = this.popupUnreliable;
+
+      if (!viaRedirect) {
+        try {
+          const cred = await mod.signInWithPopup(auth, provider);
+          user = cred.user as AuthUser;
+        } catch (err) {
+          if (!isPopupUnavailable(err)) {
+            if (isUserCancelled(err)) this.popupUnreliable = true;
+            throw err;
+          }
+          viaRedirect = true;
+        }
+      }
+
+      if (viaRedirect) {
         // Hands off to a full page navigation; `resume()` completes the bind
         // when Google sends the visitor back — provided it knows to look.
         try { sessionStorage.setItem(REDIRECT_PENDING, '1'); } catch { /* private mode */ }
@@ -291,7 +338,7 @@ export class CloudSaveService {
         return;
       }
 
-      await this.bind(user);
+      await this.bind(user as AuthUser);
     } catch (err) {
       if (isUserCancelled(err)) {
         // Closing the popup is an answer, not a failure. Go quiet.
