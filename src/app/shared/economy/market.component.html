@@ -3,451 +3,460 @@
      layer 3. See art-scene.component.ts for why this is a <picture>. -->
 <app-art-scene art="bg-market" focus="center 50%" />
 
-<section class="mk" [attr.data-currency]="tabDef.currency">
+<section class="mk" [attr.data-currency]="activeCurrency">
 
-  <!-- ── Masthead ──────────────────────────────────────────────────────── -->
-  <header class="mk__head">
+  <!-- ── Hero ──────────────────────────────────────────────────────────────
+       The sigil, the name, the promise. Everything below it is inventory. -->
+  <header class="mk__hero">
+    <span class="mk__sigil" aria-hidden="true">✕</span>
     <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>The Godforge Market</p>
     <h1 class="mk__title">Everything the forge will sell you</h1>
-    <p class="mk__tagline">gold is patience; essence is proof — spend both on a forge that keeps working after you close the tab</p>
+    <p class="mk__tagline">gold is patience, essence is proof — spend both on a forge that keeps working after you close the tab</p>
+  </header>
 
-    <div class="mk__wallet" [class.mk__wallet--flash]="walletFlash">
-      <div class="mk__coin mk__coin--gold">
-        <img class="mk__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
-             alt="" aria-hidden="true" width="32" height="32" decoding="async" draggable="false">
+  <!-- ── Currency bar ──────────────────────────────────────────────────────
+       What you can spend, before you are shown anything to spend it on. -->
+  <div class="mk__wallet" [class.mk__wallet--flash]="walletFlash" data-reveal>
+    <div class="mk__coin mk__coin--gold">
+      <img class="mk__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+           alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
+      <span class="mk__coin-body">
         <span class="mk__coin-val">{{ gold }}</span>
         <span class="mk__coin-label">Gold</span>
-      </div>
-      <div class="mk__coin mk__coin--essence">
-        <img class="mk__coin-icon gf-icon currency-icon currency-icon--essence"
-             src="assets/icons/currencies/essence.png"
-             alt="" aria-hidden="true" width="32" height="32" decoding="async" draggable="false">
-        <span class="mk__coin-val">{{ essence }}</span>
-        <span class="mk__coin-label">Eclipse Essence</span>
-      </div>
-      @if (snap.shards > 0) {
-        <div class="mk__coin mk__coin--shard">
-          <span class="mk__coin-glyph" aria-hidden="true">🌑</span>
-          <span class="mk__coin-val">{{ shards }}</span>
-          <span class="mk__coin-label">Eclipse Shards · {{ shardMult }}</span>
-        </div>
-      }
+      </span>
     </div>
 
-    <!-- The headline rate, given a whole row of its own. Everything else in the
-         shop exists to move this number. -->
-    <p class="mk__rate">
-      <span class="mk__rate-num">{{ perSecond }}</span>
-      <span class="mk__rate-unit">Gold / second</span>
+    <div class="mk__coin mk__coin--essence">
+      <img class="mk__coin-icon gf-icon currency-icon currency-icon--essence"
+           src="assets/icons/currencies/essence.png"
+           alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
+      <span class="mk__coin-body">
+        <span class="mk__coin-val">{{ essence }}</span>
+        <span class="mk__coin-label">Eclipse Essence</span>
+      </span>
+    </div>
+
+    @if (snap.shards > 0) {
+      <div class="mk__coin mk__coin--shard">
+        <span class="mk__coin-glyph" aria-hidden="true">🌑</span>
+        <span class="mk__coin-body">
+          <span class="mk__coin-val">{{ shards }} <em class="mk__coin-sub">{{ shardMult }}</em></span>
+          <span class="mk__coin-label">Eclipse Shards</span>
+        </span>
+      </div>
+    }
+
+    <!-- The headline rate. Everything in the shop exists to move this number. -->
+    <div class="mk__coin mk__coin--rate">
+      <span class="mk__coin-glyph" aria-hidden="true">⚡</span>
+      <span class="mk__coin-body">
+        <span class="mk__coin-val">{{ perSecond }}</span>
+        <span class="mk__coin-label">Gold / second</span>
+      </span>
       @for (f of rateFloaters; track f.key) {
         <span class="mk__rate-float" aria-hidden="true">{{ f.text }}</span>
       }
-    </p>
+    </div>
 
-    <dl class="mk__stats">
-      <div><dt>Per minute</dt><dd>{{ perMinute }}</dd></div>
-      <div><dt>Per strike</dt><dd>{{ perClick }}</dd></div>
-      @if (snap.autoPerSecond > 0) {
-        <div><dt>Auto</dt><dd>{{ autoRate }}/sec</dd></div>
-      }
-      <div><dt>Lifetime gold</dt><dd>{{ lifetime }}</dd></div>
-      <div><dt>Strikes</dt><dd>{{ strikes }}</dd></div>
-    </dl>
-
-    <!-- Where the rate comes from. Open by default: the whole reason this block
-         exists is that an idle number nobody can decompose reads as arbitrary,
-         and hiding it behind a disclosure would put it back where it was. -->
-    <details class="mk__ledger" open>
-      <summary class="mk__ledger-sum">Gold income breakdown</summary>
-      <ul class="mk__ledger-list">
-        @for (row of breakdown; track row.label) {
-          <li class="mk__ledger-row"
-              [class.mk__ledger-row--mult]="row.isMultiplier"
-              [class.mk__ledger-row--inert]="row.inert">
-            <span class="mk__ledger-label">{{ row.label }}</span>
-            <span class="mk__ledger-note">{{ row.note }}</span>
-            <span class="mk__ledger-val">{{ row.value }}</span>
-          </li>
-        }
-        <li class="mk__ledger-row mk__ledger-row--total">
-          <span class="mk__ledger-label">Total</span>
-          <span class="mk__ledger-note">everything above, resolved</span>
-          <span class="mk__ledger-val">{{ perSecond }}/sec</span>
-        </li>
-      </ul>
-    </details>
-
-    @if (snap.doubled) {
-      <p class="mk__doubled">☀️ The Fragment of the First Sun is held. Everything is doubled.</p>
-    }
-
-    @if (snap.enchantment) {
-      <p class="mk__running">
-        <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
-        <strong>{{ snap.enchantment.def.name }}</strong> is running —
-        {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
-      </p>
-    }
-  </header>
-
-  <!-- ── Tabs ──────────────────────────────────────────────────────────── -->
-  <div class="mk__tabs" role="tablist" aria-label="Market sections">
-    @for (t of tabs; track t.id) {
-      <button
-        type="button"
-        role="tab"
-        class="mk__tab"
-        [class.mk__tab--active]="active === t.id"
-        [attr.data-currency]="t.currency"
-        [attr.aria-selected]="active === t.id"
-        [attr.aria-controls]="'mk-panel-' + t.id"
-        [id]="'mk-tab-' + t.id"
-        (click)="select(t.id)">
-        <!-- Five sigils were painted for the original five shops. The three
-             tabs added since carry a glyph instead of a stand-in reuse of
-             somebody else's art — a duplicated sigil reads as a mistake, and a
-             new tab is allowed to look new. -->
-        @if (t.icon) {
-          <img class="mk__tab-icon gf-icon shop-icon"
-               [src]="'assets/icons/shops/' + t.icon + '.png'"
-               alt="" aria-hidden="true" width="28" height="28"
-               decoding="async" draggable="false">
-        } @else {
-          <span class="mk__tab-glyph" aria-hidden="true">{{ t.glyph }}</span>
-        }
-        <span class="mk__tab-label">{{ t.label }}</span>
-      </button>
-    }
+    <div class="mk__coin mk__coin--total">
+      <span class="mk__coin-glyph" aria-hidden="true">◈</span>
+      <span class="mk__coin-body">
+        <span class="mk__coin-val">{{ totalValue }}</span>
+        <span class="mk__coin-label" title="Gold, plus Essence valued at the Artifact shelf's own rate.">Total value</span>
+      </span>
+    </div>
   </div>
 
-  <!--
-    ── The Gold ladders ──────────────────────────────────────────────────────
-    Four shelves, one row shape. It was two copies of the same markup when the
-    shop had two ladders; at four it is a template taken four times, so a change
-    to how a row is priced, labelled or bought cannot land on three of them.
-  -->
-  <ng-template #ladder let-rows="rows" let-verb="verb">
-    <ul class="mk__ladder">
-      @for (row of rows; track row.id) {
-        <li class="mk__row"
-            [class.mk__row--owned]="row.owned > 0"
-            [class.mk__row--maxed]="row.maxed"
-            [class.mk__row--flash]="isFlashing(row.id)"
-            [class.mk__row--denied]="isDenied(row.id)">
-          <span class="mk__row-icon" aria-hidden="true">{{ row.icon }}</span>
-          <span class="mk__row-body">
-            <span class="mk__row-name">
-              {{ row.name }}
-              @if (row.owned > 0 && !row.maxed) { <span class="mk__row-owned">×{{ row.owned }}</span> }
-            </span>
-            <span class="mk__row-effect">{{ row.effect }}</span>
-            <span class="mk__row-flavour">{{ row.flavour }}</span>
-          </span>
+  @if (snap.enchantment) {
+    <p class="mk__running" role="status">
+      <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
+      <strong>{{ snap.enchantment.def.name }}</strong> is running —
+      {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
+    </p>
+  }
 
-          @if (row.maxed) {
-            <p class="mk__row-held">HELD</p>
-          } @else {
-            <button
-              type="button"
-              class="mk__buy"
-              [disabled]="!row.affordable"
-              (click)="buyUpgrade(row.id)"
-              [attr.aria-label]="'Buy ' + row.name + ' for ' + format(row.cost) + ' Gold'">
-              <span class="mk__buy-cost">{{ format(row.cost) }} <img class="gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="Gold" width="14" height="14" decoding="async" draggable="false"></span>
-              <span class="mk__buy-word">{{ row.affordable ? verb : 'Locked' }}</span>
-            </button>
-          }
-        </li>
-      }
-    </ul>
-  </ng-template>
+  <!-- ── The floor ─────────────────────────────────────────────────────────
+       Three columns: what to look at, what is for sale, what is moving. -->
+  <div class="mk__floor">
 
-  <!-- ── Tab 1: Forge Upgrades ─────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'forge'" id="mk-panel-forge" aria-labelledby="mk-tab-forge">
-      <p class="mk__panel-note">
-        Ten rungs. The forge earns while you are looking at it — and, with the Obsidian Heart, while
-        you are not. Every purchase makes the next one 15% dearer.
-        <strong>Now producing {{ perSecond }} Gold a second.</strong>
-      </p>
+    <!-- ── Left: search, shelves, rarity ──────────────────────────────── -->
+    <aside class="mk__aside mk__aside--filters" data-reveal aria-label="Filters">
 
-      <ng-container *ngTemplateOutlet="ladder; context: { rows: forgeRows, verb: 'Forge' }"></ng-container>
-    </div>
-
-  <!-- ── Tab 2: Hammer Upgrades ────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'hammer'" id="mk-panel-hammer" aria-labelledby="mk-tab-hammer">
-      <p class="mk__panel-note">
-        What one strike of the Flame is worth. The Flame is in the bottom-right corner of every page,
-        and it pays at most twice a second. Every Hammer also makes every Automaton better, because
-        an Automaton is paid at whatever a strike is worth when it lands.
-        <strong>Now {{ perClick }} Gold a strike.</strong>
-      </p>
-
-      <ng-container *ngTemplateOutlet="ladder; context: { rows: hammerRows, verb: 'Forge' }"></ng-container>
-    </div>
-
-  <!-- ── Tab 3: Automatons ─────────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'automaton'" id="mk-panel-automaton" aria-labelledby="mk-tab-automaton">
-      <p class="mk__panel-note">
-        Hands that strike the Flame while you are elsewhere, paid at the current Hammer rate.
-        They do not count toward your own strike record, and they will not hold a combo for you —
-        the arm has to be yours for that.
-        @if (snap.autoPerSecond > 0) {
-          <strong>Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'strike' : 'strikes' }} a second.</strong>
-        } @else {
-          <strong>Nothing is striking for you yet.</strong>
-        }
-      </p>
-
-      <ng-container *ngTemplateOutlet="ladder; context: { rows: automatonRows, verb: 'Enlist' }"></ng-container>
-    </div>
-
-  <!-- ── Tab 4: Mastery ────────────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'mastery'" id="mk-panel-mastery" aria-labelledby="mk-tab-mastery">
-      <p class="mk__panel-note">
-        A percentage on everything the forge makes — furnaces, automatons and your own arm alike.
-        Sold once each, and they add rather than compound: holding all four is +185%.
-        <strong>Now {{ compact(snap.breakdown.upgrades) }}× from Mastery.</strong>
-      </p>
-
-      <ng-container *ngTemplateOutlet="ladder; context: { rows: masteryRows, verb: 'Master' }"></ng-container>
-    </div>
-
-  <!-- ── Tab 5: Expeditions ────────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'expedition'" id="mk-panel-expedition" aria-labelledby="mk-tab-expedition">
-      <p class="mk__panel-note">
-        Explorers walk into a realm and come back with Gold, and sometimes with a rune or a scroll
-        nobody has filed yet. You send them from
-        <a routerLink="/sanctum">the Forge View</a>, and they keep walking while the tab is shut.
-        @if (explorerSlots >= maxExplorerSlots) {
-          <strong>All {{ maxExplorerSlots }} hired — one for every realm.</strong>
-        } @else {
-          <strong>{{ explorerSlots }} of {{ maxExplorerSlots }} hired.</strong>
-        }
-      </p>
-
-      <ng-container *ngTemplateOutlet="ladder; context: { rows: expeditionRows, verb: 'Hire' }"></ng-container>
-    </div>
-
-  <!-- ── Tab 3: Enchantments ───────────────────────────────────────────── -->
-    <div class="mk__panel mk__panel--essence" role="tabpanel" [hidden]="active !== 'enchant'" id="mk-panel-enchant" aria-labelledby="mk-tab-enchant">
-      <p class="mk__panel-note">
-        Twenty-four hours of faster progression, bought with Essence.
-        Only the strongest one applies — running two does not multiply them — and buying one you are
-        already running restarts its clock from now.
-      </p>
-
-      <ul class="mk__grid mk__grid--enchant">
-        @for (e of enchantments; track e.id) {
-          <li class="mk__card mk__card--essence"
-              [class.mk__card--running]="isRunning(e)"
-              [class.mk__card--flash]="isFlashing(e.id)"
-              [class.mk__card--denied]="isDenied(e.id)">
-            <span class="mk__card-icon" aria-hidden="true">{{ e.icon }}</span>
-            <h3 class="mk__card-name">{{ e.name }}</h3>
-            <p class="mk__card-effect">{{ e.effect }}</p>
-            <p class="mk__card-flavour">{{ e.flavour }}</p>
-
-            @if (isRunning(e)) {
-              <p class="mk__card-timer">⏳ {{ enchantRemaining }}</p>
-            }
-
-            <button
-              type="button"
-              class="mk__buy mk__buy--essence"
-              [disabled]="!canAffordEssence(e.cost)"
-              (click)="buyEnchantment(e.id)"
-              [attr.aria-label]="'Buy ' + e.name + ' for ' + e.cost + ' Eclipse Essence'">
-              <span class="mk__buy-cost">{{ format(e.cost) }} <img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="Eclipse Essence" width="14" height="14" decoding="async" draggable="false"></span>
-              <span class="mk__buy-word">{{ isRunning(e) ? 'Renew' : (canAffordEssence(e.cost) ? 'Invoke' : 'Locked') }}</span>
-            </button>
-          </li>
-        }
-      </ul>
-    </div>
-
-  <!-- ── Tab 4: Artifacts ──────────────────────────────────────────────── -->
-    <div class="mk__panel mk__panel--essence" role="tabpanel" [hidden]="active !== 'artifact'" id="mk-panel-artifact" aria-labelledby="mk-tab-artifact">
-      <p class="mk__panel-note">
-        Permanent, and sold once. Five of them exist and there is no second copy of any.
-        <strong>{{ artifactsOwned }} of {{ artifacts.length }} held.</strong>
-      </p>
-
-      <ul class="mk__grid mk__grid--artifact">
-        @for (a of artifacts; track a.id) {
-          <li class="mk__relic"
-              [class.mk__relic--owned]="owns(a)"
-              [class.mk__card--flash]="isFlashing(a.id)"
-              [class.mk__card--denied]="isDenied(a.id)"
-              [style.--relic-color]="colorOf(a)"
-              [style.--relic-glow]="glowOf(a)">
-            <span class="mk__relic-tier">{{ tierLabel(a) }}</span>
-            <!--
-              All five artifacts are painted, so this never falls through today.
-              The emoji branch stays anyway: ARTIFACTS is a list releases add
-              to, and a sixth artifact with no card should land on the glyph the
-              other five used before the sheet arrived, not a broken image.
-            -->
-            @if (cardOf(a); as card) {
-              <img class="mk__relic-art"
-                   [src]="card.src"
-                   [attr.width]="card.width"
-                   [attr.height]="card.height"
-                   alt="" aria-hidden="true"
-                   loading="lazy" decoding="async" draggable="false">
-            } @else {
-              <span class="mk__relic-icon" aria-hidden="true">{{ a.icon }}</span>
-            }
-            <h3 class="mk__relic-name">{{ a.name }}</h3>
-            <p class="mk__relic-effect">{{ a.effect }}</p>
-            <blockquote class="mk__relic-lore">{{ a.lore }}</blockquote>
-
-            @if (owns(a)) {
-              <p class="mk__relic-sold">SOLD OUT — held</p>
-            } @else {
-              <button
-                type="button"
-                class="mk__buy mk__buy--relic"
-                [disabled]="!canAffordEssence(a.cost)"
-                (click)="buyArtifact(a.id)"
-                [attr.aria-label]="'Buy ' + a.name + ' for ' + a.cost + ' Eclipse Essence'">
-                <span class="mk__buy-cost">{{ format(a.cost) }} <img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="Eclipse Essence" width="14" height="14" decoding="async" draggable="false"></span>
-                <span class="mk__buy-word">{{ canAffordEssence(a.cost) ? 'Claim' : 'Locked' }}</span>
-              </button>
-            }
-          </li>
-        }
-      </ul>
-    </div>
-
-  <!-- ── Tab 5: Cosmetics ──────────────────────────────────────────────── -->
-    <div class="mk__panel" role="tabpanel" [hidden]="active !== 'cosmetic'" id="mk-panel-cosmetic" aria-labelledby="mk-tab-cosmetic">
-      <p class="mk__panel-note">
-        Bought once. Every variant inside comes with it, and switching between them is free —
-        charging twice for a colour you already own is a toll booth, not a shop.
-      </p>
-
-      <ul class="mk__grid mk__grid--cosmetic">
-        @for (c of cosmetics; track c.id) {
-          <li class="mk__card"
-              [class.mk__card--owned]="ownsCosmetic(c)"
-              [class.mk__card--flash]="isFlashing(c.id)"
-              [class.mk__card--denied]="isDenied(c.id)">
-            <span class="mk__card-icon" aria-hidden="true">{{ c.icon }}</span>
-            <h3 class="mk__card-name">{{ c.name }}</h3>
-            <p class="mk__card-effect">{{ c.effect }}</p>
-            <p class="mk__card-flavour">{{ c.flavour }}</p>
-
-            @if (ownsCosmetic(c)) {
-              <div class="mk__variants" role="group" [attr.aria-label]="c.name + ' variants'">
-                @for (v of c.variants; track v.id) {
-                  <button
-                    type="button"
-                    class="mk__variant"
-                    [class.mk__variant--on]="isEquipped(c, v)"
-                    [style.--swatch]="v.color"
-                    (click)="equip(c, v)"
-                    [attr.aria-pressed]="isEquipped(c, v)"
-                    [attr.aria-label]="(isEquipped(c, v) ? 'Remove ' : 'Wear ') + v.label">
-                    <span class="mk__variant-dot" aria-hidden="true"></span>
-                    {{ v.label }}
-                  </button>
-                }
-              </div>
-              <p class="mk__card-sold">OWNED</p>
-            } @else {
-              <button
-                type="button"
-                class="mk__buy"
-                [disabled]="snap.gold < c.cost"
-                (click)="buyCosmetic(c.id)"
-                [attr.aria-label]="'Buy ' + c.name + ' for ' + format(c.cost) + ' Gold'">
-                <span class="mk__buy-cost">{{ format(c.cost) }} <img class="gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="Gold" width="14" height="14" decoding="async" draggable="false"></span>
-                <span class="mk__buy-word">{{ snap.gold >= c.cost ? 'Acquire' : 'Locked' }}</span>
-              </button>
-            }
-          </li>
-        }
-      </ul>
-    </div>
-
-  <!-- ── Tab 8: The Eclipse ────────────────────────────────────────────── -->
-    <div class="mk__panel mk__panel--shard" role="tabpanel" [hidden]="active !== 'eclipse'" id="mk-panel-eclipse" aria-labelledby="mk-tab-eclipse">
-      <p class="mk__panel-note">
-        Give the whole forge back and keep what it taught you. An Eclipse wipes your Gold and every
-        Gold upgrade, and hands you Eclipse Shards — permanent, immune to every reset after it, and
-        worth {{ shardBonusPercent }}% on everything, each.
-      </p>
-
-      <div class="mk__eclipse">
-        <div class="mk__eclipse-orb" aria-hidden="true"></div>
-
-        <dl class="mk__eclipse-stats">
-          <div><dt>Shards held</dt><dd>{{ shards }}</dd></div>
-          <div><dt>Permanent bonus</dt><dd>{{ shardMult }}</dd></div>
-          <div><dt>Eclipses taken</dt><dd>{{ prestigeCount }}</dd></div>
-          <div><dt>Waiting for you</dt><dd>{{ pendingShards }}</dd></div>
-        </dl>
-
-        @if (canPrestige) {
-          <p class="mk__eclipse-ready">
-            <strong>{{ pendingShards }}</strong>
-            {{ pendingShards === 1 ? 'shard is' : 'shards are' }} waiting.
-            Taking them raises your permanent bonus to
-            <strong>×{{ ((snap.shards + pendingShards) * 0.05 + 1).toFixed(2) }}</strong>.
-          </p>
-
-          @if (!eclipseArmed) {
-            <button type="button" class="mk__eclipse-btn" (click)="arm()">
-              RESET THE ECLIPSE
-            </button>
-          } @else {
-            <!-- Two clicks, and the second one is only reachable after reading
-                 what the first one put on screen. A reset that takes every Gold
-                 upgrade a visitor has bought is not a thing to hang off one tap. -->
-            <div class="mk__eclipse-confirm" role="group" aria-label="Confirm the Eclipse">
-              <p class="mk__eclipse-warn">
-                This takes <strong>{{ gold }} Gold</strong> and <strong>{{ eclipseCost }}</strong>
-                across the Forge, Hammer, Automaton and Mastery shelves. It does not touch your rank,
-                your Essence, your artifacts, your cosmetics or anything on the Codex wall.
-                <span class="mk__eclipse-warn-final">There is no undo.</span>
-              </p>
-              <div class="mk__eclipse-actions">
-                <button type="button" class="mk__eclipse-btn mk__eclipse-btn--go" (click)="takeEclipse()">
-                  TAKE THE {{ pendingShards }} {{ pendingShards === 1 ? 'SHARD' : 'SHARDS' }}
-                </button>
-                <button type="button" class="mk__eclipse-cancel" (click)="disarm()">
-                  Not yet
-                </button>
-              </div>
-            </div>
-          }
-        } @else {
-          <div class="mk__eclipse-locked">
-            <div class="mk__eclipse-track" role="progressbar"
-                 [attr.aria-valuenow]="(prestigeProgress * 100).toFixed(0)"
-                 aria-valuemin="0" aria-valuemax="100"
-                 aria-label="Progress toward the Eclipse">
-              <span class="mk__eclipse-fill" [style.width.%]="prestigeProgress * 100"></span>
-            </div>
-            <p class="mk__eclipse-gate">
-              The Eclipse opens at <strong>{{ format(prestigeGold) }}</strong> Gold earned all-time,
-              or at rank <strong>{{ prestigeLevel }}</strong> — whichever you reach first, so long as
-              there is at least one shard in it.
-              <span class="mk__eclipse-gate-now">{{ lifetime }} earned so far.</span>
-            </p>
-          </div>
-        }
-
-        @if (eclipseResult) {
-          <p class="mk__eclipse-done" role="status">
-            🌑 The forge is cold and the sky is yours.
-            <strong>+{{ eclipseResult.granted }}</strong>
-            {{ eclipseResult.granted === 1 ? 'Eclipse Shard' : 'Eclipse Shards' }} —
-            {{ eclipseResult.total }} held, {{ shardMult }} on everything, forever.
-          </p>
+      <div class="mk__search">
+        <span class="mk__search-icon" aria-hidden="true">⌕</span>
+        <label class="mk__sr" for="mk-search">Search the market</label>
+        <input id="mk-search" class="mk__search-input" type="search" autocomplete="off"
+               placeholder="Search items..." [value]="query"
+               (input)="onSearch($any($event.target).value)">
+        @if (query) {
+          <button type="button" class="mk__search-clear" (click)="onSearch('')" aria-label="Clear search">✕</button>
         }
       </div>
-    </div>
+
+      <nav class="mk__facet" aria-label="Categories">
+        <h2 class="mk__facet-head">Categories</h2>
+        <ul class="mk__facet-list">
+          <li>
+            <button type="button" class="mk__facet-btn"
+                    [class.mk__facet-btn--on]="!category"
+                    [attr.aria-pressed]="!category"
+                    (click)="selectCategory(null)">
+              <span class="mk__facet-glyph" aria-hidden="true">✦</span>
+              <span class="mk__facet-name">Everything</span>
+              <span class="mk__facet-count">{{ filteredCount }}</span>
+            </button>
+          </li>
+          @for (c of categories; track c.id) {
+            <li>
+              <button type="button" class="mk__facet-btn"
+                      [class.mk__facet-btn--on]="category === c.id"
+                      [attr.data-currency]="c.currency"
+                      [attr.aria-pressed]="category === c.id"
+                      (click)="selectCategory(c.id)">
+                @if (c.icon) {
+                  <img class="mk__facet-icon gf-icon shop-icon"
+                       [src]="'assets/icons/shops/' + c.icon + '.png'"
+                       alt="" aria-hidden="true" width="22" height="22"
+                       loading="lazy" decoding="async" draggable="false">
+                } @else {
+                  <span class="mk__facet-glyph" aria-hidden="true">{{ c.glyph }}</span>
+                }
+                <span class="mk__facet-name">{{ c.label }}</span>
+                <span class="mk__facet-count">{{ countOf(c.id) }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <nav class="mk__facet" aria-label="Rarity">
+        <h2 class="mk__facet-head">Rarity</h2>
+        <ul class="mk__facet-list">
+          @for (r of rarityOrder; track r) {
+            <li>
+              <button type="button" class="mk__facet-btn mk__facet-btn--rarity"
+                      [class.mk__facet-btn--on]="rarity === r"
+                      [style.--tier]="rarityColor(r)"
+                      [style.--tier-glow]="rarityGlow(r)"
+                      [attr.aria-pressed]="rarity === r"
+                      (click)="selectRarity(r)">
+                <span class="mk__facet-dot" aria-hidden="true"></span>
+                <span class="mk__facet-name">{{ rarityLabel(r) }}</span>
+                <span class="mk__facet-count">{{ countOfRarity(r) }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      @if (hasFilters) {
+        <button type="button" class="mk__clear" (click)="clearFilters()">Clear all filters</button>
+      }
+    </aside>
+
+    <!-- ── Centre: the inventory ──────────────────────────────────────── -->
+    <main class="mk__main" data-reveal>
+
+      <!-- The same shelves as the sidebar, reachable without leaving the list.
+           On narrow screens this strip is the only category control. -->
+      <div class="mk__tabs" role="tablist" aria-label="Market shelves">
+        <button type="button" role="tab" class="mk__tab"
+                [class.mk__tab--on]="!category" [attr.aria-selected]="!category"
+                (click)="selectCategory(null)">All</button>
+        @for (c of categories; track c.id) {
+          <button type="button" role="tab" class="mk__tab"
+                  [class.mk__tab--on]="category === c.id"
+                  [attr.data-currency]="c.currency"
+                  [attr.aria-selected]="category === c.id"
+                  (click)="selectCategory(c.id)">{{ c.short }}</button>
+        }
+      </div>
+
+      @if (activeNote) {
+        <p class="mk__note">
+          {{ activeNote }}
+          @if (category === 'expedition') {
+            You send them from <a routerLink="/sanctum">the Forge View</a>.
+          }
+          @if (activeTally) { <strong>{{ activeTally }}</strong> }
+        </p>
+      }
+
+      @if (showEclipse) {
+        <!-- ── The Eclipse ────────────────────────────────────────────────
+             Not a purchase. A reset, behind two clicks and a full accounting
+             of what it takes, which is why it is not a row in the list. -->
+        <div class="mk__eclipse" role="region" aria-label="The Eclipse">
+          <div class="mk__eclipse-orb" aria-hidden="true"></div>
+
+          <p class="mk__eclipse-lede">
+            An Eclipse wipes your Gold and every Gold upgrade, and hands you Eclipse Shards —
+            permanent, immune to every reset after it, and worth {{ shardBonusPercent }}% on
+            everything, each.
+          </p>
+
+          <dl class="mk__eclipse-stats">
+            <div><dt>Shards held</dt><dd>{{ shards }}</dd></div>
+            <div><dt>Permanent bonus</dt><dd>{{ shardMult }}</dd></div>
+            <div><dt>Eclipses taken</dt><dd>{{ prestigeCount }}</dd></div>
+            <div><dt>Waiting for you</dt><dd>{{ pendingShards }}</dd></div>
+          </dl>
+
+          @if (canPrestige) {
+            <p class="mk__eclipse-ready">
+              <strong>{{ pendingShards }}</strong>
+              {{ pendingShards === 1 ? 'shard is' : 'shards are' }} waiting.
+              Taking them raises your permanent bonus to
+              <strong>×{{ ((snap.shards + pendingShards) * 0.05 + 1).toFixed(2) }}</strong>.
+            </p>
+
+            @if (!eclipseArmed) {
+              <button type="button" class="mk__eclipse-btn" (click)="arm()">RESET THE ECLIPSE</button>
+            } @else {
+              <div class="mk__eclipse-confirm" role="group" aria-label="Confirm the Eclipse">
+                <p class="mk__eclipse-warn">
+                  This takes <strong>{{ gold }} Gold</strong> and <strong>{{ eclipseCost }}</strong>
+                  across the Forge, Hammer, Automaton and Mastery shelves. It does not touch your rank,
+                  your Essence, your artifacts, your cosmetics or anything on the Codex wall.
+                  <span class="mk__eclipse-warn-final">There is no undo.</span>
+                </p>
+                <div class="mk__eclipse-actions">
+                  <button type="button" class="mk__eclipse-btn mk__eclipse-btn--go" (click)="takeEclipse()">
+                    TAKE THE {{ pendingShards }} {{ pendingShards === 1 ? 'SHARD' : 'SHARDS' }}
+                  </button>
+                  <button type="button" class="mk__eclipse-cancel" (click)="disarm()">Not yet</button>
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="mk__eclipse-locked">
+              <div class="mk__eclipse-track" role="progressbar"
+                   [attr.aria-valuenow]="(prestigeProgress * 100).toFixed(0)"
+                   aria-valuemin="0" aria-valuemax="100"
+                   aria-label="Progress toward the Eclipse">
+                <span class="mk__eclipse-fill" [style.width.%]="prestigeProgress * 100"></span>
+              </div>
+              <p class="mk__eclipse-gate">
+                The Eclipse opens at <strong>{{ format(prestigeGold) }}</strong> Gold earned all-time,
+                or at rank <strong>{{ prestigeLevel }}</strong> — whichever you reach first, so long as
+                there is at least one shard in it.
+                <span class="mk__eclipse-gate-now">{{ lifetime }} earned so far.</span>
+              </p>
+            </div>
+          }
+
+          @if (eclipseResult) {
+            <p class="mk__eclipse-done" role="status">
+              🌑 The forge is cold and the sky is yours.
+              <strong>+{{ eclipseResult.granted }}</strong>
+              {{ eclipseResult.granted === 1 ? 'Eclipse Shard' : 'Eclipse Shards' }} —
+              {{ eclipseResult.total }} held, {{ shardMult }} on everything, forever.
+            </p>
+          }
+        </div>
+      } @else {
+
+        <!-- ── The list ───────────────────────────────────────────────────
+             One row shape for all seven shelves. The column heads are a
+             legend for the row, hidden where the row stops being a table. -->
+        <div class="mk__legend" aria-hidden="true">
+          <span class="mk__legend-item">Item</span>
+          <span class="mk__legend-rarity">Rarity</span>
+          <span class="mk__legend-price">Price</span>
+          <span class="mk__legend-yield">Supply</span>
+          <span class="mk__legend-action">Action</span>
+        </div>
+
+        @if (pageItems.length === 0) {
+          <p class="mk__empty">
+            <span class="mk__empty-glyph" aria-hidden="true">🜃</span>
+            Nothing on the shelves matches that.
+            <button type="button" class="mk__empty-clear" (click)="clearFilters()">Show everything</button>
+          </p>
+        } @else {
+          <ul class="mk__list">
+            @for (it of pageItems; track it.id) {
+              <li class="mk__row"
+                  [class.mk__row--owned]="it.owned > 0"
+                  [class.mk__row--held]="it.state === 'held' || it.state === 'owned'"
+                  [class.mk__row--flash]="isFlashing(it.id)"
+                  [class.mk__row--denied]="isDenied(it.id)"
+                  [attr.data-currency]="it.currency"
+                  [style.--tier]="it.rarityColor"
+                  [style.--tier-glow]="it.rarityGlow">
+
+                <!--
+                  All five artifacts are painted, so the glyph branch never
+                  fires for them today. It stays anyway: ARTIFACTS is a list
+                  releases add to, and a sixth artifact with no card should land
+                  on the glyph the other five used before the sheet arrived,
+                  not on a broken image.
+                -->
+                <span class="mk__row-icon" aria-hidden="true">
+                  @if (it.art; as card) {
+                    <img class="mk__row-art" [src]="card.src"
+                         [attr.width]="card.width" [attr.height]="card.height"
+                         alt="" loading="lazy" decoding="async" draggable="false">
+                  } @else {
+                    {{ it.icon }}
+                  }
+                </span>
+
+                <span class="mk__row-body">
+                  <span class="mk__row-name">
+                    {{ it.name }}
+                    @if (it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic') {
+                      <span class="mk__row-owned">×{{ it.owned }}</span>
+                    }
+                    @if (isRunning(it)) {
+                      <span class="mk__row-timer">⏳ {{ enchantRemaining }}</span>
+                    }
+                  </span>
+                  <span class="mk__row-effect">{{ it.effect }}</span>
+                  <span class="mk__row-lore">{{ it.lore }}</span>
+
+                  <!-- Owning a cosmetic is not wearing it. The picker only
+                       exists once the thing is bought. -->
+                  @if (it.state === 'owned' && it.cosmetic; as cos) {
+                    <span class="mk__variants" role="group" [attr.aria-label]="it.name + ' variants'">
+                      @for (v of cos.variants; track v.id) {
+                        <button type="button" class="mk__variant"
+                                [class.mk__variant--on]="isEquipped(cos, v)"
+                                [style.--swatch]="v.color"
+                                (click)="equip(cos, v)"
+                                [attr.aria-pressed]="isEquipped(cos, v)"
+                                [attr.aria-label]="(isEquipped(cos, v) ? 'Remove ' : 'Wear ') + v.label">
+                          <span class="mk__variant-dot" aria-hidden="true"></span>{{ v.label }}
+                        </button>
+                      }
+                    </span>
+                  }
+                </span>
+
+                <span class="mk__row-rarity">
+                  <span class="mk__badge">{{ it.rarityLabel }}</span>
+                  <span class="mk__row-cat">{{ it.categoryLabel }}</span>
+                </span>
+
+                <span class="mk__row-price">
+                  @if (it.state === 'held' || it.state === 'owned') {
+                    <span class="mk__row-price-num mk__row-price-num--paid">paid</span>
+                  } @else {
+                    <img class="gf-icon currency-icon"
+                         [class.currency-icon--essence]="it.currency === 'essence'"
+                         [src]="it.currency === 'essence'
+                                  ? 'assets/icons/currencies/essence.png'
+                                  : 'assets/icons/currencies/gold.png'"
+                         [alt]="it.currency === 'essence' ? 'Eclipse Essence' : 'Gold'"
+                         width="16" height="16" loading="lazy" decoding="async" draggable="false">
+                    <span class="mk__row-price-num">{{ format(it.cost) }}</span>
+                  }
+                </span>
+
+                <span class="mk__row-yield">{{ it.yield }}</span>
+
+                <span class="mk__row-action">
+                  @if (it.state === 'held') {
+                    <span class="mk__held">HELD</span>
+                  } @else if (it.state === 'owned') {
+                    <span class="mk__held mk__held--owned">OWNED</span>
+                  } @else {
+                    <button type="button" class="mk__buy"
+                            [disabled]="it.state !== 'buy'"
+                            (click)="buy(it)"
+                            [attr.aria-label]="'Buy ' + it.name + ' for ' + format(it.cost)
+                              + (it.currency === 'essence' ? ' Eclipse Essence' : ' Gold')">
+                      {{ it.state === 'buy' ? it.verb : 'Locked' }}
+                    </button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+
+          @if (totalPages > 1) {
+            <nav class="mk__pager" aria-label="Market pages">
+              <button type="button" class="mk__pager-btn" [disabled]="!canPrev"
+                      (click)="prev()" aria-label="Previous page">‹</button>
+              <span class="mk__pager-at" aria-live="polite">{{ pageLabel }} / {{ totalPages }}</span>
+              <button type="button" class="mk__pager-btn" [disabled]="!canNext"
+                      (click)="next()" aria-label="Next page">›</button>
+            </nav>
+          }
+        }
+      }
+    </main>
+
+    <!-- ── Right: the board and the patron pitch ──────────────────────── -->
+    <aside class="mk__aside mk__aside--board" data-reveal aria-label="Market activity">
+
+      <section class="mk__board">
+        <h2 class="mk__facet-head">{{ sellersAreMine ? 'Deepest holdings' : 'Most forged' }}</h2>
+        <p class="mk__board-sub">
+          {{ sellersAreMine ? 'what you have gone furthest on' : 'what the realms are buying' }}
+        </p>
+        <ol class="mk__board-list">
+          @for (s of sellers; track s.id) {
+            <li>
+              <button type="button" class="mk__seller" [style.--tier]="s.color" (click)="focusItem(s)"
+                      [attr.aria-label]="'Find ' + s.name + ' in the list'">
+                <span class="mk__seller-rank" aria-hidden="true">{{ s.rank }}</span>
+                <span class="mk__seller-icon" aria-hidden="true">{{ s.icon }}</span>
+                <span class="mk__seller-body">
+                  <span class="mk__seller-name">{{ s.name }}</span>
+                  <span class="mk__seller-detail">{{ s.detail }}</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <!-- The one thing on this page that costs real money, kept visually
+           apart from everything that costs Gold. -->
+      <section class="mk__patron">
+        <span class="mk__patron-sigil" aria-hidden="true">✦</span>
+        <h2 class="mk__patron-head">Become a Godforge Patron</h2>
+        <p class="mk__patron-sub">Exclusive items &amp; early access</p>
+        <p class="mk__patron-lore">
+          The forge runs on Gold. Everything around it runs on people who decided it should keep running.
+        </p>
+        <a class="mk__patron-cta" routerLink="/sponsors">Join now</a>
+        <a class="mk__patron-alt" routerLink="/donate">or send fuel once</a>
+      </section>
+
+      <!-- Where the Gold is actually coming from. Open by default: an idle
+           number nobody can decompose reads as arbitrary. -->
+      <details class="mk__ledger" open>
+        <summary class="mk__ledger-sum">Gold income breakdown</summary>
+        <ul class="mk__ledger-list">
+          @for (row of breakdown; track row.label) {
+            <li class="mk__ledger-row"
+                [class.mk__ledger-row--mult]="row.isMultiplier"
+                [class.mk__ledger-row--inert]="row.inert">
+              <span class="mk__ledger-label">{{ row.label }}</span>
+              <span class="mk__ledger-note">{{ row.note }}</span>
+              <span class="mk__ledger-val">{{ row.value }}</span>
+            </li>
+          }
+          <li class="mk__ledger-row mk__ledger-row--total">
+            <span class="mk__ledger-label">Total</span>
+            <span class="mk__ledger-note">everything above, resolved</span>
+            <span class="mk__ledger-val">{{ perSecond }}/sec</span>
+          </li>
+        </ul>
+        <dl class="mk__mini-stats">
+          <div><dt>Per minute</dt><dd>{{ perMinute }}</dd></div>
+          <div><dt>Per strike</dt><dd>{{ perClick }}</dd></div>
+          @if (snap.autoPerSecond > 0) {
+            <div><dt>Auto</dt><dd>{{ autoRate }}/sec</dd></div>
+          }
+          <div><dt>Lifetime</dt><dd>{{ lifetime }}</dd></div>
+          <div><dt>Strikes</dt><dd>{{ strikes }}</dd></div>
+        </dl>
+      </details>
+    </aside>
+  </div>
 
   <!-- ── Footer ────────────────────────────────────────────────────────── -->
   <footer class="mk__foot">
