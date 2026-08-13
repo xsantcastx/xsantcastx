@@ -53,6 +53,14 @@ interface Hall {
   /** Picks the CSS-drawn rune; see .gfrune--<glyph> in the stylesheet. */
   glyph: string;
   hintKey?: string;
+  /**
+   * First to leave the bar when the row runs short — see the
+   * `.gfnav__hall--secondary` shed in the stylesheet.
+   *
+   * Only ever set on a hall the tome and the footer both carry, so the shed
+   * hides a shortcut and never a destination.
+   */
+  secondary?: boolean;
 }
 
 /**
@@ -123,7 +131,20 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   /**
    * The five halls across the middle of the bar.
    *
-   * Five, not seven. HOME is the wordmark on the left — a bar that links to the
+   * Six, and the sixth was paid for rather than squeezed in. The Rune Forge sat
+   * behind the footer and one line of Codex copy while being the thing people
+   * actually come back to open, so it is in the bar — third, between the Arena
+   * and the Codex, because that is the order a visitor meets them: play, forge,
+   * read what forging turned up. Appending it to the end would have put it
+   * where the row runs out of width first, which is the failure this bar has
+   * shipped twice (see the threshold note in the stylesheet).
+   *
+   * Labelled "Rune Forge", never "Forge". Four things on this site now carry
+   * that word — the Forge View at /live, the Forge Keeper, the Godforge Market
+   * and this — and a bare FORGE in the primary nav would be the only one of
+   * them a visitor could not disambiguate from where they are standing.
+   *
+   * Was five, not seven. HOME is the wordmark on the left — a bar that links to the
    * page you are already looking at spends a slot on nothing. GAMES is what the
    * Arena is, under an older name, and MCP is one landing page for a different
    * audience; both live in the footer now. What is left is the Godforge itself:
@@ -135,11 +156,12 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * are not what this site is any more, so they are not in the primary nav.
    */
   readonly primaryHalls: Hall[] = [
-    { route: '/tools',     key: 'gfnav.realms',   glyph: 'tools' },
-    { route: '/arena',     key: 'gfnav.arena',    glyph: 'arena' },
-    { route: '/codex',     key: 'gfnav.codex',    glyph: 'codex' },
-    { route: '/blueprint', key: 'gfnav.warTable', glyph: 'blueprint' },
-    { route: '/market',    key: 'gfnav.market',   glyph: 'market' }
+    { route: '/tools',      key: 'gfnav.realms',    glyph: 'tools' },
+    { route: '/arena',      key: 'gfnav.arena',     glyph: 'arena' },
+    { route: '/rune-forge', key: 'gfnav.runeForge', glyph: 'forge' },
+    { route: '/codex',      key: 'gfnav.codex',     glyph: 'codex' },
+    { route: '/blueprint',  key: 'gfnav.warTable',  glyph: 'blueprint', secondary: true },
+    { route: '/market',     key: 'gfnav.market',    glyph: 'market' }
   ];
 
   /**
@@ -178,6 +200,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       halls: [
         { route: '/tools',        key: 'gfnav.realms',   glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
         { route: '/arena',        key: 'gfnav.arena',    glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
+        // Third here too, matching the bar. The tome is the whole of the nav on
+        // a phone, so a destination that is prominent in one and buried in the
+        // other is only half-promoted.
+        { route: '/rune-forge',   key: 'gfnav.runeForge', glyph: 'forge',    hintKey: 'gfnav.hint.runeForge' },
         { route: '/codex',        key: 'gfnav.codex',    glyph: 'codex',     hintKey: 'gfnav.hint.codex' },
         { route: '/blueprint',    key: 'gfnav.warTable', glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
         { route: '/market',       key: 'gfnav.market',   glyph: 'market',    hintKey: 'gfnav.hint.market' },

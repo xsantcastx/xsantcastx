@@ -88,6 +88,7 @@ export class TranslationService {
     'gfnav.hint.codex':     { en: 'Fragments of a broken sun',       es: 'Fragmentos de un sol roto' },
     'gfnav.hint.warTable':  { en: 'What is being built, and why',    es: 'Que se construye, y por que' },
     'gfnav.hint.market':    { en: 'Spend gold, sharpen the forge',   es: 'Gasta oro, afila la forja' },
+    'gfnav.hint.runeForge': { en: 'Strike the anvil, pull a rune',   es: 'Golpea el yunque, saca una runa' },
     'gfnav.hint.quests':    { en: 'Daily, weekly and epic trials',   es: 'Pruebas diarias, semanales y epicas' },
     'gfnav.hint.keeper':    { en: 'Your rank and everything you own', es: 'Tu rango y todo lo que posees' },
     'gfnav.hint.mcp':       { en: 'Tools for AI agents',             es: 'Herramientas para agentes de IA' },
@@ -1170,6 +1171,20 @@ export class TranslationService {
     'godforge.chronicle.eyebrow': { en: 'The Chronicle',           es: 'La cronica' },
     'godforge.chronicle.title':   { en: 'Recent Forging Activity', es: 'Actividad reciente de forja' },
     'godforge.chronicle.tagline': { en: 'every strike on the anvil, written down as it lands', es: 'cada golpe en el yunque, anotado en cuanto cae' },
+
+    // ── The Rune Forge band on /home ─────────────────────────────────────
+    // The lede names the odds rather than promising a feeling. "One in two
+    // thousand" is the Void's real rate, and a number a visitor can check is
+    // worth more here than an adjective they cannot.
+    'godforge.anvil.eyebrow':         { en: 'The Rune Forge',           es: 'La Forja de Runas' },
+    'godforge.anvil.title':           { en: 'Strike the Anvil',         es: 'Golpea el yunque' },
+    'godforge.anvil.lede':            { en: 'Twenty-five runes, seven tiers, and a Void that falls once in two thousand strikes. Set them into Runewords for permanent bonuses — and every strike may turn up a page of the codex as well.',
+                                        es: 'Veinticinco runas, siete rangos, y un Vacio que cae una vez cada dos mil golpes. Combinalas en Palabras de Runa para bonificaciones permanentes, y cada golpe puede sacar tambien una pagina del codice.' },
+    'godforge.anvil.runes':           { en: 'runes',                    es: 'runas' },
+    'godforge.anvil.scrolls':         { en: 'scrolls',                  es: 'pergaminos' },
+    'godforge.anvil.words':           { en: 'runewords',                es: 'palabras' },
+    'godforge.anvil.cta':             { en: 'Strike the Forge →',       es: 'Golpea la forja →' },
+    'godforge.anvil.cost':            { en: '10 Gold a strike',         es: '10 de oro por golpe' },
 
     'godforge.journey.eyebrow':       { en: 'Begin Your Journey',       es: 'Comienza tu viaje' },
     'godforge.journey.title':         { en: 'Every tool leaves a mark', es: 'Cada herramienta deja una marca' },
