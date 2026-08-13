@@ -54,13 +54,18 @@ interface Hall {
   glyph: string;
   hintKey?: string;
   /**
-   * First to leave the bar when the row runs short — see the
-   * `.gfnav__hall--secondary` shed in the stylesheet.
+   * When this hall leaves the bar as the row runs short — see the
+   * `.gfnav__hall--shed-*` rules in the stylesheet.
    *
-   * Only ever set on a hall the tome and the footer both carry, so the shed
+   * Only ever set on a hall the tome and the footer both carry, so a shed
    * hides a shortcut and never a destination.
+   *
+   * Two tiers rather than one, because seven halls do not fit a Spanish row at
+   * any width a laptop actually has, and dropping both at the same threshold
+   * would empty two slots at once on the widths most visitors are using.
+   * 'first' goes at 1600, 'second' at 1300; between them the bar carries six.
    */
-  secondary?: boolean;
+  shed?: 'first' | 'second';
 }
 
 /**
@@ -154,14 +159,29 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * Live, Donate) is reachable from this bar. They still have routes and they
    * are still linked — from the footer and the tome's MORE section — but they
    * are not what this site is any more, so they are not in the primary nav.
+   *
+   * Seven now, and the seventh is the Inner Sanctum. It was reported as
+   * impossible to reach and it was: the hub had exactly one link on the whole
+   * site, in the footer's second row, which on a phone is a scroll past every
+   * section of whatever page you are on. It sheds, for the same reason the War
+   * Table does — the tome's MAIN section and the footer both carry it — but a
+   * tier later, at 1300 rather than 1600.
+   *
+   * That order is the whole point. Measured in Spanish with a seven-figure
+   * balance, seven halls need a 1600px window; at 1450 the row was 131px over.
+   * So one of the two has to leave on a 1440px laptop, and it is the War Table:
+   * the Sanctum is the hub a player opens on every visit, and /blueprint is a
+   * public roadmap read once. Shedding them together would have taken the
+   * Sanctum out of the bar on exactly the widths this change exists to fix.
    */
   readonly primaryHalls: Hall[] = [
     { route: '/tools',      key: 'gfnav.realms',    glyph: 'tools' },
     { route: '/arena',      key: 'gfnav.arena',     glyph: 'arena' },
     { route: '/rune-forge', key: 'gfnav.runeForge', glyph: 'forge' },
     { route: '/codex',      key: 'gfnav.codex',     glyph: 'codex' },
-    { route: '/blueprint',  key: 'gfnav.warTable',  glyph: 'blueprint', secondary: true },
-    { route: '/market',     key: 'gfnav.market',    glyph: 'market' }
+    { route: '/blueprint',  key: 'gfnav.warTable',  glyph: 'blueprint', shed: 'first' },
+    { route: '/market',     key: 'gfnav.market',    glyph: 'market' },
+    { route: '/sanctum',    key: 'gfnav.sanctum',   glyph: 'sanctum',   shed: 'second' }
   ];
 
   /**
@@ -207,15 +227,22 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
         { route: '/codex',        key: 'gfnav.codex',    glyph: 'codex',     hintKey: 'gfnav.hint.codex' },
         { route: '/blueprint',    key: 'gfnav.warTable', glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
         { route: '/market',       key: 'gfnav.market',   glyph: 'market',    hintKey: 'gfnav.hint.market' },
+        { route: '/sanctum',      key: 'gfnav.sanctum',  glyph: 'sanctum',   hintKey: 'gfnav.hint.sanctum' },
         { route: '/forge-keeper', key: 'gfnav.profile',  glyph: 'profile',   hintKey: 'gfnav.hint.keeper' }
       ]
     },
     {
       titleKey: 'gfnav.section.more',
       halls: [
-        { route: '/quests',   key: 'gfnav.quests',   glyph: 'quests',   hintKey: 'gfnav.hint.quests' },
-        { route: '/mcp',      key: 'gfnav.mcp',      glyph: 'mcp',      hintKey: 'gfnav.hint.mcp' },
-        { route: '/sponsors', key: 'gfnav.sponsors', glyph: 'sponsors', hintKey: 'gfnav.hint.sponsors' }
+        { route: '/quests',          key: 'gfnav.quests',         glyph: 'quests',   hintKey: 'gfnav.hint.quests' },
+        { route: '/mcp',             key: 'gfnav.mcp',            glyph: 'mcp',      hintKey: 'gfnav.hint.mcp' },
+        { route: '/sponsors',        key: 'gfnav.sponsors',       glyph: 'sponsors', hintKey: 'gfnav.hint.sponsors' },
+        // The last two routes on the site that no piece of chrome named. Mission
+        // Control is the AI feed the Sanctum used to be — it kept its page when
+        // /sanctum became the hub, and lost its only link in the same move.
+        // Donate had never been anywhere but the footer.
+        { route: '/mission-control', key: 'gfnav.missionControl', glyph: 'mission',  hintKey: 'gfnav.hint.missionControl' },
+        { route: '/donate',          key: 'gfnav.donate',         glyph: 'donate',   hintKey: 'gfnav.hint.donate' }
       ]
     }
   ];

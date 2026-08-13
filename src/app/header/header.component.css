@@ -467,6 +467,42 @@
   border: 1.5px solid currentColor; border-bottom: 0; border-radius: 7px 7px 0 0;
 }
 
+/* sanctum — an arched doorway with a light burning behind it */
+.gfrune--sanctum::before {
+  bottom: 1px; left: 50%; width: 13px; height: 16px; translate: -50% 0;
+  border: 1.5px solid currentColor; border-bottom: 0;
+  border-radius: 6.5px 6.5px 0 0;
+}
+.gfrune--sanctum::after {
+  bottom: 1px; left: 50%; width: 5px; height: 8px; translate: -50% 0;
+  background: currentColor;
+  border-radius: 2.5px 2.5px 0 0;
+}
+
+/* mission — a signal sweeping from a fixed point */
+.gfrune--mission::before {
+  bottom: 2px; left: 50%; width: 5px; height: 5px; translate: -50% 0;
+  border-radius: 50%; background: currentColor;
+}
+.gfrune--mission::after {
+  bottom: 3px; left: 50%; width: 13px; height: 13px; translate: -50% 0;
+  border: 1.5px solid currentColor;
+  border-color: currentColor transparent transparent transparent;
+  border-radius: 50%;
+}
+
+/* donate — a flame over the coals */
+.gfrune--donate::before {
+  top: 1px; left: 50%; width: 9px; height: 11px; translate: -50% 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50% 8px 50% 50%;
+  rotate: 45deg;
+}
+.gfrune--donate::after {
+  bottom: 1px; left: 50%; width: 13px; height: 1.5px; translate: -50% 0;
+  background: currentColor; border-radius: 1px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    THE TOME
    ═══════════════════════════════════════════════════════════════════════ */
@@ -834,14 +870,30 @@
    which is exactly how a threshold picked off the English row ends up shipping
    a Spanish overlap. 1480 is the crossover plus margin, so both languages clear
    with the pill back. */
-@media (max-width: 1480px) {
+/* 1700, up from 1480, now that the Sanctum is the seventh hall.
+   Same measurement, one hall wider: in Spanish at 1600px the row was 85px over
+   with the pill shown and cleared by 30px without it. The pill remains the
+   right thing to spend — the Market page it links to prints the same number at
+   full size, and it is the only item in the standing group that does. */
+@media (max-width: 1700px) {
   .gfpill--essence { display: none; }
 }
-@media (max-width: 1380px) {
+/* 1500, up from 1380, and the same measurement as the creed above it: at 1440
+   in Spanish the six-hall row was 13px over with the title shown. The rank
+   pill keeps its crest and its number, which is what the title was labelling,
+   and the word itself is on /forge-keeper — the page the pill links to. */
+@media (max-width: 1500px) {
   .gfpill--rank .gfpill__rank-title { display: none; }
 }
-@media (max-width: 1240px) {
+/* The creed goes at 1500 rather than 1240. It is the one piece in the row that
+   says nothing a visitor needs — a tagline under the wordmark — and at 1450 in
+   Spanish the six-hall row was still 3px over with it shown. Shedding 130px of
+   decoration to buy a hall its full label is the trade this whole block is
+   making, and this is the cheapest instance of it. */
+@media (max-width: 1500px) {
   .gfnav__creed { display: none; }
+}
+@media (max-width: 1240px) {
   .gfnav__keeper { display: none; }   /* the rank pill already goes there */
 }
 
@@ -867,8 +919,27 @@
    clear at about 1260. A threshold picked off the English row would have left
    Spanish clipped across an eighty-pixel band — the same mistake as tuning
    against a fresh save's zero balance, in a different dimension. */
+/* The seventh hall splits that shed in two.
+ *
+ * Seven halls do not fit a Spanish row at any width a laptop has: measured with
+ * a seven-figure balance, the row needs ~1600px and was 131px over at 1450. So
+ * one of the two shedding halls has to leave well before the tight band, and
+ * the two thresholds are staggered rather than shared.
+ *
+ * The War Table goes first, at 1600. The Sanctum stays to 1300, because it is
+ * the hub a player opens on every visit while /blueprint is a roadmap read
+ * once — and because a 1440px laptop is exactly the width this whole change
+ * exists to fix. Between the two the bar carries six halls, which is the count
+ * the row was already measured to hold.
+ *
+ * Both are still one tap away wherever they are not drawn: the tome's MAIN
+ * section and the footer carry each of them. */
+@media (max-width: 1600px) {
+  .gfnav__hall--shed-first { display: none; }
+}
+
 @media (max-width: 1300px) {
-  .gfnav__hall--secondary { display: none; }
+  .gfnav__hall--shed-second { display: none; }
   .gfnav__hall { font-size: 0.64rem; padding-inline: 0.18rem; }
 }
 
