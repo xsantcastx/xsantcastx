@@ -57,6 +57,8 @@ import {
 } from '../shared/gamification/tool-mastery.service';
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
+import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
+import { EquipmentPanelComponent } from '../shared/rpg/equipment-panel.component';
 import {
   ARTIFACTS,
   COSMETICS,
@@ -216,7 +218,7 @@ const ZERO_ECONOMY: EconomySnapshot = {
   autoClicks: 0,
   perSecond: 0,
   perMinute: 0,
-  breakdown: { idle: 0, auto: 0, upgrades: 1, streak: 1, shards: 1, artifact: 1, runeword: 1, total: 0 },
+  breakdown: { idle: 0, auto: 0, rpg: 0, upgrades: 1, streak: 1, shards: 1, artifact: 1, runeword: 1, total: 0 },
   autoPerSecond: 0,
   perClick: 0,
   shards: 0,
@@ -264,7 +266,14 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [CommonModule, RouterLink, CloudSaveButtonComponent, ArtSceneComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    CloudSaveButtonComponent,
+    ArtSceneComponent,
+    StatPanelComponent,
+    EquipmentPanelComponent,
+  ],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
 })

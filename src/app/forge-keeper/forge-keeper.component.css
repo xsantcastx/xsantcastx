@@ -943,3 +943,24 @@
 
 /* Rarity tier sigils beside the tier labels in the inventory + trophy case. */
 .fk-tier-icon { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   The RPG layer: attributes and equipment
+   ─────────────────────────────────────────────────────────────────────────────
+   Two panels side by side on desktop, stacked below 900px. They mount as their
+   own components and bring their own styling, so this rule only has to place
+   them — the gap matches .fk-block's own vertical rhythm so the pair reads as
+   two more blocks on the sheet rather than as an insert.
+   ────────────────────────────────────────────────────────────────────────── */
+.fk-rpg {
+  display: grid;
+  gap: clamp(0.9rem, 2.5vw, 1.4rem);
+  margin-bottom: clamp(0.9rem, 2.5vw, 1.4rem);
+}
+
+@media (min-width: 900px) {
+  .fk-rpg {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}

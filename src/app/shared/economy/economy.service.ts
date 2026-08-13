@@ -206,6 +206,8 @@ export class EconomyService implements OnDestroy {
    * because offline settlement prices eight hours from the blob alone.
    */
   private rankLevel = 1;
+  /** Charisma's Market discount, as a multiplier. 1 until the RPG layer says otherwise. */
+  private priceMultiplier = 1;
 
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
   private lastClickAt = 0;
@@ -570,7 +572,48 @@ export class EconomyService implements OnDestroy {
    */
   nextCost(id: string): number {
     const def = upgradeById(id);
-    return def ? costOf(def.baseCost, this.levelOf(id)) : Infinity;
+    return def ? this.discounted(costOf(def.baseCost, this.levelOf(id))) : Infinity;
+  }
+
+  /**
+   * Apply the Charisma discount to a Gold price.
+   *
+   * Rounded up, so a discount can never take a price to zero and a ladder can
+   * never become free. Every Gold price in the Market goes through here; the
+   * Essence prices deliberately do not, because Essence is a prestige currency
+   * and discounting it with a levelling stat is a different balance question
+   * than the one Charisma was written to answer.
+   */
+  private discounted(cost: number): number {
+    if (this.priceMultiplier >= 1) return cost;
+    return Math.max(1, Math.ceil(cost * this.priceMultiplier));
+  }
+
+  /**
+   * Install the Charisma price multiplier. Pushed in by the RPG wiring layer for
+   * the same reason the rank is: the ledger must not depend on the stat panel.
+   *
+   * Not persisted, unlike `rpgFlatGold`. A price is only ever read while the
+   * page is open and the visitor is looking at the Market, so there is no
+   * offline settlement that needs it — and a stale discount surviving in the
+   * blob after a respec would be worse than recomputing it on every load.
+   */
+  setPriceMultiplier(multiplier: number): void {
+    const next = Number.isFinite(multiplier)
+      ? Math.min(1, Math.max(0.05, multiplier))
+      : 1;
+    if (next === this.priceMultiplier) return;
+    this.priceMultiplier = next;
+    this.publish();
+  }
+
+  /** What the Charisma discount currently is, as a multiplier. 1 means none. */
+  get marketPriceMultiplier(): number { return this.priceMultiplier; }
+
+  /** What a cosmetic costs after Charisma. The price the Market must render. */
+  cosmeticCost(id: string): number {
+    const def = COSMETICS.find(c => c.id === id);
+    return def ? this.discounted(def.cost) : Infinity;
   }
 
   /**
@@ -598,7 +641,11 @@ export class EconomyService implements OnDestroy {
     const def = upgradeById(id);
     if (!def || this.isMaxed(id)) return false;
 
-    const cost = costOf(def.baseCost, this.levelOf(id));
+    // Through `nextCost` rather than `costOf` directly, so the Charisma discount
+    // is charged at the till and not merely displayed on the shelf. The two
+    // drifting apart is the classic version of this bug: the panel shows the
+    // reduced price and the purchase silently takes the full one.
+    const cost = this.nextCost(id);
     if (this.state.gold < cost) return false;
 
     const before = goldPerSecond(this.state);
@@ -639,6 +686,26 @@ export class EconomyService implements OnDestroy {
   setStreakDays(days: number): void {
     if (!this.isBrowser || days === this.state.streakDays) return;
     this.state.streakDays = days;
+    this.persistSoon();
+    this.publish();
+  }
+
+  /**
+   * Flat Gold/sec from stat points and equipped items, mirrored in by the RPG
+   * wiring layer. Persisted for the same reason the streak is — see the field's
+   * note on `PlayerEconomy`.
+   *
+   * Rounded to one decimal before the equality check: the value is a sum of
+   * one-decimal item rolls, so float drift would otherwise make every
+   * recomputation look like a change and schedule a write per equip.
+   */
+  setRpgFlatGold(perSecond: number): void {
+    if (!this.isBrowser) return;
+    const next = Number.isFinite(perSecond)
+      ? Math.round(Math.max(0, perSecond) * 10) / 10
+      : 0;
+    if (next === this.state.rpgFlatGold) return;
+    this.state.rpgFlatGold = next;
     this.persistSoon();
     this.publish();
   }
@@ -757,15 +824,20 @@ export class EconomyService implements OnDestroy {
   buyCosmetic(id: string): boolean {
     if (!this.isBrowser) return false;
     const def = COSMETICS.find(c => c.id === id);
-    if (!def || this.ownsCosmetic(id) || this.state.gold < def.cost) return false;
+    if (!def || this.ownsCosmetic(id)) return false;
 
-    this.state.gold -= def.cost;
+    // Cosmetics are Gold-priced, so Charisma discounts them like every other
+    // Gold price in the Market. `cosmeticCost` is what the panel renders.
+    const cost = this.discounted(def.cost);
+    if (this.state.gold < cost) return false;
+
+    this.state.gold -= cost;
     this.state.cosmetics = [...this.state.cosmetics, id];
     this.state.equipped = { ...this.state.equipped, [def.slot]: def.variants[0].id };
 
     this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost: def.cost, currency: 'gold', rateDelta: 0 });
+    this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost, currency: 'gold', rateDelta: 0 });
     return true;
   }
 

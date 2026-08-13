@@ -27,7 +27,7 @@
  * `rollReward`, which the service never calls during SSR.
  */
 import { RealmId, REALMS } from '../realms/realm.model';
-import { rollRune } from '../rune-forge/rune.model';
+import { rollRuneWithMagicFind } from '../rune-forge/rune.model';
 
 /** localStorage key. One blob, owned solely by ExplorerService. */
 export const EXPLORER_KEY = 'godforge-explorers';
@@ -158,29 +158,74 @@ export function missionById(id: MissionId | string): MissionDefinition | undefin
 // Records
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface Explorer {
+/**
+ * A mission in flight.
+ *
+ * This record used to be called `Explorer`, back when a mission was the only
+ * thing an explorer was. Now that explorers are people who persist between
+ * missions — see `explorer-roster.model.ts` — the name belongs to them and this
+ * is an `Expedition`: who went, where, for how long, starting when.
+ */
+export interface Expedition {
   id: string;
+  /**
+   * The roster explorer who is out.
+   *
+   * Empty string only on a mission migrated from a build that had no roster;
+   * `ExplorerService.load` adopts those onto a real explorer on the next
+   * hydrate, so nothing downstream has to handle the empty case for long.
+   */
+  explorerId: string;
   realm: RealmId;
   mission: MissionId;
-  /** Milliseconds the mission runs for. Copied from the definition at dispatch
-   *  so that retuning `MISSIONS` never shortens or extends a run already out. */
+  /**
+   * Milliseconds the mission runs for, after the explorer's speed was applied.
+   *
+   * Copied at dispatch so that retuning `MISSIONS`, re-equipping the explorer,
+   * or hiring a faster one never shortens or extends a run already out — the
+   * deadline the player is watching has to be the deadline that fires.
+   */
   duration: number;
   /** Epoch ms the explorer left. */
   startedAt: number;
+  /**
+   * The loot bonus this explorer carried at dispatch, as a percentage.
+   *
+   * Frozen at dispatch for the same reason `duration` is: the reward is rolled
+   * on *return*, so reading the bonus live would let a player dispatch a Common,
+   * move every charm onto them while the mission runs, and collect at the
+   * boosted rate. Stored, and the roll reads what was true when they left.
+   */
+  lootBonus: number;
+  /** The Endurance multiplier at dispatch, applied to the payout on return. */
+  yieldMultiplier: number;
 }
 
 export interface ExplorerReward {
   gold: number;
   xp: number;
-  /** Rune id, when one was found. */
+  /**
+   * The first rune found, when any were.
+   *
+   * Kept alongside `runes` so every reader written before explorers had
+   * inventory slots keeps working — the toast, the reveal card and the settled
+   * log all speak in one rune, and a multi-slot explorer's first find is the
+   * right one for them to name.
+   */
   rune?: string;
+  /** Every rune found. One entry per inventory slot that hit. */
+  runes: string[];
   /** Scroll id, when one was found. */
   scroll?: string;
+  /** Item ids minted for this return, filled in after the grants. */
+  items?: string[];
 }
 
 /** A settled mission, held until the visitor has seen the loot reveal. */
 export interface ExplorerReturn {
-  explorer: Explorer;
+  explorer: Expedition;
+  /** The name of whoever went, resolved at settlement for the toast copy. */
+  explorerName?: string;
   reward: ExplorerReward;
   /** Epoch ms the mission actually ended, which may be long before it settled. */
   returnedAt: number;
@@ -189,7 +234,9 @@ export interface ExplorerReturn {
 export interface ExplorerState {
   version: 1;
   /** Missions currently out. */
-  active: Explorer[];
+  active: Expedition[];
+  /** Items expeditions have carried home, across every mission. */
+  itemsFound: number;
   /**
    * How many runes expeditions have brought home.
    *
@@ -216,6 +263,7 @@ export function emptyExplorerState(): ExplorerState {
   return {
     version: 1,
     active: [],
+    itemsFound: 0,
     runesFound: 0,
     scrollsFound: 0,
     missionsCompleted: 0,
@@ -242,22 +290,59 @@ export function emptyExplorerState(): ExplorerState {
 export function rollReward(
   mission: MissionDefinition,
   rng: () => number = Math.random,
+  opts: RewardOptions = {},
 ): ExplorerReward {
   const span = mission.goldMax - mission.goldMin;
+  const yieldMult = Number.isFinite(opts.yieldMultiplier ?? 1)
+    ? Math.max(1, opts.yieldMultiplier ?? 1)
+    : 1;
+
   const reward: ExplorerReward = {
-    gold: Math.round(mission.goldMin + rng() * span),
-    xp: mission.xp,
+    // Endurance pays out here rather than by lengthening the clock. The stat is
+    // published as "+10% max mission duration", and the honest reading of that
+    // is "your explorers stay out longer and bring proportionally more back" —
+    // but a stat that only made the player *wait* longer would be a downgrade
+    // dressed as an upgrade, and nobody would spend a point on it. So the
+    // duration the player picked is the duration they get, and the extra
+    // distance covered is paid as extra loot.
+    gold: Math.round((mission.goldMin + rng() * span) * yieldMult),
+    xp: Math.round(mission.xp * yieldMult),
+    runes: [],
   };
 
   // Runes come off the Rune Forge's own table, duplicates and all. Deduping
   // them would be actively wrong: a Runeword needs three Ber, so a second Ber
   // is the reward, not a consolation. `reward.scroll` is not set here — see the
   // Scrolls note above.
-  if (rng() < mission.runeChance) {
-    reward.rune = rollRune(rng).id;
+  //
+  // An explorer with inventory slots rolls once per slot, and each roll gets the
+  // explorer's loot bonus applied as Magic Find. That is what an explorer tier
+  // actually buys: a Mythic makes six attempts at the table with +200% on the
+  // rare-and-better weights, where a Common makes one at the base rate.
+  const slots = Math.max(1, opts.inventorySlots ?? 1);
+  const magicFind = Math.max(0, opts.lootBonus ?? 0);
+
+  for (let i = 0; i < slots; i++) {
+    if (rng() >= mission.runeChance) continue;
+    reward.runes.push(rollRuneWithMagicFind(magicFind, rng).id);
   }
 
+  // `rune` is the first of them, kept so every existing reader — the toast, the
+  // reveal card, the settled-mission log — keeps working unchanged against a
+  // single-rune reward.
+  if (reward.runes.length) reward.rune = reward.runes[0];
+
   return reward;
+}
+
+/** What the roll needs to know about who went. */
+export interface RewardOptions {
+  /** How many table rolls this explorer gets. Their tier's inventory slots. */
+  inventorySlots?: number;
+  /** Magic Find applied to each roll — tier bonus plus what they wear. */
+  lootBonus?: number;
+  /** Endurance's payout multiplier. See the note in `rollReward`. */
+  yieldMultiplier?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -265,12 +350,12 @@ export function rollReward(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Milliseconds left on a mission, floored at zero. */
-export function remainingMs(explorer: Explorer, now: number): number {
+export function remainingMs(explorer: Expedition, now: number): number {
   return Math.max(0, explorer.startedAt + explorer.duration - now);
 }
 
 /** 0–1 through the mission, for the progress ring. */
-export function missionProgress(explorer: Explorer, now: number): number {
+export function missionProgress(explorer: Expedition, now: number): number {
   if (explorer.duration <= 0) return 1;
   const done = (now - explorer.startedAt) / explorer.duration;
   return Math.min(1, Math.max(0, done));

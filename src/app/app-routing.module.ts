@@ -70,45 +70,53 @@ const routes: Routes = [
       }
     },
   /*
-   * /live is the Forge View — the idle dashboard.
+   * /sanctum is the Inner Sanctum — the management hub.
    *
-   * It used to be the AI mission-control feed. That page still exists, at
-   * /mission-control below: it is the source the admin panel's activity stat
-   * reads, and retiring it to make room here would have deleted a working
-   * feature rather than moved one. The URL changed hands rather than the page
-   * being replaced, because "live" describes a forge that is earning per second
-   * far better than it describes a log, and /live is the link already in the
-   * footer and on the home page.
+   * It was /live, and before that /live was the AI mission-control feed. That
+   * page still exists, at /mission-control below: it is the source the admin
+   * panel's activity stat reads, and retiring it would have deleted a working
+   * feature rather than moved one.
    *
-   * A side effect worth naming: the Firestore pollers that made this the single
-   * most expensive page on the site now only run for somebody who deliberately
-   * opens /mission-control, rather than for everybody who clicks "Live".
+   * The rename off /live is the RPG pass. "Live" described a forge earning per
+   * second, which was true when the page was a rate and a quest list; it is a
+   * poor name for the room where you now hire explorers, kit them out and send
+   * them into the realms. The Sanctum is where the character is *managed*, and
+   * /forge-keeper is the sheet that character is written on.
+   *
+   * Both former addresses redirect below rather than being deleted: /live is in
+   * the footer, on the home page and in a year of external links, and the
+   * Firestore pollers that made it expensive are still only reached by somebody
+   * who deliberately opens /mission-control.
    */
   {
-      path: 'live',
+      path: 'sanctum',
       loadComponent: () => import('./live/forge-view.component').then(m => m.ForgeViewComponent),
-      title: 'The Forge View — The Godforge',
+      title: 'The Inner Sanctum — The Godforge',
       data: {
-        description: 'A live dashboard for your Godforge: the Keeper and everything equipped, Gold per second as it climbs, daily quests, and explorers sent into the five Eclipse realms for runes, scrolls and Gold.',
-        keywords: 'idle game dashboard, godforge, forge view, gold per second, explorers, eclipse realms, runes, daily quests, xsantcastx',
+        description: 'The management hub for your Godforge: your explorers and their kit, the Keeper and everything equipped, Gold per second as it climbs, daily quests, and expeditions into the five Eclipse realms for runes, scrolls and Gold.',
+        keywords: 'idle game dashboard, godforge, inner sanctum, forge view, gold per second, explorers, eclipse realms, runes, daily quests, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
-          '@context': 'https://schema.org', '@type': 'WebPage', name: 'The Forge View',
-          url: `${SITE_URL}/live`,
-          description: 'A live dashboard for your Godforge: rank, equipment, Gold per second, quests and expeditions across the five Eclipse realms.',
+          '@context': 'https://schema.org', '@type': 'WebPage', name: 'The Inner Sanctum',
+          url: `${SITE_URL}/sanctum`,
+          description: 'The management hub for your Godforge: explorers, equipment, Gold per second, quests and expeditions across the five Eclipse realms.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
-            { '@type': 'ListItem', position: 2, name: 'The Forge View', item: `${SITE_URL}/live` }
+            { '@type': 'ListItem', position: 2, name: 'The Inner Sanctum', item: `${SITE_URL}/sanctum` }
           ]}
         }
       }
     },
   /*
-   * The name the page is called by, pointed at the URL it lives on. A redirect
-   * rather than a second `loadComponent`, so there is exactly one canonical
-   * address for the dashboard and no duplicate for a crawler to index.
+   * The two names the page has been called by, pointed at the URL it lives on.
+   * Redirects rather than second `loadComponent`s, so there is exactly one
+   * canonical address for the hub and no duplicate for a crawler to index.
+   *
+   * /live in particular cannot simply be dropped: it is the link in the footer,
+   * on the home page, and in every share of this page made before today.
    */
-  { path: 'forge-view', redirectTo: 'live', pathMatch: 'full' },
+  { path: 'forge-view', redirectTo: 'sanctum', pathMatch: 'full' },
+  { path: 'live', redirectTo: 'sanctum', pathMatch: 'full' },
   {
       path: 'mission-control',
       loadComponent: () => import('./live/live.component').then(m => m.LiveComponent),
