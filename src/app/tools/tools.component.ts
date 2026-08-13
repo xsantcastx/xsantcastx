@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, PLATFORM_ID, ElementRef } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SITE_URL } from '../seo.service';
 import { TranslationService } from '../translation.service';
-import { TOOLS_REGISTRY, ToolDefinition, getCategories, getAllTags, getRelatedTools } from './tools-registry';
+import { TOOLS_REGISTRY, getRelatedTools } from './tools-registry';
 import { FormsModule } from '@angular/forms';
 import { REALMS, REALM_ORDER, RealmDefinition, RealmId, realmForCategory } from '../shared/realms/realm.model';
 
@@ -27,61 +27,48 @@ export interface RealmGroup {
   tools: ToolCard[];
 }
 
-export interface Galaxy {
-  name: string;
-  tools: ToolCard[];
+/**
+ * A realm as the map draws it: the definition, its art, and what it holds.
+ *
+ * `art` is the basename shared by the three `bg-<art>-<width>.webp` frames and
+ * the sigil PNG — `realm.sigil` already carries it, and the name is repeated
+ * here so the template reads as art rather than as a sigil used for two things.
+ */
+export interface RealmGate {
+  realm: RealmDefinition;
+  art: string;
   count: number;
-  hue: string;
-  glow: string;
+  /** Registry categories inside this realm, for the gate's category line. */
+  categories: string[];
 }
 
-export interface OrbitStar {
-  tool: ToolCard;
-  ring: number;
-  radius: number;
-  duration: number;
-  delay: number;
-  size: number;
-  direction: 1 | -1;
-  zOffset: number;
-}
-
-type CosmicView = 'galaxies' | 'stars' | 'search';
-
-const CATEGORY_PALETTE: Record<string, { hue: string; glow: string }> = {
-  'CSS Tools':        { hue: '#A78BFA', glow: 'rgba(139, 92, 246, 0.65)' },
-  'Email Tools':      { hue: '#ff6dd7', glow: 'rgba(255, 90, 210, 0.65)' },
-  'Security Tools':   { hue: '#a48bff', glow: 'rgba(140, 110, 255, 0.65)' },
-  'Code Converters':  { hue: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.65)' },
-  'Productivity':     { hue: '#ffc669', glow: 'rgba(255, 180, 80, 0.65)' },
-};
-
-const DEFAULT_PALETTE = { hue: '#8B5CF6', glow: 'rgba(139, 92, 246, 0.65)' };
-
-const ORBIT_RINGS = [
-  { radius: 115, duration: 46 },
-  { radius: 185, duration: 78 },
-  { radius: 255, duration: 112 },
-  { radius: 330, duration: 156 },
-  { radius: 405, duration: 210 },
-];
+/**
+ * `map` is the five realms; `realm` is one realm opened; `search` is the flat
+ * realm-grouped result list. Derived from the URL, never set directly, so every
+ * view is deep-linkable and survives a reload.
+ */
+type ToolsView = 'map' | 'realm' | 'search';
 
 @Component({
     selector: 'app-tools',
     templateUrl: './tools.component.html',
     styleUrls: ['./tools.component.css'],
-    imports: [FormsModule]
+    imports: [FormsModule, RouterLink]
 })
-export class ToolsComponent implements OnInit, OnDestroy {
+export class ToolsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly host = inject(ElementRef<HTMLElement>);
   private paramSub?: Subscription;
   private langSub?: Subscription;
+  private revealObserver?: IntersectionObserver;
+  /** Which view the reveal observer is currently bound to. */
+  private observedView: ToolsView | null = null;
 
   /**
    * Cached tool view-models, built ONCE per language instead of on every change
-   * detection. The cosmic getters (galaxies/orbitStars/selectedGalaxy/hoveredTool)
-   * all read `this.tools`, and the old getter remapped TOOLS_REGISTRY into fresh
-   * objects (and re-sanitized every icon) on each read — many times per CD pass.
+   * detection. The getters below all read `this.tools`, and the old getter
+   * remapped TOOLS_REGISTRY into fresh objects (and re-sanitized every icon) on
+   * each read — many times per CD pass.
    */
   private _tools: ToolCard[] = [];
 
@@ -89,17 +76,11 @@ export class ToolsComponent implements OnInit, OnDestroy {
   readonly linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SITE_URL + '/tools')}`;
 
   activeTag: string | null = null;
-  activeCategory = 'All';
   searchQuery = '';
-  warpingToolId: string | null = null;
-  hoveredStarId: string | null = null;
-  private warpTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  readonly categories = ['All', 'CSS Tools', 'Email Tools', 'Security Tools', 'Code Converters', 'Productivity'];
-
-  /** The five realms, for the realm rail. */
+  /** The five realms, in codex order. */
   readonly realms = REALMS;
-  /** Selected realm, or null. Drives the grouped grid. */
+  /** Selected realm, or null for the map. Mirrors `?realm=`. */
   activeRealm: RealmId | null = null;
 
   constructor(
@@ -116,28 +97,77 @@ export class ToolsComponent implements OnInit, OnDestroy {
     this.langSub = this.translationService.currentLanguage$.subscribe(() => {
       this._tools = this.buildTools();
       this._filteredKey = ' '; // invalidate filter memo: titles/descriptions changed
+      this._gateKey = ' ';
     });
 
     this.paramSub = this.route.queryParams.subscribe(params => {
       this.activeTag = params['tag'] || null;
-      if (params['category']) {
-        this.activeCategory = params['category'];
-      }
-      if (params['q']) {
-        this.searchQuery = params['q'];
-      }
+      this.searchQuery = params['q'] || '';
+
       const realm = params['realm'];
-      this.activeRealm = REALM_ORDER.includes(realm) ? realm : null;
+      if (REALM_ORDER.includes(realm)) {
+        this.activeRealm = realm;
+      } else if (params['category']) {
+        // The category pills are gone — realms replaced them — but links minted
+        // while they existed still arrive with `?category=`. Resolve the
+        // category to the realm that holds it rather than 404ing the filter.
+        this.activeRealm = realmForCategory(params['category']).id;
+      } else {
+        this.activeRealm = null;
+      }
+
+      // Switching view swaps the whole subtree, so the previous run's targets
+      // are gone. Re-bind after Angular has rendered the new one — but only on
+      // an actual view change: typing in the search box rewrites `q` on every
+      // keystroke, and re-running this unconditionally would build a fresh
+      // IntersectionObserver per character.
+      const view = this.currentView;
+      if (this.isBrowser && view !== this.observedView) {
+        this.observedView = view;
+        setTimeout(() => this.observeReveals(), 0);
+      }
     });
+  }
+
+  ngAfterViewInit(): void {
+    this.observeReveals();
   }
 
   ngOnDestroy(): void {
     this.paramSub?.unsubscribe();
     this.langSub?.unsubscribe();
-    if (this.warpTimeout) {
-      clearTimeout(this.warpTimeout);
-      this.warpTimeout = null;
-    }
+    this.revealObserver?.disconnect();
+  }
+
+  /**
+   * Kindle each gate's edge and sigil as it scrolls into view.
+   *
+   * Purely additive: the gates are fully painted without this, and `is-revealed`
+   * only starts a one-shot animation (see the note on the reveal block in the
+   * stylesheet). Nothing here can leave content invisible if it fails to run.
+   *
+   * The global cosmic engine has its own reveal observer, but it binds to a
+   * fixed selector list at boot and this page's gates are created per
+   * navigation, so it would only ever catch them on a cold load of /tools.
+   */
+  private observeReveals(): void {
+    if (!this.isBrowser || typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    this.revealObserver?.disconnect();
+    this.revealObserver = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add('is-revealed');
+          this.revealObserver?.unobserve(entry.target);
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+    );
+
+    const root = this.host.nativeElement as HTMLElement;
+    root.querySelectorAll('[data-reveal]').forEach(el => this.revealObserver!.observe(el));
   }
 
   focusSearch(): void {
@@ -149,43 +179,44 @@ export class ToolsComponent implements OnInit, OnDestroy {
     }
   }
 
-  setCategory(cat: string): void {
-    this.activeCategory = cat;
-    this.activeTag = null;
-    // Category and realm are two different cuts of the same list — picking one
-    // clears the other rather than intersecting into a confusing empty set.
-    this.activeRealm = null;
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { tag: null, realm: null, category: cat === 'All' ? null : cat },
-      queryParamsHandling: 'merge'
-    });
-  }
-
-  /** Toggle a realm. Selecting one switches to the realm-grouped grid. */
-  setRealm(id: RealmId): void {
+  /** Enter a realm, or step back out to the map if it is already open. */
+  setRealm(id: RealmId | null): void {
     const next = this.activeRealm === id ? null : id;
     this.activeRealm = next;
-    this.activeCategory = 'All';
     this.activeTag = null;
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tag: null, category: null, realm: next },
-      queryParamsHandling: 'merge'
+      queryParamsHandling: 'merge',
     });
+  }
+
+  exitRealm(): void {
+    this.setRealm(null);
   }
 
   isRealmActive(id: RealmId): boolean {
     return this.activeRealm === id;
   }
 
-  /** How many tools a realm holds, for the rail counters. */
-  realmCount(realm: RealmDefinition): number {
-    return this.tools.filter(t => realmForCategory(t.category).id === realm.id).length;
+  /** The realm currently open, or null on the map. */
+  get openRealm(): RealmDefinition | null {
+    return REALMS.find(r => r.id === this.activeRealm) ?? null;
   }
 
   translate(key: string): string {
     return this.translationService.translate(key);
+  }
+
+  /**
+   * A realm's one-or-two-line description. Falls back to the codex `domain`
+   * line so a realm added without a blurb key still renders something true
+   * rather than the raw key.
+   */
+  realmBlurb(realm: RealmDefinition): string {
+    const key = `realm.${realm.id}.blurb`;
+    const copy = this.translate(key);
+    return copy === key ? realm.domain : copy;
   }
 
   getIconHtml(tool: ToolCard): SafeHtml {
@@ -226,17 +257,16 @@ export class ToolsComponent implements OnInit, OnDestroy {
 
   get filteredTools(): ToolCard[] {
     const q = this.searchQuery.toLowerCase().trim();
-    const key = `${this._tools.length}|${this.activeCategory}|${this.activeTag ?? ''}|${this.activeRealm ?? ''}|${q}`;
+    const key = `${this._tools.length}|${this.activeTag ?? ''}|${this.activeRealm ?? ''}|${q}`;
     if (key === this._filteredKey) {
       return this._filteredCache;
     }
     const tag = this.activeTag?.toLowerCase();
     this._filteredCache = this._tools.filter(t => {
-      const matchCat = this.activeCategory === 'All' || t.category === this.activeCategory;
       const matchRealm = !this.activeRealm || realmForCategory(t.category).id === this.activeRealm;
       const matchTag = !tag || t.tags.some(tg => tg.toLowerCase() === tag);
       const matchQ = !q || t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some(tg => tg.toLowerCase().includes(q)) || t.category.toLowerCase().includes(q);
-      return matchCat && matchRealm && matchTag && matchQ;
+      return matchRealm && matchTag && matchQ;
     });
     this._filteredKey = key;
     return this._filteredCache;
@@ -248,16 +278,47 @@ export class ToolsComponent implements OnInit, OnDestroy {
     return Array.from(tagSet).sort();
   }
 
-  /** Determine which cosmic view to render */
-  get currentView(): CosmicView {
-    if (this.searchQuery?.trim() || this.activeTag || this.activeRealm) return 'search';
-    if (this.activeCategory && this.activeCategory !== 'All') return 'stars';
-    return 'galaxies';
+  /**
+   * A search or a tag beats an open realm: the query is the more specific
+   * intent, and its results are grouped by realm anyway, so nothing is lost.
+   */
+  get currentView(): ToolsView {
+    if (this.searchQuery?.trim() || this.activeTag) return 'search';
+    if (this.activeRealm) return 'realm';
+    return 'map';
   }
 
-  // Same memo trick as filteredTools: the template reads realmGroups and each
-  // group's length several times per change-detection pass, and regrouping 126
-  // tools on every read is exactly the cost the _filteredCache exists to avoid.
+  // Same memo trick as filteredTools: the template reads gates and each gate's
+  // count several times per change-detection pass.
+  private _gateCache: RealmGate[] = [];
+  private _gateKey = ' ';
+
+  /** The five gates of the map, each with the tools it holds counted once. */
+  get gates(): RealmGate[] {
+    const key = `${this._tools.length}`;
+    if (key === this._gateKey) return this._gateCache;
+
+    const counts = new Map<RealmId, number>();
+    const cats = new Map<RealmId, Set<string>>();
+    for (const tool of this._tools) {
+      const id = realmForCategory(tool.category).id;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+      const set = cats.get(id) ?? new Set<string>();
+      set.add(tool.category);
+      cats.set(id, set);
+    }
+
+    this._gateCache = REALMS.map(realm => ({
+      realm,
+      art: realm.sigil,
+      count: counts.get(realm.id) ?? 0,
+      categories: Array.from(cats.get(realm.id) ?? []),
+    }));
+    this._gateKey = key;
+    return this._gateCache;
+  }
+
+  // Same memo trick again — see realmGroups' callers in the template.
   private _groupCache: RealmGroup[] = [];
   private _groupKey = ' ';
 
@@ -285,97 +346,36 @@ export class ToolsComponent implements OnInit, OnDestroy {
     return this._groupCache;
   }
 
-  /** Galaxies — one per category that has at least one tool */
-  get galaxies(): Galaxy[] {
-    const groups = new Map<string, ToolCard[]>();
-    this.tools.forEach(t => {
-      const arr = groups.get(t.category) || [];
-      arr.push(t);
-      groups.set(t.category, arr);
+  /**
+   * `srcset` for a realm's painting. The 768 frame is a PORTRAIT crop rather
+   * than a scaled landscape one, so it is offered at its own width and the
+   * browser is told the gate is full-bleed — see the note in styles.css.
+   */
+  artSrcset(art: string): string {
+    return [768, 1280, 1536].map(w => `assets/images/bg-${art}-${w}.webp ${w}w`).join(', ');
+  }
+
+  artSrc(art: string): string {
+    return `assets/images/bg-${art}-1280.webp`;
+  }
+
+  sigilSrc(art: string): string {
+    return `assets/icons/realms/${art}.png`;
+  }
+
+  onSearchInput(): void {
+    // Keep the URL in step so a search is shareable and the back button works.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: this.searchQuery.trim() || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
-    return this.categories
-      .filter(c => c !== 'All')
-      .map(name => {
-        const tools = groups.get(name) || [];
-        const palette = CATEGORY_PALETTE[name] || DEFAULT_PALETTE;
-        return { name, tools, count: tools.length, hue: palette.hue, glow: palette.glow };
-      })
-      .filter(g => g.count > 0);
-  }
-
-  get selectedGalaxy(): Galaxy | null {
-    if (this.activeCategory === 'All' || !this.activeCategory) return null;
-    return this.galaxies.find(g => g.name === this.activeCategory) || null;
-  }
-
-  /** Build orbital arrangement of the stars in the selected galaxy */
-  get orbitStars(): OrbitStar[] {
-    const galaxy = this.selectedGalaxy;
-    if (!galaxy) return [];
-    const tools = galaxy.tools;
-    const ringCount = Math.min(ORBIT_RINGS.length, Math.max(2, Math.ceil(tools.length / 7)));
-    const rings = ORBIT_RINGS.slice(0, ringCount);
-
-    return tools.map((tool, i) => {
-      const ring = i % ringCount;
-      const o = rings[ring];
-      // Spread stars on the same ring evenly by phase
-      const ringStarCount = Math.ceil(tools.length / ringCount);
-      const positionInRing = Math.floor(i / ringCount);
-      const phase = (positionInRing / Math.max(1, ringStarCount));
-      const delay = -phase * o.duration; // negative delay = starting angle
-      // Deterministic per-tool variability
-      const hash = this.hashString(tool.id);
-      const sizeVar = 0.78 + ((hash % 42) / 100); // ~0.78–1.20
-      const direction: 1 | -1 = ring % 2 === 0 ? 1 : -1;
-      const zOffset = ((hash >> 5) % 80) - 40;
-      return {
-        tool,
-        ring,
-        radius: o.radius,
-        duration: o.duration,
-        delay,
-        size: sizeVar,
-        direction,
-        zOffset,
-      };
-    });
-  }
-
-  get orbitRings(): { radius: number }[] {
-    const galaxy = this.selectedGalaxy;
-    if (!galaxy) return [];
-    const ringCount = Math.min(ORBIT_RINGS.length, Math.max(2, Math.ceil(galaxy.count / 7)));
-    return ORBIT_RINGS.slice(0, ringCount).map(r => ({ radius: r.radius }));
-  }
-
-  get selectedGalaxyHue(): string {
-    return this.selectedGalaxy?.hue || DEFAULT_PALETTE.hue;
-  }
-
-  get selectedGalaxyGlow(): string {
-    return this.selectedGalaxy?.glow || DEFAULT_PALETTE.glow;
-  }
-
-  get hoveredTool(): ToolCard | null {
-    if (!this.hoveredStarId) return null;
-    return this.tools.find(t => t.id === this.hoveredStarId) || null;
-  }
-
-  enterGalaxy(name: string): void {
-    this.setCategory(name);
-  }
-
-  exitGalaxy(): void {
-    this.setCategory('All');
-  }
-
-  setHoveredStar(id: string | null): void {
-    this.hoveredStarId = id;
   }
 
   filterByTag(tag: string, event: Event): void {
     event.stopPropagation();
+    event.preventDefault();
     if (this.activeTag?.toLowerCase() === tag.toLowerCase()) {
       this.clearTag();
     } else {
@@ -383,7 +383,7 @@ export class ToolsComponent implements OnInit, OnDestroy {
       this.router.navigate([], {
         relativeTo: this.route,
         queryParams: { tag },
-        queryParamsHandling: 'merge'
+        queryParamsHandling: 'merge',
       });
     }
   }
@@ -393,19 +393,18 @@ export class ToolsComponent implements OnInit, OnDestroy {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tag: null },
-      queryParamsHandling: 'merge'
+      queryParamsHandling: 'merge',
     });
   }
 
   clearAll(): void {
     this.activeTag = null;
-    this.activeCategory = 'All';
     this.activeRealm = null;
     this.searchQuery = '';
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tag: null, category: null, realm: null, q: null },
-      queryParamsHandling: 'merge'
+      queryParamsHandling: 'merge',
     });
   }
 
@@ -413,49 +412,8 @@ export class ToolsComponent implements OnInit, OnDestroy {
     return this.activeTag?.toLowerCase() === tag.toLowerCase();
   }
 
-  navigate(tool: ToolCard) {
-    if (tool.status === 'live') {
-      this.router.navigate([tool.route]);
-    }
-  }
-
-  handleCardClick(event: MouseEvent, tool: ToolCard) {
-    if (tool.status !== 'live') {
-      event.preventDefault();
-      return;
-    }
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
-      return;
-    }
-    event.preventDefault();
-
-    if (this.warpingToolId) return;
-
-    const prefersReducedMotion = this.isBrowser
-      && typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion || !this.isBrowser) {
-      this.navigate(tool);
-      return;
-    }
-
-    this.warpingToolId = tool.id;
-    this.warpTimeout = setTimeout(() => {
-      this.warpTimeout = null;
-      this.navigate(tool);
-    }, 780);
-  }
-
-  /** Simple deterministic string hash → positive integer, for per-tool variation */
-  private hashString(str: string): number {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return Math.abs(h);
-  }
+  trackRealm(_i: number, gate: RealmGate): string { return gate.realm.id; }
+  trackTool(_i: number, tool: ToolCard): string { return tool.id; }
 
   /** Get related tools that share tags with a given tool (delegates to registry) */
   static getRelatedTools(tools: ToolCard[], currentId: string, count: number = 4): ToolCard[] {
