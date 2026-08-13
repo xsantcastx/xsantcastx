@@ -2290,9 +2290,34 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
    so none of this paints and then disappears on hydration.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* The void the artwork sits on, not the blue-grey gradient — but painted on
+   <html> rather than here, and this is load-bearing in Safari.
+
+   Every one of these scenes (.scene, .rf-scene, the homepage hero art) is a
+   `position: fixed; z-index: -1` layer inside <body>. Painting order in the
+   root stacking context is: the canvas background, THEN negative-z-index
+   descendants, THEN in-flow block backgrounds. <body> is an in-flow block, so
+   its own background paints in front of every one of those scenes.
+
+   That only stays invisible while <body>'s background is the canvas background
+   — a body background propagates to the canvas and is not painted again in
+   flow, but ONLY when <html> has none. `html` up in the Resets block sets
+   `background: #07090f`, so the propagation never happens here and body's
+   colour is a genuine opaque layer sitting on top of the artwork.
+
+   WebKit implements exactly that and the paintings were invisible in Safari on
+   every art route: /arena, /market, /forge-keeper, /blueprint, /rune-forge and
+   the homepage hero. Blink hoists body's background to the canvas anyway, which
+   is why Chrome never showed it and why this survived review.
+
+   So: body stays transparent on art routes and the floor colour comes from
+   <html>, which IS the canvas and paints below the scenes rather than over
+   them. The 5-hex difference from the old #0a0a0f is imperceptible, and the
+   scenes carry their own #0a0a0f behind the art regardless.
+
+   Do not put a background back on this rule. */
 body.gf-art-route {
-  /* The void the artwork sits on, not the blue-grey gradient. */
-  background: #0a0a0f;
+  background: transparent;
 }
 
 body.gf-art-route::before,
