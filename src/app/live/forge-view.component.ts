@@ -75,7 +75,7 @@ import { Quest } from '../shared/quests/quest.model';
 import { ExplorerService } from '../shared/explorer/explorer.service';
 import {
   EXPLORER_REALMS,
-  Explorer,
+  Expedition,
   ExplorerReturn,
   ExplorerState,
   MISSIONS,
@@ -450,7 +450,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     return this.explorerState.active.map(e => this.missionCard(e, now));
   }
 
-  private missionCard(e: Explorer, now: number): ActiveMission {
+  private missionCard(e: Expedition, now: number): ActiveMission {
     const left = remainingMs(e, now);
     return {
       id: e.id,
