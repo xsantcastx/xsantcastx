@@ -1,0 +1,909 @@
+/**
+ * game-state.gateway.ts — the one place the Godforge save is read and written.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT CHANGED, AND WHAT "SOURCE OF TRUTH" MEANS HERE
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Nineteen services used to own their own `localStorage.getItem` and
+ * `localStorage.setItem`, and cloud save copied those blobs up and down around
+ * them. That worked, and it put the authority in the wrong place: the browser
+ * was the record and the cloud was a backup of it, so every new surface that
+ * wants to read a visitor's state — a leaderboard, a Grand Exchange, a guild
+ * roster — would have had to ask nineteen services for their private copies.
+ *
+ * Now every read and every write goes through here, and when a visitor is signed
+ * in Firestore is the record. Signed out, or with Firestore unreachable, this
+ * degrades to exactly the localStorage-only behaviour the site has always had,
+ * which is what keeps 126 tool pages working for the anonymous majority who will
+ * never sign in.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY LOCALSTORAGE IS STILL THE THING SERVICES READ
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `read()` is synchronous and answers from localStorage, and that is deliberate
+ * rather than a shortcut. Every one of these services hydrates on first
+ * injection — the header's XP bar, the currency rail and the Forge Flame all read
+ * during first paint — and Firestore cannot answer synchronously: it is a network
+ * round trip behind a ~450 kB SDK chunk that is deliberately kept out of the
+ * initial bundle. An `await` on that path would put a network hop in front of the
+ * first frame of every page, signed in or not.
+ *
+ * So this is a read-through cache, and the authority is asserted at a different
+ * moment: {@link attach} pulls the cloud copy on sign-in and on every load,
+ * reconciles it, writes the result into the cache, and pushes it into the live
+ * services through `LocalSaveRegistry`. After that the cache *is* the
+ * authoritative state, byte for byte, and reading it is reading the cloud.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY WRITES REACH THE CACHE FIRST AND THE CLOUD SECOND
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The brief asked for writes to reach Firestore first and mirror to localStorage
+ * after. This does the reverse, on purpose, and the brief's own next requirement
+ * is the reason: cloud writes are debounced and batched, and a debounced write
+ * cannot also be the first one. Beyond the contradiction, awaiting the network
+ * before recording a purchase locally would mean a tab closed mid-round-trip
+ * loses the purchase, and it would make `buyUpgrade()` and every one of its
+ * callers async for no gain.
+ *
+ * The local write is therefore synchronous and unconditional — it is what makes
+ * the game crash-safe and playable on a train — and the cloud write follows
+ * within seconds. Authority is not about which store is written first; it is
+ * about which store wins when they disagree, and that is settled in
+ * {@link attach}.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY A FLUSH STILL READS BEFORE IT WRITES
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A batch that wrote this device's state blind would be last-writer-wins across
+ * a visitor's devices, which is the bug the previous two releases were spent on.
+ * So a flush reads the documents it is about to write, merges under the same
+ * monotone rules `attach` uses, and writes the result. Only the dirty keys are
+ * read — usually one or two — so the steady state costs a couple of reads and a
+ * single batched write, rather than the nineteen reads and nineteen writes the
+ * old per-blob push loop cost.
+ */
+import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { FirestoreHandle } from '../lazy-firestore.service';
+import { PROGRESS_KEY, mergeProgress, migrateProgress } from '../gamification/gamification.model';
+// The state registry and the merge rules live in cloud-save.model.ts and are
+// imported rather than moved. It is a leaf: pure data and pure functions, no
+// Angular and no services, so depending on it costs this file nothing — and the
+// merge rules are the most carefully-reasoned code in the feature, with a spec
+// that pins every key. Moving them to prettify the folder layout would have put
+// review surface on the one part nobody should be casually re-typing.
+import {
+  MergeConflict,
+  MergeStrategy,
+  SYNCED_BLOBS,
+  SyncedBlob,
+  isConflict,
+  mergeDeep,
+  summarise,
+  unwrapBlob,
+  wrapBlob,
+} from '../cloud-save/cloud-save.model';
+import { LocalSaveRegistry } from './local-save-registry.service';
+
+/**
+ * The ledger's key, for the two-number summary the merge dialog shows.
+ *
+ * Spelled out rather than imported from `EconomyService`: that service injects
+ * this gateway, so importing it back would be a cycle — and the constant is
+ * pinned by the model spec, which fails if the registry ever stops carrying it.
+ */
+const ECONOMY_STATE_KEY = 'godforge-economy';
+
+/**
+ * One unit of saved state: a localStorage key and the document it belongs in.
+ *
+ * `enveloped` is the one field that is not simply inherited from `SyncedBlob`,
+ * and it exists for a rule rather than for a shape. Every other blob is stored
+ * as `{ v, updatedAt }` because `easter-eggs-found` is a bare JSON array and a
+ * Firestore document has to be a map. Progression is stored flat, because
+ * `firestore.rules` enforces `request.resource.data.xp >= resource.data.xp` on
+ * `users/{uid}/progress/state` and that condition reads a *top-level* `xp`.
+ * Wrapping it would move the field to `v.xp`, the `!('xp' in ...)` escape in the
+ * rule would quietly pass every write, and the guard against a stale device
+ * deleting somebody's XP would be gone without a single error to show for it.
+ */
+export interface StateEntry {
+  key: string;
+  collection: 'progress' | 'economy';
+  doc: string;
+  label: string;
+  merge?: (remote: unknown, local: unknown) => unknown;
+  enveloped: boolean;
+  /**
+   * Stamp the signed-in account onto a resolved payload.
+   *
+   * Only progression carries an identity, and it has to be the uid this device
+   * is attached to rather than whichever of the two copies happened to win the
+   * merge — adopting the signed-in identity is most of what attaching means.
+   */
+  identify?: (value: unknown, uid: string) => unknown;
+  /**
+   * Fields to ignore when asking "did this actually change?".
+   *
+   * Progression's `updatedAt` is stamped fresh by every merge, so comparing the
+   * serialised forms would report a change on *every* pull — including the
+   * overwhelming majority where the two copies already agree. That was
+   * previously worth one gratuitous page reload per signed-in session; here it
+   * would be a Firestore write and a needless rehydrate on every page load of
+   * every signed-in visitor, which is a bill rather than an annoyance.
+   *
+   * Only the comparison ignores these. The payload that gets written keeps them.
+   */
+  volatile?: readonly string[];
+}
+
+/**
+ * Every key the gateway owns: the eighteen satellite blobs plus progression.
+ *
+ * Progression is appended here rather than added to `SYNCED_BLOBS` so that the
+ * model spec's pinned key list keeps meaning what it says — it asserts what the
+ * *satellite* registry holds, and a nineteenth entry appearing in it would read
+ * as a blob that had been forgotten and then added rather than as the one that
+ * always had its own path.
+ */
+export const STATE_ENTRIES: readonly StateEntry[] = [
+  ...SYNCED_BLOBS.map((b: SyncedBlob): StateEntry => ({
+    key: b.key,
+    collection: b.collection,
+    doc: b.doc,
+    label: b.label,
+    merge: b.merge,
+    enveloped: true,
+  })),
+  {
+    key: PROGRESS_KEY,
+    collection: 'progress',
+    doc: 'state',
+    label: 'progression',
+    // Progression keeps its own hand-written merge rather than falling through to
+    // the structural one, and the reason is a field the structural rule gets
+    // quietly and permanently wrong. `mergeDeep` takes the greater of two
+    // strings, which is right for the ISO instants and period keys everywhere
+    // else in the save — but `createdAt` is the visitor's "first struck" date,
+    // where the *earlier* value is the true one. Left to the structural rule,
+    // every reconciliation would walk that date forward, and the Forge would
+    // slowly forget how long somebody had been here. `mergeProgress` also
+    // recomputes the denormalised rank from the merged XP, which no generic rule
+    // can know to do.
+    merge: (remote, local) => mergeProgress(migrateProgress(remote), migrateProgress(local)),
+    identify: (value, uid) =>
+      isRecord(value) ? { ...value, userId: uid } : value,
+    volatile: ['updatedAt'],
+    enveloped: false,
+  },
+];
+
+const BY_KEY = new Map<string, StateEntry>(STATE_ENTRIES.map(e => [e.key, e]));
+
+/** Keys the gateway owns. Anything else is not saved state and is refused. */
+export function isStateKey(key: string): boolean {
+  return BY_KEY.has(key);
+}
+
+/**
+ * How long a write waits for company before it goes up.
+ *
+ * Four seconds. The Forge Flame can be struck twice a second and idle Gold
+ * settles once a second, so an unbatched write-per-change would be a document
+ * write per second for the life of the tab — the thing the brief specifically
+ * asked not to do. Four seconds collapses a burst of clicking into one batch
+ * while still being short enough that closing the tab rarely beats it, and
+ * `pagehide` covers the case where it does.
+ */
+const FLUSH_DEBOUNCE_MS = 4_000;
+
+/**
+ * The longest a change may sit unsent while the visitor keeps playing.
+ *
+ * A pure trailing debounce never fires during sustained activity, and sustained
+ * activity is exactly when somebody is earning the progress they would be
+ * upset to lose. Twenty seconds is the ceiling: a player clicking continuously
+ * still syncs three times a minute.
+ */
+const FLUSH_MAX_WAIT_MS = 20_000;
+
+/** Backoff for a flush that failed. Doubles to the cap, resets on success. */
+const RETRY_BASE_MS = 5_000;
+const RETRY_MAX_MS = 60_000;
+
+/**
+ * Floor on the gap between two full pulls inside one page load.
+ *
+ * A pull reads every document under the account, and returning to a tab is what
+ * triggers one. A visitor alt-tabbing between a browser and an editor generates
+ * that event far more often than their progress on another device actually
+ * changes, so without a floor one restless afternoon would cost more reads than
+ * the rest of the site spends in a day.
+ *
+ * A minute is the balance: long enough that flicking between windows costs
+ * nothing after the first look, short enough that the case this exists for —
+ * putting a phone down and turning to a desktop — is always outside the window.
+ * Signing in does not wait on it at all; that path attaches, which pulls on the
+ * spot.
+ */
+const REPULL_INTERVAL_MS = 60_000;
+
+/** Where the save currently lives, for the sync chip and the HUD. */
+export type CloudLink =
+  /** Signed out. localStorage is the whole story, which is a fine way to live. */
+  | 'local'
+  /** Attached and pulling, or flushing. */
+  | 'syncing'
+  /** Attached, and everything on this device is up. */
+  | 'synced'
+  /** Attached but unreachable. Playing offline; the queue is holding. */
+  | 'offline';
+
+export interface AttachResult {
+  /** Keys whose local copy the cloud moved. Already pushed into their owners. */
+  adopted: string[];
+  /** True when the account had no save up there and this device seeded it. */
+  seeded: boolean;
+}
+
+@Injectable({ providedIn: 'root' })
+export class GameStateGateway {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly owners = inject(LocalSaveRegistry);
+  private readonly zone = inject(NgZone);
+
+  /** Set while attached to an account. Null when signed out. */
+  private uid: string | null = null;
+  private fs: FirestoreHandle | null = null;
+
+  /** Keys written locally since the last successful flush. */
+  private readonly dirty = new Set<string>();
+  /**
+   * What the cloud held for each key at the last read, serialised.
+   *
+   * Only used to skip a write that would change nothing. Deliberately not used
+   * to skip the *read* before a write — that read is what makes concurrent
+   * devices safe, and an optimisation that removed it would reintroduce
+   * last-writer-wins.
+   */
+  private readonly lastRemote = new Map<string, string>();
+
+  /** Epoch ms of the last full pull, so returning to a tab is throttled. */
+  private lastPullAt = 0;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  /** When the oldest currently-dirty write happened, for the max-wait cap. */
+  private oldestDirtyAt = 0;
+  private flushing: Promise<void> | null = null;
+  private retryMs = RETRY_BASE_MS;
+
+  private readonly link$$ = new BehaviorSubject<CloudLink>('local');
+  readonly link$: Observable<CloudLink> = this.link$$.asObservable();
+  get link(): CloudLink { return this.link$$.value; }
+
+  /** True once this gateway is the cloud's local face rather than just a cache. */
+  get attached(): boolean { return this.uid !== null; }
+
+  /** How many writes are waiting to go up. Rendered by the sync chip. */
+  get pending(): number { return this.dirty.size; }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The synchronous surface every service uses
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The parsed state for `key`, or null when there is none.
+   *
+   * Null and unparseable are deliberately the same answer. Every caller already
+   * treats "nothing stored" as "start from the empty blob", and a blob that will
+   * not parse is one the owning service is about to replace anyway — so throwing
+   * here would only move a corrupt-storage failure into a template binding.
+   */
+  read(key: string): unknown {
+    const raw = this.readRaw(key);
+    if (raw === null) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  readRaw(key: string): string | null {
+    if (!this.isBrowser) return null;
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      // Safari private mode throws on read. The game runs from memory.
+      return null;
+    }
+  }
+
+  /**
+   * Record `value` as the state for `key`.
+   *
+   * Synchronous into the cache, queued for the cloud. Returns immediately, so
+   * every existing caller — `buyUpgrade`, `award`, `strike` — stays synchronous.
+   */
+  write(key: string, value: unknown): void {
+    if (!this.isBrowser) return;
+    let raw: string;
+    try {
+      raw = JSON.stringify(value);
+    } catch {
+      // A cyclic or unserialisable blob is a bug in the caller, and dropping it
+      // here is better than writing "undefined" over a good save.
+      return;
+    }
+    this.writeRaw(key, raw);
+  }
+
+  /** As {@link write}, for a caller that already has the serialised form. */
+  writeRaw(key: string, raw: string): void {
+    if (!this.isBrowser) return;
+    try {
+      localStorage.setItem(key, raw);
+    } catch {
+      // Quota or private mode. Fall through: the cloud write below is now the
+      // only copy that will survive, which makes queueing it more important
+      // rather than less.
+    }
+    this.markDirty(key);
+  }
+
+  /**
+   * Drop the state for `key` — a reset, not a sync.
+   *
+   * The cloud copy goes too, and immediately rather than on the debounce: a
+   * visitor wiping their save and closing the tab must not find it restored from
+   * the cloud on the next load, which is exactly what a queued delete would do.
+   */
+  remove(key: string): void {
+    if (!this.isBrowser) return;
+    try {
+      localStorage.removeItem(key);
+    } catch { /* private mode */ }
+
+    this.dirty.delete(key);
+    this.lastRemote.delete(key);
+
+    const entry = BY_KEY.get(key);
+    const uid = this.uid;
+    const fs = this.fs;
+    if (!entry || !uid || !fs) return;
+
+    this.zone.runOutsideAngular(() => {
+      void fs.api
+        .deleteDoc(fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc))
+        .catch(() => {
+          // Offline. The local copy is gone, which is what the visitor asked
+          // for; the next attach will re-seed from the cloud copy that outlived
+          // it. Surfacing that honestly is better than pretending, so the link
+          // drops to offline and the retry path picks it up.
+          this.setLink('offline');
+        });
+    });
+  }
+
+  private markDirty(key: string): void {
+    if (!this.attached) return;
+    if (!BY_KEY.has(key)) return; // Not saved state; nothing to sync.
+
+    if (this.dirty.size === 0) this.oldestDirtyAt = Date.now();
+    this.dirty.add(key);
+    this.scheduleFlush();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Session
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Make Firestore the record for this account, and adopt what it holds.
+   *
+   * Reads both subcollections whole rather than nineteen documents one at a
+   * time. Same number of billed reads, two round trips instead of nineteen —
+   * and this runs on every page load of a signed-in visitor, so the round trips
+   * were the part that showed.
+   *
+   * Every key that moves is written to the cache and pushed straight into the
+   * service holding it, in the same tick as the write. That ordering is not
+   * cosmetic and is the whole subject of `LocalSaveRegistry`: the owning service
+   * is holding a pre-merge copy it would otherwise flush back within the second.
+   */
+  async attach(
+    uid: string,
+    fs: FirestoreHandle,
+    ask?: (conflict: MergeConflict) => Promise<MergeStrategy>,
+  ): Promise<AttachResult> {
+    this.uid = uid;
+    this.fs = fs;
+    this.setLink('syncing');
+    this.lastPullAt = Date.now();
+
+    // Settle every owner before reading a single blob. Most write through on
+    // every mutation, but the ledger throttles to one write every five seconds
+    // and progression debounces at 800ms — so without this the pull would
+    // reconcile against a copy of the Gold a few seconds behind memory, and the
+    // rehydrate at the far end would drop the difference.
+    this.flushOwners();
+
+    const remote = await this.readAll(uid, fs);
+    const strategy = await this.decideStrategy(remote, ask);
+    const adopted: string[] = [];
+    const toWrite: StateEntry[] = [];
+
+    for (const entry of STATE_ENTRIES) {
+      const localRaw = this.readRaw(entry.key);
+      const local = localRaw === null ? null : safeParse(localRaw);
+      const cloud = remote.get(entry.key) ?? null;
+
+      if (cloud !== null) this.lastRemote.set(entry.key, JSON.stringify(cloud));
+
+      const merged = resolve(entry, cloud, local, strategy);
+      if (merged === null || merged === undefined) continue;
+
+      const resolved = entry.identify ? entry.identify(merged, uid) : merged;
+      const resolvedRaw = JSON.stringify(resolved);
+      const settled = stable(entry, resolved);
+
+      if (settled !== stable(entry, local)) {
+        // Cloud state this device did not have. Cache it and hand it to its
+        // owner in the same tick — see the note above.
+        this.adopt(entry.key, resolvedRaw);
+        adopted.push(entry.key);
+      }
+      if (cloud === null || settled !== stable(entry, cloud)) {
+        toWrite.push(entry);
+      }
+    }
+
+    const seeded = remote.size === 0;
+
+    // Whatever the cloud is missing goes up now rather than on the debounce.
+    // This is the moment a visitor is thinking about whether their progress is
+    // safe, and "signed in" should mean "it is up there" without a wait.
+    if (toWrite.length > 0) {
+      for (const entry of toWrite) this.dirty.add(entry.key);
+      this.oldestDirtyAt = Date.now();
+      // An explicit override is the one case a write can legitimately lower a
+      // number, which the monotonic XP rule will refuse. Per-document writes
+      // keep that refusal from failing the other eighteen with it.
+      //
+      // `known` is what was just read. Without it the push would `getDoc` every
+      // dirty document a moment after `readAll` returned the same content —
+      // paying for the account twice on every sign-in for no new information.
+      await this.pushDirty({ batched: strategy === 'merge', known: remote });
+    } else {
+      this.setLink('synced');
+    }
+
+    this.bindLifecycle();
+    return { adopted, seeded };
+  }
+
+  /**
+   * Stop being the cloud's face. The cache keeps everything, untouched.
+   *
+   * Signing out is not a request to forget months of progress, so nothing is
+   * deleted — the visitor who signs back in finds it all where they left it,
+   * and until then the site behaves exactly as it does for someone who never
+   * signed in at all.
+   */
+  async detach(): Promise<void> {
+    // One last flush while there is still somewhere to flush to.
+    if (this.attached && this.dirty.size > 0) {
+      try {
+        await this.pushDirty({ batched: true });
+      } catch {
+        // Unreachable. The cache holds everything; the next sign-in re-merges.
+      }
+    }
+    this.cancelFlush();
+    this.unbindLifecycle();
+    this.uid = null;
+    this.fs = null;
+    this.dirty.clear();
+    this.lastRemote.clear();
+    this.retryMs = RETRY_BASE_MS;
+    this.setLink('local');
+  }
+
+  /**
+   * Which way this pull reconciles, asking the visitor only when it has to.
+   *
+   * The structural rules take the higher of every number and the union of every
+   * set, which is the right default precisely because it cannot lose anything.
+   * But "cannot lose anything" is not the same as "is what somebody wanted": a
+   * visitor who has been playing on a phone all week and then signs in on a
+   * desktop holding its own half-finished save may well want one of them gone,
+   * and the generous merge hands them a save that is neither.
+   *
+   * So the question is asked only when it is real — when each side holds
+   * something the other does not. A cloud save simply ahead of this browser on
+   * every number is not a conflict; all three answers would do the same thing,
+   * and asking would be theatre.
+   *
+   * The gateway owns the data and the caller owns the question. `ask` is how the
+   * header's merge dialog gets a say without this file knowing that a dialog is
+   * what happens next.
+   */
+  private async decideStrategy(
+    remote: Map<string, unknown>,
+    ask?: (conflict: MergeConflict) => Promise<MergeStrategy>,
+  ): Promise<MergeStrategy> {
+    if (!ask || remote.size === 0) return 'merge';
+
+    const local = summarise(this.read(PROGRESS_KEY), this.read(ECONOMY_STATE_KEY));
+    const cloud = summarise(
+      remote.get(PROGRESS_KEY) ?? null,
+      remote.get(ECONOMY_STATE_KEY) ?? null,
+    );
+    if (!isConflict(local, cloud)) return 'merge';
+
+    return ask({ local, cloud });
+  }
+
+  /**
+   * Re-read the cloud and adopt anything new, mid-session.
+   *
+   * The honest moment for this is a tab coming back into view: it is exactly
+   * when somebody has put a phone down and picked up a desktop. Throttled, and
+   * never asks — a dialog opening because somebody alt-tabbed would be a
+   * question they did not invite.
+   */
+  async resync(): Promise<AttachResult | null> {
+    const uid = this.uid;
+    const fs = this.fs;
+    if (!uid || !fs) return null;
+    if (Date.now() - this.lastPullAt < REPULL_INTERVAL_MS) return null;
+    return this.attach(uid, fs);
+  }
+
+  /** Send everything queued, now. Used by sign-out and the retry button. */
+  async flushNow(): Promise<void> {
+    if (!this.attached) return;
+    this.cancelFlush();
+    await this.pushDirty({ batched: true });
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Reading the cloud
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /** Every stored document for this account, keyed by localStorage key. */
+  private async readAll(uid: string, fs: FirestoreHandle): Promise<Map<string, unknown>> {
+    const out = new Map<string, unknown>();
+    const collections = [...new Set(STATE_ENTRIES.map(e => e.collection))];
+
+    const byPath = new Map<string, StateEntry>(
+      STATE_ENTRIES.map(e => [`${e.collection}/${e.doc}`, e]),
+    );
+
+    for (const collection of collections) {
+      const snap = await fs.api.getDocs(
+        fs.api.collection(fs.db, 'users', uid, collection),
+      );
+      snap.forEach(doc => {
+        const entry = byPath.get(`${collection}/${doc.id}`);
+        // A document this build does not know about is left alone rather than
+        // dropped: it is either a key an older client wrote or one a newer
+        // client will, and deleting other versions' state is how a rollback
+        // turns into data loss.
+        if (!entry) return;
+        const data = doc.data();
+        out.set(entry.key, entry.enveloped ? unwrapBlob(data) : data);
+      });
+    }
+    return out;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Writing the cloud
+  // ───────────────────────────────────────────────────────────────────────────
+
+  private scheduleFlush(): void {
+    if (this.flushTimer !== null) {
+      // Already booked. Let it stand unless the cap is due, so a burst of
+      // clicking does not keep pushing the write further out.
+      if (Date.now() - this.oldestDirtyAt < FLUSH_MAX_WAIT_MS) return;
+      this.cancelFlush();
+      void this.pushDirty({ batched: true });
+      return;
+    }
+    // Outside Angular: a four-second timer whose job is a network write has no
+    // template work behind it, and letting zone.js own it would wake change
+    // detection for the life of the tab.
+    this.zone.runOutsideAngular(() => {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null;
+        void this.pushDirty({ batched: true });
+      }, FLUSH_DEBOUNCE_MS);
+    });
+  }
+
+  private cancelFlush(): void {
+    if (this.flushTimer === null) return;
+    clearTimeout(this.flushTimer);
+    this.flushTimer = null;
+  }
+
+  /**
+   * Read the dirty documents, merge, and write the results.
+   *
+   * Serialised on `this.flushing` so two overlapping flushes cannot read the
+   * same document and both write a merge of it — which would be harmless under
+   * these monotone rules and confusing forever after.
+   */
+  private pushDirty(opts: { batched: boolean; known?: Map<string, unknown> }): Promise<void> {
+    if (this.flushing) return this.flushing;
+    this.flushing = this.runPush(opts).finally(() => { this.flushing = null; });
+    return this.flushing;
+  }
+
+  private async runPush(
+    { batched, known }: { batched: boolean; known?: Map<string, unknown> },
+  ): Promise<void> {
+    const uid = this.uid;
+    const fs = this.fs;
+    if (!uid || !fs || this.dirty.size === 0) return;
+
+    // Claimed up front. A write that lands while this is in flight re-dirties
+    // its key and books another flush, rather than being folded into this one
+    // and reported as sent before it was.
+    const keys = [...this.dirty];
+    this.dirty.clear();
+    this.setLink('syncing');
+
+    const writes: { entry: StateEntry; payload: unknown }[] = [];
+
+    try {
+      for (const key of keys) {
+        const entry = BY_KEY.get(key);
+        if (!entry) continue;
+
+        const localRaw = this.readRaw(key);
+        if (localRaw === null) continue;
+        const local = safeParse(localRaw);
+        if (local === null) continue; // Unparseable; the owner will replace it.
+
+        // A read this push does not have to make. `attach` hands over what it
+        // just read, and that map is the *whole* account — `readAll` sweeps both
+        // subcollections — so a key missing from it means the document does not
+        // exist rather than that it was not looked at. Re-reading to confirm an
+        // absence Firestore has already reported would be paying for the account
+        // twice on every sign-in. Every other caller passes no `known` and reads,
+        // which is what keeps concurrent devices safe.
+        let cloud: unknown;
+        if (known) {
+          cloud = known.get(key) ?? null;
+        } else {
+          const snap = await fs.api.getDoc(
+            fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+          );
+          cloud = snap.exists()
+            ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
+            : null;
+        }
+
+        const reconciled = cloud === null ? local : (entry.merge ?? mergeDeep)(cloud, local);
+        const merged = entry.identify ? entry.identify(reconciled, uid) : reconciled;
+        const mergedRaw = JSON.stringify(merged);
+        const settled = stable(entry, merged);
+
+        // Nothing to say when the cloud already holds exactly this.
+        if (cloud !== null && settled === stable(entry, cloud)) {
+          this.lastRemote.set(key, mergedRaw);
+          continue;
+        }
+
+        writes.push({ entry, payload: merged });
+
+        // The merge pulled in something this device did not have. Take it here
+        // rather than waiting for the next page load — this is the path that
+        // makes a tab left open all day notice the phone's evening of Gold.
+        if (settled !== stable(entry, local)) this.adopt(key, mergedRaw);
+        this.lastRemote.set(key, mergedRaw);
+      }
+
+      if (writes.length > 0) {
+        if (batched) await this.writeBatched(fs, uid, writes);
+        else await this.writeEach(fs, uid, writes);
+      }
+
+      this.retryMs = RETRY_BASE_MS;
+      this.setLink('synced');
+    } catch (err) {
+      // Put them back and try again later. Re-adding rather than restoring the
+      // old set on purpose: anything written during the attempt is already in
+      // `dirty` and must stay there.
+      for (const key of keys) this.dirty.add(key);
+      if (this.oldestDirtyAt === 0) this.oldestDirtyAt = Date.now();
+      this.scheduleRetry();
+      throw err;
+    }
+  }
+
+  /** One round trip for every dirty document. */
+  private async writeBatched(
+    fs: FirestoreHandle,
+    uid: string,
+    writes: { entry: StateEntry; payload: unknown }[],
+  ): Promise<void> {
+    const batch = fs.api.writeBatch(fs.db);
+    for (const { entry, payload } of writes) {
+      batch.set(
+        fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+        envelope(entry, payload),
+      );
+    }
+    try {
+      await batch.commit();
+    } catch {
+      // A batch is atomic, so one refused document fails all of them — and the
+      // monotonic XP rule refuses writes by design. Retrying per-document
+      // isolates the refusal instead of letting it hold eighteen unrelated blobs
+      // hostage until somebody notices. The batch's own error is dropped because
+      // the per-document pass produces the real one: either every write lands,
+      // in which case the batch was the problem and there is nothing to report,
+      // or the offending document throws again and that is the error worth
+      // surfacing.
+      await this.writeEach(fs, uid, writes);
+    }
+  }
+
+  /** A write per document, so one refusal costs only that document. */
+  private async writeEach(
+    fs: FirestoreHandle,
+    uid: string,
+    writes: { entry: StateEntry; payload: unknown }[],
+  ): Promise<void> {
+    let failure: unknown = null;
+    for (const { entry, payload } of writes) {
+      try {
+        await fs.api.setDoc(
+          fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+          envelope(entry, payload) as Record<string, unknown>,
+        );
+      } catch (err) {
+        failure ??= err;
+        // Keep it queued: a refused progression write means this device is
+        // behind, and the next attach re-merges, which is what actually
+        // resolves it.
+        this.dirty.add(entry.key);
+        this.lastRemote.delete(entry.key);
+      }
+    }
+    if (failure) throw failure;
+  }
+
+  private scheduleRetry(): void {
+    this.setLink('offline');
+    const wait = this.retryMs;
+    this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
+    this.cancelFlush();
+    this.zone.runOutsideAngular(() => {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null;
+        void this.pushDirty({ batched: true }).catch(() => { /* backed off again */ });
+      }, wait);
+    });
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Plumbing
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /** Cache a resolved payload and push it into the service that owns it. */
+  private adopt(key: string, raw: string): void {
+    try {
+      localStorage.setItem(key, raw);
+    } catch {
+      // Quota or private mode. Rehydrating from a blob that was not written
+      // would hand the owner back what it already has, so there is nothing to
+      // do but leave it alone.
+      return;
+    }
+    // In the zone: rehydration republishes a BehaviorSubject from a promise
+    // chain, and without a change-detection pass the new Gold would be correct
+    // in memory and stale on screen — which reads as the same bug.
+    this.zone.run(() => this.owners.rehydrate(key));
+  }
+
+  private flushOwners(): void {
+    for (const entry of STATE_ENTRIES) this.owners.flush(entry.key);
+  }
+
+  private lifecycleBound = false;
+
+  private readonly onHide = (): void => {
+    if (document.visibilityState === 'hidden') this.onLeave();
+    else void this.resync().catch(() => { /* offline; the queue holds */ });
+  };
+
+  private readonly onLeave = (): void => {
+    this.flushOwners();
+    this.cancelFlush();
+    // Unawaitable by definition. The SDK's offline queue lands it more often
+    // than not, and when it does not the cache still holds everything and the
+    // next load pushes it.
+    void this.pushDirty({ batched: true }).catch(() => { /* leaving */ });
+  };
+
+  private readonly onOnline = (): void => {
+    if (this.dirty.size > 0) void this.pushDirty({ batched: true }).catch(() => { /* still down */ });
+  };
+
+  private bindLifecycle(): void {
+    if (this.lifecycleBound || !this.isBrowser) return;
+    this.lifecycleBound = true;
+    window.addEventListener('pagehide', this.onLeave);
+    window.addEventListener('online', this.onOnline);
+    document.addEventListener('visibilitychange', this.onHide);
+  }
+
+  private unbindLifecycle(): void {
+    if (!this.lifecycleBound || !this.isBrowser) return;
+    this.lifecycleBound = false;
+    window.removeEventListener('pagehide', this.onLeave);
+    window.removeEventListener('online', this.onOnline);
+    document.removeEventListener('visibilitychange', this.onHide);
+  }
+
+  private setLink(next: CloudLink): void {
+    if (this.link$$.value === next) return;
+    this.zone.run(() => this.link$$.next(next));
+  }
+}
+
+/**
+ * How one key's two copies become one.
+ *
+ * 'local' and 'cloud' are the visitor overruling the structural rules for a
+ * single sign-in, and both still fall back to whichever side exists when the
+ * other does not — "keep this device" cannot be allowed to mean "delete the
+ * save".
+ */
+function resolve(
+  entry: StateEntry,
+  cloud: unknown,
+  local: unknown,
+  strategy: MergeStrategy,
+): unknown {
+  if (strategy === 'local') return local ?? cloud;
+  if (strategy === 'cloud') return cloud ?? local;
+  if (cloud === null || cloud === undefined) return local;
+  if (local === null || local === undefined) return cloud;
+  return (entry.merge ?? mergeDeep)(cloud, local);
+}
+
+/** The document body for a payload — wrapped, except for progression. */
+function envelope(entry: StateEntry, payload: unknown): Record<string, unknown> {
+  if (entry.enveloped) return wrapBlob(payload) as unknown as Record<string, unknown>;
+  return payload as Record<string, unknown>;
+}
+
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A payload serialised for comparison, with its volatile fields removed.
+ *
+ * Used only to answer "are these two the same save?". Never written — the
+ * timestamps it drops are real fields that belong in the document.
+ */
+function stable(entry: StateEntry, value: unknown): string {
+  if (!entry.volatile || !isRecord(value)) return JSON.stringify(value) ?? 'null';
+  const copy: Record<string, unknown> = { ...value };
+  for (const field of entry.volatile) delete copy[field];
+  return JSON.stringify(copy) ?? 'null';
+}

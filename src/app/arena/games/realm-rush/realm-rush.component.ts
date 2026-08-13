@@ -27,6 +27,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { GameStateGateway } from '../../../shared/save/game-state.gateway';
 import { LocalSaveRegistry, SaveOwner } from '../../../shared/save/local-save-registry.service';
 import { ArenaShellComponent } from '../arena-shell.component';
 import { ArenaGameBase } from '../arena-game.base';
@@ -121,6 +122,7 @@ export class RealmRushComponent extends ArenaGameBase
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('typeInput') inputRef?: ElementRef<HTMLInputElement>;
@@ -516,7 +518,7 @@ export class RealmRushComponent extends ArenaGameBase
 
   private loadBoard(): BoardEntry[] {
     try {
-      const raw = localStorage.getItem(BOARD_KEY);
+      const raw = this.store.readRaw(BOARD_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed.slice(0, BOARD_SIZE) : [];
     } catch {
@@ -528,11 +530,7 @@ export class RealmRushComponent extends ArenaGameBase
     const next = [...this.board, entry]
       .sort((a, b) => b.score - a.score)
       .slice(0, BOARD_SIZE);
-    try {
-      localStorage.setItem(BOARD_KEY, JSON.stringify(next));
-    } catch {
-      /* storage unavailable — the board is a nicety, not the game */
-    }
+      this.store.write(BOARD_KEY, next);
     return next;
   }
 

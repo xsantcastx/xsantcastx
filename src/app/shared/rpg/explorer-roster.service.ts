@@ -23,6 +23,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from './inventory.service';
 import {
@@ -82,6 +83,7 @@ export class ExplorerRosterService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly inventory = inject(InventoryService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private blob: RosterBlob = emptyBlob();
   private initialised = false;
@@ -299,7 +301,7 @@ export class ExplorerRosterService {
   reset(): void {
     if (!this.isBrowser) return;
     this.blob = emptyBlob();
-    try { localStorage.removeItem(ROSTER_KEY); } catch { /* private mode */ }
+    this.store.remove(ROSTER_KEY);
     this.publish();
   }
 
@@ -309,7 +311,7 @@ export class ExplorerRosterService {
 
   private load(): RosterBlob {
     try {
-      const raw = localStorage.getItem(ROSTER_KEY);
+      const raw = this.store.readRaw(ROSTER_KEY);
       if (!raw) return emptyBlob();
       const parsed = JSON.parse(raw) as Partial<RosterBlob>;
 
@@ -332,9 +334,7 @@ export class ExplorerRosterService {
 
   private save(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(ROSTER_KEY, JSON.stringify(this.blob));
-    } catch { /* quota or private mode */ }
+      this.store.write(ROSTER_KEY, this.blob);
   }
 
   private publish(): void {

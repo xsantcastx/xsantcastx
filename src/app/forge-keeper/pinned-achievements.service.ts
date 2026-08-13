@@ -23,6 +23,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { LocalSaveRegistry } from '../shared/save/local-save-registry.service';
 
 export const PINNED_KEY = 'godforge-pinned';
@@ -34,6 +35,7 @@ export const PIN_SLOTS = 5;
 export class PinnedAchievementsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   /** Cached across reads; `undefined` means "not read yet", null means auto. */
   private cache: string[] | null | undefined;
@@ -61,7 +63,7 @@ export class PinnedAchievementsService {
     });
 
     try {
-      const raw = localStorage.getItem(PINNED_KEY);
+      const raw = this.store.readRaw(PINNED_KEY);
       if (raw === null) return (this.cache = null);
       const parsed = JSON.parse(raw);
       // A hand-edited or half-written blob degrades to auto rather than
@@ -80,22 +82,14 @@ export class PinnedAchievementsService {
     if (!this.isBrowser) return;
     const trimmed = [...new Set(ids)].slice(0, PIN_SLOTS);
     this.cache = trimmed;
-    try {
-      localStorage.setItem(PINNED_KEY, JSON.stringify(trimmed));
-    } catch {
-      /* quota or private mode — a display preference is not worth breaking a page over */
-    }
+      this.store.write(PINNED_KEY, trimmed);
   }
 
   /** Hand the case back to the auto picker. */
   reset(): void {
     if (!this.isBrowser) return;
     this.cache = null;
-    try {
-      localStorage.removeItem(PINNED_KEY);
-    } catch {
-      /* ignore */
-    }
+      this.store.remove(PINNED_KEY);
   }
 
   /** True once the visitor has taken the case over from the auto picker. */

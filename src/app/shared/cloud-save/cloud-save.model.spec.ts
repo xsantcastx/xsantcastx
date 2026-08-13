@@ -483,8 +483,11 @@ describe('the registry', () => {
    * by the answer.
    */
   it('syncs exactly the progression blobs, and nothing device-local', () => {
-    // Progression, minus `eclipse-progress` — that one rides the
-    // ProgressAdapter seam in progress-storage.service.ts instead of this list.
+    // Progression, minus `eclipse-progress`. That one has its own path because
+    // its Firestore document is stored flat rather than in a `{ v, updatedAt }`
+    // envelope — the security rule enforcing monotonic XP reads a *top-level*
+    // `xp`, and wrapping it would silently disable the guard. `STATE_ENTRIES` in
+    // game-state.gateway.ts is the list that includes it.
     expect([...SYNCED_BLOBS.map(b => b.key)].sort()).toEqual([
       'easter-eggs-dates',
       'easter-eggs-found',

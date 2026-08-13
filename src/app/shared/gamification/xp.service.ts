@@ -13,6 +13,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { PROGRESS_KEY, ProgressStorageService } from './progress-storage.service';
 import {
@@ -102,6 +103,7 @@ export class XpService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly storage = inject(ProgressStorageService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: ProgressState = emptyProgress();
   /**
@@ -434,7 +436,7 @@ export class XpService {
     if (!this.isBrowser) return;
     this.cancelPendingSave();
     try {
-      const raw = localStorage.getItem(PROGRESS_KEY);
+      const raw = this.store.readRaw(PROGRESS_KEY);
       this.state = raw ? migrateProgress(JSON.parse(raw)) : emptyProgress();
     } catch {
       // Unreadable or unparseable. Keep what we had — it is what the visitor is

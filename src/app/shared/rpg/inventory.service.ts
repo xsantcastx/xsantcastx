@@ -28,6 +28,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   GameItem,
@@ -86,6 +87,7 @@ export class InventoryService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly economy = inject(EconomyService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private blob: InventoryBlob = emptyBlob();
   private initialised = false;
@@ -398,7 +400,7 @@ export class InventoryService {
   reset(): void {
     if (!this.isBrowser) return;
     this.blob = emptyBlob();
-    try { localStorage.removeItem(INVENTORY_KEY); } catch { /* private mode */ }
+    this.store.remove(INVENTORY_KEY);
     this.publish();
   }
 
@@ -408,7 +410,7 @@ export class InventoryService {
 
   private load(): InventoryBlob {
     try {
-      const raw = localStorage.getItem(INVENTORY_KEY);
+      const raw = this.store.readRaw(INVENTORY_KEY);
       if (!raw) return emptyBlob();
       const parsed = JSON.parse(raw) as Partial<InventoryBlob>;
 
@@ -432,9 +434,7 @@ export class InventoryService {
 
   private save(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(INVENTORY_KEY, JSON.stringify(this.blob));
-    } catch { /* quota or private mode */ }
+      this.store.write(INVENTORY_KEY, this.blob);
   }
 
   private publish(): void {

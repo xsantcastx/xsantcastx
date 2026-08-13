@@ -20,6 +20,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { XpService } from '../gamification/xp.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   DAILY_QUESTS,
@@ -130,6 +131,7 @@ export class QuestService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly xp = inject(XpService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: QuestState = emptyState();
   private initialised = false;
@@ -295,7 +297,7 @@ export class QuestService {
   reset(): void {
     if (!this.isBrowser) return;
     this.state = emptyState();
-    try { localStorage.removeItem(QUEST_KEY); } catch { /* private mode */ }
+    this.store.remove(QUEST_KEY);
     this.rollPeriods();
     this.publish();
   }
@@ -461,7 +463,7 @@ export class QuestService {
 
   private load(): QuestState {
     try {
-      const raw = localStorage.getItem(QUEST_KEY);
+      const raw = this.store.readRaw(QUEST_KEY);
       if (!raw) return emptyState();
       const parsed = JSON.parse(raw) as Partial<QuestState>;
       // Merge over a fresh blob so a state written by an older build still
@@ -482,11 +484,7 @@ export class QuestService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(QUEST_KEY, JSON.stringify(this.state));
-    } catch {
-      /* quota or private mode — a quest board is not worth breaking a page over */
-    }
+      this.store.write(QUEST_KEY, this.state);
   }
 
   private publish(): void {

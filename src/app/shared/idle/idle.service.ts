@@ -26,6 +26,7 @@ import { XpService } from '../gamification/xp.service';
 import { ToolMasteryService } from '../gamification/tool-mastery.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { QuestService } from '../quests/quest.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
 import { RealmId, realmForCategory } from '../realms/realm.model';
@@ -133,6 +134,7 @@ export class IdleService {
   private readonly eggs = inject(EasterEggService);
   private readonly quests = inject(QuestService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: IdleState = emptyState();
   private started = false;
@@ -601,7 +603,7 @@ export class IdleService {
 
   private load(): IdleState {
     try {
-      const raw = localStorage.getItem(IDLE_KEY);
+      const raw = this.store.readRaw(IDLE_KEY);
       if (!raw) return emptyState();
       const parsed = JSON.parse(raw) as Partial<IdleState>;
       return { ...emptyState(), ...parsed, version: 1 };
@@ -611,11 +613,7 @@ export class IdleService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(IDLE_KEY, JSON.stringify(this.state));
-    } catch {
-      /* quota or private mode — an idle counter is not worth breaking a page over */
-    }
+      this.store.write(IDLE_KEY, this.state);
   }
 
   /** Wipe the forge. Exposed alongside the other resets. */
@@ -624,7 +622,7 @@ export class IdleService {
     this.state = emptyState();
     this.accumMs = 0;
     this.carry = 0;
-    try { localStorage.removeItem(IDLE_KEY); } catch { /* private mode */ }
+    this.store.remove(IDLE_KEY);
     this.rollDay();
     this.publish();
   }

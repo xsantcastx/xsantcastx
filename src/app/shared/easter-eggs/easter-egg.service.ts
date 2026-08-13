@@ -2,6 +2,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { LazyFirestoreService } from '../lazy-firestore.service';
 import { CACHE_TTL, FirestoreCacheService } from '../firestore-cache.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { BehaviorSubject } from 'rxjs';
 
@@ -311,6 +312,7 @@ export class EasterEggService {
   private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private saves = inject(LocalSaveRegistry);
+  private store = inject(GameStateGateway);
   private discovered = new Set<string>();
   private dates: Record<string, string> = {};
 
@@ -338,7 +340,7 @@ export class EasterEggService {
 
   /** Replace the discovered set from storage. */
   private readFound(): void {
-    const stored = localStorage.getItem(EGGS_FOUND_KEY);
+    const stored = this.store.readRaw(EGGS_FOUND_KEY);
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored);
@@ -348,7 +350,7 @@ export class EasterEggService {
 
   /** Replace the first-found dates from storage. */
   private readDates(): void {
-    const dates = localStorage.getItem(EGGS_DATES_KEY);
+    const dates = this.store.readRaw(EGGS_DATES_KEY);
     if (!dates) return;
     try {
       const parsed = JSON.parse(dates);
@@ -380,10 +382,10 @@ export class EasterEggService {
 
     // Persist locally
     try {
-      localStorage.setItem(EGGS_FOUND_KEY, JSON.stringify([...this.discovered]));
+      this.store.write(EGGS_FOUND_KEY, [...this.discovered]);
       if (isNew) {
         this.dates = { ...this.dates, [id]: new Date().toISOString() };
-        localStorage.setItem(EGGS_DATES_KEY, JSON.stringify(this.dates));
+        this.store.write(EGGS_DATES_KEY, this.dates);
       }
     } catch { /* quota or private mode — the drop still fires, it just won't stick */ }
 

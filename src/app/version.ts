@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.58.0',
+  version: '2.59.0',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
   codename: 'Wayfinding',
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.59.0',
+    codename: 'Vault',
+    date: '2026-08-13',
+    highlights: [
+      'Signed in, the cloud is now the record and this browser is its cache. Every one of the nineteen save blobs — Gold, XP, the bag, the roster, quests, runes, scrolls, achievements, the lot — is read and written through one gateway instead of nineteen services each owning their own localStorage',
+      'Signing in pulls the whole account in two round trips instead of nineteen, reconciles it, and hands the result straight to the live services, so the numbers on screen change in place',
+      'Writes are batched: a burst of play that used to cost a document write per blob per change now costs one commit every few seconds, and a page load that changes nothing costs no writes at all',
+      'Progression had a second, independent Firestore writer with its own schedule racing the first. There is one writer now',
+      'Offline is a supported state rather than an error — the game keeps running from the cache, the queue holds, and it drains itself when the connection comes back',
+      'Signed out, nothing changed and nothing is fetched: no Firestore SDK, no requests, the same local-only game the anonymous majority has always had'
+    ]
+  },
   {
     version: '2.58.0',
     codename: 'Wayfinding',

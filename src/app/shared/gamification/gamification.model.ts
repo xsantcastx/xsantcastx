@@ -147,6 +147,18 @@ export function levelProgress(xp: number): number {
 export const PROGRESS_VERSION = 2;
 
 /**
+ * The key progression is stored under.
+ *
+ * Declared here rather than in `progress-storage.service.ts` — where it used to
+ * live and from where it is still re-exported — because `GameStateGateway` needs
+ * both this and `mergeProgress`, and that service now depends on the gateway.
+ * A constant in the model file is something anything may import; the same
+ * constant on the far side of a service is a dependency cycle waiting for the
+ * first person who needs it.
+ */
+export const PROGRESS_KEY = 'eclipse-progress';
+
+/**
  * A banked achievement.
  *
  * v1 stored bare id strings. They are objects now so a profile can be rendered

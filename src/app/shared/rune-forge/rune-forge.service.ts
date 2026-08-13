@@ -38,6 +38,7 @@ import {
 import { InventoryService } from '../rpg/inventory.service';
 import { MagicFindService } from '../rpg/magic-find.service';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { RosterExplorer } from '../rpg/explorer-roster.model';
 import {
@@ -146,6 +147,7 @@ export class RuneForgeService {
   private readonly magicFind = inject(MagicFindService);
   private readonly roster = inject(ExplorerRosterService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
@@ -435,7 +437,7 @@ export class RuneForgeService {
   reset(): void {
     if (!this.isBrowser) return;
     this.ledger = emptyLedger();
-    try { localStorage.removeItem(RUNES_KEY); } catch { /* private mode */ }
+    this.store.remove(RUNES_KEY);
     this.publish();
   }
 
@@ -445,7 +447,7 @@ export class RuneForgeService {
 
   private load(): RuneLedger {
     try {
-      const raw = localStorage.getItem(RUNES_KEY);
+      const raw = this.store.readRaw(RUNES_KEY);
       if (!raw) return emptyLedger();
       const parsed = JSON.parse(raw) as Partial<RuneLedger>;
       return {
@@ -467,9 +469,7 @@ export class RuneForgeService {
 
   private save(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(RUNES_KEY, JSON.stringify(this.ledger));
-    } catch { /* quota or private mode — the session still works, it just forgets */ }
+      this.store.write(RUNES_KEY, this.ledger);
   }
 
   private publish(): void {

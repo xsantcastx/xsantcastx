@@ -42,6 +42,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { EconomyService } from '../economy/economy.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
 /** localStorage key. Joins the other Godforge progression blobs. */
@@ -109,6 +110,7 @@ export class ProService {
     @Inject(PLATFORM_ID) private platformId: Object,
     private economy: EconomyService,
     private saves: LocalSaveRegistry,
+    private store: GameStateGateway,
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
     if (!this.isBrowser) return;
@@ -234,7 +236,7 @@ export class ProService {
    */
   private readRecord(): ProRecord {
     try {
-      const raw = localStorage.getItem(PRO_KEY);
+      const raw = this.store.readRaw(PRO_KEY);
       if (!raw) return { ...EMPTY };
 
       if (raw === 'true') {
@@ -260,11 +262,6 @@ export class ProService {
   }
 
   private writeRecord(): void {
-    try {
-      localStorage.setItem(PRO_KEY, JSON.stringify(this.record));
-    } catch {
-      // Storage full or blocked. The in-memory record still drives this tab,
-      // so the buyer gets what they paid for until they close it.
-    }
+      this.store.write(PRO_KEY, this.record);
   }
 }

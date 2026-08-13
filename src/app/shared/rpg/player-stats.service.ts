@@ -33,6 +33,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
 import { XpService } from '../gamification/xp.service';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   PlayerStats,
@@ -99,6 +100,7 @@ export class PlayerStatsService {
   private readonly economy = inject(EconomyService);
   private readonly xp = inject(XpService);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private blob: StatsBlob = emptyBlob();
   private initialised = false;
@@ -265,7 +267,7 @@ export class PlayerStatsService {
   reset(): void {
     if (!this.isBrowser) return;
     this.blob = emptyBlob();
-    try { localStorage.removeItem(PLAYER_STATS_KEY); } catch { /* private mode */ }
+    this.store.remove(PLAYER_STATS_KEY);
     this.publish();
   }
 
@@ -275,7 +277,7 @@ export class PlayerStatsService {
 
   private load(): StatsBlob {
     try {
-      const raw = localStorage.getItem(PLAYER_STATS_KEY);
+      const raw = this.store.readRaw(PLAYER_STATS_KEY);
       if (!raw) return emptyBlob();
       const parsed = JSON.parse(raw) as Partial<StatsBlob>;
       const empty = emptyBlob();
@@ -303,9 +305,7 @@ export class PlayerStatsService {
 
   private save(): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(PLAYER_STATS_KEY, JSON.stringify(this.blob));
-    } catch { /* quota or private mode — the session works, it just forgets */ }
+      this.store.write(PLAYER_STATS_KEY, this.blob);
   }
 
   private publish(): void {

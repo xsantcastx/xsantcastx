@@ -17,6 +17,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { LoreChapter, ToolLore, loreForTool } from './lore.model';
 
@@ -78,6 +79,7 @@ export interface LoreUnlock {
 export class LoreService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly store = inject(GameStateGateway);
 
   private state: LoreState = emptyState();
   private initialised = false;
@@ -216,13 +218,13 @@ export class LoreService {
   reset(): void {
     if (!this.isBrowser) return;
     this.state = emptyState();
-    try { localStorage.removeItem(LORE_KEY); } catch { /* private mode */ }
+    this.store.remove(LORE_KEY);
     this.changed$$.next(0);
   }
 
   private load(): LoreState {
     try {
-      const raw = localStorage.getItem(LORE_KEY);
+      const raw = this.store.readRaw(LORE_KEY);
       if (!raw) return emptyState();
       const parsed = JSON.parse(raw) as Partial<LoreState>;
       return { ...emptyState(), ...parsed, uses: parsed.uses ?? {}, announced: parsed.announced ?? [], version: 1 };
@@ -232,11 +234,7 @@ export class LoreService {
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(LORE_KEY, JSON.stringify(this.state));
-    } catch {
-      /* quota or private mode — reading lore is not worth breaking a tool over */
-    }
+      this.store.write(LORE_KEY, this.state);
   }
 }
 
