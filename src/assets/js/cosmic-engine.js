@@ -332,7 +332,11 @@
 
         // ─── Constellation tooltip — hover a card to anchor bright lines to nearby particles ───
         var hoverAnchor = null; // { x, y, color: {r,g,b} }
-        var hoverSelector = '.tool-card, .skill-card, .hp-tool-card, .project-card, .galaxy, .orbit-star, .hp-spotlight__card';
+        // Rotted the same way REVEAL_SELECTORS did: .skill-card, .project-card
+        // and .hp-spotlight__card went in the 2.44.0 purge, and .galaxy and
+        // .orbit-star went with the galaxy map in 2.56.0. .realm-gate is the
+        // card /tools is actually built from now.
+        var hoverSelector = '.tool-card, .hp-tool-card, .realm-gate, .forge-card';
         function parseColor(str) {
           // Accepts "#rrggbb", "#rgb", or "rgb(a)(...)"
           if (!str) return { r: 0, g: 255, b: 204 };
@@ -527,13 +531,13 @@
         // Hover-grow on interactive elements
         document.addEventListener('mouseover', function (e) {
           var t = e.target;
-          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card'))) {
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.hp-tool-card'))) {
             cursor.classList.add('cosmic-cursor--hover');
           }
         }, { passive: true });
         document.addEventListener('mouseout', function (e) {
           var t = e.target;
-          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.skill-card,.galaxy,.orbit-star,.hp-tool-card'))) {
+          if (t && (t.closest('a,button,input,select,textarea,.tool-card,.hp-tool-card'))) {
             cursor.classList.remove('cosmic-cursor--hover');
           }
         }, { passive: true });
@@ -571,16 +575,17 @@
           '.hp-tools__hd',
           '.hp-tool-card',
           '.tool-card',
-          '.hp-spotlight__card',
-          '.hp-live__card',
           '.hp-stats',
-          '.hp-footer-cta',
-          '.tools-cta',
           '.donate-section',
-          '.hp-cl-day',
           '.gf-station',
           '.gf-door'
         ].join(',');
+        // Dropped in 2.56.1 after the same rot set in again: .hp-spotlight__card,
+        // .hp-live__card, .hp-footer-cta, .hp-cl-day and .tools-cta name nothing
+        // in any template. /tools is deliberately NOT listed — its gates run
+        // their own reveal, which kindles an edge rather than gating opacity,
+        // and adding them here would put the page's whole content back behind
+        // an observer.
 
         function attachReveal() {
           var nodes = document.querySelectorAll(REVEAL_SELECTORS);
@@ -677,7 +682,11 @@
         try { return matchMedia('(hover: none)').matches; } catch (e) { return false; }
       })();
       if (!prefersReduced && !isTouchOrCoarse) {
-        var tiltSelector = '.tool-card, .skill-card, .hp-tool-card, .project-card, .hp-spotlight__card, .galaxy';
+        // /tools is left out on purpose rather than by neglect: a realm gate
+        // already answers the cursor with a lift and a parallax push on its
+        // painting, and stacking a 3D tilt on the same surface is exactly the
+        // "one alive interaction per scroll-screen" rule being broken.
+        var tiltSelector = '.tool-card, .hp-tool-card';
         function bindTilt(el) {
           if (el.dataset.tilt) return;
           el.dataset.tilt = '1';
@@ -876,7 +885,7 @@
         // each span clips its own slice of a gradient sized to the span, and
         // the title renders as a smear of colour instead of words. It is also
         // the LCP element, so leaving it un-split is the faster answer anyway.
-        var typedSelector = '[data-typewriter], .hp-hero__title:not(.gf-hero__title), .hp-section-title, .skills h2, .section-title, .hp-live__title, .hp-spotlight__name, .tools-header__title';
+        var typedSelector = '[data-typewriter], .hp-section-title, .section-title';
         var typedIO = new IntersectionObserver(function (entries) {
           entries.forEach(function (e) {
             if (e.isIntersecting) {
