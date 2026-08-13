@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.56.1',
+  version: '2.57.2',
   buildDate: '2026-08-13',
   /** Each major release gets a codename */
-  codename: 'Cartographer',
+  codename: 'Bazaar',
   /** Where the full story of this release lives */
   changelog: '/blueprint'
 } as const;
@@ -53,15 +53,54 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.57.2',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'Global CSS is 17% smaller raw and 14% smaller gzipped (48.7 kB to 40.4 kB squashed, 11.2 kB to 9.6 kB over the wire) on every page, /tools included. 77 rules and 161 class names went, all of them leftovers from a design the site stopped using several releases ago: the galaxy map and star system, the orbiting stars and the warp overlay, the CSS planet and its nine layers, the whole lp-* live-preview block, tools-cta, the old hp-hero/spotlight/live/sub/changelog surfaces, skill-card and project-card',
+      'Nothing removed here could change a pixel, and that was the bar for including it. Every one of the 161 was checked for being APPLIED — a class attribute, a [class.x] binding, an ngClass literal, a classList call or a className assignment — across every html, ts and js file, not merely mentioned somewhere. That distinction is what kept .tool-card (still used by /blueprint and /mcp), .cosmic-char and .cosmic-tilting (added at runtime by cosmic-engine.js, which the first sweep never read) and .btn-live-preview (a substring match on .live-preview) out of the list',
+      'Four keyframes nothing referenced any more went with them — nebulaHue, lp-line-in, lp-progress, lp-blink — and the dangling-animation sweep the design notes ask for after any CSS refactor was re-run over every stylesheet: zero dangling references remain. Its one cross-file hit, agPulse, is legitimate — shadow-cipher lists arena-game.css in its own styleUrls, so the two share an encapsulation scope',
+      'cosmic-engine.js had rotted the same way its own comments describe from the 2.44.0 purge. Its hover, cursor, tilt, reveal and typewriter selector lists between them named fourteen classes that exist nowhere — .galaxy, .orbit-star, .skill-card, .project-card, .hp-spotlight__card, .tools-cta, .tools-header__title and `.skills h2` among them, the last aimed at a component deleted outright. /tools was getting no reveal, no hover lines and no tilt because every selector pointed at it had been deleted out from under it',
+      '/tools stays out of the engine\'s reveal and tilt lists on purpose rather than by oversight. Its gates run their own reveal, which kindles an edge instead of gating opacity, and listing them globally would put the page\'s content back behind an observer — the exact failure 2.56.0 was built to avoid. A gate already answers the cursor with a lift and a parallax push, so a tilt on the same surface would be two alive interactions on one card',
+    ]
+  },
+  {
+    version: '2.57.1',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      'The Vault flickered under the cursor. Hovering a card lifted it two pixels, and hit testing follows a transform, so entering the bottom two pixels of a card lifted that card out from under the cursor that had just entered it — mouseenter, mouseleave, coming to rest lifted and unhovered. A hand keeps emitting mousemove, each one re-running the hit test and re-entering the loop, which is the flicker. The card is now a frame that never moves with a face inside it that carries every hover effect: the box that answers :hover is stationary, and the box that moves answers nothing',
+      'The hover detail moved off the card and into a tooltip above it, with pointer-events: none. A panel the cursor can land on is a second hover target stacked on the first, and the two trade the hover back and forth — the same bug wearing a different hat',
+      'The Vault learned to filter. Chips for every rung of the Eclipse ladder, counted against the shelf and search you already have so a chip reading 0 warns you before you click it; a search across name, effect and flavour; and a sort by rarity, name, value or owned-first. No "date acquired" and no "sell value" — the ledger records neither, and a sort order invented from nothing is worse than one that is missing',
+      'Identical things stack. Bellows held at level four is one card with a ×4 badge instead of four lines of the same name, and opening the stack lists what the badge counted. The shelf is also no longer re-filtered and re-sorted several times a second: it is recomputed when a control is touched or the ledger moves, which on a page with a one-second ticker under a live XP bar is the difference between a list and a treadmill',
+    ]
+  },
+  {
+    version: '2.57.0',
+    codename: 'Bazaar',
+    date: '2026-08-13',
+    highlights: [
+      '/market was nine tabs over one ledger, each with its own hand-written panel — nine copies of a row, nine buy buttons, and nine places for a change to land on eight of them. Finding anything meant knowing which tab it lived on first, which is the one thing a shopper does not know. Every catalog is now projected into one item shape and rendered by one row, so category is a filter rather than a place',
+      'Search, rarity and price work across the whole inventory at once. Typing "hammer" returns hammers without the visitor having been told where hammers are kept, and the rarity facet pulls the Mythic rung out of all eight shelves together rather than one at a time',
+      'The floor is three columns: search, shelves and rarity tiers on the left with live counts; the inventory in the centre as one row shape — icon, name, effect, lore, rarity badge, price, yield, action — paginated eight at a time; and on the right a board of holdings, the Patron card, and the Gold income breakdown moved out of the masthead. The currency bar reads Gold, Essence, Shards, rate and total value up front, so what can be spent is known before anything to spend it on is shown',
+      'The Eclipse stayed a panel instead of becoming a row. It is not a purchase — it is a reset that takes every Gold ladder the visitor owns — and a BUY button on that in a list of BUY buttons would be a trap. Its two-click arming, and the full accounting of what it takes, are unchanged',
+      'Rarity is derived from the rung rather than authored onto 32 more catalog entries. Only Artifacts carry a real tier; everything else takes one from its position in its own catalog, mapped across the six Eclipse tiers. The ladders are already ordered by price, so the badge and the number cannot contradict each other, and adding an item re-grades its shelf rather than needing a decision. The tiers are the site\'s existing Eclipse ladder, not a second Common-to-Legendary vocabulary standing beside it',
+      'The board names what it is showing. It reads the visitor\'s own deepest holdings and says "deepest holdings" when it has them, and falls back to a curated realm-wide list under "most forged" only until there is real data — so a curated list never wears the words "in your forge"',
+      'The scroll reveal hides nothing that a script did not first arm. The usual opacity:0-until-observed shape would have left the entire shop invisible to anything that never ran the observer, and this page is prerendered precisely so its inventory reads without JS. The served markup is visible; only a browser that reached armReveal opts in, and only for blocks below the fold, so nothing is painted and then hidden',
+      'The item list is cached against the balances and holdings rather than rebuilt per getter. The template reads it through five accessors and the ledger publishes every second — without the cache that is five rebuilds of 37 items a second for a page where one number moved',
+      'On mobile the filter rail folds into the tab strip, which is why that strip moved to 44px there: it stops being a control beside a sidebar and becomes the only way to change shelf. Verified at 375 with zero horizontal overflow, and Gold takes a full-width row of its own so a ten-digit figure does not wrap mid-number',
+    ]
+  },
+  {
     version: '2.56.1',
     codename: 'Cartographer',
     date: '2026-08-13',
     highlights: [
-      'Global CSS is 17% smaller raw and 14% smaller gzipped (48.7 kB to 40.4 kB squashed, 11.2 kB to 9.6 kB over the wire) on every page, /tools included. 77 rules and 161 class names went, all of them cosmic-era leftovers that no template has applied for several releases: the galaxy map and star system, the orbiting stars and the warp overlay, the CSS planet and its nine layers, the whole lp-* live-preview block, tools-cta, the old hp-hero/spotlight/live/sub/changelog surfaces, skill-card and project-card',
-      'Nothing removed here could change a pixel, and that was the bar for including it. Every one of the 161 was checked for being APPLIED — a class attribute, a [class.x] binding, an ngClass literal, a classList call or a className assignment — across every html, ts and js file, not merely mentioned. That distinction is what kept .tool-card (still used by /blueprint and /mcp), .cosmic-char and .cosmic-tilting (added at runtime by cosmic-engine.js, which the first sweep did not read) and .live-preview\'s near-namesake .btn-live-preview from being swept up with them',
-      'Four keyframes that nothing referenced any more went with them — nebulaHue, lp-line-in, lp-progress, lp-blink — and the dangling-animation sweep the design notes ask for after any CSS refactor was re-run across all stylesheets: zero dangling references remain. The one cross-file hit it flagged, agPulse, is legitimate — shadow-cipher lists arena-game.css in its own styleUrls, so both share one encapsulation scope',
-      'cosmic-engine.js had rotted the same way its own comments describe from the 2.44.0 purge. Its hover, cursor, tilt, reveal and typewriter selector lists between them named fourteen classes that exist nowhere — .galaxy, .orbit-star, .skill-card, .project-card, .hp-spotlight__card, .tools-cta, .tools-header__title and .skills h2 among them, the last pointing at a component deleted outright. /tools got no reveal, no hover lines and no tilt because every selector aimed at it had been deleted underneath it',
-      '/tools is deliberately absent from the engine\'s reveal and tilt lists rather than newly added to them. Its gates run their own reveal, which kindles an edge instead of gating opacity, and putting them back behind the global observer would undo exactly the failure mode 2.56.0 was built to avoid; a gate already answers the cursor with a lift and a parallax push, so a 3D tilt on the same surface would break the one-alive-interaction-per-surface rule',
+      'Signing in on a phone and on a PC produced two unrelated Godforges while both devices reported "Synced". The bag, the character sheet, the explorer roster, the expedition log, the rune ledger and the scroll collection were never in the sync registry at all — six blobs that went missing across five releases, because nothing fails when a key is left out of it. XP, Gold and the eggs reconciled correctly the whole time, which is exactly why this looked like sync and was not',
+      'Three of the six needed a rule of their own rather than the generous structural default. Taking the higher of two stat builds field by field hands out points nobody earned; an item\'s placement belongs to one device, so a merged one would be worn in a slot neither put it in; and an expedition in flight is a wall-clock timer that must not be adopted, or the mission pays out twice. The Pro pack rides along for the opposite complaint — bought on a desktop, it showed ads on the phone',
+      'The ten-second push loop overwrote the cloud outright, which undid the careful merge at sign-in every time. Earn 500 Gold on a phone and a desktop tab left open since the morning erased it on its next tick, silently, with both devices still reporting "Synced" — because from each one\'s side it was. Progression had the same shape of bug; the rule refusing a smaller xp caught the outright wipes and nothing else, so achievements and the daily history regressed quietly whenever it did not fire',
+      'Both write paths now read before they write and merge under the rules the sign-in already used, so two devices commute — whatever order they write in, they converge, and one that is behind can no longer erase one that is ahead. An explicit "keep this save" from the merge dialog still overwrites, because that is a visitor overruling the rules on purpose',
+      'Nothing ever pulled a second time. Reconciling happened once, at sign-in, so a tab left open never looked at the cloud again and an evening on a phone stayed invisible on the PC until the page happened to be reloaded. Returning to a hidden tab now re-runs the whole pass, floored at a minute — that is the moment somebody has put one device down and picked up another, and it costs nothing on the tabs nobody leaves',
     ]
   },
   {
