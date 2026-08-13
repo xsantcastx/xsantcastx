@@ -20,6 +20,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { XpService } from '../gamification/xp.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   DAILY_QUESTS,
   DAILY_SLOTS,
@@ -128,6 +129,7 @@ const LOG_CAP = 60;
 export class QuestService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly xp = inject(XpService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: QuestState = emptyState();
   private initialised = false;
@@ -179,6 +181,21 @@ export class QuestService {
     // Derived conditions (level, streak, energy balance) change without any
     // quest event firing, so the board has to follow the XP ledger too.
     this.xp.snapshot$.subscribe(() => this.publish());
+
+    // `persist()` writes this whole blob from memory, so a merged quest log
+    // written by cloud save would be gone at the next claim. No `flush` hook:
+    // every write here is immediate rather than throttled.
+    this.saves.register(QUEST_KEY, { rehydrate: () => this.rehydrate() });
+  }
+
+  /** Re-read the board from storage. Called by cloud save after a merge. */
+  private rehydrate(): void {
+    if (!this.isBrowser) return;
+    this.state = this.load();
+    // Not `rollPeriods()`: the merged blob carries the later of the two devices'
+    // period keys, and rolling here would wipe a board the other device has
+    // already filled in for today. The next event to arrive rolls it honestly.
+    this.publish();
   }
 
   // ───────────────────────────────────────────────────────────────────────────

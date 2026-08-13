@@ -38,6 +38,7 @@ import {
 import { InventoryService } from '../rpg/inventory.service';
 import { MagicFindService } from '../rpg/magic-find.service';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { RosterExplorer } from '../rpg/explorer-roster.model';
 import {
   GameItem,
@@ -144,6 +145,7 @@ export class RuneForgeService {
   private readonly inventory = inject(InventoryService);
   private readonly magicFind = inject(MagicFindService);
   private readonly roster = inject(ExplorerRosterService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
@@ -180,6 +182,15 @@ export class RuneForgeService {
     this.inventory.init();
     this.roster.init();
     this.publish();
+
+    // `save()` writes the whole ledger from memory, so runes pulled on another
+    // device would be dropped by the next strike here.
+    this.saves.register(RUNES_KEY, {
+      rehydrate: () => {
+        this.ledger = this.load();
+        this.publish();
+      },
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────

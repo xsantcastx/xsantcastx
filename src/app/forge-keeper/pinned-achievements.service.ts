@@ -23,6 +23,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { LocalSaveRegistry } from '../shared/save/local-save-registry.service';
 
 export const PINNED_KEY = 'godforge-pinned';
 
@@ -32,6 +33,7 @@ export const PIN_SLOTS = 5;
 @Injectable({ providedIn: 'root' })
 export class PinnedAchievementsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly saves = inject(LocalSaveRegistry);
 
   /** Cached across reads; `undefined` means "not read yet", null means auto. */
   private cache: string[] | null | undefined;
@@ -43,6 +45,20 @@ export class PinnedAchievementsService {
   load(): string[] | null {
     if (this.cache !== undefined) return this.cache;
     if (!this.isBrowser) return (this.cache = null);
+
+    // Claimed on first read rather than in an `init()`, which this service does
+    // not have. Dropping the cache is the whole rehydrate: every caller reads
+    // through `load()`, and the showcase re-resolves on the next binding pass.
+    // The merge rule for this key is "the device being used wins" — a preference
+    // is the one kind of state where the answer should depend on where you set
+    // it — so a rehydrate only ever adopts the other device's case when this one
+    // has never been customised.
+    this.saves.register(PINNED_KEY, {
+      rehydrate: () => {
+        this.cache = undefined;
+        this.load();
+      },
+    });
 
     try {
       const raw = localStorage.getItem(PINNED_KEY);

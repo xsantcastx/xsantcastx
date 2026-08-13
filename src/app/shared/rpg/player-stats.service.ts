@@ -33,6 +33,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
 import { XpService } from '../gamification/xp.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   PlayerStats,
   POINTS_PER_LEVEL,
@@ -97,6 +98,7 @@ export class PlayerStatsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly economy = inject(EconomyService);
   private readonly xp = inject(XpService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private blob: StatsBlob = emptyBlob();
   private initialised = false;
@@ -128,6 +130,17 @@ export class PlayerStatsService {
     this.publish();
 
     this.xp.snapshot$.subscribe(() => this.settleLevels());
+
+    // `save()` writes the whole build from memory. `settleLevels()` runs after
+    // the re-read because the merged blob may carry a `levelsGranted` from a
+    // device that had settled further, and the points owed are derived from it.
+    this.saves.register(PLAYER_STATS_KEY, {
+      rehydrate: () => {
+        this.blob = this.load();
+        this.settleLevels();
+        this.publish();
+      },
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────

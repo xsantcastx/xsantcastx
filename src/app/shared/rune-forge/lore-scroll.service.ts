@@ -17,6 +17,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { LORE_SCROLLS, LoreScroll, scrollById } from './lore-scroll.model';
 
 /** localStorage key holding the scroll ledger. */
@@ -37,6 +38,7 @@ function emptyLedger(): ScrollLedger {
 @Injectable({ providedIn: 'root' })
 export class LoreScrollService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly saves = inject(LocalSaveRegistry);
 
   private ledger: ScrollLedger = emptyLedger();
   private initialised = false;
@@ -60,6 +62,17 @@ export class LoreScrollService {
     this.initialised = true;
     this.ledger = this.load();
     this.changed$$.next(this.changed$$.value + 1);
+
+    // `save()` writes the whole shelf from memory. Silent on purpose: this
+    // replaces the found-set with the union of both devices, and pushing those
+    // through `discovered$` would fire a discovery toast per scroll the other
+    // device found — they are the same discoveries, not new ones.
+    this.saves.register(SCROLLS_KEY, {
+      rehydrate: () => {
+        this.ledger = this.load();
+        this.changed$$.next(this.changed$$.value + 1);
+      },
+    });
   }
 
   /**

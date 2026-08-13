@@ -13,7 +13,8 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { ProgressStorageService } from './progress-storage.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { PROGRESS_KEY, ProgressStorageService } from './progress-storage.service';
 import {
   AchievementRecord,
   EnergyType,
@@ -24,6 +25,7 @@ import {
   XpEventType,
   emptyProgress,
   levelForXp,
+  migrateProgress,
   levelProgress,
   nextLevelForXp,
   streakBonus,
@@ -99,6 +101,7 @@ function daysBetween(a: string, b: string): number {
 export class XpService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly storage = inject(ProgressStorageService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: ProgressState = emptyProgress();
   /**
@@ -156,6 +159,13 @@ export class XpService {
         this.settleStreak();
         this.publish();
         this.bindUnloadFlush();
+        // Only on the path where the load succeeded. Registering after a failed
+        // load would hand cloud save a `flush` that writes the empty level-1
+        // blob this service fell back to straight over the real one on disk.
+        this.saves.register(PROGRESS_KEY, {
+          flush: () => this.flushNow(),
+          rehydrate: () => this.rehydrate(),
+        });
       })
       .catch(() => {
         // A failed load leaves the empty blob in place, which is a usable
@@ -395,15 +405,43 @@ export class XpService {
     if (this.unloadBound || typeof window === 'undefined') return;
     this.unloadBound = true;
 
-    const flush = () => {
-      this.cancelPendingSave();
-      this.storage.saveNow(this.state);
-    };
-
-    window.addEventListener('pagehide', flush);
+    window.addEventListener('pagehide', () => this.flushNow());
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flush();
+      if (document.visibilityState === 'hidden') this.flushNow();
     });
+  }
+
+  /** Settle the debounce immediately. The unload path, and cloud save's `flush`. */
+  private flushNow(): void {
+    this.cancelPendingSave();
+    this.storage.saveNow(this.state);
+  }
+
+  /**
+   * Re-read progression from localStorage, discarding the in-memory copy.
+   *
+   * Deliberately reads the disk directly rather than going back through
+   * `ProgressStorageService.load()`. Once signed in that call is a *network* read
+   * through `FirestoreAdapter`, which is both async — breaking the same-tick
+   * guarantee this has to keep — and the wrong source: the blob cloud save has
+   * just written is the reconciled one, and the document upstream may not be, on
+   * the pass where this device was the one that was ahead.
+   *
+   * Cancelling the pending save first is what stops the 800ms debounce firing
+   * after this has re-read and putting the pre-merge XP back on disk.
+   */
+  private rehydrate(): void {
+    if (!this.isBrowser) return;
+    this.cancelPendingSave();
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      this.state = raw ? migrateProgress(JSON.parse(raw)) : emptyProgress();
+    } catch {
+      // Unreadable or unparseable. Keep what we had — it is what the visitor is
+      // looking at, and it is still a valid save.
+      return;
+    }
+    this.publish();
   }
 
   private publish(): void {

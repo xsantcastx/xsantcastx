@@ -42,6 +42,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { EconomyService } from '../economy/economy.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
 /** localStorage key. Joins the other Godforge progression blobs. */
 export const PRO_KEY = 'godforge-pro';
@@ -107,6 +108,7 @@ export class ProService {
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private economy: EconomyService,
+    private saves: LocalSaveRegistry,
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
     if (!this.isBrowser) return;
@@ -118,9 +120,20 @@ export class ProService {
     // tool tab the buyer left open, without either tab reloading.
     window.addEventListener('storage', e => {
       if (e.key !== PRO_KEY) return;
-      this.record = this.readRecord();
-      this.pro$$.next(this.record.active);
+      this.adoptStoredRecord();
     });
+
+    // The same adoption, for a write this tab made itself. `storage` deliberately
+    // does not fire in the tab that wrote the key, so cloud save merging the
+    // entitlement in from another device — buying Pro on a desktop and then
+    // opening the site on a phone — reaches this service only through here.
+    this.saves.register(PRO_KEY, { rehydrate: () => this.adoptStoredRecord() });
+  }
+
+  /** Re-read the record and republish, whoever wrote it. */
+  private adoptStoredRecord(): void {
+    this.record = this.readRecord();
+    this.pro$$.next(this.record.active);
   }
 
   /**

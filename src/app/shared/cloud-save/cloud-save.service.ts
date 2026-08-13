@@ -23,21 +23,35 @@
  * injector involvement, and a visitor who never signs in never downloads it.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * WHY A RELOAD AFTER ADOPTING CLOUD STATE
+ * HOW CLOUD STATE IS ADOPTED, AND WHY IT IS NOT A RELOAD ANY MORE
  * ─────────────────────────────────────────────────────────────────────────────
- * Ten services hold their state in memory and flush it to localStorage. They
- * read it once, on first injection, and never look again — which is correct for
- * a store only they write to, and is exactly wrong the moment a merge rewrites
- * that store underneath them. Left alone, their next flush would overwrite the
- * merged save with the stale copy they were still holding, and the progress that
- * had just arrived from the other device would be gone within the second.
+ * Eighteen services hold their state in memory and flush it to localStorage.
+ * They read it once, on first injection, and never look again — which is correct
+ * for a store only they write to, and exactly wrong the moment a merge rewrites
+ * that store underneath them.
  *
- * Adding a `rehydrate()` to all ten was the alternative. It is more code in more
- * places, and it has to be got right in ten services with live timers and
- * subscriptions — for a moment that happens once per device. Reloading is one
- * line, cannot be subtly wrong, and reads to the visitor as the button they just
- * pressed finishing its job. It is guarded by a sessionStorage flag so that a
- * merge which somehow never settles can never loop.
+ * This used to be handled by reloading the tab, on the reasoning that a reload is
+ * one line and cannot be subtly wrong. It was wrong, and it was the whole bug:
+ *
+ *   `location.reload()` fires `pagehide`. `EconomyService` and `XpService` both
+ *   flush their in-memory ledger on `pagehide` — the *pre-merge* ledger, because
+ *   nothing had told them the disk had moved. So the last write before the tab
+ *   restarted was always the stale copy, and the reload read it straight back.
+ *
+ * The ledger did not even need the unload to lose it. `EconomyService` settles
+ * idle Gold on a one-second tick behind a five-second write throttle, so on most
+ * sign-ins the merged blob was overwritten within a second of being written,
+ * long before the reload it was waiting for. Both devices then reported "Synced"
+ * while each kept its own Gold — and from each device's point of view it *was*
+ * synced, because the cloud copy was correct and the merge really had happened.
+ * Only the adoption never landed.
+ *
+ * So the services are now asked directly, through `LocalSaveRegistry`: flush
+ * before the merge reads their blob, rehydrate in the same tick as the write.
+ * That closes the window a stale flush used to land in, and it makes adoption a
+ * republish rather than a restart — the numbers on screen change in place. The
+ * reload, the once-per-session guard it needed, and the whole class of blobs that
+ * "could not safely be adopted in this tab" all go with it.
  */
 import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -54,6 +68,7 @@ import {
   ProgressStorageService,
 } from '../gamification/progress-storage.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   MergeConflict,
   MergeStrategy,
@@ -69,8 +84,14 @@ import {
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
 const BOUND_UID_KEY = 'cloud-save-uid';
-/** Set immediately before an adopt-reload, so a merge that never settles cannot loop. */
-const ADOPTED_FLAG = 'cloud-save-adopted';
+/**
+ * Left over from the adopt-reload this file no longer does.
+ *
+ * Removed rather than repurposed, but still cleared on unbind: a browser that
+ * signed in under the old build has the flag set in sessionStorage, and leaving
+ * it behind costs nothing but is untidy. Nothing reads it any more.
+ */
+const LEGACY_ADOPTED_FLAG = 'cloud-save-adopted';
 /**
  * Set on the way out to a redirect sign-in.
  *
@@ -149,6 +170,7 @@ export class CloudSaveService {
   private readonly cache = inject(FirestoreCacheService);
   private readonly progress = inject(ProgressStorageService);
   private readonly eggs = inject(EasterEggService);
+  private readonly owners = inject(LocalSaveRegistry);
   private readonly zone = inject(NgZone);
 
   private readonly status$$ = new BehaviorSubject<SyncStatus>(SIGNED_OUT);
@@ -449,67 +471,69 @@ export class CloudSaveService {
       if (err) this.fail(err);
     });
 
-    // Decided up front, because it changes what this tab is willing to write.
-    // Adopting cloud state means writing it into localStorage under ten
-    // services that have already read it, and that is only safe if the tab is
-    // then going to restart and let them read it again.
-    const canAdopt = this.canAdopt();
-
     // Two saves that each hold something the other does not is the one case the
     // structural merge cannot answer on its own. Ask, and park here until the
     // dialog replies. Everything below then runs under whatever was chosen.
-    const strategy = await this.chooseStrategy(fs, user.uid, adapter, canAdopt);
+    const strategy = await this.chooseStrategy(fs, user.uid, adapter);
 
     this.adapter = adapter;
-    const changed = await this.reconcileAll(fs, user.uid, adapter, strategy, canAdopt);
+    await this.reconcileAll(fs, user.uid, adapter, strategy);
 
     this.markSynced();
     this.startPushing();
     void this.eggs.trigger(CLOUD_SAVE_EGG);
-
-    if (changed) {
-      // Cloud state arrived that this device did not have. Every service is now
-      // holding a copy behind its own localStorage — see the note at the top.
-      if (canAdopt) this.adoptAndReload();
-    } else {
-      // A bind that moved nothing is a fixed point: local and cloud agree, and
-      // every service is holding the state that is actually on disk. Release
-      // the once-per-session reload so a divergence later in this session can
-      // still be adopted. A merge that somehow never settles never reaches here,
-      // so the guard it is releasing stays held and the loop stays impossible.
-      this.clearAdoptGuard();
-    }
   }
 
   /**
-   * One full reconciliation pass over every blob. Returns true when something on
-   * this device changed, which is what decides whether the tab has to restart.
+   * One full reconciliation pass over every blob.
    *
    * Split out of {@link bind} so that {@link resync} can run the same pass again
    * later in the session without going back through auth — the two are the same
    * operation, and the only reason it used to live inside `bind` was that
    * binding was the only time it ever ran.
+   *
+   * Every owner is settled before anything is read. Most of them write through on
+   * every mutation and have nothing in flight, but the two that matter most do
+   * not: the ledger throttles to one write every five seconds and progression
+   * debounces at 800ms, so without this the merge would read a copy of the Gold
+   * a few seconds behind memory — and the rehydrate at the other end would then
+   * drop the difference.
    */
   private async reconcileAll(
     fs: FirestoreHandle,
     uid: string,
     adapter: FirestoreAdapter,
     strategy: MergeStrategy,
-    canAdopt: boolean,
-  ): Promise<boolean> {
+  ): Promise<void> {
     this.lastReconcileAt = Date.now();
+    this.flushOwners();
 
     // Progression rides the adapter seam that was built for it. `migrate()`
-    // reconciles local against whatever is already up there and swaps itself in.
-    const before = readRaw(PROGRESS_KEY);
+    // reconciles local against whatever is already up there, writes the result
+    // to localStorage through the adapter's cache half, and swaps itself in.
+    const before = progressFingerprint();
     await this.progress.migrate(adapter, strategy);
-    let changed = readRaw(PROGRESS_KEY) !== before;
+    // Every consumer of progression read it out of localStorage on first
+    // injection, so the merged XP has to be pushed back into them — same reason
+    // as the blobs below, and the same one-tick window.
+    if (progressFingerprint() !== before) this.owners.rehydrate(PROGRESS_KEY);
 
     // The rest have no adapter seam, so they are reconciled directly.
     for (const blob of SYNCED_BLOBS) {
-      if (await this.reconcile(fs, uid, blob, canAdopt, strategy)) changed = true;
+      await this.reconcile(fs, uid, blob, strategy);
     }
-    return changed;
+  }
+
+  /**
+   * Settle every owner's pending write, so what is on disk is what is in memory.
+   *
+   * Runs before a reconciliation reads any blob. Deliberately over every
+   * registered key rather than only the synced ones — the registry holds nothing
+   * else today, and a key that is registered but not synced costs one no-op.
+   */
+  private flushOwners(): void {
+    this.owners.flush(PROGRESS_KEY);
+    for (const blob of SYNCED_BLOBS) this.owners.flush(blob.key);
   }
 
   /**
@@ -532,18 +556,22 @@ export class CloudSaveService {
    *
    * Returns 'merge' without asking whenever the question does not arise, which
    * is every routine page load of an already-bound device.
+   *
+   * All three answers are now honourable in any tab. This used to refuse to ask
+   * in a tab that had already spent its one adopt-reload, because "Load Cloud"
+   * could not be carried out without a restart — with the services rehydrating in
+   * place there is no such tab, and no reason to withhold the question.
    */
   private async chooseStrategy(
     fs: FirestoreHandle,
     uid: string,
     adapter: FirestoreAdapter,
-    canAdopt: boolean,
   ): Promise<MergeStrategy> {
-    // Adopting cloud state means rewriting localStorage under ten services that
-    // have already read it, which is only safe if the tab then restarts. A tab
-    // that has spent its one reload cannot honour "Load Cloud", so it must not
-    // offer it — it merges quietly and asks again on the next page load.
-    if (!canAdopt) return 'merge';
+    // The dialog shows the visitor their own Gold and XP, so it has to read them
+    // after the owners have settled — the ledger's throttle would otherwise show
+    // a figure a few seconds behind the one on screen, and "which of these two
+    // saves is mine" is a bad question to ask against a number that is wrong.
+    this.flushOwners();
 
     let local: SaveSummary;
     let cloud: SaveSummary;
@@ -582,13 +610,16 @@ export class CloudSaveService {
 
   /**
    * Merge one blob with its cloud copy and write back whichever sides moved.
-   * Returns true when the local copy changed, which is what decides the reload.
+   *
+   * Returns true when the local copy changed. Nothing branches on it any more —
+   * it used to be what decided whether the tab reloaded — but it is the honest
+   * answer to "did this device learn something", and adoption is now handled
+   * inside {@link adopt} where the write happens.
    */
   private async reconcile(
     fs: FirestoreHandle,
     uid: string,
     blob: SyncedBlob,
-    canAdopt: boolean,
     strategy: MergeStrategy = 'merge',
   ): Promise<boolean> {
     const ref = fs.api.doc(fs.db, 'users', uid, blob.collection, blob.doc);
@@ -641,22 +672,7 @@ export class CloudSaveService {
     const mergedRaw = JSON.stringify(merged);
     const moved = mergedRaw !== localRaw;
 
-    if (moved && !canAdopt) {
-      // Newer cloud state this tab has no safe way to take. Touch nothing:
-      // writing it locally would be undone by the next flush from a service
-      // still holding the old copy, and that stale flush would then be pushed
-      // back up and undo the merge in the cloud as well. Recording it as
-      // already-pushed keeps the push loop off it until the next page load,
-      // which starts a fresh session and adopts it properly.
-      this.pushed.set(blob.key, localRaw);
-      return false;
-    }
-
-    if (moved) {
-      try {
-        localStorage.setItem(blob.key, mergedRaw);
-      } catch { /* quota or private mode — the cloud copy is still correct */ }
-    }
+    if (moved) this.adopt(blob.key, mergedRaw);
 
     // Silence when the cloud already agrees. Without this, every page load of
     // an unchanged save would cost nine writes for nothing.
@@ -675,46 +691,36 @@ export class CloudSaveService {
     return `cloud-save/${uid}/${blob.collection}/${blob.doc}`;
   }
 
-  /** Is this tab still allowed to restart itself to pick up cloud state? */
-  private canAdopt(): boolean {
+  /**
+   * Put a merged blob on disk and into the service that owns it.
+   *
+   * The two halves are deliberately one function and deliberately synchronous.
+   * Every millisecond between the write and the rehydrate is a millisecond in
+   * which the owning service can flush its pre-merge copy back over what was just
+   * written — and the ledger's idle tick fires once a second, so that window used
+   * to be hit routinely rather than rarely. Nothing may `await` between these two
+   * statements.
+   *
+   * The `zone.run` is what makes the new numbers paint. Rehydration happens on a
+   * promise chain started from an idle callback, so the republished snapshot would
+   * otherwise sit in its BehaviorSubject until something unrelated triggered
+   * change detection — the Gold would be correct in memory and stale on screen,
+   * which reads as the same bug.
+   */
+  private adopt(key: string, mergedRaw: string): void {
     try {
-      return sessionStorage.getItem(ADOPTED_FLAG) === null;
+      localStorage.setItem(key, mergedRaw);
     } catch {
-      // No sessionStorage means no loop guard, and an unguarded reload loop is a
-      // far worse outcome than stale numbers until the next navigation.
-      return false;
+      // Quota or private mode. The cloud copy is still correct, and rehydrating
+      // from a blob that was not written would hand the service back what it
+      // already has — so there is nothing to do here but leave it alone.
+      return;
     }
-  }
-
-  private clearAdoptGuard(): void {
-    try { sessionStorage.removeItem(ADOPTED_FLAG); } catch { /* private mode */ }
+    this.zone.run(() => this.owners.rehydrate(key));
   }
 
   private clearRedirectPending(): void {
     try { sessionStorage.removeItem(REDIRECT_PENDING); } catch { /* private mode */ }
-  }
-
-  /**
-   * Take the merged save and start again from it.
-   *
-   * The flag goes down *before* the reload, not after, so a merge that somehow
-   * reports a change on every pass cannot reload twice.
-   *
-   * The delay is not cosmetic. The achievement fired a moment ago and its XP is
-   * still inside `XpService`'s save debounce; the drop toast is also mid-
-   * animation. `pagehide` flushes the award either way, but there is no reason
-   * to make it do the work, and no reason to yank a drop off the screen the
-   * frame after it appeared.
-   */
-  private adoptAndReload(): void {
-    try {
-      sessionStorage.setItem(ADOPTED_FLAG, '1');
-    } catch {
-      return;
-    }
-    this.zone.runOutsideAngular(() => {
-      setTimeout(() => location.reload(), 1500);
-    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -799,15 +805,11 @@ export class CloudSaveService {
       // asking for those reads, so its fingerprints have to go with it.
       this.cache.bustPrefix(`cloud-save/${uid}/`);
 
-      const canAdopt = this.canAdopt();
-      const changed = await this.reconcileAll(fs, uid, this.adapter, 'merge', canAdopt);
+      // Progress that arrived from the other device lands on disk and in the
+      // services holding it, in the same pass. This is the path that makes
+      // "put the phone down, turn to the desktop" work without a navigation.
+      await this.reconcileAll(fs, uid, this.adapter, 'merge');
       this.markSynced();
-
-      // Progress that arrived from the other device is now on disk under ten
-      // services still holding the old copy. Same restart as at bind, same
-      // once-per-session guard, and the same self-releasing exit when a later
-      // pass finds nothing left to move.
-      if (changed && canAdopt) this.adoptAndReload();
     } catch (err) {
       this.fail(err);
     } finally {
@@ -838,11 +840,15 @@ export class CloudSaveService {
    * pushing in any order converge on the same answer, and a device that is behind
    * can no longer erase one that is ahead.
    *
-   * The merged result is deliberately *not* written back to localStorage. Ten
-   * services are holding their own copies in memory and would flush over it
-   * within the second (see the note at the top of this file). Cloud state that
-   * arrives here is left in the cloud, and the next page load — or the next
-   * return to this tab, see {@link resync} — adopts it properly.
+   * The merged result is now written back to localStorage and pushed into the
+   * owning service, which it deliberately was not before. The old reasoning was
+   * sound for the code as it stood — the services were holding their own copies
+   * and would have flushed over it within the second — but the consequence was
+   * that a device which learned something from the cloud *here* went on
+   * displaying its own stale numbers until the next full page load. That is the
+   * common case, not the rare one: a desktop tab left open all day discovers the
+   * phone's evening of Gold on this loop, ten seconds after it was pushed. With
+   * the owners rehydrating, it can take it immediately.
    *
    * The extra read only happens for blobs that actually moved, so an idle tab
    * still costs nothing.
@@ -857,6 +863,13 @@ export class CloudSaveService {
       const fs = await this.firestore();
 
       for (const blob of SYNCED_BLOBS) {
+        // Settle this one owner before reading it, so a blob sitting inside a
+        // write throttle is not uploaded a few seconds behind itself. Per-blob
+        // rather than all of them up front: this loop runs every ten seconds for
+        // the life of the tab, and flushing eighteen services each time to find
+        // one that moved is work for nothing.
+        this.owners.flush(blob.key);
+
         const raw = readRaw(blob.key);
         if (raw === null) continue;
         if (this.pushed.get(blob.key) === raw) continue;
@@ -879,15 +892,20 @@ export class CloudSaveService {
         if (remote === null || mergedRaw !== JSON.stringify(remote)) {
           await fs.api.setDoc(ref, wrapBlob(merged));
         }
-        this.pushed.set(blob.key, raw);
 
-        // The fingerprint is what lets the next bind skip a read, so it may only
-        // be recorded when the two copies genuinely agree. When the merge pulled
-        // something in from another device, the cloud is now *ahead* of this
-        // disk — and a fingerprint claiming otherwise would make the next bind
-        // skip the very read that was going to adopt it.
-        if (mergedRaw === raw) this.cache.set(this.blobKey(uid, blob), raw, CACHE_TTL.cloudSave);
-        else this.cache.bust(this.blobKey(uid, blob));
+        if (mergedRaw === raw) {
+          // Local and cloud agree. Recording the fingerprint lets the next bind
+          // skip the read — see the note in `reconcile`.
+          this.pushed.set(blob.key, raw);
+          this.cache.set(this.blobKey(uid, blob), raw, CACHE_TTL.cloudSave);
+        } else {
+          // The merge pulled something in from another device. Take it here
+          // rather than waiting for a navigation, and record the *merged* payload
+          // as pushed so the next tick does not re-upload what it just wrote.
+          this.adopt(blob.key, mergedRaw);
+          this.pushed.set(blob.key, mergedRaw);
+          this.cache.set(this.blobKey(uid, blob), mergedRaw, CACHE_TTL.cloudSave);
+        }
       }
       this.markSynced();
     } catch (err) {
@@ -961,7 +979,7 @@ export class CloudSaveService {
   private forgetBinding(): void {
     try {
       localStorage.removeItem(BOUND_UID_KEY);
-      sessionStorage.removeItem(ADOPTED_FLAG);
+      sessionStorage.removeItem(LEGACY_ADOPTED_FLAG);
       sessionStorage.removeItem(REDIRECT_PENDING);
     } catch { /* private mode */ }
   }
@@ -996,6 +1014,26 @@ function readRaw(key: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The progression blob, minus the field that changes on every write.
+ *
+ * `ProgressStorageService.save()` stamps a fresh `updatedAt` on everything it
+ * writes, so comparing the raw strings before and after a merge reported a change
+ * on *every* bind — including the overwhelming majority where local and cloud
+ * already agreed. Under the old reload-to-adopt design that meant a gratuitous
+ * page reload on the first load of every signed-in session. Nothing reloads now,
+ * but a fingerprint that is always different is still a fingerprint that answers
+ * no question, and this one decides whether to rehydrate progression.
+ */
+function progressFingerprint(): string {
+  const parsed = readParsed(PROGRESS_KEY);
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return String(parsed);
+  }
+  const { updatedAt: _ignored, ...rest } = parsed as Record<string, unknown>;
+  return JSON.stringify(rest);
 }
 
 function readParsed(key: string): unknown {

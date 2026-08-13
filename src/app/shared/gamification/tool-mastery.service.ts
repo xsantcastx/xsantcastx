@@ -14,6 +14,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
 export const TOOL_USAGE_KEY = 'tool-usage-counts';
 
@@ -64,6 +65,7 @@ export function masteryProgress(uses: number): number {
 @Injectable({ providedIn: 'root' })
 export class ToolMasteryService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly saves = inject(LocalSaveRegistry);
 
   private counts: Record<string, number> | null = null;
 
@@ -110,6 +112,19 @@ export class ToolMasteryService {
   private load(): Record<string, number> {
     if (this.counts) return this.counts;
     if (!this.isBrowser) return (this.counts = {});
+    // Claimed on first hydration rather than in an `init()`, because this service
+    // has none — it caches lazily on first read. That is the right moment either
+    // way: registered has to mean "is holding a copy", and this is where the copy
+    // starts existing. Cloud save otherwise merges a tally from another device
+    // and this cache serves the pre-merge counts for the life of the tab.
+    this.saves.register(TOOL_USAGE_KEY, {
+      rehydrate: () => {
+        this.counts = null;
+        // Nothing to republish: every consumer reads through `all()`/`count()`,
+        // so dropping the cache is the whole of it.
+        this.load();
+      },
+    });
     try {
       const raw = localStorage.getItem(TOOL_USAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};

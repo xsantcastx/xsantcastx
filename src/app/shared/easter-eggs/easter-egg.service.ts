@@ -2,6 +2,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { LazyFirestoreService } from '../lazy-firestore.service';
 import { CACHE_TTL, FirestoreCacheService } from '../firestore-cache.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { BehaviorSubject } from 'rxjs';
 
 export interface EasterEgg {
@@ -309,6 +310,7 @@ export class EasterEggService {
   private lazyFirestore = inject(LazyFirestoreService);
   private cache = inject(FirestoreCacheService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private saves = inject(LocalSaveRegistry);
   private discovered = new Set<string>();
   private dates: Record<string, string> = {};
 
@@ -319,19 +321,39 @@ export class EasterEggService {
 
   async init(): Promise<void> {
     if (!this.isBrowser) return;
+    this.readFound();
+    this.readDates();
+
+    // Two keys, two owners. `trigger()` writes the whole discovered set from
+    // memory, so discoveries merged in from another device would be dropped by
+    // the next egg found on this one — and the dates blob alongside it.
+    this.saves.register(EGGS_FOUND_KEY, {
+      // Deliberately silent: this replaces the set with the union of both
+      // devices, and announcing those would fire a drop toast per egg the other
+      // device found. They are not new discoveries, they are the same ones.
+      rehydrate: () => this.readFound(),
+    });
+    this.saves.register(EGGS_DATES_KEY, { rehydrate: () => this.readDates() });
+  }
+
+  /** Replace the discovered set from storage. */
+  private readFound(): void {
     const stored = localStorage.getItem(EGGS_FOUND_KEY);
-    if (stored) {
-      try {
-        JSON.parse(stored).forEach((id: string) => this.discovered.add(id));
-      } catch { /* unparseable blob — start clean rather than throw on boot */ }
-    }
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) this.discovered = new Set<string>(parsed);
+    } catch { /* unparseable blob — keep what we have rather than throw on boot */ }
+  }
+
+  /** Replace the first-found dates from storage. */
+  private readDates(): void {
     const dates = localStorage.getItem(EGGS_DATES_KEY);
-    if (dates) {
-      try {
-        const parsed = JSON.parse(dates);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) this.dates = parsed;
-      } catch { /* same */ }
-    }
+    if (!dates) return;
+    try {
+      const parsed = JSON.parse(dates);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) this.dates = parsed;
+    } catch { /* same */ }
   }
 
   isFound(id: string): boolean {

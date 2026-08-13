@@ -31,6 +31,7 @@ import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   COMBO_RESET_MS,
   ComboTier,
@@ -82,6 +83,7 @@ export class ComboService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly zone = inject(NgZone);
   private readonly eggs = inject(EasterEggService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private record: ComboRecord = emptyRecord();
   private loaded = false;
@@ -211,6 +213,18 @@ export class ComboService {
     if (this.loaded) return this.record;
     this.loaded = true;
     if (!this.isBrowser) return this.record;
+
+    // Claimed here rather than in an `init()`, which this service does not have —
+    // it hydrates lazily on first read, and this is where the cached copy starts
+    // existing. Only `best` is persisted, and it is a high-water mark, so the
+    // rehydrate below can never lower the number on screen.
+    this.saves.register(COMBO_KEY, {
+      rehydrate: () => {
+        this.loaded = false;
+        this.load();
+        this.publish();
+      },
+    });
 
     try {
       const raw = localStorage.getItem(COMBO_KEY);

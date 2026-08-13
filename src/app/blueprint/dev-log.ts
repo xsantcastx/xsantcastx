@@ -50,6 +50,26 @@ export const DEV_LOG_CATEGORIES: {
 
 export const DEV_LOG: DevLogEntry[] = [
   {
+    id: 'reload-ate-the-merge',
+    date: '2026-08-13',
+    title: 'The reload was eating the merge it was there to apply',
+    summary:
+      'Gold stayed different between a phone and a PC across three attempts to fix it. Every attempt fixed the merge. The merge was never broken — the tab reloaded to pick the merged save up, and the reload is what destroyed it.',
+    category: 'problem-solved',
+    tags: ['Cloud Save', 'Storage', 'Debugging', 'Architecture'],
+    body: [
+      'The report did not change across three releases: sign into the same account on a phone and on a PC, and the Gold is different. Two fixes had already gone in. The first added six RPG blobs that had never been in the sync registry at all, which was a real bug and did fix those six. The second made every upload read-merge-write instead of overwriting, which was also a real bug and did stop two devices clobbering each other in the cloud. Neither one touched what was actually wrong, and after both of them the Gold was still different.',
+      'What made it hard to see is that everything you would naturally check was correct. The reconciliation rules were right. The Firestore document was right — the higher of the two devices\' Gold, every time. The blob written to localStorage was right. Both devices reported "Synced", and they were not lying: from each device\'s point of view the merge had happened and the cloud agreed with it. The only thing wrong was the last step, and the last step was one line.',
+      'Adopting cloud state meant writing the merged blob into localStorage under eighteen services that had each read their own copy once, on first injection, and would never look again. The file said so, and made a defensible choice about it: rather than add a rehydrate to all eighteen, reload the tab and let them read it again. One line, cannot be subtly wrong, and it reads to the visitor as the button they pressed finishing its job.',
+      '`location.reload()` fires `pagehide`. `EconomyService` flushes its in-memory ledger on `pagehide`. So does `XpService`. Neither had been told the disk had moved, so the last write before the tab restarted was always the pre-merge copy — and the reload then read it straight back. The mechanism built to apply the merge was the mechanism destroying it, and it destroyed it on every device, every time, which is why no amount of fixing the merge helped.',
+      'The ledger did not even need the unload. Idle Gold settles on a one-second tick behind a five-second write throttle, so on most sign-ins the merged blob was overwritten within a second of being written — about 1,500ms before the reload it was waiting for. The reload had a sessionStorage guard so it could never loop, which had the side effect of making the second bind of a session refuse to adopt anything at all: the reload it would have needed was already spent.',
+      'The fix is the alternative the original note considered and set aside. Eighteen services now register two callbacks against their storage key: settle anything in flight, so the merge reads what is actually in memory rather than a copy up to five seconds behind it; and re-read the blob, in the same tick as the write. Nothing may await between the write and the re-read, because the tick is the whole guarantee — a millisecond of gap is a millisecond the idle timer can fire in.',
+      'Two things fell out of it that were not the goal. Adoption is now a republish rather than a restart, so the numbers change in place and the reload guard, the reload, and the whole category of blobs a tab "could not safely adopt" all go away — that restriction only ever existed because a reload cannot be spent twice. And the ten-second push loop can finally write back what it learns: it had been merging correctly and deliberately leaving the result in the cloud, because a local write there would have been flushed over within the second. A desktop tab left open all day now picks up the phone\'s evening on its own, instead of waiting for someone to navigate.',
+      'One measurement worth keeping. The change detector for progression compared the raw localStorage string before and after the merge — and every write stamps a fresh `updatedAt`, so it reported a change on literally every bind, including the overwhelming majority where the two saves already agreed. Under the old design that meant one gratuitous full page reload on the first load of every signed-in session, forever. It now compares the payload with that field stripped out.',
+      'The regression test is the part worth copying. Asserting that the merged Gold reaches localStorage passes against the broken build — it always did reach localStorage. The assertion that catches this is that the Gold is in the *service*, and then that it is still there after the next write. Both new specs were checked by breaking the fix on purpose and confirming they go red: without the rehydrate the cross-device test reports "Expected 0 to be greater than or equal 1000", which is the bug report, in a test runner.'
+    ]
+  },
+  {
     id: 'gold-per-second',
     date: '2026-08-12',
     title: 'An idle economy nobody could see running',

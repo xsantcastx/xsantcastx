@@ -26,6 +26,7 @@ import { XpService } from '../gamification/xp.service';
 import { ToolMasteryService } from '../gamification/tool-mastery.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { QuestService } from '../quests/quest.service';
+import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
 import { RealmId, realmForCategory } from '../realms/realm.model';
 import { dayKey } from '../quests/quest.model';
@@ -131,6 +132,7 @@ export class IdleService {
   private readonly mastery = inject(ToolMasteryService);
   private readonly eggs = inject(EasterEggService);
   private readonly quests = inject(QuestService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private state: IdleState = emptyState();
   private started = false;
@@ -196,6 +198,21 @@ export class IdleService {
         this.flushLifetime();
       });
       this.timer = setInterval(() => this.beat(), HEARTBEAT_MS);
+    });
+
+    // This one blob never clobbered a merge — `mutate()` re-reads storage before
+    // every write, because the idle feature is the one part of the progression
+    // layer that genuinely expects two tabs. It still registers, for two reasons:
+    // `flush` settles the lifetime counter, which buffers up to a minute in
+    // memory and would otherwise be uploaded a minute behind itself; and
+    // `rehydrate` republishes, so the /forge-keeper readouts show the merged
+    // numbers instead of waiting for the next heartbeat to notice.
+    this.saves.register(IDLE_KEY, {
+      flush: () => this.flushLifetime(),
+      rehydrate: () => {
+        this.state = this.load();
+        this.publish();
+      },
     });
 
     this.publish();

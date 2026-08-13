@@ -13,6 +13,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { XpService } from '../../shared/gamification/xp.service';
+import { LocalSaveRegistry } from '../../shared/save/local-save-registry.service';
 import { REPEAT_WIN_XP, playableById } from './arena-game.model';
 
 export const ARENA_SCORES_KEY = 'eclipse-arena-scores';
@@ -51,6 +52,7 @@ export interface RunResult {
 export class ArenaScoresService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly xp = inject(XpService);
+  private readonly saves = inject(LocalSaveRegistry);
 
   private ledger: ArenaLedger = { version: 1, games: {} };
   private loaded = false;
@@ -64,6 +66,17 @@ export class ArenaScoresService {
   init(): void {
     if (!this.isBrowser || this.loaded) return;
     this.loaded = true;
+    this.read();
+
+    // `persist()` writes the whole ledger from memory, so a best score set on
+    // another device would be dropped by the next run finished on this one. The
+    // structural merge takes the higher `best` and `plays` and ORs `cleared`, so
+    // re-reading can only ever raise a number here.
+    this.saves.register(ARENA_SCORES_KEY, { rehydrate: () => this.read() });
+  }
+
+  /** Replace the ledger from storage. Hydration, and cloud save's rehydrate. */
+  private read(): void {
     try {
       const raw = localStorage.getItem(ARENA_SCORES_KEY);
       if (!raw) return;
