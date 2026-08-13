@@ -1,5 +1,4 @@
-/* ===== Self-Hosted Fonts (§3.2) ===== */
-/* Orbitron — variable font, weight 400–900, latin only */
+/* ===== Self-Hosted Fonts (§3.2) ===== *//* Orbitron — variable font, weight 400–900, latin only */
 @font-face {
   font-family: 'Orbitron';
   font-style: normal;
@@ -53,9 +52,7 @@
  * Backlog reference: Notion 341e6899-f10e-81dc-a047-f07c7492fc72
  *   "CSS: Standardize Media Query Breakpoints Across All Components"
  * ============================================================================
- */
-
-/* ===== Skip-to-Main Link (a11y) ===== */
+ *//* ===== Skip-to-Main Link (a11y) ===== */
 .skip-to-main {
   position: absolute;
   top: -40px;
@@ -268,9 +265,7 @@ body::before {
 
 /* The first-paint boot curtain now lives in the Godforge loader component
    (src/app/shared/loading/godforge-loader.component.{ts,css}), which owns its
-   own scoped styles. The .cosmic-boot rules that were here are gone with it. */
-
-/* Interactive starfield canvas — particles + constellation lines */
+   own scoped styles. The .cosmic-boot rules that were here are gone with it. *//* Interactive starfield canvas — particles + constellation lines */
 .cosmic-canvas {
   position: fixed;
   inset: 0;
@@ -307,16 +302,16 @@ body::before {
   background: radial-gradient(circle, rgba(123, 97, 255, 0.55) 0%, rgba(139, 92, 246, 0.25) 40%, transparent 75%);
 }
 
-@media (hover: none) { .cosmic-cursor { display: none !important; } }
+@media (hover: none) { .cosmic-cursor { display: none !important; }
+
+}
 
 /* Scroll-reveal now lives in styles/interactions.css as .gf-reveal /
    .gf-in-view, which is what cosmic-engine.js applies. The old .cosmic-reveal
    pair was left stranded here: two of the five staggered selectors below it
    (.skill-card, .project-card) named pages deleted in 2.44.0, and the 28px /
    850ms travel read as sluggish next to the 200ms the rest of the site now
-   uses. Nothing adds .cosmic-reveal any more. */
-
-/* Stagger child cards inside their grid parent for a sweeping reveal */
+   uses. Nothing adds .cosmic-reveal any more. *//* Stagger child cards inside their grid parent for a sweeping reveal */
 .gf-in-view.tool-card,
 .gf-in-view.hp-tool-card { transition-delay: 0.05s; }
 
@@ -330,11 +325,7 @@ body::before {
 
 /* Highlight that follows the cursor across the surface */
 .tool-card.cosmic-tilting,
-.skill-card.cosmic-tilting,
-.hp-tool-card.cosmic-tilting,
-.project-card.cosmic-tilting,
-.galaxy.cosmic-tilting,
-.hp-spotlight__card.cosmic-tilting {
+.hp-tool-card.cosmic-tilting {
   background-image: radial-gradient(
     circle at var(--tilt-mx, 50%) var(--tilt-my, 50%),
     rgba(255, 255, 255, 0.08),
@@ -410,6 +401,7 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .cosmic-tilting { transform: none !important; }
   .cosmic-spark, .cosmic-route-veil--active { animation: none !important; }
+
 }
 
 /* ─── Constellation cursor trail ─── */
@@ -448,6 +440,7 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   .cosmic-trail-layer { display: none !important; }
+
 }
 
 /* ─── Type-on heading animation ─── */
@@ -466,7 +459,6 @@ body::before {
 }
 
 /* ─── Subtitle / accent gradient sweep — animated linear-gradient under .hp-hero__title--accent and like elements ─── */
-.hp-hero__title--accent,
 .hp-section-title,
 .section-title {
   background-size: 200% auto;
@@ -478,20 +470,7 @@ body::before {
   50%       { background-position: 100% 50%; }
 }
 
-/* ─── Scroll-linked hero parallax — applied via root CSS vars set by JS ─── */
-.hp-hero__title,
-.hp-hero__sub,
-.hp-hero__cta {
-  transform: translate3d(0, calc(var(--scroll-y-slower, 0px) * -0.7), 0);
-  will-change: transform;
-}
-
-.hp-hero__visual {
-  transform: translate3d(0, calc(var(--scroll-y-slow, 0px) * -0.5), 0);
-  will-change: transform;
-}
-
-/* Counter — emphasize when counting */
+/* ─── Scroll-linked hero parallax — applied via root CSS vars set by JS ─── *//* Counter — emphasize when counting */
 [data-counter][data-counter-bound] {
   font-variant-numeric: tabular-nums;
   display: inline-block;
@@ -501,8 +480,9 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   .cosmic-char { opacity: 1; transform: none; filter: none; animation: none !important; }
-  .hp-hero__title--accent, .hp-section-title, .section-title { animation: none !important; }
-  .hp-hero__title, .hp-hero__sub, .hp-hero__cta, .hp-hero__visual { transform: none !important; }
+  .hp-section-title,
+.section-title { animation: none !important; }
+
 }
 
 /* Central cosmic pulsar — the big moving star in the middle */
@@ -612,6 +592,7 @@ body::before {
     animation: pulsarBeat 10s ease-in-out infinite, pulsarWanderMobile 48s ease-in-out infinite;
     filter: blur(18px); /* static blur instead of animated hue-rotate */
   }
+
 }
 
 /* Narrowed wander: ±20px offset instead of the desktop ±8%/±6% viewport shift */
@@ -622,10 +603,6 @@ body::before {
   75%       { top: calc(50% - 10px); left: calc(50% + 15px); }
 }
 
-@keyframes nebulaHue {
-  0%   { filter: blur(50px) saturate(1.35) hue-rotate(0deg); }
-  100% { filter: blur(50px) saturate(1.35) hue-rotate(360deg); }
-}
 
 body::after {
   content: '';
@@ -681,11 +658,6 @@ p {
 }
 
 /* ===== Layout ===== */
-.portfolio-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
 
 .section {
   position: relative;
@@ -733,13 +705,6 @@ p {
   line-height: 1.1;
   color: var(--text-color);
   text-transform: uppercase;
-}
-
-.section-subtitle {
-  font-size: clamp(1rem, 2.2vw, 1.25rem);
-  color: var(--text-muted);
-  max-width: 640px;
-  margin: 0 auto;
 }
 
 .lead {
@@ -799,20 +764,6 @@ button.cta-button {
   border-color: var(--glass-border-strong);
   background: rgba(139, 92, 246, 0.08);
   color: var(--primary-color);
-}
-
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(139, 92, 246, 0.12);
-  color: var(--primary-color);
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 /* ===== Share buttons ===== */
@@ -896,9 +847,7 @@ router-outlet + * {
   }
 }
 
-/* Background variants for scroll syncing removed — single gradient prevents flickering */
-
-/* ===== Mystic Ambient Effects ===== */
+/* Background variants for scroll syncing removed — single gradient prevents flickering *//* ===== Mystic Ambient Effects ===== */
 @keyframes nebulaDrift {
   0%, 100% {
     transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
@@ -1015,9 +964,7 @@ router-outlet + * {
    ── SLOT MAP ───────────────────────────────────────────────────────────────
    center  the wash a page sits inside      top     a glow overhead
    bottom  a glow underfoot                 tl / tr corner hints
-   ════════════════════════════════════════════════════════════════════════════ */
-
-/* ════════════════════════════════════════════════════════════════════════════
+   ════════════════════════════════════════════════════════════════════════════ *//* ════════════════════════════════════════════════════════════════════════════
    REALM ART — the painted room behind a tool page
    ════════════════════════════════════════════════════════════════════════════
 
@@ -1097,6 +1044,7 @@ html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-153
   html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-1280.webp'); }
   html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-1280.webp'); }
   html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-1280.webp'); }
+
 }
 
 @media (max-width: 768px) {
@@ -1105,6 +1053,7 @@ html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-153
   html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-768.webp'); }
   html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-768.webp'); }
   html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-768.webp'); }
+
 }
 
 @property --atm-center { syntax: '<color>'; inherits: true; initial-value: transparent; }
@@ -1114,15 +1063,14 @@ html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-153
 @property --atm-tr     { syntax: '<color>'; inherits: true; initial-value: transparent; }
 
 /* The gradients themselves are declared on `body` up in the Resets block, in
-   front of its base gradient — see the stacking note above. */
-
-/* A visitor who asks for reduced motion gets the destination immediately. The
+   front of its base gradient — see the stacking note above. *//* A visitor who asks for reduced motion gets the destination immediately. The
    wash still changes per route — it is the 0.55s cross-fade that goes away, not
    the atmosphere. */
 @media (prefers-reduced-motion: reduce) {
   html {
     transition: none;
   }
+
 }
 
 .matrix-background {
@@ -1298,20 +1246,6 @@ body.flicker {
   color: transparent;
 }
 
-.shadow-ring {
-  position: relative;
-}
-
-.shadow-ring::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  border: 1px solid rgba(139, 92, 246, 0.18);
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 .btn-reset {
   background: none;
   border: none;
@@ -1329,6 +1263,7 @@ body.flicker {
   .section::after {
     inset: 9% 8% auto;
   }
+
 }
 
 @media (max-width: 768px) {
@@ -1347,6 +1282,7 @@ body.flicker {
   .section-header {
     margin-bottom: clamp(2rem, 7vw, 3rem);
   }
+
 }
 
 @media (max-width: 640px) {
@@ -1380,14 +1316,10 @@ body.flicker {
     letter-spacing: 0.08em;
   }
 
-  .section-subtitle {
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-  }
-
   .glass-card {
     border-radius: var(--radius-md);
   }
+
 }
 
 @media (max-width: 420px) {
@@ -1399,9 +1331,6 @@ body.flicker {
     letter-spacing: 0.06em;
   }
 
-  .section-subtitle {
-    font-size: 0.9rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1412,390 +1341,16 @@ body.flicker {
     scroll-behavior: auto !important;
   }
   .cosmic-pulsar { opacity: 0.5; }
-}
-/* ===== Live Preview Section (landing page) ===== */
-.live-preview {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(2.5rem, 6vw, 5rem);
-  align-items: center;
+
 }
 
-/* --- Visual card --- */
-.lp-visual {
-  display: flex;
-  justify-content: center;
-}
+/* ===== Live Preview Section (landing page) ===== *//* --- Visual card --- */
 
-.lp-card {
-  width: 100%;
-  max-width: 420px;
-  border-radius: var(--radius-lg);
-  background: rgba(7, 9, 18, 0.92);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.07), var(--shadow-strong);
-  backdrop-filter: blur(20px);
-  overflow: hidden;
-  font-family: 'Courier New', monospace;
-}
-
-.lp-card__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-  background: rgba(139, 92, 246, 0.04);
-}
-
-/* C-4: .lp-card__live-badge / .lp-card__live-dot and their keyframes removed —
-   no template or TS in src/ references them (dead since the landing rewrite) */
-
-.lp-card__label {
-  font-family: var(--font-heading);
-  font-size: 0.55rem;
-  letter-spacing: 0.18em;
-  color: var(--primary-color);
-  text-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
-  flex: 1;
-}
-
-.lp-card__clock {
-  font-family: var(--font-heading);
-  font-size: 0.65rem;
-  color: rgba(139, 92, 246, 0.5);
-  letter-spacing: 0.06em;
-}
-
-/* Log lines */
-.lp-feed {
-  padding: 0.65rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.lp-line {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.32rem 0;
-  font-size: 0.7rem;
-  opacity: 0;
-  animation: lp-line-in 7s ease-in-out infinite;
-}
-
-@keyframes lp-line-in {
-  0%        { opacity: 0; transform: translateX(-5px); }
-  8%, 70%   { opacity: 1; transform: translateX(0); }
-  85%, 100% { opacity: 0.55; transform: translateX(0); }
-}
-
-.lp-line-1 { animation-delay: 0s; }
-.lp-line-2 { animation-delay: 0.55s; }
-.lp-line-3 { animation-delay: 1.1s; }
-.lp-line-4 { animation-delay: 1.65s; }
-.lp-line-5 { animation-delay: 2.2s; }
-
-.lp-line__ts {
-  font-size: 0.6rem;
-  color: rgba(214, 221, 235, 0.25);
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-.lp-line__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.lp-dot--tool    { background: #8B5CF6; box-shadow: 0 0 4px #8B5CF6; }
-.lp-dot--think   { background: #7b61ff; box-shadow: 0 0 4px #7b61ff; }
-.lp-dot--success { background: #00ff88; box-shadow: 0 0 4px #00ff88; }
-.lp-dot--system  { background: rgba(214, 221, 235, 0.35); }
-
-.lp-line__badge {
-  font-family: var(--font-heading);
-  font-size: 0.48rem;
-  letter-spacing: 0.07em;
-  padding: 0.1rem 0.3rem;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 3px;
-  color: var(--primary-color);
-  flex-shrink: 0;
-}
-
-.lp-line__text {
-  font-size: 0.68rem;
-  color: rgba(230, 240, 255, 0.75);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lp-line--think  .lp-line__text { color: #c4b8ff; }
-.lp-line--success .lp-line__text { color: #00ff88; font-weight: 600; }
-.lp-line__text--italic { font-style: italic; }
-
-/* Footer row */
-.lp-card__footer {
-  padding: 0.65rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.lp-card__progress-track {
-  height: 3px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.lp-card__progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-  border-radius: 2px;
-  box-shadow: 0 0 6px var(--primary-color);
-  animation: lp-progress 7s ease-in-out infinite;
-}
-
-@keyframes lp-progress {
-  0%   { width: 0%; }
-  80%  { width: 95%; }
-  100% { width: 0%; }
-}
-
-.lp-card__cursor {
-  font-size: 0.68rem;
-  color: rgba(139, 92, 246, 0.5);
-}
-
-.lp-card__blink {
-  color: var(--primary-color);
-  text-shadow: 0 0 6px var(--primary-color);
-  animation: lp-blink 1s step-end infinite;
-}
-
-@keyframes lp-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-
-/* --- Text column --- */
-.lp-text {
-  max-width: 500px;
-}
-
-/* C-4: .lp-text__eyebrow / .lp-eyebrow-dot removed — unreferenced (dead) */
-
-.lp-text__title {
-  font-size: clamp(2rem, 4.5vw, 3rem);
-  line-height: 1.1;
-  font-weight: 700;
-  color: var(--text-color);
-  text-transform: uppercase;
-  margin: 0 0 1rem;
-}
-
-.lp-text__title--accent {
-  color: var(--primary-color);
-  text-shadow: 0 0 24px rgba(139, 92, 246, 0.4);
-}
-
-.lp-text__desc {
-  font-size: 1rem;
-  color: var(--text-muted);
-  line-height: 1.7;
-  max-width: 480px;
-  margin: 0 0 1.5rem;
-}
-
-.lp-text__pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-}
-
-.lp-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-.lp-pill--cyan {
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: var(--primary-color);
-}
-
-.lp-pill--violet {
-  background: rgba(123, 97, 255, 0.08);
-  border: 1px solid rgba(123, 97, 255, 0.2);
-  color: var(--secondary-color);
-}
-
-.lp-text__btn { text-decoration: none; }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .live-preview {
-    grid-template-columns: 1fr;
-  }
-  .lp-visual { order: -1; }
-  .lp-card { max-width: 100%; }
-}
-
-/* ===== Tools CTA Section (landing page) ===== */
-.tools-cta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(2.5rem, 6vw, 5rem);
-  align-items: center;
-}
-
-.tools-cta__eyebrow {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--primary-color);
-  margin: 0 0 0.6rem;
-}
-
-.tools-cta__title {
-  font-size: clamp(2rem, 4.5vw, 3rem);
-  line-height: 1.1;
-  color: var(--text-color);
-  text-transform: uppercase;
-  margin: 0 0 1rem;
-}
-
-.tools-cta__desc {
-  font-size: 1rem;
-  color: var(--text-muted);
-  line-height: 1.7;
-  max-width: 480px;
-  margin: 0 0 1.5rem;
-}
-
-.tools-cta__pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-}
-
-.tools-cta__pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: var(--primary-color);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-.tools-cta__pill--more {
-  background: rgba(123, 97, 255, 0.08);
-  border-color: rgba(123, 97, 255, 0.2);
-  color: var(--secondary-color);
-}
-
-.tools-cta__btn { text-decoration: none; }
-
-.tools-cta__visual {
-  display: flex;
-  justify-content: center;
-}
-
-.tools-cta__card {
-  width: 100%;
-  max-width: 340px;
-  padding: 1.5rem;
-  border-radius: var(--radius-lg);
-  background: var(--surface-color);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.tools-cta__card-bar {
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  margin-bottom: 1.25rem;
-  opacity: 0.7;
-}
-
-.tools-cta__card-row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.tools-cta__card-row:last-child { border-bottom: none; }
-
-.tools-cta__card-row--muted { opacity: 0.45; }
-
-.tools-cta__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.tools-cta__dot--green { background: var(--primary-color); box-shadow: 0 0 6px rgba(139, 92, 246, 0.5); }
-.tools-cta__dot--purple { background: var(--secondary-color); box-shadow: 0 0 6px rgba(123, 97, 255, 0.5); }
-
-.tools-cta__card-label {
-  font-size: 0.82rem;
-  color: var(--text-color);
-  flex: 1;
-}
-
-.tools-cta__badge-soon {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-}
-
-@media (max-width: 768px) {
-  .tools-cta {
-    grid-template-columns: 1fr;
-  }
-  .tools-cta__visual { display: none; }
-}
-
-/* ===== Header Shared Styles =====
+/* --- Text column --- *//* C-4: .lp-text__eyebrow / .lp-eyebrow-dot removed — unreferenced (dead) *//* Responsive *//* ===== Tools CTA Section (landing page) ===== *//* ===== Header Shared Styles =====
    The rotating buzzword pill that used to live under the wordmark went with
    the portfolio navbar. Its rules (.nav-buzzword, @keyframes navWordSwap)
    are deleted rather than left orphaned — the Godforge command bar draws its
-   own mark and has no element they could apply to. */
-
-/* ===== Embed Mode ===== */
+   own mark and has no element they could apply to. *//* ===== Embed Mode ===== */
 .embed-mode {
   padding: 12px;
   min-height: calc(100vh - 36px); /* Reserve space for embed bar */
@@ -1877,15 +1432,14 @@ summary:focus-visible {
    fallback — every element below keeps a painted static end state.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
-  /* ── 1. Sigil: a 1600px texture nobody can resolve on a 390px screen ──
+@media (max-width: 768px) {/* ── 1. Sigil: a 1600px texture nobody can resolve on a 390px screen ──
      Drawn at 0.55 stroke-opacity behind three other layers. Removing it costs
      nothing visually and frees the single largest texture on the page. */
   .matrix-background::before {
     display: none;
   }
 
-  /* ── 2. Arcane fog: keep the colour wash, drop the 80px Gaussian ──
+/* ── 2. Arcane fog: keep the colour wash, drop the 80px Gaussian ──
      inset:-15% also meant the layer was 1.3x the viewport in both axes, so the
      blur was running over ~1.7x the pixels it appeared to cover. */
   .matrix-background::after {
@@ -1899,7 +1453,7 @@ summary:focus-visible {
     opacity: 0.55;
   }
 
-  /* ── 3. Nebula wash: same treatment ── */
+/* ── 3. Nebula wash: same treatment ── */
   body::before {
     inset: 0;
     filter: none;
@@ -1908,7 +1462,7 @@ summary:focus-visible {
     opacity: 0.6;
   }
 
-  /* ── 4. Starfield: keep the stars, stop moving them ──
+/* ── 4. Starfield: keep the stars, stop moving them ──
      A 90s translate loop over an oversized fixed layer plus a 5s opacity
      twinkle is two perpetual animations for an effect that is nearly
      imperceptible on a phone. */
@@ -1919,7 +1473,7 @@ summary:focus-visible {
     transform: none;
   }
 
-  /* ── 5. Pulsar: keep the signature orb, make it cheap ──
+/* ── 5. Pulsar: keep the signature orb, make it cheap ──
      Supersedes the earlier lite-mode rule above (later source order wins).
      The old mobile path still animated top/left, which is a LAYOUT property —
      every frame invalidated layout for a blurred 980px element. Now it only
@@ -1936,7 +1490,7 @@ summary:focus-visible {
     will-change: auto;
   }
 
-  /* ── 6. Canvas: drop the blend mode ──
+/* ── 6. Canvas: drop the blend mode ──
      mix-blend-mode: screen on a full-viewport canvas forces the compositor off
      its fast path and makes it read back the backdrop every frame. The
      particles are additive-bright already; plain compositing looks the same
@@ -1946,13 +1500,13 @@ summary:focus-visible {
     opacity: 0.75;
   }
 
-  /* ── 7. Rune whispers: four permanently-promoted layers for a desktop
+/* ── 7. Rune whispers: four permanently-promoted layers for a desktop
      easter egg that is invisible for 34 of every 36 seconds. ── */
   .rune-whisper {
     display: none;
   }
 
-  /* ── 7b. .particle-layer (app.component.html) is a ninth fixed
+/* ── 7b. .particle-layer (app.component.html) is a ninth fixed
      full-viewport layer running nebulaDrift forever. Its three tiny radial
      gradients are already indistinguishable from the body::after starfield
      behind it, so freeze the animation and let it paint once. ── */
@@ -1961,7 +1515,7 @@ summary:focus-visible {
     will-change: auto;
   }
 
-  /* ── 8. Cursor trail / custom cursor: already touch-guarded in the engine,
+/* ── 8. Cursor trail / custom cursor: already touch-guarded in the engine,
      but make the layer removal declarative too so no stray element is left
      compositing. ── */
   .cosmic-trail-layer,
@@ -1969,11 +1523,12 @@ summary:focus-visible {
     display: none !important;
   }
 
-  /* ── 9. Route veil: the keyframe animates backdrop-filter 0 -> 8px -> 0 on a
+/* ── 9. Route veil: the keyframe animates backdrop-filter 0 -> 8px -> 0 on a
      full-viewport element on every single navigation. Fade the scrim only. ── */
   .cosmic-route-veil.cosmic-route-veil--active {
     animation: cosmicRouteVeilMobile 0.3s ease-out forwards;
   }
+
 }
 
 /* Compositor-only pulsar beat for mobile — no filter, no layout properties. */
@@ -2006,6 +1561,7 @@ summary:focus-visible {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+
 }
 
 /* Compensate for the removed blur on the two surfaces that relied on it for
@@ -2025,13 +1581,13 @@ summary:focus-visible {
       rgba(3, 1, 10, 0.9);
   }
 
-  /* The realms dropdown is gone from the bar; the tab bar took its place as
+/* The realms dropdown is gone from the bar; the tab bar took its place as
      the mobile way around, and it leans on the same blur. */
   app-header .gftabs {
     background: rgba(8, 10, 22, 0.97);
   }
 
-  /* The header bar itself was 58% opaque and leaned on an 18px backdrop blur to
+/* The header bar itself was 58% opaque and leaned on an 18px backdrop blur to
      stay readable over scrolling content. Without the blur that is a window
      onto whatever is passing underneath, so raise the fill. */
   app-header .gfnav__glass {
@@ -2041,6 +1597,7 @@ summary:focus-visible {
   app-header .gfnav--compact .gfnav__glass {
     background: rgba(6, 8, 18, 0.975);
   }
+
 }
 
 /* ── 10b. The mobile tab bar is fixed, so the document needs a floor ──
@@ -2051,6 +1608,7 @@ summary:focus-visible {
   main {
     padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
   }
+
 }
 
 /* ── 11. Below-the-fold sections skip layout/paint until scrolled near ──
@@ -2060,27 +1618,18 @@ summary:focus-visible {
    Applied only to the long stacked marketing sections, never to anything the
    engine measures on load. */
 @media (max-width: 768px) {
-  .hp-tools,
-  .hp-spotlight,
-  .hp-anchor,
-  .hp-live,
-  .hp-changelog,
-  .hp-sub,
-  .hp-footer-cta,
-  .tools-cta,
-  .live-preview {
+  .hp-tools {
     content-visibility: auto;
     contain-intrinsic-size: auto 600px;
   }
 
-  /* Cards get paint/layout containment so a change inside one card cannot
+/* Cards get paint/layout containment so a change inside one card cannot
      invalidate layout for the whole grid. */
   .hp-tool-card,
-  .tool-card,
-  .skill-card,
-  .project-card {
+.tool-card {
     contain: layout paint;
   }
+
 }
 
 /* Reduced motion already has its own paths throughout the file; this keeps the
@@ -2090,6 +1639,7 @@ summary:focus-visible {
     animation: none;
     opacity: 0.4;
   }
+
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -2106,8 +1656,7 @@ summary:focus-visible {
    line boxes of the paragraphs they live in. Everything that is a standalone
    control gets the full target.
    ════════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* Standalone controls. min-height (not height) so anything already larger is
+@media (max-width: 768px) {/* Standalone controls. min-height (not height) so anything already larger is
      untouched, and inline-* is promoted to inline-flex so the min actually
      applies — min-height is ignored on a non-replaced inline box. */
   button,
@@ -2131,7 +1680,7 @@ summary:focus-visible {
     touch-action: manipulation;
   }
 
-  /* Text entry: a 29px input is as hard to hit as a 29px button, and iOS zooms
+/* Text entry: a 29px input is as hard to hit as a 29px button, and iOS zooms
      the viewport on focus for any font-size under 16px — which on this site
      left the user zoomed in with no way back. 16px is the threshold, not a
      preference. */
@@ -2142,71 +1691,55 @@ summary:focus-visible {
     font-size: max(16px, 1rem);
   }
 
-  /* Links that are already block/flex boxes are standalone controls, not prose.
+/* Links that are already block/flex boxes are standalone controls, not prose.
      Listing them explicitly rather than using a bare `a` selector keeps inline
      links in paragraphs exempt. */
   a.tool-card,
-  a.hp-tool-card,
-  a.bp-link,
-  a.bp-galaxy__nodes-link,
-  .bp-galaxy__nodes a,
-  a.footer-mcp-link,
-  a.build-version,
-  a.hp-tools__view-all,
-  a.project-link,
-  a.cta-button,
-  a.social-link,
-  .footer-socials a,
-  .skill-card,
-  .project-card,
-  a.related-tool,
-  .related-tools a {
+a.hp-tool-card,
+a.bp-link,
+a.bp-galaxy__nodes-link,
+.bp-galaxy__nodes a,
+a.footer-mcp-link,
+a.build-version,
+a.hp-tools__view-all,
+a.cta-button,
+.related-tools a {
     min-height: 44px;
     display: flex;
     align-items: center;
     touch-action: manipulation;
   }
 
-  /* The header logo is a real button and was 36px tall. */
+/* The header logo is a real button and was 36px tall. */
   app-header .logo {
     min-height: 44px;
   }
 
-  /* Named offenders found in the audit that need more than a min-height —
+/* Named offenders found in the audit that need more than a min-height —
      these are laid out as centred pills, so they also need their box model
      adjusted rather than just growing downward. */
   .bp-tab,
-  .copy-btn,
-  .amount-btn,
-  .close-btn,
-  .chat-send-btn,
-  .tools-cat-btn {
+.copy-btn,
+.amount-btn,
+.close-btn,
+.chat-send-btn {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
 
-  /* Footer social orbs were 40-42px — a couple of pixels short. Keep them
-     circular by growing both axes together. */
-  .footer-socials a,
-  .footer-social {
-    min-width: 44px;
-    min-height: 44px;
-    justify-content: center;
-  }
-
-  /* Buttons that were exactly 43px (Notify Me, project Live Demo) are covered
+/* Footer social orbs were 40-42px — a couple of pixels short. Keep them
+     circular by growing both axes together. *//* Buttons that were exactly 43px (Notify Me, project Live Demo) are covered
      by the rules above; this keeps their internal centring intact once they
      grow the extra pixel. */
   .cta-button,
-  .hp-sub-form__btn,
-  .submit-btn,
-  .project-link {
+.submit-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
+
 }
 
 /* The skip link is parked off-screen at top:-40px until focused, so its own
@@ -2224,6 +1757,7 @@ summary:focus-visible {
   .skip-to-main:focus {
     top: 0;
   }
+
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -2259,10 +1793,7 @@ summary:focus-visible {
 
    Desktop is untouched — every rule is inside max-width: 768px.
    ════════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* ── Tier A: content & controls → 14px ──────────────────────────────────── */
-
-  /* Global chrome present on every route */
+@media (max-width: 768px) {/* ── Tier A: content & controls → 14px ──────────────────────────────────── *//* Global chrome present on every route */
   .lang-btn,
   .footer-mcp-link,
   .footer-mcp-desc,
@@ -2272,7 +1803,7 @@ summary:focus-visible {
     font-size: 14px !important;
   }
 
-  /* Tool-page shell — duplicated across 121 per-tool stylesheets */
+/* Tool-page shell — duplicated across 121 per-tool stylesheets */
   .back-link,
   .rt-card__desc,
   .related-tools__browse-link,
@@ -2292,7 +1823,7 @@ summary:focus-visible {
     font-size: 15px !important;
   }
 
-  /* The cookie banner's second line is a privacy disclosure — what is collected
+/* The cookie banner's second line is a privacy disclosure — what is collected
      and what is not. It rendered at 11.3px, which is the wrong size for the one
      sentence on the site a user might read for legal rather than aesthetic
      reasons. Treated as content, not fine print. */
@@ -2301,36 +1832,26 @@ summary:focus-visible {
     font-size: 14px;
   }
 
-  /* The cosmic section eyebrow and tagline pair is shared by /contact,
+/* The cosmic section eyebrow and tagline pair is shared by /contact,
      /projects and /skills, and rendered at 11.2px and 11.5px. The tagline is a
-     full sentence, so it is content; the eyebrow is an uppercase label. */
-  .section-tagline,
-  .skills__tagline {
-    font-size: 14px !important;
-  }
-
-  /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
-  .section-eyebrow,
-  .skills__eyebrow,
+     full sentence, so it is content; the eyebrow is an uppercase label. *//* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
   .footer-eyebrow,
-  .build-version,
-  .adsense-label,
-  .carbon-ad-label,
-  .rt-tag,
-  .tool-header__eyebrow,
-  .tool-usage__label,
-  .tool-usage__count,
-  .aff-cta__sponsored,
-  .aff-cta__badge,
-  .link-label,
-  .hero-badge,
-  .inline-code {
+.build-version,
+.adsense-label,
+.carbon-ad-label,
+.rt-tag,
+.tool-header__eyebrow,
+.tool-usage__label,
+.tool-usage__count,
+.aff-cta__sponsored,
+.aff-cta__badge,
+.link-label,
+.hero-badge,
+.inline-code {
     font-size: 12px !important;
   }
 
-  /* ── Remaining sub-44px controls the v2.1.0 sweep did not reach ─────────── */
-
-  /* Share buttons were 34-36px tall on every tool page. */
+/* ── Remaining sub-44px controls the v2.1.0 sweep did not reach ─────────── *//* Share buttons were 34-36px tall on every tool page. */
   .share-btn {
     min-height: 44px;
     display: inline-flex;
@@ -2339,25 +1860,17 @@ summary:focus-visible {
     touch-action: manipulation;
   }
 
-  /* Native colour swatches render at their intrinsic 40px width regardless of
+/* Native colour swatches render at their intrinsic 40px width regardless of
      the min-height rule above, which only grows the vertical axis. */
   input[type='color'] {
     min-width: 44px;
     min-height: 44px;
   }
 
-  /* The email address and GitHub URL on /contact are the primary action of the
+/* The email address and GitHub URL on /contact are the primary action of the
      card they sit in, not links inside a sentence, so the WCAG 2.5.5 prose
      exemption does not cover them. They were 17px tall — they carry no class,
-     which is why the v2.1.0 sweep's explicit class list missed them. */
-  .method-info a {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    touch-action: manipulation;
-  }
-
-  /* The global 16px rule for form controls sits at specificity (0,0,1) and is
+     which is why the v2.1.0 sweep's explicit class list missed them. *//* The global 16px rule for form controls sits at specificity (0,0,1) and is
      beaten by any component-authored class selector — .arb-method-select still
      computed to 13.1px, which re-arms the iOS focus-zoom trap the rule exists
      to prevent. This wins it back for every control. */
@@ -2367,7 +1880,7 @@ summary:focus-visible {
     font-size: max(16px, 1rem) !important;
   }
 
-  /* Momentum scrolling for any pane that scrolls independently of the document.
+/* Momentum scrolling for any pane that scrolls independently of the document.
      Without it, older iOS Safari scrolls these panes without inertia, which is
      the single most "not a real app" feeling on the site. overscroll-behavior
      stops a flick inside the pane from chaining to the page behind it. */
@@ -2381,7 +1894,7 @@ summary:focus-visible {
     overscroll-behavior: contain;
   }
 
-  /* Media must never be the thing that widens the page. height:auto is limited
+/* Media must never be the thing that widens the page. height:auto is limited
      to img/video, where it preserves the aspect ratio against the width cap.
      svg and canvas only get the width cap: an inline icon sized by its own
      component CSS keeps that size, and a canvas with height:auto would collapse
@@ -2397,6 +1910,7 @@ summary:focus-visible {
   iframe {
     max-width: 100%;
   }
+
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -2443,9 +1957,7 @@ html[data-realm] .tool-header__eyebrow::after {
    Every rule here is inert until something is bought. With nothing equipped no
    attribute is present, no selector matches, and the site renders byte-for-byte
    as it did before the economy existed.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ─── Cursor Trail ───────────────────────────────────────────────────────────
+   ═══════════════════════════════════════════════════════════════════════════ *//* ─── Cursor Trail ───────────────────────────────────────────────────────────
    The engine picks a colour per particle from a five-entry brand array and
    writes it inline. An `!important` declaration in a stylesheet outranks a
    normal inline one, which is what lets a cosmetic override a value the engine
@@ -2543,6 +2055,7 @@ html[data-cos-xpbar="golden"] .xpb__rank {
     animation: none;
     background-position: 0% 50%;
   }
+
 }
 
 /* ─── Achievement Frame ──────────────────────────────────────────────────────
@@ -2647,6 +2160,7 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
    standalone control to. Height was already fine; width was not. */
 @media (max-width: 960px) {
   .gfpill { min-width: 44px; justify-content: center; }
+
 }
 
 /* ── XP readout ────────────────────────────────────────────────────────── */
@@ -2745,7 +2259,9 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
   animation: gfSceneCore 4.6s ease-in-out infinite;
 }
 
-@keyframes gfSceneSpin { to { rotate: 360deg; } }
+@keyframes gfSceneSpin { to { rotate: 360deg; }
+
+}
 @keyframes gfSceneCore {
   0%, 100% { transform: scale(1);    opacity: 0.92; }
   50%      { transform: scale(1.18); opacity: 1; }
@@ -2756,6 +2272,7 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
   .gfsigil-scene__ring--inner,
   .gfsigil-scene__core { animation: none; }
   .gfxp__fill { transition: none; }
+
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -2873,4 +2390,5 @@ html[data-rune-flare='singular']::after {
   html[data-rune-flare]::after {
     display: none;
   }
+
 }
