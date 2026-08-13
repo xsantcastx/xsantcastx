@@ -39,6 +39,7 @@ import {
   runeById,
   tierOf,
 } from './rune.model';
+import { CardArt, runeCard, runewordCard } from './rune-cards';
 
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
@@ -47,6 +48,17 @@ interface RuneCell {
   held: number;
   /** Found at least once, ever. Drives whether the name is legible. */
   known: boolean;
+  /**
+   * The painted card, or null for Mote, Seam and Ledger — the three runes the
+   * sheet does not cover, which keep the name-glyph the ladder used before the
+   * art landed.
+   *
+   * Resolved here rather than called from the template because this is a
+   * twenty-five cell grid: a lookup in the binding runs twenty-five times per
+   * change-detection pass to produce a value that changes only when the rune
+   * registry does, which is never at runtime.
+   */
+  card: CardArt | null;
 }
 
 /** A recipe as the crafting wall needs it. */
@@ -59,6 +71,8 @@ interface RecipeRow {
   ready: boolean;
   /** True until any rune in the recipe has been seen. Renders as "???". */
   hidden: boolean;
+  /** All six words are painted, but the card is withheld while `hidden`. */
+  card: CardArt | null;
 }
 
 /** How long the reveal card stays up before the anvil is armed again. */
@@ -98,7 +112,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
   /** Built once from the registry, so the server renders the full grid. */
   cells: RuneCell[] = RUNES.map(rune => ({
-    rune, tier: tierOf(rune.tier), held: 0, known: false,
+    rune, tier: tierOf(rune.tier), held: 0, known: false, card: runeCard(rune.id),
   }));
   recipes: RecipeRow[] = RUNEWORDS.map(word => this.blankRecipe(word));
 
@@ -113,6 +127,14 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   /** The rune the anvil just produced. Null between strikes. */
   reveal: RuneFind | null = null;
   revealTier: RuneTierDefinition | null = null;
+  /**
+   * The painted card for the rune on show, or null for the three unpainted
+   * ones. When it is set the reveal shows the card and drops its own name and
+   * lore text: both are painted onto the card, and printing them underneath is
+   * the same sentence twice. The name survives as the image's alt text, so what
+   * a screen reader announces does not change either way.
+   */
+  revealCard: CardArt | null = null;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
   scrollParagraphs: string[] = [];
   /** True while the hammer animation runs, so a second click cannot land. */
@@ -158,6 +180,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
         tier: tierOf(rune.tier),
         held: snap.held[rune.id] ?? 0,
         known: (snap.held[rune.id] ?? 0) > 0 || this.forge.hasEverFound(rune.id),
+        card: runeCard(rune.id),
       }));
       this.recipes = RUNEWORDS.map(word => this.buildRecipe(word));
       this.strikes = snap.strikes;
@@ -253,6 +276,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
     this.reveal = find;
     this.revealTier = tier;
+    this.revealCard = runeCard(find.rune.id);
     // Split once, here, rather than in a template getter that would re-split on
     // every change-detection pass for the whole time the card is up.
     this.scrollParagraphs = find.scroll
@@ -278,6 +302,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     if (this.reveal?.scroll) this.scrolls.markRead(this.reveal.scroll.id);
     this.reveal = null;
     this.revealTier = null;
+    this.revealCard = null;
     this.scrollParagraphs = [];
     this.cdr.markForCheck();
   }
@@ -369,6 +394,10 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       // as something to uncover rather than as a checklist handed over on
       // arrival. The names stay hidden; the shape of the recipe does not.
       hidden: true,
+      // Null while hidden for the same reason the name is "???": the painted
+      // card has the word's name across the top of it, so showing the art is
+      // showing the answer.
+      card: null,
     };
   }
 
@@ -386,13 +415,15 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     });
 
     const crafted = this.forge.hasCrafted(word.id);
+    const hidden = !crafted && !word.runes.some(id => this.forge.hasEverFound(id));
     return {
       word,
       tier: tierOf(word.tier),
       slots,
       crafted,
       ready: !crafted && slots.every(s => s.satisfied),
-      hidden: !crafted && !word.runes.some(id => this.forge.hasEverFound(id)),
+      hidden,
+      card: hidden ? null : runewordCard(word.id),
     };
   }
 }

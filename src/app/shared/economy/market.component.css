@@ -282,6 +282,20 @@
   color: var(--relic-color);
 }
 .mk__relic-icon { font-size: 30px; line-height: 1; }
+
+/* The painted artifact, where the emoji glyph above still stands in for a
+   future one. Sized by HEIGHT, not width: the five paintings run 230-372px
+   wide against a constant 255 tall, so sizing by width would make Fragment of
+   the First Sun two-thirds the height of Obsidian Heart and the row of relics
+   would step up and down. */
+.mk__relic-art {
+  width: auto;
+  height: 96px;
+  align-self: start;
+  border-radius: 6px;
+  box-shadow: 0 0 18px -6px var(--relic-glow, transparent);
+}
+
 .mk__relic-name {
   margin: 0;
   font: 700 16px/1.2 'Orbitron', system-ui, sans-serif;
