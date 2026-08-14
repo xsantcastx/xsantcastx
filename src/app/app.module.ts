@@ -11,7 +11,7 @@ import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
+import { provideFirebaseApp, initializeApp, getApp, getApps } from '@angular/fire/app';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { environment } from '../environments/environment';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
@@ -77,7 +77,7 @@ import { PwaService } from './shared/pwa.service';
     InstallPromptComponent
 ],
   providers: [
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
+    provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),
     // Uncaught-error capture. Installed via APP_INITIALIZER rather than from
     // AppComponent.ngOnInit so the window handlers are attached before the
     // first component renders — an error thrown during initial render would
