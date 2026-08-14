@@ -66,7 +66,13 @@ import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirestoreHandle } from '../lazy-firestore.service';
-import { PROGRESS_KEY, mergeProgress, migrateProgress } from '../gamification/gamification.model';
+import {
+  PROGRESS_KEY,
+  ProgressState,
+  mergeProgress,
+  migrateProgress,
+  withLevel,
+} from '../gamification/gamification.model';
 // The state registry and the merge rules live in cloud-save.model.ts and are
 // imported rather than moved. It is a leaf: pure data and pure functions, no
 // Angular and no services, so depending on it costs this file nothing — and the
@@ -281,6 +287,19 @@ export class GameStateGateway {
   private oldestDirtyAt = 0;
   private flushing: Promise<void> | null = null;
   private retryMs = RETRY_BASE_MS;
+  /**
+   * Set when the visitor overrules the structural merge. Retry, pagehide and
+   * online must not silently turn Keep This Device into Merge Best.
+   * Cleared once a flush lands with an empty queue, or on detach.
+   */
+  private overrideStrategy: MergeStrategy | null = null;
+  /**
+   * True from the start of attach until the merge choice is known (or attach
+   * fails). `markDirty` still queues; `scheduleFlush` does not fire. That is
+   * what stops a four-second upload swallowing Keep This Device, without
+   * leaving the gateway unattached if the first pull is offline.
+   */
+  private decisionPending = false;
 
   private readonly link$$ = new BehaviorSubject<CloudLink>('local');
   readonly link$: Observable<CloudLink> = this.link$$.asObservable();
@@ -421,10 +440,16 @@ export class GameStateGateway {
     fs: FirestoreHandle,
     ask?: (conflict: MergeConflict) => Promise<MergeStrategy>,
   ): Promise<AttachResult> {
+    // Attach first so an offline first pull still queues later play. Hold
+    // automatic flushes until the merge choice is known — a four-second
+    // upload started during the dialog is what used to swallow Keep This
+    // Device / Merge Best while the header said Synced.
     this.uid = uid;
     this.fs = fs;
+    this.decisionPending = true;
     this.setLink('syncing');
     this.lastPullAt = Date.now();
+    this.bindLifecycle();
 
     // Settle every owner before reading a single blob. Most write through on
     // every mutation, but the ledger throttles to one write every five seconds
@@ -433,8 +458,30 @@ export class GameStateGateway {
     // rehydrate at the far end would drop the difference.
     this.flushOwners();
 
-    const remote = await this.readAll(uid, fs);
-    const strategy = await this.decideStrategy(remote, ask);
+    let remote: Map<string, unknown>;
+    let strategy: MergeStrategy;
+    try {
+      remote = await this.readAll(uid, fs);
+      strategy = await this.decideStrategy(remote, ask);
+      // Idle ticks during the dialog can move memory after the first flush.
+      this.flushOwners();
+    } catch (err) {
+      this.decisionPending = false;
+      // Still this session: keep the queue and retry when the network returns.
+      if (this.fs === fs && this.uid === uid) {
+        this.setLink('offline');
+        this.scheduleRetry();
+      }
+      throw err;
+    }
+    this.decisionPending = false;
+
+    // signOut() answers the dialog and detaches in the same turn, without
+    // awaiting this attach. If we still push, leftover drain spins forever
+    // on a null Firestore handle.
+    if (this.fs !== fs) return { adopted: [], seeded: false };
+    if (strategy !== 'merge') this.overrideStrategy = strategy;
+
     const adopted: string[] = [];
     const toWrite: StateEntry[] = [];
 
@@ -445,7 +492,7 @@ export class GameStateGateway {
 
       if (cloud !== null) this.lastRemote.set(entry.key, JSON.stringify(cloud));
 
-      const merged = resolve(entry, cloud, local, strategy);
+      const merged = applyStrategy(entry, cloud, local, strategy);
       if (merged === null || merged === undefined) continue;
 
       const resolved = entry.identify ? entry.identify(merged, uid) : merged;
@@ -478,12 +525,14 @@ export class GameStateGateway {
       // `known` is what was just read. Without it the push would `getDoc` every
       // dirty document a moment after `readAll` returned the same content —
       // paying for the account twice on every sign-in for no new information.
-      await this.pushDirty({ batched: strategy === 'merge', known: remote });
+      await this.pushDirty({
+        batched: strategy === 'merge',
+        known: remote,
+        strategy,
+      });
     } else {
       this.setLink('synced');
     }
-
-    this.bindLifecycle();
     return { adopted, seeded };
   }
 
@@ -506,10 +555,12 @@ export class GameStateGateway {
     }
     this.cancelFlush();
     this.unbindLifecycle();
+    this.decisionPending = false;
     this.uid = null;
     this.fs = null;
     this.dirty.clear();
     this.lastRemote.clear();
+    this.overrideStrategy = null;
     this.retryMs = RETRY_BASE_MS;
     this.setLink('local');
   }
@@ -608,6 +659,7 @@ export class GameStateGateway {
   // ───────────────────────────────────────────────────────────────────────────
 
   private scheduleFlush(): void {
+    if (this.decisionPending) return;
     if (this.flushTimer !== null) {
       // Already booked. Let it stand unless the cap is due, so a burst of
       // clicking does not keep pushing the write further out.
@@ -642,14 +694,47 @@ export class GameStateGateway {
    * retries on contention. Other blobs stay monotone and still go through the
    * batch path.
    */
-  private pushDirty(opts: { batched: boolean; known?: Map<string, unknown> }): Promise<void> {
-    if (this.flushing) return this.flushing;
-    this.flushing = this.runPush(opts).finally(() => { this.flushing = null; });
-    return this.flushing;
+  private pushDirty(opts: {
+    batched: boolean;
+    known?: Map<string, unknown>;
+    strategy?: MergeStrategy;
+  }): Promise<void> {
+    const strategy = opts.strategy ?? this.overrideStrategy ?? 'merge';
+    if (this.flushing) {
+      // Wait for the in-flight write, then send whatever was dirtied while it
+      // ran. Returning the in-flight promise itself dropped Keep This Device
+      // and Merge Best: attach queued those keys, awaited a flush that had
+      // already started, and marked Synced without ever writing them.
+      return this.flushing.then(() => this.drainLeftover({
+        batched: opts.batched,
+        strategy,
+      }));
+    }
+    this.flushing = this.runPush({
+      batched: opts.batched,
+      known: opts.known,
+      strategy,
+    }).finally(() => { this.flushing = null; });
+    return this.flushing.then(() => {
+      if (this.dirty.size === 0) this.overrideStrategy = null;
+      else this.scheduleFlush();
+    });
+  }
+
+  private drainLeftover(opts: {
+    batched: boolean;
+    strategy: MergeStrategy;
+  }): Promise<void> | void {
+    if (!this.attached || !this.fs || this.dirty.size === 0) return;
+    return this.pushDirty(opts);
   }
 
   private async runPush(
-    { batched, known }: { batched: boolean; known?: Map<string, unknown> },
+    { batched, known, strategy }: {
+      batched: boolean;
+      known?: Map<string, unknown>;
+      strategy: MergeStrategy;
+    },
   ): Promise<void> {
     const uid = this.uid;
     const fs = this.fs;
@@ -675,7 +760,7 @@ export class GameStateGateway {
         if (local === null) continue; // Unparseable; the owner will replace it.
 
         if (key === ECONOMY_STATE_KEY && typeof fs.api.runTransaction === 'function') {
-          await this.commitEconomyTransactional(fs, uid, entry, local);
+          await this.commitEconomyTransactional(fs, uid, entry, local, localRaw, strategy);
           continue;
         }
 
@@ -698,7 +783,7 @@ export class GameStateGateway {
             : null;
         }
 
-        const reconciled = cloud === null ? local : (entry.merge ?? mergeDeep)(cloud, local);
+        const reconciled = applyStrategy(entry, cloud, local, strategy);
         const merged = entry.identify ? entry.identify(reconciled, uid) : reconciled;
         const mergedRaw = JSON.stringify(merged);
         const settled = stable(entry, merged);
@@ -714,7 +799,9 @@ export class GameStateGateway {
         // The merge pulled in something this device did not have. Take it here
         // rather than waiting for the next page load — this is the path that
         // makes a tab left open all day notice the phone's evening of Gold.
-        if (settled !== stable(entry, local)) this.adopt(key, mergedRaw);
+        // Skip the adopt if the cache moved during the flush: writing the
+        // stale merge back would erase Gold earned while we were in flight.
+        this.adoptUnlessMoved(key, localRaw, mergedRaw);
         this.lastRemote.set(key, mergedRaw);
       }
 
@@ -748,6 +835,8 @@ export class GameStateGateway {
     uid: string,
     entry: StateEntry,
     local: unknown,
+    localRaw: string,
+    strategy: MergeStrategy,
   ): Promise<void> {
     const ref = fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc);
     let adoptedRaw: string | null = null;
@@ -758,7 +847,7 @@ export class GameStateGateway {
       const cloud = snap.exists()
         ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
         : null;
-      const reconciled = cloud === null ? local : (entry.merge ?? mergeDeep)(cloud, local);
+      const reconciled = applyStrategy(entry, cloud, local, strategy);
       const identified = entry.identify ? entry.identify(reconciled, uid) : reconciled;
       // Compaction is the cloud's job: this transaction is the record, and
       // the ack frontier lives on the document. Local merge never folds.
@@ -780,7 +869,7 @@ export class GameStateGateway {
       adoptedRaw = settled !== stable(entry, local) ? mergedRaw : null;
     });
 
-    if (adoptedRaw) this.adopt(entry.key, adoptedRaw);
+    if (adoptedRaw) this.adoptUnlessMoved(entry.key, localRaw, adoptedRaw);
     if (remoteRaw) this.lastRemote.set(entry.key, remoteRaw);
   }
 
@@ -854,6 +943,23 @@ export class GameStateGateway {
   // Plumbing
   // ───────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Adopt a merged payload only if the cache still holds the snapshot we
+   * read. A write that lands during the flush (idle Gold, an award inside
+   * the debounce) must not be replaced by the stale merge we just uploaded.
+   * The key stays dirty so the next pass re-merges the fresher copy.
+   */
+  private adoptUnlessMoved(key: string, readRaw: string, mergedRaw: string): void {
+    const current = this.readRaw(key);
+    if (current !== readRaw) {
+      this.dirty.add(key);
+      if (this.oldestDirtyAt === 0) this.oldestDirtyAt = Date.now();
+      this.scheduleFlush();
+      return;
+    }
+    if (mergedRaw !== readRaw) this.adopt(key, mergedRaw);
+  }
+
   /** Cache a resolved payload and push it into the service that owns it. */
   private adopt(key: string, raw: string): void {
     try {
@@ -917,6 +1023,25 @@ export class GameStateGateway {
 }
 
 /**
+ * How one key's two copies become one, including the XP floor the
+ * `progress/state` security rule requires.
+ *
+ * 'local' and 'cloud' are the visitor overruling the structural rules for a
+ * single sign-in, and both still fall back to whichever side exists when the
+ * other does not — "keep this device" cannot be allowed to mean "delete the
+ * save". The uploader used to ignore that choice and re-merge every dirty key,
+ * so Keep This Device immediately became Merge Best on the way out.
+ */
+function applyStrategy(
+  entry: StateEntry,
+  cloud: unknown,
+  local: unknown,
+  strategy: MergeStrategy,
+): unknown {
+  return preserveMonotonicXp(entry, resolve(entry, cloud, local, strategy), cloud);
+}
+
+/**
  * How one key's two copies become one.
  *
  * 'local' and 'cloud' are the visitor overruling the structural rules for a
@@ -935,6 +1060,22 @@ function resolve(
   if (cloud === null || cloud === undefined) return local;
   if (local === null || local === undefined) return cloud;
   return (entry.merge ?? mergeDeep)(cloud, local);
+}
+
+/**
+ * Firestore refuses a `progress/state` write that lowers XP. Keep This Device
+ * can still replace every other field; the lifetime XP floor is the one number
+ * a stale device is not allowed to delete.
+ */
+function preserveMonotonicXp(entry: StateEntry, payload: unknown, cloud: unknown): unknown {
+  if (entry.key !== PROGRESS_KEY || !isRecord(payload) || !isRecord(cloud)) return payload;
+  const cloudXp = typeof cloud['xp'] === 'number' && Number.isFinite(cloud['xp']) ? cloud['xp'] : 0;
+  const localXp = typeof payload['xp'] === 'number' && Number.isFinite(payload['xp']) ? payload['xp'] : 0;
+  if (localXp >= cloudXp) return payload;
+  const current = payload as unknown as ProgressState;
+  // aether + nox always sum to xp. Put the floor delta on aether so the
+  // split stays a valid progression blob rather than a rank with no energy.
+  return withLevel({ ...current, xp: cloudXp, aether: current.aether + (cloudXp - localXp) });
 }
 
 /** The document body for a payload — wrapped, except for progression. */
