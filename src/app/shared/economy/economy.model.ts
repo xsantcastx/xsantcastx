@@ -164,8 +164,11 @@ export interface PlayerEconomy {
   seenAt?: Record<string, number>;
   /** Durable Market purchase receipts. Optional on pre-C2 blobs. */
   commerceOps?: import('./commerce-ops').CommerceOperation[];
-  /** Mutation keys folded at a commerce checkpoint. */
-  commerceApplied?: Record<string, import('./commerce-ops').CommerceStatus>;
+  /**
+   * Folded mutation keys. Bounded retain-window + hard cap; see commerce-ops.
+   * Optional on pre-C2 blobs.
+   */
+  commerceApplied?: import('./commerce-ops').CommerceAppliedMap;
 }
 
 export function emptyEconomy(): PlayerEconomy {

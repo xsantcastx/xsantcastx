@@ -7,16 +7,22 @@ import {
 } from './economy-ops';
 import {
   beginCommerceOp,
+  commerceSaveBytes,
   commitCommerceOp,
   compactCommerceReceipts,
+  COMMERCE_APPLIED_MAX,
+  COMMERCE_RETAIN_MS,
   debitGrantOnce,
   findCommerceByKey,
   mergeCommerceOps,
+  parseCommerceApplied,
   parseCommerceOp,
+  pruneCommerceApplied,
   quoteIsStale,
   reconcileCommerceOps,
   rollbackCommerceOp,
   upsertCommerceOp,
+  type CommerceAppliedMap,
   type CommerceOperation,
 } from './commerce-ops';
 
@@ -189,9 +195,11 @@ describe('commerce operations (C2)', () => {
       expectedCost: 50,
       createdAt: i + 1,
     }), `dev:${i + 1}`));
-    const compacted = compactCommerceReceipts(receipts, {}, { after: 64, keep: 16 });
+    const compacted = compactCommerceReceipts(receipts, {}, {
+      after: 64, keep: 16, now: 1_000, checkpointId: 0, minAckedCheckpoint: 0,
+    });
     expect(compacted.ops.length).toBe(16);
-    expect(compacted.appliedKeys['buy:old-0']).toBe('committed');
+    expect(compacted.appliedKeys['buy:old-0']?.status).toBe('committed');
     const found = findCommerceByKey(compacted.ops, compacted.appliedKeys, 'buy:old-0');
     expect(found?.status).toBe('committed');
     expect(debitGrantOnce(found)).toBe('replay');
@@ -245,5 +253,184 @@ describe('commerce operations (C2)', () => {
     expect(folded.checkpointId).toBe(1);
     expect(findCommerceByKey(folded.commerceOps, folded.commerceApplied, 'buy:chk-0')?.status)
       .toBe('committed');
+  });
+
+  it('does not fold receipts until every recent device acks the checkpoint', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const ops = Array.from({ length: 8 }, (_, i) => buyOp('phone', i + 1, 50, 'forge-bellows', i + 1));
+    const receipts = ops.map((ledgerOp, i) => commitCommerceOp(op({
+      id: `c-${i}`, mutationKey: `buy:ack-${i}`, createdAt: i + 1, economicOpId: ledgerOp.id,
+    }), ledgerOp.id));
+    const live = mergeEconomyLedgers(origin, {
+      ...origin, gold: 9_600, origin, ops, commerceOps: receipts,
+    });
+    live.seenAt = { phone: 1_000, tablet: 1_000 };
+    live.acks = { phone: 0 };
+
+    const blocked = acknowledgeAndMaybeCompact(live, 'phone', 1_000, {
+      after: 4, keep: 2, staleMs: 60_000,
+    });
+    expect(blocked.checkpointId).toBe(0);
+    expect(blocked.ops.length).toBe(8);
+    expect(blocked.commerceOps.length).toBe(8);
+    expect(Object.keys(blocked.commerceApplied)).toHaveSize(0);
+
+    blocked.acks = { ...blocked.acks, tablet: 0 };
+    const folded = acknowledgeAndMaybeCompact(blocked, 'phone', 1_000, {
+      after: 4, keep: 2, staleMs: 60_000,
+    });
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.commerceOps.length).toBe(2);
+    expect(folded.commerceApplied['buy:ack-0']?.status).toBe('committed');
+    expect(folded.commerceApplied['buy:ack-0']?.checkpointId).toBe(0);
+  });
+
+  it('lets a stale device drop out of the receipt compact barrier', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const ops = Array.from({ length: 6 }, (_, i) => buyOp('phone', i + 1, 50, 'forge-bellows', i + 1));
+    const receipts = ops.map((ledgerOp, i) => commitCommerceOp(op({
+      id: `c-stale-${i}`, mutationKey: `buy:stale-${i}`, createdAt: i + 1, economicOpId: ledgerOp.id,
+    }), ledgerOp.id));
+    const live = mergeEconomyLedgers(origin, {
+      ...origin, gold: 9_700, origin, ops, commerceOps: receipts,
+    });
+    live.seenAt = { phone: 100_000, tablet: 1 };
+    live.acks = { phone: 0 };
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', 100_000, {
+      after: 4, keep: 2, staleMs: 1_000,
+    });
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.commerceOps.length).toBe(2);
+    expect(folded.commerceApplied['buy:stale-0']?.status).toBe('committed');
+  });
+
+  it('prunes folded keys after the retain window and an acknowledged checkpoint', () => {
+    const receipts = Array.from({ length: 8 }, (_, i) => commitCommerceOp(op({
+      id: `c-ret-${i}`, mutationKey: `buy:ret-${i}`, createdAt: i + 1,
+    }), `dev:${i + 1}`));
+    const folded = compactCommerceReceipts(receipts, {}, {
+      after: 4, keep: 2, now: 1_000, checkpointId: 3, minAckedCheckpoint: 3,
+    });
+    expect(folded.appliedKeys['buy:ret-0']?.status).toBe('committed');
+
+    const aged = compactCommerceReceipts(folded.ops, folded.appliedKeys, {
+      after: 4, keep: 2, now: 1_000 + COMMERCE_RETAIN_MS, checkpointId: 4, minAckedCheckpoint: 4,
+    });
+    expect(aged.appliedKeys['buy:ret-0']).toBeUndefined();
+    expect(findCommerceByKey(aged.ops, aged.appliedKeys, 'buy:ret-0')).toBeNull();
+    expect(debitGrantOnce(findCommerceByKey(aged.ops, aged.appliedKeys, 'buy:ret-0'))).toBe('apply');
+  });
+
+  it('keeps folded keys inside the retain window even after a later checkpoint', () => {
+    const receipts = Array.from({ length: 8 }, (_, i) => commitCommerceOp(op({
+      id: `c-win-${i}`, mutationKey: `buy:win-${i}`, createdAt: i + 1,
+    }), `dev:${i + 1}`));
+    const folded = compactCommerceReceipts(receipts, {}, {
+      after: 4, keep: 2, now: 1_000, checkpointId: 1, minAckedCheckpoint: 1,
+    });
+    const stillHeld = compactCommerceReceipts(folded.ops, folded.appliedKeys, {
+      after: 4, keep: 2, now: 1_000 + COMMERCE_RETAIN_MS - 1, checkpointId: 2, minAckedCheckpoint: 2,
+    });
+    expect(stillHeld.appliedKeys['buy:win-0']?.status).toBe('committed');
+  });
+
+  it('does not prune a folded key whose checkpoint a recent device has not acked', () => {
+    const applied = {
+      'buy:held': { status: 'committed' as const, at: 1, checkpointId: 5 },
+    };
+    const kept = pruneCommerceApplied(applied, {
+      now: 1 + COMMERCE_RETAIN_MS,
+      retainMs: COMMERCE_RETAIN_MS,
+      maxApplied: COMMERCE_APPLIED_MAX,
+      minAckedCheckpoint: 3,
+    });
+    expect(kept['buy:held']?.status).toBe('committed');
+  });
+
+  it('bounds folded keys and save size across a long purchase history', () => {
+    const maxApplied = 32;
+    const keep = 4;
+    let ops: CommerceOperation[] = [];
+    let applied: CommerceAppliedMap = {};
+    for (let wave = 0; wave < 20; wave++) {
+      const extra = Array.from({ length: 10 }, (_, i) => {
+        const n = wave * 10 + i;
+        return commitCommerceOp(op({
+          id: `c-hist-${n}`,
+          mutationKey: `buy:hist-${n}`,
+          createdAt: n + 1,
+        }), `dev:${n + 1}`);
+      });
+      const compacted = compactCommerceReceipts([...ops, ...extra], applied, {
+        after: 8,
+        keep,
+        now: 10_000 + wave,
+        checkpointId: wave,
+        minAckedCheckpoint: wave,
+        maxApplied,
+      });
+      ops = compacted.ops;
+      applied = compacted.appliedKeys;
+    }
+    expect(Object.keys(applied).length).toBeLessThanOrEqual(maxApplied);
+    expect(ops.filter(row => row.status !== 'pending').length).toBeLessThanOrEqual(keep);
+    const bytes = commerceSaveBytes(ops, applied);
+    expect(bytes).toBeLessThan(16_384);
+    expect(bytes).toBeGreaterThan(0);
+  });
+
+  it('reads a legacy string applied map as folded entries', () => {
+    const parsed = parseCommerceApplied({ 'buy:legacy': 'committed', 'buy:bad': 'pending' });
+    expect(parsed['buy:legacy']?.status).toBe('committed');
+    expect(parsed['buy:legacy']?.checkpointId).toBe(0);
+    expect(parsed['buy:bad']).toBeUndefined();
+  });
+
+  it('prunes retained keys on the next acknowledged checkpoint after the window', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const firstOps = Array.from({ length: 6 }, (_, i) => buyOp('phone', i + 1, 50, 'forge-bellows', i + 1));
+    const firstReceipts = firstOps.map((ledgerOp, i) => commitCommerceOp(op({
+      id: `c-age-${i}`, mutationKey: `buy:age-${i}`, createdAt: i + 1, economicOpId: ledgerOp.id,
+    }), ledgerOp.id));
+    const live = mergeEconomyLedgers(origin, {
+      ...origin, gold: 9_700, origin, ops: firstOps, commerceOps: firstReceipts,
+    });
+    const t0 = 100_000;
+    live.seenAt = { phone: t0, tablet: 1 };
+    live.acks = { phone: 0 };
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', t0, {
+      after: 4, keep: 2, staleMs: 1_000,
+    });
+    expect(folded.commerceApplied['buy:age-0']?.status).toBe('committed');
+
+    const moreOps = [
+      ...folded.ops,
+      ...Array.from({ length: 6 }, (_, i) => buyOp('phone', i + 7, 50, 'forge-bellows', i + 7)),
+    ];
+    const moreReceipts = [
+      ...folded.commerceOps,
+      ...Array.from({ length: 6 }, (_, i) => commitCommerceOp(op({
+        id: `c-age-${i + 6}`, mutationKey: `buy:age-${i + 6}`, createdAt: i + 7, economicOpId: `phone:${i + 7}`,
+      }), `phone:${i + 7}`)),
+    ];
+    const t1 = t0 + COMMERCE_RETAIN_MS;
+    const later = {
+      ...folded,
+      origin: folded.origin,
+      ops: moreOps,
+      commerceOps: moreReceipts,
+      seenAt: { phone: t1, tablet: 1 },
+      acks: { ...folded.acks, phone: folded.checkpointId },
+    };
+    const pruned = acknowledgeAndMaybeCompact(later, 'phone', t1, {
+      after: 4, keep: 2, staleMs: 1_000,
+    });
+    expect(pruned.checkpointId).toBe(2);
+    expect(pruned.commerceApplied['buy:age-0']).toBeUndefined();
+    expect(findCommerceByKey(pruned.commerceOps, pruned.commerceApplied, 'buy:age-0')).toBeNull();
+    expect(pruned.seenAt['tablet']).toBe(1);
   });
 });

@@ -41,8 +41,8 @@ import {
   parseCommerceApplied,
   parseCommerceOps,
   reconcileCommerceOps,
+  type CommerceAppliedMap,
   type CommerceOperation,
-  type CommerceStatus,
 } from './commerce-ops';
 
 export type EconomyOpKind =
@@ -145,8 +145,11 @@ export interface EconomyLedger {
   seenAt: Record<string, number>;
   /** Durable Market purchase receipts. Same blob as the ledger ops. */
   commerceOps: CommerceOperation[];
-  /** Mutation keys folded at a checkpoint. Never dropped silently. */
-  commerceApplied: Record<string, CommerceStatus>;
+  /**
+   * Mutation keys folded at an acknowledged checkpoint. Bounded by
+   * retain-window + hard cap; see commerce-ops.ts header.
+   */
+  commerceApplied: CommerceAppliedMap;
 }
 
 /** localStorage key for the stable per-browser device id. */
@@ -235,7 +238,7 @@ export function snapshotOf(state: EconomyLedger): EconomyLedger {
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
     commerceOps: [],
-    commerceApplied: { ...state.commerceApplied },
+    commerceApplied: cloneCommerceApplied(state.commerceApplied),
   };
 }
 
@@ -254,8 +257,14 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
     commerceOps: (state.commerceOps ?? []).map(o => ({ ...o })),
-    commerceApplied: { ...(state.commerceApplied ?? {}) },
+    commerceApplied: cloneCommerceApplied(state.commerceApplied),
   };
+}
+
+function cloneCommerceApplied(applied: CommerceAppliedMap | undefined): CommerceAppliedMap {
+  const out: CommerceAppliedMap = {};
+  for (const [key, entry] of Object.entries(applied ?? {})) out[key] = { ...entry };
+  return out;
 }
 
 /**
@@ -481,6 +490,8 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
  * Runs only inside the Firestore transaction that writes the economy
  * document, so the checkpoint is the record, not a local guess. A device
  * that has not written for {@link ACK_STALE_MS} does not block the fold.
+ * Commerce receipts compact and prune on this same acknowledged boundary —
+ * never on a lone ack that did not fold the ledger.
  */
 export function acknowledgeAndMaybeCompact(
   ledger: EconomyLedger,
@@ -498,22 +509,31 @@ export function acknowledgeAndMaybeCompact(
   next.seenAt = clampSeenAt(next.seenAt, now);
   next.seenAt[deviceId] = now;
 
-  const receipts = compactCommerceReceipts(next.commerceOps, next.commerceApplied, { after, keep });
-  next.commerceOps = receipts.ops;
-  next.commerceApplied = receipts.appliedKeys;
-
   if (next.ops.length < after || !next.origin) return next;
 
   const known = recentDevices(next, deviceId, now, staleMs);
   if (!known.every(id => (next.acks[id] ?? -1) >= next.checkpointId)) return next;
 
+  const foldedCheckpoint = next.checkpointId;
   const folded = compactOps(next.origin, next.ops, keep);
   next.origin = folded.origin;
   next.ops = folded.ops;
   next.applied = { ...folded.origin.applied };
   next.checkpointId += 1;
   next.acks = { ...next.acks, [deviceId]: next.checkpointId };
-  const foldedRx = compactCommerceReceipts(next.commerceOps, next.commerceApplied, { after, keep });
+  // Receipts share this barrier: fold and prune only after every recent
+  // device has acked the checkpoint we just folded.
+  const minAckedCheckpoint = known.reduce(
+    (min, id) => Math.min(min, next.acks[id] ?? -1),
+    next.checkpointId,
+  );
+  const foldedRx = compactCommerceReceipts(next.commerceOps, next.commerceApplied, {
+    after,
+    keep,
+    now,
+    checkpointId: foldedCheckpoint,
+    minAckedCheckpoint,
+  });
   next.commerceOps = foldedRx.ops;
   next.commerceApplied = foldedRx.appliedKeys;
   return next;
