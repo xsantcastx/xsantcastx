@@ -11,32 +11,24 @@
  * prevent. The eyebrow says "Available slot", which is what it is.
  */
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-house-ad',
   standalone: true,
-  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a
-      class="house-ad"
-      routerLink="/sponsors"
-      aria-label="Sponsor The Godforge — advertise on this page"
-    >
+    <div class="house-ad" aria-hidden="true">
       <span class="house-ad__eyebrow">
         <span class="house-ad__pulse" aria-hidden="true"></span>
         Available slot
       </span>
       <span class="house-ad__title">{{ title }}</span>
       <span class="house-ad__body">{{ body }}</span>
-      <span class="house-ad__cta">Sponsor The Godforge →</span>
-    </a>
+    </div>
   `,
   styleUrls: ['./house-ad.component.css'],
 })
 export class HouseAdComponent {
   @Input() title = 'Your ad here';
-  @Input() body =
-    'Reach developers while they are mid-task, on the tool that solves it. One tasteful slot, no tracking.';
+  @Input() body = 'This slot is reserved. It is not a product page.';
 }

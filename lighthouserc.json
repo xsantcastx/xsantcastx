@@ -2,8 +2,7 @@
   "ci": {
     "collect": {
       "url": [
-        "http://localhost:4173/world",
-        "http://localhost:4173/tools"
+        "http://localhost:4173/world"
       ],
       "startServerCommand": "npx serve dist/xsantcastx/browser -l tcp://localhost:4173 --no-clipboard",
       "startServerReadyPattern": "Accepting connections",

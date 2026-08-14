@@ -26,6 +26,16 @@ describe('canonicalizePlayerPath', () => {
     expect(canonicalizePlayerPath('/arena/color-memory')).toBe('/arena/color-memory');
     expect(canonicalizePlayerPath('/arena/realm-rush#score')).toBe('/arena/realm-rush');
   });
+
+  it('collapses retired product paths onto World', () => {
+    expect(canonicalizePlayerPath('/tools')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/tools/box-shadow-generator')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/tools?realm=luminous')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/mission-control')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/blueprint')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/skills')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/projects')).toBe(CANONICAL.world);
+  });
 });
 
 describe('rewriteCanonicalPageSet', () => {

@@ -35,4 +35,16 @@ describe('NAV_MANIFEST', () => {
     expect(MORE_NAV.find(d => d.id === 'quests')?.route).toBe(CANONICAL.quests);
     expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
+
+  it('MORE is quests, trials, and sanctum only', () => {
+    expect(MORE_NAV.map(d => d.route)).toEqual([
+      CANONICAL.quests,
+      CANONICAL.trials,
+      '/sanctum',
+    ]);
+    const routes = NAV_MANIFEST.map(d => d.route);
+    for (const banned of ['/tools', '/mcp', '/blueprint', '/mission-control', '/sponsors', '/donate', '/pro']) {
+      expect(routes).not.toContain(banned);
+    }
+  });
 });

@@ -7,10 +7,10 @@ import { brandTitle } from './shared/title-strategy.service';
 
 export const SITE_URL = 'https://xsantcastx.com';
 
-const SITE_NAME   = 'The Godforge';
+const SITE_NAME   = 'Eclipse Realms';
 const DEFAULT_IMG = `${SITE_URL}/assets/og/og-godforge.jpg`;
 const DEFAULT_IMG_ALT =
-  'The Godforge — a violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars';
+  'Eclipse Realms — a violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars';
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {
