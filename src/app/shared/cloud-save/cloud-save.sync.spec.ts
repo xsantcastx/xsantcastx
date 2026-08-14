@@ -42,6 +42,11 @@ class FakeFirestore {
   readonly refuse = new Set<string>();
   /** When set, every network call rejects — the offline case. */
   down = false;
+  /**
+   * After the next transactional get, mutate that document so the commit
+   * aborts once — the interleaving the retry loop exists to survive.
+   */
+  clashOnce = false;
 
   readonly api = {
     doc: (_db: unknown, ...seg: string[]) => ({ path: seg.join('/') }),
@@ -100,30 +105,45 @@ class FakeFirestore {
       get: (ref: { path: string }) => Promise<{ exists: () => boolean; data: () => unknown }>;
       set: (ref: { path: string }, data: unknown) => void;
     }) => Promise<void>) => {
-      this.guard();
-      this.counts.transaction++;
-      const staged = new Map<string, unknown>();
-      const seen = new Map<string, unknown>();
-      const tx = {
-        get: async (ref: { path: string }) => {
-          this.guard();
-          this.counts.getDoc++;
-          const held = this.docs.get(ref.path);
-          seen.set(ref.path, held);
-          return { exists: () => held !== undefined, data: () => copy(held) };
-        },
-        set: (ref: { path: string }, data: unknown) => {
-          staged.set(ref.path, copy(data));
-        },
-      };
-      await fn(tx);
-      for (const [path] of seen) {
-        const now = this.docs.get(path);
-        if (JSON.stringify(now) !== JSON.stringify(seen.get(path))) {
-          throw Object.assign(new Error('aborted'), { code: 'aborted' });
+      for (let attempt = 0; attempt < 5; attempt++) {
+        this.guard();
+        this.counts.transaction++;
+        const staged = new Map<string, unknown>();
+        const seen = new Map<string, unknown>();
+        const tx = {
+          get: async (ref: { path: string }) => {
+            this.guard();
+            this.counts.getDoc++;
+            const held = this.docs.get(ref.path);
+            seen.set(ref.path, held);
+            if (this.clashOnce) {
+              this.clashOnce = false;
+              if (held && typeof held === 'object') {
+                this.docs.set(ref.path, { ...copy(held), updatedAt: `clash-${attempt}` });
+              }
+            }
+            return { exists: () => held !== undefined, data: () => copy(held) };
+          },
+          set: (ref: { path: string }, data: unknown) => {
+            staged.set(ref.path, copy(data));
+          },
+        };
+        try {
+          await fn(tx);
+          for (const [path] of seen) {
+            const now = this.docs.get(path);
+            if (JSON.stringify(now) !== JSON.stringify(seen.get(path))) {
+              throw Object.assign(new Error('aborted'), { code: 'aborted' });
+            }
+          }
+          for (const [path, data] of staged) this.commit(path, data);
+          return;
+        } catch (err) {
+          const code = (err as { code?: string }).code;
+          if (code === 'aborted' && attempt < 4) continue;
+          throw err;
         }
       }
-      for (const [path, data] of staged) this.commit(path, data);
     },
   };
 
@@ -280,6 +300,45 @@ describe('cloud save — Firestore as the record', () => {
     expect(gold).toBeLessThan(1000);
     expect(gold).toBeGreaterThanOrEqual(0);
     expect(goldOnDisk()).toBe(gold);
+  });
+
+  it('retries the economy transaction when another write lands mid-read', async () => {
+    fake.seedGold(800);
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+    const before = fake.counts.transaction;
+
+    fake.clashOnce = true;
+    expect(economy.spendGold(50, 'test')).toBe(true);
+    (economy as unknown as { flush(): void }).flush();
+    await gateway.flushNow();
+
+    expect(fake.counts.transaction).toBeGreaterThan(before + 1);
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(750);
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(750);
+  });
+
+  it('rotates the device id on reset so old sequences cannot collide', async () => {
+    const { economy, xp } = build();
+    economy.init();
+    await xp.init();
+    economy.earnGold(100, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const before = localStorage.getItem('godforge-device-id');
+    expect(before).toBeTruthy();
+
+    economy.reset();
+    const after = localStorage.getItem('godforge-device-id');
+    expect(after).toBeTruthy();
+    expect(after).not.toBe(before);
+
+    economy.earnGold(10, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const ops = JSON.parse(localStorage.getItem(ECONOMY_KEY) ?? '{}').ops ?? [];
+    expect(ops[0].deviceId).toBe(after);
+    expect(ops[0].id).toBe(`${after}:1`);
   });
 
   it('keeps the pulled Gold through the next write', async () => {

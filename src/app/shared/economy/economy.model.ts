@@ -154,6 +154,8 @@ export interface PlayerEconomy {
    * backward cannot make a fresh spend look older than its predecessor.
    */
   hlc?: number;
+  /** Per-device max seq already folded into `origin`. Empty on the live blob. */
+  applied?: Record<string, number>;
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -185,6 +187,7 @@ export function emptyEconomy(): PlayerEconomy {
     ops: [],
     origin: null,
     hlc: 0,
+    applied: {},
   };
 }
 
