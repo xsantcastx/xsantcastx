@@ -74,7 +74,7 @@ for (const route of ART_ROUTES) {
   test(`${route} — scene artwork decodes`, async ({ page }) => {
     await page.goto(route, { waitUntil: 'domcontentloaded' });
 
-    const img = page.locator('.scene__art img, .rf-scene__art img').first();
+    const img = page.locator('.scene__art img, .rf-scene__art img, .gfh__art img').first();
     await expect(img).toHaveCount(1);
 
     // naturalWidth is the decode result: a 404 or an unsupported format is 0.
