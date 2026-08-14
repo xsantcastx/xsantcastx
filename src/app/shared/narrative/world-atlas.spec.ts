@@ -2,12 +2,14 @@ import { FIVE_REALMS, OPENING_REALM_ORDER, realmHref } from './five-realms.narra
 import {
   ATLAS_HOTSPOTS,
   ATLAS_SOURCE,
+  atlasDescKey,
   atlasHotspotsInMobileOrder,
   atlasHref,
+  atlasLabelKey,
 } from './world-atlas';
 
 describe('World atlas hotspot data', () => {
-  it('covers the five realms with spec anchors and descriptive labels', () => {
+  it('covers the five realms with spec anchors and i18n keys', () => {
     expect(ATLAS_HOTSPOTS.map(spot => spot.id)).toEqual([
       'celestial',
       'luminous',
@@ -30,10 +32,8 @@ describe('World atlas hotspot data', () => {
     expect(byId['verdant'].anchor).toEqual({ x: 50, y: 80 });
 
     for (const spot of ATLAS_HOTSPOTS) {
-      expect(spot.label).withContext(spot.id).toContain(
-        FIVE_REALMS.find(realm => realm.id === spot.id)!.name,
-      );
-      expect(spot.accessibleLabel.length).withContext(spot.id).toBeGreaterThan(spot.label.length);
+      expect(atlasLabelKey(spot.id)).toBe(`world.atlas.label.${spot.id}`);
+      expect(atlasDescKey(spot.id)).toBe(`world.atlas.desc.${spot.id}`);
       expect(spot.anchor.x).toBeGreaterThanOrEqual(0);
       expect(spot.anchor.x).toBeLessThanOrEqual(100);
       expect(spot.anchor.y).toBeGreaterThanOrEqual(0);
@@ -42,12 +42,12 @@ describe('World atlas hotspot data', () => {
   });
 
   it('orders the mobile fallback independently of opening-chapter order', () => {
-    expect(atlasHotspotsInMobileOrder().map(spot => spot.label)).toEqual([
-      'Celestial Realm',
-      'Luminous Realm',
-      'Infernal Realm',
-      'Umbral Realm',
-      'Verdant Realm',
+    expect(atlasHotspotsInMobileOrder().map(spot => spot.id)).toEqual([
+      'celestial',
+      'luminous',
+      'infernal',
+      'umbral',
+      'verdant',
     ]);
     expect(OPENING_REALM_ORDER).toEqual([
       'luminous',
@@ -77,7 +77,7 @@ describe('World atlas hotspot data', () => {
     ]);
     expect(FIVE_REALMS.find(realm => realm.id === 'luminous')?.landmark).toBe('Heliograph Court');
     expect(JSON.stringify(ATLAS_HOTSPOTS)).not.toMatch(
-      /developer tool|box-shadow|JSON Formatter|Unbound Pattern/i,
+      /developer tool|box-shadow|JSON Formatter|Unbound Pattern|Celestial Realm/i,
     );
   });
 });

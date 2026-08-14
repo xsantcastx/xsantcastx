@@ -80,7 +80,7 @@ test.describe('five-realm World foundation', () => {
   test('an unknown realm id stays honest', async ({ page }) => {
     await page.goto('/world/realms/verge', { waitUntil: 'load' });
     await expect(page.locator('h1')).toHaveText('This place is not on the map');
-    await expect(page.locator('a[href="/world"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Return to the World' })).toBeVisible();
   });
 
   test('Fivefold Lock is inspectable and locked', async ({ page }) => {

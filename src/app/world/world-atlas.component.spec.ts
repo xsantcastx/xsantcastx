@@ -36,11 +36,21 @@ describe('WorldAtlasComponent', () => {
     expect(links.map(link => link.getAttribute('href'))).toEqual(
       ATLAS_HOTSPOTS.map(spot => `/world/realms/${spot.id}`),
     );
-    expect(links.map(link => link.getAttribute('aria-label'))).toEqual(
-      ATLAS_HOTSPOTS.map(spot => spot.accessibleLabel),
-    );
+    expect(links.map(link => link.getAttribute('aria-label'))).toEqual([
+      'Celestial Realm — observatory plateaus, star paths, and orbital structures',
+      'Luminous Realm — dawn-lit terraces, prism spires, and crystal light',
+      'Infernal Realm — basalt calderas, forge channels, and ember fissures',
+      'Umbral Realm — mirrored ravines, moonlit glass, and hidden rifts',
+      'Verdant Realm — living rootwood, bioluminescent groves, and renewal',
+    ]);
     expect(Array.from(root.querySelectorAll('.atlas__label')).map(el => el.textContent?.trim()))
-      .toEqual(ATLAS_HOTSPOTS.map(spot => spot.label));
+      .toEqual([
+        'Celestial Realm',
+        'Luminous Realm',
+        'Infernal Realm',
+        'Umbral Realm',
+        'Verdant Realm',
+      ]);
     expect(root.querySelector('a[href="/world/fivefold-lock"]')).toBeNull();
     expect(root.querySelector('[data-realm="godforge"]')).toBeNull();
     expect(root.querySelectorAll('[data-realm]').length).toBe(10);
@@ -67,16 +77,18 @@ describe('WorldAtlasComponent', () => {
 
   it('offers a five-item mobile fallback in spec order', () => {
     const links = listLinks();
-    expect(links.map(link => link.querySelector('.atlas__item-name')?.textContent?.trim())).toEqual(
-      atlasHotspotsInMobileOrder().map(spot => spot.label),
-    );
+    expect(links.map(link => link.querySelector('.atlas__item-name')?.textContent?.trim())).toEqual([
+      'Celestial Realm',
+      'Luminous Realm',
+      'Infernal Realm',
+      'Umbral Realm',
+      'Verdant Realm',
+    ]);
     expect(links.map(link => link.getAttribute('href'))).toEqual(
       atlasHotspotsInMobileOrder().map(spot => `/world/realms/${spot.id}`),
     );
-    expect(links.map(link => link.getAttribute('aria-label'))).toEqual(
-      atlasHotspotsInMobileOrder().map(spot =>
-        `${spot.accessibleLabel}. Open the ${spot.label} dossier`,
-      ),
+    expect(links[0].getAttribute('aria-label')).toBe(
+      'Celestial Realm — observatory plateaus, star paths, and orbital structures. Open the Celestial Realm dossier',
     );
     for (const link of links) {
       const name = link.getAttribute('aria-label') ?? '';
@@ -101,7 +113,7 @@ describe('WorldAtlasComponent', () => {
     ]);
   });
 
-  it('translates atlas chrome without rewriting spec labels', () => {
+  it('translates visible labels and screen-reader descriptions', () => {
     expect(root.querySelector('.atlas__hint')?.textContent?.trim()).toBe(
       'Choose a realm to inspect its dossier.',
     );
@@ -113,9 +125,23 @@ describe('WorldAtlasComponent', () => {
     expect(root.querySelector('.atlas__hint')?.textContent?.trim()).toBe(
       'Elige un reino para inspeccionar su expediente.',
     );
-    expect(root.textContent).toContain('Luminous Realm');
-    expect(root.textContent).not.toContain('Heliograph Court');
     expect(Array.from(root.querySelectorAll('.atlas__label')).map(el => el.textContent?.trim()))
-      .toEqual(ATLAS_HOTSPOTS.map(spot => spot.label));
+      .toEqual([
+        'Reino Celestial',
+        'Reino Luminous',
+        'Reino Infernal',
+        'Reino Umbral',
+        'Reino Verdant',
+      ]);
+    expect(hotspotLinks().map(link => link.getAttribute('aria-label'))).toEqual([
+      'Reino Celestial — mesetas observatorio, caminos de estrellas y estructuras orbitales',
+      'Reino Luminous — terrazas del amanecer, agujas de prisma y luz de cristal',
+      'Reino Infernal — calderas de basalto, canales de forja y fisuras de brasa',
+      'Reino Umbral — barrancos espejo, cristal de luna y grietas ocultas',
+      'Reino Verdant — madera raiz viva, arboledas bioluminiscentes y renovacion',
+    ]);
+    expect(listLinks()[0].getAttribute('aria-label')).toContain('Abre el expediente de Reino Celestial');
+    expect(root.textContent).not.toContain('Celestial Realm');
+    expect(root.textContent).not.toContain('Heliograph Court');
   });
 });
