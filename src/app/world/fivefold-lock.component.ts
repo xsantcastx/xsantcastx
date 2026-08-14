@@ -3,9 +3,10 @@
  *
  * Locked summit premise. No resolution, no persistence.
  */
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { TranslationService } from '../translation.service';
 import { FIVE_REALMS, FIVEFOLD_LOCK } from '../shared/narrative/five-realms.narrative';
 import { continueFromWorld } from '../shared/narrative/continue-journey';
 
@@ -15,8 +16,8 @@ import { continueFromWorld } from '../shared/narrative/continue-journey';
   imports: [RouterLink],
   template: `
     <article class="fl">
-      <nav class="fl__crumb" aria-label="Breadcrumb">
-        <a routerLink="/world">World</a>
+      <nav class="fl__crumb" [attr.aria-label]="t('world.crumb.label')">
+        <a routerLink="/world">{{ t('world.crumb.world') }}</a>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{{ lock.name }}</span>
       </nav>
@@ -28,21 +29,21 @@ import { continueFromWorld } from '../shared/narrative/continue-journey';
       <p>{{ lock.stakes }}</p>
 
       <section aria-labelledby="fl-answers">
-        <h2 id="fl-answers">Five incomplete answers</h2>
+        <h2 id="fl-answers">{{ t('world.lock.answers') }}</h2>
         <ul>
           @for (realm of realms; track realm.id) {
             <li>
               <a [routerLink]="'/world/realms/' + realm.id">{{ realm.name }}</a>
-              — {{ realm.faction }} wants a necessary but incomplete remedy.
+              — {{ t('world.lock.remedy', { faction: realm.faction }) }}
             </li>
           }
         </ul>
       </section>
 
       <a class="fl__back" [routerLink]="start.route">
-        <span>Continue Journey</span>
-        <strong>{{ start.label }}</strong>
-        <em>{{ start.note }}</em>
+        <span>{{ t('world.realm.continue') }}</span>
+        <strong>{{ t('world.realm.enter', { name: startRealmName }) }}</strong>
+        <em>{{ t('world.realm.notPlayableHere', { chapter: startChapter, landmark: startLandmark }) }}</em>
       </a>
     </article>
   `,
@@ -76,7 +77,15 @@ import { continueFromWorld } from '../shared/narrative/continue-journey';
   `],
 })
 export class FivefoldLockComponent {
+  private readonly i18n = inject(TranslationService);
   readonly lock = FIVEFOLD_LOCK;
   readonly realms = FIVE_REALMS;
   readonly start = continueFromWorld();
+  readonly startRealmName = FIVE_REALMS[0].name;
+  readonly startChapter = FIVE_REALMS[0].chapterTitle;
+  readonly startLandmark = FIVE_REALMS[0].landmark;
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
 }
