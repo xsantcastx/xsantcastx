@@ -67,6 +67,8 @@ describe('ad-config', () => {
     it('suppresses ads on child routes of an ad-free route', () => {
       expect(routeAllowsAds('/admin/dev-log')).toBe(false);
       expect(routeAllowsAds('/character/cosmetics')).toBe(false);
+      expect(routeAllowsAds('/forge-keeper')).toBe(false);
+      expect(routeAllowsAds('/forge-keeper/cosmetics')).toBe(false);
     });
 
     it('suppresses ads when the URL carries a query or fragment', () => {

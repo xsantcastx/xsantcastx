@@ -29,7 +29,9 @@
     <!-- ── The halls ────────────────────────────────────────────────── -->
     <div class="gfnav__halls">
       @for (hall of primaryHalls; track hall.route) {
-        <a [routerLink]="hall.route" routerLinkActive="is-active" class="gfnav__hall"
+        <a [routerLink]="hall.route" routerLinkActive="is-active"
+           [routerLinkActiveOptions]="{ exact: hall.exact === true }"
+           class="gfnav__hall"
            [class.gfnav__hall--shed-first]="hall.shed === 'first'"
            [class.gfnav__hall--shed-second]="hall.shed === 'second'">
           {{ translate(hall.key) }}
@@ -190,6 +192,7 @@
         @for (hall of section.halls; track hall.route) {
           <a class="gftome__link" role="menuitem"
              [routerLink]="hall.route" routerLinkActive="is-active"
+             [routerLinkActiveOptions]="{ exact: hall.exact === true }"
              [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="closeMobileMenu()">
             <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
             <span class="gftome__link-name">{{ translate(hall.key) }}</span>
@@ -249,7 +252,9 @@
      ═══════════════════════════════════════════════════════════════════ -->
 <nav class="gftabs" [attr.aria-label]="translate('gfnav.tabsLabel')">
   @for (tab of tabs; track tab.route) {
-    <a [routerLink]="tab.route" routerLinkActive="is-active" class="gftabs__tab">
+    <a [routerLink]="tab.route" routerLinkActive="is-active"
+       [routerLinkActiveOptions]="{ exact: tab.exact === true }"
+       class="gftabs__tab">
       <!-- Both states are in the DOM and cross-faded with opacity rather than
            swapped on [src]. A src swap fetches the active PNG at the moment
            the tab is tapped, so the first visit to every tab flashed an empty

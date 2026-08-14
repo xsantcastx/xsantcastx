@@ -21,6 +21,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { XpService } from '../gamification/xp.service';
 import { GameStateGateway } from '../save/game-state.gateway';
+import { canonicalizePlayerPath, rewriteCanonicalPageSet } from '../canonical-routes';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
   DAILY_QUESTS,
@@ -170,6 +171,7 @@ export class QuestService {
     this.initialised = true;
 
     this.state = this.load();
+    if (this.canonicalizePageSets()) this.persist();
     // The XP ledger backs four of the condition types. It is idempotent and the
     // header usually beat us to it, but the board must never render a level-0
     // epic just because nothing else happened to touch XP first.
@@ -194,6 +196,7 @@ export class QuestService {
   private rehydrate(): void {
     if (!this.isBrowser) return;
     this.state = this.load();
+    if (this.canonicalizePageSets()) this.persist();
     // Not `rollPeriods()`: the merged blob carries the later of the two devices'
     // period keys, and rolling here would wipe a board the other device has
     // already filled in for today. The next event to arrive rolls it honestly.
@@ -225,12 +228,13 @@ export class QuestService {
   /** Add a distinct member to a set in all three periods. */
   addToSet(key: string, member: string): void {
     if (!this.isBrowser || !member) return;
+    const value = key === 'pages' ? canonicalizePlayerPath(member) : member;
     this.rollPeriods();
     let changed = false;
     for (const b of [this.state.day, this.state.week, this.state.life]) {
       const list = b.s[key] ?? (b.s[key] = []);
-      if (!list.includes(member) && list.length < SET_CAP) {
-        list.push(member);
+      if (!list.includes(value) && list.length < SET_CAP) {
+        list.push(value);
         changed = true;
       }
     }
@@ -481,6 +485,21 @@ export class QuestService {
     } catch {
       return emptyState();
     }
+  }
+
+  /** Collapse remounted halls in persisted `pages` sets. Returns true if any bucket changed. */
+  private canonicalizePageSets(): boolean {
+    let dirty = false;
+    for (const bucket of [this.state.day, this.state.week, this.state.life]) {
+      const pages = bucket.s['pages'];
+      if (!pages?.length) continue;
+      const next = rewriteCanonicalPageSet(pages);
+      if (next.length !== pages.length || next.some((p, i) => p !== pages[i])) {
+        bucket.s['pages'] = next;
+        dirty = true;
+      }
+    }
+    return dirty;
   }
 
   private persist(): void {

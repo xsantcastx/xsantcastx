@@ -31,6 +31,7 @@ import { dayKey } from './quest.model';
 import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
 import { realmForCategory } from '../realms/realm.model';
 import { LoreService } from '../lore/lore.service';
+import { canonicalizePlayerPath } from '../canonical-routes';
 
 /** One interaction beat per tool per this many ms. */
 const BEAT_COOLDOWN_MS = 6_000;
@@ -137,18 +138,15 @@ export class QuestWiringService {
   // ───────────────────────────────────────────────────────────────────────────
 
   private onNavigate(url: string): void {
-    const path = url.split('?')[0].split('#')[0];
+    const path = canonicalizePlayerPath(url);
     if (path.startsWith('/embed/')) {
       this.currentTool = null;
       return;
     }
 
-    // The router reports '/' before the redirect resolves and '/world' after, so
-    // without this a single landing looks like two different places.
-    const normalised = path === '/' || path === '' ? '/world' : path;
-    this.quests.addToSet('pages', normalised);
+    this.quests.addToSet('pages', path);
 
-    this.currentTool = TOOLS_REGISTRY.find(t => t.route === normalised) ?? null;
+    this.currentTool = TOOLS_REGISTRY.find(t => t.route === path) ?? null;
   }
 
   /**

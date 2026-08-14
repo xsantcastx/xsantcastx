@@ -164,6 +164,12 @@
         "type": 301
       },
       {
+        "//": Exact /forge only — do not use /forge/** or /forge/runes would loop.",
+        "source": "/forge",
+        "destination": "/forge/runes",
+        "type": 301
+      },
+      {
         "//": "/quests is now /world/quests.",
         "source": "/quests",
         "destination": "/world/quests",
