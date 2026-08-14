@@ -1,59 +1,44 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ARENA_GAME_ROUTES } from './arena/games/arena-game.routes';
+import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
 import { RouteTitles } from './shared/title-strategy.service';
 // Every page below is loaded with loadComponent(). Importing a routed
 // component here instead would pull it — and its whole transitive graph —
 // into the initial bundle, which is what kept nine pages eager until now.
 import { SITE_URL } from './seo.service';
 
-const routes: Routes = [
+export const APP_ROUTES: Routes = [
   {
-      path: 'home',
+      path: 'world',
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
-      title: 'The Godforge — Free Developer Tools Forged in the Eclipse',
+      title: 'Eclipse Realms — A Persistent World',
       data: {
-        description: 'The Godforge — free browser tools for developers and designers. CSS Box Shadow Generator, Email Deliverability Auditor, SSL Inspector, SVG to Code & more. No sign-up.',
-        keywords: 'free developer tools, free browser tools, css box shadow generator, email deliverability checker, ssl certificate checker, svg to react component, pdf generator, color palette, developer utilities',
+        description: 'Eclipse Realms is a persistent world of five realms. Discover artifacts, forge runes, walk the trials, and grow your character. No sign-up.',
+        keywords: 'eclipse realms, persistent world, five realms, artifacts, rune forge, trials, character, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@graph': [
             {
-              '@type': 'Person',
-              '@id': `${SITE_URL}/#person`,
-              name: 'xsantcastx',
+              '@type': 'WebSite',
+              '@id': `${SITE_URL}/#website`,
               url: SITE_URL,
-              description: 'Independent developer building web applications and free browser tools for designers and developers.',
-              knowsAbout: ['Angular', 'TypeScript', 'Node.js', 'Firebase', 'React', 'Web Development'],
-              sameAs: []
+              name: 'Eclipse Realms',
+              description: 'A persistent world of five Eclipse Realms — artifacts, forges, trials and a character that remembers you.'
             },
             {
               '@type': 'WebPage',
-              '@id': `${SITE_URL}/home`,
-              url: `${SITE_URL}/home`,
-              name: 'The Godforge — Free Developer Tools Forged in the Eclipse',
-              description: 'Free browser tools — CSS Box Shadow Generator, Email Deliverability Auditor, SSL Certificate Inspector, SVG to Code, PDF Catalog Generator, Color Palette Extractor and more.',
-              author: { '@id': `${SITE_URL}/#person` }
+              '@id': `${SITE_URL}/world`,
+              url: `${SITE_URL}/world`,
+              name: 'Eclipse Realms — A Persistent World',
+              description: 'Enter Eclipse Realms: five realms to explore, artifacts to collect, a forge to strike, and trials to walk.',
+              isPartOf: { '@id': `${SITE_URL}/#website` }
             }
           ]
         }
       }
     },
-  /*
-   * The last of the portfolio. Skills, Projects and Contact described a
-   * freelancer for hire; The Godforge is a product, so the pages are gone
-   * rather than restyled — there was nothing under the styling worth keeping.
-   *
-   * These entries only cover in-app navigation, where no HTTP request is made.
-   * The 301s that search engines and external links need live in firebase.json,
-   * exactly as they do for the older /games → /arena move above.
-   */
-  { path: 'skills',   redirectTo: 'tools', pathMatch: 'full' },
-  { path: 'projects', redirectTo: 'blueprint', pathMatch: 'full' },
-  { path: 'contact',  redirectTo: 'home', pathMatch: 'full' },
-  { path: 'about',    redirectTo: 'home', pathMatch: 'full' },
-  { path: 'services', redirectTo: 'tools', pathMatch: 'full' },
   {
       path: 'donate',
       loadComponent: () => import('./donate/donate.component').then(m => m.DonateComponent),
@@ -101,22 +86,12 @@ const routes: Routes = [
           url: `${SITE_URL}/sanctum`,
           description: 'The management hub for your Godforge: explorers, equipment, Gold per second, quests and expeditions across the five Eclipse realms.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
             { '@type': 'ListItem', position: 2, name: 'The Inner Sanctum', item: `${SITE_URL}/sanctum` }
           ]}
         }
       }
     },
-  /*
-   * The two names the page has been called by, pointed at the URL it lives on.
-   * Redirects rather than second `loadComponent`s, so there is exactly one
-   * canonical address for the hub and no duplicate for a crawler to index.
-   *
-   * /live in particular cannot simply be dropped: it is the link in the footer,
-   * on the home page, and in every share of this page made before today.
-   */
-  { path: 'forge-view', redirectTo: 'sanctum', pathMatch: 'full' },
-  { path: 'live', redirectTo: 'sanctum', pathMatch: 'full' },
   {
       path: 'mission-control',
       loadComponent: () => import('./live/live.component').then(m => m.LiveComponent),
@@ -130,7 +105,7 @@ const routes: Routes = [
           url: `${SITE_URL}/mission-control`,
           description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
             { '@type': 'ListItem', position: 2, name: 'Mission Control', item: `${SITE_URL}/mission-control` }
           ]}
         }
@@ -157,13 +132,25 @@ const routes: Routes = [
       }
     },
   {
-      path: 'arena',
+      path: 'world/trials',
       loadComponent: () => import('./arena/arena.component').then(m => m.ArenaComponent),
-      title: 'The Arena',
+      title: 'The Trials — Eclipse Realms',
       data: {
         description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
-        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, arena',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`
+        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, trials, arena',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/world/trials`,
+          url: `${SITE_URL}/world/trials`,
+          name: 'The Trials — Eclipse Realms',
+          description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain.',
+          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+            { '@type': 'ListItem', position: 2, name: 'Trials', item: `${SITE_URL}/world/trials` }
+          ]}
+        }
       }
     },
 
@@ -201,7 +188,7 @@ const routes: Routes = [
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
               { '@type': 'ListItem', position: 2, name: 'Codex', item: `${SITE_URL}/codex` }
             ]
           }
@@ -209,19 +196,7 @@ const routes: Routes = [
       }
     },
   {
-      // /games was the old address. The permanent redirect that search engines
-      // and external links need is the 301 in firebase.json — this entry only
-      // covers in-app navigation, where no HTTP request is made at all.
-      path: 'games',
-      redirectTo: 'arena',
-      pathMatch: 'full'
-    },
-  // The guestbook was a portfolio visitor wall, and its Firestore reads were a
-  // real share of the quota. Redirected rather than kept; see firebase.json for
-  // the 301.
-  { path: 'guestbook', redirectTo: 'home', pathMatch: 'full' },
-  {
-      path: 'quests',
+      path: 'world/quests',
       loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
       title: 'The Standing Orders',
       data: {
@@ -231,10 +206,14 @@ const routes: Routes = [
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
-          '@id': `${SITE_URL}/quests`,
-          url: `${SITE_URL}/quests`,
+          '@id': `${SITE_URL}/world/quests`,
+          url: `${SITE_URL}/world/quests`,
           name: 'The Standing Orders — Daily Quests',
-          description: 'Daily, weekly and epic quests across the five Eclipse realms.'
+          description: 'Daily, weekly and epic quests across the five Eclipse realms.',
+          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+            { '@type': 'ListItem', position: 2, name: 'Quests', item: `${SITE_URL}/world/quests` }
+          ]}
         }
       }
     },
@@ -257,50 +236,50 @@ const routes: Routes = [
       }
     },
   {
-      path: 'rune-forge',
+      path: 'forge/runes',
       loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
-      title: 'The Rune Forge — Strike the Anvil | xsantcastx',
+      title: 'The Forge — Strike the Anvil | Eclipse Realms',
       data: {
         description: 'Twenty-five runes across seven rarity tiers, from Ash at one strike in eight to the Void at one in two thousand, and six Runewords that turn a handful of them into a permanent bonus. Ten Gold a strike. Everything is stored in your own browser.',
-        keywords: 'rune forge, runes, runewords, crafting, gacha, drop table, idle game, gold, eclipse realms, godforge, xsantcastx',
+        keywords: 'rune forge, runes, runewords, crafting, gacha, drop table, idle game, gold, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
-          '@id': `${SITE_URL}/rune-forge`,
-          url: `${SITE_URL}/rune-forge`,
-          name: 'The Rune Forge',
+          '@id': `${SITE_URL}/forge/runes`,
+          url: `${SITE_URL}/forge/runes`,
+          name: 'The Forge',
           description: 'Strike the anvil for one of twenty-five runes, then set them into Runewords for permanent Gold and XP bonuses.',
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-              { '@type': 'ListItem', position: 2, name: 'The Rune Forge', item: `${SITE_URL}/rune-forge` }
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+              { '@type': 'ListItem', position: 2, name: 'The Forge', item: `${SITE_URL}/forge/runes` }
             ]
           }
         }
       }
     },
   {
-      path: 'forge-keeper',
+      path: 'character',
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
-      title: 'Your Forge',
+      title: 'Your Character — Eclipse Realms',
       data: {
-        description: 'Your Godforge character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, everything you own, your pinned achievements, a thirty-day streak calendar and the tools you actually know.',
-        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, tool mastery, eclipse realms, godforge, xsantcastx',
+        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, everything you own, your pinned achievements, a thirty-day streak calendar and the tools you actually know.',
+        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, tool mastery, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'ProfilePage',
-          '@id': `${SITE_URL}/forge-keeper`,
-          url: `${SITE_URL}/forge-keeper`,
-          name: 'The Forge Keeper — Your Godforge Profile',
+          '@id': `${SITE_URL}/character`,
+          url: `${SITE_URL}/character`,
+          name: 'Your Character — Eclipse Realms',
           description: 'Rank, inventory, realm affinity, achievements, streak and tool mastery for one Convergent. Progression is stored in your own browser.',
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-              { '@type': 'ListItem', position: 2, name: 'Your Forge', item: `${SITE_URL}/forge-keeper` }
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+              { '@type': 'ListItem', position: 2, name: 'Character', item: `${SITE_URL}/character` }
             ]
           }
         }
@@ -327,7 +306,7 @@ const routes: Routes = [
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
               { '@type': 'ListItem', position: 2, name: 'Blueprint', item: `${SITE_URL}/blueprint` }
             ]
           }
@@ -430,7 +409,7 @@ const routes: Routes = [
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/home` },
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
               { '@type': 'ListItem', position: 2, name: 'Sponsors', item: `${SITE_URL}/sponsors` }
             ]
           },
@@ -501,23 +480,23 @@ const routes: Routes = [
     path: 'embed',
     loadChildren: () => import('./tools/embed.module').then(m => m.EmbedModule)
   },
-  { path: '', redirectTo: '/home', pathMatch: 'full' },
+  ...CANONICAL_REDIRECTS,
   {
       path: '**',
       loadComponent: () => import('./not-found/not-found.component').then(m => m.NotFoundComponent),
-      title: 'Lost Star — The Godforge',
+      title: 'Lost Star — Eclipse Realms',
       data: {
         // Firebase serves the SPA shell with a 200 for unknown paths, so this
         // renders as a soft 404 that Google would otherwise be free to index.
         noindex: true,
-        description: 'The page you are looking for does not exist. Browse free developer tools or return to the homepage.',
-        keywords: '404, page not found, xsantcastx'
+        description: 'The page you are looking for does not exist. Return to the world or open the Codex.',
+        keywords: '404, page not found, eclipse realms, xsantcastx'
       }
     }
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [RouterModule.forRoot(APP_ROUTES)],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }

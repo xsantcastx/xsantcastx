@@ -1,0 +1,84 @@
+import { Component } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Routes, provideRouter, Router } from '@angular/router';
+import { provideLocationMocks } from '@angular/common/testing';
+
+import { APP_ROUTES } from './app-routing.module';
+import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
+
+@Component({ standalone: true, template: '' })
+class RouteStubComponent {}
+
+function stubLazyRoutes(routes: Routes): Routes {
+  return routes.map(route => {
+    const next: Routes[number] = { ...route };
+    if (next.loadComponent || next.loadChildren) {
+      delete next.loadComponent;
+      delete next.loadChildren;
+      next.component = RouteStubComponent;
+    }
+    if (next.children) next.children = stubLazyRoutes(next.children);
+    return next;
+  });
+}
+
+function leafPath(router: Router): string | undefined {
+  let snap = router.routerState.snapshot.root;
+  while (snap.firstChild) snap = snap.firstChild;
+  return snap.routeConfig?.path;
+}
+
+describe('canonical player routing', () => {
+  let router: Router;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(stubLazyRoutes(APP_ROUTES)),
+        provideLocationMocks(),
+      ],
+    }).compileComponents();
+    router = TestBed.inject(Router);
+  });
+
+  const redirects: Array<[from: string, to: string]> = [
+    ['/', '/world'],
+    ['/home', '/world'],
+    ['/forge-keeper', '/character'],
+    ['/rune-forge', '/forge/runes'],
+    ['/forge', '/forge/runes'],
+    ['/quests', '/world/quests'],
+    ['/arena', '/world/trials'],
+    ['/skills', '/tools'],
+  ];
+
+  for (const [from, to] of redirects) {
+    it(`redirects ${from} → ${to}`, async () => {
+      await router.navigateByUrl(from);
+      expect(router.url).toBe(to);
+    });
+  }
+
+  it('keeps /arena/color-memory on the game route', async () => {
+    await router.navigateByUrl('/arena/color-memory');
+    expect(router.url).toBe('/arena/color-memory');
+    expect(leafPath(router)).toBe('arena/color-memory');
+    expect(leafPath(router)).not.toBe('world/trials');
+  });
+
+  const pages = ['/character', '/world', '/forge/runes', '/world/trials'] as const;
+
+  for (const url of pages) {
+    it(`resolves ${url} (not 404)`, async () => {
+      await router.navigateByUrl(url);
+      expect(router.url).toBe(url);
+      expect(leafPath(router)).not.toBe('**');
+    });
+  }
+
+  it('APP_ROUTES consumes the shared redirect table', () => {
+    for (const redirect of CANONICAL_REDIRECTS) {
+      expect(APP_ROUTES).toContain(redirect);
+    }
+  });
+});

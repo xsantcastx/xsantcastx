@@ -15,7 +15,7 @@
   <div class="gfnav__row">
 
     <!-- ── The mark ─────────────────────────────────────────────────── -->
-    <a routerLink="/home" class="gfnav__brand" aria-label="xsantcastx — home">
+    <a routerLink="/world" class="gfnav__brand" aria-label="xsantcastx — world">
       <span class="gfnav__sigil" aria-hidden="true">
         <img class="gfnav__sigil-art" src="assets/brand/logo-godforge.png"
              alt="" width="32" height="32" decoding="async" draggable="false">
@@ -55,7 +55,7 @@
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
         <span class="gfpill__val">{{ essence }}</span>
       </a>
-      <a routerLink="/forge-keeper" class="gfpill gfpill--rank"
+      <a routerLink="/character" class="gfpill gfpill--rank"
          [attr.aria-label]="'Level ' + rankLevel + ' — ' + rankTitle">
         <img class="gfpill__icon gf-icon rank-current" [src]="rankSigil(rankLevel)"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
@@ -65,7 +65,7 @@
 
       <!-- Cloud save. Signed out it is the Google mark and "Sign In"; signed in
            it is the avatar with the sync state on it, linking to the full
-           control on /forge-keeper.
+           control on /character.
 
            The one control in this group that is never shed: every other item
            here has a width at which it moves to the tome, and this one collapses
@@ -81,7 +81,7 @@
                 (click)="setLanguage('es')">ES</button>
       </div>
 
-      <a routerLink="/forge-keeper" routerLinkActive="is-active" class="gfnav__keeper"
+      <a routerLink="/character" routerLinkActive="is-active" class="gfnav__keeper"
          [attr.aria-label]="translate('gfnav.keeperLabel')">
         <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
       </a>
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Who you are, at the front of the book. -->
-    <a routerLink="/forge-keeper" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
+    <a routerLink="/character" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
        (click)="closeMobileMenu()">
       <img class="gftome__keeper-sigil gf-icon rank-current" [src]="rankSigil(rankLevel)"
            alt="" aria-hidden="true" width="40" height="40"
@@ -255,12 +255,17 @@
            the tab is tapped, so the first visit to every tab flashed an empty
            box while it loaded — and it is the one frame the visitor is
            looking straight at. Ten 96px icons is the cost of that never
-           happening. -->
+           happening. Tabs without a PNG pair draw the same hall rune the
+           desktop bar already uses. -->
       <span class="gftabs__art" aria-hidden="true">
-        <img class="gftabs__icon gftabs__icon--off" [src]="tab.iconInactive"
-             alt="" width="26" height="26" decoding="async" draggable="false">
-        <img class="gftabs__icon gftabs__icon--on" [src]="tab.iconActive"
-             alt="" width="26" height="26" decoding="async" draggable="false">
+        @if (tab.iconInactive && tab.iconActive) {
+          <img class="gftabs__icon gftabs__icon--off" [src]="tab.iconInactive"
+               alt="" width="26" height="26" decoding="async" draggable="false">
+          <img class="gftabs__icon gftabs__icon--on" [src]="tab.iconActive"
+               alt="" width="26" height="26" decoding="async" draggable="false">
+        } @else {
+          <span class="gfrune gftabs__glyph" [class]="'gfrune gfrune--' + tab.glyph + ' gftabs__glyph'"></span>
+        }
       </span>
       <span class="gftabs__label">{{ translate(tab.key) }}</span>
       <span class="gftabs__underline" aria-hidden="true"></span>

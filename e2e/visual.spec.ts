@@ -80,7 +80,7 @@ for (const vp of VIEWPORTS) {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('home hero', async ({ page }) => {
-      await page.goto('/home', { waitUntil: 'load' });
+      await page.goto('/world', { waitUntil: 'load' });
       // `.hc-card` (the old hero carousel) was deleted in v2.19.0; this waited
       // on a selector that matches nothing. Harmless while these tests were
       // failing for other reasons, but it would have broken the VISUAL=1 path
@@ -100,7 +100,7 @@ for (const vp of VIEWPORTS) {
     // along with the rest of the CSS planet. Retargeted at the five-realm forge
     // grid, which is what occupies that band of the homepage now.
     test('home forges section', async ({ page }) => {
-      await page.goto('/home', { waitUntil: 'load' });
+      await page.goto('/world', { waitUntil: 'load' });
       await page.waitForSelector('.gf-forges', { timeout: 10000 });
       await waitForFonts(page);
       await page.evaluate(() => {
@@ -122,7 +122,7 @@ for (const vp of VIEWPORTS) {
     // tool spotlight was removed from the homepage in v2.40.0. Retargeted at the
     // closing call, which is the last section above the footer now.
     test('home journey and footer', async ({ page }) => {
-      await page.goto('/home', { waitUntil: 'load' });
+      await page.goto('/world', { waitUntil: 'load' });
       await page.waitForSelector('.gf-journey', { timeout: 10000 });
       await waitForFonts(page);
       await page.evaluate(() => {
@@ -157,13 +157,13 @@ test.describe('overflow / 375px', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
   test('no horizontal overflow on home at 375px', async ({ page }) => {
-    await page.goto('/home', { waitUntil: 'load' });
+    await page.goto('/world', { waitUntil: 'load' });
     await page.waitForSelector('app-root', { timeout: 10000 });
     const ok = await page.evaluate(() => {
       const el = document.scrollingElement || document.documentElement;
       return el.scrollWidth <= window.innerWidth;
     });
-    expect(ok, 'horizontal overflow on /home at 375px').toBe(true);
+    expect(ok, 'horizontal overflow on /world at 375px').toBe(true);
   });
 
   test('no horizontal overflow on tools at 375px', async ({ page }) => {

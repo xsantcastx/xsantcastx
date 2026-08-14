@@ -45,7 +45,7 @@ const ASSET_CACHE = `${VERSION}-assets`;
  * on first fetch instead, which keeps install from failing on a stale list.
  */
 const SHELL_URLS = [
-  '/home',
+  '/world',
   '/manifest.webmanifest',
   '/favicon.svg',
   '/assets/brand/icon-192.png',
@@ -131,7 +131,7 @@ self.addEventListener('fetch', (event) => {
           return res;
         })
         .catch(() =>
-          caches.match(req).then((hit) => hit || caches.match('/home'))
+          caches.match(req).then((hit) => hit || caches.match('/world'))
             .then((hit) => hit || new Response(
               '<!doctype html><meta charset="utf-8"><title>Offline — The Godforge</title>'
               + '<body style="background:#07040f;color:#e6e0ff;font:16px/1.6 system-ui;'

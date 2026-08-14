@@ -142,13 +142,43 @@
     "redirects": [
       {
         "source": "/",
-        "destination": "/home",
+        "destination": "/world",
         "type": 301
       },
       {
-        "//": "/games became /arena in 2.17.0. This is the redirect that matters — the Angular redirectTo route only fires for in-app navigation, where no HTTP request is made, so without this entry every external link and every indexed /games URL would 404 against the SPA fallback.",
+        "//": "/home is now /world. Same reasoning as /games: the Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
+        "source": "/home",
+        "destination": "/world",
+        "type": 301
+      },
+      {
+        "//": "/forge-keeper is now /character.",
+        "source": "/forge-keeper",
+        "destination": "/character",
+        "type": 301
+      },
+      {
+        "//": "/rune-forge is now /forge/runes.",
+        "source": "/rune-forge",
+        "destination": "/forge/runes",
+        "type": 301
+      },
+      {
+        "//": "/quests is now /world/quests.",
+        "source": "/quests",
+        "destination": "/world/quests",
+        "type": 301
+      },
+      {
+        "//": "/arena index is now /world/trials. Exact path only — do not use /arena/** or the playable gates would 301 as well.",
+        "source": "/arena",
+        "destination": "/world/trials",
+        "type": 301
+      },
+      {
+        "//": "/games became /arena, then the index moved to /world/trials. Land on the canonical URL in one hop.",
         "source": "/games",
-        "destination": "/arena",
+        "destination": "/world/trials",
         "type": 301
       },
       {
@@ -164,7 +194,7 @@
         "type": 301
       },
       {
-        "//": "The portfolio pages deleted in the full migration. Same reasoning as /games: the Angular redirectTo entries only cover in-app navigation, so these 301s are what stop indexed URLs and inbound links from hitting the SPA fallback. Each points at the nearest surviving surface rather than blanket-redirecting to /home, so the inbound link keeps some of its meaning.",
+        "//": "The portfolio pages deleted in the full migration. Same reasoning as /games: the Angular redirectTo entries only cover in-app navigation, so these 301s are what stop indexed URLs and inbound links from hitting the SPA fallback. Each points at the nearest surviving surface rather than blanket-redirecting to /world, so the inbound link keeps some of its meaning.",
         "source": "/skills",
         "destination": "/tools",
         "type": 301
@@ -181,17 +211,17 @@
       },
       {
         "source": "/contact",
-        "destination": "/home",
+        "destination": "/world",
         "type": 301
       },
       {
         "source": "/about",
-        "destination": "/home",
+        "destination": "/world",
         "type": 301
       },
       {
         "source": "/guestbook",
-        "destination": "/home",
+        "destination": "/world",
         "type": 301
       }
     ],

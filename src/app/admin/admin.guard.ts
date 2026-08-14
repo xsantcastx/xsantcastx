@@ -26,7 +26,7 @@ export function isAdminEmail(email: string | null | undefined): boolean {
  *
  * Three outcomes:
  *   - signed in as the owner  → allow
- *   - signed in as anyone else → redirect to /home
+ *   - signed in as anyone else → redirect to /world
  *   - not signed in            → allow, and the component renders a bare
  *                                sign-in card (see the note below)
  *
@@ -76,7 +76,7 @@ export const adminGuard: CanActivateFn = () => {
       // Not signed in yet — let the component show its sign-in card.
       if (!user) return true;
       // Signed in as someone else — this is the case worth bouncing.
-      return isAdminEmail(user.email) ? true : router.parseUrl('/home');
+      return isAdminEmail(user.email) ? true : router.parseUrl('/world');
     })
   );
 };

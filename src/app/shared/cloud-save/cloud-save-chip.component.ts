@@ -78,7 +78,7 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
            beyond "show me the account this is bound to" lives on the sheet it
            points at. -->
       <a
-        routerLink="/forge-keeper"
+        routerLink="/character"
         class="cschip cschip--account"
         [attr.data-state]="status.state"
         [attr.aria-label]="accountLabel"

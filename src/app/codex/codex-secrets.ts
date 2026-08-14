@@ -185,7 +185,7 @@ export const SECRETS: SecretDefinition[] = [
     reveal: 'Eight games, each chained shut by a secret buried in a tool. Find the secret, break the chain.',
     clue: 'There is a room where Convergents prove their worth. Its doors are held by things you find somewhere else entirely.',
     tier: 'eclipsed',
-    route: '/arena',
+    route: '/world/trials',
   },
   {
     id: 'blueprint-room',

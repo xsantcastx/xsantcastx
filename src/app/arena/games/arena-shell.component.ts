@@ -33,7 +33,7 @@ import { RouterLink } from '@angular/router';
       <div class="ag-aura" aria-hidden="true"></div>
 
       <header class="ag-head">
-        <a routerLink="/arena" class="ag-back">&larr; The Arena</a>
+        <a routerLink="/world/trials" class="ag-back">&larr; The Arena</a>
 
         <div class="ag-title-row">
           <span class="ag-icon" aria-hidden="true">{{ icon }}</span>
@@ -60,7 +60,7 @@ import { RouterLink } from '@angular/router';
           <h2 class="ag-gate__title">This gate is chained</h2>
           <p class="ag-gate__hint">{{ unlockHint }}</p>
           <a routerLink="/tools" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
-          <a routerLink="/arena" class="ag-gate__alt">or look over the other gates</a>
+          <a routerLink="/world/trials" class="ag-gate__alt">or look over the other gates</a>
         </section>
       }
 

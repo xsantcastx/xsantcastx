@@ -73,9 +73,9 @@ export class XpWiringService {
     let path = url.split('?')[0].split('#')[0];
     if (path.startsWith('/embed/')) return;
 
-    // The router reports '/' before the redirect resolves and '/home' after, so
+    // The router reports '/' before the redirect resolves and '/world' after, so
     // a single landing looked like two pages and paid out twice. Same page.
-    if (path === '/' || path === '') path = '/home';
+    if (path === '/' || path === '') path = '/world';
 
     if (!this.visited.has(path)) {
       this.visited.add(path);

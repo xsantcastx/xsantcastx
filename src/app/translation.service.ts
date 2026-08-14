@@ -33,12 +33,16 @@ export class TranslationService {
     // realm.model.ts and are proper nouns in the lore, untranslated in both
     // languages exactly as the tools page already renders them.
     'gfnav.home':         { en: 'Home',          es: 'Inicio' },
+    'gfnav.world':        { en: 'World',         es: 'Mundo' },
+    'gfnav.character':    { en: 'Character',     es: 'Personaje' },
     'gfnav.market':       { en: 'Market',        es: 'Mercado' },
+    'gfnav.forge':        { en: 'Forge',         es: 'Forja' },
     'gfnav.runeForge':    { en: 'Rune Forge',    es: 'Forja de Runas' },
     'gfnav.games':        { en: 'Games',         es: 'Juegos' },
     'gfnav.tools':        { en: 'Tools',         es: 'Herramientas' },
     'gfnav.codex':        { en: 'Codex',         es: 'Codice' },
     'gfnav.arena':        { en: 'Arena',         es: 'Arena' },
+    'gfnav.trials':       { en: 'Trials',        es: 'Pruebas' },
     'gfnav.mcp':          { en: 'MCP',           es: 'MCP' },
     'gfnav.profile':      { en: 'Profile',       es: 'Perfil' },
     'gfnav.warTable':     { en: 'War Table',     es: 'Mesa de guerra' },
@@ -72,8 +76,8 @@ export class TranslationService {
     'gfnav.menuLabel':    { en: 'Open the tome',  es: 'Abrir el tomo' },
     'gfnav.closeLabel':   { en: 'Close the tome', es: 'Cerrar el tomo' },
     'gfnav.tabsLabel':    { en: 'Primary',        es: 'Principal' },
-    'gfnav.tomeArtTitle': { en: 'The Godforge',   es: 'La Godforge' },
-    'gfnav.tomeArtSub':   { en: 'The Engine of Creation', es: 'El motor de la creacion' },
+    'gfnav.tomeArtTitle': { en: 'Eclipse Realms', es: 'Eclipse Realms' },
+    'gfnav.tomeArtSub':   { en: 'A persistent world', es: 'Un mundo persistente' },
 
     // ── Cloud save ───────────────────────────────────────────────────────
     // The chip in the command bar. "Sign In" rather than "Save Progress" on
@@ -90,6 +94,7 @@ export class TranslationService {
     'cloud.syncFailed':  { en: 'Sync failed', es: 'Fallo la sincronizacion' },
 
     'gfnav.hint.home':      { en: 'The forge entrance',              es: 'La entrada de la forja' },
+    'gfnav.hint.world':     { en: 'The world entrance',              es: 'La entrada al mundo' },
     'gfnav.hint.tools':     { en: '125 artifacts, five realms',      es: '125 artefactos, cinco reinos' },
     'gfnav.hint.arena':     { en: 'Games forged in the eclipse',     es: 'Juegos forjados en el eclipse' },
     'gfnav.hint.codex':     { en: 'Fragments of a broken sun',       es: 'Fragmentos de un sol roto' },
@@ -112,9 +117,9 @@ export class TranslationService {
     'gffoot.nextThing':   { en: 'The next thing is yours', es: 'Lo siguiente es tuyo' },
 
     // ── The entrance ─────────────────────────────────────────────────────
-    'godforge.status.name':         { en: 'The Godforge',   es: 'La Godforge' },
+    'godforge.status.name':         { en: 'Eclipse Realms', es: 'Eclipse Realms' },
     'godforge.status.online':       { en: 'Status: Online', es: 'Estado: en linea' },
-    'godforge.status.toolsForged':  { en: 'Tools Forged',   es: 'Herramientas forjadas' },
+    'godforge.status.toolsForged':  { en: 'Artifacts',      es: 'Artefactos' },
     'godforge.status.projectsLive': { en: 'Projects Live',  es: 'Proyectos activos' },
     'godforge.status.codexEntries': { en: 'Codex Entries',  es: 'Entradas del codice' },
     'godforge.status.forgeLevel':   { en: 'Forge Level',    es: 'Nivel de forja' },
@@ -1184,12 +1189,13 @@ export class TranslationService {
     // number under it is real: artifacts are registry tools, paths are the
     // prerendered routes, fragments are registered easter eggs.
     'godforge.hero.eyebrow':   { en: 'The Engine of Creation',                     es: 'El motor de la creacion' },
-    'godforge.hero.sub':       { en: 'Free Developer Tools Forged in the Eclipse', es: 'Herramientas gratis para desarrolladores forjadas en el Eclipse' },
+    'godforge.hero.title':     { en: 'Eclipse Realms',                             es: 'Eclipse Realms' },
+    'godforge.hero.sub':       { en: 'A persistent world of five Eclipse Realms — wander, collect, and forge your legend.', es: 'Un mundo persistente de cinco Reinos del Eclipse — explora, colecciona y forja tu leyenda.' },
     'godforge.hero.welcome':   { en: 'Welcome,',                                   es: 'Bienvenido,' },
     'godforge.hero.toNext':    { en: 'XP to',                                      es: 'XP para' },
     'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
     'godforge.hero.cta':       { en: 'Enter the Forge',                            es: 'Entra en la forja' },
-    'godforge.hero.ctaLive':   { en: 'Enter the Sanctum',                          es: 'Entra al santuario' },
+    'godforge.hero.ctaLive':   { en: 'Open your Character',                        es: 'Abre tu personaje' },
     'godforge.hero.orExplore': { en: 'or explore',                                 es: 'o explora' },
     'godforge.hero.theCodex':  { en: 'The Codex',                                  es: 'el Codice' },
 

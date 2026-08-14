@@ -31,7 +31,7 @@
 import { test, expect } from '@playwright/test';
 
 /** Routes that switch on `gf-art-route` and put a painting behind the page. */
-const ART_ROUTES = ['/arena', '/market', '/forge-keeper', '/blueprint', '/rune-forge'];
+const ART_ROUTES = ['/world/trials', '/market', '/character', '/blueprint', '/forge/runes'];
 
 /** Parses `rgb()` / `rgba()` into an alpha channel. Anything unparseable is
  *  treated as opaque, so a format this does not understand fails loudly

@@ -87,7 +87,7 @@ describe('IdleService', () => {
         { provide: QuestService, useValue: new FakeQuests() },
         { provide: EasterEggService, useValue: eggs },
         { provide: ToolMasteryService, useValue: new FakeMastery() },
-        { provide: Router, useValue: { url: '/home', events: new BehaviorSubject<any>(null) } },
+        { provide: Router, useValue: { url: '/world', events: new BehaviorSubject<any>(null) } },
       ],
     });
 
