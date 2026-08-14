@@ -164,7 +164,7 @@
         "type": 301
       },
       {
-        "//": Exact /forge only — do not use /forge/** or /forge/runes would loop.",
+        "//": "Exact /forge only — do not use /forge/** or /forge/runes would loop.",
         "source": "/forge",
         "destination": "/forge/runes",
         "type": 301
