@@ -199,7 +199,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), ((hover: none) and (max-height: 500px)) {
   .atlas__hotspots { display: none; }
   .atlas__list { display: flex; }
 }

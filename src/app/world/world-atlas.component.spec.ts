@@ -17,6 +17,7 @@ describe('WorldAtlasComponent', () => {
     }).compileComponents();
 
     i18n = TestBed.inject(TranslationService);
+    i18n.setLanguage('en');
     fixture = TestBed.createComponent(WorldAtlasComponent);
     fixture.detectChanges();
     root = fixture.nativeElement as HTMLElement;
@@ -41,6 +42,8 @@ describe('WorldAtlasComponent', () => {
     expect(Array.from(root.querySelectorAll('.atlas__label')).map(el => el.textContent?.trim()))
       .toEqual(ATLAS_HOTSPOTS.map(spot => spot.label));
     expect(root.querySelector('a[href="/world/fivefold-lock"]')).toBeNull();
+    expect(root.querySelector('[data-realm="godforge"]')).toBeNull();
+    expect(root.querySelectorAll('[data-realm]').length).toBe(10);
   });
 
   it('positions hotspots from normalized anchors, not pixels', () => {
@@ -71,8 +74,16 @@ describe('WorldAtlasComponent', () => {
       atlasHotspotsInMobileOrder().map(spot => `/world/realms/${spot.id}`),
     );
     expect(links.map(link => link.getAttribute('aria-label'))).toEqual(
-      atlasHotspotsInMobileOrder().map(spot => spot.accessibleLabel),
+      atlasHotspotsInMobileOrder().map(spot =>
+        `${spot.accessibleLabel}. Open the ${spot.label} dossier`,
+      ),
     );
+    for (const link of links) {
+      const name = link.getAttribute('aria-label') ?? '';
+      const cta = link.querySelector('.atlas__item-go')?.textContent?.trim() ?? '';
+      expect(cta).toBeTruthy();
+      expect(name).toContain(cta);
+    }
   });
 
   it('uses a responsive contained picture and decorative image text', () => {
