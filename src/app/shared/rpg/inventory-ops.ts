@@ -7,10 +7,15 @@
  *
  * A parse failure returns the legacy backup when one exists. A later retry
  * of the same stack mutation id is one grant or one consume.
+ *
+ * Stack ops are unioned by mutation id and capped at
+ * {@link INVENTORY_STACK_OPS_MAX}. C4/C5 should not lean on unbounded
+ * stack history without a retain/ack window like commerce receipts.
  */
 import { SLOT_IDS, type GameItem, type ItemType, type SlotId } from './item.model';
 import {
   INVENTORY_BAG_CAP,
+  INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
   type EconomyProjectionInput,
@@ -332,7 +337,7 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
 
   const stackOps = mergeStackOps(a.stackOps, b.stackOps);
   let records = dedupeRecordSlots([...byId.values()]);
-  records = evictRecordsToCap(records, INVENTORY_BAG_CAP, tombstones);
+  records = evictRecordsToCap(records, INVENTORY_BAG_CAP, tombstones, Date.now());
   return {
     version: 2,
     records,
@@ -388,6 +393,7 @@ function evictRecordsToCap(
   records: OwnedItemRecord[],
   cap: number,
   tombstones: InventoryTombstone[],
+  now: number,
 ): OwnedItemRecord[] {
   if (records.length <= cap) return records;
   const protectedRows = records.filter(isProtectedFromEviction);
@@ -406,8 +412,12 @@ function evictRecordsToCap(
     if (keepIds.has(row.id)) continue;
     tombstones.push({
       id: row.id,
-      revision: { ...row.revision, sequence: row.revision.sequence + 1 },
-      deletedAt: 0,
+      revision: {
+        hlc: nextHlc(row.revision.hlc, now),
+        deviceId: row.revision.deviceId,
+        sequence: row.revision.sequence + 1,
+      },
+      deletedAt: now,
     });
   }
   return records.filter(row => keepIds.has(row.id));
@@ -443,7 +453,9 @@ function mergeStackOps(a: InventoryStackOp[], b: InventoryStackOp[]): InventoryS
   for (const op of [...a, ...b]) {
     if (!byId.has(op.id)) byId.set(op.id, op);
   }
-  return [...byId.values()].sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
+  const merged = [...byId.values()].sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
+  if (merged.length <= INVENTORY_STACK_OPS_MAX) return merged;
+  return merged.slice(-INVENTORY_STACK_OPS_MAX);
 }
 
 function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
@@ -564,14 +576,30 @@ function parseStackOps(raw: unknown): InventoryStackOp[] {
 }
 
 function dedupeRecordSlots(records: OwnedItemRecord[]): OwnedItemRecord[] {
-  const taken = new Set<SlotId>();
-  return records.map(record => {
-    if (record.kind !== 'instance' || record.location.kind !== 'equipped') return record;
-    const slot = record.location.slotId;
-    if (taken.has(slot)) return { ...record, location: { kind: 'bag' } };
-    taken.add(slot);
-    return record;
-  });
+  const bySlot = new Map<SlotId, OwnedItemInstance[]>();
+  const rest: OwnedItemRecord[] = [];
+  for (const record of records) {
+    if (record.kind === 'instance' && record.location.kind === 'equipped') {
+      const held = bySlot.get(record.location.slotId) ?? [];
+      held.push(record);
+      bySlot.set(record.location.slotId, held);
+      continue;
+    }
+    rest.push(record);
+  }
+  const out = [...rest];
+  for (const claimants of bySlot.values()) {
+    claimants.sort((a, b) => {
+      const rev = compareRevision(b.revision, a.revision);
+      if (rev !== 0) return rev;
+      return a.id.localeCompare(b.id);
+    });
+    out.push(claimants[0]);
+    for (const loser of claimants.slice(1)) {
+      out.push({ ...loser, location: { kind: 'bag' } });
+    }
+  }
+  return out;
 }
 
 function projectionRecord(

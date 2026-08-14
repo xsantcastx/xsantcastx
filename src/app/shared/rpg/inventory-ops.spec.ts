@@ -15,6 +15,8 @@ import {
   tombstoneRecord,
 } from './inventory-ops';
 import {
+  INVENTORY_BAG_CAP,
+  INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
   type InventoryLedger,
   type InventoryRevision,
@@ -251,6 +253,121 @@ describe('inventory adapter (C3)', () => {
       deletedAt: now - 1,
     }));
     expect(pruneTombstones(many, now).length).toBe(256);
+  });
+
+  it('does not evict worn, explorer, soulbound, zero-value, or stack records', () => {
+    const worn = instance('worn', { location: { kind: 'equipped', slotId: 'charm1' }, sellValue: 1 });
+    const carried = instance('carried', { location: { kind: 'explorer', explorerId: 'e1' }, sellValue: 1 });
+    const bound = instance('bound', { soulbound: true, sellValue: 99 });
+    const worthless = instance('worthless', { sellValue: 0 });
+    const filler = Array.from({ length: INVENTORY_BAG_CAP }, (_, i) =>
+      instance(`f${i}`, { sellValue: 50 + i, acquiredAt: `2026-01-01T00:00:00.00${String(i).padStart(1, '0')}Z` }));
+    const merged = mergeInventoryLedgers(
+      ledger({ records: [worn, carried, bound, worthless] }),
+      ledger({ records: filler }),
+    );
+    const ids = new Set(merged.records.map(row => row.id));
+    expect(ids.has('worn')).toBe(true);
+    expect(ids.has('carried')).toBe(true);
+    expect(ids.has('bound')).toBe(true);
+    expect(ids.has('worthless')).toBe(true);
+    expect(merged.records.length).toBeGreaterThanOrEqual(INVENTORY_BAG_CAP);
+  });
+
+  it('eviction tombstones block a stale pre-eviction copy', () => {
+    const cheap = Array.from({ length: 180 }, (_, i) =>
+      instance(`c${i}`, { sellValue: 1, acquiredAt: '2026-01-01T00:00:00.000Z', revision: revision(1, 'phone') }));
+    const pricey = Array.from({ length: 180 }, (_, i) =>
+      instance(`p${i}`, { sellValue: 80, acquiredAt: '2026-02-01T00:00:00.000Z', revision: revision(1, 'tablet') }));
+    const merged = mergeInventoryLedgers(
+      ledger({ records: cheap }),
+      ledger({ records: pricey }),
+    );
+    expect(merged.records.length).toBe(INVENTORY_BAG_CAP);
+    const evicted = cheap.find(row => !merged.records.some(kept => kept.id === row.id));
+    expect(evicted).toBeTruthy();
+    const stale = ledger({ records: [evicted!], hlc: 1 });
+    const again = mergeInventoryLedgers(merged, stale);
+    expect(again.records.find(row => row.id === evicted!.id)).toBeUndefined();
+    expect(again.tombstones.find(row => row.id === evicted!.id)).toBeTruthy();
+  });
+
+  it('same-slot merge keeps the higher revision and is commutative', () => {
+    const sword = instance('sword', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'weapon' },
+      revision: revision(4, 'phone'),
+    });
+    const hammer = instance('hammer', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'weapon' },
+      revision: revision(9, 'tablet'),
+    });
+    const ab = mergeInventoryLedgers(ledger({ records: [sword] }), ledger({ records: [hammer] }));
+    const ba = mergeInventoryLedgers(ledger({ records: [hammer] }), ledger({ records: [sword] }));
+    const loc = (id: string, blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === id) as OwnedItemInstance | undefined)?.location;
+    expect(loc('hammer', ab)).toEqual({ kind: 'equipped', slotId: 'weapon' });
+    expect(loc('sword', ab)).toEqual({ kind: 'bag' });
+    expect(loc('hammer', ba)).toEqual(loc('hammer', ab));
+    expect(loc('sword', ba)).toEqual(loc('sword', ab));
+  });
+
+  it('sell on A and equip on B merge both ways by revision', () => {
+    const base = instance('helm', { type: 'artifact', revision: revision(1, 'seed') });
+    const sold = tombstoneRecord(
+      ledger({ records: [base], hlc: 8 }),
+      'helm',
+      revision(8, 'phone'),
+      Date.now(),
+    );
+    const worn = ledger({
+      records: [instance('helm', {
+        type: 'artifact',
+        location: { kind: 'equipped', slotId: 'head' },
+        revision: revision(3, 'tablet'),
+      })],
+      hlc: 3,
+    });
+    const ab = mergeInventoryLedgers(sold, worn);
+    const ba = mergeInventoryLedgers(worn, sold);
+    expect(ab.records.find(row => row.id === 'helm')).toBeUndefined();
+    expect(ba.records.find(row => row.id === 'helm')).toBeUndefined();
+    expect(ab.tombstones.find(row => row.id === 'helm')?.revision.hlc).toBe(8);
+    expect(ba.tombstones.find(row => row.id === 'helm')?.revision.hlc).toBe(8);
+  });
+
+  it('HLC order ignores acquiredAt and a future wall clock is still deterministic', () => {
+    expect(compareRevision(revision(2, 'phone'), revision(9, 'tablet'))).toBeLessThan(0);
+    const past = instance('ring', {
+      revision: revision(80, 'phone'),
+      acquiredAt: '2010-01-01T00:00:00.000Z',
+      location: { kind: 'bag' },
+    });
+    const future = instance('ring', {
+      revision: revision(20, 'tablet'),
+      acquiredAt: '2040-01-01T00:00:00.000Z',
+      location: { kind: 'equipped', slotId: 'charm1' },
+    });
+    const ab = mergeInventoryLedgers(ledger({ records: [past] }), ledger({ records: [future] }));
+    const ba = mergeInventoryLedgers(ledger({ records: [future] }), ledger({ records: [past] }));
+    expect((ab.records[0] as OwnedItemInstance).location).toEqual({ kind: 'bag' });
+    expect((ba.records[0] as OwnedItemInstance).location).toEqual({ kind: 'bag' });
+  });
+
+  it('caps stack ops so the blob cannot grow without bound', () => {
+    const ops = Array.from({ length: INVENTORY_STACK_OPS_MAX + 40 }, (_, i) => ({
+      id: `grant:${i}`,
+      stackKey: 'cinder-ore',
+      kind: 'grant' as const,
+      quantity: 1,
+      hlc: i + 1,
+      deviceId: 'phone',
+      sequence: i + 1,
+    }));
+    const merged = mergeInventoryLedgers(ledger({ stackOps: ops.slice(0, 200) }), ledger({ stackOps: ops.slice(100) }));
+    expect(merged.stackOps.length).toBe(INVENTORY_STACK_OPS_MAX);
+    expect(merged.stackOps[0].id).toBe(`grant:${ops.length - INVENTORY_STACK_OPS_MAX}`);
   });
 
   it('repeated delivery of the same two ledgers does not duplicate items', () => {

@@ -14,8 +14,14 @@
  * | Economy artifacts/cosmetics    | godforge-economy    | read-only projection |
  * | Rune Forge runes/runewords     | godforge-runes      | read-only projection |
  *
- * Hydration: Economy loads first. Inventory then projects Economy (and,
+ * Hydration: Economy loads first. Inventory then can project Economy (and,
  * via a pure helper, the rune ledger). A projection never writes back.
+ *
+ * Today's Character / explorer UI still reads Economy and Rune Forge from
+ * those services. `itemsFromLedger` / the published snapshot contain only
+ * `source: 'inventory'` GameItems so Market artifacts, cosmetics, and runes
+ * do not appear in the existing bag. `projectEconomy` / `projectRunes` exist
+ * for C4's unified bag and for tests.
  *
  * C5 slot map (authored, not applied here):
  *   head→head, chest→chest, weapon→weapon, offhand→off-hand;
@@ -31,6 +37,8 @@ export const INVENTORY_LEGACY_VERSION = 1 as const;
 /** Same window as ledger ACK_STALE_MS: tombstones survive this long after delete. */
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 export const INVENTORY_TOMBSTONE_MAX = 256;
+/** Hard cap on stack grant/consume ops. Oldest-by-hlc evict after this. */
+export const INVENTORY_STACK_OPS_MAX = 256;
 export const INVENTORY_BAG_CAP = 250;
 
 export type OwnedItemCategory =

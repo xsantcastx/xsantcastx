@@ -171,7 +171,10 @@ export class InventoryService {
     return this.items.some(i => i.rarity === rarity);
   }
 
-  /** Read-only Economy projections. Never written back to the ledger. */
+  /**
+   * Read-only Economy projections for C4. Not mixed into `snapshot.items`.
+   * Character still reads artifacts/cosmetics from EconomyService.
+   */
   projectedFromEconomy(): ReturnType<typeof projectEconomy> {
     return projectEconomy({
       artifacts: this.economy.snapshot.artifacts,
@@ -374,12 +377,18 @@ export class InventoryService {
     const gold = item.sellValue;
     const row = this.ledger.records.find(entry => entry.id === itemId);
     const gone = this.advanceRevision(row?.revision);
+    const previous = this.ledger;
     this.ledger = {
       ...tombstoneRecord(this.ledger, itemId, gone.revision, Date.now()),
       goldFromSales: this.ledger.goldFromSales + gold,
       sold: this.ledger.sold + 1,
     };
-    this.save();
+    // Tombstone is on disk before Gold mints. If the cache write missed, revert
+    // so a reload cannot pair minted Gold with a still-sellable item.
+    if (!this.save()) {
+      this.ledger = previous;
+      return 0;
+    }
 
     // The item is removed and flushed before the Gold is minted. If `earnGold`
     // threw, the alternative order would leave a sold item still in the bag,
@@ -412,12 +421,16 @@ export class InventoryService {
       const gone = this.advanceRevision(row?.revision);
       next = tombstoneRecord(next, item.id, gone.revision, Date.now());
     }
+    const previous = this.ledger;
     this.ledger = {
       ...next,
       goldFromSales: this.ledger.goldFromSales + gold,
       sold: this.ledger.sold + doomed.length,
     };
-    this.save();
+    if (!this.save()) {
+      this.ledger = previous;
+      return 0;
+    }
     this.economy.earnGold(gold, 'sale');
     this.publish();
     return gold;
@@ -444,9 +457,11 @@ export class InventoryService {
     }
   }
 
-  private save(): void {
-    if (!this.isBrowser) return;
+  private save(): boolean {
+    if (!this.isBrowser) return false;
+    const raw = JSON.stringify(this.ledger);
     this.store.write(INVENTORY_KEY, this.ledger);
+    return this.store.readRaw(INVENTORY_KEY) === raw;
   }
 
   private publish(): void {

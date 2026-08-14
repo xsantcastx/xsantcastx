@@ -88,4 +88,22 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.items.some(row => row.id.startsWith('econ:'))).toBe(false);
     expect(inventory.projectedFromEconomy().some(row => row.id === 'econ:artifact:obsidian-heart')).toBe(true);
   });
+
+  it('reverts a sell when the cache write does not land', () => {
+    const gold = TestBed.inject(EconomyService).snapshot.gold;
+    memory.write = () => { /* swallow */ };
+    expect(inventory.sell('old-charm')).toBe(0);
+    expect(inventory.itemById('old-charm')).toBeTruthy();
+    expect(TestBed.inject(EconomyService).snapshot.gold).toBe(gold);
+  });
+
+  it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
+    const registry = TestBed.inject(LocalSaveRegistry);
+    memory.attached = false;
+    registry.rehydrate(INVENTORY_KEY);
+    expect(coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!))?.legacyBackup).not.toBeNull();
+    memory.attached = true;
+    registry.rehydrate(INVENTORY_KEY);
+    expect(coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!))?.legacyBackup).toBeNull();
+  });
 });
