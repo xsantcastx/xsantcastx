@@ -35,6 +35,7 @@ import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
+import { InspectComponent } from './shared/entity/inspect.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
 import { PwaService } from './shared/pwa.service';
@@ -74,7 +75,8 @@ import { PwaService } from './shared/pwa.service';
     CloudSaveButtonComponent,
     GoldTickerComponent,
     GodforgeLoaderComponent,
-    InstallPromptComponent
+    InstallPromptComponent,
+    InspectComponent
 ],
   providers: [
     provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),

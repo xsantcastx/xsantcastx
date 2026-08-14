@@ -87,6 +87,7 @@ import { EclipseRarity, RARITY_ORDER, rarityOf } from '../rarity/rarity.model';
 import { CardArt, artifactCard } from '../rune-forge/rune-cards';
 import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
 import { ArtSceneComponent } from '../art-scene/art-scene.component';
+import { InspectButtonComponent } from '../entity/inspect-button.component';
 
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
@@ -241,7 +242,7 @@ const TRENDING: { id: string; sales: number }[] = [
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [CommonModule, RouterLink, ArtSceneComponent],
+  imports: [CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.css'],

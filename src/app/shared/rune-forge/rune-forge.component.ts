@@ -40,6 +40,7 @@ import {
   tierOf,
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
+import { InspectService } from '../entity/inspect.service';
 
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
@@ -99,6 +100,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly scrolls = inject(LoreScrollService);
   private readonly doc = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly inspectOverlay = inject(InspectService);
   private readonly subs = new Subscription();
 
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
@@ -344,6 +346,9 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
   inspect(cell: RuneCell): void {
     this.inspecting = this.inspecting?.id === cell.rune.id ? null : cell.rune;
+    if (cell.known) {
+      this.inspectOverlay.open({ type: 'rune', id: cell.rune.id });
+    }
     this.cdr.markForCheck();
   }
 

@@ -1,0 +1,96 @@
+@if (view.open) {
+  <div class="qi-root" [class.qi-root--sheet]="sheet" (keydown)="onKeydown($event)">
+    <div class="qi__backdrop" (click)="close()" aria-hidden="true"></div>
+
+    <aside
+      class="qi"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'qi-title'"
+      [attr.aria-label]="view.resolution?.presentation?.accessibleName || t('inspect.title')"
+      [attr.aria-busy]="view.resolution?.state === 'loading'"
+      [attr.data-state]="view.resolution?.state"
+      [style.--rarity]="view.resolution?.presentation?.rarity?.color"
+      [style.--rarity-glow]="view.resolution?.presentation?.rarity?.glow">
+
+      <header class="qi__head">
+        <div>
+          <p class="qi__kind">{{ view.resolution?.presentation?.kindLabel || t('inspect.title') }}</p>
+          <h2 #titleEl id="qi-title" class="qi__title" tabindex="-1">
+            @switch (view.resolution?.state) {
+              @case ('loading') { {{ t('inspect.loading') }} }
+              @case ('missing') { {{ t('inspect.missingTitle') }} }
+              @case ('error') { {{ t('inspect.errorTitle') }} }
+              @default { {{ view.resolution?.presentation?.name || t('inspect.title') }} }
+            }
+          </h2>
+        </div>
+        <button type="button" class="qi__close close-btn" (click)="close()" [attr.aria-label]="t('inspect.close')">
+          {{ t('inspect.close') }}
+        </button>
+      </header>
+
+      @if (view.resolution?.state === 'loading') {
+        <p class="qi__status" role="status">{{ t('inspect.loading') }}</p>
+      }
+
+      @if (view.resolution?.state === 'missing') {
+        <p class="qi__status">{{ view.resolution?.message || t('inspect.missing', { name: view.ref?.id || '' }) }}</p>
+        <button type="button" class="qi__btn" (click)="close()">{{ t('inspect.close') }}</button>
+      }
+
+      @if (view.resolution?.state === 'error') {
+        <p class="qi__status" role="alert">{{ view.resolution?.message || t('inspect.error') }}</p>
+        @if (view.resolution?.retryable) {
+          <button type="button" class="qi__btn" (click)="retry()">{{ t('inspect.retry') }}</button>
+        }
+      }
+
+      @if (view.resolution?.state === 'ready' && view.resolution?.presentation; as place) {
+        <div class="qi__hero">
+          @if (place.art) {
+            <img class="qi__art" [src]="place.art.src" [alt]="place.art.alt" width="72" height="72" decoding="async">
+          } @else {
+            <span class="qi__glyph" aria-hidden="true">{{ place.glyphFallback }}</span>
+          }
+          <p class="qi__sr">{{ place.accessibleName }}</p>
+        </div>
+
+        @if (place.rarity) {
+          <p class="qi__rarity">{{ place.rarity.label }}</p>
+        }
+
+        <p class="qi__summary">{{ place.summary }}</p>
+        @if (place.lore) {
+          <p class="qi__lore">{{ place.lore }}</p>
+        }
+
+        @if (place.facts.length) {
+          <dl class="qi__facts">
+            @for (fact of place.facts; track fact.label) {
+              <div>
+                <dt>{{ fact.label }}</dt>
+                <dd>
+                  <span aria-hidden="true">{{ fact.value }}</span>
+                  <span class="qi__sr">{{ factValue(fact) }}</span>
+                </dd>
+              </div>
+            }
+          </dl>
+        }
+
+        @if (view.resolution?.actions?.length) {
+          <ul class="qi__actions">
+            @for (action of view.resolution?.actions ?? []; track action.id) {
+              @if (action.href && action.enabled) {
+                <li>
+                  <a class="qi__btn qi__btn--link" [routerLink]="action.href" (click)="close()">{{ action.label }}</a>
+                </li>
+              }
+            }
+          </ul>
+        }
+      }
+    </aside>
+  </div>
+}
