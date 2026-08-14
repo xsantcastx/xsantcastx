@@ -1,11 +1,9 @@
 /**
- * equipment-panel.component.ts — C4 Character loadout presentation.
+ * equipment-panel.component.ts — C5 loadout actions.
  *
- * Paper-doll shell + item-tile bag. Slots announce empty/equipped/locked and
- * open Inspect. They do not equip or unequip — that is C5.
- *
- * Sell (and its confirm dialog) still mutate the bag, same as the previous
- * panel. This surface is not read-only; only equipment writes are closed.
+ * Closed slots inspect or receive an armed item. Unequip lives on the
+ * expanded row. Charms cannot be worn. Overlays render only when a slot
+ * has an approved mapping and is filled.
  */
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
@@ -14,16 +12,15 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
-import { InspectService } from '../entity/inspect.service';
 import { formatCompact } from '../economy/economy.model';
 import { InventoryService, InventorySnapshot, MAX_INVENTORY } from './inventory.service';
 import { MagicFindService } from './magic-find.service';
 import {
   GameItem,
   rarityLabel,
+  slotAccepts,
 } from './item.model';
 import {
-  LEGACY_CHARM_SLOTS,
   PAPER_DOLL_SLOTS,
   PAPER_DOLL_SRC,
   type PaperDollSlotManifest,
@@ -51,7 +48,6 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   readonly inventory = inject(InventoryService);
   readonly magicFind = inject(MagicFindService);
   private readonly i18n = inject(TranslationService);
-  private readonly inspect = inject(InspectService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -126,10 +122,26 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.snap.equipped[slot.liveSlot] ?? null;
   }
 
-  get legacyCharms(): GameItem[] {
-    return LEGACY_CHARM_SLOTS
-      .map(slot => this.snap.equipped[slot])
-      .filter((item): item is GameItem => !!item);
+  get retiredCharms(): GameItem[] {
+    return this.snap.items.filter(item => item.type === 'charm');
+  }
+
+  get armed(): GameItem | null {
+    return this.snap.bag.find(item => item.id === this.selectedId) ?? null;
+  }
+
+  get expandedItem(): GameItem | null {
+    const slot = this.dollSlots.find(row => row.slotId === this.selectedSlot);
+    return slot ? this.itemInDoll(slot) : null;
+  }
+
+  get filledOverlays(): PaperDollSlotManifest[] {
+    return this.dollSlots.filter(slot => slot.overlay && this.itemInDoll(slot));
+  }
+
+  isTarget(slot: PaperDollSlotManifest): boolean {
+    const item = this.armed;
+    return !!item && !!slot.liveSlot && slotAccepts(slot.liveSlot, item);
   }
 
   get visible(): GameItem[] {
@@ -157,13 +169,29 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.t('loadout.slot.announce.filled', { name, item: item.name });
   }
 
-  onSlotClick(slot: PaperDollSlotManifest, event: Event): void {
+  onSlotClick(slot: PaperDollSlotManifest): void {
+    const armed = this.armed;
+    if (armed && slot.liveSlot && slotAccepts(slot.liveSlot, armed)) {
+      this.inventory.equip(armed.id, slot.liveSlot);
+      this.selectedId = null;
+      this.selectedSlot = slot.slotId;
+      return;
+    }
     this.selectedSlot = slot.slotId;
-    const item = this.itemInDoll(slot);
-    if (item) this.inspect.open({ type: 'item', id: item.id }, { trigger: event.currentTarget });
+  }
+
+  unequipExpanded(): void {
+    const worn = this.expandedItem;
+    if (!worn) return;
+    this.inventory.unequip(worn.id);
+    this.selectedSlot = null;
   }
 
   select(item: GameItem): void {
+    if (item.type === 'charm') {
+      this.selectedId = this.selectedId === item.id ? null : item.id;
+      return;
+    }
     this.selectedId = this.selectedId === item.id ? null : item.id;
   }
 

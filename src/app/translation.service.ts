@@ -1306,7 +1306,8 @@ export class TranslationService {
     // ─── C4 Character loadout ─────────────────────────────────────────────
     'loadout.eyebrow': { en: 'Loadout', es: 'Equipamiento' },
     'loadout.title': { en: 'What you carry into the dark', es: 'Lo que llevas a la oscuridad' },
-    'loadout.tag': { en: 'Paper doll and bag. Inspect only — equipping comes next.', es: 'Muneco y bolsa. Solo inspeccion — equipar llega despues.' },
+    'loadout.tag': { en: 'Arm a bag item, then tap a highlighted slot. Closed slots never unequip.', es: 'Arma un objeto de la bolsa y toca una ranura marcada. Cerrado nunca desequipa.' },
+    'loadout.unequip': { en: 'Unequip', es: 'Desequipar' },
     'loadout.stat.gold': { en: 'Gold/sec', es: 'Oro/s' },
     'loadout.stat.mf': { en: 'MF', es: 'SM' },
     'loadout.stat.xp': { en: 'XP', es: 'XP' },
