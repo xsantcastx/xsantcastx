@@ -225,6 +225,8 @@ export class EconomyService implements OnDestroy {
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
   private deviceId = '';
   private opSeq = 0;
+  private pendingGold = 0;
+  private pendingEssence = 0;
   private lastClickAt = 0;
   /**
    * Recent strike timestamps, for the Click Frenzy achievement. In memory only
@@ -349,6 +351,8 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.state = this.load();
+    this.pendingGold = 0;
+    this.pendingEssence = 0;
     this.bindDevice();
     if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
     this.publish();
@@ -401,6 +405,7 @@ export class EconomyService implements OnDestroy {
     this.state.gold += amount;
     this.state.runGoldEarned += amount;
     this.state.totalGoldEarned += amount;
+    this.pendingGold += amount;
   }
 
   /**
@@ -475,6 +480,7 @@ export class EconomyService implements OnDestroy {
     if (!this.isBrowser || amount <= 0) return 0;
 
     this.state.eclipseEssence += amount;
+    this.pendingEssence += amount;
     this.persistSoon();
     this.publish();
     this.gain$$.next({ currency: 'essence', amount, source });
@@ -1011,7 +1017,9 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.state = emptyEconomy();
-    this.opSeq = 0;
+    this.pendingGold = 0;
+    this.pendingEssence = 0;
+    this.rotateDeviceId();
     this.state.lastIdleAt = Date.now();
     this.recentClicks = [];
     this.store.remove(ECONOMY_KEY);
@@ -1051,6 +1059,7 @@ export class EconomyService implements OnDestroy {
         ops: parsed.ops ?? [],
         origin: parsed.origin ?? null,
         hlc: parsed.hlc ?? 0,
+        applied: parsed.applied ?? {},
       };
     } catch {
       return emptyEconomy();
@@ -1070,6 +1079,7 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.lastPersistAt = Date.now();
+    this.emitPendingCredits();
     this.store.write(ECONOMY_KEY, this.state);
   }
 
@@ -1077,11 +1087,33 @@ export class EconomyService implements OnDestroy {
    * Append an idempotent op before the matching state mutation.
    *
    * The first op on a device freezes `origin` so a later merge can replay from
-   * a common ancestor instead of mixing last-write-wins Gold with unioned
-   * purchases. Idle credits and Essence mints are deliberately not ops: they
-   * are monotone and survive as unexplained deltas on merge.
+   * a common ancestor. Credits accumulate in memory and become one op per
+   * flush so a second of idle does not write a second of log.
    */
   private recordOp(
+    kind: EconomyOpKind,
+    fields: Pick<EconomyOp, 'amount' | 'itemId' | 'slot' | 'extra'> = {},
+  ): void {
+    this.emitPendingCredits();
+    this.appendOp(kind, fields);
+  }
+
+  private emitPendingCredits(): void {
+    if (this.pendingGold <= 0 && this.pendingEssence <= 0) return;
+    this.ensureOrigin();
+    if (this.pendingGold > 0) {
+      const n = this.pendingGold;
+      this.pendingGold = 0;
+      this.appendOp('credit-gold', { amount: n });
+    }
+    if (this.pendingEssence > 0) {
+      const n = this.pendingEssence;
+      this.pendingEssence = 0;
+      this.appendOp('credit-essence', { amount: n });
+    }
+  }
+
+  private appendOp(
     kind: EconomyOpKind,
     fields: Pick<EconomyOp, 'amount' | 'itemId' | 'slot' | 'extra'> = {},
   ): void {
@@ -1104,7 +1136,19 @@ export class EconomyService implements OnDestroy {
   private ensureOrigin(): void {
     if (this.state.origin) return;
     const ledger = coerceLedger(this.state);
-    this.state.origin = ledger ? snapshotOf(ledger) : null;
+    if (!ledger) return;
+    const snap = snapshotOf(ledger);
+    snap.gold = Math.max(0, snap.gold - this.pendingGold);
+    snap.eclipseEssence = Math.max(0, snap.eclipseEssence - this.pendingEssence);
+    snap.totalGoldEarned = Math.max(0, snap.totalGoldEarned - this.pendingGold);
+    snap.runGoldEarned = Math.max(0, snap.runGoldEarned - this.pendingGold);
+    this.state.origin = snap;
+  }
+
+  private rotateDeviceId(): void {
+    this.deviceId = this.newDeviceId();
+    this.opSeq = 0;
+    try { localStorage.setItem(DEVICE_KEY, this.deviceId); } catch { /* private mode */ }
   }
 
   private bindDevice(): void {
@@ -1116,14 +1160,18 @@ export class EconomyService implements OnDestroy {
     try {
       const held = localStorage.getItem(DEVICE_KEY);
       if (held) return held;
-      const id = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `d-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const id = this.newDeviceId();
       localStorage.setItem(DEVICE_KEY, id);
       return id;
     } catch {
-      return this.deviceId || `d-${Date.now()}`;
+      return this.deviceId || this.newDeviceId();
     }
+  }
+
+  private newDeviceId(): string {
+    return typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `d-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   /**

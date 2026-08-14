@@ -12,12 +12,28 @@
  * that is the conflict policy. First-in-order keeps the item; the other device
  * loses the purchase on the next sync rather than minting Gold.
  *
+ * Ordering is deterministic, not chronological. A hybrid logical clock only
+ * guarantees per-device monotonicity after a clock moves backward. Two
+ * disconnected devices have no shared time: a future-dated clock produces
+ * larger HLC values and those ops sort later, even if they happened first.
+ * Concurrent offline purchases therefore have a stable but arbitrary winner
+ * (hlc, then deviceId, then seq, then id). A server-assigned sequence would
+ * be the only real-world order; this client merge does not claim to be one.
+ *
+ * Credits (idle Gold, strikes, Essence) are ops too, so two devices that
+ * earn independently keep both amounts. Client merge never folds the log
+ * into origin: an offline sibling can still hold the pre-fold ops, and
+ * replaying them onto a folded origin would double-apply. Compaction is
+ * only safe behind a watermark both devices have acknowledged.
+ *
  * Blobs with no ops (every save from before this file) merge with the old
  * conservative max/union rule. A missing timestamp is not proof that a ledger
  * is older, so a stamped 100 Gold must not overwrite a legacy 9,999.
  */
 
 export type EconomyOpKind =
+  | 'credit-gold'
+  | 'credit-essence'
   | 'spend-gold'
   | 'buy-upgrade'
   | 'buy-artifact'
@@ -27,6 +43,31 @@ export type EconomyOpKind =
   | 'grant-cosmetic'
   | 'equip'
   | 'prestige';
+
+const OP_KINDS = new Set<EconomyOpKind>([
+  'credit-gold',
+  'credit-essence',
+  'spend-gold',
+  'buy-upgrade',
+  'buy-artifact',
+  'buy-cosmetic',
+  'buy-enchantment',
+  'grant-runeword',
+  'grant-cosmetic',
+  'equip',
+  'prestige',
+]);
+
+const AMOUNT_KINDS = new Set<EconomyOpKind>([
+  'credit-gold',
+  'credit-essence',
+  'spend-gold',
+  'buy-upgrade',
+  'buy-artifact',
+  'buy-cosmetic',
+  'buy-enchantment',
+  'prestige',
+]);
 
 export interface EconomyOp {
   /** `${deviceId}:${seq}` — stable, so a retry cannot debit twice. */
@@ -40,9 +81,12 @@ export interface EconomyOp {
   slot?: string;
   /** Enchantment expiry, prestige shardsGranted, or a granted cosmetic variant. */
   extra?: number | string;
-  /** Hybrid logical clock. Ordering uses this, never raw Date.now(). */
+  /**
+   * Hybrid logical clock. Tie-breaks a total order; it is not a claim that
+   * this op happened after every smaller HLC on another device.
+   */
   hlc: number;
-  /** Wall clock, informational only. */
+  /** Wall clock, informational only. Never used to decide a merge. */
   wall: number;
 }
 
@@ -74,10 +118,12 @@ export interface EconomyLedger {
   ops: EconomyOp[];
   origin: EconomyLedger | null;
   hlc: number;
+  /**
+   * Per-device max seq already folded into this snapshot. Replay skips any
+   * op with seq <= applied[deviceId]. Empty until something has been compacted.
+   */
+  applied: Record<string, number>;
 }
-
-const OP_SOFT_CAP = 400;
-const OP_KEEP = 300;
 
 export function emptyLedger(): EconomyLedger {
   return {
@@ -108,10 +154,16 @@ export function emptyLedger(): EconomyLedger {
     ops: [],
     origin: null,
     hlc: 0,
+    applied: {},
   };
 }
 
-/** Compare two ops for a total, commutative order. */
+/**
+ * Compare two ops for a total, commutative order.
+ *
+ * This is the conflict policy for concurrent offline purchases: a stable
+ * arbitrary winner, not a reconstruction of real-world time.
+ */
 export function compareOps(a: EconomyOp, b: EconomyOp): number {
   if (a.hlc !== b.hlc) return a.hlc - b.hlc;
   if (a.deviceId !== b.deviceId) return a.deviceId < b.deviceId ? -1 : 1;
@@ -140,6 +192,7 @@ export function snapshotOf(state: EconomyLedger): EconomyLedger {
     enchantments: state.enchantments.map(e => ({ ...e })),
     ops: [],
     origin: null,
+    applied: { ...state.applied },
   };
 }
 
@@ -154,6 +207,7 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
     enchantments: state.enchantments.map(e => ({ ...e })),
     ops: state.ops.map(o => ({ ...o })),
     origin: state.origin ? snapshotOf(state.origin) : null,
+    applied: { ...state.applied },
   };
 }
 
@@ -164,7 +218,16 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
  */
 export function applyOp(state: EconomyLedger, op: EconomyOp): boolean {
   const amount = numberOf(op.amount);
+  if (AMOUNT_KINDS.has(op.kind) && amount <= 0) return false;
   switch (op.kind) {
+    case 'credit-gold':
+      state.gold += amount;
+      state.runGoldEarned += amount;
+      state.totalGoldEarned += amount;
+      return true;
+    case 'credit-essence':
+      state.eclipseEssence += amount;
+      return true;
     case 'spend-gold':
       if (state.gold < amount) return false;
       state.gold -= amount;
@@ -243,8 +306,24 @@ export function applyOps(origin: EconomyLedger, ops: EconomyOp[]): EconomyLedger
   const state = cloneLedger(origin);
   state.ops = [];
   state.origin = null;
-  for (const op of sortOps(ops)) applyOp(state, op);
+  const applied = { ...origin.applied };
+  for (const op of sortOps(ops)) {
+    if (isApplied(applied, op)) continue;
+    applyOp(state, op);
+  }
+  state.applied = applied;
   return state;
+}
+
+export function isApplied(applied: Record<string, number>, op: EconomyOp): boolean {
+  return op.seq <= (applied[op.deviceId] ?? 0);
+}
+
+export function appliedCount(applied: Record<string, number> | undefined): number {
+  if (!applied) return 0;
+  let n = 0;
+  for (const seq of Object.values(applied)) n += seq;
+  return n;
 }
 
 export function maxSeqFor(deviceId: string, ops: readonly EconomyOp[]): number {
@@ -255,15 +334,32 @@ export function maxSeqFor(deviceId: string, ops: readonly EconomyOp[]): number {
   return max;
 }
 
-export function compactOps(origin: EconomyLedger, ops: EconomyOp[]): {
-  origin: EconomyLedger;
-  ops: EconomyOp[];
-} {
-  if (ops.length <= OP_SOFT_CAP) return { origin, ops: sortOps(ops) };
+/**
+ * Fold a prefix of the log into origin and record a per-device watermark.
+ *
+ * Not used by client merge. An offline sibling can still hold the original
+ * origin plus the full log; folding on one device and then conservatively
+ * merging origins would replay the prefix twice. Callers may compact only
+ * after every device has acknowledged this watermark.
+ */
+export function compactOps(
+  origin: EconomyLedger,
+  ops: EconomyOp[],
+  keep = 300,
+): { origin: EconomyLedger; ops: EconomyOp[] } {
   const sorted = sortOps(ops);
-  const fold = sorted.slice(0, sorted.length - OP_KEEP);
-  const keep = sorted.slice(sorted.length - OP_KEEP);
-  return { origin: applyOps(origin, fold), ops: keep };
+  if (sorted.length <= keep) return { origin, ops: sorted };
+  const fold = sorted.slice(0, sorted.length - keep);
+  const rest = sorted.slice(sorted.length - keep);
+  const next = applyOps(origin, fold);
+  const applied = { ...origin.applied };
+  for (const op of fold) {
+    applied[op.deviceId] = Math.max(applied[op.deviceId] ?? 0, op.seq);
+  }
+  next.applied = applied;
+  next.ops = [];
+  next.origin = null;
+  return { origin: next, ops: rest };
 }
 
 /**
@@ -279,10 +375,9 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
 
   const importA = asImport(a);
   const importB = asImport(b);
-  const origin = conservativeMerge(importA.origin, importB.origin);
   const ops = unionOps(importA.ops, importB.ops);
-  const compact = compactOps(origin, ops);
-  const replayed = applyOps(compact.origin, compact.ops);
+  const origin = pickOrigin(importA.origin, importB.origin);
+  const replayed = applyOps(origin, ops);
 
   replayed.gold += Math.max(unexplainedGold(a, importA), unexplainedGold(b, importB));
   replayed.eclipseEssence += Math.max(
@@ -290,11 +385,14 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
     unexplainedEssence(b, importB),
   );
 
-  // Monotone counters are not in the op log (idle, clicks, wiring-layer copies).
+  // Clicks / streak / wiring-layer copies are still snapshot-maxed.
   replayed.aetherFragments = maxOf(a.aetherFragments, b.aetherFragments);
   replayed.noxFragments = maxOf(a.noxFragments, b.noxFragments);
   replayed.relicDust = maxOf(a.relicDust, b.relicDust);
-  replayed.totalGoldEarned = maxOf(a.totalGoldEarned, b.totalGoldEarned);
+  replayed.totalGoldEarned = Math.max(
+    replayed.totalGoldEarned,
+    maxOf(a.totalGoldEarned, b.totalGoldEarned),
+  );
   replayed.totalClicks = maxOf(a.totalClicks, b.totalClicks);
   replayed.autoClicks = maxOf(a.autoClicks, b.autoClicks);
   replayed.streakDays = maxOf(a.streakDays, b.streakDays);
@@ -302,26 +400,36 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.levelsPaid = maxOf(a.levelsPaid, b.levelsPaid);
   replayed.streakWeeksPaid = maxOf(a.streakWeeksPaid, b.streakWeeksPaid);
   replayed.lastIdleAt = maxOf(a.lastIdleAt, b.lastIdleAt);
-  // Shards/prestige: take the replayed values (ops include prestige) but never
-  // drop a monotone counter a legacy blob already held.
   replayed.eclipseShards = Math.max(replayed.eclipseShards, maxOf(a.eclipseShards, b.eclipseShards));
   replayed.shardsGranted = Math.max(replayed.shardsGranted, maxOf(a.shardsGranted, b.shardsGranted));
   replayed.prestigeCount = Math.max(replayed.prestigeCount, maxOf(a.prestigeCount, b.prestigeCount));
   replayed.runGoldEarned = Math.max(replayed.runGoldEarned, 0);
 
-  replayed.ops = compact.ops;
-  replayed.origin = compact.origin;
-  replayed.hlc = Math.max(a.hlc, b.hlc, ...compact.ops.map(o => o.hlc));
+  // Never fold here. The merged log stays the full union.
+  replayed.ops = sortOps(ops);
+  replayed.origin = origin;
+  replayed.hlc = Math.max(a.hlc, b.hlc, ...ops.map(o => o.hlc));
   replayed.version = 2;
   return replayed;
 }
 
+/**
+ * Origins that have never been compacted can be max/unioned (legacy imports).
+ * Once either side has a watermark, take the more-applied origin whole so
+ * a folded prefix is not conservative-merged with the pre-fold gold pile
+ * and then replayed again.
+ */
+function pickOrigin(a: EconomyLedger, b: EconomyLedger): EconomyLedger {
+  const aN = appliedCount(a.applied);
+  const bN = appliedCount(b.applied);
+  if (aN === 0 && bN === 0) return conservativeMerge(a, b);
+  return aN >= bN ? snapshotOf(a) : snapshotOf(b);
+}
+
 function asImport(blob: EconomyLedger): { origin: EconomyLedger; ops: EconomyOp[] } {
-  if (blob.ops.length > 0) {
-    return {
-      origin: blob.origin ? snapshotOf(blob.origin) : stripLog(blob),
-      ops: blob.ops.map(o => ({ ...o })),
-    };
+  if (blob.ops.length > 0 || appliedCount(blob.origin?.applied ?? blob.applied) > 0) {
+    const origin = blob.origin ? snapshotOf(blob.origin) : stripLog(blob);
+    return { origin, ops: blob.ops.map(o => ({ ...o })) };
   }
   return { origin: stripLog(blob), ops: [] };
 }
@@ -346,9 +454,23 @@ function unionOps(a: EconomyOp[], b: EconomyOp[]): EconomyOp[] {
   const byId = new Map<string, EconomyOp>();
   for (const op of [...a, ...b]) {
     if (!op || typeof op.id !== 'string') continue;
-    if (!byId.has(op.id)) byId.set(op.id, { ...op });
+    const prev = byId.get(op.id);
+    if (!prev || payloadKey(op) > payloadKey(prev)) byId.set(op.id, { ...op });
   }
   return [...byId.values()];
+}
+
+/** Canonical payload for same-id conflicts. Higher string wins — commutative. */
+export function payloadKey(op: EconomyOp): string {
+  return JSON.stringify([
+    op.kind,
+    op.amount ?? null,
+    op.itemId ?? null,
+    op.slot ?? null,
+    op.extra ?? null,
+    op.hlc,
+    op.wall,
+  ]);
 }
 
 /** Field-by-field max/union. Used for origins and for pre-log (legacy) blobs. */
@@ -381,6 +503,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     ops: [],
     origin: null,
     hlc: maxOf(remote.hlc, local.hlc),
+    applied: {},
   };
 }
 
@@ -459,6 +582,7 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     ops: asOps(value['ops']),
     origin: value['origin'] ? coerceLedger(value['origin']) : null,
     hlc: numberOf(value['hlc']),
+    applied: asApplied(value['applied']),
   };
 }
 
@@ -466,26 +590,58 @@ function stripLog(state: EconomyLedger): EconomyLedger {
   return snapshotOf(state);
 }
 
+export function parseOp(raw: unknown): EconomyOp | null {
+  if (!isPlainObject(raw)) return null;
+  const deviceId = raw['deviceId'];
+  const id = raw['id'];
+  const kind = raw['kind'];
+  const seq = raw['seq'];
+  if (typeof deviceId !== 'string' || deviceId.length === 0) return null;
+  if (typeof id !== 'string' || id.length === 0) return null;
+  if (typeof kind !== 'string' || !OP_KINDS.has(kind as EconomyOpKind)) return null;
+  if (typeof seq !== 'number' || !Number.isInteger(seq) || seq < 1) return null;
+  if (id !== `${deviceId}:${seq}`) return null;
+  const amount = raw['amount'];
+  if (amount !== undefined) {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) return null;
+  }
+  if (AMOUNT_KINDS.has(kind as EconomyOpKind) && !(typeof amount === 'number' && amount > 0)) {
+    return null;
+  }
+  const hlc = raw['hlc'];
+  if (typeof hlc !== 'number' || !Number.isFinite(hlc) || hlc < 0) return null;
+  return {
+    id,
+    deviceId,
+    seq,
+    kind: kind as EconomyOpKind,
+    amount: typeof amount === 'number' ? amount : undefined,
+    itemId: typeof raw['itemId'] === 'string' ? raw['itemId'] : undefined,
+    slot: typeof raw['slot'] === 'string' ? raw['slot'] : undefined,
+    extra: typeof raw['extra'] === 'string' || typeof raw['extra'] === 'number'
+      ? raw['extra']
+      : undefined,
+    hlc,
+    wall: numberOf(raw['wall']),
+  };
+}
+
 function asOps(value: unknown): EconomyOp[] {
   if (!Array.isArray(value)) return [];
   const out: EconomyOp[] = [];
   for (const raw of value) {
-    if (!isPlainObject(raw) || typeof raw['id'] !== 'string') continue;
-    if (typeof raw['deviceId'] !== 'string') continue;
-    out.push({
-      id: raw['id'],
-      deviceId: raw['deviceId'],
-      seq: numberOf(raw['seq']),
-      kind: raw['kind'] as EconomyOpKind,
-      amount: raw['amount'] === undefined ? undefined : numberOf(raw['amount']),
-      itemId: typeof raw['itemId'] === 'string' ? raw['itemId'] : undefined,
-      slot: typeof raw['slot'] === 'string' ? raw['slot'] : undefined,
-      extra: typeof raw['extra'] === 'string' || typeof raw['extra'] === 'number'
-        ? raw['extra']
-        : undefined,
-      hlc: numberOf(raw['hlc']),
-      wall: numberOf(raw['wall']),
-    });
+    const op = parseOp(raw);
+    if (op) out.push(op);
+  }
+  return out;
+}
+
+function asApplied(value: unknown): Record<string, number> {
+  if (!isPlainObject(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [deviceId, seq] of Object.entries(value)) {
+    if (!deviceId || typeof seq !== 'number' || !Number.isInteger(seq) || seq < 1) continue;
+    out[deviceId] = seq;
   }
   return out;
 }

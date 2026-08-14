@@ -714,14 +714,17 @@ describe('mergeEconomy', () => {
     expect(merged['upgrades']).toEqual({ 'iron-hammer': 2 });
   });
 
-  it('does not let a future-dated clock steal Gold from a real earlier spend', () => {
+  it('picks a deterministic winner when one device has a future-dated HLC', () => {
+    // Policy: concurrent offline purchases have a stable but arbitrary order
+    // (hlc, deviceId, seq, id). A future-dated clock sorts later. This is not
+    // a reconstruction of real-world time.
     const real = op({ deviceId: 'aaa', seq: 1, hlc: 10, amount: 700, itemId: 'iron-hammer' });
     const skewed = op({ deviceId: 'bbb', seq: 1, hlc: 9_999_999, amount: 500, itemId: 'ember-stoker' });
     const a = after(origin, [real]);
     const b = after(origin, [skewed]);
     const merged = mergeEconomy(a, b) as Record<string, unknown>;
-    // Lower HLC still applies first; the future clock cannot jump the queue
-    // past a smaller HLC, and the leftover cannot fund the second buy.
+    const swapped = mergeEconomy(b, a) as Record<string, unknown>;
+    expect(merged).toEqual(swapped);
     expect(merged['gold']).toBe(300);
     expect(merged['upgrades']).toEqual({ 'iron-hammer': 1 });
   });
