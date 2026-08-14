@@ -1273,6 +1273,10 @@ export class TranslationService {
     'world.realm.titleUnknown': { en: 'Unknown place — Eclipse Realms', es: 'Lugar desconocido — Eclipse Realms' },
     'world.lock.answers':       { en: 'Five incomplete answers', es: 'Cinco respuestas incompletas' },
     'world.lock.remedy':        { en: '{{faction}} wants a necessary but incomplete remedy.', es: '{{faction}} quiere un remedio necesario pero incompleto.' },
+    'world.atlas.region':       { en: 'Fractured Realms atlas', es: 'Atlas de los Reinos Fracturados' },
+    'world.atlas.hint':         { en: 'Choose a realm to inspect its dossier.', es: 'Elige un reino para inspeccionar su expediente.' },
+    'world.atlas.list':         { en: 'Realm list', es: 'Lista de reinos' },
+    'world.atlas.open':         { en: 'Open the {{name}} dossier', es: 'Abre el expediente de {{name}}' },
 
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
