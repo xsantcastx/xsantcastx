@@ -13,8 +13,10 @@ import {
   ATLAS_IMAGE_STEM,
   ATLAS_SOURCE,
   type AtlasHotspot,
+  atlasDescKey,
   atlasHotspotsInMobileOrder,
   atlasHref,
+  atlasLabelKey,
   atlasRealmTone,
 } from '../shared/narrative/world-atlas';
 
@@ -44,8 +46,16 @@ export class WorldAtlasComponent {
     return atlasHref(spot.id);
   }
 
+  label(spot: AtlasHotspot): string {
+    return this.t(atlasLabelKey(spot.id));
+  }
+
+  desc(spot: AtlasHotspot): string {
+    return this.t(atlasDescKey(spot.id));
+  }
+
   listName(spot: AtlasHotspot): string {
-    return `${spot.accessibleLabel}. ${this.t('world.atlas.open', { name: spot.label })}`;
+    return `${this.desc(spot)}. ${this.t('world.atlas.open', { name: this.label(spot) })}`;
   }
 
   tone(spot: AtlasHotspot): { color: string; glow: string } {

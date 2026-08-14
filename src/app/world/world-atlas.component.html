@@ -34,9 +34,9 @@
           <a
             class="atlas__link"
             [routerLink]="href(spot)"
-            [attr.aria-label]="spot.accessibleLabel">
+            [attr.aria-label]="desc(spot)">
             <span class="atlas__pin" aria-hidden="true"></span>
-            <span class="atlas__label">{{ spot.label }}</span>
+            <span class="atlas__label">{{ label(spot) }}</span>
           </a>
         </li>
       }
@@ -54,8 +54,8 @@
           class="atlas__item"
           [routerLink]="href(spot)"
           [attr.aria-label]="listName(spot)">
-          <span class="atlas__item-name">{{ spot.label }}</span>
-          <span class="atlas__item-go">{{ t('world.atlas.open', { name: spot.label }) }}</span>
+          <span class="atlas__item-name">{{ label(spot) }}</span>
+          <span class="atlas__item-go">{{ t('world.atlas.open', { name: label(spot) }) }}</span>
         </a>
       </li>
     }

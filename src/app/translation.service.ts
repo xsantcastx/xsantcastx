@@ -1277,6 +1277,31 @@ export class TranslationService {
     'world.atlas.hint':         { en: 'Choose a realm to inspect its dossier.', es: 'Elige un reino para inspeccionar su expediente.' },
     'world.atlas.list':         { en: 'Realm list', es: 'Lista de reinos' },
     'world.atlas.open':         { en: 'Open the {{name}} dossier', es: 'Abre el expediente de {{name}}' },
+    'world.atlas.label.celestial': { en: 'Celestial Realm', es: 'Reino Celestial' },
+    'world.atlas.label.luminous':  { en: 'Luminous Realm', es: 'Reino Luminous' },
+    'world.atlas.label.infernal':  { en: 'Infernal Realm', es: 'Reino Infernal' },
+    'world.atlas.label.umbral':    { en: 'Umbral Realm', es: 'Reino Umbral' },
+    'world.atlas.label.verdant':   { en: 'Verdant Realm', es: 'Reino Verdant' },
+    'world.atlas.desc.celestial': {
+      en: 'Celestial Realm — observatory plateaus, star paths, and orbital structures',
+      es: 'Reino Celestial — mesetas observatorio, caminos de estrellas y estructuras orbitales',
+    },
+    'world.atlas.desc.luminous': {
+      en: 'Luminous Realm — dawn-lit terraces, prism spires, and crystal light',
+      es: 'Reino Luminous — terrazas del amanecer, agujas de prisma y luz de cristal',
+    },
+    'world.atlas.desc.infernal': {
+      en: 'Infernal Realm — basalt calderas, forge channels, and ember fissures',
+      es: 'Reino Infernal — calderas de basalto, canales de forja y fisuras de brasa',
+    },
+    'world.atlas.desc.umbral': {
+      en: 'Umbral Realm — mirrored ravines, moonlit glass, and hidden rifts',
+      es: 'Reino Umbral — barrancos espejo, cristal de luna y grietas ocultas',
+    },
+    'world.atlas.desc.verdant': {
+      en: 'Verdant Realm — living rootwood, bioluminescent groves, and renewal',
+      es: 'Reino Verdant — madera raiz viva, arboledas bioluminiscentes y renovacion',
+    },
 
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
