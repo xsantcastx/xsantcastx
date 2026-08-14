@@ -174,6 +174,13 @@ export function discoverMarketListings(
   return { items: paged.slice, page: paged.page, totalPages: paged.totalPages, count: filtered.length };
 }
 
+/** After filtering, the URL page must be a real page of that result set. */
+export function clampMarketQueryPage(query: MarketQuery, count: number): MarketQuery {
+  const totalPages = Math.max(1, Math.ceil(count / MARKET_PAGE_SIZE));
+  const page = Math.min(Math.max(1, query.page), totalPages);
+  return page === query.page ? query : { ...query, page };
+}
+
 export function queriesEqual(a: MarketQuery, b: MarketQuery): boolean {
   return a.category === b.category
     && a.rarity === b.rarity

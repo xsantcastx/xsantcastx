@@ -188,22 +188,24 @@
     </aside>
 
     <!-- ── Centre: the inventory ──────────────────────────────────────── -->
-    <main class="mk__main" data-reveal>
+    <main class="mk__main">
 
       <!-- The same shelves as the sidebar, reachable without leaving the list.
            On narrow screens this strip is the only category control. -->
-      <div class="mk__tabs" role="tablist" [attr.aria-label]="t('market.shelves')">
-        <button type="button" role="tab" class="mk__tab"
-                [class.mk__tab--on]="queryState.category === 'all' && !eclipseOpen"
-                [attr.aria-selected]="queryState.category === 'all' && !eclipseOpen"
-                (click)="selectCategory('all')">{{ t('market.all') }}</button>
-        @for (c of categories; track c.id) {
+      <div class="mk__shelf-bar">
+        <div class="mk__tabs" role="tablist" [attr.aria-label]="t('market.shelves')">
           <button type="button" role="tab" class="mk__tab"
-                  [class.mk__tab--on]="queryState.category === c.id && !eclipseOpen"
-                  [attr.data-currency]="c.currency"
-                  [attr.aria-selected]="queryState.category === c.id && !eclipseOpen"
-                  (click)="selectCategory(c.id)">{{ categoryShort(c.id) }}</button>
-        }
+                  [class.mk__tab--on]="queryState.category === 'all' && !eclipseOpen"
+                  [attr.aria-selected]="queryState.category === 'all' && !eclipseOpen"
+                  (click)="selectCategory('all')">{{ t('market.all') }}</button>
+          @for (c of categories; track c.id) {
+            <button type="button" role="tab" class="mk__tab"
+                    [class.mk__tab--on]="queryState.category === c.id && !eclipseOpen"
+                    [attr.data-currency]="c.currency"
+                    [attr.aria-selected]="queryState.category === c.id && !eclipseOpen"
+                    (click)="selectCategory(c.id)">{{ categoryShort(c.id) }}</button>
+          }
+        </div>
         <button type="button" class="mk__tab mk__tab--eclipse"
                 [class.mk__tab--on]="eclipseOpen"
                 [attr.aria-pressed]="eclipseOpen"
