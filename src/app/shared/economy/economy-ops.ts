@@ -34,7 +34,16 @@
  * conservative max/union rule. A missing timestamp is not proof that a ledger
  * is older, so a stamped 100 Gold must not overwrite a legacy 9,999.
  */
-import { mergeCommerceOps, parseCommerceOps, type CommerceOperation } from './commerce-ops';
+import {
+  compactCommerceReceipts,
+  mergeCommerceApplied,
+  mergeCommerceOps,
+  parseCommerceApplied,
+  parseCommerceOps,
+  reconcileCommerceOps,
+  type CommerceOperation,
+  type CommerceStatus,
+} from './commerce-ops';
 
 export type EconomyOpKind =
   | 'credit-gold'
@@ -136,6 +145,8 @@ export interface EconomyLedger {
   seenAt: Record<string, number>;
   /** Durable Market purchase receipts. Same blob as the ledger ops. */
   commerceOps: CommerceOperation[];
+  /** Mutation keys folded at a checkpoint. Never dropped silently. */
+  commerceApplied: Record<string, CommerceStatus>;
 }
 
 /** localStorage key for the stable per-browser device id. */
@@ -182,6 +193,7 @@ export function emptyLedger(): EconomyLedger {
     acks: {},
     seenAt: {},
     commerceOps: [],
+    commerceApplied: {},
   };
 }
 
@@ -223,6 +235,7 @@ export function snapshotOf(state: EconomyLedger): EconomyLedger {
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
     commerceOps: [],
+    commerceApplied: { ...state.commerceApplied },
   };
 }
 
@@ -241,6 +254,7 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
     commerceOps: (state.commerceOps ?? []).map(o => ({ ...o })),
+    commerceApplied: { ...(state.commerceApplied ?? {}) },
   };
 }
 
@@ -335,17 +349,23 @@ export function applyOp(state: EconomyLedger, op: EconomyOp): boolean {
   }
 }
 
-export function applyOps(origin: EconomyLedger, ops: EconomyOp[]): EconomyLedger {
+export function applyOps(
+  origin: EconomyLedger,
+  ops: EconomyOp[],
+): { state: EconomyLedger; appliedIds: string[]; skippedIds: string[] } {
   const state = cloneLedger(origin);
   state.ops = [];
   state.origin = null;
   const applied = { ...origin.applied };
+  const appliedIds: string[] = [];
+  const skippedIds: string[] = [];
   for (const op of sortOps(ops)) {
     if (isApplied(applied, op)) continue;
-    applyOp(state, op);
+    if (applyOp(state, op)) appliedIds.push(op.id);
+    else skippedIds.push(op.id);
   }
   state.applied = applied;
-  return state;
+  return { state, appliedIds, skippedIds };
 }
 
 export function isApplied(applied: Record<string, number>, op: EconomyOp): boolean {
@@ -382,7 +402,7 @@ export function compactOps(
   if (sorted.length <= keep) return { origin, ops: sorted };
   const fold = sorted.slice(0, sorted.length - keep);
   const rest = sorted.slice(sorted.length - keep);
-  const next = applyOps(origin, fold);
+  const next = applyOps(origin, fold).state;
   const applied = { ...origin.applied };
   for (const op of fold) {
     applied[op.deviceId] = Math.max(applied[op.deviceId] ?? 0, op.seq);
@@ -408,7 +428,8 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   const importB = asImport(b);
   const ops = unionOps(importA.ops, importB.ops);
   const origin = pickOrigin(importA.origin, importB.origin);
-  const replayed = applyOps(origin, ops);
+  const replay = applyOps(origin, ops);
+  const replayed = replay.state;
 
   replayed.gold += Math.max(unexplainedGold(a, importA), unexplainedGold(b, importB));
   replayed.eclipseEssence += Math.max(
@@ -445,7 +466,11 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.acks = maxRecord(a.acks, b.acks);
   replayed.seenAt = clampSeenAt(maxRecord(a.seenAt, b.seenAt), Date.now());
   replayed.version = 2;
-  replayed.commerceOps = mergeCommerceOps(a.commerceOps ?? [], b.commerceOps ?? []);
+  const knownIds = new Set(ops.map(op => op.id));
+  const appliedIds = new Set(replay.appliedIds);
+  const mergedReceipts = mergeCommerceOps(a.commerceOps ?? [], b.commerceOps ?? []);
+  replayed.commerceApplied = mergeCommerceApplied(a.commerceApplied ?? {}, b.commerceApplied ?? {});
+  replayed.commerceOps = reconcileCommerceOps(mergedReceipts, appliedIds, knownIds);
   return replayed;
 }
 
@@ -473,6 +498,10 @@ export function acknowledgeAndMaybeCompact(
   next.seenAt = clampSeenAt(next.seenAt, now);
   next.seenAt[deviceId] = now;
 
+  const receipts = compactCommerceReceipts(next.commerceOps, next.commerceApplied, { after, keep });
+  next.commerceOps = receipts.ops;
+  next.commerceApplied = receipts.appliedKeys;
+
   if (next.ops.length < after || !next.origin) return next;
 
   const known = recentDevices(next, deviceId, now, staleMs);
@@ -484,6 +513,9 @@ export function acknowledgeAndMaybeCompact(
   next.applied = { ...folded.origin.applied };
   next.checkpointId += 1;
   next.acks = { ...next.acks, [deviceId]: next.checkpointId };
+  const foldedRx = compactCommerceReceipts(next.commerceOps, next.commerceApplied, { after, keep });
+  next.commerceOps = foldedRx.ops;
+  next.commerceApplied = foldedRx.appliedKeys;
   return next;
 }
 
@@ -546,7 +578,7 @@ function unexplainedGold(
   blob: EconomyLedger,
   imported: { origin: EconomyLedger; ops: EconomyOp[] },
 ): number {
-  const own = applyOps(imported.origin, imported.ops);
+  const own = applyOps(imported.origin, imported.ops).state;
   return Math.max(0, blob.gold - own.gold);
 }
 
@@ -554,7 +586,7 @@ function unexplainedEssence(
   blob: EconomyLedger,
   imported: { origin: EconomyLedger; ops: EconomyOp[] },
 ): number {
-  const own = applyOps(imported.origin, imported.ops);
+  const own = applyOps(imported.origin, imported.ops).state;
   return Math.max(0, blob.eclipseEssence - own.eclipseEssence);
 }
 
@@ -616,6 +648,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     acks: maxRecord(remote.acks, local.acks),
     seenAt: maxRecord(remote.seenAt, local.seenAt),
     commerceOps: mergeCommerceOps(remote.commerceOps ?? [], local.commerceOps ?? []),
+    commerceApplied: mergeCommerceApplied(remote.commerceApplied ?? {}, local.commerceApplied ?? {}),
   };
 }
 
@@ -699,6 +732,7 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     acks: asApplied(value['acks']),
     seenAt: asSeenAt(value['seenAt']),
     commerceOps: parseCommerceOps(value['commerceOps']),
+    commerceApplied: parseCommerceApplied(value['commerceApplied']),
   };
 }
 

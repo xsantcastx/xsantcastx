@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { EconomyService, ECONOMY_KEY } from './economy.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { compactCommerceReceipts } from './commerce-ops';
 
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
@@ -46,7 +47,6 @@ describe('EconomyService.purchaseListing', () => {
       listingId: 'forge-bellows',
       kind: 'upgrade' as const,
       expectedCost: economy.nextCost('forge-bellows'),
-      currency: 'gold' as const,
     };
     const first = economy.purchaseListing(intent);
     const gold = economy.snapshot.gold;
@@ -65,7 +65,6 @@ describe('EconomyService.purchaseListing', () => {
       listingId: 'forge-bellows',
       kind: 'upgrade',
       expectedCost: 1,
-      currency: 'gold',
     });
     expect(receipt.ok).toBe(false);
     expect(receipt.code).toBe('stale');
@@ -79,7 +78,6 @@ describe('EconomyService.purchaseListing', () => {
       listingId: 'forge-bellows',
       kind: 'upgrade' as const,
       expectedCost: economy.nextCost('forge-bellows'),
-      currency: 'gold' as const,
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
@@ -94,5 +92,56 @@ describe('EconomyService.purchaseListing', () => {
     expect(again.ok).toBe(true);
     expect(reloaded.snapshot.gold).toBe(gold);
     expect(reloaded.levelOf('forge-bellows')).toBe(1);
+  });
+
+  it('buys an enchantment again after it expires when the action id is new', () => {
+    const first = economy.purchaseListing({
+      mutationKey: 'buy:lens-1',
+      listingId: 'seekers-lens',
+      kind: 'enchantment',
+      expectedCost: 5,
+    });
+    expect(first.ok).toBe(true);
+    expect(first.operation?.currency).toBe('essence');
+    const afterFirst = economy.snapshot.essence;
+    economy['state'].enchantments = [{ id: 'seekers-lens', expiresAt: 1 }];
+    const second = economy.purchaseListing({
+      mutationKey: 'buy:lens-2',
+      listingId: 'seekers-lens',
+      kind: 'enchantment',
+      expectedCost: 5,
+    });
+    expect(second.ok).toBe(true);
+    expect(economy.snapshot.essence).toBe(afterFirst - 5);
+    expect(economy.snapshot.enchantment?.def.id).toBe('seekers-lens');
+  });
+
+  it('replays a compacted mutation key and does not debit again', () => {
+    const intent = {
+      mutationKey: 'buy:keep-forever',
+      listingId: 'forge-bellows',
+      kind: 'upgrade' as const,
+      expectedCost: economy.nextCost('forge-bellows'),
+    };
+    const first = economy.purchaseListing(intent);
+    expect(first.ok).toBe(true);
+    const extras = Array.from({ length: 70 }, (_, i) => ({
+      ...first.operation!,
+      id: `extra-${i}`,
+      mutationKey: `buy:extra-${i}`,
+      createdAt: i + 2,
+    }));
+    const compacted = compactCommerceReceipts(
+      [{ ...first.operation!, createdAt: 1 }, ...extras],
+      {},
+      { after: 64, keep: 16 },
+    );
+    economy['state'].commerceOps = compacted.ops;
+    economy['state'].commerceApplied = compacted.appliedKeys;
+    const gold = economy.snapshot.gold;
+    const again = economy.purchaseListing(intent);
+    expect(again.ok).toBe(true);
+    expect(economy.snapshot.gold).toBe(gold);
+    expect(economy.levelOf('forge-bellows')).toBe(1);
   });
 });

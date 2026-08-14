@@ -93,6 +93,7 @@ import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { InspectService } from '../entity/inspect.service';
 import { TranslationService } from '../../translation.service';
 import {
+  newPurchaseActionId,
   type CommerceCode,
   type CommerceKind,
 } from './commerce-ops';
@@ -316,6 +317,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   catalogueError = false;
   hydrated = false;
   purchaseNotice: { tone: 'ok' | 'queued' | 'denied'; text: string } | null = null;
+  private readonly actionKeys = new Map<string, string>();
 
   /** Ids that just bought something, for the button's flash. */
   flashing = new Set<string>();
@@ -1044,13 +1046,18 @@ export class MarketComponent implements OnInit, OnDestroy {
 
     const kind = this.commerceKind(item);
     if (!kind) return;
+    let mutationKey = this.actionKeys.get(item.id);
+    if (!mutationKey) {
+      mutationKey = newPurchaseActionId();
+      this.actionKeys.set(item.id, mutationKey);
+    }
     const receipt = this.economy.purchaseListing({
-      mutationKey: `buy:${item.id}:${item.cost}:${item.owned}`,
+      mutationKey,
       listingId: item.id,
       kind,
       expectedCost: item.cost,
-      currency: item.currency,
     });
+    if (receipt.code !== 'in-flight') this.actionKeys.delete(item.id);
     this.announcePurchase(receipt.code);
     this.settle(item.id, receipt.ok);
     if (this.isBrowser) {

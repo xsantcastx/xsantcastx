@@ -1,12 +1,16 @@
 /**
  * commerce-ops.ts — durable Market purchase receipts (C2).
  *
- * Pure functions. A mutation key is the retry identity: applying it twice
- * yields one debit and one grant. Receipts live on the economy blob so they
- * share the GameStateGateway write with the ledger op.
+ * A mutation key is one intentional purchase. Generate a fresh id per click;
+ * reuse it only when retrying that same action. Replay consults which ledger
+ * ops actually applied — an id in the log is not enough, because merge can
+ * skip an unaffordable spend and leave the op in place.
+ *
+ * Terminal receipts may be folded into `commerceApplied` at a checkpoint.
+ * Keys are never dropped silently; a later retry still finds the outcome.
  */
 export type CommerceKind = 'upgrade' | 'enchantment' | 'artifact' | 'cosmetic';
-export type CommerceStatus = 'pending' | 'committed' | 'rolled-back';
+export type CommerceStatus = 'pending' | 'committed' | 'rejected' | 'rolled-back';
 export type CommerceCode =
   | 'ok'
   | 'queued'
@@ -17,14 +21,14 @@ export type CommerceCode =
   | 'not-found'
   | 'maxed'
   | 'owned'
-  | 'weaker';
+  | 'weaker'
+  | 'conflict';
 
 export interface CommerceIntent {
   mutationKey: string;
   listingId: string;
   kind: CommerceKind;
   expectedCost: number;
-  currency: 'gold' | 'essence';
 }
 
 export interface CommerceOperation {
@@ -40,16 +44,6 @@ export interface CommerceOperation {
   createdAt: number;
 }
 
-export interface CommerceQuote {
-  listingId: string;
-  kind: CommerceKind;
-  cost: number;
-  currency: 'gold' | 'essence';
-  affordable: boolean;
-  eligible: boolean;
-  reason?: Exclude<CommerceCode, 'ok' | 'queued' | 'stale' | 'in-flight'>;
-}
-
 export interface CommerceReceipt {
   ok: boolean;
   code: CommerceCode;
@@ -58,17 +52,22 @@ export interface CommerceReceipt {
 }
 
 const KINDS = new Set<string>(['upgrade', 'enchantment', 'artifact', 'cosmetic']);
-const STATUSES = new Set<string>(['pending', 'committed', 'rolled-back']);
+const STATUSES = new Set<string>(['pending', 'committed', 'rejected', 'rolled-back']);
 const STATUS_RANK: Record<CommerceStatus, number> = {
   'rolled-back': 0,
   pending: 1,
-  committed: 2,
+  rejected: 2,
+  committed: 3,
 };
 
 export function newCommerceId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function newPurchaseActionId(): string {
+  return `buy:${newCommerceId()}`;
 }
 
 export function grantIdFor(economicOpId: string): string {
@@ -114,24 +113,58 @@ export function parseCommerceOps(raw: unknown): CommerceOperation[] {
   return out;
 }
 
-export function findCommerceByKey(
-  ops: readonly CommerceOperation[],
-  mutationKey: string,
-): CommerceOperation | null {
-  return ops.find(op => op.mutationKey === mutationKey) ?? null;
+export function parseCommerceApplied(raw: unknown): Record<string, CommerceStatus> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, CommerceStatus> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value === 'committed' || value === 'rejected' || value === 'rolled-back') out[key] = value;
+  }
+  return out;
 }
 
-/** Pending with a landed economy op becomes committed; otherwise rolled back. */
-export function recoverCommerceOps(
+export function findCommerceByKey(
   ops: readonly CommerceOperation[],
-  landedEconomicIds: ReadonlySet<string>,
+  appliedKeys: Record<string, CommerceStatus>,
+  mutationKey: string,
+): CommerceOperation | null {
+  const live = ops.find(op => op.mutationKey === mutationKey);
+  if (live) return live;
+  const folded = appliedKeys[mutationKey];
+  if (!folded) return null;
+  return {
+    id: `folded:${mutationKey}`,
+    mutationKey,
+    listingId: '',
+    kind: 'upgrade',
+    expectedCost: 0,
+    currency: 'gold',
+    economicOpId: null,
+    grantId: null,
+    status: folded,
+    createdAt: 0,
+  };
+}
+
+/**
+ * Derive receipt status from which ledger ops actually applied.
+ * An id present in the log is not a grant — merge may have skipped it.
+ */
+export function reconcileCommerceOps(
+  ops: readonly CommerceOperation[],
+  appliedEconomicIds: ReadonlySet<string>,
+  knownEconomicIds: ReadonlySet<string>,
 ): CommerceOperation[] {
   return ops.map(op => {
-    if (op.status !== 'pending') return op;
-    if (op.economicOpId && landedEconomicIds.has(op.economicOpId)) {
+    if (!op.economicOpId) {
+      return op.status === 'pending' ? rollbackCommerceOp(op) : op;
+    }
+    if (appliedEconomicIds.has(op.economicOpId)) {
       return { ...op, status: 'committed', grantId: op.grantId ?? grantIdFor(op.economicOpId) };
     }
-    return { ...op, status: 'rolled-back', economicOpId: null, grantId: null };
+    if (knownEconomicIds.has(op.economicOpId)) {
+      return { ...op, status: 'rejected', grantId: null };
+    }
+    return op.status === 'pending' ? rollbackCommerceOp(op) : op;
   });
 }
 
@@ -153,18 +186,34 @@ export function mergeCommerceOps(
   return [...byKey.values()].sort((x, y) => x.createdAt - y.createdAt || x.id.localeCompare(y.id));
 }
 
+export function mergeCommerceApplied(
+  a: Record<string, CommerceStatus>,
+  b: Record<string, CommerceStatus>,
+): Record<string, CommerceStatus> {
+  const out = { ...a };
+  for (const [key, status] of Object.entries(b)) {
+    const held = out[key];
+    if (!held || STATUS_RANK[status] > STATUS_RANK[held]) out[key] = status;
+  }
+  return out;
+}
+
 export function quoteIsStale(currentCost: number, expectedCost: number): boolean {
   return currentCost !== expectedCost;
 }
 
-export function beginCommerceOp(intent: CommerceIntent, now: number): CommerceOperation {
+export function beginCommerceOp(
+  intent: CommerceIntent,
+  currency: 'gold' | 'essence',
+  now: number,
+): CommerceOperation {
   return {
     id: newCommerceId(),
     mutationKey: intent.mutationKey,
     listingId: intent.listingId,
     kind: intent.kind,
     expectedCost: intent.expectedCost,
-    currency: intent.currency,
+    currency,
     economicOpId: null,
     grantId: null,
     status: 'pending',
@@ -184,6 +233,10 @@ export function commitCommerceOp(
   };
 }
 
+export function rejectCommerceOp(op: CommerceOperation, economicOpId: string | null): CommerceOperation {
+  return { ...op, status: 'rejected', economicOpId, grantId: null };
+}
+
 export function rollbackCommerceOp(op: CommerceOperation): CommerceOperation {
   return { ...op, status: 'rolled-back', economicOpId: null, grantId: null };
 }
@@ -192,16 +245,37 @@ export function upsertCommerceOp(
   ops: readonly CommerceOperation[],
   next: CommerceOperation,
 ): CommerceOperation[] {
-  const out = ops.filter(op => op.mutationKey !== next.mutationKey);
-  out.push(next);
-  return out.slice(-64);
+  return [...ops.filter(op => op.mutationKey !== next.mutationKey), next];
+}
+
+/** Fold old terminal receipts into the durable applied-key map. Pending stays live. */
+export function compactCommerceReceipts(
+  ops: readonly CommerceOperation[],
+  appliedKeys: Record<string, CommerceStatus>,
+  opts: { after?: number; keep?: number } = {},
+): { ops: CommerceOperation[]; appliedKeys: Record<string, CommerceStatus> } {
+  const after = opts.after ?? 64;
+  const keep = opts.keep ?? 16;
+  const pending = ops.filter(op => op.status === 'pending');
+  const terminal = ops
+    .filter(op => op.status !== 'pending')
+    .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+  if (terminal.length < after) {
+    return { ops: [...pending, ...terminal], appliedKeys: { ...appliedKeys } };
+  }
+  const stay = terminal.slice(-keep);
+  const fold = terminal.slice(0, terminal.length - keep);
+  const nextApplied = { ...appliedKeys };
+  for (const op of fold) nextApplied[op.mutationKey] = op.status;
+  return { ops: [...pending, ...stay], appliedKeys: nextApplied };
 }
 
 export function debitGrantOnce(
   existing: CommerceOperation | null,
-): 'apply' | 'replay' | 'blocked' {
+): 'apply' | 'replay' | 'blocked' | 'conflict' {
   if (!existing) return 'apply';
   if (existing.status === 'committed') return 'replay';
+  if (existing.status === 'rejected') return 'conflict';
   if (existing.status === 'pending') return 'blocked';
   return 'apply';
 }

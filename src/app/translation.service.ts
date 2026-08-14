@@ -1404,6 +1404,7 @@ export class TranslationService {
     'market.buy.maxed':         { en: 'That upgrade is already held at its cap.', es: 'Esa mejora ya esta al maximo.' },
     'market.buy.owned':         { en: 'You already own that.', es: 'Ya lo tienes.' },
     'market.buy.weaker':        { en: 'A stronger enchantment is already running.', es: 'Ya hay un encantamiento mas fuerte en curso.' },
+    'market.buy.conflict':      { en: 'That purchase lost a sync conflict and was not taken.', es: 'Esa compra perdio un conflicto de sincronizacion y no se aplico.' },
     'market.state.buy':         { en: 'Buy', es: 'Comprar' },
     'market.state.locked':      { en: 'Locked', es: 'Bloqueado' },
     'market.state.held':        { en: 'Held', es: 'En poder' },
