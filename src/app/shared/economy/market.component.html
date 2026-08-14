@@ -3,15 +3,15 @@
      layer 3. See art-scene.component.ts for why this is a <picture>. -->
 <app-art-scene art="bg-market" focus="center 50%" />
 
-<section class="mk" [attr.data-currency]="activeCurrency">
+<section class="mk" [attr.data-currency]="activeCurrency" [class.mk--hydrated]="hydrated">
 
   <!-- ── Hero ──────────────────────────────────────────────────────────────
        The sigil, the name, the promise. Everything below it is inventory. -->
   <header class="mk__hero">
     <span class="mk__sigil" aria-hidden="true">✕</span>
-    <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>The Godforge Market</p>
-    <h1 class="mk__title">Everything the forge will sell you</h1>
-    <p class="mk__tagline">gold is patience, essence is proof — spend both on a forge that keeps working after you close the tab</p>
+    <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>{{ t('market.eyebrow') }}</p>
+    <h1 class="mk__title">{{ t('market.title') }}</h1>
+    <p class="mk__tagline">{{ t('market.tagline') }}</p>
   </header>
 
   <!-- ── Currency bar ──────────────────────────────────────────────────────
@@ -22,7 +22,7 @@
            alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ gold }}</span>
-        <span class="mk__coin-label">Gold</span>
+        <span class="mk__coin-label">{{ t('market.gold') }}</span>
       </span>
     </div>
 
@@ -32,7 +32,7 @@
            alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ essence }}</span>
-        <span class="mk__coin-label">Eclipse Essence</span>
+        <span class="mk__coin-label">{{ t('market.essence') }}</span>
       </span>
     </div>
 
@@ -41,7 +41,7 @@
         <span class="mk__coin-glyph" aria-hidden="true">🌑</span>
         <span class="mk__coin-body">
           <span class="mk__coin-val">{{ shards }} <em class="mk__coin-sub">{{ shardMult }}</em></span>
-          <span class="mk__coin-label">Eclipse Shards</span>
+          <span class="mk__coin-label">{{ t('market.shards') }}</span>
         </span>
       </div>
     }
@@ -51,7 +51,7 @@
       <span class="mk__coin-glyph" aria-hidden="true">⚡</span>
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ perSecond }}</span>
-        <span class="mk__coin-label">Gold / second</span>
+        <span class="mk__coin-label">{{ t('market.rate') }}</span>
       </span>
       @for (f of rateFloaters; track f.key) {
         <span class="mk__rate-float" aria-hidden="true">{{ f.text }}</span>
@@ -62,7 +62,7 @@
       <span class="mk__coin-glyph" aria-hidden="true">◈</span>
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ totalValue }}</span>
-        <span class="mk__coin-label" title="Gold, plus Essence valued at the Artifact shelf's own rate.">Total value</span>
+        <span class="mk__coin-label" [attr.title]="t('market.totalHint')">{{ t('market.total') }}</span>
       </span>
     </div>
   </div>
@@ -70,48 +70,52 @@
   @if (snap.enchantment) {
     <p class="mk__running" role="status">
       <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
-      <strong>{{ snap.enchantment.def.name }}</strong> is running —
+      <strong>{{ snap.enchantment.def.name }}</strong> {{ t('market.running') }}
       {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
     </p>
   }
 
   <!-- ── The floor ─────────────────────────────────────────────────────────
-       Three columns: what to look at, what is for sale, what is moving. -->
+       Three columns: what to look at, what is for sale, catalogue picks. -->
   <div class="mk__floor">
 
-    <!-- ── Left: search, shelves, rarity ──────────────────────────────── -->
-    <aside class="mk__aside mk__aside--filters" data-reveal aria-label="Filters">
+    <!-- ── Left: search, shelves, rarity, ownership ─────────────────────── -->
+    <aside class="mk__aside mk__aside--filters" data-reveal [attr.aria-label]="t('market.filters')">
 
       <div class="mk__search">
-        <span class="mk__search-icon" aria-hidden="true">⌕</span>
-        <label class="mk__sr" for="mk-search">Search the market</label>
+        <span class="mk-ico mk-ico--search" aria-hidden="true"></span>
+        <label class="mk__sr" for="mk-search">{{ t('market.search') }}</label>
         <input id="mk-search" class="mk__search-input" type="search" autocomplete="off"
-               placeholder="Search items..." [value]="query"
+               [attr.placeholder]="t('market.searchPlaceholder')" [value]="searchDraft"
                (input)="onSearch($any($event.target).value)">
-        @if (query) {
-          <button type="button" class="mk__search-clear" (click)="onSearch('')" aria-label="Clear search">✕</button>
+        @if (searchDraft) {
+          <button type="button" class="mk__search-clear" (click)="clearSearch()"
+                  [attr.aria-label]="t('market.searchClear')">✕</button>
         }
       </div>
 
-      <nav class="mk__facet" aria-label="Categories">
-        <h2 class="mk__facet-head">Categories</h2>
+      <nav class="mk__facet" [attr.aria-label]="t('market.categories')">
+        <h2 class="mk__facet-head">
+          <span class="mk-ico mk-ico--filter" aria-hidden="true"></span>
+          {{ t('market.categories') }}
+        </h2>
         <ul class="mk__facet-list">
           <li>
             <button type="button" class="mk__facet-btn"
-                    [class.mk__facet-btn--on]="!category"
-                    [attr.aria-pressed]="!category"
-                    (click)="selectCategory(null)">
+                    [class.mk__facet-btn--on]="queryState.category === 'all'"
+                    [attr.aria-pressed]="queryState.category === 'all'"
+                    (click)="selectCategory('all')">
               <span class="mk__facet-glyph" aria-hidden="true">✦</span>
-              <span class="mk__facet-name">Everything</span>
+              <span class="mk__facet-name">{{ t('market.everything') }}</span>
               <span class="mk__facet-count">{{ filteredCount }}</span>
             </button>
           </li>
           @for (c of categories; track c.id) {
             <li>
               <button type="button" class="mk__facet-btn"
-                      [class.mk__facet-btn--on]="category === c.id"
+                      [class.mk__facet-btn--on]="queryState.category === c.id"
                       [attr.data-currency]="c.currency"
-                      [attr.aria-pressed]="category === c.id"
+                      [attr.aria-pressed]="queryState.category === c.id"
                       (click)="selectCategory(c.id)">
                 @if (c.icon) {
                   <img class="mk__facet-icon gf-icon shop-icon"
@@ -121,7 +125,7 @@
                 } @else {
                   <span class="mk__facet-glyph" aria-hidden="true">{{ c.glyph }}</span>
                 }
-                <span class="mk__facet-name">{{ c.label }}</span>
+                <span class="mk__facet-name">{{ categoryLabel(c.id) }}</span>
                 <span class="mk__facet-count">{{ countOf(c.id) }}</span>
               </button>
             </li>
@@ -129,16 +133,16 @@
         </ul>
       </nav>
 
-      <nav class="mk__facet" aria-label="Rarity">
-        <h2 class="mk__facet-head">Rarity</h2>
+      <nav class="mk__facet" [attr.aria-label]="t('market.rarity')">
+        <h2 class="mk__facet-head">{{ t('market.rarity') }}</h2>
         <ul class="mk__facet-list">
           @for (r of rarityOrder; track r) {
             <li>
               <button type="button" class="mk__facet-btn mk__facet-btn--rarity"
-                      [class.mk__facet-btn--on]="rarity === r"
+                      [class.mk__facet-btn--on]="queryState.rarity === r"
                       [style.--tier]="rarityColor(r)"
                       [style.--tier-glow]="rarityGlow(r)"
-                      [attr.aria-pressed]="rarity === r"
+                      [attr.aria-pressed]="queryState.rarity === r"
                       (click)="selectRarity(r)">
                 <span class="mk__facet-dot" aria-hidden="true"></span>
                 <span class="mk__facet-name">{{ rarityLabel(r) }}</span>
@@ -149,8 +153,37 @@
         </ul>
       </nav>
 
+      <nav class="mk__facet" [attr.aria-label]="t('market.ownership')">
+        <h2 class="mk__facet-head">{{ t('market.ownership') }}</h2>
+        <ul class="mk__facet-list">
+          @for (o of ownerships; track o) {
+            <li>
+              <button type="button" class="mk__facet-btn"
+                      [class.mk__facet-btn--on]="queryState.ownership === o"
+                      [attr.aria-pressed]="queryState.ownership === o"
+                      (click)="selectOwnership(o)">
+                <span class="mk__facet-name">{{ ownershipLabel(o) }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <div class="mk__eclipse-entry">
+        <button type="button" class="mk__eclipse-link"
+                [class.mk__eclipse-link--on]="eclipseOpen"
+                [attr.aria-pressed]="eclipseOpen"
+                (click)="eclipseOpen ? closeEclipse() : openEclipse()">
+          <span class="mk__facet-glyph" aria-hidden="true">🌑</span>
+          {{ t('market.eclipse') }}
+        </button>
+      </div>
+
       @if (hasFilters) {
-        <button type="button" class="mk__clear" (click)="clearFilters()">Clear all filters</button>
+        <button type="button" class="mk__clear" (click)="clearFilters()">
+          <span class="mk-ico mk-ico--clear" aria-hidden="true"></span>
+          {{ t('market.clearFilters') }}
+        </button>
       }
     </aside>
 
@@ -159,24 +192,57 @@
 
       <!-- The same shelves as the sidebar, reachable without leaving the list.
            On narrow screens this strip is the only category control. -->
-      <div class="mk__tabs" role="tablist" aria-label="Market shelves">
+      <div class="mk__tabs" role="tablist" [attr.aria-label]="t('market.shelves')">
         <button type="button" role="tab" class="mk__tab"
-                [class.mk__tab--on]="!category" [attr.aria-selected]="!category"
-                (click)="selectCategory(null)">All</button>
+                [class.mk__tab--on]="queryState.category === 'all' && !eclipseOpen"
+                [attr.aria-selected]="queryState.category === 'all' && !eclipseOpen"
+                (click)="selectCategory('all')">{{ t('market.all') }}</button>
         @for (c of categories; track c.id) {
           <button type="button" role="tab" class="mk__tab"
-                  [class.mk__tab--on]="category === c.id"
+                  [class.mk__tab--on]="queryState.category === c.id && !eclipseOpen"
                   [attr.data-currency]="c.currency"
-                  [attr.aria-selected]="category === c.id"
-                  (click)="selectCategory(c.id)">{{ c.short }}</button>
+                  [attr.aria-selected]="queryState.category === c.id && !eclipseOpen"
+                  (click)="selectCategory(c.id)">{{ categoryShort(c.id) }}</button>
         }
+        <button type="button" class="mk__tab mk__tab--eclipse"
+                [class.mk__tab--on]="eclipseOpen"
+                [attr.aria-pressed]="eclipseOpen"
+                (click)="eclipseOpen ? closeEclipse() : openEclipse()">{{ t('market.eclipse') }}</button>
       </div>
 
-      @if (activeNote) {
+      <div class="mk__toolbar">
+        <label class="mk__sort">
+          <span class="mk-ico mk-ico--sort" aria-hidden="true"></span>
+          <span class="mk__sr">{{ t('market.sort') }}</span>
+          <select class="mk__sort-select" [value]="queryState.sort"
+                  (change)="selectSort($any($event.target).value)">
+            @for (s of sorts; track s) {
+              <option [value]="s">{{ sortLabel(s) }}</option>
+            }
+          </select>
+        </label>
+        <p class="mk__count" aria-live="polite">{{ t('market.filteredCount', { count: filteredCount }) }}</p>
+      </div>
+
+      @if (hasFilters) {
+        <ul class="mk__chips" [attr.aria-label]="t('market.chips')">
+          @for (chip of chips; track chip.key) {
+            <li>
+              <button type="button" class="mk__chip" (click)="clearChip(chip.key)"
+                      [attr.aria-label]="t('market.clearChip', { name: chip.label })">
+                {{ chip.label }} <span aria-hidden="true">✕</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (activeNote && !eclipseOpen) {
         <p class="mk__note">
           {{ activeNote }}
-          @if (category === 'expedition') {
-            You send them from <a routerLink="/sanctum">the Forge View</a>.
+          @if (queryState.category === 'expedition') {
+            {{ t('market.expedition.lead') }}
+            <a routerLink="/sanctum">{{ t('market.expedition.link') }}</a>.
           }
           @if (activeTally) { <strong>{{ activeTally }}</strong> }
         </p>
@@ -186,45 +252,41 @@
         <!-- ── The Eclipse ────────────────────────────────────────────────
              Not a purchase. A reset, behind two clicks and a full accounting
              of what it takes, which is why it is not a row in the list. -->
-        <div class="mk__eclipse" role="region" aria-label="The Eclipse">
+        <div class="mk__eclipse" role="region" [attr.aria-label]="t('market.eclipse')">
           <div class="mk__eclipse-orb" aria-hidden="true"></div>
 
           <p class="mk__eclipse-lede">
-            An Eclipse wipes your Gold and every Gold upgrade, and hands you Eclipse Shards —
-            permanent, immune to every reset after it, and worth {{ shardBonusPercent }}% on
-            everything, each.
+            {{ t('market.eclipse.lede', { percent: shardBonusPercent }) }}
           </p>
 
           <dl class="mk__eclipse-stats">
-            <div><dt>Shards held</dt><dd>{{ shards }}</dd></div>
-            <div><dt>Permanent bonus</dt><dd>{{ shardMult }}</dd></div>
-            <div><dt>Eclipses taken</dt><dd>{{ prestigeCount }}</dd></div>
-            <div><dt>Waiting for you</dt><dd>{{ pendingShards }}</dd></div>
+            <div><dt>{{ t('market.eclipse.held') }}</dt><dd>{{ shards }}</dd></div>
+            <div><dt>{{ t('market.eclipse.bonus') }}</dt><dd>{{ shardMult }}</dd></div>
+            <div><dt>{{ t('market.eclipse.taken') }}</dt><dd>{{ prestigeCount }}</dd></div>
+            <div><dt>{{ t('market.eclipse.waiting') }}</dt><dd>{{ pendingShards }}</dd></div>
           </dl>
 
           @if (canPrestige) {
             <p class="mk__eclipse-ready">
               <strong>{{ pendingShards }}</strong>
-              {{ pendingShards === 1 ? 'shard is' : 'shards are' }} waiting.
-              Taking them raises your permanent bonus to
+              {{ pendingShards === 1 ? t('market.eclipse.shardIs') : t('market.eclipse.shardsAre') }}
+              {{ t('market.eclipse.raises') }}
               <strong>×{{ ((snap.shards + pendingShards) * 0.05 + 1).toFixed(2) }}</strong>.
             </p>
 
             @if (!eclipseArmed) {
-              <button type="button" class="mk__eclipse-btn" (click)="arm()">RESET THE ECLIPSE</button>
+              <button type="button" class="mk__eclipse-btn" (click)="arm()">{{ t('market.eclipse.reset') }}</button>
             } @else {
-              <div class="mk__eclipse-confirm" role="group" aria-label="Confirm the Eclipse">
+              <div class="mk__eclipse-confirm" role="group" [attr.aria-label]="t('market.eclipse.confirm')">
                 <p class="mk__eclipse-warn">
-                  This takes <strong>{{ gold }} Gold</strong> and <strong>{{ eclipseCost }}</strong>
-                  across the Forge, Hammer, Automaton and Mastery shelves. It does not touch your rank,
-                  your Essence, your artifacts, your cosmetics or anything on the Codex wall.
-                  <span class="mk__eclipse-warn-final">There is no undo.</span>
+                  {{ t('market.eclipse.warn', { gold: gold, cost: eclipseCost }) }}
+                  <span class="mk__eclipse-warn-final">{{ t('market.eclipse.noUndo') }}</span>
                 </p>
                 <div class="mk__eclipse-actions">
                   <button type="button" class="mk__eclipse-btn mk__eclipse-btn--go" (click)="takeEclipse()">
-                    TAKE THE {{ pendingShards }} {{ pendingShards === 1 ? 'SHARD' : 'SHARDS' }}
+                    {{ t('market.eclipse.take', { count: pendingShards }) }}
                   </button>
-                  <button type="button" class="mk__eclipse-cancel" (click)="disarm()">Not yet</button>
+                  <button type="button" class="mk__eclipse-cancel" (click)="disarm()">{{ t('market.eclipse.notYet') }}</button>
                 </div>
               </div>
             }
@@ -233,90 +295,106 @@
               <div class="mk__eclipse-track" role="progressbar"
                    [attr.aria-valuenow]="(prestigeProgress * 100).toFixed(0)"
                    aria-valuemin="0" aria-valuemax="100"
-                   aria-label="Progress toward the Eclipse">
+                   [attr.aria-label]="t('market.eclipse.progress')">
                 <span class="mk__eclipse-fill" [style.width.%]="prestigeProgress * 100"></span>
               </div>
               <p class="mk__eclipse-gate">
-                The Eclipse opens at <strong>{{ format(prestigeGold) }}</strong> Gold earned all-time,
-                or at rank <strong>{{ prestigeLevel }}</strong> — whichever you reach first, so long as
-                there is at least one shard in it.
-                <span class="mk__eclipse-gate-now">{{ lifetime }} earned so far.</span>
+                {{ t('market.eclipse.gate', { gold: format(prestigeGold), rank: prestigeLevel }) }}
+                <span class="mk__eclipse-gate-now">{{ t('market.eclipse.earned', { gold: lifetime }) }}</span>
               </p>
             </div>
           }
 
           @if (eclipseResult) {
             <p class="mk__eclipse-done" role="status">
-              🌑 The forge is cold and the sky is yours.
-              <strong>+{{ eclipseResult.granted }}</strong>
-              {{ eclipseResult.granted === 1 ? 'Eclipse Shard' : 'Eclipse Shards' }} —
-              {{ eclipseResult.total }} held, {{ shardMult }} on everything, forever.
+              🌑 {{ t('market.eclipse.done', { granted: eclipseResult.granted, total: eclipseResult.total, mult: shardMult }) }}
             </p>
           }
         </div>
-      } @else {
-
-        <!-- ── The list ───────────────────────────────────────────────────
-             One row shape for all seven shelves. The column heads are a
-             legend for the row, hidden where the row stops being a table. -->
-        <div class="mk__legend" aria-hidden="true">
-          <span class="mk__legend-item">Item</span>
-          <span class="mk__legend-rarity">Rarity</span>
-          <span class="mk__legend-price">Price</span>
-          <span class="mk__legend-yield">Supply</span>
-          <span class="mk__legend-action">Action</span>
+      } @else if (catalogueError) {
+        <div class="mk__error" role="alert">
+          <span class="mk-ico mk-ico--error mk-ico--lg" aria-hidden="true"></span>
+          <p>{{ t('market.error') }}</p>
+          <div class="mk__error-actions">
+            <button type="button" class="mk__empty-clear" (click)="retryCatalogue()">{{ t('market.retry') }}</button>
+            <a class="mk__empty-clear" routerLink="/world">{{ t('market.returnWorld') }}</a>
+          </div>
         </div>
+      } @else if (pageItems.length === 0) {
+        <div class="mk__empty" role="status">
+          <span class="mk-ico mk-ico--empty mk-ico--lg" aria-hidden="true"></span>
+          <p>{{ t('market.empty') }}</p>
+          <button type="button" class="mk__empty-clear" (click)="clearFilters()">{{ t('market.showEverything') }}</button>
+        </div>
+      } @else {
+        <ul class="mk__tiles">
+          @for (it of pageItems; track it.id) {
+            <li class="mk__tile"
+                [class.mk__tile--open]="isExpanded(it.id)"
+                [class.mk__tile--owned]="it.owned > 0"
+                [class.mk__tile--held]="it.state === 'held' || it.state === 'owned'"
+                [class.mk__tile--flash]="isFlashing(it.id)"
+                [class.mk__tile--denied]="isDenied(it.id)"
+                [class.mk__tile--rare]="it.rarity === 'anomalous' || it.rarity === 'mythic' || it.rarity === 'singular'"
+                [attr.data-currency]="it.currency"
+                [attr.data-rarity]="it.rarity"
+                [style.--tier]="it.rarityColor"
+                [style.--tier-glow]="it.rarityGlow">
 
-        @if (pageItems.length === 0) {
-          <p class="mk__empty">
-            <span class="mk__empty-glyph" aria-hidden="true">🜃</span>
-            Nothing on the shelves matches that.
-            <button type="button" class="mk__empty-clear" (click)="clearFilters()">Show everything</button>
-          </p>
-        } @else {
-          <ul class="mk__list">
-            @for (it of pageItems; track it.id) {
-              <li class="mk__row"
-                  [class.mk__row--owned]="it.owned > 0"
-                  [class.mk__row--held]="it.state === 'held' || it.state === 'owned'"
-                  [class.mk__row--flash]="isFlashing(it.id)"
-                  [class.mk__row--denied]="isDenied(it.id)"
-                  [attr.data-currency]="it.currency"
-                  [style.--tier]="it.rarityColor"
-                  [style.--tier-glow]="it.rarityGlow">
-
-                <!--
-                  All five artifacts are painted, so the glyph branch never
-                  fires for them today. It stays anyway: ARTIFACTS is a list
-                  releases add to, and a sixth artifact with no card should land
-                  on the glyph the other five used before the sheet arrived,
-                  not on a broken image.
-                -->
-                <span class="mk__row-icon" aria-hidden="true">
+              <button type="button"
+                      class="mk__tile-trigger"
+                      [id]="'mk-tile-' + it.id"
+                      [attr.aria-expanded]="isExpanded(it.id)"
+                      [attr.aria-controls]="'mk-exp-' + it.id"
+                      [attr.aria-label]="t(isExpanded(it.id) ? 'market.collapse' : 'market.expand', { name: it.name })"
+                      (click)="toggleTile(it.id)">
+                <span class="mk__tile-icon" aria-hidden="true">
                   @if (it.art; as card) {
-                    <img class="mk__row-art" [src]="card.src"
+                    <img class="mk__tile-art" [src]="card.src"
                          [attr.width]="card.width" [attr.height]="card.height"
                          alt="" loading="lazy" decoding="async" draggable="false">
                   } @else {
-                    {{ it.icon }}
+                    <span class="mk__tile-glyph">{{ it.icon }}</span>
                   }
                 </span>
+                <span class="mk__tile-name">{{ it.name }}</span>
+                <span class="mk__tile-state">
+                  <span class="mk__badge">{{ rarityLabel(it.rarity) }}</span>
+                  @if (it.state === 'held' || it.state === 'owned') {
+                    <span class="mk__tile-key">{{ t('market.state.' + it.state) }}</span>
+                  } @else if (it.state === 'locked') {
+                    <span class="mk__tile-key">{{ t('market.state.locked') }} · {{ format(it.cost) }}</span>
+                  } @else {
+                    <span class="mk__tile-key">
+                      <img class="gf-icon currency-icon"
+                           [class.currency-icon--essence]="it.currency === 'essence'"
+                           [src]="it.currency === 'essence'
+                                    ? 'assets/icons/currencies/essence.png'
+                                    : 'assets/icons/currencies/gold.png'"
+                           [alt]="it.currency === 'essence' ? t('market.essence') : t('market.gold')"
+                           width="14" height="14" loading="lazy" decoding="async" draggable="false">
+                      {{ format(it.cost) }}
+                    </span>
+                  }
+                </span>
+              </button>
 
-                <span class="mk__row-body">
-                  <span class="mk__row-name">
-                    {{ it.name }}
+              @if (isExpanded(it.id)) {
+                <div class="mk__tile-exp" [id]="'mk-exp-' + it.id" role="region"
+                     [attr.aria-labelledby]="'mk-tile-' + it.id">
+                  <p class="mk__row-effect">{{ it.effect }}</p>
+                  <p class="mk__row-lore">{{ it.lore }}</p>
+                  <p class="mk__tile-meta">
+                    <span>{{ categoryLabel(it.category) }}</span>
+                    <span>{{ it.yield }}</span>
                     @if (it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic') {
-                      <span class="mk__row-owned">×{{ it.owned }}</span>
+                      <span>×{{ it.owned }}</span>
                     }
                     @if (isRunning(it)) {
-                      <span class="mk__row-timer">⏳ {{ enchantRemaining }}</span>
+                      <span class="mk__row-timer">{{ enchantRemaining }}</span>
                     }
-                  </span>
-                  <span class="mk__row-effect">{{ it.effect }}</span>
-                  <span class="mk__row-lore">{{ it.lore }}</span>
+                  </p>
 
-                  <!-- Owning a cosmetic is not wearing it. The picker only
-                       exists once the thing is bought. -->
                   @if (it.state === 'owned' && it.cosmetic; as cos) {
                     <span class="mk__variants" role="group" [attr.aria-label]="it.name + ' variants'">
                       @for (v of cos.variants; track v.id) {
@@ -331,76 +409,51 @@
                       }
                     </span>
                   }
-                </span>
 
-                <span class="mk__row-rarity">
-                  <span class="mk__badge">{{ it.rarityLabel }}</span>
-                  <span class="mk__row-cat">{{ it.categoryLabel }}</span>
-                </span>
-
-                <span class="mk__row-price">
-                  @if (it.state === 'held' || it.state === 'owned') {
-                    <span class="mk__row-price-num mk__row-price-num--paid">paid</span>
-                  } @else {
-                    <img class="gf-icon currency-icon"
-                         [class.currency-icon--essence]="it.currency === 'essence'"
-                         [src]="it.currency === 'essence'
-                                  ? 'assets/icons/currencies/essence.png'
-                                  : 'assets/icons/currencies/gold.png'"
-                         [alt]="it.currency === 'essence' ? 'Eclipse Essence' : 'Gold'"
-                         width="16" height="16" loading="lazy" decoding="async" draggable="false">
-                    <span class="mk__row-price-num">{{ format(it.cost) }}</span>
-                  }
-                </span>
-
-                <span class="mk__row-yield">{{ it.yield }}</span>
-
-                <span class="mk__row-action">
-                  <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
-                  @if (it.state === 'held') {
-                    <span class="mk__held">HELD</span>
-                  } @else if (it.state === 'owned') {
-                    <span class="mk__held mk__held--owned">OWNED</span>
-                  } @else {
-                    <button type="button" class="mk__buy"
-                            [disabled]="it.state !== 'buy'"
-                            (click)="buy(it)"
-                            [attr.aria-label]="'Buy ' + it.name + ' for ' + format(it.cost)
-                              + (it.currency === 'essence' ? ' Eclipse Essence' : ' Gold')">
-                      {{ it.state === 'buy' ? it.verb : 'Locked' }}
-                    </button>
-                  }
-                </span>
-              </li>
-            }
-          </ul>
-
-          @if (totalPages > 1) {
-            <nav class="mk__pager" aria-label="Market pages">
-              <button type="button" class="mk__pager-btn" [disabled]="!canPrev"
-                      (click)="prev()" aria-label="Previous page">‹</button>
-              <span class="mk__pager-at" aria-live="polite">{{ pageLabel }} / {{ totalPages }}</span>
-              <button type="button" class="mk__pager-btn" [disabled]="!canNext"
-                      (click)="next()" aria-label="Next page">›</button>
-            </nav>
+                  <div class="mk__tile-actions">
+                    <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
+                    @if (it.state === 'held') {
+                      <span class="mk__held">{{ t('market.state.held') }}</span>
+                    } @else if (it.state === 'owned') {
+                      <span class="mk__held mk__held--owned">{{ t('market.state.owned') }}</span>
+                    } @else {
+                      <button type="button" class="mk__buy"
+                              [disabled]="it.state !== 'buy'"
+                              (click)="buy(it)"
+                              [attr.aria-label]="t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
+                        {{ it.state === 'buy' ? it.verb : t('market.state.locked') }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </li>
           }
+        </ul>
+
+        @if (totalPages > 1) {
+          <nav class="mk__pager" [attr.aria-label]="t('market.pages')">
+            <button type="button" class="mk__pager-btn" [disabled]="!canPrev"
+                    (click)="prev()" [attr.aria-label]="t('market.prev')">‹</button>
+            <span class="mk__pager-at" aria-live="polite">{{ t('market.page', { n: pageLabel, m: totalPages }) }}</span>
+            <button type="button" class="mk__pager-btn" [disabled]="!canNext"
+                    (click)="next()" [attr.aria-label]="t('market.next')">›</button>
+          </nav>
         }
       }
     </main>
 
-    <!-- ── Right: the board and the patron pitch ──────────────────────── -->
-    <aside class="mk__aside mk__aside--board" data-reveal aria-label="Market activity">
+    <!-- ── Right: catalogue picks and the patron pitch ─────────────────── -->
+    <aside class="mk__aside mk__aside--board" data-reveal [attr.aria-label]="t('market.picks')">
 
       <section class="mk__board">
-        <h2 class="mk__facet-head">{{ sellersAreMine ? 'Deepest holdings' : 'Most forged' }}</h2>
-        <p class="mk__board-sub">
-          {{ sellersAreMine ? 'what you have gone furthest on' : 'what the realms are buying' }}
-        </p>
+        <h2 class="mk__facet-head">{{ t('market.picks') }}</h2>
+        <p class="mk__board-sub">{{ t('market.picksSub') }}</p>
         <ol class="mk__board-list">
           @for (s of sellers; track s.id) {
             <li>
               <button type="button" class="mk__seller" [style.--tier]="s.color" (click)="focusItem(s)"
-                      [attr.aria-label]="'Find ' + s.name + ' in the list'">
+                      [attr.aria-label]="t('market.pickFind', { name: s.name })">
                 <span class="mk__seller-rank" aria-hidden="true">{{ s.rank }}</span>
                 <span class="mk__seller-icon" aria-hidden="true">{{ s.icon }}</span>
                 <span class="mk__seller-body">
@@ -417,18 +470,16 @@
            apart from everything that costs Gold. -->
       <section class="mk__patron">
         <span class="mk__patron-sigil" aria-hidden="true">✦</span>
-        <h2 class="mk__patron-head">Become a Godforge Patron</h2>
-        <p class="mk__patron-sub">Exclusive items &amp; early access</p>
-        <p class="mk__patron-lore">
-          The forge runs on Gold. Everything around it runs on people who decided it should keep running.
-        </p>
-        <a class="mk__patron-cta" routerLink="/world">Return to the world</a>
+        <h2 class="mk__patron-head">{{ t('market.patron.head') }}</h2>
+        <p class="mk__patron-sub">{{ t('market.patron.sub') }}</p>
+        <p class="mk__patron-lore">{{ t('market.patron.lore') }}</p>
+        <a class="mk__patron-cta" routerLink="/world">{{ t('market.returnWorld') }}</a>
       </section>
 
       <!-- Where the Gold is actually coming from. Open by default: an idle
            number nobody can decompose reads as arbitrary. -->
       <details class="mk__ledger" open>
-        <summary class="mk__ledger-sum">Gold income breakdown</summary>
+        <summary class="mk__ledger-sum">{{ t('market.ledger') }}</summary>
         <ul class="mk__ledger-list">
           @for (row of breakdown; track row.label) {
             <li class="mk__ledger-row"
@@ -440,19 +491,19 @@
             </li>
           }
           <li class="mk__ledger-row mk__ledger-row--total">
-            <span class="mk__ledger-label">Total</span>
-            <span class="mk__ledger-note">everything above, resolved</span>
+            <span class="mk__ledger-label">{{ t('market.ledger.total') }}</span>
+            <span class="mk__ledger-note">{{ t('market.ledger.resolved') }}</span>
             <span class="mk__ledger-val">{{ perSecond }}/sec</span>
           </li>
         </ul>
         <dl class="mk__mini-stats">
-          <div><dt>Per minute</dt><dd>{{ perMinute }}</dd></div>
-          <div><dt>Per strike</dt><dd>{{ perClick }}</dd></div>
+          <div><dt>{{ t('market.stat.minute') }}</dt><dd>{{ perMinute }}</dd></div>
+          <div><dt>{{ t('market.stat.strike') }}</dt><dd>{{ perClick }}</dd></div>
           @if (snap.autoPerSecond > 0) {
-            <div><dt>Auto</dt><dd>{{ autoRate }}/sec</dd></div>
+            <div><dt>{{ t('market.stat.auto') }}</dt><dd>{{ autoRate }}/sec</dd></div>
           }
-          <div><dt>Lifetime</dt><dd>{{ lifetime }}</dd></div>
-          <div><dt>Strikes</dt><dd>{{ strikes }}</dd></div>
+          <div><dt>{{ t('market.stat.lifetime') }}</dt><dd>{{ lifetime }}</dd></div>
+          <div><dt>{{ t('market.stat.strikes') }}</dt><dd>{{ strikes }}</dd></div>
         </dl>
       </details>
     </aside>
@@ -460,11 +511,11 @@
 
   <!-- ── Footer ────────────────────────────────────────────────────────── -->
   <footer class="mk__foot">
-    <p class="mk__whisper">the forge does not care whether you are watching. it only cares that you came back.</p>
+    <p class="mk__whisper">{{ t('market.whisper') }}</p>
     <p class="mk__links">
-      <a routerLink="/world/quests">The Standing Orders</a> ·
-      <a routerLink="/codex">The Codex</a> ·
-      <a routerLink="/forge/runes">The Forge</a>
+      <a routerLink="/world/quests">{{ t('market.link.orders') }}</a> ·
+      <a routerLink="/codex">{{ t('market.link.codex') }}</a> ·
+      <a routerLink="/forge/runes">{{ t('market.link.forge') }}</a>
     </p>
   </footer>
 </section>
