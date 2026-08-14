@@ -138,4 +138,5 @@ extensions/*.env
 # only the per-run output directories are ignored here.
 test-results/
 playwright-report/
+e2e/artifacts/
 .lighthouseci/

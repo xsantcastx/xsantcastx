@@ -12,6 +12,7 @@ test.describe('Quick Inspect', () => {
   test('desktop side dialog opens from Market and keeps filters', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openSettled(page, '/market');
+    await page.getByRole('button', { name: /Open Forge Bellows/i }).click();
     const inspect = page.locator('app-inspect-button').first();
     await expect(inspect).toBeVisible();
     await inspect.click();
