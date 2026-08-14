@@ -35,15 +35,8 @@ for (const file of routingFiles) {
 const arenaSrc = fs.readFileSync(path.join(SRC, 'app/arena/games/arena-game.routes.ts'), 'utf8');
 for (const m of arenaSrc.matchAll(/path:\s*'([^']+)'/g)) declared.add('/' + m[1]);
 
-// Tool routes live in the tools module
-const toolsRouting = ['app/tools/tools-routing.module.ts', 'app/tools/tools.module.ts']
-  .map(p => path.join(SRC, p)).filter(fs.existsSync);
-let toolPaths = new Set();
-for (const f of toolsRouting) {
-  for (const m of fs.readFileSync(f, 'utf8').matchAll(/path:\s*'([^']+)'/g)) {
-    toolPaths.add('/tools/' + m[1]);
-  }
-}
+// Retired /tools and /embed pages redirect; they are not live routes.
+const toolPaths = new Set();
 
 // ── Collect every routerLink used in templates ─────────────────────────────
 function walk(dir, out = []) {
@@ -94,7 +87,7 @@ for (const [route, where] of links) {
   if (route === '/') continue;
   if (declared.has(route) || toolPaths.has(route)) continue;
   // /tools/<slug> from the registry is resolved dynamically — accept the prefix
-  if (route.startsWith('/tools/') || route.startsWith('/embed/')) continue;
+  if (route.startsWith('/tools/') || route.startsWith('/embed/')) continue; // retired, redirect to /world
   dead.push({ route, where: [...where] });
 }
 
