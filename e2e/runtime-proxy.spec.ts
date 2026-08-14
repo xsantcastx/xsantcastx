@@ -15,35 +15,13 @@ test.describe('runtime proxy / 375px', () => {
     reducedMotion: 'no-preference',
   });
 
-  // (a) Sibling cards sit on staggered animation-delays, so they breathe out of
-  // phase rather than pulsing in unison. We cannot wait out a 6s cycle in
-  // headless CI, so the computed animationDelay is the proxy for "each card is
-  // at a different point in the cycle".
-  //
-  // This used to target the hero carousel's `.hc-card`. That component was
-  // deleted in v2.19.0 when the home page became the entrance to the forge, and
-  // the selector matches nothing in the DOM today — so the test had been failing
-  // on `waitForSelector` for sixteen releases, against markup that no longer
-  // exists. It is retargeted here at `.hp-tool-card__icon-wrap`, which carries
-  // the same nth-child stagger (landing.component.css) and is the surviving
-  // instance of the pattern this test was written to protect.
-  test('tool card icons have staggered animation-delay (cycle proxy)', async ({ page }) => {
+  // Tool-card stagger lived on the retired /tools catalogue. World now lists
+  // realm stations without tool cards, so this asserts the five realms render.
+  test('world lists the five realm stations', async ({ page }) => {
     await page.goto('/world');
-    await page.waitForSelector('.hp-tool-card__icon-wrap', { timeout: 10000 });
-
-    const delays = await page.evaluate(() => {
-      const icons = Array.from(document.querySelectorAll('.hp-tool-card__icon-wrap'));
-      return icons.slice(0, 6).map(icon => window.getComputedStyle(icon).animationDelay);
-    });
-
-    expect(delays.length, 'should find at least 2 .hp-tool-card__icon-wrap elements').toBeGreaterThanOrEqual(2);
-
-    // At least 2 distinct delay values means stagger is active
-    const uniqueDelays = new Set(delays);
-    expect(
-      uniqueDelays.size,
-      `Expected staggered animation-delays but all icons share the same delay: ${JSON.stringify(delays)}`,
-    ).toBeGreaterThanOrEqual(2);
+    await page.waitForSelector('.gf-station', { timeout: 10000 });
+    const count = await page.locator('.gf-station').count();
+    expect(count).toBe(5);
   });
 
   // (b) The CSS planet's animation checks used to live here — two tests on

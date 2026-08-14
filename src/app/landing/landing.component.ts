@@ -15,7 +15,6 @@
  */
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { REALMS, RealmDefinition } from '../shared/realms/realm.model';
@@ -24,7 +23,6 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
-import { PRERENDERED_PATHS } from '../prerender-stats';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
 import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
@@ -93,10 +91,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   // Every stat is derived from the thing it counts, so none of them can drift
   // into a marketing number that no longer matches the site.
 
-  /** Live registry rows — game infrastructure, not a public catalogue. */
-  readonly artifactCount = TOOLS_REGISTRY.filter(t => t.status === 'live').length;
-  /** Routes Angular prerenders to static HTML — regenerated at every build. */
-  readonly prerenderedPaths = PRERENDERED_PATHS;
   /** Registered easter eggs. */
   readonly fragmentCount = EASTER_EGGS.length;
 
