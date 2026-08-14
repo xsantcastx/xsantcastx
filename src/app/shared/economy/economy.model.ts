@@ -162,6 +162,8 @@ export interface PlayerEconomy {
   acks?: Record<string, number>;
   /** deviceId → last write time, so vanished devices stop blocking compact. */
   seenAt?: Record<string, number>;
+  /** Durable Market purchase receipts. Optional on pre-C2 blobs. */
+  commerceOps?: import('./commerce-ops').CommerceOperation[];
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -197,6 +199,7 @@ export function emptyEconomy(): PlayerEconomy {
     checkpointId: 0,
     acks: {},
     seenAt: {},
+    commerceOps: [],
   };
 }
 

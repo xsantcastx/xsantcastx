@@ -93,6 +93,10 @@ import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { InspectService } from '../entity/inspect.service';
 import { TranslationService } from '../../translation.service';
 import {
+  type CommerceCode,
+  type CommerceKind,
+} from './commerce-ops';
+import {
   MARKET_CATEGORIES,
   MARKET_PAGE_SIZE,
   MARKET_QUERY_DEFAULTS,
@@ -311,6 +315,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   eclipseOpen = false;
   catalogueError = false;
   hydrated = false;
+  purchaseNotice: { tone: 'ok' | 'queued' | 'denied'; text: string } | null = null;
 
   /** Ids that just bought something, for the button's flash. */
   flashing = new Set<string>();
@@ -1035,15 +1040,45 @@ export class MarketComponent implements OnInit, OnDestroy {
    */
   buy(item: MarketItem): void {
     if (item.state === 'held' || item.state === 'owned') return;
+    if (this.economy.isBuying(item.id)) return;
 
-    let bought = false;
-    switch (item.category) {
-      case 'enchant':  bought = this.economy.buyEnchantment(item.id); break;
-      case 'artifact': bought = this.economy.buyArtifact(item.id);    break;
-      case 'cosmetic': bought = this.economy.buyCosmetic(item.id);    break;
-      default:         bought = this.economy.buyUpgrade(item.id);     break;
+    const kind = this.commerceKind(item);
+    if (!kind) return;
+    const receipt = this.economy.purchaseListing({
+      mutationKey: `buy:${item.id}:${item.cost}:${item.owned}`,
+      listingId: item.id,
+      kind,
+      expectedCost: item.cost,
+      currency: item.currency,
+    });
+    this.announcePurchase(receipt.code);
+    this.settle(item.id, receipt.ok);
+    if (this.isBrowser) {
+      queueMicrotask(() => {
+        const el = this.host.nativeElement.querySelector(
+          receipt.ok ? `#mk-exp-${item.id} .mk__buy, #mk-exp-${item.id} .mk__held` : `#mk-exp-${item.id} .mk__buy`,
+        ) as HTMLElement | null;
+        el?.focus();
+      });
     }
-    this.settle(item.id, bought);
+  }
+
+  isBuying(id: string): boolean {
+    return this.economy.isBuying(id);
+  }
+
+  private commerceKind(item: MarketItem): CommerceKind | null {
+    if (item.category === 'enchant') return 'enchantment';
+    if (item.category === 'artifact') return 'artifact';
+    if (item.category === 'cosmetic') return 'cosmetic';
+    if (item.category === 'eclipse') return null;
+    return 'upgrade';
+  }
+
+  private announcePurchase(code: CommerceCode): void {
+    const tone = code === 'ok' ? 'ok' : code === 'queued' ? 'queued' : 'denied';
+    this.purchaseNotice = { tone, text: this.t(`market.buy.${code}`) };
+    this.cdr.markForCheck();
   }
 
   // ── Cosmetics ──────────────────────────────────────────────────────────────

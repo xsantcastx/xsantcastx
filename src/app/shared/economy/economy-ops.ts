@@ -34,6 +34,7 @@
  * conservative max/union rule. A missing timestamp is not proof that a ledger
  * is older, so a stamped 100 Gold must not overwrite a legacy 9,999.
  */
+import { mergeCommerceOps, parseCommerceOps, type CommerceOperation } from './commerce-ops';
 
 export type EconomyOpKind =
   | 'credit-gold'
@@ -133,6 +134,8 @@ export interface EconomyLedger {
   acks: Record<string, number>;
   /** deviceId → last wall-ms that device wrote. Stale devices stop blocking compact. */
   seenAt: Record<string, number>;
+  /** Durable Market purchase receipts. Same blob as the ledger ops. */
+  commerceOps: CommerceOperation[];
 }
 
 /** localStorage key for the stable per-browser device id. */
@@ -178,6 +181,7 @@ export function emptyLedger(): EconomyLedger {
     checkpointId: 0,
     acks: {},
     seenAt: {},
+    commerceOps: [],
   };
 }
 
@@ -218,6 +222,7 @@ export function snapshotOf(state: EconomyLedger): EconomyLedger {
     applied: { ...state.applied },
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
+    commerceOps: [],
   };
 }
 
@@ -235,6 +240,7 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
     applied: { ...state.applied },
     acks: { ...state.acks },
     seenAt: { ...state.seenAt },
+    commerceOps: (state.commerceOps ?? []).map(o => ({ ...o })),
   };
 }
 
@@ -439,6 +445,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.acks = maxRecord(a.acks, b.acks);
   replayed.seenAt = clampSeenAt(maxRecord(a.seenAt, b.seenAt), Date.now());
   replayed.version = 2;
+  replayed.commerceOps = mergeCommerceOps(a.commerceOps ?? [], b.commerceOps ?? []);
   return replayed;
 }
 
@@ -608,6 +615,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     checkpointId: Math.max(remote.checkpointId, local.checkpointId),
     acks: maxRecord(remote.acks, local.acks),
     seenAt: maxRecord(remote.seenAt, local.seenAt),
+    commerceOps: mergeCommerceOps(remote.commerceOps ?? [], local.commerceOps ?? []),
   };
 }
 
@@ -690,6 +698,7 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     checkpointId: numberOf(value['checkpointId']),
     acks: asApplied(value['acks']),
     seenAt: asSeenAt(value['seenAt']),
+    commerceOps: parseCommerceOps(value['commerceOps']),
   };
 }
 

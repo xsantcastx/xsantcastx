@@ -226,6 +226,15 @@
         <p class="mk__count" aria-live="polite">{{ t('market.filteredCount', { count: filteredCount }) }}</p>
       </div>
 
+      @if (purchaseNotice) {
+        <p class="mk__notice" role="status"
+           [class.mk__notice--ok]="purchaseNotice.tone === 'ok'"
+           [class.mk__notice--queued]="purchaseNotice.tone === 'queued'"
+           [class.mk__notice--denied]="purchaseNotice.tone === 'denied'">
+          {{ purchaseNotice.text }}
+        </p>
+      }
+
       @if (hasFilters) {
         <ul class="mk__chips" [attr.aria-label]="t('market.chips')">
           @for (chip of chips; track chip.key) {
@@ -420,10 +429,11 @@
                       <span class="mk__held mk__held--owned">{{ t('market.state.owned') }}</span>
                     } @else {
                       <button type="button" class="mk__buy"
-                              [disabled]="it.state !== 'buy'"
+                              [disabled]="it.state !== 'buy' || isBuying(it.id)"
+                              [attr.aria-busy]="isBuying(it.id)"
                               (click)="buy(it)"
                               [attr.aria-label]="t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
-                        {{ it.state === 'buy' ? it.verb : t('market.state.locked') }}
+                        {{ isBuying(it.id) ? t('market.buy.in-flight') : (it.state === 'buy' ? it.verb : t('market.state.locked')) }}
                       </button>
                     }
                   </div>
