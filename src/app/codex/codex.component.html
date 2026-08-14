@@ -249,7 +249,7 @@
                     <a class="cx-card__link" [routerLink]="a.toolRoute">{{ a.toolTitle }} →</a>
                   }
                   @if (a.gate) {
-                    <p class="cx-card__gate">🔗 unchains <a routerLink="/arena">{{ a.gate }}</a></p>
+                    <p class="cx-card__gate">🔗 unchains <a routerLink="/world/trials">{{ a.gate }}</a></p>
                   }
                 } @else {
                   <!-- The hint, not the description. The description is the
@@ -669,7 +669,7 @@
     @if (scrollsFound === 0) {
       <p class="cx-scrolls__empty">
         Nothing recovered yet. The scrolls come off the anvil —
-        <a routerLink="/rune-forge">strike it</a> and the codex fills in.
+        <a routerLink="/forge/runes">strike it</a> and the codex fills in.
       </p>
     }
   </section>
@@ -766,7 +766,7 @@
       <p class="cx-soon__sub">
         Ranking anyone needs a score worth ranking, and nothing here is scored
         against anybody else yet. Sign in on
-        <a routerLink="/forge-keeper">your Forge</a> and progress follows you
+        <a routerLink="/character">your Character</a> and progress follows you
         between devices — but it is still your progress, not a position.
       </p>
       <p class="cx-soon__cta-note">

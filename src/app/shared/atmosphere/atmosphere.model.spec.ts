@@ -61,7 +61,8 @@ describe('atmosphereForSegment', () => {
     }
   });
 
-  it('leaves /home alone — its art is the atmosphere', () => {
+  it('leaves /world alone — its art is the atmosphere', () => {
+    expect(atmosphereForSegment('world')).toBeNull();
     expect(atmosphereForSegment('home')).toBeNull();
   });
 
@@ -75,7 +76,7 @@ describe('atmosphereForSegment', () => {
     // /games 301s to /arena and the service resolves on urlAfterRedirects, so an
     // entry here would be dead code that looks like coverage. The rest are the
     // portfolio pages the full migration deleted, which redirect the same way.
-    for (const gone of ['games', 'skills', 'projects', 'contact', 'guestbook', 'about', 'services']) {
+    for (const gone of ['games', 'home', 'forge-keeper', 'rune-forge', 'skills', 'projects', 'contact', 'guestbook', 'about', 'services']) {
       expect(atmosphereForSegment(gone))
         .withContext(`/${gone} redirects, so it must not carry an atmosphere`)
         .toBeNull();

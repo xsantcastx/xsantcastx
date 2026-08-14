@@ -143,9 +143,9 @@ export class QuestWiringService {
       return;
     }
 
-    // The router reports '/' before the redirect resolves and '/home' after, so
+    // The router reports '/' before the redirect resolves and '/world' after, so
     // without this a single landing looks like two different places.
-    const normalised = path === '/' || path === '' ? '/home' : path;
+    const normalised = path === '/' || path === '' ? '/world' : path;
     this.quests.addToSet('pages', normalised);
 
     this.currentTool = TOOLS_REGISTRY.find(t => t.route === normalised) ?? null;

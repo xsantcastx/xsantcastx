@@ -101,8 +101,12 @@ export class PageAtmosphereService {
 
     const segment = clean.split('/').filter(Boolean)[0] ?? '';
 
-    // The Keeper's realm is the visitor's, not the route's.
-    if (segment === 'forge-keeper') {
+    // Nested World remounts share the `world` prefix; keep the old place washes.
+    if (clean === '/world/quests') return atmosphereForSegment('quests') ?? NO_ATMOSPHERE;
+    if (clean === '/world/trials') return atmosphereForSegment('arena') ?? NO_ATMOSPHERE;
+
+    // The character sheet's realm is the visitor's, not the route's.
+    if (segment === 'character') {
       return atmosphereForAetherShare(this.xp.snapshot.aetherShare);
     }
 

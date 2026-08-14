@@ -52,7 +52,7 @@ describe('ad-config', () => {
     it('allows ads on tool and content routes', () => {
       expect(routeAllowsAds('/tools')).toBe(true);
       expect(routeAllowsAds('/tools/base64-encoder')).toBe(true);
-      expect(routeAllowsAds('/home')).toBe(true);
+      expect(routeAllowsAds('/world')).toBe(true);
       expect(routeAllowsAds('/')).toBe(true);
     });
 
@@ -66,7 +66,7 @@ describe('ad-config', () => {
 
     it('suppresses ads on child routes of an ad-free route', () => {
       expect(routeAllowsAds('/admin/dev-log')).toBe(false);
-      expect(routeAllowsAds('/forge-keeper/cosmetics')).toBe(false);
+      expect(routeAllowsAds('/character/cosmetics')).toBe(false);
     });
 
     it('suppresses ads when the URL carries a query or fragment', () => {

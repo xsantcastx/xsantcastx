@@ -67,7 +67,7 @@ import { QuestCardComponent } from './quest-card.component';
           }
         </div>
 
-        <a routerLink="/quests" class="qd__all" (click)="close()">
+        <a routerLink="/world/quests" class="qd__all" (click)="close()">
           View your epic journey &rarr;
         </a>
       </aside>
