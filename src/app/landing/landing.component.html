@@ -21,7 +21,7 @@
 <div class="homepage">
 
   <!-- ═══════════════════════════════════════════
-  SECTION 1 — THE GODFORGE
+  SECTION 1 — ECLIPSE REALMS
   The entrance. Deep, underground, lit only by the core.
   ═══════════════════════════════════════════ -->
   <section id="hero" class="gfh">
@@ -82,7 +82,7 @@
           </div>
         </dl>
 
-        <a routerLink="/forge-keeper" class="gfpanel__more">
+        <a routerLink="/character" class="gfpanel__more">
           {{ translate('godforge.status.viewFull') }}
           <span class="gfpanel__more-chev" aria-hidden="true"></span>
         </a>
@@ -91,7 +91,7 @@
       <!-- ── Centre: the mark ─────────────────────────────────────────── -->
       <div class="gfh__title-block">
         <p class="gfh__eyebrow">{{ translate('godforge.hero.eyebrow') }}</p>
-        <h1 class="gfh__title">The Godforge</h1>
+        <h1 class="gfh__title">{{ translate('godforge.hero.title') }}</h1>
         <p class="gfh__sub">{{ translate('godforge.hero.sub') }}</p>
       </div>
 
@@ -137,8 +137,7 @@
           <span class="gfbtn__chev" aria-hidden="true"></span>
         </button>
 
-        <a routerLink="/sanctum" class="gfbtn gfbtn--ghost">
-          <span class="gfh__live-dot" aria-hidden="true"></span>
+        <a routerLink="/character" class="gfbtn gfbtn--ghost">
           {{ translate('godforge.hero.ctaLive') }}
         </a>
       </aside>
@@ -158,10 +157,7 @@
   markup when collapsed — the toggle hides them, so crawlers still
   follow all 30 links and only the visitor's view is filtered.
   ═══════════════════════════════════════════ -->
-  <!-- id stays "services": enterTheForge() scrolls to it, and it is the
-       anchor the hero's two calls to action both land on. The name is
-       historical — nothing on this page is called Services any more. -->
-  <section id="services" class="hp-tools gf-forges">
+  <section id="world-realms" class="hp-tools gf-forges">
     <div class="hp-tools__inner">
       <div class="hp-tools__hd">
         <div class="hp-tools__hd-text">
@@ -320,7 +316,7 @@
           </span>
         </div>
 
-        <a routerLink="/rune-forge" class="gf-anvil__cta">
+        <a routerLink="/forge/runes" class="gf-anvil__cta">
           {{ translate('godforge.anvil.cta') }}
           <span class="gf-anvil__cta-cost">{{ translate('godforge.anvil.cost') }}</span>
         </a>
@@ -424,7 +420,7 @@
           <span class="gf-door__name">{{ translate('godforge.journey.blueprint') }}</span>
           <span class="gf-door__hint">{{ translate('godforge.journey.blueprintHint') }}</span>
         </a>
-        <a routerLink="/arena" class="gf-door">
+        <a routerLink="/world/trials" class="gf-door">
           <span class="gf-door__label">{{ translate('godforge.journey.arenaLabel') }}</span>
           <span class="gf-door__name">{{ translate('godforge.journey.arena') }}</span>
           <span class="gf-door__hint">{{ fragmentCount }} {{ translate('godforge.journey.arenaHint') }}</span>

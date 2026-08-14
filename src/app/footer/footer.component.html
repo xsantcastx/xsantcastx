@@ -14,24 +14,22 @@
       <span>{{ translate('gffoot.together') }}</span>
     </p>
 
-    <a routerLink="/home" class="gffoot__brand" aria-label="xsantcastx — home">
+    <a routerLink="/world" class="gffoot__brand" [attr.aria-label]="translate('gfnav.brandLabel')">
       <span class="gffoot__sigil" aria-hidden="true">
         <span class="gffoot__sigil-bar"></span>
         <span class="gffoot__sigil-bar"></span>
       </span>
-      <span class="gffoot__wordmark">XSANTCASTX</span>
+      <span class="gffoot__wordmark">{{ translate('gfnav.brand') }}</span>
     </a>
 
     <p class="gffoot__next">{{ translate('gffoot.nextThing') }}</p>
 
-    <nav class="gffoot__links" aria-label="Godforge sections">
-      <a routerLink="/tools">{{ translate('gfnav.realms') }}</a>
-      <a routerLink="/arena">{{ translate('gfnav.arena') }}</a>
-      <a routerLink="/codex">{{ translate('gfnav.codex') }}</a>
-      <a routerLink="/blueprint">{{ translate('gfnav.warTable') }}</a>
+    <nav class="gffoot__links" aria-label="Eclipse Realms">
+      <a routerLink="/world">{{ translate('gfnav.world') }}</a>
+      <a routerLink="/character">{{ translate('gfnav.character') }}</a>
       <a routerLink="/market">{{ translate('gfnav.market') }}</a>
-      <a routerLink="/rune-forge">{{ translate('gfnav.runeForge') }}</a>
-      <a routerLink="/forge-keeper">{{ translate('gfnav.profile') }}</a>
+      <a routerLink="/forge/runes">{{ translate('gfnav.forge') }}</a>
+      <a routerLink="/codex">{{ translate('gfnav.codex') }}</a>
     </nav>
 
     <!--
@@ -41,8 +39,12 @@
       here is Godforge surfaces that simply are not top-six.
     -->
     <nav class="gffoot__links gffoot__links--minor" aria-label="More">
-      <a routerLink="/quests">{{ translate('gfnav.quests') }}</a>
+      <a routerLink="/tools">{{ translate('gfnav.tools') }}</a>
+      <a routerLink="/world/quests">{{ translate('gfnav.quests') }}</a>
+      <a routerLink="/world/trials">{{ translate('gfnav.trials') }}</a>
       <a routerLink="/sanctum">{{ translate('gfnav.live') }}</a>
+      <a routerLink="/blueprint">{{ translate('gfnav.warTable') }}</a>
+      <a routerLink="/mcp">{{ translate('gfnav.mcp') }}</a>
       <a routerLink="/mission-control">{{ translate('gfnav.missionControl') }}</a>
       <a routerLink="/sponsors">{{ translate('gfnav.sponsors') }}</a>
       <a routerLink="/donate">{{ translate('gfnav.donate') }}</a>
@@ -108,7 +110,7 @@
 
   <!-- Footer Info -->
   <div class="footer-info">
-    <p>© 2026 xsantcastx Development Studio | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>
+    <p>© 2026 xsantcastx | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>
     <a class="build-version" [routerLink]="changelogRoute"
        [attr.aria-label]="'Version ' + appVersion + ' ' + appCodename + ' — view the changelog'">
       v{{ appVersion }} · {{ appCodename }}

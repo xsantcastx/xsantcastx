@@ -61,9 +61,9 @@
 
 .gffoot__wordmark {
   font-family: var(--font-heading, 'Orbitron', sans-serif);
-  font-size: clamp(1.1rem, 3.6vw, 1.7rem);
+  font-size: clamp(1rem, 3.2vw, 1.5rem);
   font-weight: 700;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.1em;
   color: #f0f0f0;
   transition: color 0.25s ease;
 }

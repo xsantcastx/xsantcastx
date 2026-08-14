@@ -154,7 +154,7 @@ interface Shout {
         @if (snap.essence > 0) {
           <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
-        <a class="ff__hud-forge" routerLink="/rune-forge">Strike the Rune Forge &rarr;</a>
+        <a class="ff__hud-forge" routerLink="/forge/runes">Strike the Rune Forge &rarr;</a>
         <a class="ff__hud-market" routerLink="/market">Open the Market &rarr;</a>
       </div>
 
@@ -992,7 +992,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private goToRuneForge(): void {
     this.pressed = true;
     this.audio.coin();
-    void this.router.navigateByUrl('/rune-forge');
+    void this.router.navigateByUrl('/forge/runes');
   }
 
   // ── Touch ──────────────────────────────────────────────────────────────────

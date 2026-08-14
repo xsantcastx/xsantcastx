@@ -29,6 +29,7 @@ import { QuestService } from '../quests/quest.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
+import { CANONICAL, canonicalizePlayerPath } from '../canonical-routes';
 import { RealmId, realmForCategory } from '../realms/realm.model';
 import { dayKey } from '../quests/quest.model';
 import {
@@ -502,7 +503,8 @@ export class IdleService {
   private resolveRoute(url: string): void {
     const path = url.split('?')[0].split('#')[0];
     this.currentTool = TOOLS_REGISTRY.find(t => t.route === path) ?? null;
-    this.onArena = path === '/arena' || path.startsWith('/arena/');
+    const canonical = canonicalizePlayerPath(path);
+    this.onArena = canonical === CANONICAL.trials || path.startsWith('/arena/');
   }
 
   /**

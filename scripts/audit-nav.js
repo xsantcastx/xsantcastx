@@ -14,15 +14,21 @@ const ROOT = process.argv[2] || process.cwd();
 const SRC = path.join(ROOT, 'src');
 
 // ── Collect declared routes ────────────────────────────────────────────────
-const routingSrc = fs.readFileSync(path.join(SRC, 'app/app-routing.module.ts'), 'utf8');
+const routingFiles = [
+  'app/app-routing.module.ts',
+  'app/shared/canonical-routes.ts',
+].map(p => path.join(SRC, p));
 const declared = new Set();
 const redirects = new Map();
 
-// Top-level `path: 'x'` entries
-for (const m of routingSrc.matchAll(/path:\s*'([^']*)'/g)) declared.add('/' + m[1]);
-// redirectTo pairs
-for (const m of routingSrc.matchAll(/path:\s*'([^']+)',\s*redirectTo:\s*'([^']+)'/g)) {
-  redirects.set('/' + m[1], '/' + m[2].replace(/^\//, ''));
+for (const file of routingFiles) {
+  const routingSrc = fs.readFileSync(file, 'utf8');
+  // Top-level `path: 'x'` entries
+  for (const m of routingSrc.matchAll(/path:\s*'([^']*)'/g)) declared.add('/' + m[1]);
+  // redirectTo pairs
+  for (const m of routingSrc.matchAll(/path:\s*'([^']+)',\s*redirectTo:\s*'([^']+)'/g)) {
+    redirects.set('/' + m[1], '/' + m[2].replace(/^\//, ''));
+  }
 }
 
 // Arena game routes live in their own file
@@ -89,7 +95,7 @@ for (const [route, where] of links) {
   if ([...where].some(w => CHROME.includes(w.replace(/^src\//, '')))) chromeLinks.add(route);
 }
 
-const EXEMPT = new Set(['/admin', '/embed', '/tools', '/home', '/**', '/']);
+const EXEMPT = new Set(['/admin', '/embed', '/tools', '/world', '/**', '/']);
 const orphans = [];
 for (const r of declared) {
   if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;

@@ -36,6 +36,8 @@
  * components read `activeAdNetwork()` and switch themselves.
  */
 
+import { CANONICAL } from '../canonical-routes';
+
 /** Networks the site knows how to render. */
 export type AdNetwork = 'carbon' | 'ethical' | 'adsense' | 'house';
 
@@ -110,12 +112,13 @@ export function carbonScriptSrc(): string {
 /**
  * Route prefixes that never show ads.
  *
- * /admin and /forge-keeper are the owner's and the player's own dashboards —
+ * /admin and /character are the owner's and the player's own dashboards —
  * surfaces where an ad reads as a bug rather than as inventory. Matched by
  * prefix so child routes inherit the suppression.
  */
 export const AD_FREE_ROUTES: readonly string[] = [
   '/admin',
+  CANONICAL.character,
   '/forge-keeper',
   '/pro',
   '/sponsors',
