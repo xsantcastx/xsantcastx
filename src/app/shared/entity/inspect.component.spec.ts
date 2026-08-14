@@ -79,4 +79,37 @@ describe('InspectComponent', () => {
     fixture.detectChanges();
     document.body.removeChild(trigger);
   });
+
+  it('keeps Shift+Tab from the focused title inside the dialog', async () => {
+    await open('rune', 'ash');
+    const title = root.querySelector('#qi-title') as HTMLElement;
+    const close = root.querySelector('.qi__close') as HTMLElement;
+    const shell = root.querySelector('.qi-root') as HTMLElement;
+    title.focus();
+    expect(document.activeElement).toBe(title);
+
+    const shiftTab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    shell.dispatchEvent(shiftTab);
+    expect(document.activeElement).toBe(close);
+    expect(document.activeElement?.closest('.qi')).toBeTruthy();
+  });
+
+  it('redraws an already-open panel when the language changes', async () => {
+    await open('rune', 'ash');
+    expect(root.querySelector('.qi__kind')?.textContent?.trim()).toBe('Rune');
+    expect(root.querySelector('.qi__close')?.textContent?.trim()).toBe('Close');
+
+    i18n.setLanguage('es');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(root.querySelector('.qi__kind')?.textContent?.trim()).toBe('Runa');
+    expect(root.querySelector('.qi__close')?.textContent?.trim()).toBe('Cerrar');
+    expect(root.querySelector('#qi-title')?.textContent?.trim()).toBe('Ash');
+  });
 });

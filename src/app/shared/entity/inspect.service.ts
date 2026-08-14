@@ -10,6 +10,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
+import { TranslationService } from '../../translation.service';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
 import { EntityResolver } from './entity-resolver.service';
 import { INSPECT_QUERY, parseEntityRef, serializeEntityRef } from './entity-ref';
@@ -27,6 +28,7 @@ const EMPTY: InspectView = { open: false, ref: null, resolution: null };
 export class InspectService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly resolver = inject(EntityResolver);
+  private readonly i18n = inject(TranslationService);
   private readonly overlays = inject(OverlayStackService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -43,9 +45,20 @@ export class InspectService implements OnDestroy {
   start(): void {
     if (this.sub) return;
     this.applyToken(this.tokenFromUrl());
-    this.sub = this.router.events.pipe(
+    this.sub = new Subscription();
+    this.sub.add(this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-    ).subscribe(() => this.applyToken(this.tokenFromUrl()));
+    ).subscribe(() => this.applyToken(this.tokenFromUrl())));
+    this.sub.add(this.i18n.currentLanguage$.subscribe(() => this.reresolve()));
+  }
+
+  private reresolve(): void {
+    if (!this.view.ref) return;
+    this.view$$.next({
+      open: true,
+      ref: this.view.ref,
+      resolution: this.resolver.resolve(this.view.ref),
+    });
   }
 
   private tokenFromUrl(): string | null {

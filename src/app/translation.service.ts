@@ -1340,6 +1340,7 @@ export class TranslationService {
     'inspect.fact.xp':          { en: '{{amount}} XP', es: '{{amount}} XP' },
     'inspect.location.bag':     { en: 'Bag', es: 'Bolsa' },
     'inspect.location.equipped':{ en: 'Loadout — {{slot}}', es: 'Equipo — {{slot}}' },
+    'inspect.location.explorer':{ en: 'Held by explorer', es: 'En manos de un explorador' },
     'inspect.action.dossier':   { en: 'Open dossier', es: 'Abrir expediente' },
 
     // ─── Payment fallback copy ─────────────────────────────────────────────
