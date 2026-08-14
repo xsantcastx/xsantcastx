@@ -73,11 +73,28 @@ import {
   DEVICE_ID_KEY,
   EconomyOp,
   EconomyOpKind,
+  applyOps,
   coerceLedger,
   maxSeqFor,
   nextHlc,
   snapshotOf,
 } from './economy-ops';
+import {
+  beginCommerceOp,
+  commitCommerceOp,
+  debitGrantOnce,
+  findCommerceByKey,
+  parseCommerceApplied,
+  parseCommerceOps,
+  reconcileCommerceOps,
+  rollbackCommerceOp,
+  upsertCommerceOp,
+  quoteIsStale,
+  type CommerceCode,
+  type CommerceIntent,
+  type CommerceKind,
+  type CommerceReceipt,
+} from './commerce-ops';
 
 export const ECONOMY_KEY = 'godforge-economy';
 
@@ -225,6 +242,7 @@ export class EconomyService implements OnDestroy {
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
   private deviceId = '';
   private opSeq = 0;
+  private readonly buying = new Set<string>();
   private pendingGold = 0;
   private pendingEssence = 0;
   private lastClickAt = 0;
@@ -280,6 +298,7 @@ export class EconomyService implements OnDestroy {
 
     this.state = this.load();
     this.bindDevice();
+    this.recoverCommerce();
     // First run: start the idle clock now rather than at epoch zero, or the
     // first settlement pays out the eight-hour cap for a visitor who has been
     // here four seconds.
@@ -354,6 +373,7 @@ export class EconomyService implements OnDestroy {
     this.pendingGold = 0;
     this.pendingEssence = 0;
     this.bindDevice();
+    this.recoverCommerce();
     if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
     this.publish();
   }
@@ -696,36 +716,224 @@ export class EconomyService implements OnDestroy {
    * (a Hammer, when no automatons are owned) does not float a "+0".
    */
   buyUpgrade(id: string): boolean {
+    const before = goldPerSecond(this.state);
+    const cost = this.nextCost(id);
+    if (!this.tryBuyUpgrade(id)) return false;
+    const def = upgradeById(id);
+    this.flush();
+    this.publish();
+    if (def) {
+      this.purchase$$.next({
+        kind: 'upgrade',
+        id,
+        name: def.name,
+        cost,
+        currency: 'gold',
+        rateDelta: goldPerSecond(this.state) - before,
+      });
+    }
+    return true;
+  }
+
+  /**
+   * Catalogue purchase with a mutation key. A retry of the same key is one
+   * debit and one grant. Expected cost must match the live price.
+   */
+  purchaseListing(intent: CommerceIntent): CommerceReceipt {
+    const fail = (code: CommerceCode): CommerceReceipt => ({
+      ok: false, code, mutationKey: intent.mutationKey, operation: null,
+    });
+    if (!this.isBrowser) return fail('ineligible');
+    if (!intent.mutationKey || !intent.listingId) return fail('not-found');
+
+    this.recoverCommerce();
+    const existing = findCommerceByKey(
+      this.state.commerceOps ?? [],
+      this.state.commerceApplied ?? {},
+      intent.mutationKey,
+    );
+    const phase = debitGrantOnce(existing);
+    if (phase === 'replay' && existing) {
+      return { ok: true, code: this.queuedCode(), mutationKey: intent.mutationKey, operation: existing };
+    }
+    if (phase === 'conflict' && existing) {
+      return { ok: false, code: 'conflict', mutationKey: intent.mutationKey, operation: existing };
+    }
+    if (phase === 'blocked' || this.buying.has(intent.listingId)) {
+      return { ok: false, code: 'in-flight', mutationKey: intent.mutationKey, operation: existing };
+    }
+
+    const quote = this.quoteListing(intent.listingId, intent.kind);
+    if (quote.reason === 'not-found') return fail('not-found');
+    if (quoteIsStale(quote.cost, intent.expectedCost)) return fail('stale');
+    if (!quote.eligible) return fail(quote.reason ?? 'ineligible');
+    if (!quote.affordable) return fail('insufficient-funds');
+
+    this.buying.add(intent.listingId);
+    const pending = beginCommerceOp(intent, quote.currency, Date.now());
+    this.state.commerceOps = upsertCommerceOp(this.state.commerceOps ?? [], pending);
+    try {
+      const before = goldPerSecond(this.state);
+      const bought = this.tryBuyKind(intent.kind, intent.listingId);
+      if (!bought) {
+        this.state.commerceOps = upsertCommerceOp(this.state.commerceOps ?? [], rollbackCommerceOp(pending));
+        this.flush();
+        this.publish();
+        return fail('ineligible');
+      }
+      const economicOpId = this.state.ops?.[this.state.ops.length - 1]?.id ?? `${this.deviceId}:${this.opSeq}`;
+      const committed = commitCommerceOp(pending, economicOpId);
+      this.state.commerceOps = upsertCommerceOp(this.state.commerceOps ?? [], committed);
+      this.flush();
+      this.publish();
+      const defName = this.listingName(intent.kind, intent.listingId);
+      this.purchase$$.next({
+        kind: intent.kind,
+        id: intent.listingId,
+        name: defName,
+        cost: intent.expectedCost,
+        currency: quote.currency,
+        rateDelta: goldPerSecond(this.state) - before,
+      });
+      return { ok: true, code: this.queuedCode(), mutationKey: intent.mutationKey, operation: committed };
+    } finally {
+      this.buying.delete(intent.listingId);
+    }
+  }
+
+  isBuying(listingId: string): boolean {
+    return this.buying.has(listingId);
+  }
+
+  private queuedCode(): CommerceCode {
+    return this.store.attached && this.store.pending > 0 ? 'queued' : 'ok';
+  }
+
+  private quoteListing(id: string, kind: CommerceKind): {
+    cost: number;
+    currency: 'gold' | 'essence';
+    eligible: boolean;
+    affordable: boolean;
+    reason?: CommerceCode;
+  } {
+    if (kind === 'upgrade') {
+      const def = upgradeById(id);
+      if (!def) return { cost: 0, currency: 'gold', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.isMaxed(id)) {
+        return { cost: this.nextCost(id), currency: 'gold', eligible: false, affordable: false, reason: 'maxed' };
+      }
+      const cost = this.nextCost(id);
+      return { cost, currency: 'gold', eligible: true, affordable: this.state.gold >= cost };
+    }
+    if (kind === 'artifact') {
+      const def = ARTIFACTS.find(a => a.id === id);
+      if (!def) return { cost: 0, currency: 'essence', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.ownsArtifact(id)) {
+        return { cost: def.cost, currency: 'essence', eligible: false, affordable: false, reason: 'owned' };
+      }
+      return { cost: def.cost, currency: 'essence', eligible: true, affordable: this.state.eclipseEssence >= def.cost };
+    }
+    if (kind === 'cosmetic') {
+      const def = COSMETICS.find(c => c.id === id);
+      if (!def) return { cost: 0, currency: 'gold', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.ownsCosmetic(id)) {
+        return { cost: this.discounted(def.cost), currency: 'gold', eligible: false, affordable: false, reason: 'owned' };
+      }
+      const cost = this.discounted(def.cost);
+      return { cost, currency: 'gold', eligible: true, affordable: this.state.gold >= cost };
+    }
+    const def = ENCHANTMENTS.find(e => e.id === id);
+    if (!def) return { cost: 0, currency: 'essence', eligible: false, affordable: false, reason: 'not-found' };
+    const active = activeEnchantment(this.state, Date.now());
+    if (active && def.multiplier < active.def.multiplier && def.id !== active.def.id) {
+      return { cost: def.cost, currency: 'essence', eligible: false, affordable: false, reason: 'weaker' };
+    }
+    return { cost: def.cost, currency: 'essence', eligible: true, affordable: this.state.eclipseEssence >= def.cost };
+  }
+
+  private listingName(kind: CommerceKind, id: string): string {
+    if (kind === 'upgrade') return upgradeById(id)?.name ?? id;
+    if (kind === 'artifact') return ARTIFACTS.find(a => a.id === id)?.name ?? id;
+    if (kind === 'cosmetic') return COSMETICS.find(c => c.id === id)?.name ?? id;
+    return ENCHANTMENTS.find(e => e.id === id)?.name ?? id;
+  }
+
+  private tryBuyKind(kind: CommerceKind, id: string): boolean {
+    if (kind === 'upgrade') return this.tryBuyUpgrade(id);
+    if (kind === 'artifact') return this.tryBuyArtifact(id);
+    if (kind === 'cosmetic') return this.tryBuyCosmetic(id);
+    return this.tryBuyEnchantment(id);
+  }
+
+  private tryBuyUpgrade(id: string): boolean {
     if (!this.isBrowser) return false;
     const def = upgradeById(id);
     if (!def || this.isMaxed(id)) return false;
-
-    // Through `nextCost` rather than `costOf` directly, so the Charisma discount
-    // is charged at the till and not merely displayed on the shelf. The two
-    // drifting apart is the classic version of this bug: the panel shows the
-    // reduced price and the purchase silently takes the full one.
     const cost = this.nextCost(id);
     if (this.state.gold < cost) return false;
-
-    const before = goldPerSecond(this.state);
-
     this.recordOp('buy-upgrade', { amount: cost, itemId: id });
     this.state.gold -= cost;
     this.state.upgrades = { ...this.state.upgrades, [id]: this.levelOf(id) + 1 };
-
-    // A purchase is the kind of thing that must survive the tab being closed
-    // one frame later, so it flushes rather than joining the throttle.
-    this.flush();
-    this.publish();
-    this.purchase$$.next({
-      kind: 'upgrade',
-      id,
-      name: def.name,
-      cost,
-      currency: 'gold',
-      rateDelta: goldPerSecond(this.state) - before,
-    });
     return true;
+  }
+
+  private tryBuyEnchantment(id: string): boolean {
+    if (!this.isBrowser) return false;
+    const def = ENCHANTMENTS.find(e => e.id === id);
+    if (!def || this.state.eclipseEssence < def.cost) return false;
+    const now = Date.now();
+    const active = activeEnchantment(this.state, now);
+    if (active && def.multiplier < active.def.multiplier && def.id !== active.def.id) return false;
+    const expiresAt = now + def.hours * 3_600_000;
+    this.recordOp('buy-enchantment', { amount: def.cost, itemId: id, extra: expiresAt });
+    this.state.eclipseEssence -= def.cost;
+    this.state.enchantments = [
+      ...this.state.enchantments.filter(a => a.id !== id && a.expiresAt > now),
+      { id, expiresAt },
+    ];
+    return true;
+  }
+
+  private tryBuyArtifact(id: string): boolean {
+    if (!this.isBrowser) return false;
+    const def = ARTIFACTS.find(a => a.id === id);
+    if (!def || this.ownsArtifact(id) || this.state.eclipseEssence < def.cost) return false;
+    this.recordOp('buy-artifact', { amount: def.cost, itemId: id });
+    this.state.eclipseEssence -= def.cost;
+    this.state.artifacts = [...this.state.artifacts, id];
+    return true;
+  }
+
+  private tryBuyCosmetic(id: string): boolean {
+    if (!this.isBrowser) return false;
+    const def = COSMETICS.find(c => c.id === id);
+    if (!def || this.ownsCosmetic(id)) return false;
+    const cost = this.discounted(def.cost);
+    if (this.state.gold < cost) return false;
+    const variant = def.variants[0].id;
+    this.recordOp('buy-cosmetic', { amount: cost, itemId: id, slot: def.slot, extra: variant });
+    this.state.gold -= cost;
+    this.state.cosmetics = [...this.state.cosmetics, id];
+    this.state.equipped = { ...this.state.equipped, [def.slot]: variant };
+    return true;
+  }
+
+  private recoverCommerce(): void {
+    const ledger = coerceLedger(this.state);
+    if (!ledger) return;
+    if (!ledger.origin) {
+      const next = (this.state.commerceOps ?? []).map(op =>
+        op.status === 'pending' && !op.economicOpId ? rollbackCommerceOp(op) : op,
+      );
+      this.state.commerceOps = next;
+      return;
+    }
+    const replay = applyOps(ledger.origin, ledger.ops);
+    const known = new Set(ledger.ops.map(op => op.id));
+    const next = reconcileCommerceOps(this.state.commerceOps ?? [], new Set(replay.appliedIds), known);
+    const changed = JSON.stringify(next) !== JSON.stringify(this.state.commerceOps ?? []);
+    this.state.commerceOps = next;
+    if (changed) this.flush();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -836,49 +1044,33 @@ export class EconomyService implements OnDestroy {
    * for a currency that is meant to be spent on the thing you need today.
    */
   buyEnchantment(id: string): boolean {
-    if (!this.isBrowser) return false;
     const def = ENCHANTMENTS.find(e => e.id === id);
-    if (!def || this.state.eclipseEssence < def.cost) return false;
-
-    const now = Date.now();
-    const expiresAt = now + def.hours * 3_600_000;
-    this.recordOp('buy-enchantment', { amount: def.cost, itemId: id, extra: expiresAt });
-    this.state.eclipseEssence -= def.cost;
-    this.state.enchantments = [
-      ...this.state.enchantments.filter(a => a.id !== id && a.expiresAt > now),
-      { id, expiresAt },
-    ];
-
+    if (!this.tryBuyEnchantment(id)) return false;
     this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'enchantment', id, name: def.name, cost: def.cost, currency: 'essence', rateDelta: 0 });
+    if (def) {
+      this.purchase$$.next({ kind: 'enchantment', id, name: def.name, cost: def.cost, currency: 'essence', rateDelta: 0 });
+    }
     return true;
   }
 
   /** Buy an artifact. Once only — a second attempt returns false. */
   buyArtifact(id: string): boolean {
-    if (!this.isBrowser) return false;
     const def = ARTIFACTS.find(a => a.id === id);
-    if (!def || this.ownsArtifact(id) || this.state.eclipseEssence < def.cost) return false;
-
     const before = goldPerSecond(this.state);
-
-    this.recordOp('buy-artifact', { amount: def.cost, itemId: id });
-    this.state.eclipseEssence -= def.cost;
-    this.state.artifacts = [...this.state.artifacts, id];
-
+    if (!this.tryBuyArtifact(id)) return false;
     this.flush();
     this.publish();
-    this.purchase$$.next({
-      kind: 'artifact',
-      id,
-      name: def.name,
-      cost: def.cost,
-      currency: 'essence',
-      // The Fragment of the First Sun doubles the rate, so this line is the one
-      // artifact purchase that floats a number worth reading.
-      rateDelta: goldPerSecond(this.state) - before,
-    });
+    if (def) {
+      this.purchase$$.next({
+        kind: 'artifact',
+        id,
+        name: def.name,
+        cost: def.cost,
+        currency: 'essence',
+        rateDelta: goldPerSecond(this.state) - before,
+      });
+    }
     return true;
   }
 
@@ -887,24 +1079,14 @@ export class EconomyService implements OnDestroy {
    * that is free — see the note on `Cosmetic`.
    */
   buyCosmetic(id: string): boolean {
-    if (!this.isBrowser) return false;
     const def = COSMETICS.find(c => c.id === id);
-    if (!def || this.ownsCosmetic(id)) return false;
-
-    // Cosmetics are Gold-priced, so Charisma discounts them like every other
-    // Gold price in the Market. `cosmeticCost` is what the panel renders.
-    const cost = this.discounted(def.cost);
-    if (this.state.gold < cost) return false;
-
-    const variant = def.variants[0].id;
-    this.recordOp('buy-cosmetic', { amount: cost, itemId: id, slot: def.slot, extra: variant });
-    this.state.gold -= cost;
-    this.state.cosmetics = [...this.state.cosmetics, id];
-    this.state.equipped = { ...this.state.equipped, [def.slot]: variant };
-
+    const cost = def ? this.discounted(def.cost) : 0;
+    if (!this.tryBuyCosmetic(id)) return false;
     this.flush();
     this.publish();
-    this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost, currency: 'gold', rateDelta: 0 });
+    if (def) {
+      this.purchase$$.next({ kind: 'cosmetic', id, name: def.name, cost, currency: 'gold', rateDelta: 0 });
+    }
     return true;
   }
 
@@ -1057,6 +1239,8 @@ export class EconomyService implements OnDestroy {
         // the all-time total says. No migration step is needed and none is run.
         version: 2,
         ops: parsed.ops ?? [],
+        commerceOps: parseCommerceOps(parsed.commerceOps),
+        commerceApplied: parseCommerceApplied(parsed.commerceApplied),
         origin: parsed.origin ?? null,
         hlc: parsed.hlc ?? 0,
         applied: parsed.applied ?? {},
