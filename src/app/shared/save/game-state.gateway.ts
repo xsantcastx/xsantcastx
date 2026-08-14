@@ -84,6 +84,11 @@ import {
   unwrapBlob,
   wrapBlob,
 } from '../cloud-save/cloud-save.model';
+import {
+  DEVICE_ID_KEY,
+  acknowledgeAndMaybeCompact,
+  coerceLedger,
+} from '../economy/economy-ops';
 import { LocalSaveRegistry } from './local-save-registry.service';
 
 /**
@@ -631,9 +636,11 @@ export class GameStateGateway {
   /**
    * Read the dirty documents, merge, and write the results.
    *
-   * Serialised on `this.flushing` so two overlapping flushes cannot read the
-   * same document and both write a merge of it — which would be harmless under
-   * these monotone rules and confusing forever after.
+   * Serialised on `this.flushing` so two overlapping tabs on this device cannot
+   * interleave. Concurrent *devices* are a different race: the economy document
+   * is written inside a Firestore transaction that re-reads, merges, and
+   * retries on contention. Other blobs stay monotone and still go through the
+   * batch path.
    */
   private pushDirty(opts: { batched: boolean; known?: Map<string, unknown> }): Promise<void> {
     if (this.flushing) return this.flushing;
@@ -666,6 +673,11 @@ export class GameStateGateway {
         if (localRaw === null) continue;
         const local = safeParse(localRaw);
         if (local === null) continue; // Unparseable; the owner will replace it.
+
+        if (key === ECONOMY_STATE_KEY && typeof fs.api.runTransaction === 'function') {
+          await this.commitEconomyTransactional(fs, uid, entry, local);
+          continue;
+        }
 
         // A read this push does not have to make. `attach` hands over what it
         // just read, and that map is the *whole* account — `readAll` sweeps both
@@ -722,6 +734,54 @@ export class GameStateGateway {
       this.scheduleRetry();
       throw err;
     }
+  }
+
+  /**
+   * Read-merge-write the Godforge ledger inside a transaction.
+   *
+   * Two devices that both read the same old document and then setDoc would
+   * drop whichever merge finished first. The transaction re-reads, merges
+   * under the op-log rule, and retries if the document moved.
+   */
+  private async commitEconomyTransactional(
+    fs: FirestoreHandle,
+    uid: string,
+    entry: StateEntry,
+    local: unknown,
+  ): Promise<void> {
+    const ref = fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc);
+    let adoptedRaw: string | null = null;
+    let remoteRaw: string | null = null;
+
+    await fs.api.runTransaction(fs.db, async (tx) => {
+      const snap = await tx.get(ref);
+      const cloud = snap.exists()
+        ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
+        : null;
+      const reconciled = cloud === null ? local : (entry.merge ?? mergeDeep)(cloud, local);
+      const identified = entry.identify ? entry.identify(reconciled, uid) : reconciled;
+      // Compaction is the cloud's job: this transaction is the record, and
+      // the ack frontier lives on the document. Local merge never folds.
+      const ledger = coerceLedger(identified);
+      const merged = ledger
+        ? acknowledgeAndMaybeCompact(ledger, readDeviceId(), Date.now())
+        : identified;
+      const mergedRaw = JSON.stringify(merged);
+      const settled = stable(entry, merged);
+
+      if (cloud !== null && settled === stable(entry, cloud)) {
+        remoteRaw = mergedRaw;
+        adoptedRaw = null;
+        return;
+      }
+
+      tx.set(ref, envelope(entry, merged));
+      remoteRaw = mergedRaw;
+      adoptedRaw = settled !== stable(entry, local) ? mergedRaw : null;
+    });
+
+    if (adoptedRaw) this.adopt(entry.key, adoptedRaw);
+    if (remoteRaw) this.lastRemote.set(entry.key, remoteRaw);
   }
 
   /** One round trip for every dirty document. */
@@ -893,6 +953,14 @@ function safeParse(raw: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readDeviceId(): string {
+  try {
+    return localStorage.getItem(DEVICE_ID_KEY) || 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 /**

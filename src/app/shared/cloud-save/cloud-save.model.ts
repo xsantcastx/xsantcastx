@@ -23,14 +23,20 @@
  * deliberately commutative: signing in must never cost anybody progress, and
  * which device signed in first must never matter.
  *
- * The generosity has one visible edge. Gold is spendable, so a device that spent
- * 500 Gold on an upgrade and a device that still holds it merge to *both* the
- * upgrade and the Gold. That is a refund, and it is the intended trade: the
- * alternative — summing, or letting the newer write win — either mints currency
- * out of nothing or silently deletes a purchase, and a shop that occasionally
- * undercharges is a far smaller problem than one that eats an artifact somebody
- * saved a week for.
+ * Spendable balances (Gold, Eclipse Essence) are the exception. Taking the
+ * larger of two balances silently refunds every purchase the poorer device made,
+ * which is how cloud save used to restore Gold a second after you spent it.
+ * Those fields are reconciled by replaying an idempotent operation log
+ * (see mergeEconomy / economy-ops.ts). Purchases that cannot be afforded in
+ * canonical order are skipped rather than minted. Concurrent offline
+ * purchases have a deterministic but arbitrary winner — not chronological
+ * last-write. A server-assigned sequence would be required to make the
+ * winner match real-world time. Legacy blobs with no log still use the
+ * conservative max/union rule. The live log is checkpointed on the
+ * Firestore write once every recently-seen device has acknowledged.
  */
+
+import { mergeEconomyLedgers } from '../economy/economy-ops';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -68,6 +74,8 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     collection: 'economy',
     doc: 'state',
     label: 'Godforge ledger',
+    // Spendable balances cannot use the structural max rule. See mergeEconomy.
+    merge: mergeEconomy,
   },
   {
     key: 'eclipse-quests',
@@ -246,6 +254,16 @@ const MAX_ROSTER = 20;
  * service's own rule — worn items are never dropped, then the most valuable are
  * kept — so a merge cannot silently destroy what a visitor is wearing.
  */
+/**
+ * Reconcile two Godforge ledgers without refunding spends or minting Gold.
+ *
+ * Delegates to the operation log in economy-ops.ts. Legacy blobs (no ops)
+ * keep the conservative max/union rule.
+ */
+export function mergeEconomy(remote: unknown, local: unknown): unknown {
+  return mergeEconomyLedgers(remote, local);
+}
+
 function mergeInventory(remote: unknown, local: unknown): unknown {
   if (!isPlainObject(local)) return remote ?? local;
   if (!isPlainObject(remote)) return local;

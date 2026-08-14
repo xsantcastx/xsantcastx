@@ -139,6 +139,29 @@ export interface PlayerEconomy {
    * still paid on the next page load.
    */
   lastIdleAt: number;
+  /**
+   * Idempotent mutations since `origin`. Cloud merge unions these by id and
+   * replays them. Absent on every save from before the operation log existed.
+   */
+  ops?: import('./economy-ops').EconomyOp[];
+  /**
+   * Snapshot from just before the first recorded op. Replay starts here.
+   * Null/absent on a legacy blob, which then merges conservatively.
+   */
+  origin?: import('./economy-ops').EconomyLedger | null;
+  /**
+   * Hybrid logical clock. New ops take max(wall, hlc + 1) so a clock moved
+   * backward cannot make a fresh spend look older than its predecessor.
+   */
+  hlc?: number;
+  /** Per-device max seq already folded into `origin`. Empty on the live blob. */
+  applied?: Record<string, number>;
+  /** Cloud checkpoint id. Bumped only when Firestore commits a fold. */
+  checkpointId?: number;
+  /** deviceId → last acknowledged checkpoint. */
+  acks?: Record<string, number>;
+  /** deviceId → last write time, so vanished devices stop blocking compact. */
+  seenAt?: Record<string, number>;
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -167,6 +190,13 @@ export function emptyEconomy(): PlayerEconomy {
     levelsPaid: 1,
     streakWeeksPaid: 0,
     lastIdleAt: 0,
+    ops: [],
+    origin: null,
+    hlc: 0,
+    applied: {},
+    checkpointId: 0,
+    acks: {},
+    seenAt: {},
   };
 }
 
