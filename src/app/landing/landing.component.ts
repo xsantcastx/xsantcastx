@@ -15,10 +15,10 @@
  */
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { getLiveTools, getFeaturedTools } from '../tools/tools-registry';
+import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
-import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
+import { REALMS, RealmDefinition } from '../shared/realms/realm.model';
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
@@ -32,36 +32,13 @@ import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
 
-export interface Tool {
-  id: string;
-  name: string;
-  desc: string;
-  route: string;
-  category: string;
-  icon: string;
-  features: string[];
-  tags: string[];
-}
-
 /**
- * One forge station: a realm, the tools that hang in it, and the counts the
- * header needs. `shown` is a slice of `total` — the homepage is a doorway, not
- * the catalogue, and /tools?realm=<id> is where the rest live.
+ * One realm station on the World door. Names and atmosphere only — no tool
+ * cards and no catalogue links.
  */
 export interface ForgeStation {
   readonly realm: RealmDefinition;
-  readonly shown: Tool[];
-  readonly total: number;
-  readonly hidden: number;
 }
-
-/**
- * Tools listed per realm on the homepage. Five realms × this = the upper bound
- * on cards in the DOM, which is what keeps the accordion cheap: collapsed
- * stations stay in the markup (crawlers follow the links, the toggle only
- * hides them) rather than being conditionally rendered.
- */
-export const FORGE_STATION_SIZE = 6;
 
 @Component({
   selector: 'app-landing',
@@ -99,48 +76,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Exposed for the hero + journey rank sigils. */
   readonly rankSigil = rankSigil;
 
-  /** Derive landing-page Tool view models from the single registry source of truth */
-  readonly tools: Tool[] = getLiveTools().map(t => ({
-    id: t.id,
-    name: t.title,
-    desc: t.description,
-    route: t.route,
-    category: t.category,
-    icon: t.textIcon,
-    features: t.features,
-    tags: t.tags,
-  }));
-
-  /** Featured tools, for the recommendation in the closing call. */
-  private readonly featuredTools: Tool[] = getFeaturedTools().map(t => ({
-    id: t.id,
-    name: t.title,
-    desc: t.description,
-    route: t.route,
-    category: t.category,
-    icon: t.textIcon,
-    features: t.features,
-    tags: t.tags,
-  }));
-
-  /**
-   * The five forge stations, in codex order.
-   *
-   * Each realm shows its newest tools (the registry is append-ordered, so the
-   * tail is the freshest work) and reports how many more are behind the
-   * "browse the realm" link. Built once at construction — the registry is a
-   * compile-time constant, so there is nothing here to recompute.
-   */
-  readonly stations: ForgeStation[] = REALMS.map(realm => {
-    const inRealm = this.tools.filter(t => realmForCategory(t.category).id === realm.id);
-    const shown = inRealm.slice(-FORGE_STATION_SIZE).reverse();
-    return {
-      realm,
-      shown,
-      total: inRealm.length,
-      hidden: Math.max(0, inRealm.length - shown.length),
-    };
-  });
+  /** Five realms, names and atmosphere only. */
+  readonly stations: ForgeStation[] = REALMS.map(realm => ({ realm }));
 
   /**
    * Which station is open. One at a time: five expanded realms is a wall of 30
@@ -156,8 +93,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   // Every stat is derived from the thing it counts, so none of them can drift
   // into a marketing number that no longer matches the site.
 
-  /** Tools live in the registry. */
-  readonly artifactCount = this.tools.length;
+  /** Live registry rows — game infrastructure, not a public catalogue. */
+  readonly artifactCount = TOOLS_REGISTRY.filter(t => t.status === 'live').length;
   /** Routes Angular prerenders to static HTML — regenerated at every build. */
   readonly prerenderedPaths = PRERENDERED_PATHS;
   /** Registered easter eggs. */
@@ -195,8 +132,6 @@ export class LandingComponent implements OnInit, OnDestroy {
 
     // No-ops on the server; on the client this reads stored progress and
     // settles the daily streak, then pushes the real rank into the hero.
-    // Fire-and-forget: `hasForged` and `recommendedTool` are template getters, so
-    // the snapshot subscription below re-renders them once storage resolves.
     void this.xpService.init();
     this.xpSub = this.xpService.snapshot$.subscribe(snap => { this.xp = snap; });
 
@@ -290,13 +225,6 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.scrollSub?.unsubscribe();
   }
 
-  // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
-  // on change detection. Critical for the tool grid where the arrays are stable
-  // but the parent component re-renders frequently.
-  trackToolById(_index: number, tool: Tool): string {
-    return tool.id;
-  }
-
   trackStation(_index: number, station: ForgeStation): string {
     return station.realm.id;
   }
@@ -325,34 +253,10 @@ export class LandingComponent implements OnInit, OnDestroy {
       : this.isStationOpen(station);
   }
 
-  /**
-   * True once this visitor has actually used the tool.
-   *
-   * Local to this browser and never rendered on the server — it marks a card
-   * the visitor has already struck, not a global usage count. The site has no
-   * per-tool analytics it could show here without inventing one.
-   */
-  hasForged(tool: Tool): boolean {
-    return this.xpService.hasUsedTool(tool.id);
-  }
-
   /** Scrolls to the realm stations on this page. */
   enterTheForge(): void {
     if (!this.isBrowser) return;
     const el = document.getElementById('world-realms');
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /**
-   * The tool suggested in the closing call.
-   *
-   * The first featured tool this visitor has not opened yet — a recommendation
-   * drawn from what they have actually done, not a popularity claim we have no
-   * analytics to back. Falls back to the flagship once they have used them all.
-   */
-  get recommendedTool(): Tool {
-    return this.featuredTools.find(t => !this.xpService.hasUsedTool(t.id))
-      ?? this.featuredTools[0]
-      ?? this.tools[0];
   }
 }

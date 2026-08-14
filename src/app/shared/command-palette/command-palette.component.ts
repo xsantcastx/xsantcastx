@@ -16,13 +16,12 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
-import { ToolsDataService } from '../../tools/tools-data.service';
-import { ToolCard } from '../../tools/tools.component';
 import { CommandPaletteService } from './command-palette.service';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
+import { NAV_MANIFEST, NavDestination } from '../nav/nav.manifest';
 
 interface ScoredResult {
-  tool: ToolCard;
+  dest: NavDestination;
   score: number;
 }
 
@@ -30,9 +29,9 @@ interface ScoredResult {
  * CommandPaletteComponent — site-wide Cmd+K (Ctrl+K on Windows/Linux)
  * search overlay. Mounted once at the app root so it's available from
  * any route. Features:
- *   - Fuzzy search over tools (title + description + tags + category)
+ *   - Fuzzy search over game destinations (World, Character, Forge, …)
  *   - Keyboard navigation (↑ / ↓, Home, End)
- *   - Enter to open the highlighted tool (Router navigation)
+ *   - Enter to open the highlighted destination (Router navigation)
  *   - Esc / backdrop click to close
  *   - Focus trap + scroll lock while open
  *   - SSR-safe (no DOM access outside isPlatformBrowser guard)
@@ -76,8 +75,8 @@ interface ScoredResult {
               [(ngModel)]="query"
               (ngModelChange)="onQueryChange()"
               (keydown)="onKeydown($event)"
-              placeholder="Search tools — try 'json', 'regex', 'color'…"
-              aria-label="Search all tools"
+              placeholder="Search the world — try 'forge', 'codex', 'quests'…"
+              aria-label="Search destinations"
               aria-controls="cp-listbox"
             [attr.aria-activedescendant]="
               results.length > 0 ? 'cp-item-' + activeIndex : null
@@ -103,15 +102,14 @@ interface ScoredResult {
                     role="option"
                     [attr.aria-selected]="i === activeIndex"
                     (mouseenter)="activeIndex = i"
-                    (click)="selectResult(r.tool)"
+                    (click)="selectResult(r.dest)"
                     >
-                    <div class="cp-item__icon" [innerHTML]="iconFor(r.tool)"></div>
                     <div class="cp-item__body">
-                      <div class="cp-item__title">{{ r.tool.title }}</div>
-                      <div class="cp-item__desc">{{ r.tool.description }}</div>
+                      <div class="cp-item__title">{{ labelFor(r.dest) }}</div>
+                      <div class="cp-item__desc">{{ r.dest.route }}</div>
                     </div>
                     <div class="cp-item__meta">
-                      <span class="cp-item__cat">{{ r.tool.category }}</span>
+                      <span class="cp-item__cat">{{ r.dest.group }}</span>
                     </div>
                   </li>
                 }
@@ -120,10 +118,9 @@ interface ScoredResult {
             @if (results.length === 0) {
               <div class="cp-empty">
                 <div class="cp-empty__glyph">⌘K</div>
-                <div class="cp-empty__title">No tools match "{{ query }}"</div>
+                <div class="cp-empty__title">No destinations match "{{ query }}"</div>
                 <div class="cp-empty__hint">
-                  Try a broader term like <em>json</em>, <em>regex</em>, or
-                  <em>color</em>.
+                  Try <em>world</em>, <em>forge</em>, or <em>codex</em>.
                 </div>
               </div>
             }
@@ -134,7 +131,7 @@ interface ScoredResult {
               <span><kbd class="cp-kbd">↵</kbd> open</span>
               <span><kbd class="cp-kbd">esc</kbd> close</span>
             </div>
-            <div class="cp-footer__brand">xsantcastx · {{ totalCount }} tools</div>
+            <div class="cp-footer__brand">Eclipse Realms · {{ totalCount }} halls</div>
           </div>
         </div>
       </div>
@@ -404,7 +401,6 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
   @ViewChild('listEl') listEl?: ElementRef<HTMLUListElement>;
 
   readonly palette = inject(CommandPaletteService);
-  private readonly toolsData = inject(ToolsDataService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly platformId = inject(PLATFORM_ID);
@@ -414,7 +410,7 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
 
   query = '';
   activeIndex = 0;
-  private allTools: ToolCard[] = [];
+  private readonly destinations = NAV_MANIFEST;
   results: ScoredResult[] = [];
   totalCount = 0;
 
@@ -441,10 +437,7 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   ngOnInit(): void {
-    this.allTools = this.toolsData
-      .getTools()
-      .filter(t => t.status === 'live' && t.route && t.route.length > 0);
-    this.totalCount = this.allTools.length;
+    this.totalCount = this.destinations.length;
     this.computeResults();
 
     if (this.isBrowser) {
@@ -513,7 +506,7 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
         break;
       case 'Enter': {
         event.preventDefault();
-        const target = this.results[this.activeIndex]?.tool;
+        const target = this.results[this.activeIndex]?.dest;
         if (target) this.selectResult(target);
         break;
       }
@@ -529,45 +522,32 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
     this.palette.close();
   }
 
-  selectResult(tool: ToolCard): void {
-    if (!tool.route) return;
+  selectResult(dest: NavDestination): void {
+    if (!dest.route) return;
     this.palette.close();
-    // Queue navigation on next tick so the close animation can start
-    void this.router.navigateByUrl(tool.route);
+    void this.router.navigateByUrl(dest.route);
   }
 
-  iconFor(tool: ToolCard): string {
-    // Simple inline SVG wrapper — trusted static data from the registry
-    const inner = tool.icon || '<circle cx="12" cy="12" r="3"></circle>';
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  labelFor(dest: NavDestination): string {
+    return dest.id.replace(/-/g, ' ');
   }
 
-  trackById = (_i: number, r: ScoredResult): string => r.tool.id;
+  trackById = (_i: number, r: ScoredResult): string => r.dest.id;
 
   // ---------- Private helpers ----------
 
   private computeResults(): void {
     const q = this.query.trim().toLowerCase();
     if (!q) {
-      // Show a curated "quick access" list of the first N tools
-      this.results = this.allTools.slice(0, 20).map(tool => ({ tool, score: 0 }));
+      this.results = this.destinations.map(dest => ({ dest, score: 0 }));
       return;
     }
 
     const terms = q.split(/\s+/).filter(Boolean);
     const scored: ScoredResult[] = [];
 
-    for (const tool of this.allTools) {
-      const haystack = (
-        tool.title +
-        ' ' +
-        tool.description +
-        ' ' +
-        tool.category +
-        ' ' +
-        tool.tags.join(' ')
-      ).toLowerCase();
-
+    for (const dest of this.destinations) {
+      const haystack = `${dest.id} ${dest.route} ${dest.labelKey} ${dest.hintKey ?? ''}`.toLowerCase();
       let score = 0;
       let matchedAll = true;
 
@@ -576,19 +556,16 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
           matchedAll = false;
           break;
         }
-        // Title hits weigh more than description/tag hits
-        if (tool.title.toLowerCase().includes(term)) score += 10;
-        if (tool.title.toLowerCase().startsWith(term)) score += 8;
-        if (tool.tags.some(t => t.toLowerCase() === term)) score += 6;
-        if (tool.category.toLowerCase().includes(term)) score += 3;
-        if (tool.description.toLowerCase().includes(term)) score += 2;
+        if (dest.id.toLowerCase().includes(term)) score += 10;
+        if (dest.route.toLowerCase().includes(term)) score += 8;
+        if ((dest.hintKey ?? '').toLowerCase().includes(term)) score += 3;
       }
 
-      if (matchedAll) scored.push({ tool, score });
+      if (matchedAll) scored.push({ dest, score });
     }
 
-    scored.sort((a, b) => b.score - a.score || a.tool.title.localeCompare(b.tool.title));
-    this.results = scored.slice(0, 50);
+    scored.sort((a, b) => b.score - a.score || a.dest.id.localeCompare(b.dest.id));
+    this.results = scored;
     if (this.activeIndex >= this.results.length) this.activeIndex = 0;
   }
 

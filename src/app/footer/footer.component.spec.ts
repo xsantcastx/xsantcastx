@@ -56,13 +56,15 @@ describe('FooterComponent', () => {
     expect(fixture.nativeElement.querySelector('.gffoot__mark')?.textContent).toContain('xsantcastx');
   });
 
-  it('still exposes demoted surfaces', () => {
+  it('does not expose retired product surfaces', () => {
     const hrefs = [...fixture.nativeElement.querySelectorAll('a')]
       .map(a => a.getAttribute('routerLink') || a.getAttribute('ng-reflect-router-link') || a.getAttribute('href') || '');
     const moreRoutes = MORE_NAV.map(d => d.route);
-    for (const route of ['/tools', '/blueprint', '/mcp', '/mission-control', '/sponsors', '/donate']) {
-      expect(moreRoutes).toContain(route);
-      expect(hrefs).toContain(route);
+    for (const route of ['/tools', '/blueprint', '/mcp', '/mission-control', '/sponsors', '/donate', '/pro']) {
+      expect(moreRoutes).not.toContain(route);
+      expect(hrefs).not.toContain(route);
     }
+    expect(fixture.nativeElement.textContent).not.toContain('Sponsor the tools');
+    expect(fixture.nativeElement.textContent).not.toContain('MCP Server');
   });
 });

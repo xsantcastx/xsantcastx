@@ -27,7 +27,7 @@ export const APP_VERSION = {
   /** Each major release gets a codename */
   codename: 'Wayfinding',
   /** Where the full story of this release lives */
-  changelog: '/blueprint'
+  changelog: '/world'
 } as const;
 
 /**

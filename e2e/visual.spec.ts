@@ -138,17 +138,9 @@ for (const vp of VIEWPORTS) {
       });
     });
 
-    test('tools galaxy map', async ({ page }) => {
+    test('tools galaxy map is retired', async ({ page }) => {
       await page.goto('/tools', { waitUntil: 'load' });
-      await page.waitForSelector('.galaxy-map', { timeout: 10000 });
-      await waitForFonts(page);
-      await freezeAnimations(page);
-      await expect(page).toHaveScreenshot(`tools-galaxy-${vp.name}.png`, {
-        maxDiffPixelRatio: 0.035,
-        clip: { x: 0, y: 0, width: vp.width, height: vp.height },
-        mask: DYNAMIC_MASKS.map(s => page.locator(s)),
-        animations: 'disabled',
-      });
+      await expect(page).toHaveURL(/\/world/);
     });
   });
 }
@@ -166,13 +158,14 @@ test.describe('overflow / 375px', () => {
     expect(ok, 'horizontal overflow on /world at 375px').toBe(true);
   });
 
-  test('no horizontal overflow on tools at 375px', async ({ page }) => {
+  test('no horizontal overflow after /tools redirect at 375px', async ({ page }) => {
     await page.goto('/tools', { waitUntil: 'load' });
+    await expect(page).toHaveURL(/\/world/);
     await page.waitForSelector('app-root', { timeout: 10000 });
     const ok = await page.evaluate(() => {
       const el = document.scrollingElement || document.documentElement;
       return el.scrollWidth <= window.innerWidth;
     });
-    expect(ok, 'horizontal overflow on /tools at 375px').toBe(true);
+    expect(ok, 'horizontal overflow on /world after /tools redirect at 375px').toBe(true);
   });
 });

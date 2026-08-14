@@ -10,7 +10,8 @@ export const CANONICAL = {
 } as const;
 
 /**
- * Exact-path aliases only. `/arena/color-memory` is not a key, so a game
+ * Exact-path aliases only, plus the retired-product prefixes handled in
+ * `canonicalizePlayerPath`. `/arena/color-memory` is not a key, so a game
  * visit stays a game visit.
  */
 export const LEGACY_TO_CANONICAL: Readonly<Record<string, string>> = {
@@ -19,15 +20,24 @@ export const LEGACY_TO_CANONICAL: Readonly<Record<string, string>> = {
   '/contact': CANONICAL.world,
   '/about': CANONICAL.world,
   '/guestbook': CANONICAL.world,
+  '/tools': CANONICAL.world,
+  '/embed': CANONICAL.world,
+  '/mission-control': CANONICAL.world,
+  '/mcp': CANONICAL.world,
+  '/blueprint': CANONICAL.world,
+  '/changelog': CANONICAL.world,
+  '/sponsors': CANONICAL.world,
+  '/donate': CANONICAL.world,
+  '/pro': CANONICAL.world,
+  '/skills': CANONICAL.world,
+  '/services': CANONICAL.world,
+  '/projects': CANONICAL.world,
   '/forge-keeper': CANONICAL.character,
   '/rune-forge': CANONICAL.forge,
   '/forge': CANONICAL.forge,
   '/quests': CANONICAL.quests,
   '/arena': CANONICAL.trials,
   '/games': CANONICAL.trials,
-  '/skills': '/tools',
-  '/services': '/tools',
-  '/projects': '/blueprint',
   '/forge-view': '/sanctum',
   '/live': '/sanctum',
 };
@@ -36,7 +46,11 @@ export const LEGACY_TO_CANONICAL: Readonly<Record<string, string>> = {
 export function canonicalizePlayerPath(url: string): string {
   const raw = (url || '').split('?')[0].split('#')[0];
   const path = raw === '' ? '/' : raw;
-  return LEGACY_TO_CANONICAL[path] ?? path;
+  const exact = LEGACY_TO_CANONICAL[path];
+  if (exact) return exact;
+  // Retired product trees: every slug lands on World, never on a catalogue.
+  if (path.startsWith('/tools/') || path.startsWith('/embed/')) return CANONICAL.world;
+  return path;
 }
 
 /**
@@ -72,12 +86,23 @@ export const CANONICAL_REDIRECTS: Routes = [
   { path: 'quests', redirectTo: 'world/quests', pathMatch: 'full' },
   { path: 'arena', redirectTo: 'world/trials', pathMatch: 'full' },
   { path: 'games', redirectTo: 'world/trials', pathMatch: 'full' },
-  { path: 'skills', redirectTo: 'tools', pathMatch: 'full' },
-  { path: 'projects', redirectTo: 'blueprint', pathMatch: 'full' },
-  { path: 'services', redirectTo: 'tools', pathMatch: 'full' },
+  { path: 'skills', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'projects', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'services', redirectTo: 'world', pathMatch: 'full' },
   { path: 'contact', redirectTo: 'world', pathMatch: 'full' },
   { path: 'about', redirectTo: 'world', pathMatch: 'full' },
   { path: 'guestbook', redirectTo: 'world', pathMatch: 'full' },
   { path: 'forge-view', redirectTo: 'sanctum', pathMatch: 'full' },
   { path: 'live', redirectTo: 'sanctum', pathMatch: 'full' },
+  { path: 'tools', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'tools/:slug', redirectTo: '/world' },
+  { path: 'embed', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'embed/:slug', redirectTo: '/world' },
+  { path: 'mission-control', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'mcp', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'blueprint', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'changelog', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'sponsors', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'donate', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'pro', redirectTo: 'world', pathMatch: 'full' },
 ];

@@ -25,7 +25,7 @@ import { Title } from '@angular/platform-browser';
 import { AnalyticsService } from '../analytics.service';
 
 /** What the tab reads when a route supplies no title of its own. */
-export const DEFAULT_TITLE = 'The Godforge';
+export const DEFAULT_TITLE = 'Eclipse Realms';
 
 /**
  * Resolve a route's title, falling back to the product name.
