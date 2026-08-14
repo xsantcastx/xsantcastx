@@ -831,6 +831,10 @@ describe('stripUndefined', () => {
     expect(stripUndefined({ a: 1, b: undefined, c: null })).toEqual({ a: 1, c: null });
   });
 
+  it('keeps array positions by turning undefined entries into null', () => {
+    expect(stripUndefined([1, undefined, 3])).toEqual([1, null, 3]);
+  });
+
   it('makes a coerced credit-gold ledger safe for Firestore', () => {
     const ledger = coerceLedger({
       gold: 250,

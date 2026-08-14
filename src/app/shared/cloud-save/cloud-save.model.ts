@@ -752,7 +752,13 @@ export function stripUndefined(value: unknown): unknown {
   if (value === undefined) return undefined;
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) {
-    return value.map(stripUndefined).filter(entry => entry !== undefined);
+    // Keep positions. Filtering would turn [itemA, undefined, itemC] into
+    // [itemA, itemC] and silently shift equipment slots, quest steps, etc.
+    // null matches JSON.stringify / localStorage and is legal in Firestore.
+    return Array.from(value, entry => {
+      const cleaned = stripUndefined(entry);
+      return cleaned === undefined ? null : cleaned;
+    });
   }
   const out: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
