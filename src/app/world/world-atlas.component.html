@@ -1,0 +1,63 @@
+<section
+  class="atlas"
+  [attr.aria-label]="t('world.atlas.region')"
+  aria-describedby="atlas-hint">
+  <p id="atlas-hint" class="atlas__hint">{{ t('world.atlas.hint') }}</p>
+
+  <div class="atlas__frame">
+    <picture class="atlas__art">
+      <source media="(max-width: 768px)" type="image/webp" [attr.srcset]="imageStem + '-768.webp'">
+      <source media="(max-width: 1280px)" type="image/webp" [attr.srcset]="imageStem + '-1280.webp'">
+      <source type="image/webp" [attr.srcset]="imageStem + '-1536.webp'">
+      <img
+        [src]="imageStem + '-1536.jpg'"
+        alt=""
+        [attr.width]="width"
+        [attr.height]="height"
+        loading="lazy"
+        decoding="async"
+        draggable="false">
+    </picture>
+
+    <ul class="atlas__hotspots">
+      @for (spot of spots; track spot.id) {
+        <li
+          class="atlas__hotspot"
+          [class.atlas__hotspot--label-above]="labelAbove(spot)"
+          [attr.data-realm]="spot.id"
+          [style.--ax.%]="spot.anchor.x"
+          [style.--ay.%]="spot.anchor.y"
+          [style.--hit.%]="radiusPercent * 2"
+          [style.--min-target.px]="minTargetPx"
+          [style.--realm-color]="tone(spot).color"
+          [style.--realm-glow]="tone(spot).glow">
+          <a
+            class="atlas__link"
+            [routerLink]="href(spot)"
+            [attr.aria-label]="desc(spot)">
+            <span class="atlas__pin" aria-hidden="true"></span>
+            <span class="atlas__label">{{ label(spot) }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+
+  <ol class="atlas__list" [attr.aria-label]="t('world.atlas.list')">
+    @for (spot of mobileSpots; track spot.id) {
+      <li
+        [attr.data-realm]="spot.id"
+        [style.--realm-color]="tone(spot).color"
+        [style.--realm-glow]="tone(spot).glow"
+        [style.--min-target.px]="minTargetPx">
+        <a
+          class="atlas__item"
+          [routerLink]="href(spot)"
+          [attr.aria-label]="listName(spot)">
+          <span class="atlas__item-name">{{ label(spot) }}</span>
+          <span class="atlas__item-go">{{ t('world.atlas.open', { name: label(spot) }) }}</span>
+        </a>
+      </li>
+    }
+  </ol>
+</section>

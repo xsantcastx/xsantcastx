@@ -31,7 +31,7 @@
 import { test, expect } from '@playwright/test';
 
 /** Routes that switch on `gf-art-route` and put a painting behind the page. */
-const ART_ROUTES = ['/world/trials', '/market', '/character', '/world', '/forge/runes'];
+const ART_ROUTES = ['/world/trials', '/market', '/character', '/forge/runes'];
 
 /** Parses `rgb()` / `rgba()` into an alpha channel. Anything unparseable is
  *  treated as opaque, so a format this does not understand fails loudly
@@ -83,3 +83,13 @@ for (const route of ART_ROUTES) {
       .toBeGreaterThan(0);
   });
 }
+
+test('/world — atlas artwork decodes', async ({ page }) => {
+  await page.goto('/world', { waitUntil: 'domcontentloaded' });
+
+  const img = page.locator('.atlas__art img').first();
+  await expect(img).toHaveCount(1);
+  await expect
+    .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth), { timeout: 15000 })
+    .toBeGreaterThan(0);
+});

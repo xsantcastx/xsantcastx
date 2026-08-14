@@ -26,6 +26,7 @@ import { EconomyService, EconomySnapshot } from '../shared/economy/economy.servi
 import { formatCurrency } from '../shared/economy/economy.model';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
+import { WorldAtlasComponent } from '../world/world-atlas.component';
 import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
@@ -41,7 +42,7 @@ export interface ForgeStation {
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [RouterModule, AdsenseComponent]
+  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
