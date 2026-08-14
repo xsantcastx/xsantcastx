@@ -18,6 +18,7 @@ import {
   Output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { Quest } from './quest.model';
 import { RARITIES } from '../rarity/rarity.model';
 import { REALMS } from '../realms/realm.model';
@@ -25,7 +26,7 @@ import { REALMS } from '../realms/realm.model';
 @Component({
   selector: 'app-quest-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InspectButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (quest) {
@@ -57,6 +58,7 @@ import { REALMS } from '../realms/realm.model';
         </div>
 
         <footer class="qc__foot">
+          <app-inspect-button type="quest" [id]="quest.id"></app-inspect-button>
           <span class="qc__count">{{ quest.observed }}/{{ quest.condition.count }}</span>
 
           @if (quest.status === 'completed' && !quest.claimed) {

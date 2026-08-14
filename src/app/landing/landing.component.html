@@ -210,6 +210,8 @@
               <a class="gf-station__more" [routerLink]="'/world/realms/' + station.realm.id">
                 Inspect {{ station.realm.name }}
               </a>
+              <app-inspect-button type="realm" [id]="station.realm.id"></app-inspect-button>
+              <app-inspect-button type="creature" [id]="creatureId(station.realm.threat)"></app-inspect-button>
             </div>
           </section>
         }
