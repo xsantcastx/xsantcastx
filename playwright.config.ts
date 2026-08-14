@@ -12,7 +12,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npx serve dist/xsantcastx/browser -l tcp://localhost:4173 --no-clipboard',
+    command: 'node scripts/serve-preview.js dist/xsantcastx/browser 4173',
     url: 'http://localhost:4173/world',
     reuseExistingServer: !process.env['CI'],
     timeout: 30000,
