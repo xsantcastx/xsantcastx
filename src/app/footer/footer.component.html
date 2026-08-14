@@ -55,48 +55,6 @@
     <p class="gffoot__mark">{{ translate('gffoot.forgedBy') }}</p>
   </div>
 
-  <!-- Donate Section -->
-  <div class="donate-section">
-    <div class="donate-content">
-      <p class="footer-eyebrow">
-        <span class="footer-eyebrow-pulse"></span>
-        {{ translate('cosmic.eyebrow.fuelMission') }}
-      </p>
-      <h3>{{ translate('footer.donate') }}</h3>
-      <p>{{ translate('footer.donate.desc') }}</p>
-      <p class="footer-tagline">{{ translate('cosmic.tagline.fuelMission') }}</p>
-      <div class="donate-options">
-        <button class="donate-btn crypto" (click)="openCryptoDonate()">
-          <i class="fab fa-bitcoin"></i>
-          Crypto
-        </button>
-        <button class="donate-btn paypal" (click)="openPayPalDonate()">
-          <i class="fab fa-paypal"></i>
-          PayPal
-        </button>
-        <button class="donate-btn stripe" (click)="openStripeDonate()">
-          <i class="fas fa-credit-card"></i>
-          Card
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MCP Server link -->
-  <div class="footer-mcp">
-    <a routerLink="/mcp" class="footer-mcp-link">MCP Server</a>
-    <span class="footer-mcp-sep">·</span>
-    <span class="footer-mcp-desc">14 developer tools for AI agents</span>
-  </div>
-
-  <!-- Sponsors link — quiet on purpose; this is for the handful of visitors
-       who arrive wondering whether they can advertise here. -->
-  <div class="footer-sponsors">
-    <a routerLink="/sponsors" class="footer-sponsors-link">Sponsor the tools</a>
-    <span class="footer-sponsors-sep">·</span>
-    <span class="footer-sponsors-desc">direct deals, one sponsor per category</span>
-  </div>
-
   <!-- Footer Info -->
   <div class="footer-info">
     <p>© 2026 xsantcastx | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>

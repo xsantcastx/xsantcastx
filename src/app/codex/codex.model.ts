@@ -11,8 +11,7 @@
  * Pure data and pure functions. No browser APIs: the wall is server-rendered in
  * its fully-locked state and hydration only flips what has actually been found.
  */
-import { ARENA_PLAYABLE } from '../arena/games/arena-game.model';
-import { EASTER_EGGS, EasterEgg } from '../shared/easter-eggs/easter-egg.service';
+import { EasterEgg, PUBLIC_CODEX_EGGS, isPublicCodexEgg } from '../shared/easter-eggs/easter-egg.service';
 import { EclipseRarity, RarityDefinition, rarityOf, tierForEgg } from '../shared/rarity/rarity.model';
 import { RealmId, realmForCategory } from '../shared/realms/realm.model';
 import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
@@ -126,7 +125,6 @@ const FLAVOUR_GATE_EGGS: Record<string, string> = {
 };
 
 export const ARENA_GATE_EGGS: Record<string, string> = {
-  ...Object.fromEntries(ARENA_PLAYABLE.map(g => [g.unlockEggId, g.title])),
   ...FLAVOUR_GATE_EGGS,
 };
 
@@ -177,24 +175,23 @@ const EGG_XP = 200;
  * Every achievement, fully described but universally locked.
  *
  * Built once at module scope so the server renders a complete, correct wall
- * during prerender — 140 real cards with real tiers and real borders — and the
- * browser only has to flip `unlocked` on the ones this visitor has found.
+ * during prerender. Only game-relevant eggs are listed: tool-specific legacy
+ * records stay in the save registry but do not appear here, even if found.
  */
 export function buildAchievements(): CodexAchievement[] {
-  return EASTER_EGGS.map(egg => {
+  return PUBLIC_CODEX_EGGS.map(egg => {
     const tier = tierForEgg(egg.id, egg.rarity);
-    const tool = egg.tool && egg.tool !== 'global' ? TOOLS_BY_ID.get(egg.tool) ?? null : null;
     return {
       id: egg.id,
       name: egg.name,
       description: egg.description,
-      hint: hintFor(egg.id, tool?.title),
+      hint: hintFor(egg.id),
       icon: egg.icon,
       tier,
       rarity: rarityOf(tier),
       category: categoryById(categoryForEgg(egg)),
-      toolTitle: tool?.title ?? null,
-      toolRoute: tool?.route || null,
+      toolTitle: null,
+      toolRoute: null,
       gate: ARENA_GATE_EGGS[egg.id] ?? null,
       xp: egg.xp ?? EGG_XP,
       unlocked: false,
@@ -202,6 +199,8 @@ export function buildAchievements(): CodexAchievement[] {
     };
   });
 }
+
+export { isPublicCodexEgg };
 
 /** Sort modes for the wall. */
 export type CodexSort = 'rarity' | 'recent' | 'alpha' | 'category';

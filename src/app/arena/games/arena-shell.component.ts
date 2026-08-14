@@ -59,7 +59,7 @@ import { RouterLink } from '@angular/router';
           </svg>
           <h2 class="ag-gate__title">This gate is chained</h2>
           <p class="ag-gate__hint">{{ unlockHint }}</p>
-          <a routerLink="/tools" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
+          <a routerLink="/world" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
           <a routerLink="/world/trials" class="ag-gate__alt">or look over the other gates</a>
         </section>
       }

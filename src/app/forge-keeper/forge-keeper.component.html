@@ -226,14 +226,7 @@
           </div>
         </dl>
 
-        @if (dominantRealm) {
-          <p class="fk-affinity__realm" [style.--realm]="dominantRealm.realm.color">
-            You spend most of your time in
-            <strong>{{ dominantRealm.realm.name }}</strong> —
-            {{ dominantRealm.realm.domain }},
-            {{ money(dominantRealm.uses) }} {{ dominantRealm.uses === 1 ? 'visit' : 'visits' }}.
-          </p>
-        }
+
       </div>
     </div>
   </section>
@@ -563,50 +556,53 @@
     </div>
   </section>
 
-  <!-- ══ 7. Tool mastery ════════════════════════════════════════════════ -->
-  <section class="fk-block" aria-labelledby="fk-mastery-title">
+  <!-- ══ 7. The Path — loadout and next game steps ══════════════════════ -->
+  <section class="fk-block" aria-labelledby="fk-path-title">
     <div class="fk-block__head-row">
       <div>
-        <h2 class="fk-block__title" id="fk-mastery-title">The Familiar Five</h2>
-        <p class="fk-block__note">the tools you actually reach for</p>
+        <h2 class="fk-block__title" id="fk-path-title">The Path</h2>
+        <p class="fk-block__note">what you carry, and where the next step is</p>
       </div>
-      <a routerLink="/codex" [queryParams]="{ tab: 'bestiary' }" class="fk-mastery__all">See all →</a>
     </div>
 
-    @if (mastery.length === 0) {
-      <p class="fk-empty">
-        Nothing on the board yet. Open a tool and it starts keeping score —
-        <a routerLink="/tools">there are {{ toolCount }} of them</a>.
-      </p>
-    } @else {
-      <ul class="fk-mastery">
-        @for (row of mastery; track row.id) {
-          <li class="fk-mastery__row" [style.--realm]="row.realm.color" [style.--mastery]="row.mastery.color">
-            <a [routerLink]="row.route" class="fk-mastery__link">
-              <span class="fk-mastery__icon" aria-hidden="true">{{ row.icon }}</span>
-              <span class="fk-mastery__body">
-                <span class="fk-mastery__name">{{ row.title }}</span>
-                <span class="fk-mastery__realm">{{ row.realm.name }}</span>
-              </span>
-              <!-- role="img" so the label is authoritative: without it the five
-                   star glyphs read out identically whether they are filled or
-                   not, because the difference between them is only a colour. -->
-              <span class="fk-mastery__stars" role="img"
-                    [attr.aria-label]="row.mastery.label + ', ' + row.mastery.stars + ' of 5'">
-                @for (filled of row.stars; track $index) {
-                  <span class="fk-mastery__star" [class.fk-mastery__star--on]="filled" aria-hidden="true">★</span>
-                }
-              </span>
-              <span class="fk-mastery__uses">{{ money(row.uses) }} {{ row.uses === 1 ? 'use' : 'uses' }}</span>
-              <span class="fk-mastery__bar">
-                <span class="fk-mastery__fill" [style.width.%]="row.progress * 100"></span>
-              </span>
-              <span class="fk-mastery__level">{{ row.mastery.label }}</span>
-            </a>
-          </li>
-        }
-      </ul>
-    }
+    <ul class="fk-path">
+      <li class="fk-path__row">
+        <span class="fk-path__icon" aria-hidden="true">⚔</span>
+        <span class="fk-path__body">
+          <span class="fk-path__name">Loadout</span>
+          <span class="fk-path__note">the seven pieces you take into the dark</span>
+        </span>
+        <span class="fk-path__value">{{ equippedCount }}/{{ slotCount }} filled</span>
+      </li>
+      <li class="fk-path__row">
+        <span class="fk-path__icon" aria-hidden="true">◆</span>
+        <span class="fk-path__body">
+          <span class="fk-path__name">{{ snap.level.title }}</span>
+          <span class="fk-path__note">
+            @if (snap.next) {
+              {{ money(snap.toNext) }} XP to {{ snap.next.title }}
+            } @else {
+              the top of the ladder
+            }
+          </span>
+        </span>
+        <span class="fk-path__value">Rank {{ snap.level.level }}</span>
+      </li>
+      <li class="fk-path__row">
+        <span class="fk-path__icon" aria-hidden="true">📜</span>
+        <span class="fk-path__body">
+          <span class="fk-path__name">Standing Orders</span>
+          <span class="fk-path__note">
+            @if (openQuests === 0) {
+              every order on the board is done
+            } @else {
+              {{ openQuests }} {{ openQuests === 1 ? 'order' : 'orders' }} still open
+            }
+          </span>
+        </span>
+        <a routerLink="/world/quests" class="fk-path__link">Open the board →</a>
+      </li>
+    </ul>
   </section>
 
   <!-- ══ 8. Quick links ═════════════════════════════════════════════════ -->
@@ -626,10 +622,10 @@
       <span class="fk-link__name">The Arena</span>
       <span class="fk-link__note">gates that fight back</span>
     </a>
-    <a routerLink="/blueprint" class="fk-link">
+    <a routerLink="/world" class="fk-link">
       <span class="fk-link__icon" aria-hidden="true">🗺️</span>
-      <span class="fk-link__name">The War Table</span>
-      <span class="fk-link__note">what is being built</span>
+      <span class="fk-link__name">The World</span>
+      <span class="fk-link__note">the five realms</span>
     </a>
   </nav>
 </section>

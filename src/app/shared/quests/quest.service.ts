@@ -24,14 +24,14 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { canonicalizePlayerPath, rewriteCanonicalPageSet } from '../canonical-routes';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
-  DAILY_QUESTS,
   DAILY_SLOTS,
-  EPIC_QUESTS,
+  PLAYABLE_DAILY_QUESTS,
+  PLAYABLE_EPIC_QUESTS,
+  PLAYABLE_WEEKLY_QUESTS,
   Quest,
   QuestCondition,
   QuestDefinition,
   QuestStatus,
-  WEEKLY_QUESTS,
   WEEKLY_SLOTS,
   dayKey,
   nextMidnight,
@@ -326,11 +326,11 @@ export class QuestService {
     const dk = this.state.dayKey || dayKey(now);
     const wk = this.state.weekKey || weekKey(now);
 
-    const daily = pickDeterministic(DAILY_QUESTS, DAILY_SLOTS, dk)
+    const daily = pickDeterministic(PLAYABLE_DAILY_QUESTS, DAILY_SLOTS, dk)
       .map(def => this.resolve(def, this.state.day, `${def.id}@${dk}`, nextMidnight(now)));
-    const weekly = pickDeterministic(WEEKLY_QUESTS, WEEKLY_SLOTS, wk)
+    const weekly = pickDeterministic(PLAYABLE_WEEKLY_QUESTS, WEEKLY_SLOTS, wk)
       .map(def => this.resolve(def, this.state.week, `${def.id}@${wk}`, nextMonday(now)));
-    const epic = EPIC_QUESTS
+    const epic = PLAYABLE_EPIC_QUESTS
       .map(def => this.resolve(def, this.state.life, def.id, undefined));
 
     const all = [...daily, ...weekly, ...epic];

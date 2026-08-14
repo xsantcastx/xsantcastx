@@ -2,9 +2,9 @@
  * idle.model.ts — the ambient forge economy.
  *
  * Time spent with the site open and visible earns XP. The rates are small on
- * purpose: a full capped day of idling is worth about four tool visits, so
+ * purpose: a full capped day of idling is worth about four hall visits, so
  * leaving a tab open is a pleasant background hum and never a substitute for
- * using the thing.
+ * walking the world.
  *
  * Pure data and pure functions — no browser APIs — so this is safe to import
  * from a server-rendered path.
@@ -21,7 +21,7 @@ export type ForgeState =
   | 'cooled'
   /** Visible, earning the base rate. */
   | 'warming'
-  /** Visible on a tool page, earning the higher rate. */
+  /** Visible at the Forge, earning the higher rate. */
   | 'burning'
   /** Today's allowance is spent. Still lit, no longer earning. */
   | 'banked';
