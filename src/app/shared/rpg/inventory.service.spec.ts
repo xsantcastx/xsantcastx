@@ -113,6 +113,20 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
   });
 
+  it('refuses explorer-held items and empty C5 slots', () => {
+    const loaned = {
+      id: 'loaned', name: 'Loaned', type: 'artifact' as const, rarity: 'rare' as const,
+      stats: { goldPerSec: 1 }, sellValue: 9, equipped: false, explorerId: 'scout-1',
+      foundAt: '2026-08-05T00:00:00.000Z', soulbound: false,
+    };
+    expect(inventory.add(loaned)?.id).toBe('loaned');
+    expect(inventory.equip('loaned', 'chest')).toBe(false);
+    expect(inventory.itemById('loaned')?.explorerId).toBe('scout-1');
+    expect(inventory.equip('seed-helm', 'hands')).toBe(false);
+    expect(inventory.equip('seed-helm', 'trinket')).toBe(false);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('seed-helm');
+  });
+
   it('equips into off-hand and displaces the occupant atomically', () => {
     const helm = {
       id: 'helm', name: 'Helm', type: 'artifact' as const, rarity: 'rare' as const,

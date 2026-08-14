@@ -400,4 +400,56 @@ describe('inventory adapter (C3)', () => {
       .toContain('retired-charm');
     expect(retireCharms(retired.ledger, 'phone', 2_000).retiredIds).toEqual([]);
   });
+
+  it('two devices retiring the same charm merge to one bagged tagged record', () => {
+    const worn = instance('charm', {
+      type: 'charm',
+      location: { kind: 'equipped', slotId: 'charm1' as 'head' },
+      revision: revision(1, 'seed'),
+    });
+    const raw = {
+      version: 2,
+      records: [worn],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+    const phone = retireCharms(parsed, 'phone', 1_000);
+    const tablet = retireCharms(parsed, 'tablet', 1_000);
+    const ab = mergeInventoryLedgers(phone.ledger, tablet.ledger);
+    const ba = mergeInventoryLedgers(tablet.ledger, phone.ledger);
+    const loc = (blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === 'charm') as OwnedItemInstance).location;
+    expect(loc(ab)).toEqual({ kind: 'bag' });
+    expect(loc(ba)).toEqual({ kind: 'bag' });
+    expect((ab.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
+    expect((ba.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
+    expect(ab.records.map(row => row.id)).toEqual(ba.records.map(row => row.id));
+  });
+
+  it('C4 offhand and C5 off-hand merge to the canonical slot both ways', () => {
+    const c4 = {
+      version: 2,
+      records: [instance('blade', {
+        type: 'artifact',
+        location: { kind: 'equipped', slotId: 'offhand' as 'head' },
+        revision: revision(2, 'phone'),
+      })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 2, legacyBackup: null,
+    };
+    const c5 = {
+      version: 2,
+      records: [instance('blade', {
+        type: 'artifact',
+        location: { kind: 'equipped', slotId: 'off-hand' },
+        revision: revision(3, 'tablet'),
+      })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 3, legacyBackup: null,
+    };
+    const ab = mergeInventoryLedgers(c4, c5);
+    const ba = mergeInventoryLedgers(c5, c4);
+    const loc = (blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === 'blade') as OwnedItemInstance).location;
+    expect(loc(ab)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect(loc(ba)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+  });
 });
