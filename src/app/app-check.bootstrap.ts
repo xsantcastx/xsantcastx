@@ -26,9 +26,22 @@
  * that want the instance use `getAppCheckInstance()` below rather than
  * `inject(AppCheck)`, which would now always be null.
  */
-import { getApp } from '@angular/fire/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { AppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { environment } from '../environments/environment';
+
+/**
+ * The default Firebase app, creating it if AngularFire has not yet.
+ *
+ * App Check is scheduled on idle, and `provideFirebaseApp()` is lazy until
+ * something injects it. Idle can therefore fire with no `[DEFAULT]` app —
+ * `getApp()` throws, we used to settle "ready" with null, and every later
+ * Firestore call went out without a token. Create-or-reuse here so App Check
+ * does not depend on injector ordering.
+ */
+export function ensureFirebaseApp() {
+  return getApps().length ? getApp() : initializeApp(environment.firebase);
+}
 
 /** How long to wait for a genuine idle window before initializing anyway. */
 const IDLE_TIMEOUT_MS = 2500;
@@ -119,7 +132,7 @@ function initializeNow(): void {
     // The global guard survives an SSR→client hydration double-init, which
     // would otherwise throw on the second initializeAppCheck() call.
     if (!globalScope.__xsantcastxAppCheck) {
-      globalScope.__xsantcastxAppCheck = initializeAppCheck(getApp(), {
+      globalScope.__xsantcastxAppCheck = initializeAppCheck(ensureFirebaseApp(), {
         provider: new ReCaptchaV3Provider(siteKey),
         isTokenAutoRefreshEnabled: true
       });

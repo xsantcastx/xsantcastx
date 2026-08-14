@@ -62,6 +62,7 @@ import { FirestoreHandle, LazyFirestoreService } from '../lazy-firestore.service
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { MergeConflict, MergeStrategy } from './cloud-save.model';
+import { whenAppCheckReady } from '../../app-check.bootstrap';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
 const BOUND_UID_KEY = 'cloud-save-uid';
@@ -428,15 +429,17 @@ export class CloudSaveService {
       localStorage.setItem(BOUND_UID_KEY, user.uid);
     } catch { /* private mode; sync works for this session only */ }
 
-    // Both SDKs this feature needs are loaded on demand rather than injected —
-    // Firestore because it is 450 kB that first paint never touches, auth for
-    // the same reason. Signing in is the moment both become worth their weight.
-    const fs = await this.firestore();
-
-    // The gateway decides whether the question is even real and calls back only
-    // when it is. Parking on the dialog happens inside `ask`, so a visitor who
-    // never sees one never waits on anything.
-    await this.gateway.attach(user.uid, fs, conflict => this.ask(conflict));
+    try {
+      // App Check is idle-scheduled and used to settle "ready" with null if
+      // Firebase was not up yet. Wait here so the first signed-in read carries
+      // a token when enforcement is on.
+      await this.awaitAppCheck();
+      const fs = await this.firestore();
+      await this.gateway.attach(user.uid, fs, conflict => this.ask(conflict));
+    } catch (err) {
+      console.error('[CloudSave] bind failed', err);
+      throw err;
+    }
 
     this.markSynced();
     void this.eggs.trigger(CLOUD_SAVE_EGG);
@@ -485,6 +488,11 @@ export class CloudSaveService {
   // ───────────────────────────────────────────────────────────────────────────
   // Plumbing
   // ───────────────────────────────────────────────────────────────────────────
+
+  /** Seam for tests: bind must not open Firestore until this settles. */
+  private awaitAppCheck(): Promise<unknown> {
+    return whenAppCheckReady();
+  }
 
   private auth(): Promise<typeof import('@angular/fire/auth')> {
     return (this.authModule ??= import('@angular/fire/auth'));
@@ -577,8 +585,13 @@ function codeOf(err: unknown): string {
  * whoever hit them, and "Missing or insufficient permissions" in a header
  * dropdown tells somebody nothing except that something is broken.
  */
-function describe(err: unknown): string {
+/** Exported so the status sentences can be pinned by a spec. */
+export function describeSyncError(err: unknown): string {
   const code = codeOf(err);
+  const message = messageOf(err);
+  if (isAppCheckFailure(code, message)) {
+    return 'Cloud security check failed. Retry in a moment.';
+  }
   if (code === 'permission-denied' || code === 'auth/insufficient-permission') {
     return 'The cloud refused that write. Retry to re-merge.';
   }
@@ -589,4 +602,23 @@ function describe(err: unknown): string {
     return 'This domain is not authorised for sign-in.';
   }
   return 'Sync failed. Your progress is safe on this device.';
+}
+
+function describe(err: unknown): string {
+  return describeSyncError(err);
+}
+
+function messageOf(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    return String((err as { message: unknown }).message);
+  }
+  return String(err ?? '');
+}
+
+function isAppCheckFailure(code: string, message: string): boolean {
+  const haystack = `${code} ${message}`.toLowerCase();
+  return haystack.includes('app-check')
+    || haystack.includes('appcheck')
+    || haystack.includes('app check');
 }

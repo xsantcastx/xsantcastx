@@ -205,12 +205,46 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: dist/xsantcastx/browser
+
+      - name: Detect Firestore rules or index changes
+        id: firestore
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "No previous SHA; deploying Firestore rules and indexes."
+            exit 0
+          fi
+          if ! git cat-file -e "${BEFORE}^{commit}"; then
+            echo "::error::Previous commit ${BEFORE} is not in this clone; cannot decide whether Firestore rules changed."
+            exit 1
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" HEAD -- firestore.rules firestore.indexes.json firebase.json)
+          if [ -n "$CHANGED" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Firestore config changed:"
+            echo "$CHANGED"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No firestore.rules / indexes / firebase.json change; skipping rules deploy."
+          fi
+
+      - name: Deploy Firestore rules and indexes
+        if: steps.firestore.outputs.changed == 'true'
+        run: |
+          printenv FIREBASE_SERVICE_ACCOUNT > "$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes --project xsantcastx-1694b --non-interactive
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_XSANTCASTX_1694B }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
