@@ -72,8 +72,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./arena/arena.component').then(m => m.ArenaComponent),
       title: 'The Trials — Eclipse Realms',
       data: {
-        description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
-        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, trials, arena',
+        description: 'Five playable gates in the proving ground. Stand in the Trials and the chains listen.',
+        keywords: 'easter eggs, hidden games, mini games, eclipse realms, trials, arena',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -81,7 +81,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/world/trials`,
           url: `${SITE_URL}/world/trials`,
           name: 'The Trials — Eclipse Realms',
-          description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain.',
+          description: 'Five playable gates in the proving ground. Stand in the Trials and the chains listen.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
             { '@type': 'ListItem', position: 2, name: 'Trials', item: `${SITE_URL}/world/trials` }
@@ -108,7 +108,7 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
       title: 'The Codex',
       data: {
-        description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, lore scrolls, and clues to every secret still hidden.',
+        description: 'The ancient record of the Godforge: game achievements, ten ranks of progression, lore scrolls, and clues to every secret still hidden.',
         keywords: 'achievements, progression, easter eggs list, xp levels, lore, eclipse realms, codex, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {

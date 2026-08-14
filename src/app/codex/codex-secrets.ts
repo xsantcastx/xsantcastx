@@ -4,7 +4,7 @@
  * The Achievement Wall covers everything the egg registry knows about. This
  * covers what it does not: the ritual mode behind the seal, the command
  * palette, the console handles, the routes with no link pointing at them, and
- * the tool combinations that only make sense once you have seen both halves.
+ * the combinations that only make sense once you have seen both halves.
  *
  * Two kinds of entry, and the difference is load-bearing:
  *
@@ -22,8 +22,7 @@ export type SecretGroupId =
   | 'easter-eggs'
   | 'konami'
   | 'hidden-pages'
-  | 'console'
-  | 'combos';
+  | 'console';
 
 export interface SecretGroup {
   id: SecretGroupId;
@@ -61,13 +60,6 @@ export const SECRET_GROUPS: SecretGroup[] = [
     icon: '💻',
     color: '#5fb6ff',
     blurb: 'Open the developer console. The realm left handles there on purpose.',
-  },
-  {
-    id: 'combos',
-    label: 'Tool Combos',
-    icon: '⚗️',
-    color: '#C9A84C',
-    blurb: 'Two tools that mean more together than either does alone.',
   },
 ];
 
@@ -109,17 +101,7 @@ export const SECRETS: SecretDefinition[] = [
     tier: 'eclipsed',
     eggId: 'konami',
   },
-  {
-    id: 'ks-konami',
-    group: 'konami',
-    name: 'The Code About The Code',
-    reveal: 'Searching the keyboard-shortcut reference for "konami" finds a shortcut that is not one.',
-    clue: 'One of the reference tools will happily look up a sequence that is not a shortcut at all.',
-    tier: 'eclipsed',
-    eggId: 'ks-konami',
-  },
-
-  // ── Easter eggs (the ambient ones, not the tool triggers) ─────────────────
+  // ── Easter eggs (ambient game records, not retired tool triggers) ─────────
   {
     id: 'ritual-veil',
     group: 'easter-eggs',
@@ -142,32 +124,11 @@ export const SECRETS: SecretDefinition[] = [
     id: 'speed-demon',
     group: 'easter-eggs',
     name: 'Too Fast To Read',
-    reveal: 'Five different tools opened inside sixty seconds.',
+    reveal: 'Five different halls opened inside sixty seconds.',
     clue: 'Move fast enough through enough doors and something starts keeping count.',
     tier: 'eclipsed',
     eggId: 'speed-demon',
   },
-  {
-    id: 'hash-miner',
-    group: 'easter-eggs',
-    name: 'Four Zeros',
-    reveal: 'A digest that begins with four zeros. There is no technique — only volume.',
-    clue: 'Somewhere in the space of every possible input is one whose fingerprint starts with a run of nothing. Proof of work, for nothing but a badge.',
-    lore: 'The Godforge opened. Briefly. It does that for people who refuse to stop.',
-    tier: 'mythic',
-    eggId: 'hash-miner',
-  },
-  {
-    id: 'regex-ouroboros',
-    group: 'easter-eggs',
-    name: 'The Serpent',
-    reveal: 'A regular expression that matches its own source text.',
-    clue: 'A pattern can be pointed at anything. Including the line it is written on.',
-    lore: 'It eats its own tail and finds the taste familiar. Almost nobody in the realm has stood here.',
-    tier: 'mythic',
-    eggId: 'regex-ouroboros',
-  },
-
   // ── Hidden pages ──────────────────────────────────────────────────────────
   {
     id: 'the-codex',
@@ -182,30 +143,11 @@ export const SECRETS: SecretDefinition[] = [
     id: 'arena-gate',
     group: 'hidden-pages',
     name: 'The Arena',
-    reveal: 'Eight games, each chained shut by a secret buried in a tool. Find the secret, break the chain.',
+    reveal: 'The proving ground. Five gates, each a trial of a different realm.',
     clue: 'There is a room where Convergents prove their worth. Its doors are held by things you find somewhere else entirely.',
     tier: 'eclipsed',
     route: '/world/trials',
   },
-  {
-    id: 'blueprint-room',
-    group: 'hidden-pages',
-    name: 'The Open Blueprint',
-    reveal: 'The public brain of the project — roadmap, dev log, architecture, and the six Eclipse phases.',
-    clue: 'The realm keeps its own plans in the open. Including the parts that have not happened yet.',
-    tier: 'mortal',
-    route: '/blueprint',
-  },
-  {
-    id: 'sponsors-room',
-    group: 'hidden-pages',
-    name: 'The Patron Slots',
-    reveal: 'Where the tools are paid for. Three slots, real numbers, no agency in between.',
-    clue: 'Everything here is free, which means somebody else is covering it. There is a page that says exactly who, and what it costs.',
-    tier: 'mortal',
-    route: '/sponsors',
-  },
-
   // ── Console ───────────────────────────────────────────────────────────────
   {
     id: 'console-banner',
@@ -239,49 +181,10 @@ export const SECRETS: SecretDefinition[] = [
     id: 'command-palette',
     group: 'console',
     name: 'The Summoning',
-    reveal: 'A command palette that reaches every tool on the site without touching the navigation.',
+    reveal: 'A command palette that reaches every hall without touching the navigation.',
     clue: 'Two keys, pressed together, anywhere. Every editor you have ever used has taught you which two.',
     tier: 'eclipsed',
     detector: 'command-palette',
-  },
-
-  // ── Combos ────────────────────────────────────────────────────────────────
-  {
-    id: 'combo-mirror',
-    group: 'combos',
-    name: 'The Mirror Pair',
-    reveal: 'Encoding "xsantcastx" and then decoding it back is two separate secrets, one in each direction.',
-    clue: 'Some things count twice: once going in, once coming back out.',
-    tier: 'eclipsed',
-    eggId: 'b64-mirror',
-  },
-  {
-    id: 'combo-teapot',
-    group: 'combos',
-    name: 'The Teapot Pair',
-    reveal: 'The impossible status code is hidden twice — once in the reference, once in a real request.',
-    clue: 'One number appears in two places. Looking it up is not the same as being told it.',
-    tier: 'sacred',
-    eggId: 'api-teapot',
-  },
-  {
-    id: 'combo-nothing',
-    group: 'combos',
-    name: 'The Doctrine of Nothing',
-    reveal: 'Zero, black, empty and identical are secrets in nine different tools. The realm rewards the null case everywhere.',
-    clue: 'Whatever the tool, try giving it nothing at all. The realm has a soft spot for the empty answer.',
-    lore: 'The Archivum has no record of this being deliberate. It was.',
-    tier: 'anomalous',
-    eggId: 'css-zero',
-  },
-  {
-    id: 'combo-42',
-    group: 'combos',
-    name: 'The Answer, Repeated',
-    reveal: 'Forty-two is a secret in four separate tools — hashed, based, filled and generated.',
-    clue: 'One number opens more than one door. You have known which number since you were a teenager.',
-    tier: 'sacred',
-    eggId: 'hash-meaning',
   },
 ];
 

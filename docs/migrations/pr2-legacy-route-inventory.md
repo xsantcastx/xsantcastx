@@ -58,7 +58,7 @@ Legacy developer-tool, portfolio, build-in-public, and owner-product URLs redire
 
 `src/app/tools/tools-registry.ts` remains as a data table for leftover game mechanics (hidden quest history, egg categories, atmosphere). It is not a public catalogue. World no longer displays the registry length as a product KPI.
 
-Public Character and Codex no longer render tool mastery, a tool Bestiary, or links to `/tools/*`. Tool-use / tool-variety / realm-spread / speed-run quests stay in the authored pools for save-history lookups but are not drawn on the public board. XP and idle no longer pay out for `/tools/*` visits; the Forge is the high-rate idle hall. `scripts/audit-nav.js` fails the build if player-facing templates or SEO mention tool pages, tool usage, or tool mastery.
+Public Character and Codex no longer render tool mastery, a tool Bestiary, or links to `/tools/*`. `buildAchievements()` lists only `PUBLIC_CODEX_EGGS` (`tool` unset or `global`); an unlocked JSON/Base64/regex/box-shadow egg stays in the save and does not appear on the wall. Tool-use / tool-variety / realm-spread / speed-run quests stay in the authored pools for save-history lookups but are not drawn on the public board. XP and idle no longer pay out for `/tools/*` visits; the Forge is the high-rate idle hall. `scripts/audit-nav.js` fails the build if player-facing templates, SEO, or rendered data sources (public eggs, hints, secrets, Arena unlock lines) mention tool pages, tool usage, or tool mastery.
 
 ## Not deleted (pending explicit approval)
 

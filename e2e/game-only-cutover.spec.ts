@@ -53,4 +53,37 @@ test.describe('game-only cutover', () => {
     await expect(page.locator('#cx-panel-bestiary')).toHaveCount(0);
     await expect(page.locator('#cx-panel-achievements')).toBeVisible();
   });
+
+  test('an unlocked legacy tool egg cannot render on the Codex wall', async ({ page }) => {
+    await page.addInitScript(
+      (state) => {
+        for (const [key, value] of Object.entries(state as Record<string, string>)) {
+          window.localStorage.setItem(key, value);
+        }
+        window.sessionStorage.setItem('visit-counted', '1');
+      },
+      {
+        [CONSENT_KEY]: 'denied',
+        [EGGS_FOUND_KEY]: JSON.stringify([
+          'forge-self-aware',
+          'codex-archivist',
+          'json-inception',
+          'b64-mirror',
+          'regex-master',
+          'shadow-lord',
+        ]),
+      },
+    );
+    await page.goto('/codex', { waitUntil: 'load' });
+    await page.locator('.cx-page').waitFor();
+    const body = await page.locator('.cx-page').innerText();
+    expect(body).not.toMatch(/Formatted JSON nested 10\+ levels deep/i);
+    expect(body).not.toMatch(/Encoded .+ in Base64/i);
+    expect(body).not.toMatch(/Wrote a regex/i);
+    expect(body).not.toMatch(/Created a box shadow/i);
+    expect(body).not.toContain('Inception');
+    expect(body).not.toContain('Mirror Mirror');
+    expect(body).not.toContain('Regex Master');
+    expect(body).not.toContain('Shadow Lord');
+  });
 });
