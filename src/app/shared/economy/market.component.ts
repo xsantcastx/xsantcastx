@@ -56,8 +56,10 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { Subscription, interval } from 'rxjs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subject, Subscription, interval } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
+import { OverlayStackService } from '../overlay/overlay-stack.service';
 import { EconomyService, EconomySnapshot } from './economy.service';
 import {
   ARTIFACTS,
@@ -88,6 +90,25 @@ import { CardArt, artifactCard } from '../rune-forge/rune-cards';
 import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
 import { ArtSceneComponent } from '../art-scene/art-scene.component';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
+import { InspectService } from '../entity/inspect.service';
+import { TranslationService } from '../../translation.service';
+import {
+  MARKET_CATEGORIES,
+  MARKET_PAGE_SIZE,
+  MARKET_QUERY_DEFAULTS,
+  type MarketCategory,
+  type MarketListingView,
+  type MarketOwnership,
+  type MarketQuery,
+  type MarketRarity,
+  type MarketSort,
+  discoverMarketListings,
+  marketQueryNeedsNormalize,
+  normalizeSearch,
+  parseMarketQuery,
+  queriesEqual,
+  serializeMarketQuery,
+} from './market-query';
 
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
@@ -191,17 +212,17 @@ interface MarketItem {
   art: CardArt | null;
   /** Set only for cosmetics, which render a variant picker once owned. */
   cosmetic?: Cosmetic;
-  /** Lower-cased name + lore + category, precomputed for the search box. */
+  /** Folded name + lore + category + tags, precomputed for the search box. */
   haystack: string;
+  catalogueIndex: number;
 }
 
-/** A row on the MOST FORGED board. */
+/** A static catalogue pick. Never live demand. */
 interface SellerRow {
   rank: number;
   id: string;
   name: string;
   icon: string;
-  /** "×8 held" for real holdings, "+512 forged" for the realm-wide fallback. */
   detail: string;
   color: string;
 }
@@ -221,23 +242,25 @@ interface RateFloater {
   text: string;
 }
 
-/** How many rows one page of the list holds. */
-const PAGE_SIZE = 8;
+const CATEGORY_SEARCH: Partial<Record<CategoryId, string>> = {
+  forge: 'forge upgrades mejoras de forja',
+  hammer: 'hammers martillos',
+  automaton: 'automatons automatas',
+  mastery: 'mastery maestria',
+  expedition: 'expeditions expediciones',
+  enchant: 'enchantments encantamientos encantos',
+  artifact: 'artifacts artefactos',
+  cosmetic: 'cosmetics cosmeticos',
+};
 
-/**
- * The realm-wide board, shown until the visitor has forged anything of their
- * own. These are the five things the shop most wants a new visitor to look at,
- * and the counts are the Archivum's, not this browser's — which is why the
- * board relabels itself to "in your forge" the moment there is real data to
- * show instead. It never presents one as the other.
- */
-const TRENDING: { id: string; sales: number }[] = [
-  { id: 'realm-conduit',      sales: 512 },
-  { id: 'godforge-heart',     sales: 487 },
-  { id: 'eclipse-reactor',    sales: 402 },
-  { id: 'forge-efficiency-i', sales: 376 },
-  { id: 'nether-furnace',     sales: 329 },
-];
+/** Static catalogue recommendations. Counts are not live demand. */
+const CATALOGUE_PICKS = [
+  'realm-conduit',
+  'godforge-heart',
+  'eclipse-reactor',
+  'forge-efficiency-i',
+  'nether-furnace',
+] as const;
 
 @Component({
   selector: 'app-market',
@@ -253,21 +276,39 @@ export class MarketComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly i18n = inject(TranslationService);
+  private readonly inspect = inject(InspectService);
+  private readonly overlays = inject(OverlayStackService);
   private readonly subs = new Subscription();
+  private readonly search$ = new Subject<string>();
+  private unstackTile?: () => void;
+  private escapeUnlisten?: () => void;
 
-  readonly categories = CATEGORIES;
+  readonly categories = CATEGORIES.filter(c => c.id !== 'eclipse');
+  readonly listingCategories = MARKET_CATEGORIES;
   readonly rarityOrder = RARITY_ORDER;
-  readonly pageSize = PAGE_SIZE;
+  readonly pageSize = MARKET_PAGE_SIZE;
+  readonly ownerships: MarketOwnership[] = ['all', 'available', 'owned', 'affordable'];
+  readonly sorts: MarketSort[] = [
+    'recommended', 'name-asc', 'rarity-desc', 'price-asc', 'price-desc', 'owned-first',
+  ];
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
 
   snap: EconomySnapshot = this.economy.snapshot;
 
-  // ── Filter state ───────────────────────────────────────────────────────────
+  // ── Discovery state (URL-backed; inspect is owned by InspectService) ───────
 
-  /** `null` is "All" — the default, and the whole point of the redesign. */
-  category: CategoryId | null = null;
-  rarity: EclipseRarity | null = null;
-  query = '';
-  page = 0;
+  queryState: MarketQuery = { ...MARKET_QUERY_DEFAULTS };
+  searchDraft = '';
+  expandedId: string | null = null;
+  eclipseOpen = false;
+  catalogueError = false;
+  hydrated = false;
 
   /** Ids that just bought something, for the button's flash. */
   flashing = new Set<string>();
@@ -319,8 +360,16 @@ export class MarketComponent implements OnInit, OnDestroy {
       this.snap = s;
       this.cdr.markForCheck();
     }));
+    this.subs.add(this.route.queryParamMap.subscribe(params => this.syncFromUrl(params)));
+    this.subs.add(this.i18n.currentLanguage$.subscribe(() => this.cdr.markForCheck()));
+    this.subs.add(this.search$.pipe(debounceTime(150)).subscribe(value => {
+      this.patchQuery({ q: value, page: 1 }, 'replace');
+    }));
 
     if (!this.isBrowser) return;
+    this.hydrated = true;
+    const debug = window as unknown as { __MK_FORCE_ERROR?: boolean };
+    if (debug.__MK_FORCE_ERROR) this.catalogueError = true;
     this.now = Date.now();
     // Only while an enchantment is actually running — a shop with no timer on
     // it has no reason to be repainting once a second.
@@ -336,11 +385,14 @@ export class MarketComponent implements OnInit, OnDestroy {
       if (p.rateDelta > 0.001) this.floatRate(p.rateDelta);
     }));
 
+    this.armEscape();
     this.armReveal();
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+    this.releaseTileStack();
+    this.escapeUnlisten?.();
     this.revealObserver?.disconnect();
   }
 
@@ -457,9 +509,9 @@ export class MarketComponent implements OnInit, OnDestroy {
       ...COSMETICS.map((c, i) => this.fromCosmetic(c, i)),
     ];
 
-    this.itemCache = out;
+    this.itemCache = out.map((item, i) => ({ ...item, catalogueIndex: i, haystack: this.haystackOf(item) }));
     this.itemCacheKey = key;
-    return out;
+    return this.itemCache;
   }
 
   /**
@@ -475,15 +527,30 @@ export class MarketComponent implements OnInit, OnDestroy {
     return RARITY_ORDER[Math.min(step, RARITY_ORDER.length - 1)];
   }
 
-  private paint(item: Omit<MarketItem, 'rarityLabel' | 'rarityColor' | 'rarityGlow' | 'haystack'>): MarketItem {
+  private paint(item: Omit<MarketItem, 'rarityLabel' | 'rarityColor' | 'rarityGlow' | 'haystack' | 'catalogueIndex'>): MarketItem {
     const def = rarityOf(item.rarity);
-    return {
+    const next: MarketItem = {
       ...item,
       rarityLabel: def.label,
       rarityColor: def.color,
       rarityGlow: def.glow,
-      haystack: `${item.name} ${item.lore} ${item.effect} ${item.categoryLabel} ${def.label}`.toLowerCase(),
+      haystack: '',
+      catalogueIndex: 0,
     };
+    next.haystack = this.haystackOf(next);
+    return next;
+  }
+
+  private haystackOf(item: Pick<MarketItem, 'name' | 'lore' | 'effect' | 'category' | 'categoryLabel' | 'rarityLabel'>): string {
+    return normalizeSearch([
+      item.name,
+      item.lore,
+      item.effect,
+      item.category,
+      item.categoryLabel,
+      item.rarityLabel,
+      CATEGORY_SEARCH[item.category] ?? '',
+    ].join(' '));
   }
 
   private labelOf(id: CategoryId): string {
@@ -583,45 +650,25 @@ export class MarketComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  // ── Filtering / URL / tiles ────────────────────────────────────────────────
 
-  /** The inventory after the search box, the shelf and the rarity facet. */
-  get filtered(): MarketItem[] {
-    const q = this.query.trim().toLowerCase();
-    return this.items.filter(it =>
-      (!this.category || it.category === this.category) &&
-      (!this.rarity || it.rarity === this.rarity) &&
-      (!q || it.haystack.includes(q))
-    );
+  private get discovery() {
+    return discoverMarketListings(this.items as MarketListingView[], this.queryState);
   }
 
-  get filteredCount(): number { return this.filtered.length; }
+  get filteredCount(): number { return this.discovery.count; }
 
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredCount / PAGE_SIZE));
-  }
+  get totalPages(): number { return this.discovery.totalPages; }
 
-  /**
-   * The rows actually on screen.
-   *
-   * The page index is clamped here rather than reset by every filter change,
-   * so narrowing a filter while deep in the list lands on the last page of the
-   * new result instead of an empty one.
-   */
-  get pageItems(): MarketItem[] {
-    const page = Math.min(this.page, this.totalPages - 1);
-    const start = page * PAGE_SIZE;
-    return this.filtered.slice(start, start + PAGE_SIZE);
-  }
+  get pageItems(): MarketItem[] { return this.discovery.items as MarketItem[]; }
 
-  /** 1-based, clamped, for the "3 / 12" readout. */
-  get pageLabel(): number { return Math.min(this.page, this.totalPages - 1) + 1; }
+  get pageLabel(): number { return this.discovery.page; }
 
   get canPrev(): boolean { return this.pageLabel > 1; }
   get canNext(): boolean { return this.pageLabel < this.totalPages; }
 
-  prev(): void { if (this.canPrev) this.page = this.pageLabel - 2; }
-  next(): void { if (this.canNext) this.page = this.pageLabel; }
+  prev(): void { if (this.canPrev) this.patchQuery({ page: this.pageLabel - 1 }, 'push'); }
+  next(): void { if (this.canNext) this.patchQuery({ page: this.pageLabel + 1 }, 'push'); }
 
   /** How many items a shelf holds, for the count beside its name. */
   countOf(id: CategoryId): number {
@@ -634,47 +681,213 @@ export class MarketComponent implements OnInit, OnDestroy {
     return this.items.filter(i => i.rarity === r).length;
   }
 
-  rarityLabel(r: EclipseRarity): string { return rarityOf(r).label; }
+  rarityLabel(r: EclipseRarity): string { return this.t(`market.rarity.${r}`); }
   rarityColor(r: EclipseRarity): string { return rarityOf(r).color; }
   rarityGlow(r: EclipseRarity): string { return rarityOf(r).glow; }
+  categoryLabel(id: string): string {
+    if (id === 'all') return this.t('market.everything');
+    if (id === 'eclipse') return this.t('market.eclipse');
+    return this.t(`market.cat.${id}`);
+  }
+  categoryShort(id: string): string {
+    if (id === 'all') return this.t('market.all');
+    if (id === 'eclipse') return this.t('market.eclipse');
+    return this.t(`market.catShort.${id}`);
+  }
+  ownershipLabel(id: MarketOwnership): string { return this.t(`market.ownership.${id}`); }
+  sortLabel(id: MarketSort): string { return this.t(`market.sort.${id}`); }
 
-  /**
-   * Selecting a shelf. Clicking the one already selected clears it — the
-   * sidebar doubles as its own "back to everything".
-   */
-  selectCategory(id: CategoryId | null): void {
-    this.category = this.category === id ? null : id;
-    this.page = 0;
+  selectCategory(id: string): void {
+    const next = id === 'all' || this.listingCategories.includes(id as typeof this.listingCategories[number])
+      ? id as MarketCategory
+      : 'all';
+    const category = this.queryState.category === next ? 'all' : next;
+    this.eclipseOpen = false;
     this.eclipseArmed = false;
+    this.collapseTile();
+    this.patchQuery({ category, page: 1 }, 'push');
   }
 
-  selectRarity(r: EclipseRarity | null): void {
-    this.rarity = this.rarity === r ? null : r;
-    this.page = 0;
+  selectRarity(r: EclipseRarity): void {
+    const rarity: MarketRarity = this.queryState.rarity === r ? 'all' : r;
+    this.collapseTile();
+    this.patchQuery({ rarity, page: 1 }, 'push');
+  }
+
+  selectOwnership(ownership: MarketOwnership): void {
+    const next = this.queryState.ownership === ownership ? 'all' : ownership;
+    this.collapseTile();
+    this.patchQuery({ ownership: next, page: 1 }, 'push');
+  }
+
+  selectSort(sort: string): void {
+    if (!this.sorts.includes(sort as MarketSort)) return;
+    this.collapseTile();
+    this.patchQuery({ sort: sort as MarketSort, page: 1 }, 'push');
   }
 
   onSearch(value: string): void {
-    this.query = value;
-    this.page = 0;
+    this.searchDraft = value;
+    this.search$.next(value);
+  }
+
+  clearSearch(): void {
+    this.searchDraft = '';
+    this.collapseTile();
+    this.patchQuery({ q: '', page: 1 }, 'replace');
   }
 
   clearFilters(): void {
-    this.query = '';
-    this.category = null;
-    this.rarity = null;
-    this.page = 0;
+    this.searchDraft = '';
+    this.eclipseOpen = false;
+    this.collapseTile();
+    this.patchQuery({ ...MARKET_QUERY_DEFAULTS }, 'push');
+  }
+
+  clearChip(key: 'category' | 'rarity' | 'ownership' | 'q' | 'sort'): void {
+    this.collapseTile();
+    if (key === 'q') this.searchDraft = '';
+    const reset: Partial<MarketQuery> = { page: 1 };
+    if (key === 'category') reset.category = 'all';
+    if (key === 'rarity') reset.rarity = 'all';
+    if (key === 'ownership') reset.ownership = 'all';
+    if (key === 'q') reset.q = '';
+    if (key === 'sort') reset.sort = 'recommended';
+    this.patchQuery(reset, 'push');
   }
 
   get hasFilters(): boolean {
-    return !!this.query.trim() || !!this.category || !!this.rarity;
+    const q = this.queryState;
+    return q.category !== 'all' || q.rarity !== 'all' || q.ownership !== 'all'
+      || !!q.q.trim() || q.sort !== 'recommended';
   }
 
-  /** True when the Eclipse ritual should replace the list entirely. */
-  get showEclipse(): boolean { return this.category === 'eclipse'; }
+  get chips(): { key: 'category' | 'rarity' | 'ownership' | 'q' | 'sort'; label: string }[] {
+    const q = this.queryState;
+    const out: { key: 'category' | 'rarity' | 'ownership' | 'q' | 'sort'; label: string }[] = [];
+    if (q.category !== 'all') out.push({ key: 'category', label: this.categoryLabel(q.category) });
+    if (q.rarity !== 'all') out.push({ key: 'rarity', label: this.rarityLabel(q.rarity) });
+    if (q.ownership !== 'all') out.push({ key: 'ownership', label: this.ownershipLabel(q.ownership) });
+    if (q.q.trim()) out.push({ key: 'q', label: q.q.trim() });
+    if (q.sort !== 'recommended') out.push({ key: 'sort', label: this.sortLabel(q.sort) });
+    return out;
+  }
+
+  /** Dedicated Eclipse panel — not a listing filter. */
+  get showEclipse(): boolean { return this.eclipseOpen; }
+
+  openEclipse(): void {
+    this.eclipseOpen = true;
+    this.eclipseArmed = false;
+    this.collapseTile();
+    this.cdr.markForCheck();
+  }
+
+  closeEclipse(): void {
+    this.eclipseOpen = false;
+    this.eclipseArmed = false;
+    this.cdr.markForCheck();
+  }
+
+  retryCatalogue(): void {
+    this.catalogueError = false;
+    this.cdr.markForCheck();
+  }
+
+  isExpanded(id: string): boolean { return this.expandedId === id; }
+
+  toggleTile(id: string): void {
+    if (this.expandedId === id) {
+      this.collapseTile();
+      return;
+    }
+    this.expandTile(id);
+  }
+
+  private expandTile(id: string): void {
+    this.releaseTileStack();
+    this.expandedId = id;
+    this.unstackTile = this.overlays.push('market-tile', () => this.collapseTile());
+    this.cdr.markForCheck();
+  }
+
+  collapseTile(): void {
+    const id = this.expandedId;
+    this.releaseTileStack();
+    this.expandedId = null;
+    if (id) this.focusTile(id);
+    this.cdr.markForCheck();
+  }
+
+  private focusTile(id: string): void {
+    if (!this.isBrowser) return;
+    const el = this.host.nativeElement.querySelector(`#mk-tile-${id}`) as HTMLElement | null;
+    el?.focus();
+  }
+
+  private releaseTileStack(): void {
+    this.unstackTile?.();
+    this.unstackTile = undefined;
+  }
+
+  private armEscape(): void {
+    if (typeof document === 'undefined') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' && event.key !== 'Esc') return;
+      if (this.inspect.view.open) return;
+      if (this.expandedId) return;
+      if (this.eclipseArmed) {
+        this.disarm();
+        this.cdr.markForCheck();
+        return;
+      }
+      if (this.eclipseOpen) {
+        this.closeEclipse();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    this.escapeUnlisten = () => document.removeEventListener('keydown', onKey);
+  }
+
+  private syncFromUrl(params: { get(name: string): string | null }): void {
+    const raw = {
+      category: params.get('category'),
+      rarity: params.get('rarity'),
+      ownership: params.get('ownership'),
+      q: params.get('q'),
+      sort: params.get('sort'),
+      page: params.get('page'),
+    };
+    const next = parseMarketQuery(raw);
+    if (!queriesEqual(this.queryState, next)) {
+      this.collapseTile();
+      this.eclipseOpen = false;
+    }
+    this.queryState = next;
+    this.searchDraft = next.q;
+    this.cdr.markForCheck();
+    if (marketQueryNeedsNormalize(raw)) this.writeQuery(next, 'replace');
+  }
+
+  private patchQuery(partial: Partial<MarketQuery>, mode: 'push' | 'replace'): void {
+    const next = { ...this.queryState, ...partial };
+    this.queryState = next;
+    this.writeQuery(next, mode);
+    this.cdr.markForCheck();
+  }
+
+  private writeQuery(query: MarketQuery, mode: 'push' | 'replace'): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: serializeMarketQuery(query),
+      queryParamsHandling: 'merge',
+      replaceUrl: mode === 'replace',
+    });
+  }
 
   /** The note under the tab strip, when exactly one shelf is showing. */
   get activeNote(): string {
-    return CATEGORIES.find(c => c.id === this.category)?.note ?? '';
+    return CATEGORIES.find(c => c.id === this.queryState.category)?.note ?? '';
   }
 
   /** Explorers hired, including the one every visitor starts with. */
@@ -693,73 +906,53 @@ export class MarketComponent implements OnInit, OnDestroy {
    * constants.
    */
   get activeTally(): string {
-    if (this.category !== 'expedition') return '';
+    if (this.queryState.category !== 'expedition') return '';
     return this.explorerSlots >= this.maxExplorerSlots
-      ? `All ${this.maxExplorerSlots} hired — one for every realm.`
-      : `${this.explorerSlots} of ${this.maxExplorerSlots} hired.`;
+      ? this.t('market.expedition.all', { count: this.maxExplorerSlots })
+      : this.t('market.expedition.some', { have: this.explorerSlots, max: this.maxExplorerSlots });
   }
 
   /** Tints the page to whatever currency the visible shelf spends. */
   get activeCurrency(): string {
-    return CATEGORIES.find(c => c.id === this.category)?.currency ?? 'gold';
+    if (this.eclipseOpen) return 'shard';
+    return CATEGORIES.find(c => c.id === this.queryState.category)?.currency ?? 'gold';
   }
 
-  // ── The board ──────────────────────────────────────────────────────────────
+  // ── Catalogue picks (static; never live demand) ────────────────────────────
 
-  /**
-   * MOST FORGED — the visitor's own five deepest holdings.
-   *
-   * Real numbers when there are real numbers. Until then it falls back to the
-   * realm-wide board, and `sellersAreMine` tells the template which heading to
-   * put on it, because a curated list wearing the words "in your forge" is a
-   * lie the shop does not need to tell.
-   */
   get sellers(): SellerRow[] {
-    const mine = this.items
-      .filter(i => i.owned > 0 && i.category !== 'cosmetic')
-      .sort((a, b) => b.owned - a.owned || b.cost - a.cost)
-      .slice(0, 5);
-
-    if (mine.length >= 3) {
-      return mine.map((i, n) => ({
-        rank: n + 1,
-        id: i.id,
-        name: i.name,
-        icon: i.icon,
-        detail: i.owned > 1 ? `×${i.owned} held` : 'held',
-        color: i.rarityColor,
-      }));
-    }
-
     const byId = new Map(this.items.map(i => [i.id, i]));
-    return TRENDING
-      .map((t, n) => {
-        const item = byId.get(t.id);
+    return CATALOGUE_PICKS
+      .map((id, n) => {
+        const item = byId.get(id);
         if (!item) return null;
         return {
           rank: n + 1,
           id: item.id,
           name: item.name,
           icon: item.icon,
-          detail: `+${t.sales} forged`,
+          detail: this.categoryLabel(item.category),
           color: item.rarityColor,
         };
       })
       .filter((r): r is SellerRow => r !== null);
   }
 
-  get sellersAreMine(): boolean {
-    return this.items.filter(i => i.owned > 0 && i.category !== 'cosmetic').length >= 3;
-  }
-
-  /** Jumps the list to a board entry, so the board is a shortcut not a poster. */
+  /** Jumps the list to a catalogue pick without inventing demand. */
   focusItem(item: SellerRow): void {
     const found = this.items.find(i => i.id === item.id);
     if (!found) return;
-    this.category = null;
-    this.rarity = null;
-    this.query = found.name;
-    this.page = 0;
+    this.searchDraft = found.name;
+    this.eclipseOpen = false;
+    this.collapseTile();
+    this.patchQuery({
+      category: 'all',
+      rarity: 'all',
+      ownership: 'all',
+      q: found.name,
+      sort: 'recommended',
+      page: 1,
+    }, 'push');
   }
 
   // ── The breakdown ──────────────────────────────────────────────────────────
