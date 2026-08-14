@@ -3,6 +3,9 @@
  *
  * Paper-doll shell + item-tile bag. Slots announce empty/equipped/locked and
  * open Inspect. They do not equip or unequip — that is C5.
+ *
+ * Sell (and its confirm dialog) still mutate the bag, same as the previous
+ * panel. This surface is not read-only; only equipment writes are closed.
  */
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';

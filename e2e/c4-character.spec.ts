@@ -6,27 +6,41 @@ const INVENTORY_KEY = 'godforge-inventory';
 const CONSENT_KEY = 'xsantcastx_consent';
 const EGGS_FOUND_KEY = 'easter-eggs-found';
 
+/** C3 v2 ledger. Do not seed v1 here — Character hydrates through coerceInventoryLedger. */
 const SEEDED_BAG = {
-  version: 1,
-  items: [
+  version: 2,
+  records: [
     {
-      id: 'c4-helm', name: 'Ash Circlet', type: 'artifact', rarity: 'rare',
-      stats: { goldPerSec: 2 }, sellValue: 40, equipped: true, slot: 'head',
-      foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+      id: 'c4-helm', definitionId: 'artifact:Ash Circlet', kind: 'instance',
+      category: 'artifacts', tags: ['artifact'], rarity: 'rare', soulbound: false,
+      acquiredAt: '2026-08-01T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 'e2e', sequence: 1 }, source: 'inventory',
+      name: 'Ash Circlet', type: 'artifact', stats: { goldPerSec: 2 }, sellValue: 40,
+      location: { kind: 'equipped', slotId: 'head' },
     },
     {
-      id: 'c4-charm', name: 'Ember Charm', type: 'charm', rarity: 'common',
-      stats: { magicFind: 5 }, sellValue: 8, equipped: true, slot: 'charm1',
-      foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+      id: 'c4-charm', definitionId: 'charm:Ember Charm', kind: 'instance',
+      category: 'equipment', tags: ['charm'], rarity: 'common', soulbound: false,
+      acquiredAt: '2026-08-01T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 'e2e', sequence: 2 }, source: 'inventory',
+      name: 'Ember Charm', type: 'charm', stats: { magicFind: 5 }, sellValue: 8,
+      location: { kind: 'equipped', slotId: 'charm1' },
     },
     {
-      id: 'c4-bag', name: 'Drift Shard', type: 'rune', rarity: 'uncommon',
-      stats: { xpBonus: 3 }, sellValue: 15, equipped: false,
-      foundAt: '2026-08-02T00:00:00.000Z', soulbound: false,
+      id: 'c4-bag', definitionId: 'rune:Drift Shard', kind: 'instance',
+      category: 'runes', tags: ['rune'], rarity: 'uncommon', soulbound: false,
+      acquiredAt: '2026-08-02T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 'e2e', sequence: 3 }, source: 'inventory',
+      name: 'Drift Shard', type: 'rune', stats: { xpBonus: 3 }, sellValue: 15,
+      location: { kind: 'bag' },
     },
   ],
+  tombstones: [],
+  stackOps: [],
   goldFromSales: 0,
   sold: 0,
+  hlc: 1,
+  legacyBackup: null,
 };
 
 async function openCharacter(page: Page, url = '/character'): Promise<void> {
@@ -68,12 +82,26 @@ test.describe('C4 Character presentation', () => {
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
 
     const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ });
-    await head.click();
+    const headBox = await head.boundingBox();
+    expect(headBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(headBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await head.focus();
+    await expect(head).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
 
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.ld').screenshot({ path: resolve(shotDir, 'desktop-loadout.png') });
+  });
+
+  test('keeps /forge-keeper and nav on the new loadout, not the old silhouette', async ({ page }) => {
+    await openCharacter(page, '/forge-keeper');
+    await expect(page).toHaveURL(/\/character/);
+    await expect(page.locator('.ld')).toBeVisible();
+    await expect(page.locator('.ep__figure, .ep__slot')).toHaveCount(0);
+    await page.getByRole('link', { name: /Character|Personaje/ }).first().click();
+    await expect(page.locator('.ld__title')).toBeVisible();
   });
 
   test('normalizes bag query params and filters the tile list', async ({ page }) => {

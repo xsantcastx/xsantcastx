@@ -56,11 +56,11 @@
   transform: translate(-50%, -50%);
   min-width: 44px;
   min-height: 44px;
-  padding: 0.2rem 0.35rem;
+  padding: 0.25rem 0.4rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(8, 10, 22, 0.82);
-  color: #d7e7e1;
+  border: 1px solid rgba(207, 230, 223, 0.35);
+  background: rgba(8, 10, 22, 0.92);
+  color: #eafff9;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,15 +68,26 @@
   gap: 0.05rem;
   cursor: pointer;
   font: inherit;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 .ld__slot:focus-visible {
   outline: 2px solid #eafff9;
   outline-offset: 3px;
 }
-.ld__slot--filled { border-color: rgba(164, 139, 255, 0.7); }
-.ld__slot--locked { opacity: 0.72; }
+.ld__slot--empty { border-color: rgba(207, 230, 223, 0.35); color: #d7e7e1; }
+.ld__slot--filled {
+  border-color: #c4b5ff;
+  color: #f4efff;
+  background: rgba(28, 18, 52, 0.94);
+}
+.ld__slot--locked {
+  border-style: dashed;
+  border-color: rgba(155, 176, 170, 0.55);
+  color: #b7c7c1;
+  background: rgba(8, 10, 22, 0.78);
+}
 .ld__slot--selected {
-  box-shadow: 0 0 0 2px rgba(234, 255, 249, 0.85);
+  box-shadow: 0 0 0 2px #eafff9;
 }
 .ld__slot-glyph {
   width: 24px;
@@ -90,15 +101,17 @@
   mask-size: contain;
 }
 .ld__slot-name, .ld__slot-state {
-  font-size: 0.58rem;
-  letter-spacing: 0.04em;
-  line-height: 1.1;
-  max-width: 72px;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  max-width: 76px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ld__slot-state { color: #9bb0aa; }
+.ld__slot-state { color: #c5d6d0; }
+.ld__slot--filled .ld__slot-state { color: #e8e0ff; }
+.ld__slot--locked .ld__slot-state { color: #b7c7c1; }
 
 .ld__charms { margin-top: 1rem; }
 .ld__charms-title { margin: 0 0 0.25rem; font-size: 0.92rem; }
@@ -183,6 +196,15 @@
   cursor: pointer;
   font: inherit;
 }
+.ld__sell:focus-visible,
+.ld__clear:focus-visible,
+.ld__confirm-yes:focus-visible,
+.ld__confirm-no:focus-visible,
+.ld__field select:focus-visible,
+.ld__field input:focus-visible {
+  outline: 2px solid #eafff9;
+  outline-offset: 2px;
+}
 .ld__bound { font-size: 0.72rem; color: #8b9c97; align-self: center; }
 .ld__empty { margin: 0.8rem 0; color: #cfe6df; }
 .ld__empty-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
@@ -193,7 +215,14 @@
   display: block;
   height: 88px;
   border-radius: 12px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+  background: rgba(255, 255, 255, 0.06);
+  background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background-size: 200% 100%;
+  animation: ldShimmer 1.2s linear infinite;
+}
+@keyframes ldShimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
 }
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -219,6 +248,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ld__slot, .ld__tile, .ld__skel-card { transition: none; animation: none; }
-  .ld__tile--selected { box-shadow: 0 0 0 2px rgba(234, 255, 249, 0.8); }
+  .ld__slot,
+  .ld__tile,
+  .ld__tile--selected,
+  .ld__skel-card {
+    transition: none;
+    animation: none;
+  }
+  .ld__skel-card {
+    background-image: none;
+  }
 }
