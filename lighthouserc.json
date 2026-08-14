@@ -4,7 +4,7 @@
       "url": [
         "http://localhost:4173/world"
       ],
-      "startServerCommand": "npx serve dist/xsantcastx/browser -l tcp://localhost:4173 --no-clipboard",
+      "startServerCommand": "npx serve dist/xsantcastx/browser -s -l tcp://localhost:4173 --no-clipboard",
       "startServerReadyPattern": "Accepting connections",
       "numberOfRuns": 2,
       "settings": {
