@@ -73,6 +73,7 @@ import {
   DEVICE_ID_KEY,
   EconomyOp,
   EconomyOpKind,
+  applyOps,
   coerceLedger,
   maxSeqFor,
   nextHlc,
@@ -83,7 +84,7 @@ import {
   commitCommerceOp,
   debitGrantOnce,
   findCommerceByKey,
-  recoverCommerceOps,
+  reconcileCommerceOps,
   rollbackCommerceOp,
   upsertCommerceOp,
   quoteIsStale,
@@ -744,10 +745,17 @@ export class EconomyService implements OnDestroy {
     if (!intent.mutationKey || !intent.listingId) return fail('not-found');
 
     this.recoverCommerce();
-    const existing = findCommerceByKey(this.state.commerceOps ?? [], intent.mutationKey);
+    const existing = findCommerceByKey(
+      this.state.commerceOps ?? [],
+      this.state.commerceApplied ?? {},
+      intent.mutationKey,
+    );
     const phase = debitGrantOnce(existing);
     if (phase === 'replay' && existing) {
       return { ok: true, code: this.queuedCode(), mutationKey: intent.mutationKey, operation: existing };
+    }
+    if (phase === 'conflict' && existing) {
+      return { ok: false, code: 'conflict', mutationKey: intent.mutationKey, operation: existing };
     }
     if (phase === 'blocked' || this.buying.has(intent.listingId)) {
       return { ok: false, code: 'in-flight', mutationKey: intent.mutationKey, operation: existing };
@@ -760,7 +768,7 @@ export class EconomyService implements OnDestroy {
     if (!quote.affordable) return fail('insufficient-funds');
 
     this.buying.add(intent.listingId);
-    const pending = beginCommerceOp(intent, Date.now());
+    const pending = beginCommerceOp(intent, quote.currency, Date.now());
     this.state.commerceOps = upsertCommerceOp(this.state.commerceOps ?? [], pending);
     try {
       const before = goldPerSecond(this.state);
@@ -782,7 +790,7 @@ export class EconomyService implements OnDestroy {
         id: intent.listingId,
         name: defName,
         cost: intent.expectedCost,
-        currency: intent.currency,
+        currency: quote.currency,
         rateDelta: goldPerSecond(this.state) - before,
       });
       return { ok: true, code: this.queuedCode(), mutationKey: intent.mutationKey, operation: committed };
@@ -801,37 +809,44 @@ export class EconomyService implements OnDestroy {
 
   private quoteListing(id: string, kind: CommerceKind): {
     cost: number;
+    currency: 'gold' | 'essence';
     eligible: boolean;
     affordable: boolean;
     reason?: CommerceCode;
   } {
     if (kind === 'upgrade') {
       const def = upgradeById(id);
-      if (!def) return { cost: 0, eligible: false, affordable: false, reason: 'not-found' };
-      if (this.isMaxed(id)) return { cost: this.nextCost(id), eligible: false, affordable: false, reason: 'maxed' };
+      if (!def) return { cost: 0, currency: 'gold', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.isMaxed(id)) {
+        return { cost: this.nextCost(id), currency: 'gold', eligible: false, affordable: false, reason: 'maxed' };
+      }
       const cost = this.nextCost(id);
-      return { cost, eligible: true, affordable: this.state.gold >= cost };
+      return { cost, currency: 'gold', eligible: true, affordable: this.state.gold >= cost };
     }
     if (kind === 'artifact') {
       const def = ARTIFACTS.find(a => a.id === id);
-      if (!def) return { cost: 0, eligible: false, affordable: false, reason: 'not-found' };
-      if (this.ownsArtifact(id)) return { cost: def.cost, eligible: false, affordable: false, reason: 'owned' };
-      return { cost: def.cost, eligible: true, affordable: this.state.eclipseEssence >= def.cost };
+      if (!def) return { cost: 0, currency: 'essence', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.ownsArtifact(id)) {
+        return { cost: def.cost, currency: 'essence', eligible: false, affordable: false, reason: 'owned' };
+      }
+      return { cost: def.cost, currency: 'essence', eligible: true, affordable: this.state.eclipseEssence >= def.cost };
     }
     if (kind === 'cosmetic') {
       const def = COSMETICS.find(c => c.id === id);
-      if (!def) return { cost: 0, eligible: false, affordable: false, reason: 'not-found' };
-      if (this.ownsCosmetic(id)) return { cost: this.discounted(def.cost), eligible: false, affordable: false, reason: 'owned' };
+      if (!def) return { cost: 0, currency: 'gold', eligible: false, affordable: false, reason: 'not-found' };
+      if (this.ownsCosmetic(id)) {
+        return { cost: this.discounted(def.cost), currency: 'gold', eligible: false, affordable: false, reason: 'owned' };
+      }
       const cost = this.discounted(def.cost);
-      return { cost, eligible: true, affordable: this.state.gold >= cost };
+      return { cost, currency: 'gold', eligible: true, affordable: this.state.gold >= cost };
     }
     const def = ENCHANTMENTS.find(e => e.id === id);
-    if (!def) return { cost: 0, eligible: false, affordable: false, reason: 'not-found' };
+    if (!def) return { cost: 0, currency: 'essence', eligible: false, affordable: false, reason: 'not-found' };
     const active = activeEnchantment(this.state, Date.now());
     if (active && def.multiplier < active.def.multiplier && def.id !== active.def.id) {
-      return { cost: def.cost, eligible: false, affordable: false, reason: 'weaker' };
+      return { cost: def.cost, currency: 'essence', eligible: false, affordable: false, reason: 'weaker' };
     }
-    return { cost: def.cost, eligible: true, affordable: this.state.eclipseEssence >= def.cost };
+    return { cost: def.cost, currency: 'essence', eligible: true, affordable: this.state.eclipseEssence >= def.cost };
   }
 
   private listingName(kind: CommerceKind, id: string): string {
@@ -902,8 +917,18 @@ export class EconomyService implements OnDestroy {
   }
 
   private recoverCommerce(): void {
-    const landed = new Set((this.state.ops ?? []).map(op => op.id));
-    const next = recoverCommerceOps(this.state.commerceOps ?? [], landed);
+    const ledger = coerceLedger(this.state);
+    if (!ledger) return;
+    if (!ledger.origin) {
+      const next = (this.state.commerceOps ?? []).map(op =>
+        op.status === 'pending' && !op.economicOpId ? rollbackCommerceOp(op) : op,
+      );
+      this.state.commerceOps = next;
+      return;
+    }
+    const replay = applyOps(ledger.origin, ledger.ops);
+    const known = new Set(ledger.ops.map(op => op.id));
+    const next = reconcileCommerceOps(this.state.commerceOps ?? [], new Set(replay.appliedIds), known);
     const changed = JSON.stringify(next) !== JSON.stringify(this.state.commerceOps ?? []);
     this.state.commerceOps = next;
     if (changed) this.flush();
@@ -1213,6 +1238,7 @@ export class EconomyService implements OnDestroy {
         version: 2,
         ops: parsed.ops ?? [],
         commerceOps: parsed.commerceOps ?? [],
+        commerceApplied: parsed.commerceApplied ?? {},
         origin: parsed.origin ?? null,
         hlc: parsed.hlc ?? 0,
         applied: parsed.applied ?? {},
