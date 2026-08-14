@@ -20,6 +20,10 @@
  * for the bag. A move is a single field write on a single record and cannot be
  * torn. The three views the UI wants are filters, computed on publish.
  *
+ * C3 persists a v2 ledger (records, revisions, tombstones, stack ops) and
+ * still publishes the same GameItem snapshot so Character UI is unchanged.
+ * Economy artifacts/cosmetics are projected read-only and never written back.
+ *
  * SSR: `init()` returns immediately on the server and the snapshot stays empty,
  * so the character sheet prerenders seven empty slots and an empty bag.
  */
@@ -27,6 +31,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import { DEVICE_ID_KEY } from '../economy/economy-ops';
 import { EconomyService } from '../economy/economy.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
@@ -40,6 +45,22 @@ import {
   slotAccepts,
   sumStats,
 } from './item.model';
+import {
+  INVENTORY_BAG_CAP,
+  type InventoryLedger,
+  type OwnedItemInstance,
+} from './inventory.model';
+import {
+  coerceInventoryLedger,
+  dropLegacyBackup,
+  emptyInventoryLedger,
+  itemToRecord,
+  itemsFromLedger,
+  nextRevision,
+  projectEconomy,
+  tombstoneRecord,
+  upsertRecord,
+} from './inventory-ops';
 
 export const INVENTORY_KEY = 'godforge-inventory';
 
@@ -52,20 +73,7 @@ export const INVENTORY_KEY = 'godforge-inventory';
  * item is dropped to make room, which is the only eviction rule that cannot
  * silently destroy something the player would have kept.
  */
-export const MAX_INVENTORY = 250;
-
-interface InventoryBlob {
-  version: 1;
-  items: GameItem[];
-  /** Lifetime Gold taken at the till, for the panel's footer line. */
-  goldFromSales: number;
-  /** Lifetime items sold. */
-  sold: number;
-}
-
-function emptyBlob(): InventoryBlob {
-  return { version: 1, items: [], goldFromSales: 0, sold: 0 };
-}
+export const MAX_INVENTORY = INVENTORY_BAG_CAP;
 
 export interface InventorySnapshot {
   /** Everything held, newest first. */
@@ -89,10 +97,11 @@ export class InventoryService {
   private readonly saves = inject(LocalSaveRegistry);
   private readonly store = inject(GameStateGateway);
 
-  private blob: InventoryBlob = emptyBlob();
+  private ledger: InventoryLedger = emptyInventoryLedger();
+  private deviceId = 'unknown';
   private initialised = false;
 
-  private readonly snapshot$$ = new BehaviorSubject<InventorySnapshot>(this.snapshotOf(emptyBlob()));
+  private readonly snapshot$$ = new BehaviorSubject<InventorySnapshot>(this.snapshotOf(emptyInventoryLedger()));
   private readonly acquired$$ = new Subject<GameItem>();
   private readonly sold$$ = new Subject<{ item: GameItem; gold: number }>();
 
@@ -103,19 +112,30 @@ export class InventoryService {
 
   get snapshot(): InventorySnapshot { return this.snapshot$$.value; }
 
+  private get items(): GameItem[] {
+    return itemsFromLedger(this.ledger);
+  }
+
   init(): void {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
-    this.blob = this.load();
+    // Economy is the currency/ownership writer. Load it first, then project.
+    this.economy.init();
+    this.deviceId = this.readDeviceId();
+    this.ledger = this.load();
+    if (this.ledger.legacyBackup) this.save();
     this.publish();
 
     // `save()` writes this whole bag from memory, so items merged in from another
-    // device would be gone at the next equip. `load()` runs `dedupeSlots()` over
-    // whatever it reads, which is also what resolves the one case the merge
-    // cannot — the same item equipped in different slots on each device.
+    // device would be gone at the next equip. Rehydrate re-parses the merged
+    // v2 ledger and drops the v1 backup once the cloud copy has been adopted.
     this.saves.register(INVENTORY_KEY, {
       rehydrate: () => {
-        this.blob = this.load();
+        this.ledger = this.load();
+        if (this.store.attached && this.ledger.legacyBackup) {
+          this.ledger = dropLegacyBackup(this.ledger);
+          this.save();
+        }
         this.publish();
       },
     });
@@ -126,12 +146,12 @@ export class InventoryService {
   // ───────────────────────────────────────────────────────────────────────────
 
   itemById(id: string): GameItem | undefined {
-    return this.blob.items.find(i => i.id === id);
+    return this.items.find(i => i.id === id);
   }
 
   /** Everything a given explorer is wearing. */
   itemsOnExplorer(explorerId: string): GameItem[] {
-    return this.blob.items.filter(i => i.explorerId === explorerId);
+    return this.items.filter(i => i.explorerId === explorerId);
   }
 
   /** Summed stats of what the player wears. Excludes anything on an explorer. */
@@ -144,11 +164,19 @@ export class InventoryService {
     return this.snapshot.totals.magicFind;
   }
 
-  get count(): number { return this.blob.items.length; }
+  get count(): number { return this.items.length; }
 
   /** Distinct rarities held, for the achievement predicates. */
   hasRarity(rarity: ItemRarity): boolean {
-    return this.blob.items.some(i => i.rarity === rarity);
+    return this.items.some(i => i.rarity === rarity);
+  }
+
+  /** Read-only Economy projections. Never written back to the ledger. */
+  projectedFromEconomy(): ReturnType<typeof projectEconomy> {
+    return projectEconomy({
+      artifacts: this.economy.snapshot.artifacts,
+      cosmetics: this.economy.snapshot.cosmetics,
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -166,14 +194,17 @@ export class InventoryService {
   add(item: GameItem): GameItem | null {
     if (!this.isBrowser) return null;
 
-    let items = [...this.blob.items, item];
-    if (items.length > MAX_INVENTORY) {
-      const evicted = this.lowestValueUnequipped(items, item.id);
+    const incoming = this.withRevision(itemToRecord(item));
+    let next = upsertRecord(this.ledger, incoming);
+    if (next.records.filter(row => row.source === 'inventory').length > MAX_INVENTORY) {
+      const evicted = this.lowestValueUnequipped(itemsFromLedger(next), item.id);
       if (!evicted) return null;
-      items = items.filter(i => i.id !== evicted.id);
+      const evictedRow = next.records.find(row => row.id === evicted.id);
+      const gone = this.advanceRevision(evictedRow?.revision);
+      next = tombstoneRecord(next, evicted.id, gone.revision, Date.now());
     }
 
-    this.blob = { ...this.blob, items };
+    this.ledger = next;
     this.save();
     this.publish();
     this.acquired$$.next(item);
@@ -219,7 +250,7 @@ export class InventoryService {
     if (!item) return false;
 
     const occupied = new Set<SlotId>(
-      this.blob.items
+      this.items
         .filter(i => i.equipped && i.slot && i.id !== itemId)
         .map(i => i.slot!),
     );
@@ -231,18 +262,18 @@ export class InventoryService {
     }
     if (!target || !slotAccepts(target, item)) return false;
 
-    const items = this.blob.items.map(i => {
-      if (i.id === itemId) {
-        return { ...i, equipped: true, slot: target!, explorerId: undefined };
+    this.ledger = this.mapInstances(row => {
+      if (row.id === itemId) {
+        return this.withRevision({
+          ...row,
+          location: { kind: 'equipped', slotId: target! },
+        });
       }
-      // Whatever was in the target slot goes back to the bag.
-      if (i.equipped && i.slot === target) {
-        return { ...i, equipped: false, slot: undefined };
+      if (row.location.kind === 'equipped' && row.location.slotId === target) {
+        return this.withRevision({ ...row, location: { kind: 'bag' } });
       }
-      return i;
+      return row;
     });
-
-    this.blob = { ...this.blob, items };
     this.save();
     this.publish();
     return true;
@@ -253,14 +284,9 @@ export class InventoryService {
     const item = this.itemById(itemId);
     if (!item || (!item.equipped && !item.explorerId)) return false;
 
-    this.blob = {
-      ...this.blob,
-      items: this.blob.items.map(i =>
-        i.id === itemId
-          ? { ...i, equipped: false, slot: undefined, explorerId: undefined }
-          : i,
-      ),
-    };
+    this.ledger = this.mapInstances(row =>
+      row.id === itemId ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
+    );
     this.save();
     this.publish();
     return true;
@@ -287,14 +313,11 @@ export class InventoryService {
     const worn = this.itemsOnExplorer(explorerId).filter(i => i.id !== itemId);
     if (worn.length >= capacity) return false;
 
-    this.blob = {
-      ...this.blob,
-      items: this.blob.items.map(i =>
-        i.id === itemId
-          ? { ...i, equipped: false, slot: undefined, explorerId }
-          : i,
-      ),
-    };
+    this.ledger = this.mapInstances(row =>
+      row.id === itemId
+        ? this.withRevision({ ...row, location: { kind: 'explorer', explorerId } })
+        : row,
+    );
     this.save();
     this.publish();
     return true;
@@ -303,14 +326,13 @@ export class InventoryService {
   /** Strip an explorer's kit back into the bag. Called when one is dismissed. */
   clearExplorer(explorerId: string): void {
     if (!this.isBrowser) return;
-    if (!this.blob.items.some(i => i.explorerId === explorerId)) return;
+    if (!this.items.some(i => i.explorerId === explorerId)) return;
 
-    this.blob = {
-      ...this.blob,
-      items: this.blob.items.map(i =>
-        i.explorerId === explorerId ? { ...i, explorerId: undefined } : i,
-      ),
-    };
+    this.ledger = this.mapInstances(row =>
+      row.location.kind === 'explorer' && row.location.explorerId === explorerId
+        ? this.withRevision({ ...row, location: { kind: 'bag' } })
+        : row,
+    );
     this.save();
     this.publish();
   }
@@ -350,11 +372,12 @@ export class InventoryService {
     if (!this.canSell(item)) return 0;
 
     const gold = item.sellValue;
-    this.blob = {
-      ...this.blob,
-      items: this.blob.items.filter(i => i.id !== itemId),
-      goldFromSales: this.blob.goldFromSales + gold,
-      sold: this.blob.sold + 1,
+    const row = this.ledger.records.find(entry => entry.id === itemId);
+    const gone = this.advanceRevision(row?.revision);
+    this.ledger = {
+      ...tombstoneRecord(this.ledger, itemId, gone.revision, Date.now()),
+      goldFromSales: this.ledger.goldFromSales + gold,
+      sold: this.ledger.sold + 1,
     };
     this.save();
 
@@ -377,19 +400,22 @@ export class InventoryService {
   sellAllOfRarity(rarities: ReadonlySet<ItemRarity>): number {
     if (!this.isBrowser) return 0;
 
-    const doomed = this.blob.items.filter(i =>
+    const doomed = this.items.filter(i =>
       !i.equipped && !i.explorerId && this.canSell(i) && rarities.has(i.rarity),
     );
     if (!doomed.length) return 0;
 
     const gold = doomed.reduce((sum, i) => sum + i.sellValue, 0);
-    const ids = new Set(doomed.map(i => i.id));
-
-    this.blob = {
-      ...this.blob,
-      items: this.blob.items.filter(i => !ids.has(i.id)),
-      goldFromSales: this.blob.goldFromSales + gold,
-      sold: this.blob.sold + doomed.length,
+    let next = this.ledger;
+    for (const item of doomed) {
+      const row = next.records.find(entry => entry.id === item.id);
+      const gone = this.advanceRevision(row?.revision);
+      next = tombstoneRecord(next, item.id, gone.revision, Date.now());
+    }
+    this.ledger = {
+      ...next,
+      goldFromSales: this.ledger.goldFromSales + gold,
+      sold: this.ledger.sold + doomed.length,
     };
     this.save();
     this.economy.earnGold(gold, 'sale');
@@ -399,7 +425,7 @@ export class InventoryService {
 
   reset(): void {
     if (!this.isBrowser) return;
-    this.blob = emptyBlob();
+    this.ledger = emptyInventoryLedger();
     this.store.remove(INVENTORY_KEY);
     this.publish();
   }
@@ -408,43 +434,29 @@ export class InventoryService {
   // Storage
   // ───────────────────────────────────────────────────────────────────────────
 
-  private load(): InventoryBlob {
+  private load(): InventoryLedger {
     try {
       const raw = this.store.readRaw(INVENTORY_KEY);
-      if (!raw) return emptyBlob();
-      const parsed = JSON.parse(raw) as Partial<InventoryBlob>;
-
-      const items = Array.isArray(parsed.items)
-        ? parsed.items.filter(isGameItem).map(normalise)
-        : [];
-
-      return {
-        version: 1,
-        // Two items claiming the same slot would both pay stats and only one
-        // would be visible. Resolving on load is cheaper than defending every
-        // read against it, and the blob is user-writable.
-        items: dedupeSlots(items),
-        goldFromSales: numberOr(parsed.goldFromSales, 0),
-        sold: numberOr(parsed.sold, 0),
-      };
+      if (!raw) return emptyInventoryLedger();
+      return coerceInventoryLedger(JSON.parse(raw)) ?? emptyInventoryLedger();
     } catch {
-      return emptyBlob();
+      return emptyInventoryLedger();
     }
   }
 
   private save(): void {
     if (!this.isBrowser) return;
-      this.store.write(INVENTORY_KEY, this.blob);
+    this.store.write(INVENTORY_KEY, this.ledger);
   }
 
   private publish(): void {
-    this.snapshot$$.next(this.snapshotOf(this.blob));
+    this.snapshot$$.next(this.snapshotOf(this.ledger));
   }
 
-  private snapshotOf(blob: InventoryBlob): InventorySnapshot {
+  private snapshotOf(ledger: InventoryLedger): InventorySnapshot {
     // Newest first: a drop that just landed should be the first thing in the
     // grid, not buried under three months of commons.
-    const items = [...blob.items].sort((a, b) => b.foundAt.localeCompare(a.foundAt));
+    const items = itemsFromLedger(ledger).sort((a, b) => b.foundAt.localeCompare(a.foundAt));
 
     const equipped: Partial<Record<SlotId, GameItem>> = {};
     const wornBlocks: ItemStats[] = [];
@@ -460,64 +472,39 @@ export class InventoryService {
       bag: items.filter(i => !i.equipped && !i.explorerId),
       equipped,
       totals: sumStats(wornBlocks),
-      goldFromSales: blob.goldFromSales,
-      sold: blob.sold,
-      full: blob.items.length >= MAX_INVENTORY,
+      goldFromSales: ledger.goldFromSales,
+      sold: ledger.sold,
+      full: items.length >= MAX_INVENTORY,
     };
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Loading guards
-// ─────────────────────────────────────────────────────────────────────────────
+  private mapInstances(
+    fn: (row: OwnedItemInstance) => OwnedItemInstance,
+  ): InventoryLedger {
+    let next = this.ledger;
+    for (const row of this.ledger.records) {
+      if (row.kind !== 'instance' || row.source !== 'inventory') continue;
+      next = upsertRecord(next, fn(row));
+    }
+    return next;
+  }
 
-function numberOr(v: unknown, fallback: number): number {
-  return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
-}
+  private withRevision(row: OwnedItemInstance): OwnedItemInstance {
+    const stepped = this.advanceRevision(row.revision);
+    return { ...row, revision: stepped.revision };
+  }
 
-function isGameItem(v: unknown): v is GameItem {
-  if (!v || typeof v !== 'object') return false;
-  const i = v as Partial<GameItem>;
-  return typeof i.id === 'string'
-    && typeof i.name === 'string'
-    && typeof i.type === 'string'
-    && typeof i.rarity === 'string'
-    && !!i.stats && typeof i.stats === 'object';
-}
+  private advanceRevision(previous?: OwnedItemInstance['revision']) {
+    const stepped = nextRevision(this.ledger, this.deviceId, Date.now(), previous);
+    this.ledger = { ...this.ledger, hlc: stepped.hlc };
+    return stepped;
+  }
 
-/**
- * Coerce a loaded item into something every reader can trust.
- *
- * Stat values in particular: a hand-edited `"magicFind": "lots"` would otherwise
- * reach `sumStats` and turn the equipped total into NaN, which propagates into
- * the drop table and silently breaks every roll for the session.
- */
-function normalise(item: GameItem): GameItem {
-  const stats: ItemStats = {};
-  for (const [key, value] of Object.entries(item.stats ?? {})) {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      stats[key as keyof ItemStats] = value;
+  private readDeviceId(): string {
+    try {
+      return localStorage.getItem(DEVICE_ID_KEY) || 'unknown';
+    } catch {
+      return 'unknown';
     }
   }
-  return {
-    ...item,
-    stats,
-    sellValue: numberOr(item.sellValue, 0),
-    equipped: item.equipped === true,
-    slot: item.equipped && item.slot && SLOT_IDS.includes(item.slot) ? item.slot : undefined,
-    explorerId: typeof item.explorerId === 'string' ? item.explorerId : undefined,
-    soulbound: item.soulbound === true,
-    foundAt: typeof item.foundAt === 'string' ? item.foundAt : new Date(0).toISOString(),
-  };
-}
-
-/** First writer of a slot keeps it; later claimants go back to the bag. */
-function dedupeSlots(items: GameItem[]): GameItem[] {
-  const taken = new Set<SlotId>();
-  return items.map(item => {
-    if (!item.equipped || !item.slot) return item;
-    if (taken.has(item.slot)) return { ...item, equipped: false, slot: undefined };
-    taken.add(item.slot);
-    return item;
-  });
 }

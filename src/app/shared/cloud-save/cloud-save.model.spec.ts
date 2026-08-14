@@ -314,12 +314,13 @@ describe('the RPG layer', () => {
 
   describe('the bag', () => {
     const merge = (r: unknown, l: unknown) => blob('godforge-inventory').merge!(r, l) as {
-      items: { id: string; equipped?: boolean; slot?: string }[];
+      version: 2;
+      records: { id: string; location?: { kind: string; slotId?: string } }[];
       goldFromSales: number;
     };
 
     const item = (id: string, extra: Record<string, unknown> = {}) => ({
-      id, name: id, type: 'weapon', rarity: 'common', stats: {},
+      id, name: id, type: 'charm', rarity: 'common', stats: {},
       sellValue: 10, equipped: false, foundAt: '2026-08-01T00:00:00.000Z',
       soulbound: false, ...extra,
     });
@@ -329,20 +330,36 @@ describe('the RPG layer', () => {
         { version: 1, items: [item('a'), item('b')], goldFromSales: 0, sold: 0 },
         { version: 1, items: [item('b'), item('c')], goldFromSales: 0, sold: 0 },
       );
-      expect(merged.items.map(i => i.id).sort()).toEqual(['a', 'b', 'c']);
+      expect(merged.version).toBe(2);
+      expect(merged.records.map(i => i.id).sort()).toEqual(['a', 'b', 'c']);
     });
 
-    it('does not half-merge where an item is worn', () => {
-      // The structural rules would OR the two `equipped` flags and take the
-      // greater `slot` string, producing an item that is worn in a slot neither
-      // device ever put it in. Identity is the unit: the local record wins whole.
-      const merged = merge(
-        { version: 1, items: [item('a', { equipped: true, slot: 'offhand' })], goldFromSales: 0, sold: 0 },
-        { version: 1, items: [item('a', { equipped: false })], goldFromSales: 0, sold: 0 },
-      );
-      expect(merged.items.length).toBe(1);
-      expect(merged.items[0].equipped).toBe(false);
-      expect(merged.items[0].slot).toBeUndefined();
+    it('takes one complete location by revision, never field by field', () => {
+      const worn = {
+        version: 2,
+        records: [{
+          id: 'a', definitionId: 'charm:a', kind: 'instance', category: 'equipment',
+          tags: ['charm'], soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z',
+          revision: { hlc: 20, deviceId: 'phone', sequence: 1 }, source: 'inventory',
+          name: 'a', type: 'charm', stats: {}, sellValue: 10,
+          location: { kind: 'equipped', slotId: 'charm1' },
+        }],
+        tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 20, legacyBackup: null,
+      };
+      const bagged = {
+        ...worn,
+        records: [{
+          ...worn.records[0],
+          revision: { hlc: 10, deviceId: 'tablet', sequence: 1 },
+          location: { kind: 'bag' },
+        }],
+        hlc: 10,
+      };
+      const ab = merge(worn, bagged);
+      const ba = merge(bagged, worn);
+      expect(ab.records.length).toBe(1);
+      expect(ab.records[0].location).toEqual({ kind: 'equipped', slotId: 'charm1' });
+      expect(ba.records[0].location).toEqual(ab.records[0].location);
     });
 
     it('takes the higher lifetime till', () => {
@@ -358,10 +375,10 @@ describe('the RPG layer', () => {
         item(`${prefix}${i}`, { sellValue: i }));
       const merged = merge(
         { version: 1, items: many('r'), goldFromSales: 0, sold: 0 },
-        { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'head', sellValue: 0 })], goldFromSales: 0, sold: 0 },
+        { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'charm1', sellValue: 0 })], goldFromSales: 0, sold: 0 },
       );
-      expect(merged.items.length).toBe(250);
-      expect(merged.items.some(i => i.id === 'worn')).toBe(true);
+      expect(merged.records.length).toBe(250);
+      expect(merged.records.some(i => i.id === 'worn')).toBe(true);
     });
   });
 

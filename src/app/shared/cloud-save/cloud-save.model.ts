@@ -37,6 +37,7 @@
  */
 
 import { mergeEconomyLedgers } from '../economy/economy-ops';
+import { mergeInventoryLedgers } from '../rpg/inventory-ops';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -222,14 +223,6 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
   },
 ];
 
-/**
- * Bag ceiling. Mirrors MAX_INVENTORY in inventory.service.ts.
- *
- * Duplicated rather than imported so this file stays free of the game models —
- * the registry is loaded by the header on every page, and item.model.ts is not.
- */
-const MAX_INVENTORY = 250;
-
 /** Roster ceiling. Mirrors MAX_ROSTER in explorer-roster.service.ts. */
 const MAX_ROSTER = 20;
 
@@ -265,18 +258,7 @@ export function mergeEconomy(remote: unknown, local: unknown): unknown {
 }
 
 function mergeInventory(remote: unknown, local: unknown): unknown {
-  if (!isPlainObject(local)) return remote ?? local;
-  if (!isPlainObject(remote)) return local;
-
-  const items = unionById(asArray(remote['items']), asArray(local['items']));
-
-  return {
-    ...local,
-    version: 1,
-    items: items.length > MAX_INVENTORY ? evictToCap(items, MAX_INVENTORY) : items,
-    goldFromSales: maxOf(remote['goldFromSales'], local['goldFromSales']),
-    sold: maxOf(remote['sold'], local['sold']),
-  };
+  return mergeInventoryLedgers(remote, local);
 }
 
 /**
@@ -297,25 +279,6 @@ function unionById(remote: unknown[], local: unknown[]): unknown[] {
     }
   }
   return out;
-}
-
-/** Keep everything worn, then the most valuable, up to `cap`. */
-function evictToCap(items: unknown[], cap: number): unknown[] {
-  const worn = items.filter(isWorn);
-  const loose = items.filter(i => !isWorn(i))
-    .sort((a, b) => numberOf(valueOf(b)) - numberOf(valueOf(a)));
-  // Worn items are never evicted; on the pathological blob where more than `cap`
-  // items claim to be worn, the cap yields rather than the wardrobe.
-  return [...worn, ...loose].slice(0, Math.max(cap, worn.length));
-}
-
-function isWorn(item: unknown): boolean {
-  if (!isPlainObject(item)) return false;
-  return item['equipped'] === true || typeof item['explorerId'] === 'string';
-}
-
-function valueOf(item: unknown): unknown {
-  return isPlainObject(item) ? item['sellValue'] : 0;
 }
 
 /**
