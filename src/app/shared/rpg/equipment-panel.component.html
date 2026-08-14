@@ -17,7 +17,8 @@
       </ng-template>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
-        <img class="ld__doll-art" [src]="dollSrc" [alt]="t('loadout.doll.alt')" width="360" height="560">
+        <img class="ld__doll-art" [src]="dollSrc" [alt]="t('loadout.doll.alt')"
+             width="720" height="720" loading="lazy" decoding="async">
         <button
           *ngFor="let slot of dollSlots"
           type="button"

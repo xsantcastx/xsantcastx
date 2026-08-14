@@ -29,6 +29,7 @@ export interface PaperDollSlotManifest {
   control: { x: number; y: number };
 }
 
+/** Runtime copy of the approved master, resized to 720² so /character stays lazy. */
 export const PAPER_DOLL_SRC = 'assets/characters/paper-doll/01-keeper-paper-doll.png';
 
 export const DOLL_SLOT_GLYPH: Record<DollSlotId, string> = {
