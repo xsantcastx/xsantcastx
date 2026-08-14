@@ -1,6 +1,7 @@
 import { RARITY_ORDER } from '../rarity/rarity.model';
 import {
   type MarketListingView,
+  clampMarketQueryPage,
   discoverMarketListings,
   marketQueryNeedsNormalize,
   normalizeSearch,
@@ -120,5 +121,17 @@ describe('Market query (C1 presentation)', () => {
     expect(marketQueryNeedsNormalize({ category: 'eclipse', page: '0' })).toBe(true);
     expect(marketQueryNeedsNormalize({ sort: 'recommended', rarity: 'all' })).toBe(true);
     expect(marketQueryNeedsNormalize({ category: 'forge', page: '3' })).toBe(false);
+  });
+
+  it('clamps a page past the last page so the URL can match the view', () => {
+    const items = Array.from({ length: 10 }, (_, i) => listing({ id: `n${i}`, name: `N${i}`, catalogueIndex: i }));
+    const parsed = parseMarketQuery({ page: '999' });
+    expect(parsed.page).toBe(999);
+    const shown = discoverMarketListings(items, parsed);
+    expect(shown.page).toBe(2);
+    expect(shown.totalPages).toBe(2);
+    const clamped = clampMarketQueryPage(parsed, shown.count);
+    expect(clamped.page).toBe(2);
+    expect(serializeMarketQuery(clamped)['page']).toBe('2');
   });
 });

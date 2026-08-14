@@ -102,7 +102,9 @@ import {
   type MarketQuery,
   type MarketRarity,
   type MarketSort,
+  clampMarketQueryPage,
   discoverMarketListings,
+  filterMarketListings,
   marketQueryNeedsNormalize,
   normalizeSearch,
   parseMarketQuery,
@@ -858,7 +860,9 @@ export class MarketComponent implements OnInit, OnDestroy {
       sort: params.get('sort'),
       page: params.get('page'),
     };
-    const next = parseMarketQuery(raw);
+    const parsed = parseMarketQuery(raw);
+    const count = filterMarketListings(this.items as MarketListingView[], parsed).length;
+    const next = clampMarketQueryPage(parsed, count);
     if (!queriesEqual(this.queryState, next)) {
       this.collapseTile();
       this.eclipseOpen = false;
@@ -866,7 +870,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.queryState = next;
     this.searchDraft = next.q;
     this.cdr.markForCheck();
-    if (marketQueryNeedsNormalize(raw)) this.writeQuery(next, 'replace');
+    if (marketQueryNeedsNormalize(raw) || next.page !== parsed.page) this.writeQuery(next, 'replace');
   }
 
   private patchQuery(partial: Partial<MarketQuery>, mode: 'push' | 'replace'): void {
