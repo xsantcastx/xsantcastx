@@ -206,7 +206,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -219,9 +219,15 @@ jobs:
         run: |
           BEFORE="${{ github.event.before }}"
           if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            BEFORE="HEAD^"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "No previous SHA; deploying Firestore rules and indexes."
+            exit 0
           fi
-          CHANGED=$(git diff --name-only "$BEFORE" HEAD -- firestore.rules firestore.indexes.json firebase.json || true)
+          if ! git cat-file -e "${BEFORE}^{commit}"; then
+            echo "::error::Previous commit ${BEFORE} is not in this clone; cannot decide whether Firestore rules changed."
+            exit 1
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" HEAD -- firestore.rules firestore.indexes.json firebase.json)
           if [ -n "$CHANGED" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Firestore config changed:"
