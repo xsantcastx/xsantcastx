@@ -174,6 +174,14 @@ class FakeFirestore {
     if (this.refuse.has(path)) {
       throw Object.assign(new Error('refused'), { code: 'permission-denied' });
     }
+    // Mirror firestore.rules: progress/state XP may never go down.
+    if (path.endsWith('/progress/state')) {
+      const prev = this.docs.get(path) as { xp?: number } | undefined;
+      const next = data as { xp?: number } | null;
+      if (typeof prev?.xp === 'number' && typeof next?.xp === 'number' && next.xp < prev.xp) {
+        throw Object.assign(new Error('refused'), { code: 'permission-denied' });
+      }
+    }
     this.docs.set(path, copy(data));
   }
 
@@ -647,6 +655,11 @@ describe('cloud save — Firestore as the record', () => {
     return (d?.achievements ?? []).map(a => a.id).sort();
   }
 
+  function xpInCloud(): number {
+    const d = fake.docs.get('users/u1/progress/state') as { xp?: number } | undefined;
+    return d?.xp ?? 0;
+  }
+
   it('writes Keep This Device instead of remelting it into a merge', async () => {
     seedConflict();
     const { gateway, economy, xp } = build();
@@ -663,6 +676,7 @@ describe('cloud save — Firestore as the record', () => {
     // save still wins; XP is floored so the write is not refused.
     expect(stored.xp).toBeGreaterThanOrEqual(500);
     expect(stored.aether + stored.nox).toBe(stored.xp);
+    expect(xpInCloud()).toBeGreaterThanOrEqual(500);
   });
 
   it('writes Merge Best after the visitor has had to wait on the dialog', async () => {
@@ -681,7 +695,10 @@ describe('cloud save — Firestore as the record', () => {
 
     for (let i = 0; i < 20 && !sawAsk; i++) await Promise.resolve();
     expect(sawAsk).toBe(true);
-    // Still parked on the dialog: nothing has gone up yet.
+    // The production bug was a 4s flush starting because attach set uid
+    // before the answer. While parked we must still be local-only.
+    expect(gateway.attached).toBe(false);
+    expect(gateway.pending).toBe(0);
     expect(fake.counts.setDoc + fake.counts.batch + fake.counts.transaction).toBe(0);
 
     release('merge');
@@ -689,6 +706,26 @@ describe('cloud save — Firestore as the record', () => {
 
     expect(fake.goldInCloud()).toBeGreaterThanOrEqual(5000);
     expect(achievementIdsInCloud()).toEqual(['cloud-only', 'device-only']);
+  });
+
+  it('does not hang or re-attach if sign-out answers the dialog', async () => {
+    seedConflict();
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+
+    let release!: (choice: 'merge') => void;
+    const asked = new Promise<'merge'>(resolve => { release = resolve; });
+    const attaching = gateway.attach('u1', fake.handle, () => asked);
+
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    await gateway.detach();
+    release('merge');
+    await attaching;
+
+    expect(gateway.attached).toBe(false);
+    expect(gateway.link).toBe('local');
+    expect(gateway.pending).toBe(0);
   });
 
   it('still uploads keys dirtied while a flush is in flight', async () => {

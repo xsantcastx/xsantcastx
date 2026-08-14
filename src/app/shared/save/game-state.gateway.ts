@@ -287,6 +287,12 @@ export class GameStateGateway {
   private oldestDirtyAt = 0;
   private flushing: Promise<void> | null = null;
   private retryMs = RETRY_BASE_MS;
+  /**
+   * Set when the visitor overrules the structural merge. Retry, pagehide and
+   * online must not silently turn Keep This Device into Merge Best.
+   * Cleared once a flush lands with an empty queue, or on detach.
+   */
+  private overrideStrategy: MergeStrategy | null = null;
 
   private readonly link$$ = new BehaviorSubject<CloudLink>('local');
   readonly link$: Observable<CloudLink> = this.link$$.asObservable();
@@ -447,7 +453,13 @@ export class GameStateGateway {
     const strategy = await this.decideStrategy(remote, ask);
     // Idle ticks during the dialog can move memory after the first flush.
     this.flushOwners();
+    // signOut() answers the dialog and detaches in the same turn, without
+    // awaiting this attach. If we still set uid and push, leftover drain
+    // spins forever on a null Firestore handle.
+    if (this.fs !== fs) return { adopted: [], seeded: false };
     this.uid = uid;
+    if (strategy !== 'merge') this.overrideStrategy = strategy;
+    this.bindLifecycle();
 
     const adopted: string[] = [];
     const toWrite: StateEntry[] = [];
@@ -482,29 +494,23 @@ export class GameStateGateway {
     // Whatever the cloud is missing goes up now rather than on the debounce.
     // This is the moment a visitor is thinking about whether their progress is
     // safe, and "signed in" should mean "it is up there" without a wait.
-    try {
-      if (toWrite.length > 0) {
-        for (const entry of toWrite) this.dirty.add(entry.key);
-        this.oldestDirtyAt = Date.now();
-        // An explicit override is the one case a write can legitimately lower a
-        // number, which the monotonic XP rule will refuse. Per-document writes
-        // keep that refusal from failing the other eighteen with it.
-        //
-        // `known` is what was just read. Without it the push would `getDoc` every
-        // dirty document a moment after `readAll` returned the same content —
-        // paying for the account twice on every sign-in for no new information.
-        await this.pushDirty({
-          batched: strategy === 'merge',
-          known: remote,
-          strategy,
-        });
-      } else {
-        this.setLink('synced');
-      }
-    } finally {
-      // Bind even when the first push is refused, so pagehide still drains
-      // whatever is left in the queue instead of leaving play unsaved.
-      this.bindLifecycle();
+    if (toWrite.length > 0) {
+      for (const entry of toWrite) this.dirty.add(entry.key);
+      this.oldestDirtyAt = Date.now();
+      // An explicit override is the one case a write can legitimately lower a
+      // number, which the monotonic XP rule will refuse. Per-document writes
+      // keep that refusal from failing the other eighteen with it.
+      //
+      // `known` is what was just read. Without it the push would `getDoc` every
+      // dirty document a moment after `readAll` returned the same content —
+      // paying for the account twice on every sign-in for no new information.
+      await this.pushDirty({
+        batched: strategy === 'merge',
+        known: remote,
+        strategy,
+      });
+    } else {
+      this.setLink('synced');
     }
     return { adopted, seeded };
   }
@@ -532,6 +538,7 @@ export class GameStateGateway {
     this.fs = null;
     this.dirty.clear();
     this.lastRemote.clear();
+    this.overrideStrategy = null;
     this.retryMs = RETRY_BASE_MS;
     this.setLink('local');
   }
@@ -669,31 +676,34 @@ export class GameStateGateway {
     known?: Map<string, unknown>;
     strategy?: MergeStrategy;
   }): Promise<void> {
+    const strategy = opts.strategy ?? this.overrideStrategy ?? 'merge';
     if (this.flushing) {
       // Wait for the in-flight write, then send whatever was dirtied while it
       // ran. Returning the in-flight promise itself dropped Keep This Device
       // and Merge Best: attach queued those keys, awaited a flush that had
       // already started, and marked Synced without ever writing them.
-      return this.flushing.then(() => {
-        if (!this.attached || this.dirty.size === 0) return;
-        return this.pushDirty({
-          batched: opts.batched,
-          strategy: opts.strategy ?? 'merge',
-        });
-      });
+      return this.flushing.then(() => this.drainLeftover({
+        batched: opts.batched,
+        strategy,
+      }));
     }
     this.flushing = this.runPush({
       batched: opts.batched,
       known: opts.known,
-      strategy: opts.strategy ?? 'merge',
+      strategy,
     }).finally(() => { this.flushing = null; });
     return this.flushing.then(() => {
-      if (!this.attached || this.dirty.size === 0) return;
-      return this.pushDirty({
-        batched: opts.batched,
-        strategy: opts.strategy ?? 'merge',
-      });
+      if (this.dirty.size === 0) this.overrideStrategy = null;
+      else this.scheduleFlush();
     });
+  }
+
+  private drainLeftover(opts: {
+    batched: boolean;
+    strategy: MergeStrategy;
+  }): Promise<void> | void {
+    if (!this.attached || !this.fs || this.dirty.size === 0) return;
+    return this.pushDirty(opts);
   }
 
   private async runPush(
@@ -914,13 +924,14 @@ export class GameStateGateway {
    * Adopt a merged payload only if the cache still holds the snapshot we
    * read. A write that lands during the flush (idle Gold, an award inside
    * the debounce) must not be replaced by the stale merge we just uploaded.
-   * The key stays dirty so the next pass remarges the fresher copy.
+   * The key stays dirty so the next pass re-merges the fresher copy.
    */
   private adoptUnlessMoved(key: string, readRaw: string, mergedRaw: string): void {
     const current = this.readRaw(key);
     if (current !== readRaw) {
       this.dirty.add(key);
       if (this.oldestDirtyAt === 0) this.oldestDirtyAt = Date.now();
+      this.scheduleFlush();
       return;
     }
     if (mergedRaw !== readRaw) this.adopt(key, mergedRaw);
@@ -995,7 +1006,7 @@ export class GameStateGateway {
  * 'local' and 'cloud' are the visitor overruling the structural rules for a
  * single sign-in, and both still fall back to whichever side exists when the
  * other does not — "keep this device" cannot be allowed to mean "delete the
- * save". The uploader used to ignore that choice and remarge every dirty key,
+ * save". The uploader used to ignore that choice and re-merge every dirty key,
  * so Keep This Device immediately became Merge Best on the way out.
  */
 function applyStrategy(
