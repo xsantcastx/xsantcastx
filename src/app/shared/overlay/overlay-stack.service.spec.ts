@@ -52,4 +52,19 @@ describe('OverlayStackService', () => {
     expect(() => pressEscape()).not.toThrow();
     expect(service.closeTop()).toBeFalse();
   });
+
+  it('ignores nested closeTop while close() is running', () => {
+    const closed: string[] = [];
+    service.push('a', () => closed.push('a'));
+    service.push('b', () => {
+      closed.push('b');
+      service.closeTop();
+    });
+
+    expect(service.closeTop()).toBeTrue();
+    expect(closed).toEqual(['b']);
+
+    expect(service.closeTop()).toBeTrue();
+    expect(closed).toEqual(['b', 'a']);
+  });
 });

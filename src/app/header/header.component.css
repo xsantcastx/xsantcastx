@@ -908,51 +908,8 @@
   .gfnav__keeper { display: none; }   /* the rank pill already goes there */
 }
 
-/* The band between the drawer breakpoint and 1180px is the tightest place the
-   halls are still drawn, and it is where the sixth one has to be paid for a
-   second time — in Spanish, not in English.
-
-   Every label in this row is longer in Spanish: REINOS, FORJA DE RUNAS, CODICE,
-   MESA DE GUERRA, MERCADO. Measured at 961px with a seven-figure balance, the
-   five-hall Spanish row cleared the standing group by 2px — the same hair's
-   breadth the note above says kept letting this bug back in — and the sixth
-   hall turned that into a 119px overlap, with MERCADO and the gold odometer
-   both refusing clicks.
-
-   So the War Table sheds here. It is the one hall in the six that is a
-   shortcut rather than a destination: the tome's MAIN section and the footer
-   both carry /blueprint, and neither is more than one tap away at these
-   widths. With it gone and the type trimmed, Spanish clears by 34px and
-   English by ~97px.
-
-   1300 and not 1180, which is where this was first set: Spanish six-hall rows
-   were measured overlapping by 12px at 1181 and by 10px at 1241, and only came
-   clear at about 1260. A threshold picked off the English row would have left
-   Spanish clipped across an eighty-pixel band — the same mistake as tuning
-   against a fresh save's zero balance, in a different dimension. */
-/* The seventh hall splits that shed in two.
- *
- * Seven halls do not fit a Spanish row at any width a laptop has: measured with
- * a seven-figure balance, the row needs ~1600px and was 131px over at 1450. So
- * one of the two shedding halls has to leave well before the tight band, and
- * the two thresholds are staggered rather than shared.
- *
- * The War Table goes first, at 1600. The Sanctum stays to 1300, because it is
- * the hub a player opens on every visit while /blueprint is a roadmap read
- * once — and because a 1440px laptop is exactly the width this whole change
- * exists to fix. Between the two the bar carries six halls, which is the count
- * the row was already measured to hold.
- *
- * Both are still one tap away wherever they are not drawn: the tome's MAIN
- * section and the footer carry each of them. */
-@media (max-width: 1600px) {
-  .gfnav__hall--shed-first { display: none; }
-}
-
-@media (max-width: 1300px) {
-  .gfnav__hall--shed-second { display: none; }
-  .gfnav__hall { font-size: 0.64rem; padding-inline: 0.18rem; }
-}
+/* Halls no longer shed. Desktop is a sidebar with room for every
+   destination; do not re-introduce .gfnav__hall--shed-* classes. */
 
 @media (max-width: 1120px) {
   .gfnav__count { display: none; }

@@ -1366,6 +1366,8 @@ body.flicker {
    are deleted rather than left orphaned — the Godforge command bar draws its
    own mark and has no element they could apply to. *//* ===== Embed Mode ===== */
 .embed-mode {
+  --shell-sidebar-w: 0px;
+  --header-offset: 0px;
   padding: 12px;
   min-height: calc(100vh - 36px); /* Reserve space for embed bar */
   overflow: auto;

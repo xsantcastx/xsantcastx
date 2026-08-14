@@ -16,6 +16,7 @@ export class OverlayStackService implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly stack: OverlayStackEntry[] = [];
   private listener?: (event: KeyboardEvent) => void;
+  private closing = false;
 
   constructor() {
     if (!this.isBrowser || typeof document === 'undefined') return;
@@ -42,11 +43,17 @@ export class OverlayStackService implements OnDestroy {
     };
   }
 
-  /** Close and pop the top layer. False when the stack is empty. */
+  /** Close and pop the top layer. Nested calls while `close()` runs are ignored. */
   closeTop(): boolean {
+    if (this.closing) return false;
     const top = this.stack.pop();
     if (!top) return false;
-    top.close();
+    this.closing = true;
+    try {
+      top.close();
+    } finally {
+      this.closing = false;
+    }
     return true;
   }
 
@@ -56,5 +63,6 @@ export class OverlayStackService implements OnDestroy {
     }
     this.listener = undefined;
     this.stack.length = 0;
+    this.closing = false;
   }
 }
