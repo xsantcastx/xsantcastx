@@ -212,6 +212,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download build artifacts
+        id: download
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
@@ -230,14 +231,17 @@ jobs:
             echo "::error::Previous commit ${BEFORE} is not in this clone; cannot decide whether Firestore rules changed."
             exit 1
           fi
-          CHANGED=$(git diff --name-only "$BEFORE" HEAD -- firestore.rules firestore.indexes.json firebase.json)
+          # Hosting-only edits to firebase.json (redirects, headers) must not
+          # trigger a rules deploy. The firestore key in that file only names
+          # these two paths; if the rules or indexes change, the files change.
+          CHANGED=$(git diff --name-only "$BEFORE" HEAD -- firestore.rules firestore.indexes.json)
           if [ -n "$CHANGED" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Firestore config changed:"
             echo "$CHANGED"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No firestore.rules / indexes / firebase.json change; skipping rules deploy."
+            echo "No firestore.rules / indexes change; skipping rules deploy."
           fi
 
       - name: Deploy Firestore rules and indexes
@@ -250,6 +254,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
 
       - name: Deploy to Firebase Hosting
+        if: steps.download.outcome == 'success'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
