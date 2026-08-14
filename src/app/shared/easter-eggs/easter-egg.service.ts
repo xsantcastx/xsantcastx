@@ -33,8 +33,8 @@ export const EASTER_EGGS: EasterEgg[] = [
   // ── Global ──────────────────────────────────────────────────────
   { id: 'konami',          name: 'Old School',           description: 'Entered the Konami Code',                          tool: 'global',  rarity: 'rare',      icon: '🕹️' },
   { id: 'night-owl',       name: 'Night Owl',            description: 'Used the site between 2am and 5am',                tool: 'global',  rarity: 'common',    icon: '🦉' },
-  { id: 'speed-demon',     name: 'Speed Demon',          description: 'Visited 5 different tools in under 60 seconds',    tool: 'global',  rarity: 'rare',      icon: '⚡' },
-  { id: 'explorer',        name: 'Explorer',             description: 'Visited every section of the homepage',            tool: 'global',  rarity: 'common',    icon: '🧭' },
+  { id: 'speed-demon',     name: 'Speed Demon',          description: 'Visited five different halls in under 60 seconds',  tool: 'global',  rarity: 'rare',      icon: '⚡' },
+  { id: 'explorer',        name: 'Explorer',             description: 'Walked every hall on the World door',              tool: 'global',  rarity: 'common',    icon: '🧭' },
 
   // ── Tool-specific ──────────────────────────────────────────────
   { id: 'json-inception',  name: 'Inception',            description: 'Formatted JSON nested 10+ levels deep',           tool: 'json-formatter',            rarity: 'rare',      icon: '🌀' },
@@ -193,6 +193,7 @@ export const EASTER_EGGS: EasterEgg[] = [
   // pays 25 rather than the standard 200: finding the record of every secret is
   // the start of the hunt, not a result of one.
   { id: 'codex-archivist',    name: 'The Archivist',        description: 'Opened the Codex for the first time',                 tool: 'global',                    rarity: 'rare',      icon: '📜', xp: 25 },
+  { id: 'trials-first',       name: 'The Proving Ground',   description: 'Stood before the Arena gates',                        tool: 'global',                    rarity: 'common',    icon: '⚔️', xp: 25 },
 
   // ── Batch 11: the Ambient Forge ────────────────────────────
   // Earned by presence rather than by hunting, so every one of them carries an
@@ -293,6 +294,19 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'combo-first-sun',           name: 'First Sun Shatter',       description: 'Reached the maximum x9,999 strike combo',             tool: 'global', rarity: 'legendary', icon: '☀️',  xp: 1_500 },
 ];
 
+/**
+ * Eggs the public Codex and chrome counts are allowed to show.
+ *
+ * Anything with a non-global `tool` is a leftover of the deleted developer-tool
+ * product. Those records stay in `EASTER_EGGS` so an old save still hydrates,
+ * but they are not a public achievement.
+ */
+export function isPublicCodexEgg(egg: EasterEgg): boolean {
+  return !egg.tool || egg.tool === 'global';
+}
+
+export const PUBLIC_CODEX_EGGS: EasterEgg[] = EASTER_EGGS.filter(isPublicCodexEgg);
+
 /** localStorage key holding the array of discovered egg ids. */
 export const EGGS_FOUND_KEY = 'easter-eggs-found';
 /**
@@ -318,8 +332,12 @@ export class EasterEggService {
 
   discovery$ = new BehaviorSubject<EggDiscovery | null>(null);
 
-  get totalEggs(): number { return EASTER_EGGS.length; }
-  get foundCount(): number { return this.discovered.size; }
+  get totalEggs(): number { return PUBLIC_CODEX_EGGS.length; }
+  get foundCount(): number {
+    return PUBLIC_CODEX_EGGS.reduce((n, egg) => n + (this.discovered.has(egg.id) ? 1 : 0), 0);
+  }
+  /** Raw discovered ids, including retired tool eggs kept only in the save. */
+  get discoveredCount(): number { return this.discovered.size; }
 
   async init(): Promise<void> {
     if (!this.isBrowser) return;
@@ -396,7 +414,7 @@ export class EasterEggService {
       egg,
       isNew,
       totalFound: this.discovered.size,
-      totalEggs: EASTER_EGGS.length,
+      totalEggs: PUBLIC_CODEX_EGGS.length,
     });
 
     if (isNew) {

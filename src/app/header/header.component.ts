@@ -40,7 +40,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { TranslationService } from '../translation.service';
 import { AnalyticsService } from '../analytics.service';
-import { EASTER_EGGS, EasterEggService } from '../shared/easter-eggs/easter-egg.service';
+import { EasterEggService, PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
@@ -102,7 +102,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   eco: EconomySnapshot = this.economy.snapshot;
 
   codexFound = 0;
-  readonly codexTotal = EASTER_EGGS.length;
+  readonly codexTotal = PUBLIC_CODEX_EGGS.length;
 
   /** Painted rank crest for the level held — exposed for the bar and the tome. */
   readonly rankSigil = rankSigil;

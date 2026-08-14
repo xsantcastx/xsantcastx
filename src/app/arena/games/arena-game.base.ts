@@ -10,7 +10,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { XpService } from '../../shared/gamification/xp.service';
 import { ArenaScoresService, RunResult } from './arena-scores.service';
-import { ArenaPlayableGame, formatScore, playableById } from './arena-game.model';
+import { ArenaPlayableGame, formatScore, isPlayableGateOpen, playableById } from './arena-game.model';
 
 @Directive()
 export abstract class ArenaGameBase {
@@ -50,7 +50,7 @@ export abstract class ArenaGameBase {
     // resolved would be written into the empty blob and then overwritten by
     // hydration — the visitor would clear the gate and get nothing for it.
     await Promise.all([this.xp.init(), this.eggs.init()]);
-    this.locked = !this.eggs.isFound(this.game.unlockEggId);
+    this.locked = !isPlayableGateOpen(this.game, id => this.eggs.isFound(id));
   }
 
   /**

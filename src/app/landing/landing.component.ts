@@ -18,7 +18,7 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { REALMS, RealmDefinition } from '../shared/realms/realm.model';
-import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
@@ -92,7 +92,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   // into a marketing number that no longer matches the site.
 
   /** Registered easter eggs. */
-  readonly fragmentCount = EASTER_EGGS.length;
+  readonly fragmentCount = PUBLIC_CODEX_EGGS.length;
 
   // ── The Rune Forge band ────────────────────────────────────────────────────
   // Totals come from the registries, so the denominators are correct on the

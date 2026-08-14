@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { EasterEggService, EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { EasterEggService, PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { QuestService } from '../shared/quests/quest.service';
 import {
   EclipseRarity,
@@ -8,7 +8,7 @@ import {
   rarityOf,
   tierForEgg,
 } from '../shared/rarity/rarity.model';
-import { ARENA_PLAYABLE, formatScore, playableById } from './games/arena-game.model';
+import { ARENA_PLAYABLE, formatScore, isPlayableGateOpen, playableById } from './games/arena-game.model';
 import { ArenaScoresService } from './games/arena-scores.service';
 import { RouterModule } from '@angular/router';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
@@ -56,7 +56,7 @@ export class ArenaComponent implements OnInit {
   private readonly eggs = inject(EasterEggService);
   private readonly quests = inject(QuestService);
 
-  totalEggs = EASTER_EGGS.length;
+  totalEggs = PUBLIC_CODEX_EGGS.length;
   foundCount = 0;
 
   private readonly scores = inject(ArenaScoresService);
@@ -66,72 +66,14 @@ export class ArenaComponent implements OnInit {
    * real game; the ones after it are still flavour, and the card says so rather
    * than offering an "Enter" that goes nowhere.
    */
-  private readonly seeds: GameSeed[] = [
-    ...ARENA_PLAYABLE.map(g => ({
-      id: g.id,
-      title: g.title,
-      description: g.description,
-      icon: g.icon,
-      unlockEggId: g.unlockEggId,
-      unlockHint: g.unlockHint,
-    })),
-    {
-      id: 'shadow-puzzle',
-      title: 'Shadow Puzzle',
-      description: 'Stack and match shadow layers to recreate a target design. How few layers can you use?',
-      icon: '👤',
-      unlockEggId: 'shadow-lord',
-      unlockHint: 'Create a box shadow with 5+ layers in the Box Shadow Generator',
-    },
-    {
-      id: 'regex-race',
-      title: 'Regex Race',
-      description: 'Write the shortest regex that matches all green strings but none of the red ones. Race the clock.',
-      icon: '🧙',
-      unlockEggId: 'regex-master',
-      unlockHint: 'Write a regex with both lookahead and lookbehind in the Regex Tester',
-    },
-    {
-      id: 'json-tower',
-      title: 'JSON Tower',
-      description: 'How deep can you nest? Build the deepest valid JSON structure without breaking the formatter.',
-      icon: '🌀',
-      unlockEggId: 'json-inception',
-      unlockHint: 'Format JSON nested 10+ levels deep in the JSON Formatter',
-    },
-    {
-      id: 'uuid-lottery',
-      title: 'UUID Lottery',
-      description: 'Generate UUIDs until you hit a lucky pattern. Leaderboard tracks your streak.',
-      icon: '🎰',
-      unlockEggId: 'uuid-lucky',
-      unlockHint: 'Generate a UUID starting with "000" in the UUID Generator',
-    },
-    {
-      id: 'chmod-chess',
-      title: 'Chmod Chess',
-      description: 'Navigate a filesystem grid using only permission changes. Reach root without hitting 000.',
-      icon: '👑',
-      unlockEggId: 'chmod-god',
-      unlockHint: 'Set file permissions to 777 in the Chmod Calculator',
-    },
-    {
-      id: 'hash-hunt',
-      title: 'Hash Hunt',
-      description: 'Find inputs that produce hashes matching a given prefix. Proof-of-work for fun.',
-      icon: '🌌',
-      unlockEggId: 'hash-meaning',
-      unlockHint: 'Hash the number "42" in the Hash Generator',
-    },
-    {
-      id: 'css-golf',
-      title: 'CSS Golf',
-      description: 'Recreate a target UI with the fewest CSS characters. Par or better wins a badge.',
-      icon: '⛳',
-      unlockEggId: 'css-important',
-      unlockHint: 'Minify CSS with 5+ !important declarations in the CSS Minifier',
-    },
-  ];
+  private readonly seeds: GameSeed[] = ARENA_PLAYABLE.map(g => ({
+    id: g.id,
+    title: g.title,
+    description: g.description,
+    icon: g.icon,
+    unlockEggId: g.unlockEggId,
+    unlockHint: g.unlockHint,
+  }));
 
   /**
    * Built once in the field initialiser so the template has real tiers to
@@ -142,7 +84,7 @@ export class ArenaComponent implements OnInit {
   games: ArenaGame[] = this.seeds.map(seed => {
     const tier = tierForEgg(
       seed.unlockEggId,
-      EASTER_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
+      PUBLIC_CODEX_EGGS.find(e => e.id === seed.unlockEggId)?.rarity
     );
     return {
       ...seed,
@@ -161,12 +103,15 @@ export class ArenaComponent implements OnInit {
     if (!this.isBrowser) return;
     this.scores.init();
     await this.eggs.init();
+    void this.eggs.trigger('trials-first');
     this.foundCount = this.eggs.foundCount;
 
     for (const game of this.games) {
-      game.locked = !this.eggs.isFound(game.unlockEggId);
-
       const playable = playableById(game.id);
+      game.locked = playable
+        ? !isPlayableGateOpen(playable, id => this.eggs.isFound(id))
+        : !this.eggs.isFound(game.unlockEggId);
+
       if (!playable) continue;
       const best = this.scores.best(game.id);
       game.bestLabel = best > 0 ? formatScore(playable.scoreKind, best) : '';

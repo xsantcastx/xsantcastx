@@ -121,6 +121,8 @@ const PLAYER_FACING = files.filter(f => {
   if (rel === 'tools/tools-registry.ts') return false;
   if (rel === 'version.ts') return false;
   if (rel === 'translation.service.ts') return false;
+  if (rel === 'shared/easter-eggs/easter-egg.service.ts') return false;
+  if (rel === 'codex/codex-hints.ts') return false;
   if (/\.spec\.ts$/.test(rel)) return false;
   return /\.(html|ts)$/.test(rel);
 });
@@ -141,6 +143,14 @@ const BANNED = [
   { re: /\bFamiliar Five\b/i, why: 'Character tool-mastery board' },
   { re: /mastery for all \d+ tools/i, why: 'SEO still selling tool mastery' },
   { re: /\btool mastery\b/i, why: 'player-facing tool-mastery copy' },
+  { re: /Formatted JSON nested/i, why: 'legacy JSON-formatter achievement' },
+  { re: /in Base64/i, why: 'legacy Base64 achievement' },
+  { re: /Wrote a regex/i, why: 'legacy regex achievement' },
+  { re: /Created a box shadow/i, why: 'legacy box-shadow achievement' },
+  { re: /buried in a tool/i, why: 'Arena still selling tool secrets' },
+  { re: /Hidden inside the tools/i, why: 'Arena still selling tool secrets' },
+  { re: /Visit 5 different tools/i, why: 'Speed Demon still counts tool pages' },
+  { re: /Box Shadow Generator|JSON Formatter|Regex Tester|Color Converter|SQL Formatter|Grid Generator|Hash Generator|CSS Minifier|UUID Generator|Chmod Calculator|Base64 Encoder/i, why: 'names a deleted tool product' },
 ];
 
 const leftover = [];
@@ -154,6 +164,85 @@ for (const f of PLAYER_FACING) {
       if (ban.re.test(line)) leftover.push({ file: rel, line: i + 1, why: ban.why, text: trimmed.slice(0, 160) });
     }
   });
+}
+
+// ── 4. Data sources rendered by public templates ───────────────────────────
+// The Achievement Wall, Secrets tab, Arena unlock lines and SEO all render
+// strings from these files. A template-only scan misses them.
+const DATA_BANNED = [
+  { re: /Formatted JSON nested 10\+ levels deep/i, why: 'unlocked JSON-formatter description' },
+  { re: /Encoded .+ in Base64/i, why: 'unlocked Base64 description' },
+  { re: /Wrote a regex/i, why: 'unlocked regex description' },
+  { re: /Created a box shadow/i, why: 'unlocked box-shadow description' },
+  { re: /different tools/i, why: 'tells a player to use deleted tools' },
+  { re: /buried in a tool/i, why: 'tool-product secret copy' },
+  { re: /Box Shadow Generator|JSON Formatter|Regex Tester|Color Converter|SQL Formatter|Grid Generator|Hash Generator|CSS Minifier|UUID Generator|Chmod Calculator|Base64 Encoder/i, why: 'names a deleted tool product' },
+  { re: /Visit 5 different tools/i, why: 'Speed Demon still counts tool pages' },
+];
+
+function quotedField(block, name) {
+  const m = block.match(new RegExp(`${name}:\\s*'((?:\\\\'|[^'])*)'`));
+  return m ? m[1].replace(/\\'/g, "'") : '';
+}
+
+function parseObjectRecords(src, exportName) {
+  const start = src.indexOf(`export const ${exportName}`);
+  if (start < 0) return [];
+  const open = src.indexOf('[', start);
+  const end = src.indexOf('\n];', open);
+  if (open < 0 || end < 0) return [];
+  const body = src.slice(open, end);
+  return [...body.matchAll(/\{[\s\S]*?\}/g)].map(m => m[0]);
+}
+
+function checkDataText(file, label, text, lineHint) {
+  for (const ban of DATA_BANNED) {
+    if (ban.re.test(text)) {
+      leftover.push({
+        file,
+        line: lineHint,
+        why: `${label}: ${ban.why}`,
+        text: text.slice(0, 160),
+      });
+    }
+  }
+}
+
+const eggFile = path.join(SRC, 'app/shared/easter-eggs/easter-egg.service.ts');
+const eggSrc = fs.readFileSync(eggFile, 'utf8');
+const publicEggIds = new Set();
+for (const block of parseObjectRecords(eggSrc, 'EASTER_EGGS')) {
+  const id = quotedField(block, 'id');
+  const tool = quotedField(block, 'tool');
+  const description = quotedField(block, 'description');
+  const name = quotedField(block, 'name');
+  const isPublic = !tool || tool === 'global';
+  if (isPublic) {
+    publicEggIds.add(id);
+    checkDataText(path.relative(ROOT, eggFile), `public egg ${id}`, `${name} ${description}`, 1);
+  }
+}
+
+const hintFile = path.join(SRC, 'app/codex/codex-hints.ts');
+const hintSrc = fs.readFileSync(hintFile, 'utf8');
+for (const m of hintSrc.matchAll(/'([^']+)':\s*'((?:\\'|[^'])*)'/g)) {
+  if (!publicEggIds.has(m[1])) continue;
+  checkDataText(path.relative(ROOT, hintFile), `public hint ${m[1]}`, m[2], 1);
+}
+
+const secretFile = path.join(SRC, 'app/codex/codex-secrets.ts');
+const secretSrc = fs.readFileSync(secretFile, 'utf8');
+for (const block of parseObjectRecords(secretSrc, 'SECRETS')) {
+  const id = quotedField(block, 'id');
+  const text = ['name', 'reveal', 'clue', 'lore'].map(k => quotedField(block, k)).join(' ');
+  checkDataText(path.relative(ROOT, secretFile), `secret ${id}`, text, 1);
+}
+
+const arenaModel = path.join(SRC, 'app/arena/games/arena-game.model.ts');
+const playableSrc = fs.readFileSync(arenaModel, 'utf8');
+for (const block of parseObjectRecords(playableSrc, 'ARENA_PLAYABLE')) {
+  const id = quotedField(block, 'id');
+  checkDataText(path.relative(ROOT, arenaModel), `arena ${id}`, quotedField(block, 'unlockHint'), 1);
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────
