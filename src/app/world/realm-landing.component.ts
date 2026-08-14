@@ -8,7 +8,9 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
+import { TranslationService } from '../translation.service';
 import {
+  FIVEFOLD_LOCK,
   type NarrativeCharacter,
   type NarrativeRealm,
   narrativeRealmById,
@@ -28,6 +30,7 @@ import {
 export class RealmLandingComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly title = inject(Title);
+  private readonly i18n = inject(TranslationService);
   private sub?: Subscription;
 
   realm: NarrativeRealm | null = null;
@@ -41,10 +44,37 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
       this.realm = narrativeRealmById(this.requestedId);
       this.journey = this.realm ? continueFromRealm(this.realm) : null;
       this.openCharacterId = this.realm?.characters[0].id ?? null;
-      this.title.setTitle(
-        this.realm ? `${this.realm.name} — Eclipse Realms` : 'Unknown place — Eclipse Realms',
-      );
+      this.applyTitle();
     });
+    this.sub.add(this.i18n.currentLanguage$.subscribe(() => this.applyTitle()));
+  }
+
+  private applyTitle(): void {
+    this.title.setTitle(
+      this.realm
+        ? this.t('world.realm.titlePage', { name: this.realm.name })
+        : this.t('world.realm.titleUnknown'),
+    );
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  continueName(): string {
+    if (!this.journey) return '';
+    if (this.journey.realmId === FIVEFOLD_LOCK.id) return FIVEFOLD_LOCK.name;
+    const next = narrativeRealmById(this.journey.realmId);
+    return next ? this.t('world.realm.continueTo', { name: next.name }) : this.journey.label;
+  }
+
+  continueNote(): string {
+    if (!this.journey) return '';
+    if (this.journey.realmId === FIVEFOLD_LOCK.id) return FIVEFOLD_LOCK.status;
+    const next = narrativeRealmById(this.journey.realmId);
+    return next
+      ? this.t('world.realm.notPlayableNext', { chapter: next.chapterTitle, landmark: next.landmark })
+      : this.journey.note;
   }
 
   ngOnDestroy(): void {
