@@ -408,6 +408,7 @@ export class EconomyService implements OnDestroy {
     if (this.state.gold < amount) return false;
 
     this.state.gold -= amount;
+    this.touchLedger();
     // A spend is the kind of thing that must survive the tab closing one frame
     // later, so it flushes rather than joining the throttle — same reasoning as
     // `buyUpgrade`.
@@ -690,6 +691,7 @@ export class EconomyService implements OnDestroy {
 
     this.state.gold -= cost;
     this.state.upgrades = { ...this.state.upgrades, [id]: this.levelOf(id) + 1 };
+    this.touchLedger();
 
     // A purchase is the kind of thing that must survive the tab being closed
     // one frame later, so it flushes rather than joining the throttle.
@@ -790,6 +792,7 @@ export class EconomyService implements OnDestroy {
 
     this.state.gold = 0;
     this.state.runGoldEarned = 0;
+    this.touchLedger();
     this.state.upgrades = {};
     this.state.lastIdleAt = Date.now();
 
@@ -818,6 +821,7 @@ export class EconomyService implements OnDestroy {
 
     const now = Date.now();
     this.state.eclipseEssence -= def.cost;
+    this.touchLedger();
     this.state.enchantments = [
       ...this.state.enchantments.filter(a => a.id !== id && a.expiresAt > now),
       { id, expiresAt: now + def.hours * 3_600_000 },
@@ -838,6 +842,7 @@ export class EconomyService implements OnDestroy {
     const before = goldPerSecond(this.state);
 
     this.state.eclipseEssence -= def.cost;
+    this.touchLedger();
     this.state.artifacts = [...this.state.artifacts, id];
 
     this.flush();
@@ -870,6 +875,7 @@ export class EconomyService implements OnDestroy {
     if (this.state.gold < cost) return false;
 
     this.state.gold -= cost;
+    this.touchLedger();
     this.state.cosmetics = [...this.state.cosmetics, id];
     this.state.equipped = { ...this.state.equipped, [def.slot]: def.variants[0].id };
 
@@ -1041,7 +1047,19 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.lastPersistAt = Date.now();
-      this.store.write(ECONOMY_KEY, this.state);
+    this.store.write(ECONOMY_KEY, this.state);
+  }
+
+  /**
+   * Mark the ledger as mutated for cloud last-write-wins on spendable balances.
+   *
+   * Must NOT run from a bare flush, idle credit, or essence mint — those
+   * would stamp local newer than the cloud and make every attach prefer this
+   * device's Gold even when another device legitimately spent further. Only
+   * call from spends, purchases, and Eclipse resets.
+   */
+  private touchLedger(): void {
+    this.state.ledgerAt = Date.now();
   }
 
   /**
