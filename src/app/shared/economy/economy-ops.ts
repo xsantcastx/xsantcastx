@@ -437,7 +437,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.hlc = Math.max(a.hlc, b.hlc, ...ops.map(o => o.hlc));
   replayed.checkpointId = Math.max(a.checkpointId, b.checkpointId);
   replayed.acks = maxRecord(a.acks, b.acks);
-  replayed.seenAt = maxRecord(a.seenAt, b.seenAt);
+  replayed.seenAt = clampSeenAt(maxRecord(a.seenAt, b.seenAt), Date.now());
   replayed.version = 2;
   return replayed;
 }
@@ -461,7 +461,10 @@ export function acknowledgeAndMaybeCompact(
   const staleMs = opts.staleMs ?? ACK_STALE_MS;
   const next = cloneLedger(ledger);
   next.acks = { ...next.acks, [deviceId]: next.checkpointId };
-  next.seenAt = { ...next.seenAt, [deviceId]: now };
+  // A clock set years ahead would otherwise stay "recent" forever
+  // (`now - at` is negative and always ≤ staleMs) and block every fold.
+  next.seenAt = clampSeenAt(next.seenAt, now);
+  next.seenAt[deviceId] = now;
 
   if (next.ops.length < after || !next.origin) return next;
 
@@ -485,9 +488,21 @@ function recentDevices(
 ): string[] {
   const ids = new Set<string>([self]);
   for (const [id, at] of Object.entries(ledger.seenAt)) {
-    if (now - at <= staleMs) ids.add(id);
+    const age = now - at;
+    if (age >= 0 && age <= staleMs) ids.add(id);
   }
   return [...ids];
+}
+
+function clampSeenAt(
+  seenAt: Record<string, number>,
+  now: number,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, at] of Object.entries(seenAt)) {
+    if (at <= now) out[id] = at;
+  }
+  return out;
 }
 
 function maxRecord(
