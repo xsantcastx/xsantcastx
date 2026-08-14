@@ -45,38 +45,44 @@
 
     <div class="gfh__inner">
 
-      <!-- ── Left: where you stand ───────────────────────────────────── -->
-      <aside class="gfpanel gfh__status wd-location">
-        <p class="gfpanel__hd">
-          <span class="gfpanel__hd-name">{{ translate('world.location.label') }}</span>
-          <span class="gfpanel__hd-state">{{ translate('world.location.' + alignment) }}</span>
-        </p>
-        <p class="wd-location__line">{{ translate('world.location.' + alignment + 'Line') }}</p>
-        <p class="wd-location__share">
-          {{ translate('world.location.aether') }} {{ aetherPercent }}%
-        </p>
-      </aside>
-
-      <!-- ── Centre: the mark ─────────────────────────────────────────── -->
+      <!-- DOM order is title → journey → location so tab/SR match the
+           5-second path. Desktop panels are absolutely positioned. -->
       <div class="gfh__title-block">
         <p class="gfh__eyebrow">{{ translate('godforge.hero.eyebrow') }}</p>
         <h1 class="gfh__title">{{ translate('godforge.hero.title') }}</h1>
         <p class="gfh__sub">{{ translate('godforge.hero.sub') }}</p>
       </div>
 
-      <!-- ── Right: the one next action ───────────────────────────────── -->
-      <aside class="gfpanel gfh__welcome wd-journey">
+      <aside class="gfpanel gfh__welcome wd-journey" aria-labelledby="wd-journey-hd">
         <p class="gfpanel__hd">
-          <span class="gfpanel__hd-name">{{ translate('world.journey.label') }}</span>
+          <span id="wd-journey-hd" class="gfpanel__hd-name">{{ translate('world.journey.label') }}</span>
         </p>
         <p class="wd-journey__why">{{ translate('world.journey.' + journey.reason + 'Hint') }}</p>
-        <a [routerLink]="journey.route" class="gfbtn gfbtn--primary wd-journey__cta">
-          {{ translate('world.journey.' + journey.reason) }}
-          <span class="gfbtn__chev" aria-hidden="true"></span>
-        </a>
+        @if (journeyReady) {
+          <a [routerLink]="journey.route" class="gfbtn gfbtn--primary wd-journey__cta">
+            {{ translate('world.journey.' + journey.reason) }}
+            <span class="gfbtn__chev" aria-hidden="true"></span>
+          </a>
+        } @else {
+          <button type="button" class="gfbtn gfbtn--primary wd-journey__cta" disabled aria-disabled="true">
+            {{ translate('world.journey.' + journey.reason) }}
+            <span class="gfbtn__chev" aria-hidden="true"></span>
+          </button>
+        }
         <a [routerLink]="routes.character" class="gfbtn gfbtn--ghost">
           {{ translate('godforge.hero.ctaLive') }}
         </a>
+      </aside>
+
+      <aside class="gfpanel gfh__status wd-location" aria-labelledby="wd-location-hd">
+        <p class="gfpanel__hd">
+          <span id="wd-location-hd" class="gfpanel__hd-name">{{ translate('world.location.label') }}</span>
+          <span class="gfpanel__hd-state">{{ translate('world.location.' + alignment) }}</span>
+        </p>
+        <p class="wd-location__line">{{ translate('world.location.' + alignment + 'Line') }}</p>
+        <p class="wd-location__share">
+          {{ translate('world.location.aether') }} {{ aetherPercent }}%
+        </p>
       </aside>
     </div>
 
@@ -99,9 +105,9 @@
       }
 
       <section class="gfpanel wd-progress" [class.wd--pending]="!ready">
-        <p class="gfpanel__hd">
-          <span class="gfpanel__hd-name">{{ translate('world.progress.label') }}</span>
-        </p>
+        <div class="gfpanel__hd">
+          <h2 class="gfpanel__hd-name">{{ translate('world.progress.label') }}</h2>
+        </div>
         <div class="gfh__rank">
           <img class="gfh__rank-sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
                alt="" aria-hidden="true" width="40" height="40"
@@ -144,9 +150,9 @@
 
       <div class="wd-summaries">
         <section class="gfpanel wd-card" [class.wd--pending]="!ready">
-          <p class="gfpanel__hd">
-            <span class="gfpanel__hd-name">{{ translate('world.quests.label') }}</span>
-          </p>
+          <div class="gfpanel__hd">
+            <h2 class="gfpanel__hd-name">{{ translate('world.quests.label') }}</h2>
+          </div>
           <p class="wd-card__counts">
             {{ board.unclaimed }} {{ translate('world.quests.unclaimed') }}
             · {{ board.openCount }} {{ translate('world.quests.open') }}
@@ -167,9 +173,9 @@
         </section>
 
         <section class="gfpanel wd-card" [class.wd--pending]="!ready">
-          <p class="gfpanel__hd">
-            <span class="gfpanel__hd-name">{{ translate('world.forge.label') }}</span>
-          </p>
+          <div class="gfpanel__hd">
+            <h2 class="gfpanel__hd-name">{{ translate('world.forge.label') }}</h2>
+          </div>
           <p class="wd-card__counts">
             <b>{{ runesFound }}</b>/{{ runesTotal }} {{ translate('world.forge.runes') }}
             · <b>{{ runewordsCrafted }}</b>/{{ runewordsTotal }} {{ translate('world.forge.crafted') }}
@@ -181,9 +187,9 @@
         </section>
 
         <section class="gfpanel wd-card" [class.wd--pending]="!ready">
-          <p class="gfpanel__hd">
-            <span class="gfpanel__hd-name">{{ translate('world.collection.label') }}</span>
-          </p>
+          <div class="gfpanel__hd">
+            <h2 class="gfpanel__hd-name">{{ translate('world.collection.label') }}</h2>
+          </div>
           <p class="wd-card__counts">
             <b>{{ eggsFound }}</b>/{{ eggsTotal }} {{ translate('world.collection.eggs') }}
             · <b>{{ scrollsFound }}</b>/{{ scrollsTotal }} {{ translate('world.collection.scrolls') }}
@@ -197,12 +203,12 @@
 
       <div class="wd-activity">
         <section class="gfpanel wd-card wd-card--cloud">
-          <p class="gfpanel__hd">
-            <span class="gfpanel__hd-name">{{ translate('world.cloud.label') }}</span>
+          <div class="gfpanel__hd">
+            <h2 class="gfpanel__hd-name">{{ translate('world.cloud.label') }}</h2>
             <span class="gfpanel__hd-state" [attr.data-state]="cloudStatus.state">
               {{ translate('world.cloud.' + cloudStatus.state) }}
             </span>
-          </p>
+          </div>
           <p class="wd-card__body">
             @switch (cloudStatus.state) {
               @case ('off') {
@@ -228,10 +234,10 @@
         </section>
 
         <section class="gfpanel wd-card wd-card--unavailable">
-          <p class="gfpanel__hd">
-            <span class="gfpanel__hd-name">{{ translate('world.activity.label') }}</span>
+          <div class="gfpanel__hd">
+            <h2 class="gfpanel__hd-name">{{ translate('world.activity.label') }}</h2>
             <span class="gfpanel__hd-state wd-card__soon">{{ translate('world.activity.state') }}</span>
-          </p>
+          </div>
           <p class="wd-card__body">{{ translate('world.activity.detail') }}</p>
         </section>
       </div>

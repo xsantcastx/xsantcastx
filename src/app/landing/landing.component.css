@@ -1201,30 +1201,6 @@
     transition: transform 0.2s ease !important;
   }
 
-  /* ── Safe-area padding on the closing call for notched iPhones (§2.3) ── */
-  .gf-journey {
-    padding-bottom: calc(clamp(4rem, 8vw, 6rem) + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   CONTENT VISIBILITY — defer below-fold sections until scrolled
-   into view. Saves layout + paint cost on initial load which is
-   especially impactful on mobile where TBT (Total Blocking Time)
-   on first paint is the #1 Lighthouse perf penalty.
-   ════════════════════════════════════════════════════════════════ */
-/*
-  Only the closing call. The realms section is deliberately NOT in this list:
-  it is what `enterTheForge()` scrolls to and what both hero calls to action
-  anchor on, and a content-visibility section reports its `contain-intrinsic-size`
-  placeholder until it is rendered — so the scroll resolves against 800px, the
-  real 1810px lands after, and the jump stops short of the heading it aimed at.
-  The journey section is nobody's anchor and its real height is ~800px, so the
-  placeholder is honest there.
-*/
-.gf-journey {
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 800px;
 }
 
 /* Paint containment isolates card repaints from their siblings. */
@@ -1281,8 +1257,6 @@
   /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
   .gf-station__domain,
   .gf-station__count,
-  .gf-rank__meta,
-  .gf-door__label,
   .hp-tool-card__cat,
   .hp-hero__eyebrow,
   .hp-section-eyebrow,
@@ -1295,9 +1269,7 @@
   .hp-tool-card__cta,
   .hp-section-tagline,
   .gf-station__quote,
-  .gf-station__more,
-  .gf-door__hint,
-  .gf-rank__line {
+  .gf-station__more {
     font-size: 14px;
   }
 
@@ -1325,24 +1297,6 @@
    Realm colour arrives as --realm-color / --realm-glow, bound from
    REALMS in realm.model.ts, so adding a realm is a data edit and never
    a stylesheet edit. */
-
-
-/* ─── The Forge's Pulse (stats bar) ─────────────────────────────── */
-
-.gf-pulse {
-  border-top-color: rgba(201, 168, 76, 0.16);
-  border-bottom-color: rgba(201, 168, 76, 0.16);
-  background: rgba(12, 9, 20, 0.6);
-}
-
-.gf-pulse .hp-stat__num {
-  color: #FFD9A0;
-  text-shadow: 0 0 18px rgba(232, 117, 42, 0.4);
-}
-
-.gf-pulse .hp-stat__icon {
-  color: var(--forge-gold-text);
-}
 
 
 /* ─── The Five Realms ───────────────────────────────────────────── */
@@ -1576,189 +1530,9 @@
 }
 
 
-/* ─── Begin Your Journey ────────────────────────────────────────── */
-
-.gf-journey {
-  position: relative;
-  padding: clamp(3.5rem, 8vw, 5.5rem) var(--page-gutter);
-  background:
-    radial-gradient(ellipse 60% 55% at 22% 28%, rgba(232, 117, 42, 0.07), transparent 66%),
-    radial-gradient(ellipse 55% 50% at 80% 72%, rgba(139, 34, 82, 0.09), transparent 66%),
-    rgba(6, 8, 18, 0.6);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 620px;
-}
-
-/* The gradient cap lines every cosmic section carries, in forge tones. */
-.gf-journey::before,
-.gf-journey::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-
-.gf-journey::before {
-  top: -1px;
-  background: linear-gradient(90deg, transparent, rgba(232, 117, 42, 0.5) 50%, transparent);
-}
-
-.gf-journey::after {
-  bottom: -1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.5) 50%, transparent);
-}
-
-.gf-journey__inner {
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.7rem;
-}
-
-.gf-journey__title {
-  font-family: var(--font-lore);
-  font-size: clamp(1.7rem, 4.5vw, 2.6rem);
-  letter-spacing: 0.01em;
-  text-transform: none;
-  color: #FFE6B0;
-}
-
-.gf-journey__creed {
-  max-width: 620px;
-  margin: 0 0 0.6rem;
-  font-family: var(--font-lore);
-  font-style: italic;
-  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
-  line-height: 1.6;
-  color: #C9B79A;
-}
-
-.gf-journey__rank {
-  width: min(100%, 420px);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 1rem 1.2rem;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(201, 168, 76, 0.2);
-  background: rgba(10, 8, 20, 0.55);
-}
-
-.gf-journey__rank-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  margin: 0;
-}
-
-.gf-journey__rank-num {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border-radius: 50%;
-  font: 700 12px/1 var(--font-heading);
-  color: #2a1206;
-  background: radial-gradient(circle at 34% 30%, #FFE6B0 0%, #E8752A 70%, #8B2252 100%);
-  box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
-}
-
-.gf-journey__rank-title {
-  font-family: var(--font-heading);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #FFD9A0;
-}
-
-.gf-journey__rank-xp {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.gf-journey__rank-next {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(201, 168, 76, 0.75);
-}
-
-/* Three doors out of the page. */
-.gf-journey__doors {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(0.8rem, 2vw, 1.2rem);
-  width: 100%;
-  margin-top: clamp(1.2rem, 3vw, 2rem);
-  text-align: left;
-}
-
-.gf-door {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-height: 44px;
-  padding: clamp(1rem, 2.4vw, 1.4rem);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(10, 12, 26, 0.55);
-  text-decoration: none;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-}
-
-.gf-door:hover,
-.gf-door:focus-visible {
-  border-color: rgba(232, 117, 42, 0.5);
-  box-shadow: 0 0 30px -12px rgba(232, 117, 42, 0.8);
-  transform: translateY(-3px);
-}
-
-.gf-door--primary {
-  border-color: rgba(232, 117, 42, 0.35);
-  background:
-    linear-gradient(140deg, rgba(232, 117, 42, 0.12), transparent 60%),
-    rgba(12, 10, 24, 0.6);
-}
-
-.gf-door__label {
-  font-family: var(--font-heading);
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--forge-gold-text);
-}
-
-.gf-door__name {
-  font-family: var(--font-heading);
-  font-size: clamp(0.9rem, 2vw, 1.05rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--text-color);
-}
-
-.gf-door__hint {
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-
 /* ─── Responsive ────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .gf-journey__doors {
-    grid-template-columns: 1fr;
-  }
-
   /* The station header is the accordion's tap target on phones, so the
      count moves under the name rather than competing for the same row. */
   .gf-station__hd {
@@ -1806,12 +1580,6 @@
   height: 34px;
   vertical-align: -0.6em;
   margin-right: 0.35rem;
-}
-
-.gf-journey__rank-sigil {
-  width: 44px;
-  height: 44px;
-  flex: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1983,6 +1751,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 .gfpanel__hd-name {
+  margin: 0;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -2190,23 +1959,17 @@
   /* Panels stack under the mark rather than squeezing it to a column of
      one word per line. */
   .gfh__inner { gap: clamp(1rem, 3vw, 1.8rem); }
-  .gfh__title-block { order: -1; margin-bottom: clamp(0.5rem, 2vw, 1rem); }
+  .gfh__title-block { margin-bottom: clamp(0.5rem, 2vw, 1rem); }
   .gfh__status, .gfh__welcome { position: static; width: min(100%, 460px); margin-inline: auto; }
 }
 
 /* ── Phone ─────────────────────────────────────────────────────────────
-   The concept's phone layout, in its order: the mark, then who you are,
-   then the four numbers as a 2x2 grid, then the calls. */
+   DOM order is already title → journey → location. No flex order. */
 @media (max-width: 700px) {
   .gfh { min-height: auto; padding-top: clamp(1.2rem, 6vw, 2rem); }
   .gfh__title { font-size: clamp(2.2rem, 13vw, 3.4rem); }
   .gfh__sub { letter-spacing: 0.18em; }
   .gfh__eyebrow { letter-spacing: 0.3em; }
-
-  /* Who you are comes first — the stats are the reference, the rank is the
-     greeting, and the concept opens the phone on the greeting. */
-  .gfh__welcome { order: 1; }
-  .gfh__status  { order: 2; }
 
   /* Four cards rather than four rows. */
   .gfstat {
@@ -2243,241 +2006,14 @@
   .gfstat__fill { transition: none; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 2b — THE RUNE FORGE BAND
-   ═══════════════════════════════════════════════════════════════════════════
-   Violet and gold rather than the page's orange, because it is a door to the
-   Godforge's own colour and the arrival should not be a surprise. The anvil is
-   drawn in boxes for the same reason the nav runes are: at this size a painted
-   asset is another request for a silhouette CSS can state exactly.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.gf-anvil {
-  position: relative;
-  padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2rem);
-  background:
-    radial-gradient(ellipse 60% 70% at 78% 50%, rgba(164, 139, 255, 0.13), transparent 68%),
-    radial-gradient(ellipse 50% 60% at 12% 40%, rgba(201, 168, 76, 0.07), transparent 65%),
-    rgba(8, 6, 20, 0.5);
-}
-
-.gf-anvil::before,
-.gf-anvil::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0;
-  height: 1px;
-}
-.gf-anvil::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(164, 139, 255, 0.45) 50%, transparent); }
-.gf-anvil::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.35) 50%, transparent); }
-
-.gf-anvil__inner {
-  max-width: 1180px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
-  align-items: center;
-  gap: clamp(1.5rem, 4vw, 3rem);
-}
-
-.gf-anvil__title {
-  margin: 0 0 0.6rem;
-}
-
-.gf-anvil__lede {
-  margin: 0 0 1.2rem;
-  max-width: 46ch;
-  font-size: clamp(0.88rem, 2vw, 0.98rem);
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-.gf-anvil__stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.4rem;
-  margin-bottom: 1.4rem;
-}
-
-.gf-anvil__stat {
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.gf-anvil__stat b {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #a48bff;
-}
-
-.gf-anvil__stat i {
-  font-style: normal;
-  font-size: 0.8rem;
-  color: rgba(232, 236, 241, 0.35);
-  margin-right: 0.35rem;
-}
-
-.gf-anvil__cta {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-height: 52px;
-  justify-content: center;
-  padding: 0.7rem 1.8rem;
-  border: 1px solid rgba(164, 139, 255, 0.5);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(164, 139, 255, 0.2), rgba(164, 139, 255, 0.07));
-  color: var(--text-color);
-  font-family: var(--font-heading);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-decoration: none;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-.gf-anvil__cta:hover,
-.gf-anvil__cta:focus-visible {
-  border-color: rgba(255, 109, 215, 0.7);
-  box-shadow: 0 0 34px -8px rgba(164, 139, 255, 0.9);
-  transform: translateY(-2px);
-}
-
-.gf-anvil__cta-cost {
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 198, 105, 0.85);
-}
-
-/* ── The anvil ──────────────────────────────────────────────────────────── */
-
-.gf-anvil__scene {
-  position: relative;
-  height: 200px;
-  min-width: 0;
-}
-
-.gf-anvil__glow {
-  position: absolute;
-  left: 50%; bottom: 34px;
-  width: 210px; height: 96px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(164, 139, 255, 0.5), transparent 70%);
-  filter: blur(18px);
-  animation: gfAnvilBreathe 5.5s ease-in-out infinite;
-}
-
-.gf-anvil__body {
-  position: absolute;
-  left: 50%; bottom: 18px;
-  width: 150px; height: 92px;
-  transform: translateX(-50%);
-}
-
-.gf-anvil__body i {
-  position: absolute;
-  background: linear-gradient(180deg, #2a2440 0%, #16121f 100%);
-  border: 1px solid rgba(164, 139, 255, 0.24);
-}
-
-.gf-anvil__face  { left: 0;     top: 0;    width: 118px; height: 22px; border-radius: 4px 4px 2px 2px;
-                   box-shadow: 0 0 20px -4px rgba(164, 139, 255, 0.55); }
-.gf-anvil__horn  { left: 108px; top: 3px;  width: 40px;  height: 15px; border-radius: 0 50% 50% 0; }
-.gf-anvil__waist { left: 42px;  top: 22px; width: 34px;  height: 40px; }
-.gf-anvil__base  { left: 20px;  top: 62px; width: 80px;  height: 24px; border-radius: 3px; }
-
-.gf-anvil__hammer {
-  position: absolute;
-  left: 50%; top: 8px;
-  width: 74px; height: 22px;
-  margin-left: -86px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #3a3358 0%, #1d1830 100%);
-  border: 1px solid rgba(164, 139, 255, 0.32);
-  transform-origin: right center;
-  animation: gfAnvilStrike 3.4s cubic-bezier(0.5, 0, 0.75, 0) infinite;
-}
-
-.gf-anvil__spark {
-  position: absolute;
-  left: 50%; bottom: 104px;
-  width: 3px; height: 3px;
-  border-radius: 50%;
-  background: #ffc669;
-  box-shadow: 0 0 6px rgba(255, 198, 105, 0.9);
-  opacity: 0;
-  animation: gfAnvilSpark 3.4s ease-out infinite;
-  animation-delay: calc(var(--i) * 30ms);
-}
-
-/* The scene's first three children are the glow, the hammer and the body, so
-   the six sparks are children 4 through 9. Off-by-one here leaves the last
-   spark with no --dx/--dy, sitting still at the origin while the other five
-   fly — which reads as a rendering glitch rather than as a missing rule. */
-.gf-anvil__spark:nth-child(4) { --dx: -54px; --dy: -30px; }
-.gf-anvil__spark:nth-child(5) { --dx: -30px; --dy: -46px; }
-.gf-anvil__spark:nth-child(6) { --dx: -6px;  --dy: -52px; }
-.gf-anvil__spark:nth-child(7) { --dx: 22px;  --dy: -46px; }
-.gf-anvil__spark:nth-child(8) { --dx: 48px;  --dy: -28px; }
-.gf-anvil__spark:nth-child(9) { --dx: 66px;  --dy: -10px; }
-
-@keyframes gfAnvilBreathe {
-  0%, 100% { opacity: 0.5; }
-  50%      { opacity: 0.9; }
-}
-
-/* The strike lands at 18% and the rest of the cycle is the arm coming back up,
-   so the hammer rests far more than it swings — a loop that struck continuously
-   would be a metronome in the corner of the page. */
-@keyframes gfAnvilStrike {
-  0%   { transform: rotate(-56deg); }
-  12%  { transform: rotate(6deg); }
-  18%  { transform: rotate(2deg); }
-  46%  { transform: rotate(-56deg); }
-  100% { transform: rotate(-56deg); }
-}
-
-@keyframes gfAnvilSpark {
-  0%, 11% { opacity: 0; transform: translate(0, 0) scale(1); }
-  14%     { opacity: 1; transform: translate(0, 0) scale(1); }
-  30%     { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
-  100%    { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.3); }
-}
-
-@media (max-width: 860px) {
-  .gf-anvil__inner {
-    grid-template-columns: 1fr;
-  }
-  /* The anvil moves above the copy on a phone: it is the thing that says what
-     this band is, and burying it under three counts and a button makes it
-     decoration nobody scrolls to. */
-  .gf-anvil__scene { order: -1; height: 160px; }
-  .gf-anvil__lede { max-width: none; }
-}
-
-/* Every loop here is ambient. The band states what it is in text, so a static
-   anvil loses nothing. `animation: none` names no keyframe and so cannot be
-   broken by the encapsulation rewrite that has silently killed media-query
-   animations in this repo before. */
-@media (prefers-reduced-motion: reduce) {
-  .gf-anvil__glow,
-  .gf-anvil__hammer,
-  .gf-anvil__spark {
-    animation: none;
-  }
-  .gf-anvil__hammer { transform: rotate(-56deg); }
-  .gf-anvil__spark { display: none; }
-}
-
 /* ═══════════════════════════════════════════════════════════════════
    WORLD DASHBOARD — /world player layers over the painted hero
    ═══════════════════════════════════════════════════════════════════ */
+
+.wd-journey__cta:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
 
 .wd {
   position: relative;

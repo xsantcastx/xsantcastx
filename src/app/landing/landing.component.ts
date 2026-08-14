@@ -22,8 +22,9 @@ import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
-import { QuestBoard, QuestService } from '../shared/quests/quest.service';
+import { emptyQuestBoard, QuestBoard, QuestService } from '../shared/quests/quest.service';
 import { CloudSaveService, SyncStatus } from '../shared/cloud-save/cloud-save.service';
+import { atmosphereForAetherShare } from '../shared/atmosphere/atmosphere.model';
 import { CANONICAL } from '../shared/canonical-routes';
 import { continueJourney, JourneyTarget } from './continue-journey';
 
@@ -167,7 +168,8 @@ export class LandingComponent implements OnInit, OnDestroy {
    * visitor's real numbers arrive after hydration.
    */
   eco: EconomySnapshot = this.economyService.snapshot;
-  board: QuestBoard = this.quests.board;
+  /** Empty until the browser has run `quests.init()` — prerender stays zeros. */
+  board: QuestBoard = emptyQuestBoard();
   cloudStatus: SyncStatus = this.cloud.status;
 
   get gold(): string { return formatCurrency(this.eco.gold); }
@@ -186,14 +188,19 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Same bands as `atmosphereForAetherShare` / the keeper identity card.
-   * A new profile sits at 0.5 and is Convergent.
+   * Same bands as the keeper atmosphere — derived from `atmosphereForAetherShare`
+   * so a threshold change cannot desync the wash from “You are here”.
    */
   get alignment(): WorldAlignment {
-    const pct = Math.round(this.xp.aetherShare * 100);
-    if (pct > 55) return 'solari';
-    if (pct < 45) return 'nocturne';
+    const id = atmosphereForAetherShare(this.xp.aetherShare).id;
+    if (id === 'keeper-solari') return 'solari';
+    if (id === 'keeper-nocturne') return 'nocturne';
     return 'convergent';
+  }
+
+  /** Live Continue Journey only after the browser save has hydrated. */
+  get journeyReady(): boolean {
+    return this.ready && this.isBrowser;
   }
 
   get aetherPercent(): number {
@@ -217,11 +224,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   get lastSyncedLabel(): string {
     const at = this.cloudStatus.lastSyncedAt;
     if (at === null) return '';
-    try {
-      return new Date(at).toLocaleString();
-    } catch {
-      return '';
-    }
+    const when = new Date(at);
+    if (Number.isNaN(when.getTime())) return '';
+    const lang = this.translationService.getCurrentLanguage() === 'es' ? 'es' : 'en';
+    return when.toLocaleString(lang);
   }
 
   ngOnInit(): void {
@@ -237,7 +243,6 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.subs.add(this.scrolls.changed$.subscribe(() => {
       this.scrollsFound = this.scrolls.foundCount;
     }));
-    this.subs.add(this.quests.board$.subscribe(board => { this.board = board; }));
     this.subs.add(this.cloud.status$.subscribe(status => { this.cloudStatus = status; }));
 
     if (!this.isBrowser) return;
@@ -249,8 +254,12 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.scrollsFound = this.scrolls.foundCount;
     // Resume only — do not start a sign-in or change merge/sync.
     this.cloud.init();
-    void this.eggs.init().then(() => { this.eggsFound = this.eggs.foundCount; });
-    void this.xpService.init().then(() => { this.ready = true; });
+    // After init so the first emit is the stored board, not the constructor roll.
+    this.subs.add(this.quests.board$.subscribe(board => { this.board = board; }));
+    void Promise.all([this.xpService.init(), this.eggs.init()]).then(() => {
+      this.eggsFound = this.eggs.foundCount;
+      this.ready = true;
+    });
   }
 
 

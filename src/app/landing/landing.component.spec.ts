@@ -71,7 +71,11 @@ describe('LandingComponent', () => {
       providers: [
         {
           provide: TranslationService,
-          useValue: { translate: (k: string) => k, currentLanguage$: of('en') },
+          useValue: {
+            translate: (k: string) => k,
+            currentLanguage$: of('en'),
+            getCurrentLanguage: () => 'en',
+          },
         },
         {
           provide: XpService,
