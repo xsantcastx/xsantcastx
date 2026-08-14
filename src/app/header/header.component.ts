@@ -197,6 +197,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.scrollHandler = undefined;
       this.resizeHandler = undefined;
       this.scrollRafId = null;
+      const root = document.documentElement.style;
+      root.removeProperty('--nav-h');
+      root.removeProperty('--shell-sidebar-w');
+      root.removeProperty('--header-offset');
     }
     this.routerSub?.unsubscribe();
     this.langSub?.unsubscribe();
