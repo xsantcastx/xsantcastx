@@ -1556,11 +1556,20 @@
   color: var(--forge-gold-text);
 }
 
+.gf-station__fact {
+  margin: 0.7rem 0 0;
+  padding-left: calc(30px + clamp(0.6rem, 1.6vw, 1rem));
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: rgba(214, 221, 235, 0.78);
+}
+
 .gf-station__more {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   margin-top: 0.9rem;
+  margin-left: calc(30px + clamp(0.6rem, 1.6vw, 1rem));
   font-family: var(--font-heading);
   font-size: 0.72rem;
   letter-spacing: 0.1em;

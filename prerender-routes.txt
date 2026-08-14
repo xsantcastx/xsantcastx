@@ -1,4 +1,10 @@
 /world
+/world/realms/luminous
+/world/realms/celestial
+/world/realms/infernal
+/world/realms/umbral
+/world/realms/verdant
+/world/fivefold-lock
 /sanctum
 /world/quests
 /market
