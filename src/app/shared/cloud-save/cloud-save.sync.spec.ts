@@ -42,6 +42,10 @@ class FakeFirestore {
   readonly refuse = new Set<string>();
   /** When set, every network call rejects — the offline case. */
   down = false;
+  /** When set, writes wait here — the in-flight flush the next push must survive. */
+  writeGate: Promise<void> | null = null;
+  /** How many writes are currently parked on `writeGate`. */
+  blocked = 0;
   /**
    * After the next transactional get, mutate that document so the commit
    * aborts once — the interleaving the retry loop exists to survive.
@@ -72,6 +76,11 @@ class FakeFirestore {
 
     setDoc: async (ref: { path: string }, data: unknown) => {
       this.guard();
+      if (this.writeGate) {
+        this.blocked++;
+        await this.writeGate;
+        this.blocked--;
+      }
       this.counts.setDoc++;
       this.commit(ref.path, data);
     },
@@ -88,6 +97,11 @@ class FakeFirestore {
         set: (ref: { path: string }, data: unknown) => { staged.push({ path: ref.path, data }); },
         commit: async () => {
           this.guard();
+          if (this.writeGate) {
+            this.blocked++;
+            await this.writeGate;
+            this.blocked--;
+          }
           this.counts.batch++;
           // Atomic, like the real thing: one refusal fails the whole batch and
           // nothing is written. This is the behaviour the per-document retry
@@ -107,6 +121,11 @@ class FakeFirestore {
     }) => Promise<void>) => {
       for (let attempt = 0; attempt < 5; attempt++) {
         this.guard();
+        if (this.writeGate) {
+          this.blocked++;
+          await this.writeGate;
+          this.blocked--;
+        }
         this.counts.transaction++;
         const staged = new Map<string, unknown>();
         const seen = new Map<string, unknown>();
@@ -596,5 +615,107 @@ describe('cloud save — Firestore as the record', () => {
     // Adopting the signed-in identity is most of what attaching means.
     expect(stored.userId).toBe('u1');
     expect(xp.snapshot.xp).toBeGreaterThanOrEqual(50);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The merge dialog's write actually has to land
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function progressBlob(xp: number, achievementId: string): Record<string, unknown> {
+    return {
+      version: 2, xp, aether: xp, nox: 0, level: 1, levelTitle: 'Wanderer',
+      achievements: [{ id: achievementId, unlockedAt: '2026-01-01T00:00:00.000Z' }],
+      toolsUsed: [], history: {}, streak: 1, bestStreak: 1, lastVisit: null,
+      userId: 'local-uuid', createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+  }
+
+  function seedConflict(): void {
+    // Local is ahead on Gold, cloud is ahead on XP. That is the only case the
+    // dialog opens — each side holds something the other does not.
+    localStorage.setItem(ECONOMY_KEY, JSON.stringify({
+      version: 2, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
+    }));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressBlob(10, 'device-only')));
+    fake.seedGold(100);
+    fake.docs.set('users/u1/progress/state', progressBlob(500, 'cloud-only'));
+  }
+
+  function achievementIdsInCloud(): string[] {
+    const d = fake.docs.get('users/u1/progress/state') as { achievements?: { id: string }[] } | undefined;
+    return (d?.achievements ?? []).map(a => a.id).sort();
+  }
+
+  it('writes Keep This Device instead of remelting it into a merge', async () => {
+    seedConflict();
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+
+    await gateway.attach('u1', fake.handle, async () => 'local');
+
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(5000);
+    expect(achievementIdsInCloud()).toEqual(['device-only']);
+    const stored = JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
+    expect(stored.achievements.map((a: { id: string }) => a.id)).toEqual(['device-only']);
+    // Lifetime XP cannot go down (Firestore rule). The rest of this device's
+    // save still wins; XP is floored so the write is not refused.
+    expect(stored.xp).toBeGreaterThanOrEqual(500);
+    expect(stored.aether + stored.nox).toBe(stored.xp);
+  });
+
+  it('writes Merge Best after the visitor has had to wait on the dialog', async () => {
+    seedConflict();
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+
+    let release!: (choice: 'merge') => void;
+    const asked = new Promise<'merge'>(resolve => { release = resolve; });
+    let sawAsk = false;
+    const attaching = gateway.attach('u1', fake.handle, () => {
+      sawAsk = true;
+      return asked;
+    });
+
+    for (let i = 0; i < 20 && !sawAsk; i++) await Promise.resolve();
+    expect(sawAsk).toBe(true);
+    // Still parked on the dialog: nothing has gone up yet.
+    expect(fake.counts.setDoc + fake.counts.batch + fake.counts.transaction).toBe(0);
+
+    release('merge');
+    await attaching;
+
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(5000);
+    expect(achievementIdsInCloud()).toEqual(['cloud-only', 'device-only']);
+  });
+
+  it('still uploads keys dirtied while a flush is in flight', async () => {
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+
+    let release!: () => void;
+    fake.writeGate = new Promise<void>(resolve => { release = resolve; });
+
+    economy.earnGold(10, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const first = gateway.flushNow();
+    for (let i = 0; i < 50 && fake.blocked === 0; i++) await Promise.resolve();
+    expect(fake.blocked).toBeGreaterThan(0);
+
+    economy.earnGold(50, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const second = gateway.flushNow();
+
+    release();
+    await first;
+    await second;
+
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(60);
+    expect(gateway.pending).toBe(0);
+    expect(gateway.link).toBe('synced');
   });
 });
