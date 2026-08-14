@@ -12,7 +12,7 @@
     <h1 class="cx-hero__title">The Codex</h1>
     <p class="cx-hero__sub">
       Everything the Godforge is keeping from you, and everything it has already
-      given up. Fragments, ranks, tools and secrets — the whole record, in one
+      given up. Fragments, ranks, lore and secrets — the whole record, in one
       place, kept honestly.
     </p>
     <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
@@ -245,9 +245,6 @@
                     <span class="cx-card__date">{{ formatDate(a.unlockedAt) }}</span>
                     <span class="cx-card__xp">+{{ a.xp }} XP</span>
                   </p>
-                  @if (a.toolRoute) {
-                    <a class="cx-card__link" [routerLink]="a.toolRoute">{{ a.toolTitle }} →</a>
-                  }
                   @if (a.gate) {
                     <p class="cx-card__gate">🔗 unchains <a routerLink="/world/trials">{{ a.gate }}</a></p>
                   }
@@ -425,158 +422,6 @@
         <span class="cx-cal__day" data-heat="4" aria-hidden="true"></span>
         <span>blazing</span>
       </p>
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 3 — Bestiary
-  ═══════════════════════════════════════════════════════════════════════ -->
-  <section
-    class="cx-panel"
-    role="tabpanel"
-    id="cx-panel-bestiary"
-    aria-labelledby="cx-tab-bestiary"
-    [hidden]="activeTab !== 'bestiary'">
-
-    <div class="cx-statbar">
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ expertTools }} / {{ totalTools }}</span>
-        <span class="cx-stat__label">Tools at Expert or above</span>
-      </div>
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ touchedTools }}</span>
-        <span class="cx-stat__label">Tools touched</span>
-      </div>
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ masteredTools }}</span>
-        <span class="cx-stat__label">Mastered</span>
-      </div>
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ totalTools - touchedTools }}</span>
-        <span class="cx-stat__label">Untouched</span>
-      </div>
-    </div>
-
-    <!-- ── Realm champion progress ────────────────────────────────────── -->
-    <div class="cx-champions">
-      @for (realm of realms; track realm.id) {
-        <div class="cx-champion" [style.--realm]="realm.color" [style.--realm-glow]="realm.glow">
-          <p class="cx-champion__name">{{ realm.name }}</p>
-          <span class="cx-champion__track" aria-hidden="true">
-            <span class="cx-champion__fill" [style.width.%]="realmProgress(realm).percent"></span>
-          </span>
-          <p class="cx-champion__count">
-            {{ realmProgress(realm).touched }} / {{ realmProgress(realm).total }} touched
-          </p>
-        </div>
-      }
-    </div>
-    <p class="cx-champions__note">
-      Master every tool in a realm to earn that realm's Champion title. Nothing is
-      claimed until it is actually true.
-    </p>
-
-    <!-- ── Filters ────────────────────────────────────────────────────── -->
-    <div class="cx-filters">
-      <div class="cx-filter-row">
-        <span class="cx-filter-row__label">Realm</span>
-        <div class="cx-chips">
-          <button type="button" class="cx-chip" [class.is-on]="bestiaryRealm === 'all'"
-                  (click)="bestiaryRealm = 'all'">All <span class="cx-chip__count">{{ totalTools }}</span></button>
-          @for (realm of realms; track realm.id) {
-            <button
-              type="button"
-              class="cx-chip"
-              [class.is-on]="bestiaryRealm === realm.id"
-              [style.--chip]="realm.color"
-              [style.--chip-glow]="realm.glow"
-              (click)="bestiaryRealm = realm.id">
-              {{ realm.name }}
-              <span class="cx-chip__count">{{ realmProgress(realm).total }}</span>
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="cx-filter-row cx-filter-row--split">
-        <div class="cx-filter-group">
-          <span class="cx-filter-row__label">Mastery</span>
-          <div class="cx-chips">
-            <button type="button" class="cx-chip" [class.is-on]="bestiaryMastery === 'all'"
-                    (click)="bestiaryMastery = 'all'">All</button>
-            @for (level of masteryLevels; track level.id) {
-              <button
-                type="button"
-                class="cx-chip"
-                [class.is-on]="bestiaryMastery === level.id"
-                [style.--chip]="level.color"
-                [style.--chip-glow]="level.glow"
-                (click)="bestiaryMastery = level.id">
-                {{ level.label }}
-                <span class="cx-chip__count">{{ masteryCount(level.id) }}</span>
-              </button>
-            }
-          </div>
-        </div>
-
-        <div class="cx-filter-group cx-filter-group--grow">
-          <label class="cx-visually-hidden" for="cx-bestiary-search">Search tools</label>
-          <input
-            id="cx-bestiary-search"
-            type="search"
-            class="cx-search"
-            placeholder="Search tools…"
-            [(ngModel)]="bestiarySearch" />
-        </div>
-      </div>
-    </div>
-
-    <!-- ── The grid ───────────────────────────────────────────────────── -->
-    <div class="cx-grid cx-grid--beast">
-      @for (entry of visibleBestiary; track entry.id) {
-        <article
-          class="cx-beast"
-          [class.cx-beast--untouched]="entry.uses === 0"
-          [style.--realm]="entry.realm.color"
-          [style.--realm-glow]="entry.realm.glow"
-          [style.--tier]="entry.mastery.color"
-          [style.--tier-glow]="entry.mastery.glow">
-
-          <div class="cx-beast__hd">
-            <span class="cx-beast__icon" aria-hidden="true">{{ entry.icon }}</span>
-            <div class="cx-beast__names">
-              <h3 class="cx-beast__title">{{ entry.title }}</h3>
-              <p class="cx-beast__realm">{{ entry.realm.name }}</p>
-            </div>
-          </div>
-
-          <p class="cx-beast__stars" [attr.aria-label]="entry.mastery.label + ', ' + entry.uses + ' uses'">
-            @for (filled of entry.stars; track $index) {
-              <span class="cx-beast__star" [class.is-filled]="filled" aria-hidden="true">★</span>
-            }
-          </p>
-
-          <p class="cx-beast__meta">
-            <span class="cx-beast__level">{{ entry.mastery.label }}</span>
-            <span class="cx-beast__uses">{{ entry.uses }} {{ entry.uses === 1 ? 'use' : 'uses' }}</span>
-          </p>
-
-          <span class="cx-beast__track" aria-hidden="true">
-            <span class="cx-beast__fill" [style.width.%]="entry.progress * 100"></span>
-          </span>
-
-          @if (entry.route) {
-            <a class="cx-beast__link" [routerLink]="entry.route">
-              {{ entry.uses === 0 ? 'Open it →' : 'Use it again →' }}
-            </a>
-          } @else {
-            <span class="cx-beast__link cx-beast__link--soon">not forged yet</span>
-          }
-        </article>
-      } @empty {
-        <p class="cx-empty">No tool in the Bestiary matches that.</p>
-      }
     </div>
   </section>
 

@@ -2,7 +2,7 @@
  * codex.component.ts — /codex, the record of everything there is to find.
  *
  * Five panels over one set of state: the achievement wall, the progression path,
- * the tool bestiary, the secrets guide, and a leaderboard that does not exist
+ * the lore scrolls, the secrets guide, and a leaderboard that does not exist
  * yet and says so.
  *
  * SSR: every list is built at construction from pure registries, so the
@@ -11,9 +11,10 @@
  * whole job is flipping `unlocked` and filling in counts. That ordering is what
  * keeps the page useful to a crawler and free of a hydration flash.
  *
- * The tab is mirrored into `?tab=` so a link into the Bestiary lands in the
- * Bestiary, using replaceState rather than a router navigation — a tab is not a
- * page, and it should not cost a back-button press to undo.
+ * The tab is mirrored into `?tab=` so a deep link lands on the right panel,
+ * using replaceState rather than a router navigation — a tab is not a page,
+ * and it should not cost a back-button press to undo. Retired `?tab=bestiary`
+ * links fall back to Achievements.
  */
 import {
   Component,
@@ -47,16 +48,6 @@ import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import {
-  MASTERY_LEVELS,
-  MasteryDefinition,
-  MasteryLevel,
-  ToolMasteryService,
-  masteryForUses,
-  masteryProgress,
-} from '../shared/gamification/tool-mastery.service';
-import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
-import { TOOLS_REGISTRY } from '../tools/tools-registry';
-import {
   CODEX_CATEGORIES,
   CodexAchievement,
   CodexCategory,
@@ -78,7 +69,7 @@ import {
   SecretRecord,
 } from './codex-secrets.service';
 
-export type CodexTab = 'achievements' | 'progression' | 'bestiary' | 'scrolls' | 'secrets' | 'leaderboard';
+export type CodexTab = 'achievements' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
   key: CodexTab;
@@ -92,20 +83,6 @@ interface AchievementSection {
   category: CodexCategory;
   items: CodexAchievement[];
   found: number;
-}
-
-/** One tool in the Bestiary. */
-interface BestiaryEntry {
-  id: string;
-  title: string;
-  icon: string;
-  route: string;
-  realm: RealmDefinition;
-  uses: number;
-  mastery: MasteryDefinition;
-  progress: number;
-  /** Five slots, `true` where the star is filled. */
-  stars: boolean[];
 }
 
 /** One day cell in the streak calendar. */
@@ -211,7 +188,6 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private readonly xp = inject(XpService);
-  private readonly masteryService = inject(ToolMasteryService);
   private readonly secretsService = inject(CodexSecretsService);
   private readonly scrollsService = inject(LoreScrollService);
   private readonly router = inject(Router);
@@ -231,7 +207,6 @@ export class CodexComponent implements OnInit, OnDestroy {
   readonly tabs: TabDefinition[] = [
     { key: 'achievements', label: 'Achievements', icon: '✦', hint: 'every fragment, found and unfound' },
     { key: 'progression',  label: 'Progression',  icon: '◆', hint: 'rank, energy and the streak' },
-    { key: 'bestiary',     label: 'Bestiary',     icon: '❖', hint: 'every tool, and how well you know it' },
     { key: 'scrolls',      label: 'Lore',         icon: '📜', hint: 'the codex, one fragment at a time' },
     { key: 'secrets',      label: 'Secrets',      icon: '✧', hint: 'the hidden content, clued not spoiled' },
     { key: 'leaderboard',  label: 'Leaderboard',  icon: '◇', hint: 'when the Eclipse aligns' },
@@ -258,14 +233,6 @@ export class CodexComponent implements OnInit, OnDestroy {
   /** Exposed for the rank orb and the ten path nodes. */
   readonly rankSigil = rankSigil;
   calendar: CalendarDay[] = [];
-
-  // ── Bestiary ──────────────────────────────────────────────────────────────
-  readonly realms = REALMS;
-  readonly masteryLevels = MASTERY_LEVELS;
-  bestiary: BestiaryEntry[] = this.buildBestiary({});
-  bestiaryRealm: string | 'all' = 'all';
-  bestiaryMastery: MasteryLevel | 'all' = 'all';
-  bestiarySearch = '';
 
   // ── Secrets ───────────────────────────────────────────────────────────────
   readonly secretGroups = SECRET_GROUPS;
@@ -306,7 +273,6 @@ export class CodexComponent implements OnInit, OnDestroy {
       unlockedAt: this.eggs.foundAt(a.id),
     }));
 
-    this.bestiary = this.buildBestiary(this.masteryService.all());
     this.calendar = this.buildCalendar(this.xp.history);
     this.secrets = this.buildSecrets();
     this.snap = this.xp.snapshot;
@@ -607,7 +573,7 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   /** Faction flavour, or the balance badge's subtitle when neither side leads. */
   get affinityFlavour(): string {
-    if (this.snap.xp === 0) return 'Neither realm has heard of you yet. Use a tool and one of them will.';
+    if (this.snap.xp === 0) return 'Neither realm has heard of you yet. Walk the world and one of them will.';
     if (this.isBalanced) return 'You walk both realms and answer to neither. That is the rarest allegiance there is.';
     return this.aetherPercent > 55
       ? 'The Light burns bright in you, Solari.'
@@ -658,65 +624,6 @@ export class CodexComponent implements OnInit, OnDestroy {
       });
     }
     return days;
-  }
-
-  // ══ Bestiary ══════════════════════════════════════════════════════════════
-
-  private buildBestiary(counts: Record<string, number>): BestiaryEntry[] {
-    return TOOLS_REGISTRY.map(tool => {
-      const uses = counts[tool.id] ?? 0;
-      const mastery = masteryForUses(uses);
-      return {
-        id: tool.id,
-        title: tool.title,
-        icon: tool.textIcon,
-        route: tool.route,
-        realm: realmForCategory(tool.category),
-        uses,
-        mastery,
-        progress: masteryProgress(uses),
-        stars: Array.from({ length: 5 }, (_, i) => i < mastery.stars),
-      };
-    });
-  }
-
-  get visibleBestiary(): BestiaryEntry[] {
-    const q = this.bestiarySearch.trim().toLowerCase();
-    return this.bestiary.filter(entry => {
-      if (this.bestiaryRealm !== 'all' && entry.realm.id !== this.bestiaryRealm) return false;
-      if (this.bestiaryMastery !== 'all' && entry.mastery.id !== this.bestiaryMastery) return false;
-      return !q || entry.title.toLowerCase().includes(q);
-    });
-  }
-
-  get totalTools(): number { return this.bestiary.length; }
-
-  /** Tools at Expert or above — the headline Bestiary number. */
-  get expertTools(): number {
-    return this.bestiary.filter(e => e.mastery.id === 'expert' || e.mastery.id === 'master').length;
-  }
-
-  get touchedTools(): number {
-    return this.bestiary.filter(e => e.uses > 0).length;
-  }
-
-  get masteredTools(): number {
-    return this.bestiary.filter(e => e.mastery.id === 'master').length;
-  }
-
-  masteryCount(id: MasteryLevel): number {
-    return this.bestiary.filter(e => e.mastery.id === id).length;
-  }
-
-  /** Per-realm completion, for the Champion callouts. */
-  realmProgress(realm: RealmDefinition): { touched: number; total: number; percent: number } {
-    const of = this.bestiary.filter(e => e.realm.id === realm.id);
-    const touched = of.filter(e => e.uses > 0).length;
-    return {
-      touched,
-      total: of.length,
-      percent: of.length > 0 ? (touched / of.length) * 100 : 0,
-    };
   }
 
   // ══ Secrets ═══════════════════════════════════════════════════════════════

@@ -99,7 +99,7 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     key: 'tool-usage-counts',
     collection: 'progress',
     doc: 'mastery',
-    label: 'tool mastery',
+    label: 'progress ledger',
   },
   {
     key: 'easter-eggs-found',

@@ -2,9 +2,9 @@
  * xp-wiring.service.ts — connects the app's existing signals to the XP ledger.
  *
  * Deliberately a single subscriber rather than an XpService call scattered
- * through 126 tool components: the events that earn XP (a route change, a copy,
- * an egg discovery) already exist as observables or document events, so there is
- * nothing to add to the tools themselves.
+ * through every page: the events that earn XP (a route change, a copy, an egg
+ * discovery) already exist as observables or document events, so there is
+ * nothing to add to the pages themselves.
  */
 import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -12,9 +12,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { XpService } from './xp.service';
 import { ToolMasteryService } from './tool-mastery.service';
-import { energyForCategory } from './gamification.model';
 import { EASTER_EGGS, EasterEggService } from '../easter-eggs/easter-egg.service';
-import { TOOLS_REGISTRY } from '../../tools/tools-registry';
 import { canonicalizePlayerPath } from '../canonical-routes';
 
 @Injectable({ providedIn: 'root' })
@@ -37,10 +35,10 @@ export class XpWiringService {
     if (!this.isBrowser || this.started) return;
     this.started = true;
 
-    // Everyone who used the site before the Bestiary existed still gets credit
-    // for the tools the XP ledger already knows they opened. This has to wait
-    // for hydration: `toolsUsed` reads the ledger once and never looks again, so
-    // backfilling before storage resolves would silently backfill nothing.
+    // Existing mastery counts stay in the save. New public pages no longer
+    // increment them — the /tools/* routes that used to feed this ledger are
+    // gone. Backfill still runs so an old save does not look empty if the
+    // hidden ledger is ever read again.
     void this.xp.init().then(() => this.mastery.backfill(this.xp.toolsUsed));
 
     this.router.events
@@ -79,21 +77,9 @@ export class XpWiringService {
       this.xp.award('page-visit');
     }
 
-    // Landing on a tool page counts as using it — the tools run entirely in the
-    // browser with no submit step, so an "output produced" signal does not exist
-    // at this layer. `toolId` makes XpService pay it out exactly once, ever.
-    const tool = TOOLS_REGISTRY.find(t => t.route === path);
-    if (tool) {
-      this.xp.award('tool-use', {
-        toolId: tool.id,
-        energy: energyForCategory(tool.category),
-      });
-      // Mastery counts every navigation, unlike XP which pays once — the
-      // Bestiary is measuring habit, not discovery, so coming back to a tool is
-      // the whole point. It buys nothing but a star, so there is no reason to
-      // rate-limit it the way the XP faucet is rate-limited.
-      this.mastery.record(tool.id);
-    }
+    // Tool-use XP and mastery used to fire when `path` matched a registry
+    // route. Those pages are retired. Do not award them on /world after a
+    // /tools/* redirect — that would pay every old bookmark as a tool visit.
   }
 
   private onCopy(): void {

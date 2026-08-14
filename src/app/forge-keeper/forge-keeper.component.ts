@@ -3,13 +3,13 @@
  *
  * Eight panels over one visitor: who they are, what they have done, which realm
  * has claimed them, what they own, what they are proudest of, when they showed
- * up, which tools they actually know, and where to go next.
+ * up, the loadout they carry, and where to go next.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * THIS PAGE OWNS NO STATE
  * ─────────────────────────────────────────────────────────────────────────────
  * Every number on it is already true somewhere else — XpService, EconomyService,
- * ToolMasteryService, QuestService, IdleService, ArenaScoresService,
+ * InventoryService, QuestService, IdleService, ArenaScoresService,
  * EasterEggService and LoreService each already know their own piece. The only
  * thing stored on this page's behalf is which trophies are pinned, and that is a
  * display preference in its own key (PinnedAchievementsService).
@@ -47,18 +47,14 @@ import {
   RARITY_ORDER,
   RarityDefinition,
 } from '../shared/rarity/rarity.model';
-import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
+import { LEVELS, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
-import {
-  MasteryDefinition,
-  ToolMasteryService,
-  masteryForUses,
-  masteryProgress,
-} from '../shared/gamification/tool-mastery.service';
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
 import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
 import { EquipmentPanelComponent } from '../shared/rpg/equipment-panel.component';
+import { InventoryService } from '../shared/rpg/inventory.service';
+import { SLOT_IDS } from '../shared/rpg/item.model';
 import {
   ARTIFACTS,
   COSMETICS,
@@ -80,8 +76,6 @@ import { LoreService } from '../shared/lore/lore.service';
 import { LORE_SLUGS, TOOL_LORE } from '../shared/lore/lore.model';
 import { ArenaScoresService } from '../arena/games/arena-scores.service';
 import { ARENA_PLAYABLE } from '../arena/games/arena-game.model';
-import { RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
-import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { CodexAchievement, buildAchievements } from '../codex/codex.model';
 import { PIN_SLOTS, PinnedAchievementsService } from './pinned-achievements.service';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
@@ -188,19 +182,6 @@ interface ForgeDay {
   isToday: boolean;
 }
 
-/** One row of the tool mastery board. */
-interface MasteryRow {
-  id: string;
-  title: string;
-  icon: string;
-  route: string;
-  realm: RealmDefinition;
-  uses: number;
-  mastery: MasteryDefinition;
-  progress: number;
-  stars: boolean[];
-}
-
 /** A point on the rank sigil. */
 interface SigilPoint {
   x: number;
@@ -229,9 +210,6 @@ const STREAK_MILESTONES: Array<{ days: number; name: string }> = [
   { days: 30,  name: 'Monthlong Burn' },
   { days: 100, name: 'The Unbroken' },
 ];
-
-/** How many tools the mastery board shows before deferring to the Bestiary. */
-const MASTERY_ROWS = 5;
 
 /**
  * Chapters across the whole corpus — the denominator on the Lore stat.
@@ -338,7 +316,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly xp = inject(XpService);
   private readonly economy = inject(EconomyService);
-  private readonly masteryService = inject(ToolMasteryService);
+  private readonly inventoryService = inject(InventoryService);
   private readonly quests = inject(QuestService);
   private readonly idle = inject(IdleService);
   private readonly lore = inject(LoreService);
@@ -367,10 +345,11 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   questsCompleted = 0;
+  openQuests = 0;
   arenaPlays = 0;
   loreFound = 0;
-  /** Tools at Expert or above — the same definition the Codex Bestiary uses. */
-  toolsMastered = 0;
+  equippedCount = 0;
+  readonly slotCount = SLOT_IDS.length;
   readonly loreTotal = LORE_CHAPTER_TOTAL;
   /** Exposed for the rank sigil painted into the identity crest. */
   readonly rankSigil = rankSigil;
@@ -422,9 +401,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   /** The stack whose contents are open, or null. One at a time. */
   openStackId: string | null = null;
 
-  // ── Calendar & mastery ────────────────────────────────────────────────────
+  // ── Calendar ──────────────────────────────────────────────────────────────
   calendar: ForgeDay[] = this.buildCalendarShell();
-  mastery: MasteryRow[] = [];
 
   // ── Rank ladder ───────────────────────────────────────────────────────────
   readonly levels = LEVELS;
@@ -469,6 +447,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     await this.xp.init();
 
     this.economy.init();
+    this.inventoryService.init();
     this.quests.init();
     this.lore.init();
     this.arena.init();
@@ -488,13 +467,12 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     }));
     this.chosenPins = this.pins.load();
 
-    const counts = this.masteryService.all();
     this.inventory = this.buildInventory(this.wallet);
     this.refreshInventoryView();
     this.calendar = this.buildCalendar(this.xp.history);
-    this.mastery = this.buildMastery(counts);
-    this.toolsMastered = Object.values(counts).filter(uses => masteryForUses(uses).stars >= 4).length;
+    this.equippedCount = Object.values(this.inventoryService.snapshot.equipped).filter(Boolean).length;
     this.questsCompleted = this.quests.board.totalCompleted;
+    this.openQuests = this.quests.board.openCount;
     this.arenaPlays = ARENA_PLAYABLE.reduce((sum, g) => sum + this.arena.record(g.id).plays, 0);
     this.loreFound = LORE_SLUGS.reduce((sum, slug) => sum + (this.lore.progressFor(slug)?.discovered ?? 0), 0);
 
@@ -511,7 +489,13 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
       this.refreshInventoryView();
     }));
     this.subs.push(this.idle.snapshot$.subscribe(i => (this.forgeMs = i.lifetimeMs)));
-    this.subs.push(this.quests.board$.subscribe(b => (this.questsCompleted = b.totalCompleted)));
+    this.subs.push(this.quests.board$.subscribe(b => {
+      this.questsCompleted = b.totalCompleted;
+      this.openQuests = b.openCount;
+    }));
+    this.subs.push(this.inventoryService.snapshot$.subscribe(inv => {
+      this.equippedCount = Object.values(inv.equipped).filter(Boolean).length;
+    }));
 
     this.ticker = setInterval(() => (this.now = Date.now()), 1000);
 
@@ -668,7 +652,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   get stats(): StatTile[] {
     return [
       { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#A78BFA' },
-      { label: 'Tools Mastered', value: String(this.toolsMastered),            note: 'Expert or above',   icon: '❖', color: '#a48bff' },
+      { label: 'Loadout',       value: `${this.equippedCount}/${this.slotCount}`, note: 'slots filled',  icon: '⚔', color: '#a48bff' },
       { label: 'Achievements',  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: 'fragments found', icon: '🏆', color: '#C9A84C' },
       { label: 'Quests',        value: formatCurrency(this.questsCompleted),    note: 'completed',         icon: '⚔️', color: '#ff6dd7' },
       { label: 'Flame Strikes', value: formatCurrency(this.wallet.totalClicks), note: 'on the anvil',      icon: '🔨', color: '#E8752A' },
@@ -698,7 +682,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
       return {
         icon: '◌',
         title: 'Unclaimed',
-        line: 'Neither realm has heard of you yet. Use a tool and one of them will.',
+        line: 'Neither realm has heard of you yet. Walk the world and one of them will.',
       };
     }
     if (this.isBalanced) {
@@ -726,28 +710,6 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
    */
   get aetherEyeAngle(): number { return (this.aetherPercent / 100) * 180; }
   get noxEyeAngle(): number { return this.aetherPercent * 3.6 + (this.noxPercent / 100) * 180; }
-
-  /**
-   * Which realm this visitor's tool use actually leans on, by uses rather than
-   * by XP. Not the same question as the energy split: XP pays once per tool,
-   * so a hundred visits to one Umbral tool moves this and does not move that.
-   */
-  get dominantRealm(): { realm: RealmDefinition; uses: number } | null {
-    if (!this.hydrated) return null;
-    const counts = this.masteryService.all();
-    const byRealm = new Map<string, { realm: RealmDefinition; uses: number }>();
-
-    for (const tool of TOOLS_REGISTRY) {
-      const uses = counts[tool.id] ?? 0;
-      if (uses <= 0) continue;
-      const realm = realmForCategory(tool.category);
-      const row = byRealm.get(realm.id) ?? { realm, uses: 0 };
-      row.uses += uses;
-      byRealm.set(realm.id, row);
-    }
-
-    return [...byRealm.values()].sort((a, b) => b.uses - a.uses)[0] ?? null;
-  }
 
   // ══ Inventory ═════════════════════════════════════════════════════════════
 
@@ -1212,37 +1174,9 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     return next ? next.days - this.snap.streak : 0;
   }
 
-  // ══ Tool mastery ══════════════════════════════════════════════════════════
-
-  /** The five most-used tools. Untouched tools never appear. */
-  private buildMastery(counts: Record<string, number>): MasteryRow[] {
-    return TOOLS_REGISTRY
-      .map(tool => ({ tool, uses: counts[tool.id] ?? 0 }))
-      .filter(row => row.uses > 0)
-      .sort((a, b) => b.uses - a.uses || a.tool.title.localeCompare(b.tool.title))
-      .slice(0, MASTERY_ROWS)
-      .map(({ tool, uses }) => {
-        const mastery = masteryForUses(uses);
-        return {
-          id: tool.id,
-          title: tool.title,
-          icon: tool.textIcon,
-          route: tool.route,
-          realm: realmForCategory(tool.category),
-          uses,
-          mastery,
-          progress: masteryProgress(uses),
-          stars: Array.from({ length: 5 }, (_, i) => i < mastery.stars),
-        };
-      });
-  }
-
   // ══ Template helpers ══════════════════════════════════════════════════════
 
   readonly rarityOrder = RARITY_ORDER;
-
-  /** Live tools in the registry — the number the empty mastery board points at. */
-  readonly toolCount = TOOLS_REGISTRY.filter(t => t.status === 'live').length;
 
   formatDate(iso: string | null): string {
     if (!iso) return 'before the Forge kept time';
