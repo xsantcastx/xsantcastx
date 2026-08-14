@@ -31,6 +31,8 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 // Per-route metadata. Anything not matched here uses the default fallback below.
 function metaFor(route) {
   if (route === '/world')        return { changefreq: 'weekly',  priority: '1.0' };
+  if (route.startsWith('/world/realms/')) return { changefreq: 'monthly', priority: '0.8' };
+  if (route === '/world/fivefold-lock') return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/sanctum')      return { changefreq: 'daily',   priority: '0.7' };
   if (route === '/world/trials') return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/world/quests') return { changefreq: 'weekly',  priority: '0.7' };

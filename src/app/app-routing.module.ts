@@ -13,7 +13,7 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
       title: 'Eclipse Realms — A Persistent World',
       data: {
-        description: 'Eclipse Realms is a persistent world of five realms. Discover artifacts, forge runes, walk the trials, and grow your character. No sign-up.',
+        description: 'Eclipse Realms is a persistent world of five places — Celestial, Infernal, Luminous, Umbral, and Verdant. Inspect their factions, landmarks, and unresolved conflicts.',
         keywords: 'eclipse realms, persistent world, five realms, artifacts, rune forge, trials, character, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -36,6 +36,26 @@ export const APP_ROUTES: Routes = [
             }
           ]
         }
+      }
+    },
+  {
+      path: 'world/realms/:realmId',
+      loadComponent: () => import('./world/realm-landing.component').then(m => m.RealmLandingComponent),
+      title: 'Realm — Eclipse Realms',
+      data: {
+        description: 'Inspect one of the five Eclipse Realms: faction, landmark, hazard, resource, threat, and unresolved conflict. Opening chapters are not yet playable.',
+        keywords: 'eclipse realms, luminous, celestial, infernal, umbral, verdant',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+      }
+    },
+  {
+      path: 'world/fivefold-lock',
+      loadComponent: () => import('./world/fivefold-lock.component').then(m => m.FivefoldLockComponent),
+      title: 'The Fivefold Lock — Eclipse Realms',
+      data: {
+        description: 'The Fivefold Lock is the cross-realm premise of Eclipse Realms. It stays locked until the five opening chapters resolve.',
+        keywords: 'eclipse realms, fivefold lock, godforge',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       }
     },
   /*

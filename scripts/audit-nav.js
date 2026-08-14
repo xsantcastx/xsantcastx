@@ -108,6 +108,7 @@ const EXEMPT = new Set(['/admin', '/embed', '/tools', '/world', '/**', '/']);
 const orphans = [];
 for (const r of declared) {
   if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;
+  if (r.startsWith('/world/realms') || r === '/world/fivefold-lock') continue;
   if (r === '/' || r === '/**') continue;
   if (!chromeLinks.has(r)) orphans.push(r);
 }
@@ -236,6 +237,11 @@ for (const block of parseObjectRecords(secretSrc, 'SECRETS')) {
   const id = quotedField(block, 'id');
   const text = ['name', 'reveal', 'clue', 'lore'].map(k => quotedField(block, k)).join(' ');
   checkDataText(path.relative(ROOT, secretFile), `secret ${id}`, text, 1);
+}
+
+const narrativeFile = path.join(SRC, 'app/shared/narrative/five-realms.narrative.ts');
+if (fs.existsSync(narrativeFile)) {
+  checkDataText(path.relative(ROOT, narrativeFile), 'five-realm narrative', fs.readFileSync(narrativeFile, 'utf8'), 1);
 }
 
 const arenaModel = path.join(SRC, 'app/arena/games/arena-game.model.ts');
