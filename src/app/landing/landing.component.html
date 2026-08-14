@@ -195,14 +195,20 @@
                      loading="lazy" decoding="async" draggable="false">
                 <span class="gf-station__names">
                   <span class="gf-station__name">{{ station.realm.name }}</span>
-                  <span class="gf-station__domain">{{ station.realm.domain }}</span>
+                  <span class="gf-station__domain">{{ station.realm.faction }}</span>
                 </span>
                 <span class="gf-station__chevron" aria-hidden="true">&#x203A;</span>
               </button>
             </h3>
 
-            <p class="gf-station__quote">{{ station.realm.quote }}</p>
-            <div class="gf-station__body" [id]="'forge-' + station.realm.id"></div>
+            <p class="gf-station__quote">{{ station.realm.function }}</p>
+            <div class="gf-station__body" [id]="'forge-' + station.realm.id">
+              <p class="gf-station__fact"><strong>{{ station.realm.landmark }}</strong> — {{ station.realm.hazard }}, {{ station.realm.resource }}, {{ station.realm.threat }}.</p>
+              <p class="gf-station__fact">{{ station.realm.conflict }}</p>
+              <a class="gf-station__more" [routerLink]="'/world/realms/' + station.realm.id">
+                Inspect {{ station.realm.name }}
+              </a>
+            </div>
           </section>
         }
       </div>
@@ -355,7 +361,12 @@
       </div>
 
       <div class="gf-journey__doors">
-        <a routerLink="/character" class="gf-door gf-door--primary">
+        <a [routerLink]="journey.route" class="gf-door gf-door--primary">
+          <span class="gf-door__label">{{ translate('godforge.journey.continue') }}</span>
+          <span class="gf-door__name">{{ journey.label }}</span>
+          <span class="gf-door__hint">{{ journey.note }}</span>
+        </a>
+        <a routerLink="/character" class="gf-door">
           <span class="gf-door__label">{{ translate('godforge.journey.startWith') }}</span>
           <span class="gf-door__name">{{ translate('gfnav.character') }}</span>
           <span class="gf-door__hint">{{ translate('gfnav.hint.keeper') }}</span>
