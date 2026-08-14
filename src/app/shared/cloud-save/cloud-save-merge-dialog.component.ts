@@ -16,7 +16,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  HostListener,
   OnDestroy,
   OnInit,
   inject,
@@ -25,6 +24,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { CloudSaveService } from './cloud-save.service';
 import { MergeConflict, MergeStrategy, SaveSummary } from './cloud-save.model';
+import { OverlayStackService } from '../overlay/overlay-stack.service';
 
 @Component({
   selector: 'app-cloud-save-merge-dialog',
@@ -222,7 +222,9 @@ import { MergeConflict, MergeStrategy, SaveSummary } from './cloud-save.model';
 export class CloudSaveMergeDialogComponent implements OnInit, OnDestroy {
   private readonly cloud = inject(CloudSaveService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly overlays = inject(OverlayStackService);
   private sub?: Subscription;
+  private overlayUnreg?: () => void;
 
   conflict: MergeConflict | null = null;
 
@@ -233,22 +235,28 @@ export class CloudSaveMergeDialogComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.sub = this.cloud.conflict$.subscribe(c => {
       this.conflict = c;
+      if (c) {
+        if (!this.overlayUnreg) {
+          this.overlayUnreg = this.overlays.push('cloud-save-merge', () => {
+            if (this.conflict) this.choose('merge');
+          });
+        }
+      } else {
+        this.overlayUnreg?.();
+        this.overlayUnreg = undefined;
+      }
       this.cdr.markForCheck();
     });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.overlayUnreg?.();
+    this.overlayUnreg = undefined;
   }
 
   choose(strategy: MergeStrategy): void {
     this.cloud.resolveConflict(strategy);
-  }
-
-  /** Escape answers with the option that cannot lose anybody anything. */
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.conflict) this.choose('merge');
   }
 
   /** True when `a` is the larger of the pair, for the highlight. */
