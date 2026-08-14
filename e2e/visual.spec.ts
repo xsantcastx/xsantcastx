@@ -85,7 +85,7 @@ for (const vp of VIEWPORTS) {
       // on a selector that matches nothing. Harmless while these tests were
       // failing for other reasons, but it would have broken the VISUAL=1 path
       // the moment anyone regenerated baselines and turned them back on.
-      await page.waitForSelector('.gf-hero__title', { timeout: 10000 });
+      await page.waitForSelector('.gfh__title, .wd-journey', { timeout: 10000 });
       await waitForFonts(page);
       await freezeAnimations(page);
       await expect(page).toHaveScreenshot(`home-hero-${vp.name}.png`, {
@@ -118,15 +118,14 @@ for (const vp of VIEWPORTS) {
       });
     });
 
-    // Was 'home spotlight and footer', shooting `.hp-spotlight` — the featured-
-    // tool spotlight was removed from the homepage in v2.40.0. Retargeted at the
-    // closing call, which is the last section above the footer now.
+    // Was 'home spotlight and footer', then the marketing `.gf-journey` close.
+    // PR2 replaced that close with the player dashboard.
     test('home journey and footer', async ({ page }) => {
       await page.goto('/world', { waitUntil: 'load' });
-      await page.waitForSelector('.gf-journey', { timeout: 10000 });
+      await page.waitForSelector('.wd, .wd-journey', { timeout: 10000 });
       await waitForFonts(page);
       await page.evaluate(() => {
-        document.querySelector('.gf-journey')?.scrollIntoView({ block: 'start' });
+        document.querySelector('.wd')?.scrollIntoView({ block: 'start' });
       });
       await page.waitForTimeout(800);
       await freezeAnimations(page);
