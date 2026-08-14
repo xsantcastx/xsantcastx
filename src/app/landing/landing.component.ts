@@ -1,36 +1,31 @@
 /**
  * landing.component.ts — /world.
  *
- * Four sections: the hero, the five realms, the pulse, the closing call. What
- * this component used to also own — a shop-counter row, a creed row, a featured
- * tool spotlight, a "watch AI build" panel, the changelog feed and a newsletter
- * form — went with those sections. Every one of them was a second source of
- * truth for something another page already owned, and the state they needed
- * (a Firestore changelog subscription, a lazy Firestore handle for subscriber
- * writes, a random spotlight index, a category filter and a search box that no
- * markup on this page had rendered in months) went with them.
- *
- * What is left reads from registries and two progression services and stores
- * nothing of its own.
+ * Returning-player dashboard over the painted hero. Reads existing progression
+ * services and stores nothing of its own. The five-realm accordion stays below
+ * so crawlers still see tool links; it is no longer the hero promise.
  */
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { getLiveTools, getFeaturedTools } from '../tools/tools-registry';
+import { getLiveTools } from '../tools/tools-registry';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { REALMS, RealmDefinition, realmForCategory } from '../shared/realms/realm.model';
-import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
+import { EASTER_EGGS, EasterEggService } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
-import { PRERENDERED_PATHS } from '../prerender-stats';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
 import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
+import { QuestBoard, QuestService } from '../shared/quests/quest.service';
+import { CloudSaveService, SyncStatus } from '../shared/cloud-save/cloud-save.service';
+import { CANONICAL } from '../shared/canonical-routes';
+import { continueJourney, JourneyTarget } from './continue-journey';
 
 export interface Tool {
   id: string;
@@ -63,6 +58,8 @@ export interface ForgeStation {
  */
 export const FORGE_STATION_SIZE = 6;
 
+export type WorldAlignment = 'solari' | 'nocturne' | 'convergent';
+
 @Component({
   selector: 'app-landing',
   templateUrl: './landing.component.html',
@@ -78,10 +75,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   private readonly economyService = inject(EconomyService);
   private readonly runeForge = inject(RuneForgeService);
   private readonly scrolls = inject(LoreScrollService);
-  private xpSub?: Subscription;
-  private ecoSub?: Subscription;
-  private runeSub?: Subscription;
-  private scrollSub?: Subscription;
+  private readonly quests = inject(QuestService);
+  private readonly cloud = inject(CloudSaveService);
+  private readonly eggs = inject(EasterEggService);
+  private readonly subs = new Subscription();
 
   translate(key: string): string {
     return this.translationService.translate(key);
@@ -98,21 +95,16 @@ export class LandingComponent implements OnInit, OnDestroy {
   xp: XpSnapshot = this.xpService.snapshot;
   /** Exposed for the hero + journey rank sigils. */
   readonly rankSigil = rankSigil;
+  readonly routes = CANONICAL;
+
+  /**
+   * False on the browser until xp / economy / quests / runes have hydrated.
+   * True on the server so prerender paints honest zeros instead of a spinner.
+   */
+  ready = !this.isBrowser;
 
   /** Derive landing-page Tool view models from the single registry source of truth */
   readonly tools: Tool[] = getLiveTools().map(t => ({
-    id: t.id,
-    name: t.title,
-    desc: t.description,
-    route: t.route,
-    category: t.category,
-    icon: t.textIcon,
-    features: t.features,
-    tags: t.tags,
-  }));
-
-  /** Featured tools, for the recommendation in the closing call. */
-  private readonly featuredTools: Tool[] = getFeaturedTools().map(t => ({
     id: t.id,
     name: t.title,
     desc: t.description,
@@ -152,16 +144,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Realm the pointer is over, which brightens that station. */
   hoveredRealmId: string | null = null;
 
-  // ─── The Forge's Pulse ────────────────────────────────────────────────
-  // Every stat is derived from the thing it counts, so none of them can drift
-  // into a marketing number that no longer matches the site.
-
   /** Tools live in the registry. */
   readonly artifactCount = this.tools.length;
-  /** Routes Angular prerenders to static HTML — regenerated at every build. */
-  readonly prerenderedPaths = PRERENDERED_PATHS;
-  /** Registered easter eggs. */
-  readonly fragmentCount = EASTER_EGGS.length;
 
   // ── The Rune Forge band ────────────────────────────────────────────────────
   // Totals come from the registries, so the denominators are correct on the
@@ -171,11 +155,11 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly runesTotal = RUNES.length;
   readonly scrollsTotal = LORE_SCROLLS.length;
   readonly runewordsTotal = RUNEWORDS.length;
+  readonly eggsTotal = EASTER_EGGS.length;
   runesFound = 0;
   scrollsFound = 0;
   runewordsCrafted = 0;
-  /** Realms in the codex. */
-  readonly realmCount = REALMS.length;
+  eggsFound = 0;
 
   /**
    * Wallet, for the hero's standing panel. Seeded from the service's current
@@ -183,40 +167,90 @@ export class LandingComponent implements OnInit, OnDestroy {
    * visitor's real numbers arrive after hydration.
    */
   eco: EconomySnapshot = this.economyService.snapshot;
+  board: QuestBoard = this.quests.board;
+  cloudStatus: SyncStatus = this.cloud.status;
 
   get gold(): string { return formatCurrency(this.eco.gold); }
   get essence(): string { return formatCurrency(this.eco.essence); }
   /** The XP the next rank begins at, for the "1,364 / 2,500" readout. */
   get xpTarget(): number { return this.xp.next ? this.xp.next.minXp : this.xp.xp; }
 
+  get journey(): JourneyTarget {
+    return continueJourney({
+      unclaimed: this.board.unclaimed,
+      openCount: this.board.openCount,
+      toolsUsed: this.xp.toolsUsed,
+      runesFound: this.runesFound,
+      gold: this.eco.gold,
+    });
+  }
+
+  /**
+   * Same bands as `atmosphereForAetherShare` / the keeper identity card.
+   * A new profile sits at 0.5 and is Convergent.
+   */
+  get alignment(): WorldAlignment {
+    const pct = Math.round(this.xp.aetherShare * 100);
+    if (pct > 55) return 'solari';
+    if (pct < 45) return 'nocturne';
+    return 'convergent';
+  }
+
+  get aetherPercent(): number {
+    return Math.round(this.xp.aetherShare * 100);
+  }
+
+  get standingOrders(): string[] {
+    return this.board.daily
+      .filter(q => q.status !== 'completed')
+      .slice(0, 3)
+      .map(q => q.title);
+  }
+
+  get hasStandingOrders(): boolean {
+    return this.board.unclaimed > 0
+      || this.board.openCount > 0
+      || this.board.daily.length > 0
+      || this.board.weekly.length > 0;
+  }
+
+  get lastSyncedLabel(): string {
+    const at = this.cloudStatus.lastSyncedAt;
+    if (at === null) return '';
+    try {
+      return new Date(at).toLocaleString();
+    } catch {
+      return '';
+    }
+  }
+
   ngOnInit(): void {
     this.addHeroPreloads();
     this.markArtRoute(true);
 
-    // No-ops on the server; on the client this reads stored progress and
-    // settles the daily streak, then pushes the real rank into the hero.
-    // Fire-and-forget: `hasForged` and `recommendedTool` are template getters, so
-    // the snapshot subscription below re-renders them once storage resolves.
-    void this.xpService.init();
-    this.xpSub = this.xpService.snapshot$.subscribe(snap => { this.xp = snap; });
-
-    // Same shape for the wallet: idempotent init, then the hero's standing
-    // panel tracks Gold and Essence as the ambient forge ticks them.
-    this.economyService.init();
-    this.ecoSub = this.economyService.snapshot$.subscribe(eco => { this.eco = eco; });
-
-    // The Rune Forge band's three counts. Both services are idempotent and
-    // browser-guarded, and both replay, so this is correct whether the visitor
-    // has never opened the forge or has been striking it for a month.
-    this.runeForge.init();
-    this.runeSub = this.runeForge.snapshot$.subscribe(snap => {
+    this.subs.add(this.xpService.snapshot$.subscribe(snap => { this.xp = snap; }));
+    this.subs.add(this.economyService.snapshot$.subscribe(eco => { this.eco = eco; }));
+    this.subs.add(this.runeForge.snapshot$.subscribe(snap => {
       this.runesFound = snap.unique;
       this.runewordsCrafted = snap.crafted.length;
-    });
-    this.scrolls.init();
-    this.scrollSub = this.scrolls.changed$.subscribe(() => {
+    }));
+    this.subs.add(this.scrolls.changed$.subscribe(() => {
       this.scrollsFound = this.scrolls.foundCount;
-    });
+    }));
+    this.subs.add(this.quests.board$.subscribe(board => { this.board = board; }));
+    this.subs.add(this.cloud.status$.subscribe(status => { this.cloudStatus = status; }));
+
+    if (!this.isBrowser) return;
+
+    this.economyService.init();
+    this.quests.init();
+    this.runeForge.init();
+    this.scrolls.init();
+    this.scrollsFound = this.scrolls.foundCount;
+    // Resume only — do not start a sign-in or change merge/sync.
+    this.cloud.init();
+    void this.eggs.init().then(() => { this.eggsFound = this.eggs.foundCount; });
+    void this.xpService.init().then(() => { this.ready = true; });
   }
 
 
@@ -284,10 +318,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.removeHeroPreloads();
     this.markArtRoute(false);
-    this.xpSub?.unsubscribe();
-    this.ecoSub?.unsubscribe();
-    this.runeSub?.unsubscribe();
-    this.scrollSub?.unsubscribe();
+    this.subs.unsubscribe();
   }
 
   // Perf: trackBy fns prevent Angular from tearing down/rebuilding DOM nodes
@@ -336,23 +367,10 @@ export class LandingComponent implements OnInit, OnDestroy {
     return this.xpService.hasUsedTool(tool.id);
   }
 
-  /** Scrolls to the realm stations on this page. */
+  /** Scrolls to the realm stations on this page. Secondary browse, not the CTA. */
   enterTheForge(): void {
     if (!this.isBrowser) return;
     const el = document.getElementById('world-realms');
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /**
-   * The tool suggested in the closing call.
-   *
-   * The first featured tool this visitor has not opened yet — a recommendation
-   * drawn from what they have actually done, not a popularity claim we have no
-   * analytics to back. Falls back to the flagship once they have used them all.
-   */
-  get recommendedTool(): Tool {
-    return this.featuredTools.find(t => !this.xpService.hasUsedTool(t.id))
-      ?? this.featuredTools[0]
-      ?? this.tools[0];
   }
 }

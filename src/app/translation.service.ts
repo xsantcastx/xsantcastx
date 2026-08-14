@@ -1245,6 +1245,64 @@ export class TranslationService {
     'godforge.journey.arena':         { en: 'The Arena',               es: 'La arena' },
     'godforge.journey.arenaHint':     { en: 'fragments buried across the realms', es: 'fragmentos enterrados por los reinos' },
 
+    // ── /world player dashboard ──────────────────────────────────────────
+    'world.location.label':           { en: 'You are here', es: 'Estas aqui' },
+    'world.location.solari':          { en: 'Solari', es: 'Solari' },
+    'world.location.nocturne':        { en: 'Nocturne', es: 'Nocturne' },
+    'world.location.convergent':      { en: 'Convergent', es: 'Convergent' },
+    'world.location.solariLine':      { en: 'The halls of Light. The Solari have claimed you.', es: 'Las salas de la Luz. Los Solari te han reclamado.' },
+    'world.location.nocturneLine':    { en: 'The halls of Shadow. The Nocturne have claimed you.', es: 'Las salas de la Sombra. Los Nocturne te han reclamado.' },
+    'world.location.convergentLine':  { en: 'The threshold between Light and Shadow — claimed by neither realm.', es: 'El umbral entre Luz y Sombra — ningun reino te ha reclamado.' },
+    'world.location.aether':          { en: 'Aether share', es: 'Cuota de eter' },
+
+    'world.journey.label':            { en: 'Continue Journey', es: 'Continua el viaje' },
+    'world.journey.claim':            { en: 'Claim your rewards', es: 'Reclama tus recompensas' },
+    'world.journey.discover':         { en: 'Discover your first tool', es: 'Descubre tu primera herramienta' },
+    'world.journey.quests':           { en: 'Open the quest board', es: 'Abre el tablero de misiones' },
+    'world.journey.forge':            { en: 'Strike the Rune Forge', es: 'Golpea la Forja de Runas' },
+    'world.journey.character':        { en: 'Review your character', es: 'Revisa tu personaje' },
+    'world.journey.claimHint':        { en: 'Finished work is waiting to be banked.', es: 'Hay trabajo terminado esperando cobro.' },
+    'world.journey.discoverHint':     { en: 'The board can wait. First, pick a tool and leave a mark.', es: 'El tablero puede esperar. Primero elige una herramienta y deja una marca.' },
+    'world.journey.questsHint':       { en: 'Standing orders are still open on the board.', es: 'Aun hay ordenes abiertas en el tablero.' },
+    'world.journey.forgeHint':        { en: 'You have not found a rune yet. The anvil is the next door.', es: 'Aun no has encontrado una runa. El yunque es la siguiente puerta.' },
+    'world.journey.characterHint':    { en: 'Nothing is waiting. Check your standing and walk on.', es: 'Nada espera. Revisa tu estado y sigue.' },
+
+    'world.browseRealms':             { en: 'Browse the realms', es: 'Explora los reinos' },
+    'world.loading':                  { en: 'Reading your save…', es: 'Leyendo tu partida…' },
+
+    'world.progress.label':           { en: 'Progression', es: 'Progresion' },
+    'world.progress.streak':          { en: 'Streak', es: 'Racha' },
+
+    'world.quests.label':             { en: 'Quests', es: 'Misiones' },
+    'world.quests.unclaimed':         { en: 'unclaimed', es: 'sin reclamar' },
+    'world.quests.open':              { en: 'open', es: 'abiertas' },
+    'world.quests.empty':             { en: 'No standing orders yet', es: 'Aun no hay ordenes en pie' },
+    'world.quests.cta':               { en: 'Open the board', es: 'Abrir el tablero' },
+
+    'world.forge.label':              { en: 'Rune Forge', es: 'Forja de Runas' },
+    'world.forge.runes':              { en: 'runes found', es: 'runas halladas' },
+    'world.forge.crafted':            { en: 'runewords crafted', es: 'palabras forjadas' },
+    'world.forge.cta':                { en: 'Open the forge', es: 'Abrir la forja' },
+
+    'world.collection.label':         { en: 'Collection', es: 'Coleccion' },
+    'world.collection.eggs':          { en: 'codex fragments', es: 'fragmentos del codice' },
+    'world.collection.scrolls':       { en: 'lore scrolls', es: 'pergaminos' },
+    'world.collection.cta':           { en: 'Open the Codex', es: 'Abrir el Codice' },
+
+    'world.cloud.label':              { en: 'Cloud save', es: 'Guardado en la nube' },
+    'world.cloud.off':                { en: 'Local only', es: 'Solo local' },
+    'world.cloud.syncing':            { en: 'Syncing', es: 'Sincronizando' },
+    'world.cloud.synced':             { en: 'Synced', es: 'Sincronizado' },
+    'world.cloud.error':              { en: 'Unavailable', es: 'No disponible' },
+    'world.cloud.offDetail':          { en: 'This save lives in this browser. That is not an error.', es: 'Esta partida vive en este navegador. Eso no es un error.' },
+    'world.cloud.syncingDetail':      { en: 'Reading the cloud copy.', es: 'Leyendo la copia en la nube.' },
+    'world.cloud.syncedDetail':       { en: 'Last synced', es: 'Ultima sincronizacion' },
+    'world.cloud.errorDetail':        { en: 'Cloud save is unavailable.', es: 'El guardado en la nube no esta disponible.' },
+
+    'world.activity.label':           { en: 'Guild & live events', es: 'Gremio y eventos en vivo' },
+    'world.activity.state':           { en: 'Unavailable', es: 'No disponible' },
+    'world.activity.detail':          { en: 'No guilds or live events are running yet. This space stays empty until they exist.', es: 'Aun no hay gremios ni eventos en vivo. Este espacio se queda vacio hasta que existan.' },
+
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
 

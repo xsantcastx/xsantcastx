@@ -2474,3 +2474,118 @@
   .gf-anvil__hammer { transform: rotate(-56deg); }
   .gf-anvil__spark { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   WORLD DASHBOARD — /world player layers over the painted hero
+   ═══════════════════════════════════════════════════════════════════ */
+
+.wd {
+  position: relative;
+  padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 3rem);
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(139, 92, 246, 0.06), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 80% 70%, rgba(232, 117, 42, 0.05), transparent 65%),
+    rgba(5, 8, 18, 0.55);
+}
+
+.wd::before,
+.wd::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5) 50%, transparent);
+}
+.wd::before { top: 0; }
+.wd::after {
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.4) 50%, transparent);
+}
+
+.wd__inner {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wd-loading {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(240, 240, 240, 0.55);
+}
+
+.wd-location__line,
+.wd-journey__why,
+.wd-card__body,
+.wd-progress__next {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(240, 240, 240, 0.78);
+}
+
+.wd-location__share,
+.wd-card__counts {
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(240, 240, 240, 0.58);
+}
+
+.wd-card__counts b {
+  color: #E0A857;
+  font-weight: 700;
+}
+
+.wd-location .gfpanel__hd-state,
+.wd-card--cloud .gfpanel__hd-state {
+  color: #E0A857;
+}
+.wd-card--cloud .gfpanel__hd-state[data-state="error"] { color: #f0a0a8; }
+.wd-card--cloud .gfpanel__hd-state[data-state="off"] { color: rgba(240, 240, 240, 0.6); }
+.wd-card--cloud .gfpanel__hd-state[data-state="syncing"] { color: var(--primary-color); }
+
+.wd-card__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: rgba(240, 240, 240, 0.82);
+  font-size: 0.84rem;
+}
+
+.wd-card__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(240, 240, 240, 0.55);
+}
+
+.wd-summaries,
+.wd-activity {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.wd-activity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.wd-card__soon { color: rgba(240, 240, 240, 0.5) !important; }
+
+.wd--pending { opacity: 0.72; }
+
+@media (max-width: 900px) {
+  .wd-summaries,
+  .wd-activity { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wd--pending { opacity: 1; }
+}

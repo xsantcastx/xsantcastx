@@ -1,22 +1,12 @@
 <!-- ═══════════════════════════════════════════════════════════════════════
-     THE HOMEPAGE — four sections and the footer, in this order:
+     /world — returning-player dashboard over the painted hero.
 
-       1. the hero            the artwork, the mark, your standing
-       2. the five realms     the artifacts, grouped the way the codex groups them
-       3. the forge's pulse   four numbers, each derived from the thing it counts
-       4. begin your journey  where you stand and the three doors out
+       1. the hero            atmosphere, location, Continue Journey
+       2. the dashboard       progression, summaries, world activity
+       3. the five realms     tool links, kept for crawlers below the fold
 
-     What used to sit between them, and why it is gone: the shop counters and
-     the creed row repeated what the Market and the hero already said; the
-     featured-tool spotlight and the "watch AI build" panel and the changelog
-     feed were three separate portfolio pitches stacked below the fold; the
-     newsletter form was a fifth call to action on a page that already had four.
-     A visitor scrolled through six screens of persuasion to reach the tools.
-
-     The chronicle lives on /blueprint, which is the page about what is being
-     built. The newsletter lives on the tool pages, where somebody has just got
-     value and might want more of it. Nothing was deleted from the site — it was
-     taken off the front door.
+     Guilds, live events and a world feed are not invented here. Cloud save
+     is read-only status. Continue Journey is a routerLink, not a scroll.
      ═══════════════════════════════════════════════════════════════════════ -->
 <div class="homepage">
 
@@ -55,37 +45,16 @@
 
     <div class="gfh__inner">
 
-      <!-- ── Left: the forge's own readout ────────────────────────────── -->
-      <aside class="gfpanel gfh__status">
+      <!-- ── Left: where you stand ───────────────────────────────────── -->
+      <aside class="gfpanel gfh__status wd-location">
         <p class="gfpanel__hd">
-          <span class="gfpanel__hd-name">{{ translate('godforge.status.name') }}</span>
-          <span class="gfpanel__hd-state">
-            <span class="gfpanel__dot"></span>{{ translate('godforge.status.online') }}
-          </span>
+          <span class="gfpanel__hd-name">{{ translate('world.location.label') }}</span>
+          <span class="gfpanel__hd-state">{{ translate('world.location.' + alignment) }}</span>
         </p>
-
-        <dl class="gfstat">
-          <div class="gfstat__row">
-            <dt>{{ translate('godforge.status.toolsForged') }}</dt>
-            <dd [attr.data-counter]="artifactCount">{{ artifactCount }}</dd>
-          </div>
-          <div class="gfstat__row">
-            <dt>{{ translate('godforge.status.codexEntries') }}</dt>
-            <dd [attr.data-counter]="fragmentCount">{{ fragmentCount }}</dd>
-          </div>
-          <div class="gfstat__row gfstat__row--level">
-            <dt>{{ translate('godforge.status.forgeLevel') }}</dt>
-            <dd>{{ xp.level.level }}</dd>
-            <div class="gfstat__bar">
-              <span class="gfstat__fill" [style.width.%]="xp.progress * 100"></span>
-            </div>
-          </div>
-        </dl>
-
-        <a routerLink="/character" class="gfpanel__more">
-          {{ translate('godforge.status.viewFull') }}
-          <span class="gfpanel__more-chev" aria-hidden="true"></span>
-        </a>
+        <p class="wd-location__line">{{ translate('world.location.' + alignment + 'Line') }}</p>
+        <p class="wd-location__share">
+          {{ translate('world.location.aether') }} {{ aetherPercent }}%
+        </p>
       </aside>
 
       <!-- ── Centre: the mark ─────────────────────────────────────────── -->
@@ -95,12 +64,44 @@
         <p class="gfh__sub">{{ translate('godforge.hero.sub') }}</p>
       </div>
 
-      <!-- ── Right: who you are ───────────────────────────────────────── -->
-      <aside class="gfpanel gfh__welcome">
+      <!-- ── Right: the one next action ───────────────────────────────── -->
+      <aside class="gfpanel gfh__welcome wd-journey">
         <p class="gfpanel__hd">
-          <span class="gfpanel__hd-name">{{ translate('godforge.welcome.hd') }}</span>
+          <span class="gfpanel__hd-name">{{ translate('world.journey.label') }}</span>
         </p>
+        <p class="wd-journey__why">{{ translate('world.journey.' + journey.reason + 'Hint') }}</p>
+        <a [routerLink]="journey.route" class="gfbtn gfbtn--primary wd-journey__cta">
+          {{ translate('world.journey.' + journey.reason) }}
+          <span class="gfbtn__chev" aria-hidden="true"></span>
+        </a>
+        <a [routerLink]="routes.character" class="gfbtn gfbtn--ghost">
+          {{ translate('godforge.hero.ctaLive') }}
+        </a>
+      </aside>
+    </div>
 
+    <!-- ── Browse realms (secondary) ──────────────────────────────── -->
+    <button type="button" class="gfh__descend" (click)="enterTheForge()">
+      <span class="gfh__descend-label">{{ translate('world.browseRealms') }}</span>
+      <span class="gfh__descend-chev" aria-hidden="true"></span>
+    </button>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+  SECTION 2 — DASHBOARD
+  Honest zeros on prerender. Quiet loading until the browser save hydrates.
+  ═══════════════════════════════════════════ -->
+  <section class="wd" id="world-dashboard" [attr.aria-busy]="!ready">
+    <div class="wd__inner">
+      @if (!ready) {
+        <p class="wd-loading" role="status">{{ translate('world.loading') }}</p>
+      }
+
+      <section class="gfpanel wd-progress" [class.wd--pending]="!ready">
+        <p class="gfpanel__hd">
+          <span class="gfpanel__hd-name">{{ translate('world.progress.label') }}</span>
+        </p>
         <div class="gfh__rank">
           <img class="gfh__rank-sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
                alt="" aria-hidden="true" width="40" height="40"
@@ -110,7 +111,6 @@
             <span class="gfh__rank-lvl">{{ translate('godforge.welcome.level') }} {{ xp.level.level }}</span>
           </span>
         </div>
-
         <div class="gfxp gfxp--hero">
           <p class="gfxp__label">
             <span>XP</span>
@@ -118,7 +118,13 @@
           </p>
           <div class="gfxp__track"><span class="gfxp__fill" [style.width.%]="xp.progress * 100"></span></div>
         </div>
-
+        <p class="wd-progress__next">
+          @if (xp.next) {
+            {{ xp.toNext }} {{ translate('godforge.hero.toNext') }} {{ xp.next.title }}
+          } @else {
+            {{ translate('godforge.hero.maxRank') }}
+          }
+        </p>
         <div class="gfh__wallet">
           <span class="gfpill gfpill--gold">
             <img class="gfpill__icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
@@ -130,29 +136,111 @@
                  alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
             <span class="gfpill__val">{{ essence }}</span>
           </span>
+          <span class="gfpill gfpill--rank">
+            <span class="gfpill__val">{{ translate('world.progress.streak') }} {{ xp.streak }}</span>
+          </span>
         </div>
+      </section>
 
-        <button type="button" class="gfbtn gfbtn--primary" (click)="enterTheForge()">
-          {{ translate('godforge.hero.cta') }}
-          <span class="gfbtn__chev" aria-hidden="true"></span>
-        </button>
+      <div class="wd-summaries">
+        <section class="gfpanel wd-card" [class.wd--pending]="!ready">
+          <p class="gfpanel__hd">
+            <span class="gfpanel__hd-name">{{ translate('world.quests.label') }}</span>
+          </p>
+          <p class="wd-card__counts">
+            {{ board.unclaimed }} {{ translate('world.quests.unclaimed') }}
+            · {{ board.openCount }} {{ translate('world.quests.open') }}
+          </p>
+          @if (standingOrders.length) {
+            <ul class="wd-card__list">
+              @for (title of standingOrders; track title) {
+                <li>{{ title }}</li>
+              }
+            </ul>
+          } @else if (!hasStandingOrders) {
+            <p class="wd-card__empty">{{ translate('world.quests.empty') }}</p>
+          }
+          <a [routerLink]="routes.quests" class="gfpanel__more">
+            {{ translate('world.quests.cta') }}
+            <span class="gfpanel__more-chev" aria-hidden="true"></span>
+          </a>
+        </section>
 
-        <a routerLink="/character" class="gfbtn gfbtn--ghost">
-          {{ translate('godforge.hero.ctaLive') }}
-        </a>
-      </aside>
+        <section class="gfpanel wd-card" [class.wd--pending]="!ready">
+          <p class="gfpanel__hd">
+            <span class="gfpanel__hd-name">{{ translate('world.forge.label') }}</span>
+          </p>
+          <p class="wd-card__counts">
+            <b>{{ runesFound }}</b>/{{ runesTotal }} {{ translate('world.forge.runes') }}
+            · <b>{{ runewordsCrafted }}</b>/{{ runewordsTotal }} {{ translate('world.forge.crafted') }}
+          </p>
+          <a [routerLink]="routes.forge" class="gfpanel__more">
+            {{ translate('world.forge.cta') }}
+            <span class="gfpanel__more-chev" aria-hidden="true"></span>
+          </a>
+        </section>
+
+        <section class="gfpanel wd-card" [class.wd--pending]="!ready">
+          <p class="gfpanel__hd">
+            <span class="gfpanel__hd-name">{{ translate('world.collection.label') }}</span>
+          </p>
+          <p class="wd-card__counts">
+            <b>{{ eggsFound }}</b>/{{ eggsTotal }} {{ translate('world.collection.eggs') }}
+            · <b>{{ scrollsFound }}</b>/{{ scrollsTotal }} {{ translate('world.collection.scrolls') }}
+          </p>
+          <a routerLink="/codex" class="gfpanel__more">
+            {{ translate('world.collection.cta') }}
+            <span class="gfpanel__more-chev" aria-hidden="true"></span>
+          </a>
+        </section>
+      </div>
+
+      <div class="wd-activity">
+        <section class="gfpanel wd-card wd-card--cloud">
+          <p class="gfpanel__hd">
+            <span class="gfpanel__hd-name">{{ translate('world.cloud.label') }}</span>
+            <span class="gfpanel__hd-state" [attr.data-state]="cloudStatus.state">
+              {{ translate('world.cloud.' + cloudStatus.state) }}
+            </span>
+          </p>
+          <p class="wd-card__body">
+            @switch (cloudStatus.state) {
+              @case ('off') {
+                {{ translate('world.cloud.offDetail') }}
+              }
+              @case ('syncing') {
+                {{ translate('world.cloud.syncingDetail') }}
+              }
+              @case ('synced') {
+                {{ translate('world.cloud.syncedDetail') }}
+                @if (lastSyncedLabel) {
+                  <span> {{ lastSyncedLabel }}</span>
+                }
+              }
+              @case ('error') {
+                {{ translate('world.cloud.errorDetail') }}
+                @if (cloudStatus.error) {
+                  <span> {{ cloudStatus.error }}</span>
+                }
+              }
+            }
+          </p>
+        </section>
+
+        <section class="gfpanel wd-card wd-card--unavailable">
+          <p class="gfpanel__hd">
+            <span class="gfpanel__hd-name">{{ translate('world.activity.label') }}</span>
+            <span class="gfpanel__hd-state wd-card__soon">{{ translate('world.activity.state') }}</span>
+          </p>
+          <p class="wd-card__body">{{ translate('world.activity.detail') }}</p>
+        </section>
+      </div>
     </div>
-
-    <!-- ── Descend ──────────────────────────────────────────────────── -->
-    <button type="button" class="gfh__descend" (click)="enterTheForge()">
-      <span class="gfh__descend-label">{{ translate('godforge.hero.descend') }}</span>
-      <span class="gfh__descend-chev" aria-hidden="true"></span>
-    </button>
   </section>
 
 
   <!-- ═══════════════════════════════════════════
-  SECTION 2 — THE FIVE REALMS
+  SECTION 3 — THE FIVE REALMS
   One forge station per realm. Every station's tools stay in the
   markup when collapsed — the toggle hides them, so crawlers still
   follow all 30 links and only the visitor's view is filtered.
@@ -273,160 +361,5 @@
       <app-adsense label="Advertisement"></app-adsense>
     </div>
   </div>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 2b — THE RUNE FORGE
-  A band, not a card in the closing door row, and the header comment above is
-  the reason this needs a defence. Six sections were deleted from this page for
-  being "screens of persuasion" stacked below the fold, and every one of them
-  was a pitch: a spotlight, a changelog, a newsletter, a creed.
-
-  This is not a pitch. It is a door to the one page on the site people come
-  back to open, and until now it was reachable only from the footer and one
-  line of Codex prose. It sits directly under the artifacts because that is
-  where somebody who has just scrolled the tool grid is deciding what else
-  this place is for — and it carries live counts rather than adjectives, so it
-  goes quiet for a visitor who has never struck the anvil and turns into
-  progress the moment they have.
-  ═══════════════════════════════════════════ -->
-  <section class="gf-anvil">
-    <div class="gf-anvil__inner">
-
-      <div class="gf-anvil__copy">
-        <p class="hp-section-eyebrow">
-          <span class="hp-eyebrow-pulse"></span>
-          {{ translate('godforge.anvil.eyebrow') }}
-        </p>
-        <h2 class="hp-section-title gf-anvil__title">{{ translate('godforge.anvil.title') }}</h2>
-        <p class="gf-anvil__lede">{{ translate('godforge.anvil.lede') }}</p>
-
-        <div class="gf-anvil__stats">
-          <span class="gf-anvil__stat">
-            <b>{{ runesFound }}</b><i>/{{ runesTotal }}</i>
-            {{ translate('godforge.anvil.runes') }}
-          </span>
-          <span class="gf-anvil__stat">
-            <b>{{ scrollsFound }}</b><i>/{{ scrollsTotal }}</i>
-            {{ translate('godforge.anvil.scrolls') }}
-          </span>
-          <span class="gf-anvil__stat">
-            <b>{{ runewordsCrafted }}</b><i>/{{ runewordsTotal }}</i>
-            {{ translate('godforge.anvil.words') }}
-          </span>
-        </div>
-
-        <a routerLink="/forge/runes" class="gf-anvil__cta">
-          {{ translate('godforge.anvil.cta') }}
-          <span class="gf-anvil__cta-cost">{{ translate('godforge.anvil.cost') }}</span>
-        </a>
-      </div>
-
-      <!-- The anvil, in five boxes. Same silhouette the Rune Forge page draws,
-           so arriving there is a continuation rather than a new screen. -->
-      <div class="gf-anvil__scene" aria-hidden="true">
-        <span class="gf-anvil__glow"></span>
-        <span class="gf-anvil__hammer"></span>
-        <span class="gf-anvil__body">
-          <i class="gf-anvil__face"></i>
-          <i class="gf-anvil__horn"></i>
-          <i class="gf-anvil__waist"></i>
-          <i class="gf-anvil__base"></i>
-        </span>
-        @for (s of [1,2,3,4,5,6]; track s) {
-          <span class="gf-anvil__spark" [style.--i]="s"></span>
-        }
-      </div>
-
-    </div>
-  </section>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 3 — THE FORGE'S PULSE
-  Every number is derived from the thing it counts.
-  ═══════════════════════════════════════════ -->
-  <div class="hp-stats gf-pulse">
-    <div class="hp-stats__inner">
-      <div class="hp-stat">
-        <span class="hp-stat__icon">⬡</span>
-        <span class="hp-stat__num" [attr.data-counter]="artifactCount">{{ artifactCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.artifacts') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◉</span>
-        <span class="hp-stat__num" [attr.data-counter]="prerenderedPaths">{{ prerenderedPaths }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.paths') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◑</span>
-        <span class="hp-stat__num" [attr.data-counter]="fragmentCount">{{ fragmentCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.fragments') }}</span>
-      </div>
-      <div class="hp-stats__divider"></div>
-      <div class="hp-stat">
-        <span class="hp-stat__icon">◈</span>
-        <span class="hp-stat__num" [attr.data-counter]="realmCount">{{ realmCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.realms') }}</span>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ═══════════════════════════════════════════
-  SECTION 4 — BEGIN YOUR JOURNEY
-  The closing call: where you stand, and the three doors out.
-  ═══════════════════════════════════════════ -->
-  <section class="gf-journey">
-    <div class="gf-journey__inner">
-      <p class="hp-section-eyebrow">
-        <span class="hp-eyebrow-pulse"></span>
-        {{ translate('godforge.journey.eyebrow') }}
-      </p>
-      <h2 class="hp-section-title gf-journey__title">{{ translate('godforge.journey.title') }}</h2>
-      <p class="gf-journey__creed">{{ translate('godforge.journey.creed') }}</p>
-
-      <div class="gf-journey__rank">
-        <p class="gf-journey__rank-line">
-          <img class="gf-journey__rank-sigil gf-icon rank-current" [src]="rankSigil(xp.level.level)"
-               alt="" aria-hidden="true" width="44" height="44"
-               loading="lazy" decoding="async" draggable="false">
-          <span class="gf-journey__rank-num">{{ xp.level.level }}</span>
-          <span class="gf-journey__rank-title">{{ xp.level.title }}</span>
-          <span class="gf-journey__rank-xp">{{ xp.xp }} XP</span>
-        </p>
-        <div class="gf-rank__bar">
-          <span class="gf-rank__fill" [style.width.%]="xp.progress * 100"></span>
-        </div>
-        <p class="gf-journey__rank-next">
-          @if (xp.next) {
-            {{ xp.toNext }} {{ translate('godforge.hero.toNext') }} {{ xp.next.title }}
-          } @else {
-            {{ translate('godforge.hero.maxRank') }}
-          }
-        </p>
-      </div>
-
-      <div class="gf-journey__doors">
-        <a [routerLink]="recommendedTool.route" class="gf-door gf-door--primary">
-          <span class="gf-door__label">{{ translate('godforge.journey.startWith') }}</span>
-          <span class="gf-door__name">{{ recommendedTool.name }}</span>
-          <span class="gf-door__hint">{{ recommendedTool.desc }}</span>
-        </a>
-        <a routerLink="/blueprint" class="gf-door">
-          <span class="gf-door__label">{{ translate('godforge.journey.blueprintLabel') }}</span>
-          <span class="gf-door__name">{{ translate('godforge.journey.blueprint') }}</span>
-          <span class="gf-door__hint">{{ translate('godforge.journey.blueprintHint') }}</span>
-        </a>
-        <a routerLink="/world/trials" class="gf-door">
-          <span class="gf-door__label">{{ translate('godforge.journey.arenaLabel') }}</span>
-          <span class="gf-door__name">{{ translate('godforge.journey.arena') }}</span>
-          <span class="gf-door__hint">{{ fragmentCount }} {{ translate('godforge.journey.arenaHint') }}</span>
-        </a>
-      </div>
-    </div>
-  </section>
 
 </div>
