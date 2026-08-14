@@ -10,6 +10,53 @@ export const CANONICAL = {
 } as const;
 
 /**
+ * Exact-path aliases only. `/arena/color-memory` is not a key, so a game
+ * visit stays a game visit.
+ */
+export const LEGACY_TO_CANONICAL: Readonly<Record<string, string>> = {
+  '/': CANONICAL.world,
+  '/home': CANONICAL.world,
+  '/contact': CANONICAL.world,
+  '/about': CANONICAL.world,
+  '/guestbook': CANONICAL.world,
+  '/forge-keeper': CANONICAL.character,
+  '/rune-forge': CANONICAL.forge,
+  '/forge': CANONICAL.forge,
+  '/quests': CANONICAL.quests,
+  '/arena': CANONICAL.trials,
+  '/games': CANONICAL.trials,
+  '/skills': '/tools',
+  '/services': '/tools',
+  '/projects': '/blueprint',
+  '/forge-view': '/sanctum',
+  '/live': '/sanctum',
+};
+
+/** Strip query/hash and collapse a remounted hall onto its canonical URL. */
+export function canonicalizePlayerPath(url: string): string {
+  const raw = (url || '').split('?')[0].split('#')[0];
+  const path = raw === '' ? '/' : raw;
+  return LEGACY_TO_CANONICAL[path] ?? path;
+}
+
+/**
+ * Rewrite a persisted `pages` set in place-identity terms. Drops a legacy
+ * member when its canonical is already present so a returning player is not
+ * counted twice.
+ */
+export function rewriteCanonicalPageSet(members: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const member of members) {
+    const next = canonicalizePlayerPath(member);
+    if (seen.has(next)) continue;
+    seen.add(next);
+    out.push(next);
+  }
+  return out;
+}
+
+/**
  * Legacy → canonical redirects. Consumed by `APP_ROUTES` so the router and
  * `app-routing.redirects.spec.ts` cannot drift.
  *
@@ -17,7 +64,7 @@ export const CANONICAL = {
  * cover in-app navigation, where no HTTP request is made.
  */
 export const CANONICAL_REDIRECTS: Routes = [
-  { path: '', redirectTo: '/world', pathMatch: 'full' },
+  { path: '', redirectTo: CANONICAL.world, pathMatch: 'full' },
   { path: 'home', redirectTo: 'world', pathMatch: 'full' },
   { path: 'forge-keeper', redirectTo: 'character', pathMatch: 'full' },
   { path: 'rune-forge', redirectTo: 'forge/runes', pathMatch: 'full' },

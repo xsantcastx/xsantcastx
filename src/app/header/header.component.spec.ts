@@ -1,5 +1,6 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { Component, NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
 
@@ -9,8 +10,12 @@ import { AnalyticsService } from '../analytics.service';
 import { EasterEggService } from '../shared/easter-eggs/easter-egg.service';
 import { XpService } from '../shared/gamification/xp.service';
 import { EconomyService } from '../shared/economy/economy.service';
+import { CANONICAL } from '../shared/canonical-routes';
 
-const PLAYER_HALLS = ['/world', '/character', '/market', '/forge/runes', '/codex'];
+@Component({ standalone: true, template: '' })
+class HallStubComponent {}
+
+const PLAYER_HALLS = [CANONICAL.world, CANONICAL.character, '/market', CANONICAL.forge, '/codex'];
 const BANNED_PRIMARY = ['/tools', '/blueprint', '/mcp', '/mission-control', '/arena', '/sponsors'];
 
 describe('HeaderComponent', () => {
@@ -20,7 +25,14 @@ describe('HeaderComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       declarations: [HeaderComponent],
-      imports: [RouterTestingModule],
+      imports: [RouterTestingModule.withRoutes([
+        { path: 'world', component: HallStubComponent },
+        { path: 'world/quests', component: HallStubComponent },
+        { path: 'character', component: HallStubComponent },
+        { path: 'market', component: HallStubComponent },
+        { path: 'forge/runes', component: HallStubComponent },
+        { path: 'codex', component: HallStubComponent },
+      ])],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         { provide: TranslationService, useValue: { translate: (k: string) => k, currentLanguage$: of('en'), setLanguage: () => {} } },
@@ -67,6 +79,26 @@ describe('HeaderComponent', () => {
     const routes = component.tabs.map(t => t.route);
     expect(routes).not.toContain('/home');
     expect(routes).not.toContain('/forge-keeper');
-    expect(routes).toEqual(['/world', '/character', '/market', '/forge/runes', '/codex']);
+    expect(routes).toEqual(PLAYER_HALLS);
+  });
+
+  it('World destinations require an exact active match', () => {
+    expect(component.primaryHalls[0].exact).toBeTrue();
+    expect(component.tabs[0].exact).toBeTrue();
+    expect(component.tomeSections[0].halls[0].exact).toBeTrue();
+  });
+
+  it('does not mark World active on /world/quests', async () => {
+    const router = TestBed.inject(Router);
+    fixture.detectChanges();
+    await router.navigateByUrl(CANONICAL.quests);
+    fixture.detectChanges();
+    const worldTab = [...fixture.nativeElement.querySelectorAll('.gftabs__tab')]
+      .find((el: Element) => el.getAttribute('href') === CANONICAL.world || el.getAttribute('ng-reflect-router-link') === CANONICAL.world);
+    expect(worldTab).toBeTruthy();
+    expect(worldTab.classList.contains('is-active')).toBeFalse();
+    const worldHall = [...fixture.nativeElement.querySelectorAll('.gfnav__hall')]
+      .find((el: Element) => el.getAttribute('href') === CANONICAL.world || el.getAttribute('ng-reflect-router-link') === CANONICAL.world);
+    expect(worldHall.classList.contains('is-active')).toBeFalse();
   });
 });

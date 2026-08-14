@@ -32,15 +32,11 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 function metaFor(route) {
   if (route === '/world')        return { changefreq: 'weekly',  priority: '1.0' };
   if (route === '/tools')        return { changefreq: 'weekly',  priority: '0.9' };
-  if (route === '/skills')       return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/projects')     return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/contact')      return { changefreq: 'monthly', priority: '0.7' };
   if (route === '/donate')       return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/live')         return { changefreq: 'daily',   priority: '0.7' };
+  if (route === '/sanctum')      return { changefreq: 'daily',   priority: '0.7' };
   if (route === '/world/trials') return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/world/quests') return { changefreq: 'weekly',  priority: '0.7' };
   if (route === '/mcp')          return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/guestbook')    return { changefreq: 'weekly',  priority: '0.6' };
   if (route === '/blueprint')    return { changefreq: 'weekly',  priority: '0.8' };
   if (route === '/sponsors')     return { changefreq: 'monthly', priority: '0.6' };
   if (route === '/codex')        return { changefreq: 'weekly',  priority: '0.7' };

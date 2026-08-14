@@ -13,8 +13,9 @@
  * that stops half an XP being rounded away sixty times an hour.
  */
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { CANONICAL } from '../canonical-routes';
 import { IdleService, IDLE_KEY } from './idle.service';
 import {
   DAILY_MINUTE_CAP,
@@ -63,6 +64,7 @@ describe('IdleService', () => {
   let xp: FakeXp;
   let eggs: FakeEggs;
   let visibility: 'visible' | 'hidden';
+  let routerEvents: BehaviorSubject<NavigationEnd | null>;
 
   /** Advance fake time and let the heartbeat run over it. */
   function runFor(ms: number): void {
@@ -87,7 +89,7 @@ describe('IdleService', () => {
         { provide: QuestService, useValue: new FakeQuests() },
         { provide: EasterEggService, useValue: eggs },
         { provide: ToolMasteryService, useValue: new FakeMastery() },
-        { provide: Router, useValue: { url: '/world', events: new BehaviorSubject<any>(null) } },
+        { provide: Router, useValue: { url: CANONICAL.world, events: routerEvents = new BehaviorSubject<NavigationEnd | null>(null) } },
       ],
     });
 
@@ -114,7 +116,7 @@ describe('IdleService', () => {
   it('credits one minute, at the base rate, after sixty visible seconds', () => {
     runFor(MINUTE_MS);
     expect(idle.snapshot.minutesToday).toBe(1);
-    // /home is 'elsewhere' — 1 XP/min, no streak, no realm, no quest.
+    // /world is 'elsewhere' — 1 XP/min, no streak, no realm, no quest.
     expect(xp.total).toBe(1);
   });
 
@@ -272,6 +274,22 @@ describe('IdleService', () => {
     expect(streakMultiplier(7)).toBe(1.5);
     expect(streakMultiplier(29)).toBe(1.5);
     expect(streakMultiplier(30)).toBe(2);
+  });
+
+  it('treats /world/trials as arena', () => {
+    expect(idle.snapshot.location).toBe('elsewhere');
+    routerEvents.next(new NavigationEnd(1, CANONICAL.trials, CANONICAL.trials));
+    expect(idle.snapshot.location).toBe('arena');
+  });
+
+  it('keeps /arena/<game> as arena', () => {
+    routerEvents.next(new NavigationEnd(1, '/arena/color-memory', '/arena/color-memory'));
+    expect(idle.snapshot.location).toBe('arena');
+  });
+
+  it('stays elsewhere on /world', () => {
+    routerEvents.next(new NavigationEnd(1, CANONICAL.world, CANONICAL.world));
+    expect(idle.snapshot.location).toBe('elsewhere');
   });
 
   it('stacks the realm bonus additively and the quest and streak multiplicatively', () => {

@@ -45,6 +45,7 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
+import { CANONICAL } from '../shared/canonical-routes';
 
 /** A hall: a real route with a label key and a drawn glyph id. */
 interface Hall {
@@ -66,6 +67,8 @@ interface Hall {
    * 'first' goes at 1600, 'second' at 1300; between them the bar carries six.
    */
   shed?: 'first' | 'second';
+  /** Prefix match is the default; World must be exact so /world/quests does not light it. */
+  exact?: boolean;
 }
 
 /**
@@ -140,11 +143,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * tome's MORE section and the footer.
    */
   readonly primaryHalls: Hall[] = [
-    { route: '/world',       key: 'gfnav.world',     glyph: 'home' },
-    { route: '/character',   key: 'gfnav.character', glyph: 'profile' },
-    { route: '/market',      key: 'gfnav.market',    glyph: 'market' },
-    { route: '/forge/runes', key: 'gfnav.forge',     glyph: 'forge' },
-    { route: '/codex',       key: 'gfnav.codex',     glyph: 'codex' }
+    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true },
+    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile' },
+    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
+    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
+    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex' }
   ];
 
   /**
@@ -152,13 +155,13 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
    * have no tab PNG pair — those two render the hall glyph instead.
    */
   readonly tabs: Tab[] = [
-    { route: '/world',     key: 'gfnav.world',     glyph: 'home',
+    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true,
       iconInactive: 'assets/icons/tabs/home-inactive.png',    iconActive: 'assets/icons/tabs/home-active.png' },
-    { route: '/character', key: 'gfnav.character', glyph: 'profile',
+    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile',
       iconInactive: 'assets/icons/tabs/profile-inactive.png', iconActive: 'assets/icons/tabs/profile-active.png' },
-    { route: '/market',    key: 'gfnav.market',    glyph: 'market' },
-    { route: '/forge/runes', key: 'gfnav.forge',   glyph: 'forge' },
-    { route: '/codex',     key: 'gfnav.codex',     glyph: 'codex',
+    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
+    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
+    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',
       iconInactive: 'assets/icons/tabs/codex-inactive.png',   iconActive: 'assets/icons/tabs/codex-active.png' }
   ];
 
@@ -170,19 +173,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     {
       titleKey: 'gfnav.section.main',
       halls: [
-        { route: '/world',       key: 'gfnav.world',     glyph: 'home',    hintKey: 'gfnav.hint.world' },
-        { route: '/character',   key: 'gfnav.character', glyph: 'profile', hintKey: 'gfnav.hint.keeper' },
-        { route: '/market',      key: 'gfnav.market',    glyph: 'market',  hintKey: 'gfnav.hint.market' },
-        { route: '/forge/runes', key: 'gfnav.forge',     glyph: 'forge',   hintKey: 'gfnav.hint.runeForge' },
-        { route: '/codex',       key: 'gfnav.codex',     glyph: 'codex',   hintKey: 'gfnav.hint.codex' }
+        { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home',    hintKey: 'gfnav.hint.world', exact: true },
+        { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile', hintKey: 'gfnav.hint.keeper' },
+        { route: '/market',           key: 'gfnav.market',    glyph: 'market',  hintKey: 'gfnav.hint.market' },
+        { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge',   hintKey: 'gfnav.hint.runeForge' },
+        { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',   hintKey: 'gfnav.hint.codex' }
       ]
     },
     {
       titleKey: 'gfnav.section.more',
       halls: [
         { route: '/tools',           key: 'gfnav.tools',          glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
-        { route: '/world/quests',    key: 'gfnav.quests',         glyph: 'quests',    hintKey: 'gfnav.hint.quests' },
-        { route: '/world/trials',    key: 'gfnav.trials',         glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
+        { route: CANONICAL.quests,   key: 'gfnav.quests',         glyph: 'quests',    hintKey: 'gfnav.hint.quests' },
+        { route: CANONICAL.trials,   key: 'gfnav.trials',         glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
         { route: '/sanctum',         key: 'gfnav.sanctum',        glyph: 'sanctum',   hintKey: 'gfnav.hint.sanctum' },
         { route: '/blueprint',       key: 'gfnav.warTable',       glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
         { route: '/mcp',             key: 'gfnav.mcp',            glyph: 'mcp',       hintKey: 'gfnav.hint.mcp' },

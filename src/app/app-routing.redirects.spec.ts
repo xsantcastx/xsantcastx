@@ -41,18 +41,17 @@ describe('canonical player routing', () => {
     router = TestBed.inject(Router);
   });
 
-  const redirects: Array<[from: string, to: string]> = [
-    ['/', '/world'],
-    ['/home', '/world'],
-    ['/forge-keeper', '/character'],
-    ['/rune-forge', '/forge/runes'],
-    ['/forge', '/forge/runes'],
-    ['/quests', '/world/quests'],
-    ['/arena', '/world/trials'],
-    ['/skills', '/tools'],
-  ];
+  function redirectSource(path: string | undefined): string {
+    return path ? '/' + path : '/';
+  }
 
-  for (const [from, to] of redirects) {
+  function redirectDest(to: string): string {
+    return to.startsWith('/') ? to : '/' + to;
+  }
+
+  for (const redirect of CANONICAL_REDIRECTS) {
+    const from = redirectSource(redirect.path);
+    const to = redirectDest(redirect.redirectTo as string);
     it(`redirects ${from} → ${to}`, async () => {
       await router.navigateByUrl(from);
       expect(router.url).toBe(to);

@@ -36,6 +36,8 @@
  * components read `activeAdNetwork()` and switch themselves.
  */
 
+import { CANONICAL } from '../canonical-routes';
+
 /** Networks the site knows how to render. */
 export type AdNetwork = 'carbon' | 'ethical' | 'adsense' | 'house';
 
@@ -116,7 +118,8 @@ export function carbonScriptSrc(): string {
  */
 export const AD_FREE_ROUTES: readonly string[] = [
   '/admin',
-  '/character',
+  CANONICAL.character,
+  '/forge-keeper',
   '/pro',
   '/sponsors',
   '/donate',

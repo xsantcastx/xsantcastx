@@ -15,6 +15,7 @@ import { ToolMasteryService } from './tool-mastery.service';
 import { energyForCategory } from './gamification.model';
 import { EASTER_EGGS, EasterEggService } from '../easter-eggs/easter-egg.service';
 import { TOOLS_REGISTRY } from '../../tools/tools-registry';
+import { canonicalizePlayerPath } from '../canonical-routes';
 
 @Injectable({ providedIn: 'root' })
 export class XpWiringService {
@@ -70,12 +71,8 @@ export class XpWiringService {
   }
 
   private onNavigate(url: string): void {
-    let path = url.split('?')[0].split('#')[0];
+    const path = canonicalizePlayerPath(url);
     if (path.startsWith('/embed/')) return;
-
-    // The router reports '/' before the redirect resolves and '/world' after, so
-    // a single landing looked like two pages and paid out twice. Same page.
-    if (path === '/' || path === '') path = '/world';
 
     if (!this.visited.has(path)) {
       this.visited.add(path);
