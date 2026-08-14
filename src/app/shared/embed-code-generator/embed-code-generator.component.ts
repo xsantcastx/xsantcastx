@@ -41,7 +41,7 @@ import { SITE_URL } from '../../seo.service';
           @if (hideBranding) {
             <p class="ecg__note">
               Branding removal requires a Pro subscription.
-              <a [href]="siteUrl + '/pro'" target="_blank" rel="noopener noreferrer">Learn more</a>
+              <a [href]="siteUrl + '/world'" target="_blank" rel="noopener noreferrer">Learn more</a>
             </p>
           }
         </div>

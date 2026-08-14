@@ -4,6 +4,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { EasterEggService } from './easter-egg.service';
+import { CANONICAL, canonicalizePlayerPath } from '../canonical-routes';
 
 @Injectable({ providedIn: 'root' })
 export class GlobalEggTriggersService implements OnDestroy {
@@ -17,9 +18,19 @@ export class GlobalEggTriggersService implements OnDestroy {
   private konamiIndex = 0;
   private keyHandler?: (e: KeyboardEvent) => void;
 
-  // Speed demon tracking
-  private toolVisits: number[] = [];
-  private visitedTools = new Set<string>();
+  // Speed demon tracking — live game halls, not retired /tools/* pages.
+  private hallVisits: number[] = [];
+  private visitedHalls = new Set<string>();
+  private static readonly HALLS = new Set<string>([
+    CANONICAL.world,
+    CANONICAL.character,
+    CANONICAL.forge,
+    CANONICAL.quests,
+    CANONICAL.trials,
+    '/codex',
+    '/market',
+    '/sanctum',
+  ]);
 
   init(): void {
     if (!this.isBrowser) return;
@@ -46,24 +57,18 @@ export class GlobalEggTriggersService implements OnDestroy {
     };
     window.addEventListener('keydown', this.keyHandler);
 
-    // ── Speed Demon: 5 tools in under 60s ──
+    // ── Speed Demon: five live halls in under 60s ──
     this.routerSub = this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd)
     ).subscribe(e => {
-      if (e.urlAfterRedirects.startsWith('/tools/') && !e.urlAfterRedirects.includes('embed')) {
-        const slug = e.urlAfterRedirects.replace('/tools/', '');
-        if (!this.visitedTools.has(slug)) {
-          this.visitedTools.add(slug);
-          this.toolVisits.push(Date.now());
-
-          // Keep only last 60 seconds of visits
-          const cutoff = Date.now() - 60000;
-          this.toolVisits = this.toolVisits.filter(t => t > cutoff);
-
-          if (this.visitedTools.size >= 5 && this.toolVisits.length >= 5) {
-            this.eggService.trigger('speed-demon');
-          }
-        }
+      const path = canonicalizePlayerPath(e.urlAfterRedirects);
+      if (!GlobalEggTriggersService.HALLS.has(path) || this.visitedHalls.has(path)) return;
+      this.visitedHalls.add(path);
+      this.hallVisits.push(Date.now());
+      const cutoff = Date.now() - 60_000;
+      this.hallVisits = this.hallVisits.filter(t => t > cutoff);
+      if (this.visitedHalls.size >= 5 && this.hallVisits.length >= 5) {
+        this.eggService.trigger('speed-demon');
       }
     });
   }

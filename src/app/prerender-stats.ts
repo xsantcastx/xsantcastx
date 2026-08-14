@@ -8,5 +8,5 @@
  * Consumed by the homepage's "Paths Prerendered" stat.
  */
 
-/** Routes Angular prerenders to static HTML, /embed pages included. */
-export const PRERENDERED_PATHS = 277;
+/** Routes Angular prerenders to static HTML. */
+export const PRERENDERED_PATHS = 14;

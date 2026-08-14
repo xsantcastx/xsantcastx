@@ -2,7 +2,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ARENA_GAME_ROUTES } from './arena/games/arena-game.routes';
 import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
-import { RouteTitles } from './shared/title-strategy.service';
 // Every page below is loaded with loadComponent(). Importing a routed
 // component here instead would pull it — and its whole transitive graph —
 // into the initial bundle, which is what kept nine pages eager until now.
@@ -39,39 +38,15 @@ export const APP_ROUTES: Routes = [
         }
       }
     },
-  {
-      path: 'donate',
-      loadComponent: () => import('./donate/donate.component').then(m => m.DonateComponent),
-      title: RouteTitles.donate,
-      data: {
-        description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.',
-        keywords: 'donate, support developer, open source, sponsorship',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org', '@type': 'WebPage', name: 'Fuel the Forge — The Godforge',
-          url: `${SITE_URL}/donate`,
-          description: 'Support open-source tools and development work. Donate via Stripe, PayPal, or crypto.'
-        }
-      }
-    },
   /*
    * /sanctum is the Inner Sanctum — the management hub.
    *
-   * It was /live, and before that /live was the AI mission-control feed. That
-   * page still exists, at /mission-control below: it is the source the admin
-   * panel's activity stat reads, and retiring it would have deleted a working
-   * feature rather than moved one.
+   * It was /live, and before that /live was the AI mission-control feed.
+   * Mission Control is retired with the rest of the public product surfaces;
+   * /live and /forge-view still 301 here.
    *
-   * The rename off /live is the RPG pass. "Live" described a forge earning per
-   * second, which was true when the page was a rate and a quest list; it is a
-   * poor name for the room where you now hire explorers, kit them out and send
-   * them into the realms. The Sanctum is where the character is *managed*, and
-   * /forge-keeper is the sheet that character is written on.
-   *
-   * Both former addresses redirect below rather than being deleted: /live is in
-   * the footer, on the home page and in a year of external links, and the
-   * Firestore pollers that made it expensive are still only reached by somebody
-   * who deliberately opens /mission-control.
+   * The Sanctum is where the character is *managed*, and /character is the
+   * sheet that character is written on.
    */
   {
       path: 'sanctum',
@@ -93,51 +68,12 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
-      path: 'mission-control',
-      loadComponent: () => import('./live/live.component').then(m => m.LiveComponent),
-      title: 'Mission Control — The Godforge',
-      data: {
-        description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity as it happens.',
-        keywords: 'watch ai work live, claude ai real time, ai mission control, live coding stream, ai development feed',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org', '@type': 'WebPage', name: 'Watch Live — AI Mission Control',
-          url: `${SITE_URL}/mission-control`,
-          description: 'Watch Claude AI work in real time. A live mission control feed showing tool calls, task progress, and AI activity.',
-          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
-            { '@type': 'ListItem', position: 2, name: 'Mission Control', item: `${SITE_URL}/mission-control` }
-          ]}
-        }
-      }
-    },
-  {
-      path: 'mcp',
-      loadComponent: () => import('./mcp/mcp.component').then(m => m.McpComponent),
-      title: 'MCP Server — The Godforge',
-      data: {
-        description: 'A local MCP server with 14 developer tools: JSON formatting, UUID generation, Base64, JWT decoding, regex, hashing, color contrast, and cron expression tools.',
-        keywords: 'mcp server, model context protocol, claude tools, ai developer tools, json formatter mcp, uuid generator mcp, base64 mcp, jwt decoder mcp, regex mcp, hash generator mcp',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org',
-          '@type': 'SoftwareApplication',
-          name: 'xsantcastx MCP Server',
-          applicationCategory: 'DeveloperApplication',
-          operatingSystem: 'Any',
-          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-          url: 'https://www.npmjs.com/package/xsantcastx-mcp-server',
-          description: 'A local MCP server with 14 developer tools for AI agents.'
-        }
-      }
-    },
-  {
       path: 'world/trials',
       loadComponent: () => import('./arena/arena.component').then(m => m.ArenaComponent),
       title: 'The Trials — Eclipse Realms',
       data: {
-        description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain. 140 secrets across the five realms.',
-        keywords: 'easter eggs, hidden games, developer games, tool secrets, mini games, eclipse realms, trials, arena',
+        description: 'Five playable gates in the proving ground. Stand in the Trials and the chains listen.',
+        keywords: 'easter eggs, hidden games, mini games, eclipse realms, trials, arena',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -145,7 +81,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/world/trials`,
           url: `${SITE_URL}/world/trials`,
           name: 'The Trials — Eclipse Realms',
-          description: 'Twelve gates, each chained shut by a secret buried in a tool. Find the secret, break the chain.',
+          description: 'Five playable gates in the proving ground. Stand in the Trials and the chains listen.',
           breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
             { '@type': 'ListItem', position: 2, name: 'Trials', item: `${SITE_URL}/world/trials` }
@@ -172,8 +108,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
       title: 'The Codex',
       data: {
-        description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, mastery for all 128 tools, and clues to every secret still hidden.',
-        keywords: 'achievements, developer tools achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
+        description: 'The ancient record of the Godforge: game achievements, ten ranks of progression, lore scrolls, and clues to every secret still hidden.',
+        keywords: 'achievements, progression, easter eggs list, xp levels, lore, eclipse realms, codex, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -181,7 +117,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/codex`,
           url: `${SITE_URL}/codex`,
           name: 'The Codex — Every Achievement, Rank and Secret',
-          description: 'Every achievement, rank, tool mastery level and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
+          description: 'Every achievement, rank, lore fragment and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
           inLanguage: 'en',
           isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
           author: { '@id': `${SITE_URL}/#person` },
@@ -200,8 +136,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
       title: 'The Standing Orders',
       data: {
-        description: 'Three daily quests drawn from thirty, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by using the tools you already use.',
-        keywords: 'daily quests, missions, developer tools, gamification, eclipse realms, xp, xsantcastx',
+        description: 'Three daily quests, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by walking the world, the trials, and the forge.',
+        keywords: 'daily quests, missions, gamification, eclipse realms, xp, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -265,8 +201,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
       title: 'Your Character — Eclipse Realms',
       data: {
-        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, everything you own, your pinned achievements, a thirty-day streak calendar and the tools you actually know.',
-        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, tool mastery, eclipse realms, xsantcastx',
+        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, loadout, everything you own, your pinned achievements and a thirty-day streak calendar.',
+        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, loadout, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -274,40 +210,12 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/character`,
           url: `${SITE_URL}/character`,
           name: 'Your Character — Eclipse Realms',
-          description: 'Rank, inventory, realm affinity, achievements, streak and tool mastery for one Convergent. Progression is stored in your own browser.',
+          description: 'Rank, inventory, realm affinity, achievements, streak and loadout for one Convergent. Progression is stored in your own browser.',
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
               { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
               { '@type': 'ListItem', position: 2, name: 'Character', item: `${SITE_URL}/character` }
-            ]
-          }
-        }
-      }
-    },
-  {
-      path: 'blueprint',
-      loadComponent: () => import('./blueprint/blueprint.component').then(m => m.BlueprintComponent),
-      title: 'The War Table',
-      data: {
-        description: 'The open blueprint for xsantcastx.com — every free tool mapped by category, the public Now/Next/Later roadmap, the architecture behind it, and a form to suggest the next tool.',
-        keywords: 'public roadmap, open roadmap, developer tools roadmap, project documentation, architecture, build in public, suggest a tool, xsantcastx',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org',
-          '@type': 'WebPage',
-          '@id': `${SITE_URL}/blueprint`,
-          url: `${SITE_URL}/blueprint`,
-          name: 'Blueprint — Public Roadmap & Architecture',
-          description: 'Public roadmap, tool map and architecture documentation for xsantcastx.com. See what is built, what is being built, and what is only an idea.',
-          inLanguage: 'en',
-          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
-          author: { '@id': `${SITE_URL}/#person` },
-          breadcrumb: {
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
-              { '@type': 'ListItem', position: 2, name: 'Blueprint', item: `${SITE_URL}/blueprint` }
             ]
           }
         }
@@ -329,157 +237,6 @@ export const APP_ROUTES: Routes = [
         description: 'Private dashboard.'
       }
     },
-  {
-      path: 'pro',
-      loadComponent: () => import('./pro/pro.component').then(m => m.ProComponent),
-      title: 'The Godforge Pro Pack — $9 once, no subscription',
-      data: {
-        description: 'Remove every ad, double your XP permanently, and unlock exclusive cosmetics for a single $9 payment. No subscription, no account, 30-day refund. All 123+ developer tools stay free.',
-        keywords: 'godforge pro, ad-free developer tools, one time payment, no subscription, lifetime access, pro pack, support indie developer',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org',
-          '@type': 'Product',
-          '@id': `${SITE_URL}/pro`,
-          url: `${SITE_URL}/pro`,
-          name: 'The Godforge Pro Pack',
-          description: 'A one-time $9 upgrade for xsantcastx.com: ad-free browsing, a permanent 2x XP multiplier, bonus currency, exclusive cosmetics and early access to new tools.',
-          category: 'Software Upgrade',
-          brand: { '@type': 'Brand', name: 'The Godforge' },
-          // A real Offer with a real price — unlike /sponsors, this rate card
-          // IS public, so the structured data can carry it.
-          offers: {
-            '@type': 'Offer',
-            price: '9.00',
-            priceCurrency: 'USD',
-            availability: 'https://schema.org/InStock',
-            url: `${SITE_URL}/pro`,
-          },
-          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
-          mainEntity: {
-            '@type': 'FAQPage',
-            mainEntity: [
-              {
-                '@type': 'Question',
-                name: 'Is the Godforge Pro Pack a subscription?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'No. It is one payment of $9, once, forever. There is no renewal, no card kept on file, and no way for it to charge you a second time.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'Do the free tools stay free?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'Yes. All 123+ tools stay free, unlimited and account-free. Pro removes ads and adds cosmetics and progression — it does not put a wall in front of anything that works today.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'Can I get a refund?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'Yes — email xsantcastx@xsantcastx.com within 30 days for a full refund, no reason needed. LemonSqueezy processes it as merchant of record.'
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-  {
-      path: 'sponsors',
-      loadComponent: () => import('./sponsors/sponsors.component').then(m => m.SponsorsComponent),
-      title: 'Sponsor The Godforge',
-      data: {
-        description: 'Sponsor a category of free developer tools on xsantcastx.com. A native card sold direct — one sponsor per category, no auction, no third-party script, honest disclosure.',
-        keywords: 'sponsor developer tools, developer advertising, reach developers, dev tool sponsorship, indie advertising, sponsor a website, developer audience',
-        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
-        jsonLd: {
-          '@context': 'https://schema.org',
-          '@type': 'WebPage',
-          '@id': `${SITE_URL}/sponsors`,
-          url: `${SITE_URL}/sponsors`,
-          name: 'Sponsor the Tools',
-          description: 'Sponsorship information for xsantcastx.com — placements, audience, packages and FAQ for advertisers.',
-          inLanguage: 'en',
-          isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
-          author: { '@id': `${SITE_URL}/#person` },
-          breadcrumb: {
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
-              { '@type': 'ListItem', position: 2, name: 'Sponsors', item: `${SITE_URL}/sponsors` }
-            ]
-          },
-          // No `offers` block here on purpose: the rate card is not public yet
-          // and Schema.org Offer requires a price. Add it once MEDIA_KIT in
-          // sponsors.component.ts carries real numbers.
-          mainEntity: {
-            '@type': 'FAQPage',
-            mainEntity: [
-              {
-                '@type': 'Question',
-                name: 'How many sponsors run at once?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'One per placement, at most. A category is sold to a single sponsor for the month, so your card is not rotated against anyone else.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'Is this slot sold through an ad network?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'No. The slot is direct-deal only — no network, no auction and no behavioural targeting.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'What else is on the page alongside my card?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'Tool pages also carry a Carbon Ads unit and an affiliate recommendation card, both labelled Sponsored. The sponsor slot is the only one sold directly and the only one whose category you choose.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'What do you track, and what do I get back?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'Impressions and clicks, counted first-party with no cookies or cross-site identifiers. Both numbers are shared at the end of the month.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'Is the sponsor link followed?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'No. Every sponsor CTA ships rel="sponsored noopener noreferrer", per Google guidance.'
-                }
-              },
-              {
-                '@type': 'Question',
-                name: 'How do I get started?',
-                acceptedAnswer: {
-                  '@type': 'Answer',
-                  text: 'Email xsantcastx@xsantcastx.com with your product and the category you want, and you will get current traffic, availability and a rate.'
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-  {
-    path: 'tools',
-    loadChildren: () => import('./tools/tools.module').then(m => m.ToolsModule)
-  },
-  {
-    path: 'embed',
-    loadChildren: () => import('./tools/embed.module').then(m => m.EmbedModule)
-  },
   ...CANONICAL_REDIRECTS,
   {
       path: '**',

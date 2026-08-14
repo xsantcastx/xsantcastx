@@ -14,13 +14,12 @@
     <div class="gp-hero__inner">
       <p class="gp-eyebrow">
         <span class="gp-dot"></span>
-        Hidden inside the tools
+        The proving ground
       </p>
       <h1 class="gp-hero__title">The Arena</h1>
       <p class="gp-hero__sub">
-        Where Convergents prove their worth. Every gate here is held shut by a secret
-        buried in a tool — find it, and the gate opens.
-        {{ playableCount }} of them lead to a real game.
+        Where Convergents prove their worth. Stand in the hall and the gates
+        listen. {{ playableCount }} of them lead to a real game.
       </p>
 
       <!-- Arena stats -->
@@ -63,7 +62,7 @@
       <div class="gp-how-step">
         <span class="gp-how-step__num">01</span>
         <h2>Walk a realm</h2>
-        <p>Head to <a routerLink="/tools">the tools</a> and explore. Every tool hides at least one secret.</p>
+        <p>Head to <a routerLink="/world">the world</a> and explore. Secrets are buried across the five realms.</p>
       </div>
       <div class="gp-how-step__arrow">→</div>
       <div class="gp-how-step">
@@ -146,8 +145,8 @@
   <section class="gp-cta">
     <div class="gp-cta__inner">
       <h2>Go find a secret</h2>
-      <p>{{ totalEggs }} secrets are buried across the five realms. The Arena remembers every one you turn up.</p>
-      <a routerLink="/tools" class="cta-button">Walk the realms &rarr;</a>
+      <p>{{ playableCount }} gates stand in this hall. The Arena remembers every run you finish.</p>
+      <a routerLink="/world" class="cta-button">Walk the realms &rarr;</a>
     </div>
   </section>
 

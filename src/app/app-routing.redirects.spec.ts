@@ -65,7 +65,34 @@ describe('canonical player routing', () => {
     expect(leafPath(router)).not.toBe('world/trials');
   });
 
-  const pages = ['/character', '/world', '/forge/runes', '/world/trials'] as const;
+  it('redirects /tools → /world', async () => {
+    await router.navigateByUrl('/tools');
+    expect(router.url).toBe('/world');
+  });
+
+  it('redirects /tools/box-shadow-generator → /world', async () => {
+    await router.navigateByUrl('/tools/box-shadow-generator');
+    expect(router.url).toBe('/world');
+  });
+
+  it('redirects /tools?realm=luminous → /world', async () => {
+    await router.navigateByUrl('/tools?realm=luminous');
+    expect(router.url.split('?')[0]).toBe('/world');
+  });
+
+  it('redirects /mission-control → /world', async () => {
+    await router.navigateByUrl('/mission-control');
+    expect(router.url).toBe('/world');
+  });
+
+  it('redirects retired product pages to /world', async () => {
+    for (const from of ['/mcp', '/blueprint', '/sponsors', '/donate', '/pro', '/embed', '/embed/json-formatter']) {
+      await router.navigateByUrl(from);
+      expect(router.url).toBe('/world');
+    }
+  });
+
+  const pages = ['/character', '/world', '/forge/runes', '/world/trials', '/world/quests', '/sanctum', '/market', '/codex'] as const;
 
   for (const url of pages) {
     it(`resolves ${url} (not 404)`, async () => {

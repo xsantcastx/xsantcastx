@@ -26,7 +26,6 @@ import {
   streakMultiplier,
 } from './idle.model';
 import { XpService } from '../gamification/xp.service';
-import { ToolMasteryService } from '../gamification/tool-mastery.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { QuestService } from '../quests/quest.service';
 
@@ -52,11 +51,6 @@ class FakeEggs {
   found = new Set<string>();
   isFound(id: string): boolean { return this.found.has(id); }
   async trigger(id: string): Promise<void> { this.found.add(id); }
-}
-
-class FakeMastery {
-  counts: Record<string, number> = {};
-  all(): Record<string, number> { return this.counts; }
 }
 
 describe('IdleService', () => {
@@ -88,7 +82,6 @@ describe('IdleService', () => {
         { provide: XpService, useValue: xp },
         { provide: QuestService, useValue: new FakeQuests() },
         { provide: EasterEggService, useValue: eggs },
-        { provide: ToolMasteryService, useValue: new FakeMastery() },
         { provide: Router, useValue: { url: CANONICAL.world, events: routerEvents = new BehaviorSubject<NavigationEnd | null>(null) } },
       ],
     });
@@ -289,6 +282,13 @@ describe('IdleService', () => {
 
   it('stays elsewhere on /world', () => {
     routerEvents.next(new NavigationEnd(1, CANONICAL.world, CANONICAL.world));
+    expect(idle.snapshot.location).toBe('elsewhere');
+  });
+
+  it('treats the rune forge as the high-rate hall, not a retired tool page', () => {
+    routerEvents.next(new NavigationEnd(1, CANONICAL.forge, CANONICAL.forge));
+    expect(idle.snapshot.location).toBe('tool');
+    routerEvents.next(new NavigationEnd(1, '/tools/regex-builder', '/tools/regex-builder'));
     expect(idle.snapshot.location).toBe('elsewhere');
   });
 

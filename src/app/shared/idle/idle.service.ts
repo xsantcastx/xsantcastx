@@ -23,14 +23,12 @@ import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { XpService } from '../gamification/xp.service';
-import { ToolMasteryService } from '../gamification/tool-mastery.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { QuestService } from '../quests/quest.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
 import { CANONICAL, canonicalizePlayerPath } from '../canonical-routes';
-import { RealmId, realmForCategory } from '../realms/realm.model';
+import { RealmId } from '../realms/realm.model';
 import { dayKey } from '../quests/quest.model';
 import {
   CENTURY_EVERY,
@@ -131,7 +129,6 @@ export class IdleService {
   private readonly zone = inject(NgZone);
   private readonly router = inject(Router);
   private readonly xp = inject(XpService);
-  private readonly mastery = inject(ToolMasteryService);
   private readonly eggs = inject(EasterEggService);
   private readonly quests = inject(QuestService);
   private readonly saves = inject(LocalSaveRegistry);
@@ -140,9 +137,10 @@ export class IdleService {
   private state: IdleState = emptyState();
   private started = false;
 
-  /** The tool page currently open, or null everywhere else. */
-  private currentTool: ToolDefinition | null = null;
+  /** True on the rune forge — the live high-rate hall after /tools/* retired. */
+  private onForge = false;
   private onArena = false;
+  private currentPath = '';
 
   /** Visible milliseconds banked toward the next whole minute. */
   private accumMs = 0;
@@ -429,58 +427,36 @@ export class IdleService {
   // ───────────────────────────────────────────────────────────────────────────
 
   private location(): ForgeLocation {
-    if (this.currentTool) return 'tool';
+    // 'tool' is the high-rate location name in the idle table. After the
+    // public tool pages were retired, the anvil is the hall that earns it.
+    if (this.onForge) return 'tool';
     if (this.onArena) return 'arena';
     return 'elsewhere';
   }
 
   private currentRealm(): RealmId | null {
-    return this.currentTool ? realmForCategory(this.currentTool.category).id : null;
+    return null;
   }
 
   /**
-   * The realm this visitor has worked most, by total tool opens.
-   *
-   * Read from ToolMasteryService rather than the XP ledger: XP records *whether*
-   * a tool was used, so every tool would weigh the same and "dominant" would
-   * mean "the realm with the most distinct tools", which is Archivum for
-   * everybody and therefore not about the visitor at all.
+   * Hidden until a game-event replacement exists. Tool-open counts are not a
+   * public progression signal anymore, so they must not change the idle rate.
    */
   private dominantRealm(): RealmId | null {
-    const counts = this.mastery.all();
-    const byRealm = new Map<RealmId, number>();
-
-    for (const [slug, uses] of Object.entries(counts)) {
-      const tool = TOOLS_REGISTRY.find(t => t.id === slug);
-      if (!tool) continue;
-      const realm = realmForCategory(tool.category).id;
-      byRealm.set(realm, (byRealm.get(realm) ?? 0) + uses);
-    }
-
-    let best: RealmId | null = null;
-    let bestCount = 0;
-    for (const [realm, count] of byRealm) {
-      if (count > bestCount) { best = realm; bestCount = count; }
-    }
-    // With nothing recorded there is no dominant realm, and claiming one would
-    // hand a first-time visitor a loyalty bonus.
-    return bestCount > 0 ? best : null;
+    return null;
   }
 
-  /** True when a live quest on the board is asking for the tool underfoot. */
+  /** True when a live quest is asking for the hall underfoot. */
   private hasActiveQuestForTool(): boolean {
-    const tool = this.currentTool;
-    if (!tool) return false;
-
-    const realm = realmForCategory(tool.category).id;
+    const path = this.currentPath;
+    if (!path) return false;
     const board = this.quests.board;
 
     return [...board.daily, ...board.weekly].some(q => {
       if (q.status === 'completed') return false;
       const c = q.condition;
-      if (c.toolSlug) return c.toolSlug === tool.id;
-      if (c.category) return c.category === tool.category;
-      if (c.realm) return c.realm === realm;
+      if (c.type === 'page-visit') return (c.paths ?? []).includes(path);
+      if (c.type === 'arena-game') return this.onArena;
       return false;
     });
   }
@@ -502,8 +478,9 @@ export class IdleService {
 
   private resolveRoute(url: string): void {
     const path = url.split('?')[0].split('#')[0];
-    this.currentTool = TOOLS_REGISTRY.find(t => t.route === path) ?? null;
     const canonical = canonicalizePlayerPath(path);
+    this.currentPath = canonical;
+    this.onForge = canonical === CANONICAL.forge;
     this.onArena = canonical === CANONICAL.trials || path.startsWith('/arena/');
   }
 
