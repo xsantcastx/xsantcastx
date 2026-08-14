@@ -69,6 +69,15 @@ import {
   totalUpgradeLevels,
   upgradeById,
 } from './economy.model';
+import {
+  DEVICE_ID_KEY,
+  EconomyOp,
+  EconomyOpKind,
+  coerceLedger,
+  maxSeqFor,
+  nextHlc,
+  snapshotOf,
+} from './economy-ops';
 
 export const ECONOMY_KEY = 'godforge-economy';
 
@@ -214,6 +223,10 @@ export class EconomyService implements OnDestroy {
   private priceMultiplier = 1;
 
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
+  private deviceId = '';
+  private opSeq = 0;
+  private pendingGold = 0;
+  private pendingEssence = 0;
   private lastClickAt = 0;
   /**
    * Recent strike timestamps, for the Click Frenzy achievement. In memory only
@@ -266,6 +279,7 @@ export class EconomyService implements OnDestroy {
     this.initialised = true;
 
     this.state = this.load();
+    this.bindDevice();
     // First run: start the idle clock now rather than at epoch zero, or the
     // first settlement pays out the eight-hour cap for a visitor who has been
     // here four seconds.
@@ -337,6 +351,9 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.state = this.load();
+    this.pendingGold = 0;
+    this.pendingEssence = 0;
+    this.bindDevice();
     if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
     this.publish();
   }
@@ -388,6 +405,7 @@ export class EconomyService implements OnDestroy {
     this.state.gold += amount;
     this.state.runGoldEarned += amount;
     this.state.totalGoldEarned += amount;
+    this.pendingGold += amount;
   }
 
   /**
@@ -407,6 +425,7 @@ export class EconomyService implements OnDestroy {
     if (!this.isBrowser || amount <= 0) return false;
     if (this.state.gold < amount) return false;
 
+    this.recordOp('spend-gold', { amount });
     this.state.gold -= amount;
     // A spend is the kind of thing that must survive the tab closing one frame
     // later, so it flushes rather than joining the throttle — same reasoning as
@@ -431,6 +450,7 @@ export class EconomyService implements OnDestroy {
 
     const before = goldPerSecond(this.state);
 
+    this.recordOp('grant-runeword', { itemId: id });
     this.state.runewords = [...this.state.runewords, id];
 
     this.flush();
@@ -460,6 +480,7 @@ export class EconomyService implements OnDestroy {
     if (!this.isBrowser || amount <= 0) return 0;
 
     this.state.eclipseEssence += amount;
+    this.pendingEssence += amount;
     this.persistSoon();
     this.publish();
     this.gain$$.next({ currency: 'essence', amount, source });
@@ -688,6 +709,7 @@ export class EconomyService implements OnDestroy {
 
     const before = goldPerSecond(this.state);
 
+    this.recordOp('buy-upgrade', { amount: cost, itemId: id });
     this.state.gold -= cost;
     this.state.upgrades = { ...this.state.upgrades, [id]: this.levelOf(id) + 1 };
 
@@ -782,10 +804,12 @@ export class EconomyService implements OnDestroy {
     const granted = pendingShards(this.state);
     if (granted < 1) return 0;
 
+    const grantedCurve = shardsFor(this.state.totalGoldEarned);
+    this.recordOp('prestige', { amount: granted, extra: grantedCurve });
     this.state.eclipseShards += granted;
     // Marked against the all-time curve, never against the run — this is what
     // stops four resets at ten million out-earning one at forty.
-    this.state.shardsGranted = shardsFor(this.state.totalGoldEarned);
+    this.state.shardsGranted = grantedCurve;
     this.state.prestigeCount += 1;
 
     this.state.gold = 0;
@@ -817,10 +841,12 @@ export class EconomyService implements OnDestroy {
     if (!def || this.state.eclipseEssence < def.cost) return false;
 
     const now = Date.now();
+    const expiresAt = now + def.hours * 3_600_000;
+    this.recordOp('buy-enchantment', { amount: def.cost, itemId: id, extra: expiresAt });
     this.state.eclipseEssence -= def.cost;
     this.state.enchantments = [
       ...this.state.enchantments.filter(a => a.id !== id && a.expiresAt > now),
-      { id, expiresAt: now + def.hours * 3_600_000 },
+      { id, expiresAt },
     ];
 
     this.flush();
@@ -837,6 +863,7 @@ export class EconomyService implements OnDestroy {
 
     const before = goldPerSecond(this.state);
 
+    this.recordOp('buy-artifact', { amount: def.cost, itemId: id });
     this.state.eclipseEssence -= def.cost;
     this.state.artifacts = [...this.state.artifacts, id];
 
@@ -869,9 +896,11 @@ export class EconomyService implements OnDestroy {
     const cost = this.discounted(def.cost);
     if (this.state.gold < cost) return false;
 
+    const variant = def.variants[0].id;
+    this.recordOp('buy-cosmetic', { amount: cost, itemId: id, slot: def.slot, extra: variant });
     this.state.gold -= cost;
     this.state.cosmetics = [...this.state.cosmetics, id];
-    this.state.equipped = { ...this.state.equipped, [def.slot]: def.variants[0].id };
+    this.state.equipped = { ...this.state.equipped, [def.slot]: variant };
 
     this.flush();
     this.publish();
@@ -904,6 +933,7 @@ export class EconomyService implements OnDestroy {
     // paint as a missing `data-cos-*` value forever.
     if (!def.variants.some(v => v.id === variantId)) return false;
 
+    this.recordOp('grant-cosmetic', { itemId: cosmeticId, slot: def.slot, extra: variantId });
     if (!this.ownsCosmetic(cosmeticId)) {
       this.state.cosmetics = [...this.state.cosmetics, cosmeticId];
     }
@@ -921,6 +951,7 @@ export class EconomyService implements OnDestroy {
     if (!def || !this.ownsCosmetic(cosmeticId)) return false;
     if (variantId && !def.variants.some(v => v.id === variantId)) return false;
 
+    this.recordOp('equip', { itemId: variantId ?? undefined, slot: def.slot });
     const equipped = { ...this.state.equipped };
     if (variantId) equipped[def.slot] = variantId;
     else delete equipped[def.slot];
@@ -986,6 +1017,9 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.state = emptyEconomy();
+    this.pendingGold = 0;
+    this.pendingEssence = 0;
+    this.rotateDeviceId();
     this.state.lastIdleAt = Date.now();
     this.recentClicks = [];
     this.store.remove(ECONOMY_KEY);
@@ -1022,6 +1056,13 @@ export class EconomyService implements OnDestroy {
         // none granted, no Eclipses taken, and a run that has earned whatever
         // the all-time total says. No migration step is needed and none is run.
         version: 2,
+        ops: parsed.ops ?? [],
+        origin: parsed.origin ?? null,
+        hlc: parsed.hlc ?? 0,
+        applied: parsed.applied ?? {},
+        checkpointId: parsed.checkpointId ?? 0,
+        acks: parsed.acks ?? {},
+        seenAt: parsed.seenAt ?? {},
       };
     } catch {
       return emptyEconomy();
@@ -1041,7 +1082,99 @@ export class EconomyService implements OnDestroy {
       this.persistHandle = null;
     }
     this.lastPersistAt = Date.now();
-      this.store.write(ECONOMY_KEY, this.state);
+    this.emitPendingCredits();
+    this.store.write(ECONOMY_KEY, this.state);
+  }
+
+  /**
+   * Append an idempotent op before the matching state mutation.
+   *
+   * The first op on a device freezes `origin` so a later merge can replay from
+   * a common ancestor. Credits accumulate in memory and become one op per
+   * flush so a second of idle does not write a second of log.
+   */
+  private recordOp(
+    kind: EconomyOpKind,
+    fields: Pick<EconomyOp, 'amount' | 'itemId' | 'slot' | 'extra'> = {},
+  ): void {
+    this.emitPendingCredits();
+    this.appendOp(kind, fields);
+  }
+
+  private emitPendingCredits(): void {
+    if (this.pendingGold <= 0 && this.pendingEssence <= 0) return;
+    this.ensureOrigin();
+    if (this.pendingGold > 0) {
+      const n = this.pendingGold;
+      this.pendingGold = 0;
+      this.appendOp('credit-gold', { amount: n });
+    }
+    if (this.pendingEssence > 0) {
+      const n = this.pendingEssence;
+      this.pendingEssence = 0;
+      this.appendOp('credit-essence', { amount: n });
+    }
+  }
+
+  private appendOp(
+    kind: EconomyOpKind,
+    fields: Pick<EconomyOp, 'amount' | 'itemId' | 'slot' | 'extra'> = {},
+  ): void {
+    this.ensureOrigin();
+    this.opSeq += 1;
+    const wall = Date.now();
+    this.state.hlc = nextHlc(this.state.hlc ?? 0, wall);
+    const op: EconomyOp = {
+      id: `${this.deviceId}:${this.opSeq}`,
+      deviceId: this.deviceId,
+      seq: this.opSeq,
+      kind,
+      hlc: this.state.hlc,
+      wall,
+      ...fields,
+    };
+    this.state.ops = [...(this.state.ops ?? []), op];
+  }
+
+  private ensureOrigin(): void {
+    if (this.state.origin) return;
+    const ledger = coerceLedger(this.state);
+    if (!ledger) return;
+    const snap = snapshotOf(ledger);
+    snap.gold = Math.max(0, snap.gold - this.pendingGold);
+    snap.eclipseEssence = Math.max(0, snap.eclipseEssence - this.pendingEssence);
+    snap.totalGoldEarned = Math.max(0, snap.totalGoldEarned - this.pendingGold);
+    snap.runGoldEarned = Math.max(0, snap.runGoldEarned - this.pendingGold);
+    this.state.origin = snap;
+  }
+
+  private rotateDeviceId(): void {
+    this.deviceId = this.newDeviceId();
+    this.opSeq = 0;
+    try { localStorage.setItem(DEVICE_ID_KEY, this.deviceId); } catch { /* private mode */ }
+  }
+
+  private bindDevice(): void {
+    this.deviceId = this.readDeviceId();
+    this.opSeq = maxSeqFor(this.deviceId, this.state.ops ?? []);
+  }
+
+  private readDeviceId(): string {
+    try {
+      const held = localStorage.getItem(DEVICE_ID_KEY);
+      if (held) return held;
+      const id = this.newDeviceId();
+      localStorage.setItem(DEVICE_ID_KEY, id);
+      return id;
+    } catch {
+      return this.deviceId || this.newDeviceId();
+    }
+  }
+
+  private newDeviceId(): string {
+    return typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `d-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   /**

@@ -37,11 +37,16 @@ const ALL_KEYS = [...STATE_ENTRIES.map(e => e.key), 'cloud-save-uid'];
  */
 class FakeFirestore {
   readonly docs = new Map<string, unknown>();
-  readonly counts = { getDoc: 0, getDocs: 0, setDoc: 0, batch: 0, batchWrites: 0, deleteDoc: 0 };
+  readonly counts = { getDoc: 0, getDocs: 0, setDoc: 0, batch: 0, batchWrites: 0, deleteDoc: 0, transaction: 0 };
   /** Paths that refuse writes, standing in for a security rule. */
   readonly refuse = new Set<string>();
   /** When set, every network call rejects — the offline case. */
   down = false;
+  /**
+   * After the next transactional get, mutate that document so the commit
+   * aborts once — the interleaving the retry loop exists to survive.
+   */
+  clashOnce = false;
 
   readonly api = {
     doc: (_db: unknown, ...seg: string[]) => ({ path: seg.join('/') }),
@@ -94,6 +99,51 @@ class FakeFirestore {
           for (const w of staged) this.commit(w.path, w.data);
         },
       };
+    },
+
+    runTransaction: async (_db: unknown, fn: (tx: {
+      get: (ref: { path: string }) => Promise<{ exists: () => boolean; data: () => unknown }>;
+      set: (ref: { path: string }, data: unknown) => void;
+    }) => Promise<void>) => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        this.guard();
+        this.counts.transaction++;
+        const staged = new Map<string, unknown>();
+        const seen = new Map<string, unknown>();
+        const tx = {
+          get: async (ref: { path: string }) => {
+            this.guard();
+            this.counts.getDoc++;
+            const held = this.docs.get(ref.path);
+            seen.set(ref.path, held);
+            if (this.clashOnce) {
+              this.clashOnce = false;
+              if (held && typeof held === 'object') {
+                this.docs.set(ref.path, { ...copy(held), updatedAt: `clash-${attempt}` });
+              }
+            }
+            return { exists: () => held !== undefined, data: () => copy(held) };
+          },
+          set: (ref: { path: string }, data: unknown) => {
+            staged.set(ref.path, copy(data));
+          },
+        };
+        try {
+          await fn(tx);
+          for (const [path] of seen) {
+            const now = this.docs.get(path);
+            if (JSON.stringify(now) !== JSON.stringify(seen.get(path))) {
+              throw Object.assign(new Error('aborted'), { code: 'aborted' });
+            }
+          }
+          for (const [path, data] of staged) this.commit(path, data);
+          return;
+        } catch (err) {
+          const code = (err as { code?: string }).code;
+          if (code === 'aborted' && attempt < 4) continue;
+          throw err;
+        }
+      }
     },
   };
 
@@ -181,6 +231,46 @@ describe('cloud save — Firestore as the record', () => {
     return JSON.parse(localStorage.getItem(ECONOMY_KEY) ?? '{}').gold ?? 0;
   }
 
+  function summarizeLedger(): { gold: number; opIds: string[] } {
+    const blob = JSON.parse(localStorage.getItem(ECONOMY_KEY) ?? '{}');
+    const opIds = ((blob.ops ?? []) as { id: string }[]).map(o => o.id).sort();
+    return { gold: blob.gold ?? 0, opIds };
+  }
+
+  async function offlineSpend(preSpend: string, deviceId: string, amount: number): Promise<string> {
+    teardownDevice();
+    localStorage.setItem(ECONOMY_KEY, preSpend);
+    localStorage.setItem('godforge-device-id', deviceId);
+    const device = build();
+    device.economy.init();
+    await device.xp.init();
+    expect(device.economy.spendGold(amount, `offline-${deviceId}`)).toBe(true);
+    (device.economy as unknown as { flush(): void }).flush();
+    const raw = localStorage.getItem(ECONOMY_KEY);
+    expect(raw).toBeTruthy();
+    return raw!;
+  }
+
+  async function attachOrder(
+    cloudBlob: string,
+    localBlob: string,
+    localDeviceId: string,
+  ): Promise<{ gold: number; opIds: string[] }> {
+    teardownDevice();
+    fake.docs.clear();
+    fake.docs.set('users/u1/economy/state', {
+      v: JSON.parse(cloudBlob),
+      updatedAt: new Date().toISOString(),
+    });
+    localStorage.setItem(ECONOMY_KEY, localBlob);
+    localStorage.setItem('godforge-device-id', localDeviceId);
+    const device = build();
+    device.economy.init();
+    await device.xp.init();
+    await device.gateway.attach('u1', fake.handle);
+    return summarizeLedger();
+  }
+
   beforeEach(() => {
     // Reset before clearing, for the reason `teardownDevice` documents: the
     // previous spec's services flush on destroy.
@@ -220,6 +310,104 @@ describe('cloud save — Firestore as the record', () => {
     expect(goldOnDisk()).toBeGreaterThanOrEqual(1000);
   });
 
+  it('replays two devices spending the same pile without minting Gold', async () => {
+    fake.seedGold(1000);
+    const a = build();
+    a.economy.init();
+    await a.xp.init();
+    await a.gateway.attach('u1', fake.handle);
+    expect(a.economy.snapshot.gold).toBeGreaterThanOrEqual(1000);
+
+    // Device A spends 700 of the shared 1,000.
+    expect(a.economy.spendGold(700, 'test')).toBe(true);
+    (a.economy as unknown as { flush(): void }).flush();
+    await a.gateway.flushNow();
+
+    teardownDevice();
+    localStorage.setItem('godforge-device-id', 'device-b');
+    const b = build();
+    b.economy.init();
+    await b.xp.init();
+    // Device B still thinks the pile is 1,000 and spends 500 before it pulls.
+    b.economy.earnGold(1000, 'test');
+    (b.economy as unknown as { flush(): void }).flush();
+    expect(b.economy.spendGold(500, 'test')).toBe(true);
+    (b.economy as unknown as { flush(): void }).flush();
+    await b.gateway.attach('u1', fake.handle);
+
+    const gold = b.economy.snapshot.gold;
+    // Conservation: cannot hold 700+500=1,200 of spend against a 1,000 pile.
+    expect(gold).toBeLessThan(1000);
+    expect(gold).toBeGreaterThanOrEqual(0);
+    expect(goldOnDisk()).toBe(gold);
+  });
+
+  it('syncs a cloned pre-spend snapshot in both attach orders', async () => {
+    fake.seedGold(1000);
+    const seed = build();
+    seed.economy.init();
+    await seed.xp.init();
+    await seed.gateway.attach('u1', fake.handle);
+    const preSpend = localStorage.getItem(ECONOMY_KEY);
+    expect(preSpend).toBeTruthy();
+    const preGold = JSON.parse(preSpend!).gold as number;
+    expect(preGold).toBeGreaterThanOrEqual(1000);
+
+    // Both devices spend offline from that same snapshot, then we sync the
+    // resulting blobs in both attach orders. That is the stale-phone case,
+    // not "B earns 1,000 locally to look like the cloud."
+    const blobA = await offlineSpend(preSpend!, 'device-a', 700);
+    const blobB = await offlineSpend(preSpend!, 'device-b', 500);
+
+    const aThenB = await attachOrder(blobA, blobB, 'device-b');
+    const bThenA = await attachOrder(blobB, blobA, 'device-a');
+
+    expect(aThenB.gold).toBe(bThenA.gold);
+    expect(aThenB.gold + 700 === preGold || aThenB.gold + 500 === preGold).toBe(true);
+    expect(aThenB.opIds).toEqual(bThenA.opIds);
+    expect(aThenB.opIds.some(id => id.startsWith('device-a:'))).toBe(true);
+    expect(aThenB.opIds.some(id => id.startsWith('device-b:'))).toBe(true);
+  });
+
+  it('retries the economy transaction when another write lands mid-read', async () => {
+    fake.seedGold(800);
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle);
+    const before = fake.counts.transaction;
+
+    fake.clashOnce = true;
+    expect(economy.spendGold(50, 'test')).toBe(true);
+    (economy as unknown as { flush(): void }).flush();
+    await gateway.flushNow();
+
+    expect(fake.counts.transaction).toBeGreaterThan(before + 1);
+    expect(economy.snapshot.gold).toBeGreaterThanOrEqual(750);
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(750);
+  });
+
+  it('rotates the device id on reset so old sequences cannot collide', async () => {
+    const { economy, xp } = build();
+    economy.init();
+    await xp.init();
+    economy.earnGold(100, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const before = localStorage.getItem('godforge-device-id');
+    expect(before).toBeTruthy();
+
+    economy.reset();
+    const after = localStorage.getItem('godforge-device-id');
+    expect(after).toBeTruthy();
+    expect(after).not.toBe(before);
+
+    economy.earnGold(10, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    const ops = JSON.parse(localStorage.getItem(ECONOMY_KEY) ?? '{}').ops ?? [];
+    expect(ops[0].deviceId).toBe(after);
+    expect(ops[0].id).toBe(`${after}:1`);
+  });
+
   it('keeps the pulled Gold through the next write', async () => {
     fake.seedGold(5000);
     const { gateway, economy, xp } = build();
@@ -249,8 +437,10 @@ describe('cloud save — Firestore as the record', () => {
 
     // One `getDocs` per subcollection. The old bind made a `getDoc` per blob,
     // which was nineteen round trips on every page load of a signed-in visitor.
+    // The economy document is then re-read inside its write transaction — that
+    // single getDoc is the CAS, not a return to per-blob pulls.
     expect(fake.counts.getDocs).toBe(2);
-    expect(fake.counts.getDoc).toBe(0);
+    expect(fake.counts.getDoc).toBe(fake.counts.transaction);
   });
 
   it('sends a burst of changes as one batch', async () => {
