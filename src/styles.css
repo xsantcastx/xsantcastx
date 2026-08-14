@@ -110,6 +110,7 @@
      page must not wait on a network fetch to paint. */
   --font-lore: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
   --header-offset: 96px;
+  --shell-sidebar-w: 0px;
 
   /* ===== Forge palette (Eclipse Realms) =====
      The atmosphere layer over the cosmic palette. Warm, subterranean, and
@@ -635,6 +636,19 @@ body::after {
 
 main {
   padding-top: var(--header-offset);
+  padding-left: var(--shell-sidebar-w, 0px);
+}
+
+app-footer {
+  padding-left: var(--shell-sidebar-w, 0px);
+}
+
+@media (min-width: 961px) {
+  :root {
+    --header-offset: 20px;
+    --shell-sidebar-w: 236px;
+    --nav-h: 0px;
+  }
 }
 
 img {
@@ -1352,6 +1366,8 @@ body.flicker {
    are deleted rather than left orphaned — the Godforge command bar draws its
    own mark and has no element they could apply to. *//* ===== Embed Mode ===== */
 .embed-mode {
+  --shell-sidebar-w: 0px;
+  --header-offset: 0px;
   padding: 12px;
   min-height: calc(100vh - 36px); /* Reserve space for embed bar */
   overflow: auto;

@@ -19,6 +19,7 @@ import { Subscription, filter } from 'rxjs';
 import { ToolsDataService } from '../../tools/tools-data.service';
 import { ToolCard } from '../../tools/tools.component';
 import { CommandPaletteService } from './command-palette.service';
+import { OverlayStackService } from '../overlay/overlay-stack.service';
 
 interface ScoredResult {
   tool: ToolCard;
@@ -408,6 +409,8 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly overlays = inject(OverlayStackService);
+  private overlayUnreg?: () => void;
 
   query = '';
   activeIndex = 0;
@@ -425,8 +428,13 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
       if (!this.isBrowser) return;
       if (open) {
         this.onOpen();
+        if (!this.overlayUnreg) {
+          this.overlayUnreg = this.overlays.push('command-palette', () => this.palette.close());
+        }
       } else {
         this.onClose();
+        this.overlayUnreg?.();
+        this.overlayUnreg = undefined;
       }
       this.cdr.markForCheck();
     });
@@ -455,6 +463,8 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
+    this.overlayUnreg?.();
+    this.overlayUnreg = undefined;
     this.restoreBodyScroll();
   }
 
@@ -471,11 +481,7 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
       return;
     }
 
-    // Forward Escape to close only when palette is open
-    if (event.key === 'Escape' && this.palette.isOpen()) {
-      event.preventDefault();
-      this.palette.close();
-    }
+    // Escape is owned by OverlayStackService so a stacked tome stays open.
   }
 
   onKeydown(event: KeyboardEvent): void {
