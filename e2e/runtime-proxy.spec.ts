@@ -28,7 +28,7 @@ test.describe('runtime proxy / 375px', () => {
   // the same nth-child stagger (landing.component.css) and is the surviving
   // instance of the pattern this test was written to protect.
   test('tool card icons have staggered animation-delay (cycle proxy)', async ({ page }) => {
-    await page.goto('/home');
+    await page.goto('/world');
     await page.waitForSelector('.hp-tool-card__icon-wrap', { timeout: 10000 });
 
     const delays = await page.evaluate(() => {
@@ -71,7 +71,7 @@ test.describe('runtime proxy / 375px', () => {
     // synchronisation point for a font assertion, and it resolves only once
     // every pending font load has settled. networkidle was never what made this
     // test correct.
-    await page.goto('/home', { waitUntil: 'load' });
+    await page.goto('/world', { waitUntil: 'load' });
 
     const orbitronReady = await page.evaluate(async () => {
       await document.fonts.ready;

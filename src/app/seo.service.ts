@@ -47,7 +47,7 @@ export class SeoService {
   }
 
   private apply(pageTitle: string, data: Record<string, string | object>, url: string, lang: 'en' | 'es'): void {
-    const desc      = (data['description'] as string) || 'The Godforge — free developer tools forged in the Eclipse.';
+    const desc      = (data['description'] as string) || 'Eclipse Realms — a persistent world of five realms. Discover artifacts, forge runes, and walk the trials.';
     const keywords  = data['keywords']  as string | undefined;
     const ogImage   = (data['ogImage']  as string | undefined) || DEFAULT_IMG;
 

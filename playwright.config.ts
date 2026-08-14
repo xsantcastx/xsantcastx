@@ -13,7 +13,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'npx serve dist/xsantcastx/browser -l tcp://localhost:4173 --no-clipboard',
-    url: 'http://localhost:4173/home',
+    url: 'http://localhost:4173/world',
     reuseExistingServer: !process.env['CI'],
     timeout: 30000,
   },

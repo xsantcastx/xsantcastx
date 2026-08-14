@@ -6,7 +6,7 @@
  * same thing and splitting them across components would mean three copies of
  * "is the drawer open" to keep in step.
  *
- *  · Desktop: sigil + XSANTCASTX lockup, five halls, then the visitor's
+ *  · Desktop: sigil + Eclipse Realms lockup, five halls, then the visitor's
  *    standing (Gold, Essence, rank) and the language toggle.
  *  · Mobile: the bar keeps the lockup and the status pills; primary
  *    navigation moves to a fixed five-tab bar at the bottom of the viewport,
@@ -45,6 +45,7 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
+import { CANONICAL } from '../shared/canonical-routes';
 
 /** A hall: a real route with a label key and a drawn glyph id. */
 interface Hall {
@@ -66,6 +67,8 @@ interface Hall {
    * 'first' goes at 1600, 'second' at 1300; between them the bar carries six.
    */
   shed?: 'first' | 'second';
+  /** Prefix match is the default; World must be exact so /world/quests does not light it. */
+  exact?: boolean;
 }
 
 /**
@@ -74,8 +77,9 @@ interface Hall {
  * template.
  */
 interface Tab extends Hall {
-  iconInactive: string;
-  iconActive: string;
+  /** Omit both when no tab PNG pair exists — the template draws `.gfrune`. */
+  iconInactive?: string;
+  iconActive?: string;
 }
 
 interface TomeSection {
@@ -134,115 +138,61 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   readonly rankSigil = rankSigil;
 
   /**
-   * The five halls across the middle of the bar.
-   *
-   * Six, and the sixth was paid for rather than squeezed in. The Rune Forge sat
-   * behind the footer and one line of Codex copy while being the thing people
-   * actually come back to open, so it is in the bar — third, between the Arena
-   * and the Codex, because that is the order a visitor meets them: play, forge,
-   * read what forging turned up. Appending it to the end would have put it
-   * where the row runs out of width first, which is the failure this bar has
-   * shipped twice (see the threshold note in the stylesheet).
-   *
-   * Labelled "Rune Forge", never "Forge". Four things on this site now carry
-   * that word — the Inner Sanctum at /sanctum, the Forge Keeper, the Godforge Market
-   * and this — and a bare FORGE in the primary nav would be the only one of
-   * them a visitor could not disambiguate from where they are standing.
-   *
-   * Was five, not seven. HOME is the wordmark on the left — a bar that links to the
-   * page you are already looking at spends a slot on nothing. GAMES is what the
-   * Arena is, under an older name, and MCP is one landing page for a different
-   * audience; both live in the footer now. What is left is the Godforge itself:
-   * the artifacts, the games, the fragments, the plan and the shop.
-   *
-   * Nothing from the old portfolio site (Services, Projects, About, Contact,
-   * Live, Donate) is reachable from this bar. They still have routes and they
-   * are still linked — from the footer and the tome's MORE section — but they
-   * are not what this site is any more, so they are not in the primary nav.
-   *
-   * Seven now, and the seventh is the Inner Sanctum. It was reported as
-   * impossible to reach and it was: the hub had exactly one link on the whole
-   * site, in the footer's second row, which on a phone is a scroll past every
-   * section of whatever page you are on. It sheds, for the same reason the War
-   * Table does — the tome's MAIN section and the footer both carry it — but a
-   * tier later, at 1300 rather than 1600.
-   *
-   * That order is the whole point. Measured in Spanish with a seven-figure
-   * balance, seven halls need a 1600px window; at 1450 the row was 131px over.
-   * So one of the two has to leave on a 1440px laptop, and it is the War Table:
-   * the Sanctum is the hub a player opens on every visit, and /blueprint is a
-   * public roadmap read once. Shedding them together would have taken the
-   * Sanctum out of the bar on exactly the widths this change exists to fix.
+   * The five halls across the middle of the bar — implemented player
+   * destinations only. Tools, Trials, Blueprint, Sanctum and MCP live in the
+   * tome's MORE section and the footer.
    */
   readonly primaryHalls: Hall[] = [
-    { route: '/tools',      key: 'gfnav.realms',    glyph: 'tools' },
-    { route: '/arena',      key: 'gfnav.arena',     glyph: 'arena' },
-    { route: '/rune-forge', key: 'gfnav.runeForge', glyph: 'forge' },
-    { route: '/codex',      key: 'gfnav.codex',     glyph: 'codex' },
-    { route: '/blueprint',  key: 'gfnav.warTable',  glyph: 'blueprint', shed: 'first' },
-    { route: '/market',     key: 'gfnav.market',    glyph: 'market' },
-    { route: '/sanctum',    key: 'gfnav.sanctum',   glyph: 'sanctum',   shed: 'second' }
+    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true },
+    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile' },
+    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
+    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
+    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex' }
   ];
 
   /**
-   * The five fixed destinations along the bottom of a phone. Deliberately the
-   * five a visitor returns to, not the five that happen to be most recent.
+   * The five fixed destinations along the bottom of a phone. Market and Forge
+   * have no tab PNG pair — those two render the hall glyph instead.
    */
   readonly tabs: Tab[] = [
-    { route: '/home',         key: 'gfnav.home',    glyph: 'home',
+    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true,
       iconInactive: 'assets/icons/tabs/home-inactive.png',    iconActive: 'assets/icons/tabs/home-active.png' },
-    { route: '/tools',        key: 'gfnav.tools',   glyph: 'tools',
-      iconInactive: 'assets/icons/tabs/tools-inactive.png',   iconActive: 'assets/icons/tabs/tools-active.png' },
-    { route: '/arena',        key: 'gfnav.arena',   glyph: 'arena',
-      iconInactive: 'assets/icons/tabs/arena-inactive.png',   iconActive: 'assets/icons/tabs/arena-active.png' },
-    { route: '/codex',        key: 'gfnav.codex',   glyph: 'codex',
-      iconInactive: 'assets/icons/tabs/codex-inactive.png',   iconActive: 'assets/icons/tabs/codex-active.png' },
-    { route: '/forge-keeper', key: 'gfnav.profile', glyph: 'profile',
-      iconInactive: 'assets/icons/tabs/profile-inactive.png', iconActive: 'assets/icons/tabs/profile-active.png' }
+    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile',
+      iconInactive: 'assets/icons/tabs/profile-inactive.png', iconActive: 'assets/icons/tabs/profile-active.png' },
+    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
+    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
+    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',
+      iconInactive: 'assets/icons/tabs/codex-inactive.png',   iconActive: 'assets/icons/tabs/codex-active.png' }
   ];
 
   /**
-   * The tome — two sections, not three.
-   *
-   * MAIN is the same five halls as the bar plus the visitor's own sheet, so the
-   * drawer and the bar name the same places.
-   *
-   * MORE is down to the surfaces that are still part of the product. Services
-   * (`path: 'skills'`) and Contact left with the rest of the portfolio in the
-   * full migration; both are now `redirectTo` stubs, and a drawer entry
-   * pointing at a redirect is a link that bounces the visitor somewhere they
-   * did not ask to go — worse than no link. Quests earns the slot instead: it
-   * has a real page and it belongs to the Godforge.
+   * MAIN is the same five halls as the bar. MORE is demoted product surfaces
+   * that still have real pages — never a redirect stub.
    */
   readonly tomeSections: TomeSection[] = [
     {
       titleKey: 'gfnav.section.main',
       halls: [
-        { route: '/tools',        key: 'gfnav.realms',   glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
-        { route: '/arena',        key: 'gfnav.arena',    glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
-        // Third here too, matching the bar. The tome is the whole of the nav on
-        // a phone, so a destination that is prominent in one and buried in the
-        // other is only half-promoted.
-        { route: '/rune-forge',   key: 'gfnav.runeForge', glyph: 'forge',    hintKey: 'gfnav.hint.runeForge' },
-        { route: '/codex',        key: 'gfnav.codex',    glyph: 'codex',     hintKey: 'gfnav.hint.codex' },
-        { route: '/blueprint',    key: 'gfnav.warTable', glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
-        { route: '/market',       key: 'gfnav.market',   glyph: 'market',    hintKey: 'gfnav.hint.market' },
-        { route: '/sanctum',      key: 'gfnav.sanctum',  glyph: 'sanctum',   hintKey: 'gfnav.hint.sanctum' },
-        { route: '/forge-keeper', key: 'gfnav.profile',  glyph: 'profile',   hintKey: 'gfnav.hint.keeper' }
+        { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home',    hintKey: 'gfnav.hint.world', exact: true },
+        { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile', hintKey: 'gfnav.hint.keeper' },
+        { route: '/market',           key: 'gfnav.market',    glyph: 'market',  hintKey: 'gfnav.hint.market' },
+        { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge',   hintKey: 'gfnav.hint.runeForge' },
+        { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',   hintKey: 'gfnav.hint.codex' }
       ]
     },
     {
       titleKey: 'gfnav.section.more',
       halls: [
-        { route: '/quests',          key: 'gfnav.quests',         glyph: 'quests',   hintKey: 'gfnav.hint.quests' },
-        { route: '/mcp',             key: 'gfnav.mcp',            glyph: 'mcp',      hintKey: 'gfnav.hint.mcp' },
-        { route: '/sponsors',        key: 'gfnav.sponsors',       glyph: 'sponsors', hintKey: 'gfnav.hint.sponsors' },
-        // The last two routes on the site that no piece of chrome named. Mission
-        // Control is the AI feed the Sanctum used to be — it kept its page when
-        // /sanctum became the hub, and lost its only link in the same move.
-        // Donate had never been anywhere but the footer.
-        { route: '/mission-control', key: 'gfnav.missionControl', glyph: 'mission',  hintKey: 'gfnav.hint.missionControl' },
-        { route: '/donate',          key: 'gfnav.donate',         glyph: 'donate',   hintKey: 'gfnav.hint.donate' }
+        { route: '/tools',           key: 'gfnav.tools',          glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
+        { route: CANONICAL.quests,   key: 'gfnav.quests',         glyph: 'quests',    hintKey: 'gfnav.hint.quests' },
+        { route: CANONICAL.trials,   key: 'gfnav.trials',         glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
+        { route: '/sanctum',         key: 'gfnav.sanctum',        glyph: 'sanctum',   hintKey: 'gfnav.hint.sanctum' },
+        { route: '/blueprint',       key: 'gfnav.warTable',       glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
+        { route: '/mcp',             key: 'gfnav.mcp',            glyph: 'mcp',       hintKey: 'gfnav.hint.mcp' },
+        { route: '/mission-control', key: 'gfnav.missionControl', glyph: 'mission',   hintKey: 'gfnav.hint.missionControl' },
+        { route: '/sponsors',        key: 'gfnav.sponsors',       glyph: 'sponsors',  hintKey: 'gfnav.hint.sponsors' },
+        { route: '/donate',          key: 'gfnav.donate',         glyph: 'donate',    hintKey: 'gfnav.hint.donate' },
+        { route: '/pro',             key: 'gfnav.pro',            glyph: 'donate',    hintKey: 'gfnav.hint.donate' }
       ]
     }
   ];

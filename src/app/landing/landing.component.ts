@@ -1,5 +1,5 @@
 /**
- * landing.component.ts — /home.
+ * landing.component.ts — /world.
  *
  * Four sections: the hero, the five realms, the pulse, the closing call. What
  * this component used to also own — a shop-counter row, a creed row, a featured
@@ -336,16 +336,10 @@ export class LandingComponent implements OnInit, OnDestroy {
     return this.xpService.hasUsedTool(tool.id);
   }
 
-  /**
-   * Where "Enter the Forge" goes. Scrolls rather than routes: the forges are
-   * on this page, and a hash jump would fight the scroll-reveal observer.
-   *
-   * The target id is "services", not "forges" — historical, and kept because
-   * the anchor is linked from outside this component.
-   */
+  /** Scrolls to the realm stations on this page. */
   enterTheForge(): void {
     if (!this.isBrowser) return;
-    const el = document.getElementById('services');
+    const el = document.getElementById('world-realms');
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

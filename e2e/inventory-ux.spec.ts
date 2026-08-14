@@ -66,7 +66,7 @@ async function openVault(page: Page, seed = true): Promise<void> {
       ...(seed ? { [ECONOMY_KEY]: JSON.stringify(SEEDED_LEDGER) } : {}),
     },
   );
-  await page.goto('/forge-keeper');
+  await page.goto('/character');
   await page.locator('.fk-inv__card').first().waitFor();
   // The shelf is prerendered empty and refilled after hydration; waiting for a
   // card is not the same as waiting for the ledger to have landed on it.

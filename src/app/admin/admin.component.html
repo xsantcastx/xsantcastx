@@ -21,7 +21,7 @@
           Sign in with Google
         </button>
         <p class="adm-gate__err" *ngIf="signInError">{{ signInError }}</p>
-        <a class="adm-gate__back" routerLink="/home">← Back to the site</a>
+        <a class="adm-gate__back" routerLink="/world">← Back to the site</a>
       </ng-container>
 
       <ng-container *ngIf="gate === 'denied'">
@@ -34,7 +34,7 @@
         <button type="button" class="adm-gate__btn adm-gate__btn--ghost" (click)="signOutNow()">
           Sign out
         </button>
-        <a class="adm-gate__back" routerLink="/home">← Back to the site</a>
+        <a class="adm-gate__back" routerLink="/world">← Back to the site</a>
       </ng-container>
 
     </div>
@@ -289,13 +289,13 @@
             <span class="adm-card__tag adm-card__tag--todo">not instrumented</span>
           </header>
           <p class="adm-note">
-            The games on /games do not write a play counter. The cheapest fix is to
+            The games on /world/trials do not write a play counter. The cheapest fix is to
             call the existing <code>ToolUsageService.recordUsage()</code> with a
             <code>game-*</code> slug on each game's start handler — it already has a
             Firestore rule, a session dedupe and a counter, so the plays would show
             up in the table above with no new collection.
           </p>
-          <a class="adm-link" routerLink="/games">Open /games →</a>
+          <a class="adm-link" routerLink="/world/trials">Open /world/trials →</a>
         </article>
       </div>
     </section>
@@ -535,7 +535,7 @@
 
     <footer class="adm-foot">
       <span>The Godforge control room · v{{ version.version }}</span>
-      <a class="adm-link" routerLink="/home">← Back to the site</a>
+      <a class="adm-link" routerLink="/world">← Back to the site</a>
     </footer>
 
   </ng-container>

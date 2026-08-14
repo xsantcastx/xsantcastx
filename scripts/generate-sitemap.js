@@ -30,23 +30,20 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 
 // Per-route metadata. Anything not matched here uses the default fallback below.
 function metaFor(route) {
-  if (route === '/home')        return { changefreq: 'weekly',  priority: '1.0' };
-  if (route === '/tools')       return { changefreq: 'weekly',  priority: '0.9' };
-  if (route === '/skills')      return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/projects')    return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/contact')     return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/donate')      return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/live')        return { changefreq: 'daily',   priority: '0.7' };
-  if (route === '/arena')       return { changefreq: 'monthly', priority: '0.6' };
-  if (route === '/mcp')         return { changefreq: 'monthly', priority: '0.7' };
-  if (route === '/guestbook')   return { changefreq: 'weekly',  priority: '0.6' };
-  if (route === '/blueprint')   return { changefreq: 'weekly',  priority: '0.8' };
-  if (route === '/sponsors')    return { changefreq: 'monthly', priority: '0.6' };
-  if (route === '/codex')       return { changefreq: 'weekly',  priority: '0.7' };
-  // Every visitor's is different and none of it is indexable content, so the
-  // Forge is listed low: it is here so the URL is discoverable, not so it ranks.
-  if (route === '/forge-keeper') return { changefreq: 'monthly', priority: '0.5' };
+  if (route === '/world')        return { changefreq: 'weekly',  priority: '1.0' };
+  if (route === '/tools')        return { changefreq: 'weekly',  priority: '0.9' };
+  if (route === '/donate')       return { changefreq: 'monthly', priority: '0.7' };
+  if (route === '/sanctum')      return { changefreq: 'daily',   priority: '0.7' };
+  if (route === '/world/trials') return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/world/quests') return { changefreq: 'weekly',  priority: '0.7' };
+  if (route === '/mcp')          return { changefreq: 'monthly', priority: '0.7' };
+  if (route === '/blueprint')    return { changefreq: 'weekly',  priority: '0.8' };
+  if (route === '/sponsors')     return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/codex')        return { changefreq: 'weekly',  priority: '0.7' };
+  if (route === '/character')    return { changefreq: 'monthly', priority: '0.5' };
+  if (route === '/forge/runes')  return { changefreq: 'weekly',  priority: '0.7' };
   if (route.startsWith('/tools/')) return { changefreq: 'monthly', priority: '0.6' };
+  if (route.startsWith('/arena/')) return { changefreq: 'monthly', priority: '0.6' };
   return { changefreq: 'monthly', priority: '0.5' }; // fallback for anything new
 }
 
@@ -60,6 +57,9 @@ function shouldInclude(route) {
   // adds it there for some other reason — the sitemap is a public document and
   // must never advertise the route.
   if (route === '/admin' || route.startsWith('/admin/')) return false;
+  // Redirect leftovers must not be advertised if they linger in prerender-routes.txt.
+  if (route === '/home' || route === '/forge-keeper' || route === '/rune-forge'
+      || route === '/quests' || route === '/arena') return false;
   return true;
 }
 

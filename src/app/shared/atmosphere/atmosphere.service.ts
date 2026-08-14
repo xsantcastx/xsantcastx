@@ -35,6 +35,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 import { TOOLS_REGISTRY } from '../../tools/tools-registry';
+import { CANONICAL } from '../canonical-routes';
 import { XpService } from '../gamification/xp.service';
 import {
   Atmosphere,
@@ -101,8 +102,12 @@ export class PageAtmosphereService {
 
     const segment = clean.split('/').filter(Boolean)[0] ?? '';
 
-    // The Keeper's realm is the visitor's, not the route's.
-    if (segment === 'forge-keeper') {
+    // Nested World remounts share the `world` prefix; keep the old place washes.
+    if (clean === CANONICAL.quests) return atmosphereForSegment('quests') ?? NO_ATMOSPHERE;
+    if (clean === CANONICAL.trials) return atmosphereForSegment('arena') ?? NO_ATMOSPHERE;
+
+    // The character sheet's realm is the visitor's, not the route's.
+    if (segment === CANONICAL.character.slice(1)) {
       return atmosphereForAetherShare(this.xp.snapshot.aetherShare);
     }
 
