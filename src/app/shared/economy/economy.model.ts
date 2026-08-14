@@ -140,14 +140,20 @@ export interface PlayerEconomy {
    */
   lastIdleAt: number;
   /**
-   * Epoch ms of the last ledger mutation on this device.
-   *
-   * Cloud merge uses this for last-write-wins on spendable balances (gold,
-   * eclipseEssence). Without it, Math.max across devices silently refunds
-   * every purchase the poorer copy still held. Stamped by EconomyService on
-   * every write; 0 means "never stamped" (pre-ledgerAt blob).
+   * Idempotent mutations since `origin`. Cloud merge unions these by id and
+   * replays them. Absent on every save from before the operation log existed.
    */
-  ledgerAt: number;
+  ops?: import('./economy-ops').EconomyOp[];
+  /**
+   * Snapshot from just before the first recorded op. Replay starts here.
+   * Null/absent on a legacy blob, which then merges conservatively.
+   */
+  origin?: import('./economy-ops').EconomyLedger | null;
+  /**
+   * Hybrid logical clock. New ops take max(wall, hlc + 1) so a clock moved
+   * backward cannot make a fresh spend look older than its predecessor.
+   */
+  hlc?: number;
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -176,7 +182,9 @@ export function emptyEconomy(): PlayerEconomy {
     levelsPaid: 1,
     streakWeeksPaid: 0,
     lastIdleAt: 0,
-    ledgerAt: 0,
+    ops: [],
+    origin: null,
+    hlc: 0,
   };
 }
 

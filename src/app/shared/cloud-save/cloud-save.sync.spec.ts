@@ -37,7 +37,7 @@ const ALL_KEYS = [...STATE_ENTRIES.map(e => e.key), 'cloud-save-uid'];
  */
 class FakeFirestore {
   readonly docs = new Map<string, unknown>();
-  readonly counts = { getDoc: 0, getDocs: 0, setDoc: 0, batch: 0, batchWrites: 0, deleteDoc: 0 };
+  readonly counts = { getDoc: 0, getDocs: 0, setDoc: 0, batch: 0, batchWrites: 0, deleteDoc: 0, transaction: 0 };
   /** Paths that refuse writes, standing in for a security rule. */
   readonly refuse = new Set<string>();
   /** When set, every network call rejects — the offline case. */
@@ -94,6 +94,36 @@ class FakeFirestore {
           for (const w of staged) this.commit(w.path, w.data);
         },
       };
+    },
+
+    runTransaction: async (_db: unknown, fn: (tx: {
+      get: (ref: { path: string }) => Promise<{ exists: () => boolean; data: () => unknown }>;
+      set: (ref: { path: string }, data: unknown) => void;
+    }) => Promise<void>) => {
+      this.guard();
+      this.counts.transaction++;
+      const staged = new Map<string, unknown>();
+      const seen = new Map<string, unknown>();
+      const tx = {
+        get: async (ref: { path: string }) => {
+          this.guard();
+          this.counts.getDoc++;
+          const held = this.docs.get(ref.path);
+          seen.set(ref.path, held);
+          return { exists: () => held !== undefined, data: () => copy(held) };
+        },
+        set: (ref: { path: string }, data: unknown) => {
+          staged.set(ref.path, copy(data));
+        },
+      };
+      await fn(tx);
+      for (const [path] of seen) {
+        const now = this.docs.get(path);
+        if (JSON.stringify(now) !== JSON.stringify(seen.get(path))) {
+          throw Object.assign(new Error('aborted'), { code: 'aborted' });
+        }
+      }
+      for (const [path, data] of staged) this.commit(path, data);
     },
   };
 
@@ -220,6 +250,38 @@ describe('cloud save — Firestore as the record', () => {
     expect(goldOnDisk()).toBeGreaterThanOrEqual(1000);
   });
 
+  it('replays two devices spending the same pile without minting Gold', async () => {
+    fake.seedGold(1000);
+    const a = build();
+    a.economy.init();
+    await a.xp.init();
+    await a.gateway.attach('u1', fake.handle);
+    expect(a.economy.snapshot.gold).toBeGreaterThanOrEqual(1000);
+
+    // Device A spends 700 of the shared 1,000.
+    expect(a.economy.spendGold(700, 'test')).toBe(true);
+    (a.economy as unknown as { flush(): void }).flush();
+    await a.gateway.flushNow();
+
+    teardownDevice();
+    localStorage.setItem('godforge-device-id', 'device-b');
+    const b = build();
+    b.economy.init();
+    await b.xp.init();
+    // Device B still thinks the pile is 1,000 and spends 500 before it pulls.
+    b.economy.earnGold(1000, 'test');
+    (b.economy as unknown as { flush(): void }).flush();
+    expect(b.economy.spendGold(500, 'test')).toBe(true);
+    (b.economy as unknown as { flush(): void }).flush();
+    await b.gateway.attach('u1', fake.handle);
+
+    const gold = b.economy.snapshot.gold;
+    // Conservation: cannot hold 700+500=1,200 of spend against a 1,000 pile.
+    expect(gold).toBeLessThan(1000);
+    expect(gold).toBeGreaterThanOrEqual(0);
+    expect(goldOnDisk()).toBe(gold);
+  });
+
   it('keeps the pulled Gold through the next write', async () => {
     fake.seedGold(5000);
     const { gateway, economy, xp } = build();
@@ -249,8 +311,10 @@ describe('cloud save — Firestore as the record', () => {
 
     // One `getDocs` per subcollection. The old bind made a `getDoc` per blob,
     // which was nineteen round trips on every page load of a signed-in visitor.
+    // The economy document is then re-read inside its write transaction — that
+    // single getDoc is the CAS, not a return to per-blob pulls.
     expect(fake.counts.getDocs).toBe(2);
-    expect(fake.counts.getDoc).toBe(0);
+    expect(fake.counts.getDoc).toBe(fake.counts.transaction);
   });
 
   it('sends a burst of changes as one batch', async () => {
