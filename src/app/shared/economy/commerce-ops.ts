@@ -17,8 +17,8 @@
  *     acknowledged ledger checkpoint that folds ops — never on a lone ack.
  *   • A folded key is retained for {@link COMMERCE_RETAIN_MS} after that
  *     fold, and only forgotten once every recently-seen device has acked
- *     the fold checkpoint. A device silent for {@link COMMERCE_RETAIN_MS}
- *     does not block prune.
+ *     the fold checkpoint. A device silent for the ledger stale window
+ *     (`ACK_STALE_MS` in economy-ops) does not block prune.
  *   • `commerceApplied` is also hard-capped at {@link COMMERCE_APPLIED_MAX}.
  *     If the cap is reached, the oldest acknowledged folded keys evict
  *     first so the cloud blob stays bounded.
