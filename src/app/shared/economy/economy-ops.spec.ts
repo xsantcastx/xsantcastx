@@ -228,4 +228,19 @@ describe('economy merge lifecycle', () => {
     expect(folded.checkpointId).toBe(1);
     expect(folded.ops.length).toBe(2);
   });
+
+  it('does not let a future-dated device block compaction', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const ops = [1, 2, 3, 4, 5, 6].map(seq => buy('phone', seq, 100, 'iron-hammer'));
+    const live = mergeEconomyLedgers(origin, { ...origin, gold: 9_400, origin, ops });
+    live.seenAt = { phone: 1_000, tablet: 9_999_999_999 };
+    live.acks = { phone: 0 };
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', 1_000, {
+      after: 4, keep: 2, staleMs: 60_000,
+    });
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.ops.length).toBe(2);
+    expect(folded.seenAt['tablet']).toBeUndefined();
+  });
 });
