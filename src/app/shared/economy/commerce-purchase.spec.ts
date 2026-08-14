@@ -145,6 +145,75 @@ describe('EconomyService.purchaseListing', () => {
     expect(economy.levelOf('forge-bellows')).toBe(1);
   });
 
+  it('replays a legacy string applied map after reload', () => {
+    const intent = {
+      mutationKey: 'buy:legacy-string',
+      listingId: 'forge-bellows',
+      kind: 'upgrade' as const,
+      expectedCost: economy.nextCost('forge-bellows'),
+    };
+    const first = economy.purchaseListing(intent);
+    expect(first.ok).toBe(true);
+    const blob = JSON.parse(memory.readRaw(ECONOMY_KEY)!);
+    blob.commerceOps = [];
+    blob.commerceApplied = { [intent.mutationKey]: 'committed' };
+    memory.writeRaw(ECONOMY_KEY, JSON.stringify(blob));
+
+    TestBed.resetTestingModule();
+    const reloaded = configure(memory);
+    const gold = reloaded.snapshot.gold;
+    const again = reloaded.purchaseListing(intent);
+    expect(again.ok).toBe(true);
+    expect(reloaded.snapshot.gold).toBe(gold);
+    expect(reloaded.levelOf('forge-bellows')).toBe(1);
+  });
+
+  it('treats a cap-evicted mutation key as a new purchase', () => {
+    const intent = {
+      mutationKey: 'buy:evicted',
+      listingId: 'forge-bellows',
+      kind: 'upgrade' as const,
+      expectedCost: economy.nextCost('forge-bellows'),
+    };
+    const first = economy.purchaseListing(intent);
+    expect(first.ok).toBe(true);
+    const extras = Array.from({ length: 8 }, (_, i) => ({
+      ...first.operation!,
+      id: `cap-${i}`,
+      mutationKey: `buy:cap-${i}`,
+      createdAt: i + 2,
+    }));
+    const firstFold = compactCommerceReceipts(
+      [{ ...first.operation!, createdAt: 1 }, ...extras],
+      {},
+      { after: 4, keep: 2, now: 1_000, checkpointId: 0, minAckedCheckpoint: 0, maxApplied: 2 },
+    );
+    const more = Array.from({ length: 8 }, (_, i) => ({
+      ...first.operation!,
+      id: `cap2-${i}`,
+      mutationKey: `buy:cap2-${i}`,
+      createdAt: i + 20,
+    }));
+    const evicted = compactCommerceReceipts(
+      [...firstFold.ops, ...more],
+      firstFold.appliedKeys,
+      { after: 4, keep: 2, now: 2_000, checkpointId: 1, minAckedCheckpoint: 1, maxApplied: 2 },
+    );
+    expect(evicted.appliedKeys['buy:evicted']).toBeUndefined();
+    expect(evicted.ops.some(row => row.mutationKey === 'buy:evicted')).toBe(false);
+    economy['state'].commerceOps = evicted.ops;
+    economy['state'].commerceApplied = evicted.appliedKeys;
+    const gold = economy.snapshot.gold;
+    const level = economy.levelOf('forge-bellows');
+    const again = economy.purchaseListing({
+      ...intent,
+      expectedCost: economy.nextCost('forge-bellows'),
+    });
+    expect(again.ok).toBe(true);
+    expect(economy.snapshot.gold).toBeLessThan(gold);
+    expect(economy.levelOf('forge-bellows')).toBe(level + 1);
+  });
+
   it('treats a pruned mutation key as a new purchase', () => {
     const intent = {
       mutationKey: 'buy:forgotten',
