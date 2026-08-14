@@ -17,7 +17,8 @@ import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
-import { REALMS, RealmDefinition } from '../shared/realms/realm.model';
+import { FIVE_REALMS, type NarrativeRealm } from '../shared/narrative/five-realms.narrative';
+import { continueFromWorld } from '../shared/narrative/continue-journey';
 import { PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
@@ -30,12 +31,9 @@ import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
 
-/**
- * One realm station on the World door. Names and atmosphere only — no tool
- * cards and no catalogue links.
- */
+/** One realm station on the World door. Narrative places, not tool domains. */
 export interface ForgeStation {
-  readonly realm: RealmDefinition;
+  readonly realm: NarrativeRealm;
 }
 
 @Component({
@@ -74,15 +72,16 @@ export class LandingComponent implements OnInit, OnDestroy {
   /** Exposed for the hero + journey rank sigils. */
   readonly rankSigil = rankSigil;
 
-  /** Five realms, names and atmosphere only. */
-  readonly stations: ForgeStation[] = REALMS.map(realm => ({ realm }));
+  /** Five narrative places, in approved opening order. */
+  readonly stations: ForgeStation[] = FIVE_REALMS.map(realm => ({ realm }));
+  readonly journey = continueFromWorld();
 
   /**
    * Which station is open. One at a time: five expanded realms is a wall of 30
    * cards, and the point of the accordion is that the visitor picks a realm.
    * Luminous opens by default so the section is never a row of shut doors.
    */
-  openRealmId: string = REALMS[0].id;
+  openRealmId: string = FIVE_REALMS[0].id;
 
   /** Realm the pointer is over, which brightens that station. */
   hoveredRealmId: string | null = null;
@@ -105,8 +104,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   runesFound = 0;
   scrollsFound = 0;
   runewordsCrafted = 0;
-  /** Realms in the codex. */
-  readonly realmCount = REALMS.length;
+  /** Realms the World introduces. */
+  readonly realmCount = FIVE_REALMS.length;
 
   /**
    * Wallet, for the hero's standing panel. Seeded from the service's current
