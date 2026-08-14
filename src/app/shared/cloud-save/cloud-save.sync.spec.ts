@@ -695,10 +695,9 @@ describe('cloud save — Firestore as the record', () => {
 
     for (let i = 0; i < 20 && !sawAsk; i++) await Promise.resolve();
     expect(sawAsk).toBe(true);
-    // The production bug was a 4s flush starting because attach set uid
-    // before the answer. While parked we must still be local-only.
-    expect(gateway.attached).toBe(false);
-    expect(gateway.pending).toBe(0);
+    // Attached so later play can queue, but automatic flushes are held
+    // until the answer — that is what used to swallow Keep This Device.
+    expect(gateway.attached).toBe(true);
     expect(fake.counts.setDoc + fake.counts.batch + fake.counts.transaction).toBe(0);
 
     release('merge');
@@ -725,6 +724,28 @@ describe('cloud save — Firestore as the record', () => {
 
     expect(gateway.attached).toBe(false);
     expect(gateway.link).toBe('local');
+    expect(gateway.pending).toBe(0);
+  });
+
+  it('queues play after an offline sign-in and uploads it when the cloud returns', async () => {
+    fake.down = true;
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    await gateway.attach('u1', fake.handle).catch(() => { /* offline first pull */ });
+
+    expect(gateway.attached).toBe(true);
+    expect(gateway.link).toBe('offline');
+
+    economy.earnGold(250, 'test');
+    (economy as unknown as { flush(): void }).flush();
+    expect(goldOnDisk()).toBeGreaterThanOrEqual(250);
+    expect(gateway.pending).toBeGreaterThan(0);
+
+    fake.down = false;
+    await gateway.flushNow();
+    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(250);
+    expect(gateway.link).toBe('synced');
     expect(gateway.pending).toBe(0);
   });
 

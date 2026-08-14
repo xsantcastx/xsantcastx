@@ -293,6 +293,13 @@ export class GameStateGateway {
    * Cleared once a flush lands with an empty queue, or on detach.
    */
   private overrideStrategy: MergeStrategy | null = null;
+  /**
+   * True from the start of attach until the merge choice is known (or attach
+   * fails). `markDirty` still queues; `scheduleFlush` does not fire. That is
+   * what stops a four-second upload swallowing Keep This Device, without
+   * leaving the gateway unattached if the first pull is offline.
+   */
+  private decisionPending = false;
 
   private readonly link$$ = new BehaviorSubject<CloudLink>('local');
   readonly link$: Observable<CloudLink> = this.link$$.asObservable();
@@ -433,14 +440,16 @@ export class GameStateGateway {
     fs: FirestoreHandle,
     ask?: (conflict: MergeConflict) => Promise<MergeStrategy>,
   ): Promise<AttachResult> {
-    // Hold `this.uid` until the visitor has answered. `flushOwners()` writes
-    // through `write()`, and `write()` queues a cloud flush only once we are
-    // attached. Setting the uid first started a four-second upload while the
-    // merge dialog was still open; that in-flight write then swallowed
-    // Keep This Device / Merge Best and the header still said Synced.
+    // Attach first so an offline first pull still queues later play. Hold
+    // automatic flushes until the merge choice is known — a four-second
+    // upload started during the dialog is what used to swallow Keep This
+    // Device / Merge Best while the header said Synced.
+    this.uid = uid;
     this.fs = fs;
+    this.decisionPending = true;
     this.setLink('syncing');
     this.lastPullAt = Date.now();
+    this.bindLifecycle();
 
     // Settle every owner before reading a single blob. Most write through on
     // every mutation, but the ledger throttles to one write every five seconds
@@ -449,17 +458,29 @@ export class GameStateGateway {
     // rehydrate at the far end would drop the difference.
     this.flushOwners();
 
-    const remote = await this.readAll(uid, fs);
-    const strategy = await this.decideStrategy(remote, ask);
-    // Idle ticks during the dialog can move memory after the first flush.
-    this.flushOwners();
+    let remote: Map<string, unknown>;
+    let strategy: MergeStrategy;
+    try {
+      remote = await this.readAll(uid, fs);
+      strategy = await this.decideStrategy(remote, ask);
+      // Idle ticks during the dialog can move memory after the first flush.
+      this.flushOwners();
+    } catch (err) {
+      this.decisionPending = false;
+      // Still this session: keep the queue and retry when the network returns.
+      if (this.fs === fs && this.uid === uid) {
+        this.setLink('offline');
+        this.scheduleRetry();
+      }
+      throw err;
+    }
+    this.decisionPending = false;
+
     // signOut() answers the dialog and detaches in the same turn, without
-    // awaiting this attach. If we still set uid and push, leftover drain
-    // spins forever on a null Firestore handle.
+    // awaiting this attach. If we still push, leftover drain spins forever
+    // on a null Firestore handle.
     if (this.fs !== fs) return { adopted: [], seeded: false };
-    this.uid = uid;
     if (strategy !== 'merge') this.overrideStrategy = strategy;
-    this.bindLifecycle();
 
     const adopted: string[] = [];
     const toWrite: StateEntry[] = [];
@@ -534,6 +555,7 @@ export class GameStateGateway {
     }
     this.cancelFlush();
     this.unbindLifecycle();
+    this.decisionPending = false;
     this.uid = null;
     this.fs = null;
     this.dirty.clear();
@@ -637,6 +659,7 @@ export class GameStateGateway {
   // ───────────────────────────────────────────────────────────────────────────
 
   private scheduleFlush(): void {
+    if (this.decisionPending) return;
     if (this.flushTimer !== null) {
       // Already booked. Let it stand unless the cap is due, so a burst of
       // clicking does not keep pushing the write further out.
