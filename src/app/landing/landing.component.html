@@ -66,8 +66,8 @@
 
         <dl class="gfstat">
           <div class="gfstat__row">
-            <dt>{{ translate('godforge.status.toolsForged') }}</dt>
-            <dd [attr.data-counter]="artifactCount">{{ artifactCount }}</dd>
+            <dt>{{ translate('godforge.anvil.runes') }}</dt>
+            <dd [attr.data-counter]="runesTotal">{{ runesFound }}/{{ runesTotal }}</dd>
           </div>
           <div class="gfstat__row">
             <dt>{{ translate('godforge.status.codexEntries') }}</dt>
@@ -295,14 +295,14 @@
     <div class="hp-stats__inner">
       <div class="hp-stat">
         <span class="hp-stat__icon">⬡</span>
-        <span class="hp-stat__num" [attr.data-counter]="artifactCount">{{ artifactCount }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.artifacts') }}</span>
+        <span class="hp-stat__num" [attr.data-counter]="runesTotal">{{ runesTotal }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.anvil.runes') }}</span>
       </div>
       <div class="hp-stats__divider"></div>
       <div class="hp-stat">
         <span class="hp-stat__icon">◉</span>
-        <span class="hp-stat__num" [attr.data-counter]="prerenderedPaths">{{ prerenderedPaths }}</span>
-        <span class="hp-stat__label">{{ translate('godforge.pulse.paths') }}</span>
+        <span class="hp-stat__num" [attr.data-counter]="runewordsTotal">{{ runewordsTotal }}</span>
+        <span class="hp-stat__label">{{ translate('godforge.anvil.words') }}</span>
       </div>
       <div class="hp-stats__divider"></div>
       <div class="hp-stat">

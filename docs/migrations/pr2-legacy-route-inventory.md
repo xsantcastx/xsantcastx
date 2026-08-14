@@ -56,7 +56,7 @@ Legacy developer-tool, portfolio, build-in-public, and owner-product URLs redire
 
 ## Retained infrastructure (not public content)
 
-`src/app/tools/tools-registry.ts` remains imported by quests, XP wiring, idle, realms, atmosphere, and character mastery. It is a data table for existing game mechanics, not a public catalogue.
+`src/app/tools/tools-registry.ts` remains imported by quests, XP wiring, idle, realms, atmosphere, and character mastery. It is a data table for existing game mechanics, not a public catalogue. World no longer displays the registry length as a product KPI.
 
 ## Not deleted (pending explicit approval)
 

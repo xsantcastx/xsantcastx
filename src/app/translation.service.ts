@@ -121,7 +121,7 @@ export class TranslationService {
     // ── The entrance ─────────────────────────────────────────────────────
     'godforge.status.name':         { en: 'Eclipse Realms', es: 'Eclipse Realms' },
     'godforge.status.online':       { en: 'Status: Online', es: 'Estado: en linea' },
-    'godforge.status.toolsForged':  { en: 'Artifacts',      es: 'Artefactos' },
+    'godforge.status.toolsForged':  { en: 'Runes',          es: 'Runas' },
     'godforge.status.projectsLive': { en: 'Projects Live',  es: 'Proyectos activos' },
     'godforge.status.codexEntries': { en: 'Codex Entries',  es: 'Entradas del codice' },
     'godforge.status.forgeLevel':   { en: 'Forge Level',    es: 'Nivel de forja' },
