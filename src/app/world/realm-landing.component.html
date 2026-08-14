@@ -5,8 +5,8 @@
     [style.--realm]="place.color"
     [style.--realm-glow]="place.glow">
 
-    <nav class="rl__crumb" aria-label="Breadcrumb">
-      <a routerLink="/world">World</a>
+    <nav class="rl__crumb" [attr.aria-label]="t('world.crumb.label')">
+      <a routerLink="/world">{{ t('world.crumb.world') }}</a>
       <span aria-hidden="true">/</span>
       <span aria-current="page">{{ place.name }}</span>
     </nav>
@@ -21,7 +21,7 @@
       </p>
       <h1 class="rl__title">{{ place.name }}</h1>
       <p class="rl__function">{{ place.function }}</p>
-      <p class="rl__status">Place open. Opening chapter not yet playable.</p>
+      <p class="rl__status">{{ t('world.realm.status') }}</p>
     </header>
 
     <section class="rl__faction" aria-labelledby="rl-faction">
@@ -30,31 +30,31 @@
     </section>
 
     <section class="rl__facts" aria-labelledby="rl-facts">
-      <h2 id="rl-facts" class="rl__visually-hidden">Place and pressure</h2>
+      <h2 id="rl-facts" class="rl__visually-hidden">{{ t('world.realm.facts') }}</h2>
       <dl class="rl__dl">
         <div>
-          <dt>Landmark</dt>
+          <dt>{{ t('world.realm.landmark') }}</dt>
           <dd>
             <strong>{{ place.landmark }}</strong>
             <span>{{ place.landmarkDetail }}</span>
           </dd>
         </div>
         <div>
-          <dt>Hazard</dt>
+          <dt>{{ t('world.realm.hazard') }}</dt>
           <dd>
             <strong>{{ place.hazard }}</strong>
             <span>{{ place.hazardDetail }}</span>
           </dd>
         </div>
         <div>
-          <dt>Resource</dt>
+          <dt>{{ t('world.realm.resource') }}</dt>
           <dd>
             <strong>{{ place.resource }}</strong>
             <span>{{ place.resourceDetail }}</span>
           </dd>
         </div>
         <div>
-          <dt>Threat</dt>
+          <dt>{{ t('world.realm.threat') }}</dt>
           <dd>
             <strong>{{ place.threat }}</strong>
             <span>{{ place.threatDetail }}</span>
@@ -64,13 +64,13 @@
     </section>
 
     <section class="rl__conflict" aria-labelledby="rl-conflict">
-      <h2 id="rl-conflict">Unresolved conflict</h2>
+      <h2 id="rl-conflict">{{ t('world.realm.conflict') }}</h2>
       <p>{{ place.conflict }}</p>
     </section>
 
     <section class="rl__people" aria-labelledby="rl-people">
-      <h2 id="rl-people">Who waits here</h2>
-      <p class="rl__people-note">Inspection only. No standing or choice is recorded yet.</p>
+      <h2 id="rl-people">{{ t('world.realm.people') }}</h2>
+      <p class="rl__people-note">{{ t('world.realm.peopleNote') }}</p>
       <ul class="rl__chars">
         @for (person of place.characters; track person.id) {
           <li>
@@ -89,8 +89,8 @@
               class="rl__char-body"
               [id]="'rl-char-' + person.id"
               [hidden]="!isCharacterOpen(person)">
-              <p><span class="rl__k">Wants</span> {{ person.want }}</p>
-              <p><span class="rl__k">Bond</span> {{ person.relationship }}</p>
+              <p><span class="rl__k">{{ t('world.realm.wants') }}</span> {{ person.want }}</p>
+              <p><span class="rl__k">{{ t('world.realm.bond') }}</span> {{ person.relationship }}</p>
             </div>
           </li>
         }
@@ -98,20 +98,20 @@
     </section>
 
     <footer class="rl__foot">
-      <p class="rl__rune">Witness Rune when the chapter ships: <strong>{{ place.witnessRune }}</strong></p>
+      <p class="rl__rune">{{ t('world.realm.witnessRune') }} <strong>{{ place.witnessRune }}</strong></p>
       @if (journey) {
         <a class="rl__continue" [routerLink]="journey.route">
-          <span class="rl__continue-label">Continue Journey</span>
-          <span class="rl__continue-name">{{ journey.label }}</span>
-          <span class="rl__continue-note">{{ journey.note }}</span>
+          <span class="rl__continue-label">{{ t('world.realm.continue') }}</span>
+          <span class="rl__continue-name">{{ continueName() }}</span>
+          <span class="rl__continue-note">{{ continueNote() }}</span>
         </a>
       }
     </footer>
   </article>
 } @else {
   <article class="rl rl--missing">
-    <h1>This place is not on the map</h1>
-    <p>No realm named <code>{{ requestedId }}</code> is part of the five. The World still holds Celestial, Infernal, Luminous, Umbral, and Verdant.</p>
-    <a routerLink="/world">Return to the World</a>
+    <h1>{{ t('world.realm.unknownTitle') }}</h1>
+    <p>{{ t('world.realm.unknownBody', { id: requestedId }) }}</p>
+    <a routerLink="/world">{{ t('world.realm.return') }}</a>
   </article>
 }

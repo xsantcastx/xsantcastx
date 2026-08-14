@@ -1246,6 +1246,34 @@ export class TranslationService {
     'godforge.journey.arena':         { en: 'The Arena',               es: 'La arena' },
     'godforge.journey.arenaHint':     { en: 'fragments buried across the realms', es: 'fragmentos enterrados por los reinos' },
 
+    // ─── Realm dossier and Fivefold Lock chrome (lore stays in narrative data) ─
+    'world.crumb.label':        { en: 'Breadcrumb', es: 'Migas de navegacion' },
+    'world.crumb.world':        { en: 'World', es: 'Mundo' },
+    'world.realm.status':       { en: 'Place open. Opening chapter not yet playable.', es: 'Lugar abierto. El capitulo de apertura aun no se puede jugar.' },
+    'world.realm.facts':        { en: 'Place and pressure', es: 'Lugar y presion' },
+    'world.realm.landmark':     { en: 'Landmark', es: 'Hito' },
+    'world.realm.hazard':       { en: 'Hazard', es: 'Peligro' },
+    'world.realm.resource':     { en: 'Resource', es: 'Recurso' },
+    'world.realm.threat':       { en: 'Threat', es: 'Amenaza' },
+    'world.realm.conflict':     { en: 'Unresolved conflict', es: 'Conflicto sin resolver' },
+    'world.realm.people':       { en: 'Who waits here', es: 'Quien espera aqui' },
+    'world.realm.peopleNote':   { en: 'Inspection only. No standing or choice is recorded yet.', es: 'Solo inspeccion. Todavia no se registra afinidad ni eleccion.' },
+    'world.realm.wants':        { en: 'Wants', es: 'Desea' },
+    'world.realm.bond':         { en: 'Bond', es: 'Vinculo' },
+    'world.realm.witnessRune':  { en: 'Witness Rune when the chapter ships:', es: 'Runa Testigo cuando el capitulo se publique:' },
+    'world.realm.continue':     { en: 'Continue Journey', es: 'Continua el viaje' },
+    'world.realm.enter':        { en: 'Enter {{name}}', es: 'Entra en {{name}}' },
+    'world.realm.continueTo':   { en: 'Continue to {{name}}', es: 'Continua hacia {{name}}' },
+    'world.realm.notPlayableHere': { en: '{{chapter}} is not yet playable. The {{landmark}} can be inspected.', es: '{{chapter}} aun no se puede jugar. Se puede inspeccionar {{landmark}}.' },
+    'world.realm.notPlayableNext': { en: '{{chapter}} is not yet playable. Inspect the {{landmark}} next.', es: '{{chapter}} aun no se puede jugar. Inspecciona {{landmark}} a continuacion.' },
+    'world.realm.unknownTitle': { en: 'This place is not on the map', es: 'Este lugar no esta en el mapa' },
+    'world.realm.unknownBody':  { en: 'No realm named {{id}} is part of the five. The World still holds Celestial, Infernal, Luminous, Umbral, and Verdant.', es: 'Ningun reino llamado {{id}} forma parte de los cinco. El Mundo sigue teniendo Celestial, Infernal, Luminous, Umbral y Verdant.' },
+    'world.realm.return':       { en: 'Return to the World', es: 'Volver al Mundo' },
+    'world.realm.titlePage':    { en: '{{name}} — Eclipse Realms', es: '{{name}} — Eclipse Realms' },
+    'world.realm.titleUnknown': { en: 'Unknown place — Eclipse Realms', es: 'Lugar desconocido — Eclipse Realms' },
+    'world.lock.answers':       { en: 'Five incomplete answers', es: 'Cinco respuestas incompletas' },
+    'world.lock.remedy':        { en: '{{faction}} wants a necessary but incomplete remedy.', es: '{{faction}} quiere un remedio necesario pero incompleto.' },
+
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
 
@@ -1456,15 +1484,18 @@ export class TranslationService {
     return this.currentLanguageSubject.value;
   }
 
-  translate(key: string): string {
+  translate(key: string, vars?: Record<string, string | number>): string {
     const currentLang = this.getCurrentLanguage();
     const translation = this.translations[key];
-
-    if (translation && translation[currentLang as 'en' | 'es']) {
-      return translation[currentLang as 'en' | 'es'];
+    let text = (translation && translation[currentLang as 'en' | 'es'])
+      || translation?.en
+      || key;
+    if (vars) {
+      for (const [name, value] of Object.entries(vars)) {
+        text = text.split(`{{${name}}}`).join(String(value));
+      }
     }
-
-    return translation?.en || key;
+    return text;
   }
 }
 
