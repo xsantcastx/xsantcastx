@@ -63,7 +63,7 @@ export class TranslationService {
     // it is what the footer and the page itself say; a hall is a slot roughly
     // one word wide, and "El santuario interior" is 175px of it in Spanish.
     'gfnav.sanctum':      { en: 'Sanctum',       es: 'Santuario' },
-    'gfnav.missionControl': { en: 'Mission Control', es: 'Control de misión' },
+    'gfnav.missionControl': { en: 'Control Room', es: 'Sala de control' },
     'gfnav.donate':       { en: 'Donate',        es: 'Donar' },
     'gfnav.keeper':       { en: 'Your Forge',    es: 'Tu forja' },
     'gfnav.realms':       { en: 'Realms',        es: 'Reinos' },
@@ -1179,7 +1179,7 @@ export class TranslationService {
     'cosmic.tagline.latestTools':         { en: 'new stars born this week in the xsantcastx universe',                  es: 'nuevas estrellas nacidas esta semana en el universo xsantcastx' },
     'cosmic.tagline.whatsNew':            { en: 'tracking every star added to the universe',                            es: 'siguiendo cada estrella anadida al universo' },
     'cosmic.tagline.fuelMission':         { en: 'every coin keeps another star alive in the universe',                  es: 'cada moneda mantiene viva otra estrella en el universo' },
-    'cosmic.tagline.chooseGalaxy':        { en: 'Choose a galaxy — each is a constellation of free tools',              es: 'Elige una galaxia — cada una es una constelacion de herramientas gratis' },
+    'cosmic.tagline.chooseGalaxy':        { en: 'Choose a galaxy — each is a constellation of realms',              es: 'Elige una galaxia — cada una es una constelacion de reinos' },
 
     // ─── Guestbook cosmic copy ─────────────────────────────────────────────
 

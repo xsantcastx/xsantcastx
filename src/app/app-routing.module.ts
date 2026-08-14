@@ -109,7 +109,7 @@ export const APP_ROUTES: Routes = [
       title: 'The Codex',
       data: {
         description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, mastery for all 128 tools, and clues to every secret still hidden.',
-        keywords: 'achievements, developer tools achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
+        keywords: 'achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -137,7 +137,7 @@ export const APP_ROUTES: Routes = [
       title: 'The Standing Orders',
       data: {
         description: 'Three daily quests drawn from thirty, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by using the tools you already use.',
-        keywords: 'daily quests, missions, developer tools, gamification, eclipse realms, xp, xsantcastx',
+        keywords: 'daily quests, missions, gamification, eclipse realms, xp, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',

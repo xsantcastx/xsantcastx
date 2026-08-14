@@ -1,0 +1,22 @@
+# PR2 rg audit
+
+Command:
+rg -n -i "developer tools|free tools|126 tools|123\\+ tools|Mission Control|Watch AI Build|MCP Server|sponsor the tools" src e2e scripts firebase.json prerender-routes.txt --glob '!src/app/version.ts' --glob '!docs/migrations/**'
+
+(rg not on PATH; equivalent grep -RIn used.)
+
+## Hits after player-facing cleanup
+
+src/app/app-routing.module.ts:45:   * Mission Control is retired with the rest of the public product surfaces;
+src/app/footer/footer.component.spec.ts:68:    expect(fixture.nativeElement.textContent).not.toContain('MCP Server');
+src/app/shared/lore/lore.service.ts:159:    // Tools with no codex entry are not tracked at all. 116 of 126 tools have
+src/app/shared/title-strategy.service.ts:13: *     "Contact — The Godforge", "MCP Server — The Godforge"
+
+## Classification
+
+- Comments in routing / title-strategy / lore.service: allowed leftovers.
+- Footer spec asserts the retired "MCP Server" strip is gone: allowed.
+- version.ts changelog prose excluded by glob: allowed historical.
+- tools-registry.ts titles are infrastructure (no match on this pattern).
+
+No remaining player-facing template, nav-key, or SEO-title hits.

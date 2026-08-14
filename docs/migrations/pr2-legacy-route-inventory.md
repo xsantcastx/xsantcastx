@@ -40,16 +40,16 @@ Legacy developer-tool, portfolio, build-in-public, and owner-product URLs redire
 
 | From | Hosting 301 | In-app redirect | Deleted from sitemap/prerender/nav | Code deletion |
 | --- | --- | --- | --- | --- |
-| `/tools` | `/world` | `/world` | yes | after audit |
-| `/tools/**` | `/world` | `/tools/:slug` → `/world` | yes | after audit |
-| `/embed`, `/embed/**` | `/world` | yes | yes | after audit |
-| `/mission-control` | `/world` | `/world` | yes | after audit |
-| `/mcp` | `/world` | `/world` | yes | after audit |
-| `/blueprint` | `/world` | `/world` | yes | after audit |
+| `/tools` | `/world` | `/world` | yes | yes (registry kept) |
+| `/tools/**` | `/world` | `/tools/:slug` → `/world` | yes | yes (pages deleted) |
+| `/embed`, `/embed/**` | `/world` | yes | yes | yes |
+| `/mission-control` | `/world` | `/world` | yes | yes (`live.component*`) |
+| `/mcp` | `/world` | `/world` | yes | yes |
+| `/blueprint` | `/world` | `/world` | yes | yes |
 | `/changelog` | `/world` | `/world` | yes | n/a (alias) |
-| `/sponsors` | `/world` | `/world` | yes | after audit |
-| `/donate` | `/world` | `/world` | yes | after audit |
-| `/pro` | `/world` | `/world` | yes | after audit |
+| `/sponsors` | `/world` | `/world` | yes | yes |
+| `/donate` | `/world` | `/world` | yes | yes (form/feed too) |
+| `/pro` | `/world` | `/world` | yes | yes (page only; ProService kept) |
 | `/skills`, `/services` | `/world` (was `/tools`) | `/world` | yes | already gone |
 | `/projects` | `/world` (was `/blueprint`) | `/world` | yes | already gone |
 | `/contact`, `/about`, `/guestbook` | `/world` | `/world` | yes | already gone |
