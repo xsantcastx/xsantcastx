@@ -6,7 +6,7 @@
  * same thing and splitting them across components would mean three copies of
  * "is the drawer open" to keep in step.
  *
- *  · Desktop: sigil + XSANTCASTX lockup, five halls, then the visitor's
+ *  · Desktop: sigil + Eclipse Realms lockup, five halls, then the visitor's
  *    standing (Gold, Essence, rank) and the language toggle.
  *  · Mobile: the bar keeps the lockup and the status pills; primary
  *    navigation moves to a fixed five-tab bar at the bottom of the viewport,

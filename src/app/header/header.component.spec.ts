@@ -35,7 +35,14 @@ describe('HeaderComponent', () => {
       ])],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
-        { provide: TranslationService, useValue: { translate: (k: string) => k, currentLanguage$: of('en'), setLanguage: () => {} } },
+        { provide: TranslationService, useValue: {
+          translate: (k: string) => ({
+            'gfnav.brand': 'Eclipse Realms',
+            'gfnav.brandLabel': 'Eclipse Realms — World',
+          }[k] ?? k),
+          currentLanguage$: of('en'),
+          setLanguage: () => {},
+        } },
         { provide: AnalyticsService, useValue: { trackLanguageChange: () => {} } },
         { provide: EasterEggService, useValue: { init: async () => {}, foundCount: 0 } },
         {
@@ -62,6 +69,16 @@ describe('HeaderComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('brands the player chrome as Eclipse Realms', () => {
+    fixture.detectChanges();
+    const brand = fixture.nativeElement.querySelector('.gfnav__brand') as HTMLAnchorElement;
+    expect(brand.getAttribute('aria-label')).toBe('Eclipse Realms — World');
+    expect(brand.querySelector('.gfnav__wordmark')?.textContent?.trim()).toBe('Eclipse Realms');
+    expect(fixture.nativeElement.querySelector('.gfnav__creed')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('XSANTCASTX');
+    expect(fixture.nativeElement.textContent).not.toContain('BUILD');
   });
 
   it('primary halls are exactly the implemented player destinations', () => {
