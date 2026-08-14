@@ -413,8 +413,8 @@ export class EasterEggService {
     this.discovery$.next({
       egg,
       isNew,
-      totalFound: this.discovered.size,
-      totalEggs: PUBLIC_CODEX_EGGS.length,
+      totalFound: this.foundCount,
+      totalEggs: this.totalEggs,
     });
 
     if (isNew) {
