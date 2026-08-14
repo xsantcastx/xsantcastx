@@ -212,6 +212,18 @@ jobs:
           name: build-artifacts
           path: dist/xsantcastx/browser
 
+      - name: Deploy Firestore rules and indexes
+        # Hosting-only deploys left users/{uid}/progress and economy on the
+        # previous deny-all fallback. Cloud save then failed as permission-denied
+        # while the site itself looked fine. Rules and indexes ship with the
+        # client that expects them.
+        run: |
+          printenv FIREBASE_SERVICE_ACCOUNT > "$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes --project xsantcastx-1694b --non-interactive
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_XSANTCASTX_1694B }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
