@@ -451,6 +451,18 @@
   letter-spacing: 0.08em;
   color: var(--mk-faint);
 }
+.mk__notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--mk-line);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  color: var(--mk-dim);
+}
+.mk__notice--ok { border-color: rgba(127, 213, 163, 0.35); color: #7fd5a3; }
+.mk__notice--queued { border-color: rgba(201, 168, 76, 0.4); color: var(--mk-gold); }
+.mk__notice--denied { border-color: rgba(255, 45, 77, 0.4); color: #ff8a9a; }
 .mk__chips {
   list-style: none; margin: 0 0 12px; padding: 0;
   display: flex; flex-wrap: wrap; gap: 6px;
