@@ -25,11 +25,9 @@
     <p class="gffoot__next">{{ translate('gffoot.nextThing') }}</p>
 
     <nav class="gffoot__links" aria-label="Eclipse Realms">
-      <a routerLink="/world">{{ translate('gfnav.world') }}</a>
-      <a routerLink="/character">{{ translate('gfnav.character') }}</a>
-      <a routerLink="/market">{{ translate('gfnav.market') }}</a>
-      <a routerLink="/forge/runes">{{ translate('gfnav.forge') }}</a>
-      <a routerLink="/codex">{{ translate('gfnav.codex') }}</a>
+      @for (dest of primaryNav; track dest.id) {
+        <a [routerLink]="dest.route">{{ translate(dest.labelKey) }}</a>
+      }
     </nav>
 
     <!--
@@ -39,18 +37,9 @@
       here is Godforge surfaces that simply are not top-six.
     -->
     <nav class="gffoot__links gffoot__links--minor" aria-label="More">
-      <a routerLink="/tools">{{ translate('gfnav.tools') }}</a>
-      <a routerLink="/world/quests">{{ translate('gfnav.quests') }}</a>
-      <a routerLink="/world/trials">{{ translate('gfnav.trials') }}</a>
-      <a routerLink="/sanctum">{{ translate('gfnav.live') }}</a>
-      <a routerLink="/blueprint">{{ translate('gfnav.warTable') }}</a>
-      <a routerLink="/mcp">{{ translate('gfnav.mcp') }}</a>
-      <a routerLink="/mission-control">{{ translate('gfnav.missionControl') }}</a>
-      <a routerLink="/sponsors">{{ translate('gfnav.sponsors') }}</a>
-      <a routerLink="/donate">{{ translate('gfnav.donate') }}</a>
-      <!-- Gold-tinted on purpose: it is the only link in this row that costs
-           money, and /pro is the only page on the site using this colour. -->
-      <a routerLink="/pro" class="gffoot__link--pro">{{ translate('gfnav.pro') }}</a>
+      @for (dest of moreNav; track dest.id) {
+        <a [routerLink]="dest.route" [class.gffoot__link--pro]="dest.id === 'pro'">{{ translate(dest.labelKey) }}</a>
+      }
     </nav>
 
     <!--

@@ -11,11 +11,11 @@ import { EasterEggService } from '../shared/easter-eggs/easter-egg.service';
 import { XpService } from '../shared/gamification/xp.service';
 import { EconomyService } from '../shared/economy/economy.service';
 import { CANONICAL } from '../shared/canonical-routes';
+import { PRIMARY_NAV } from '../shared/nav/nav.manifest';
 
 @Component({ standalone: true, template: '' })
 class HallStubComponent {}
 
-const PLAYER_HALLS = [CANONICAL.world, CANONICAL.character, '/market', CANONICAL.forge, '/codex'];
 const BANNED_PRIMARY = ['/tools', '/blueprint', '/mcp', '/mission-control', '/arena', '/sponsors'];
 
 describe('HeaderComponent', () => {
@@ -81,26 +81,28 @@ describe('HeaderComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('BUILD');
   });
 
-  it('primary halls are exactly the implemented player destinations', () => {
-    expect(component.primaryHalls.map(h => h.route)).toEqual(PLAYER_HALLS);
+  it('primary halls come from the nav manifest', () => {
+    expect(component.primaryNav).toBe(PRIMARY_NAV);
+    expect(component.tabs).toBe(PRIMARY_NAV);
+    expect(component.primaryNav.map(h => h.route)).toEqual(PRIMARY_NAV.map(d => d.route));
   });
 
   it('keeps development surfaces out of primary halls', () => {
-    const routes = component.primaryHalls.map(h => h.route);
+    const routes = PRIMARY_NAV.map(h => h.route);
     for (const banned of BANNED_PRIMARY) {
       expect(routes).not.toContain(banned);
     }
   });
 
   it('tabs do not include legacy /home or /forge-keeper', () => {
-    const routes = component.tabs.map(t => t.route);
+    const routes = PRIMARY_NAV.map(t => t.route);
     expect(routes).not.toContain('/home');
     expect(routes).not.toContain('/forge-keeper');
-    expect(routes).toEqual(PLAYER_HALLS);
+    expect(routes).toEqual(PRIMARY_NAV.map(d => d.route));
   });
 
   it('World destinations require an exact active match', () => {
-    expect(component.primaryHalls[0].exact).toBeTrue();
+    expect(PRIMARY_NAV[0].exact).toBeTrue();
     expect(component.tabs[0].exact).toBeTrue();
     expect(component.tomeSections[0].halls[0].exact).toBeTrue();
   });

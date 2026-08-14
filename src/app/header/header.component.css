@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   THE COMMAND BAR, THE TOME, THE TAB BAR
+   THE ECLIPSE SHELL — sidebar on desktop, command bar + tabs + tome on
+   a phone.
 
    Colour rule: the accent is var(--primary-color), never a literal
    #8B5CF6. Four purchasable cosmetic themes re-point that variable
@@ -218,6 +219,9 @@
   /* The underline still marks what is hovered; it just stops sliding. */
   .gfnav__hall::after { transition: none; }
 }
+
+/* MORE lives in the tome on a phone; the sidebar has room for it. */
+.gfnav__more { display: none; }
 
 .gfnav__count {
   font-family: 'Orbitron', system-ui, sans-serif;
@@ -1029,13 +1033,169 @@
   .gfnav__standing app-gold-ticker { display: none; }
 }
 
+/* ── Desktop sidebar ───────────────────────────────────────────────────
+   The top bar becomes a persistent left rail. Halls no longer shed —
+   the column has room for every destination plus standing. */
+
+@media (min-width: 961px) {
+  :host { --shell-sidebar-w: 236px; }
+
+  .gfnav {
+    inset: 0 auto 0 0;
+    width: var(--shell-sidebar-w);
+    height: 100dvh;
+    border-bottom: none;
+    border-right: 1px solid var(--gfnav-seam);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .gfnav__row,
+  .gfnav--compact .gfnav__row {
+    flex-direction: column;
+    align-items: stretch;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    gap: 0.45rem;
+    padding: 0.75rem 0.65rem 0.85rem;
+  }
+
+  .gfnav__brand {
+    padding-inline: 0.2rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .gfnav__halls {
+    flex-direction: column;
+    align-items: stretch;
+    margin-inline: 0;
+    overflow: visible;
+    width: 100%;
+    gap: 2px;
+  }
+
+  .gfnav__hall {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    min-height: 44px;
+    padding: 0 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .gfnav__hall .gfrune { flex-shrink: 0; }
+
+  /* Left rail instead of the top-bar underline — the column has no
+     horizontal wipe that would read as a hover. */
+  .gfnav__hall::after {
+    left: 0;
+    right: auto;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    height: auto;
+    transform: scaleY(0);
+    transform-origin: center top;
+  }
+  .gfnav__hall:hover::after,
+  .gfnav__hall:focus-visible::after,
+  .gfnav__hall.is-active::after {
+    left: 0;
+    right: auto;
+    width: 2px;
+    transform: scaleY(1);
+  }
+
+  .gfnav__more {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 0.55rem;
+    margin-top: 0.15rem;
+    border-top: 1px solid color-mix(in srgb, var(--gfnav-gold) 28%, transparent);
+  }
+
+  .gfnav__more-label {
+    margin: 0 0 0.2rem;
+    padding-inline: 0.65rem;
+    font-family: var(--font-lore, ui-serif, Georgia, serif);
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gfnav-dim);
+  }
+
+  .gfnav__more-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 44px;
+    padding: 0 0.65rem;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gfnav-dim);
+    text-decoration: none;
+    transition: color 0.2s var(--gfnav-ease), background-color 0.2s var(--gfnav-ease);
+  }
+  .gfnav__more-link:hover,
+  .gfnav__more-link:focus-visible,
+  .gfnav__more-link.is-active {
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  }
+
+  .gfnav__standing {
+    margin-top: auto;
+    margin-left: 0;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    padding-top: 0.55rem;
+  }
+
+  .gfnav__standing .gfpill,
+  .gfnav__standing app-gold-ticker,
+  .gfnav__standing app-cloud-save-chip {
+    width: 100%;
+  }
+
+  .gfnav__lang { display: inline-flex; align-self: stretch; justify-content: center; }
+  .gfnav__keeper { display: grid; align-self: center; }
+  .gfnav__burger { display: none; }
+  .gfnav__count { display: inline; }
+
+  /* Sidebar has room — undo the horizontal-row sheds. */
+  .gfpill--essence { display: inline-flex; }
+  .gfpill--rank .gfpill__rank-title { display: inline; }
+
+  .gfnav__progress {
+    left: auto;
+    right: -1px;
+    top: 0;
+    bottom: auto;
+    width: 2px;
+    height: var(--scroll-progress, 0%);
+  }
+
+  .gftome,
+  .gftome__backdrop,
+  .gftabs { display: none !important; }
+}
+
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .gfnav, .gfnav__row, .gftome, .gftome__backdrop,
   .gfnav__burger span, .gfnav__hall, .gfnav__sigil,
   .gfnav__keeper, .gfxp__fill, .gftabs__tab,
-  .gftabs__icon, .gftabs__underline { transition: none; }
+  .gftabs__icon, .gftabs__underline,
+  .gfnav__more-link { transition: none; }
   /* Static end states — the active tab is still unmistakably the active tab. */
   .gftabs__icon--on { transform: none; }
   .gftabs__tab.is-active .gftabs__icon--off { transform: none; }

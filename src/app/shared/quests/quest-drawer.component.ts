@@ -18,7 +18,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  HostListener,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -30,6 +29,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { QuestBoard, QuestService } from './quest.service';
 import { QuestCardComponent } from './quest-card.component';
+import { OverlayStackService } from '../overlay/overlay-stack.service';
 
 @Component({
   selector: 'app-quest-drawer',
@@ -164,8 +164,8 @@ import { QuestCardComponent } from './quest-card.component';
        Dock geometry: nav-h + 8px margin + 44px control = nav-h + 52px. */
     @media (min-width: 961px) {
       .qd__panel {
-        top: calc(var(--nav-h, 64px) + 62px);
-        height: calc(100dvh - var(--nav-h, 64px) - 62px);
+        top: 0;
+        height: 100dvh;
       }
     }
 
@@ -186,9 +186,11 @@ export class QuestDrawerComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly overlays = inject(OverlayStackService);
 
   private readonly subs = new Subscription();
   private ticker: ReturnType<typeof setInterval> | null = null;
+  private overlayUnreg?: () => void;
 
   open = false;
   board: QuestBoard = this.quests.board;
@@ -206,7 +208,15 @@ export class QuestDrawerComponent implements OnInit, OnDestroy {
 
     this.subs.add(this.quests.drawerOpen$.subscribe(o => {
       this.open = o;
-      if (o) this.recount();
+      if (o) {
+        this.recount();
+        if (!this.overlayUnreg) {
+          this.overlayUnreg = this.overlays.push('quest-drawer', () => this.close());
+        }
+      } else {
+        this.overlayUnreg?.();
+        this.overlayUnreg = undefined;
+      }
       this.cdr.markForCheck();
     }));
 
@@ -230,6 +240,8 @@ export class QuestDrawerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+    this.overlayUnreg?.();
+    this.overlayUnreg = undefined;
     if (this.ticker) clearInterval(this.ticker);
   }
 
@@ -239,11 +251,6 @@ export class QuestDrawerComponent implements OnInit, OnDestroy {
 
   onClaim(id: string): void {
     this.quests.claim(id);
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.close();
   }
 
   private recount(): void {

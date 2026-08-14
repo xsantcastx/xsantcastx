@@ -1,8 +1,8 @@
 <!-- ═══════════════════════════════════════════════════════════════════
-     THE COMMAND BAR
-     [sigil + Eclipse Realms]
-     [REALMS ARENA CODEX WAR TABLE MARKET]
-     [Gold] [Essence] [rank] [EN|ES] [keeper]
+     THE ECLIPSE SHELL
+     Desktop: left sidebar — lockup, five halls, MORE, standing.
+     Mobile: top bar + five tabs + tome.
+     Destinations come from NAV_MANIFEST.
 
      .gfnav__glass is a CHILD, not a backdrop-filter on .gfnav: a filter
      makes an element a containing block, which would pin the fixed tome
@@ -27,16 +27,26 @@
 
     <!-- ── The halls ────────────────────────────────────────────────── -->
     <div class="gfnav__halls">
-      @for (hall of primaryHalls; track hall.route) {
+      @for (hall of primaryNav; track hall.id) {
         <a [routerLink]="hall.route" routerLinkActive="is-active"
            [routerLinkActiveOptions]="{ exact: hall.exact === true }"
-           class="gfnav__hall"
-           [class.gfnav__hall--shed-first]="hall.shed === 'first'"
-           [class.gfnav__hall--shed-second]="hall.shed === 'second'">
-          {{ translate(hall.key) }}
-          @if (hall.route === '/codex') {
+           class="gfnav__hall">
+          <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
+          {{ translate(hall.labelKey) }}
+          @if (hall.id === 'codex') {
             <span class="gfnav__count" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
           }
+        </a>
+      }
+    </div>
+
+    <div class="gfnav__more">
+      <p class="gfnav__more-label">{{ translate('gfnav.section.more') }}</p>
+      @for (hall of moreNav; track hall.id) {
+        <a [routerLink]="hall.route" routerLinkActive="is-active"
+           class="gfnav__more-link">
+          <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
+          {{ translate(hall.labelKey) }}
         </a>
       }
     </div>
@@ -187,17 +197,17 @@
     @for (section of tomeSections; track section.titleKey) {
       <p class="gftome__section">{{ translate(section.titleKey) }}</p>
       <div class="gftome__links">
-        @for (hall of section.halls; track hall.route) {
+        @for (hall of section.halls; track hall.id) {
           <a class="gftome__link" role="menuitem"
              [routerLink]="hall.route" routerLinkActive="is-active"
              [routerLinkActiveOptions]="{ exact: hall.exact === true }"
              [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="closeMobileMenu()">
             <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
-            <span class="gftome__link-name">{{ translate(hall.key) }}</span>
+            <span class="gftome__link-name">{{ translate(hall.labelKey) }}</span>
             @if (hall.hintKey) {
               <span class="gftome__link-hint">{{ translate(hall.hintKey) }}</span>
             }
-            @if (hall.route === '/codex') {
+            @if (hall.id === 'codex') {
               <span class="gftome__badge" aria-hidden="true">{{ codexFound }}/{{ codexTotal }}</span>
             }
             <span class="gftome__chev" aria-hidden="true"></span>
@@ -249,7 +259,7 @@
      not overlap the labels.
      ═══════════════════════════════════════════════════════════════════ -->
 <nav class="gftabs" [attr.aria-label]="translate('gfnav.tabsLabel')">
-  @for (tab of tabs; track tab.route) {
+  @for (tab of tabs; track tab.id) {
     <a [routerLink]="tab.route" routerLinkActive="is-active"
        [routerLinkActiveOptions]="{ exact: tab.exact === true }"
        class="gftabs__tab">
@@ -261,16 +271,16 @@
            happening. Tabs without a PNG pair draw the same hall rune the
            desktop bar already uses. -->
       <span class="gftabs__art" aria-hidden="true">
-        @if (tab.iconInactive && tab.iconActive) {
-          <img class="gftabs__icon gftabs__icon--off" [src]="tab.iconInactive"
+        @if (tab.tabIcons) {
+          <img class="gftabs__icon gftabs__icon--off" [src]="tab.tabIcons.inactive"
                alt="" width="26" height="26" decoding="async" draggable="false">
-          <img class="gftabs__icon gftabs__icon--on" [src]="tab.iconActive"
+          <img class="gftabs__icon gftabs__icon--on" [src]="tab.tabIcons.active"
                alt="" width="26" height="26" decoding="async" draggable="false">
         } @else {
           <span class="gfrune gftabs__glyph" [class]="'gfrune gfrune--' + tab.glyph + ' gftabs__glyph'"></span>
         }
       </span>
-      <span class="gftabs__label">{{ translate(tab.key) }}</span>
+      <span class="gftabs__label">{{ translate(tab.labelKey) }}</span>
       <span class="gftabs__underline" aria-hidden="true"></span>
     </a>
   }

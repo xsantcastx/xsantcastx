@@ -110,6 +110,7 @@
      page must not wait on a network fetch to paint. */
   --font-lore: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
   --header-offset: 96px;
+  --shell-sidebar-w: 0px;
 
   /* ===== Forge palette (Eclipse Realms) =====
      The atmosphere layer over the cosmic palette. Warm, subterranean, and
@@ -635,6 +636,19 @@ body::after {
 
 main {
   padding-top: var(--header-offset);
+  padding-left: var(--shell-sidebar-w, 0px);
+}
+
+app-footer {
+  padding-left: var(--shell-sidebar-w, 0px);
+}
+
+@media (min-width: 961px) {
+  :root {
+    --header-offset: 20px;
+    --shell-sidebar-w: 236px;
+    --nav-h: 0px;
+  }
 }
 
 img {
