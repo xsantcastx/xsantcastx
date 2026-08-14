@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { FooterComponent } from './footer.component';
 import { TranslationService } from '../translation.service';
 import { PaymentService } from '../payment.service';
+import { MORE_NAV } from '../shared/nav/nav.manifest';
 
 describe('FooterComponent', () => {
   let component: FooterComponent;
@@ -58,7 +59,9 @@ describe('FooterComponent', () => {
   it('still exposes demoted surfaces', () => {
     const hrefs = [...fixture.nativeElement.querySelectorAll('a')]
       .map(a => a.getAttribute('routerLink') || a.getAttribute('ng-reflect-router-link') || a.getAttribute('href') || '');
+    const moreRoutes = MORE_NAV.map(d => d.route);
     for (const route of ['/tools', '/blueprint', '/mcp', '/mission-control', '/sponsors', '/donate']) {
+      expect(moreRoutes).toContain(route);
       expect(hrefs).toContain(route);
     }
   });

@@ -56,6 +56,12 @@ function walk(dir, out = []) {
 }
 const files = walk(path.join(SRC, 'app'));
 
+const canonMap = {};
+const canonSrc = fs.readFileSync(path.join(SRC, 'app/shared/canonical-routes.ts'), 'utf8');
+for (const m of canonSrc.matchAll(/^\s*(\w+):\s*'(\/[^']+)'/gm)) {
+  canonMap[m[1]] = m[2];
+}
+
 const links = new Map(); // route -> Set(files)
 for (const f of files) {
   const txt = fs.readFileSync(f, 'utf8');
@@ -74,6 +80,12 @@ for (const f of files) {
       links.get(r).add(path.relative(ROOT, f));
     }
   }
+  for (const m of txt.matchAll(/route:\s*CANONICAL\.(\w+)/g)) {
+    const r = canonMap[m[1]];
+    if (!r) continue;
+    if (!links.has(r)) links.set(r, new Set());
+    links.get(r).add(path.relative(ROOT, f));
+  }
 }
 
 // ── 1. Dead links ──────────────────────────────────────────────────────────
@@ -89,7 +101,8 @@ for (const [route, where] of links) {
 // ── 2. Orphan routes ───────────────────────────────────────────────────────
 // Routes that render a real page (not a redirect, not the wildcard, not embeds)
 const CHROME = ['app/header/header.component.html', 'app/header/header.component.ts',
-                'app/footer/footer.component.html'];
+                'app/footer/footer.component.html',
+                'app/shared/nav/nav.manifest.ts'];
 const chromeLinks = new Set();
 for (const [route, where] of links) {
   if ([...where].some(w => CHROME.includes(w.replace(/^src\//, '')))) chromeLinks.add(route);

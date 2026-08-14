@@ -5,6 +5,8 @@ import { TranslationService } from '../translation.service';
 import { PaymentService, DonationAmount, PaymentResult } from '../payment.service';
 import { environment } from '../../environments/environment';
 import { APP_VERSION } from '../version';
+import { MORE_NAV, PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 
 interface CryptoAddress {
   name: string;
@@ -23,6 +25,10 @@ export class FooterComponent implements OnInit, OnDestroy {
   readonly appVersion: string = APP_VERSION.version;
   readonly appCodename: string = APP_VERSION.codename;
   readonly changelogRoute: string = APP_VERSION.changelog;
+  readonly primaryNav = PRIMARY_NAV;
+  readonly moreNav = MORE_NAV;
+  private readonly overlays = inject(OverlayStackService);
+  private donateUnreg?: () => void;
   /**
    * Subscription to TranslationService.currentLanguage$. Stored so we can
    * tear it down in ngOnDestroy. Mirrors the leak fix in HeaderComponent
@@ -100,6 +106,8 @@ export class FooterComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.langSub?.unsubscribe();
     this.langSub = undefined;
+    this.donateUnreg?.();
+    this.donateUnreg = undefined;
     if (this.toastTimer !== null) {
       clearTimeout(this.toastTimer);
       this.toastTimer = null;
@@ -137,6 +145,7 @@ export class FooterComponent implements OnInit, OnDestroy {
   openCryptoDonate(): void {
     this.closeModals();
     this.showCryptoModal = true;
+    this.syncDonateOverlay();
   }
 
   /**
@@ -154,6 +163,7 @@ export class FooterComponent implements OnInit, OnDestroy {
   openPayPalDonate(): void {
     this.closeModals();
     this.showPayPalModal = true;
+    this.syncDonateOverlay();
     if (this.isPayPalReady) return;
     this.paypalSdkLoading = true;
     this.paymentService.ensurePayPal().finally(() => {
@@ -164,6 +174,7 @@ export class FooterComponent implements OnInit, OnDestroy {
   openStripeDonate(): void {
     this.closeModals();
     this.showStripeModal = true;
+    this.syncDonateOverlay();
     if (this.isStripeReady) return;
     this.stripeSdkLoading = true;
     this.paymentService.ensureStripe().finally(() => {
@@ -181,6 +192,20 @@ export class FooterComponent implements OnInit, OnDestroy {
     this.customAmount = null;
     this.customAmountError = '';
     this.selectedAmount = 10; // Reset to default
+    this.syncDonateOverlay();
+  }
+
+  /** One stack entry while any of the three donation modals is open. */
+  private syncDonateOverlay(): void {
+    const open = this.showCryptoModal || this.showPayPalModal || this.showStripeModal;
+    if (open) {
+      if (!this.donateUnreg) {
+        this.donateUnreg = this.overlays.push('footer-donate', () => this.closeModals());
+      }
+      return;
+    }
+    this.donateUnreg?.();
+    this.donateUnreg = undefined;
   }
 
   selectAmount(amount: number): void {

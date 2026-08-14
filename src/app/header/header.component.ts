@@ -1,25 +1,26 @@
 /**
- * header.component.ts — the Godforge command bar, the mobile tome, and the
- * mobile bottom tab bar.
+ * header.component.ts — the Eclipse shell: desktop sidebar, mobile tome,
+ * and the mobile bottom tab bar.
  *
  * Three surfaces, one piece of nav state, because they are three views of the
  * same thing and splitting them across components would mean three copies of
- * "is the drawer open" to keep in step.
+ * "is the drawer open" to keep in step. Destinations come from NAV_MANIFEST.
  *
- *  · Desktop: sigil + Eclipse Realms lockup, five halls, then the visitor's
- *    standing (Gold, Essence, rank) and the language toggle.
+ *  · Desktop (>= 961px): persistent left sidebar — lockup, primary halls,
+ *    MORE, then the visitor's standing. No top bar, no hamburger, no tabs.
  *  · Mobile: the bar keeps the lockup and the status pills; primary
  *    navigation moves to a fixed five-tab bar at the bottom of the viewport,
  *    and the hamburger opens the tome for everything secondary.
  *
  * What survived earlier passes, because the reasons still hold:
- *  · --nav-h is measured and published so the tome can sit flush under a bar
- *    whose height includes env(safe-area-inset-top) on notched devices.
+ *  · --nav-h / --header-offset / --shell-sidebar-w are published so pages
+ *    that clear the chrome do not sit under a missing top bar.
  *  · The scroll listener runs OUTSIDE the Angular zone and re-enters only on
  *    the frames where a template-bound value actually changed.
- *  · The tome closes on Escape, on NavigationEnd, and on a resize past the
- *    breakpoint; the body scroll lock takes the body out of flow, the only
- *    technique iOS Safari honours, and restores the offset on unlock.
+ *  · The tome registers with OverlayStackService while open so Escape closes
+ *    only the topmost overlay; the body scroll lock takes the body out of
+ *    flow, the only technique iOS Safari honours, and restores the offset
+ *    on unlock.
  */
 import {
   Component,
@@ -31,7 +32,6 @@ import {
   OnDestroy,
   NgZone,
   ChangeDetectorRef,
-  HostListener,
   PLATFORM_ID
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -45,46 +45,12 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
-import { CANONICAL } from '../shared/canonical-routes';
-
-/** A hall: a real route with a label key and a drawn glyph id. */
-interface Hall {
-  route: string;
-  key: string;
-  /** Picks the CSS-drawn rune; see .gfrune--<glyph> in the stylesheet. */
-  glyph: string;
-  hintKey?: string;
-  /**
-   * When this hall leaves the bar as the row runs short — see the
-   * `.gfnav__hall--shed-*` rules in the stylesheet.
-   *
-   * Only ever set on a hall the tome and the footer both carry, so a shed
-   * hides a shortcut and never a destination.
-   *
-   * Two tiers rather than one, because seven halls do not fit a Spanish row at
-   * any width a laptop actually has, and dropping both at the same threshold
-   * would empty two slots at once on the widths most visitors are using.
-   * 'first' goes at 1600, 'second' at 1300; between them the bar carries six.
-   */
-  shed?: 'first' | 'second';
-  /** Prefix match is the default; World must be exact so /world/quests does not light it. */
-  exact?: boolean;
-}
-
-/**
- * A bottom tab. Carries both painted states, because the tab bar cross-fades
- * between them rather than swapping one <img> src — see the note in the
- * template.
- */
-interface Tab extends Hall {
-  /** Omit both when no tab PNG pair exists — the template draws `.gfrune`. */
-  iconInactive?: string;
-  iconActive?: string;
-}
+import { MORE_NAV, NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 
 interface TomeSection {
   titleKey: string;
-  halls: Hall[];
+  halls: readonly NavDestination[];
 }
 
 @Component({
@@ -115,9 +81,13 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private isScrollLocked = false;
   private scrollRafId: number | null = null;
   private lastScrollY = 0;
+  private tomeUnreg?: () => void;
+  private readonly overlays = inject(OverlayStackService);
 
   /** Above this width the tome and the tab bar are not rendered. */
   private static readonly MOBILE_NAV_BREAKPOINT = 960;
+  private static readonly DESKTOP_HEADER_OFFSET = 20;
+  private static readonly DESKTOP_SIDEBAR_W = 236;
 
   currentLang = 'en';
   mobileMenuOpen = false;
@@ -137,64 +107,18 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   /** Painted rank crest for the level held — exposed for the bar and the tome. */
   readonly rankSigil = rankSigil;
 
-  /**
-   * The five halls across the middle of the bar — implemented player
-   * destinations only. Tools, Trials, Blueprint, Sanctum and MCP live in the
-   * tome's MORE section and the footer.
-   */
-  readonly primaryHalls: Hall[] = [
-    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true },
-    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile' },
-    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
-    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
-    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex' }
-  ];
-
-  /**
-   * The five fixed destinations along the bottom of a phone. Market and Forge
-   * have no tab PNG pair — those two render the hall glyph instead.
-   */
-  readonly tabs: Tab[] = [
-    { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home', exact: true,
-      iconInactive: 'assets/icons/tabs/home-inactive.png',    iconActive: 'assets/icons/tabs/home-active.png' },
-    { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile',
-      iconInactive: 'assets/icons/tabs/profile-inactive.png', iconActive: 'assets/icons/tabs/profile-active.png' },
-    { route: '/market',           key: 'gfnav.market',    glyph: 'market' },
-    { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge' },
-    { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',
-      iconInactive: 'assets/icons/tabs/codex-inactive.png',   iconActive: 'assets/icons/tabs/codex-active.png' }
-  ];
+  /** The five player halls. Same list as the mobile tab bar. */
+  readonly primaryNav = PRIMARY_NAV;
+  readonly moreNav = MORE_NAV;
+  readonly tabs = PRIMARY_NAV;
 
   /**
    * MAIN is the same five halls as the bar. MORE is demoted product surfaces
    * that still have real pages — never a redirect stub.
    */
   readonly tomeSections: TomeSection[] = [
-    {
-      titleKey: 'gfnav.section.main',
-      halls: [
-        { route: CANONICAL.world,     key: 'gfnav.world',     glyph: 'home',    hintKey: 'gfnav.hint.world', exact: true },
-        { route: CANONICAL.character, key: 'gfnav.character', glyph: 'profile', hintKey: 'gfnav.hint.keeper' },
-        { route: '/market',           key: 'gfnav.market',    glyph: 'market',  hintKey: 'gfnav.hint.market' },
-        { route: CANONICAL.forge,     key: 'gfnav.forge',     glyph: 'forge',   hintKey: 'gfnav.hint.runeForge' },
-        { route: '/codex',            key: 'gfnav.codex',     glyph: 'codex',   hintKey: 'gfnav.hint.codex' }
-      ]
-    },
-    {
-      titleKey: 'gfnav.section.more',
-      halls: [
-        { route: '/tools',           key: 'gfnav.tools',          glyph: 'tools',     hintKey: 'gfnav.hint.tools' },
-        { route: CANONICAL.quests,   key: 'gfnav.quests',         glyph: 'quests',    hintKey: 'gfnav.hint.quests' },
-        { route: CANONICAL.trials,   key: 'gfnav.trials',         glyph: 'arena',     hintKey: 'gfnav.hint.arena' },
-        { route: '/sanctum',         key: 'gfnav.sanctum',        glyph: 'sanctum',   hintKey: 'gfnav.hint.sanctum' },
-        { route: '/blueprint',       key: 'gfnav.warTable',       glyph: 'blueprint', hintKey: 'gfnav.hint.warTable' },
-        { route: '/mcp',             key: 'gfnav.mcp',            glyph: 'mcp',       hintKey: 'gfnav.hint.mcp' },
-        { route: '/mission-control', key: 'gfnav.missionControl', glyph: 'mission',   hintKey: 'gfnav.hint.missionControl' },
-        { route: '/sponsors',        key: 'gfnav.sponsors',       glyph: 'sponsors',  hintKey: 'gfnav.hint.sponsors' },
-        { route: '/donate',          key: 'gfnav.donate',         glyph: 'donate',    hintKey: 'gfnav.hint.donate' },
-        { route: '/pro',             key: 'gfnav.pro',            glyph: 'donate',    hintKey: 'gfnav.hint.donate' }
-      ]
-    }
+    { titleKey: 'gfnav.section.main', halls: PRIMARY_NAV },
+    { titleKey: 'gfnav.section.more', halls: MORE_NAV },
   ];
 
   readonly socials = [
@@ -278,17 +202,9 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.langSub?.unsubscribe();
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
+    this.tomeUnreg?.();
+    this.tomeUnreg = undefined;
     this.setBodyScrollLock(false);
-  }
-
-  // ── Escape ────────────────────────────────────────────────────────────
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.mobileMenuOpen) {
-      this.closeMobileMenu();
-      this.cdr.markForCheck();
-    }
   }
 
   // ── Scroll ────────────────────────────────────────────────────────────
@@ -331,6 +247,14 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     // Compact on the way down, full again on the way up, with a deadband so a
     // jittery trackpad cannot oscillate the bar.
+    if (window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
+      if (this.compact) {
+        this.compact = false;
+        this.ngZone.run(() => this.cdr.markForCheck());
+      }
+      return;
+    }
+
     const delta = scrollY - this.lastScrollY;
     let next = this.compact;
     if (scrollY <= 24) next = false;
@@ -355,6 +279,28 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   private updateHeaderOffset(): void {
     if (!this.navbarEl || !this.isBrowser) return;
+
+    const desktop = window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT;
+    if (desktop) {
+      if (this.lastNavHeight !== 0) {
+        this.lastNavHeight = 0;
+        document.documentElement.style.setProperty('--nav-h', '0px');
+      }
+      document.documentElement.style.setProperty(
+        '--shell-sidebar-w',
+        `${HeaderComponent.DESKTOP_SIDEBAR_W}px`,
+      );
+      if (this.lastHeaderOffset !== HeaderComponent.DESKTOP_HEADER_OFFSET) {
+        this.lastHeaderOffset = HeaderComponent.DESKTOP_HEADER_OFFSET;
+        document.documentElement.style.setProperty(
+          '--header-offset',
+          `${HeaderComponent.DESKTOP_HEADER_OFFSET}px`,
+        );
+      }
+      return;
+    }
+
+    document.documentElement.style.setProperty('--shell-sidebar-w', '0px');
 
     const measuredHeight = this.navbarEl.offsetHeight;
     if (this.lastNavHeight !== measuredHeight) {
@@ -391,12 +337,25 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   toggleMobileMenu(): void {
     this.mobileMenuOpen = !this.mobileMenuOpen;
     this.setBodyScrollLock(this.mobileMenuOpen);
+    this.syncTomeOverlay();
   }
 
   closeMobileMenu(): void {
     if (!this.mobileMenuOpen) return;
     this.mobileMenuOpen = false;
     this.setBodyScrollLock(false);
+    this.syncTomeOverlay();
+  }
+
+  private syncTomeOverlay(): void {
+    if (this.mobileMenuOpen) {
+      if (!this.tomeUnreg) {
+        this.tomeUnreg = this.overlays.push('header-tome', () => this.closeMobileMenu());
+      }
+      return;
+    }
+    this.tomeUnreg?.();
+    this.tomeUnreg = undefined;
   }
 
   private setBodyScrollLock(lock: boolean): void {
