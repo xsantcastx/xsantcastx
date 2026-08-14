@@ -84,6 +84,11 @@ import {
   unwrapBlob,
   wrapBlob,
 } from '../cloud-save/cloud-save.model';
+import {
+  DEVICE_ID_KEY,
+  acknowledgeAndMaybeCompact,
+  coerceLedger,
+} from '../economy/economy-ops';
 import { LocalSaveRegistry } from './local-save-registry.service';
 
 /**
@@ -754,7 +759,13 @@ export class GameStateGateway {
         ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
         : null;
       const reconciled = cloud === null ? local : (entry.merge ?? mergeDeep)(cloud, local);
-      const merged = entry.identify ? entry.identify(reconciled, uid) : reconciled;
+      const identified = entry.identify ? entry.identify(reconciled, uid) : reconciled;
+      // Compaction is the cloud's job: this transaction is the record, and
+      // the ack frontier lives on the document. Local merge never folds.
+      const ledger = coerceLedger(identified);
+      const merged = ledger
+        ? acknowledgeAndMaybeCompact(ledger, readDeviceId(), Date.now())
+        : identified;
       const mergedRaw = JSON.stringify(merged);
       const settled = stable(entry, merged);
 
@@ -942,6 +953,14 @@ function safeParse(raw: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readDeviceId(): string {
+  try {
+    return localStorage.getItem(DEVICE_ID_KEY) || 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 /**

@@ -28,9 +28,12 @@
  * which is how cloud save used to restore Gold a second after you spent it.
  * Those fields are reconciled by replaying an idempotent operation log
  * (see mergeEconomy / economy-ops.ts). Purchases that cannot be afforded in
- * canonical order are skipped rather than minted. Legacy blobs with no log
- * still use the conservative max/union rule — a missing timestamp is not
- * proof that a ledger is older.
+ * canonical order are skipped rather than minted. Concurrent offline
+ * purchases have a deterministic but arbitrary winner — not chronological
+ * last-write. A server-assigned sequence would be required to make the
+ * winner match real-world time. Legacy blobs with no log still use the
+ * conservative max/union rule. The live log is checkpointed on the
+ * Firestore write once every recently-seen device has acknowledged.
  */
 
 import { mergeEconomyLedgers } from '../economy/economy-ops';

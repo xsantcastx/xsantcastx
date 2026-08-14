@@ -1,4 +1,5 @@
 import {
+  acknowledgeAndMaybeCompact,
   applyOp,
   compactOps,
   compareOps,
@@ -184,5 +185,47 @@ describe('economy merge lifecycle', () => {
     });
     expect(merged.gold).toBe(550);
     expect(merged.ops.map(o => o.id)).toEqual(['d:1']);
+  });
+
+  it('does not fold until every recently-seen device has acked', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const ops = [1, 2, 3, 4, 5, 6, 7, 8].map(seq => buy('phone', seq, 100, 'iron-hammer'));
+    const live = mergeEconomyLedgers(origin, { ...origin, gold: 9_200, origin, ops });
+    live.seenAt = { phone: 1_000, tablet: 1_000 };
+    live.acks = { phone: 0 };
+
+    const blocked = acknowledgeAndMaybeCompact(live, 'phone', 1_000, {
+      after: 4, keep: 2, staleMs: 60_000,
+    });
+    expect(blocked.ops.length).toBe(8);
+    expect(blocked.checkpointId).toBe(0);
+
+    blocked.acks = { ...blocked.acks, tablet: 0 };
+    const folded = acknowledgeAndMaybeCompact(blocked, 'phone', 1_000, {
+      after: 4, keep: 2, staleMs: 60_000,
+    });
+    expect(folded.ops.length).toBe(2);
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.acks['phone']).toBe(1);
+
+    const stale = { ...origin, gold: 9_200, upgrades: { 'iron-hammer': 8 }, origin, ops };
+    const merged = mergeEconomyLedgers(folded, stale);
+    expect(merged.upgrades['iron-hammer']).toBe(8);
+    expect(merged.gold).toBe(9_200);
+  });
+
+  it('folds when a second device has gone stale', () => {
+    const origin = emptyLedger();
+    origin.gold = 10_000;
+    const ops = [1, 2, 3, 4, 5, 6].map(seq => buy('phone', seq, 100, 'iron-hammer'));
+    const live = mergeEconomyLedgers(origin, { ...origin, gold: 9_400, origin, ops });
+    live.seenAt = { phone: 100_000, tablet: 1 };
+    live.acks = { phone: 0 };
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', 100_000, {
+      after: 4, keep: 2, staleMs: 1_000,
+    });
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.ops.length).toBe(2);
   });
 });

@@ -21,10 +21,14 @@
  * be the only real-world order; this client merge does not claim to be one.
  *
  * Credits (idle Gold, strikes, Essence) are ops too, so two devices that
- * earn independently keep both amounts. Client merge never folds the log
- * into origin: an offline sibling can still hold the pre-fold ops, and
- * replaying them onto a folded origin would double-apply. Compaction is
- * only safe behind a watermark both devices have acknowledged.
+ * earn independently keep both amounts.
+ *
+ * The log cannot grow forever (Firestore's document cap is 1 MiB). Merge
+ * itself never folds — that would race an offline sibling. Compaction runs
+ * only when committing the merged ledger to Firestore, and only after every
+ * recently-seen device has acknowledged the current checkpoint
+ * (`acknowledgeAndMaybeCompact`). Folded ops are skipped on replay via the
+ * per-device `applied` watermark, so a stale offline log cannot double-apply.
  *
  * Blobs with no ops (every save from before this file) merge with the old
  * conservative max/union rule. A missing timestamp is not proof that a ledger
@@ -123,7 +127,23 @@ export interface EconomyLedger {
    * op with seq <= applied[deviceId]. Empty until something has been compacted.
    */
   applied: Record<string, number>;
+  /** Monotonic checkpoint id. Bumped only on a compacted cloud commit. */
+  checkpointId: number;
+  /** deviceId → last checkpoint that device has applied. */
+  acks: Record<string, number>;
+  /** deviceId → last wall-ms that device wrote. Stale devices stop blocking compact. */
+  seenAt: Record<string, number>;
 }
+
+/** localStorage key for the stable per-browser device id. */
+export const DEVICE_ID_KEY = 'godforge-device-id';
+
+/** Fold when the live log reaches this many ops, if every recent device has acked. */
+export const COMPACT_AFTER = 64;
+/** Ops to keep after a checkpoint so a just-written burst is not immediately folded. */
+export const COMPACT_KEEP = 16;
+/** A device that has not written in this long does not block compaction. */
+export const ACK_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function emptyLedger(): EconomyLedger {
   return {
@@ -155,6 +175,9 @@ export function emptyLedger(): EconomyLedger {
     origin: null,
     hlc: 0,
     applied: {},
+    checkpointId: 0,
+    acks: {},
+    seenAt: {},
   };
 }
 
@@ -193,6 +216,8 @@ export function snapshotOf(state: EconomyLedger): EconomyLedger {
     ops: [],
     origin: null,
     applied: { ...state.applied },
+    acks: { ...state.acks },
+    seenAt: { ...state.seenAt },
   };
 }
 
@@ -208,6 +233,8 @@ export function cloneLedger(state: EconomyLedger): EconomyLedger {
     ops: state.ops.map(o => ({ ...o })),
     origin: state.origin ? snapshotOf(state.origin) : null,
     applied: { ...state.applied },
+    acks: { ...state.acks },
+    seenAt: { ...state.seenAt },
   };
 }
 
@@ -337,10 +364,8 @@ export function maxSeqFor(deviceId: string, ops: readonly EconomyOp[]): number {
 /**
  * Fold a prefix of the log into origin and record a per-device watermark.
  *
- * Not used by client merge. An offline sibling can still hold the original
- * origin plus the full log; folding on one device and then conservatively
- * merging origins would replay the prefix twice. Callers may compact only
- * after every device has acknowledged this watermark.
+ * Used only by {@link acknowledgeAndMaybeCompact} after every recently-seen
+ * device has acked the current checkpoint. Merge itself never calls this.
  */
 export function compactOps(
   origin: EconomyLedger,
@@ -405,12 +430,73 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.prestigeCount = Math.max(replayed.prestigeCount, maxOf(a.prestigeCount, b.prestigeCount));
   replayed.runGoldEarned = Math.max(replayed.runGoldEarned, 0);
 
-  // Never fold here. The merged log stays the full union.
+  // Never fold here. The merged log stays the full union; the cloud commit
+  // is what checkpoints, once every recent device has acked.
   replayed.ops = sortOps(ops);
   replayed.origin = origin;
   replayed.hlc = Math.max(a.hlc, b.hlc, ...ops.map(o => o.hlc));
+  replayed.checkpointId = Math.max(a.checkpointId, b.checkpointId);
+  replayed.acks = maxRecord(a.acks, b.acks);
+  replayed.seenAt = maxRecord(a.seenAt, b.seenAt);
   replayed.version = 2;
   return replayed;
+}
+
+/**
+ * Record that `deviceId` has applied the current checkpoint, and fold the
+ * log if every recently-seen device has done the same.
+ *
+ * Runs only inside the Firestore transaction that writes the economy
+ * document, so the checkpoint is the record, not a local guess. A device
+ * that has not written for {@link ACK_STALE_MS} does not block the fold.
+ */
+export function acknowledgeAndMaybeCompact(
+  ledger: EconomyLedger,
+  deviceId: string,
+  now: number,
+  opts: { after?: number; keep?: number; staleMs?: number } = {},
+): EconomyLedger {
+  const after = opts.after ?? COMPACT_AFTER;
+  const keep = opts.keep ?? COMPACT_KEEP;
+  const staleMs = opts.staleMs ?? ACK_STALE_MS;
+  const next = cloneLedger(ledger);
+  next.acks = { ...next.acks, [deviceId]: next.checkpointId };
+  next.seenAt = { ...next.seenAt, [deviceId]: now };
+
+  if (next.ops.length < after || !next.origin) return next;
+
+  const known = recentDevices(next, deviceId, now, staleMs);
+  if (!known.every(id => (next.acks[id] ?? -1) >= next.checkpointId)) return next;
+
+  const folded = compactOps(next.origin, next.ops, keep);
+  next.origin = folded.origin;
+  next.ops = folded.ops;
+  next.applied = { ...folded.origin.applied };
+  next.checkpointId += 1;
+  next.acks = { ...next.acks, [deviceId]: next.checkpointId };
+  return next;
+}
+
+function recentDevices(
+  ledger: EconomyLedger,
+  self: string,
+  now: number,
+  staleMs: number,
+): string[] {
+  const ids = new Set<string>([self]);
+  for (const [id, at] of Object.entries(ledger.seenAt)) {
+    if (now - at <= staleMs) ids.add(id);
+  }
+  return [...ids];
+}
+
+function maxRecord(
+  a: Record<string, number>,
+  b: Record<string, number>,
+): Record<string, number> {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b)) out[k] = Math.max(out[k] ?? 0, v);
+  return out;
 }
 
 /**
@@ -504,6 +590,9 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     origin: null,
     hlc: maxOf(remote.hlc, local.hlc),
     applied: {},
+    checkpointId: Math.max(remote.checkpointId, local.checkpointId),
+    acks: maxRecord(remote.acks, local.acks),
+    seenAt: maxRecord(remote.seenAt, local.seenAt),
   };
 }
 
@@ -583,6 +672,9 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     origin: value['origin'] ? coerceLedger(value['origin']) : null,
     hlc: numberOf(value['hlc']),
     applied: asApplied(value['applied']),
+    checkpointId: numberOf(value['checkpointId']),
+    acks: asApplied(value['acks']),
+    seenAt: asSeenAt(value['seenAt']),
   };
 }
 
@@ -640,8 +732,18 @@ function asApplied(value: unknown): Record<string, number> {
   if (!isPlainObject(value)) return {};
   const out: Record<string, number> = {};
   for (const [deviceId, seq] of Object.entries(value)) {
-    if (!deviceId || typeof seq !== 'number' || !Number.isInteger(seq) || seq < 1) continue;
+    if (!deviceId || typeof seq !== 'number' || !Number.isInteger(seq) || seq < 0) continue;
     out[deviceId] = seq;
+  }
+  return out;
+}
+
+function asSeenAt(value: unknown): Record<string, number> {
+  if (!isPlainObject(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [deviceId, at] of Object.entries(value)) {
+    if (!deviceId || typeof at !== 'number' || !Number.isFinite(at) || at < 0) continue;
+    out[deviceId] = at;
   }
   return out;
 }

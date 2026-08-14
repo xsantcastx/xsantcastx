@@ -156,6 +156,12 @@ export interface PlayerEconomy {
   hlc?: number;
   /** Per-device max seq already folded into `origin`. Empty on the live blob. */
   applied?: Record<string, number>;
+  /** Cloud checkpoint id. Bumped only when Firestore commits a fold. */
+  checkpointId?: number;
+  /** deviceId → last acknowledged checkpoint. */
+  acks?: Record<string, number>;
+  /** deviceId → last write time, so vanished devices stop blocking compact. */
+  seenAt?: Record<string, number>;
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -188,6 +194,9 @@ export function emptyEconomy(): PlayerEconomy {
     origin: null,
     hlc: 0,
     applied: {},
+    checkpointId: 0,
+    acks: {},
+    seenAt: {},
   };
 }
 

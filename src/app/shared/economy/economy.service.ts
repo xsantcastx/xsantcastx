@@ -70,6 +70,7 @@ import {
   upgradeById,
 } from './economy.model';
 import {
+  DEVICE_ID_KEY,
   EconomyOp,
   EconomyOpKind,
   coerceLedger,
@@ -79,7 +80,6 @@ import {
 } from './economy-ops';
 
 export const ECONOMY_KEY = 'godforge-economy';
-const DEVICE_KEY = 'godforge-device-id';
 
 /** One second. The tick, and the unit the whole economy is priced in. */
 const SECOND_MS = 1_000;
@@ -1060,6 +1060,9 @@ export class EconomyService implements OnDestroy {
         origin: parsed.origin ?? null,
         hlc: parsed.hlc ?? 0,
         applied: parsed.applied ?? {},
+        checkpointId: parsed.checkpointId ?? 0,
+        acks: parsed.acks ?? {},
+        seenAt: parsed.seenAt ?? {},
       };
     } catch {
       return emptyEconomy();
@@ -1148,7 +1151,7 @@ export class EconomyService implements OnDestroy {
   private rotateDeviceId(): void {
     this.deviceId = this.newDeviceId();
     this.opSeq = 0;
-    try { localStorage.setItem(DEVICE_KEY, this.deviceId); } catch { /* private mode */ }
+    try { localStorage.setItem(DEVICE_ID_KEY, this.deviceId); } catch { /* private mode */ }
   }
 
   private bindDevice(): void {
@@ -1158,10 +1161,10 @@ export class EconomyService implements OnDestroy {
 
   private readDeviceId(): string {
     try {
-      const held = localStorage.getItem(DEVICE_KEY);
+      const held = localStorage.getItem(DEVICE_ID_KEY);
       if (held) return held;
       const id = this.newDeviceId();
-      localStorage.setItem(DEVICE_KEY, id);
+      localStorage.setItem(DEVICE_ID_KEY, id);
       return id;
     } catch {
       return this.deviceId || this.newDeviceId();
