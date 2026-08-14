@@ -14,12 +14,12 @@
       <span>{{ translate('gffoot.together') }}</span>
     </p>
 
-    <a routerLink="/world" class="gffoot__brand" aria-label="xsantcastx — world">
+    <a routerLink="/world" class="gffoot__brand" [attr.aria-label]="translate('gfnav.brandLabel')">
       <span class="gffoot__sigil" aria-hidden="true">
         <span class="gffoot__sigil-bar"></span>
         <span class="gffoot__sigil-bar"></span>
       </span>
-      <span class="gffoot__wordmark">XSANTCASTX</span>
+      <span class="gffoot__wordmark">{{ translate('gfnav.brand') }}</span>
     </a>
 
     <p class="gffoot__next">{{ translate('gffoot.nextThing') }}</p>
@@ -110,7 +110,7 @@
 
   <!-- Footer Info -->
   <div class="footer-info">
-    <p>© 2026 xsantcastx Development Studio | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>
+    <p>© 2026 xsantcastx | {{ currentLang === 'en' ? 'All Rights Reserved' : 'Todos los Derechos Reservados' }}</p>
     <a class="build-version" [routerLink]="changelogRoute"
        [attr.aria-label]="'Version ' + appVersion + ' ' + appCodename + ' — view the changelog'">
       v{{ appVersion }} · {{ appCodename }}

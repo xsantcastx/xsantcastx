@@ -1,6 +1,6 @@
 <!-- ═══════════════════════════════════════════════════════════════════
      THE COMMAND BAR
-     [sigil + XSANTCASTX / BUILD · FORGE · OWN]
+     [sigil + Eclipse Realms]
      [REALMS ARENA CODEX WAR TABLE MARKET]
      [Gold] [Essence] [rank] [EN|ES] [keeper]
 
@@ -15,14 +15,13 @@
   <div class="gfnav__row">
 
     <!-- ── The mark ─────────────────────────────────────────────────── -->
-    <a routerLink="/world" class="gfnav__brand" aria-label="xsantcastx — world">
+    <a routerLink="/world" class="gfnav__brand" [attr.aria-label]="translate('gfnav.brandLabel')">
       <span class="gfnav__sigil" aria-hidden="true">
         <img class="gfnav__sigil-art" src="assets/brand/logo-godforge.png"
              alt="" width="32" height="32" decoding="async" draggable="false">
       </span>
       <span class="gfnav__lockup">
-        <span class="gfnav__wordmark">XSANTCASTX</span>
-        <span class="gfnav__creed" aria-hidden="true">BUILD &middot; FORGE &middot; OWN</span>
+        <span class="gfnav__wordmark">{{ translate('gfnav.brand') }}</span>
       </span>
     </a>
 
@@ -121,8 +120,7 @@
              alt="" width="32" height="32" decoding="async" draggable="false">
       </span>
       <span class="gftome__lockup">
-        <span class="gfnav__wordmark">XSANTCASTX</span>
-        <span class="gfnav__creed">BUILD &middot; FORGE &middot; OWN</span>
+        <span class="gfnav__wordmark">{{ translate('gfnav.brand') }}</span>
       </span>
       <button type="button" class="gftome__close" (click)="closeMobileMenu()"
               [tabIndex]="mobileMenuOpen ? 0 : -1"

@@ -33,6 +33,8 @@ export class TranslationService {
     // realm.model.ts and are proper nouns in the lore, untranslated in both
     // languages exactly as the tools page already renders them.
     'gfnav.home':         { en: 'Home',          es: 'Inicio' },
+    'gfnav.brand':        { en: 'Eclipse Realms', es: 'Eclipse Realms' },
+    'gfnav.brandLabel':   { en: 'Eclipse Realms — World', es: 'Eclipse Realms — Mundo' },
     'gfnav.world':        { en: 'World',         es: 'Mundo' },
     'gfnav.character':    { en: 'Character',     es: 'Personaje' },
     'gfnav.market':       { en: 'Market',        es: 'Mercado' },

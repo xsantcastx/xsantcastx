@@ -17,7 +17,14 @@ describe('FooterComponent', () => {
       imports: [RouterTestingModule],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
-        { provide: TranslationService, useValue: { translate: (k: string) => k, currentLanguage$: of('en') } },
+        { provide: TranslationService, useValue: {
+          translate: (k: string) => ({
+            'gfnav.brand': 'Eclipse Realms',
+            'gfnav.brandLabel': 'Eclipse Realms — World',
+            'gffoot.forgedBy': 'Forged by xsantcastx',
+          }[k] ?? k),
+          currentLanguage$: of('en'),
+        } },
         { provide: PaymentService, useValue: { donationAmounts: [], isPayPalReady: () => false, isStripeReady: () => false } },
       ],
     });
@@ -33,6 +40,19 @@ describe('FooterComponent', () => {
   it('brand links to /world', () => {
     const brand = fixture.nativeElement.querySelector('.gffoot__brand') as HTMLAnchorElement;
     expect(brand.getAttribute('routerLink') ?? brand.getAttribute('href')).toBe('/world');
+  });
+
+  it('brands the player wordmark as Eclipse Realms', () => {
+    const brand = fixture.nativeElement.querySelector('.gffoot__brand') as HTMLAnchorElement;
+    expect(brand.getAttribute('aria-label')).toBe('Eclipse Realms — World');
+    expect(brand.querySelector('.gffoot__wordmark')?.textContent?.trim()).toBe('Eclipse Realms');
+  });
+
+  it('keeps xsantcastx as studio attribution', () => {
+    const info = fixture.nativeElement.querySelector('.footer-info') as HTMLElement;
+    expect(info.textContent).toContain('xsantcastx');
+    expect(info.textContent).not.toContain('Development Studio');
+    expect(fixture.nativeElement.querySelector('.gffoot__mark')?.textContent).toContain('xsantcastx');
   });
 
   it('still exposes demoted surfaces', () => {
