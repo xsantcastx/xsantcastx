@@ -116,6 +116,22 @@ export interface QuestBoard {
   log: QuestLogEntry[];
 }
 
+/** Honest zero board for SSR / until `init()` has read storage. */
+export function emptyQuestBoard(): QuestBoard {
+  return {
+    daily: [],
+    weekly: [],
+    epic: [],
+    dailyResetAt: '',
+    weeklyResetAt: '',
+    unclaimed: 0,
+    openCount: 0,
+    completedThisWeek: 0,
+    totalCompleted: 0,
+    log: [],
+  };
+}
+
 /** Emitted on a claim, so the UI can celebrate without polling. */
 export interface QuestClaim {
   quest: Quest;
