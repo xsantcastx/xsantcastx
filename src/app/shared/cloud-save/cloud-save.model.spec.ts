@@ -18,6 +18,7 @@ import {
   hasProgress,
   isConflict,
   mergeDeep,
+  mergeEconomy,
   summarise,
   unwrapBlob,
   wrapBlob,
@@ -556,6 +557,142 @@ describe('the registry', () => {
  * like an interrogation, and *not* opening when each device holds something the
  * other lacks silently applies a merge somebody might not have wanted.
  */
+
+describe('mergeEconomy', () => {
+  /**
+   * The bug this exists to kill: a device spends Gold, the cloud still holds
+   * the pre-spend balance, and Math.max restores the money. Purchases must
+   * stick; lifetime counters and owned content must still never go backwards.
+   */
+  it('keeps a local spend when the cloud still holds the higher balance', () => {
+    const cloud = {
+      gold: 1000,
+      totalGoldEarned: 1000,
+      totalClicks: 10,
+      upgrades: { 'iron-hammer': 1 },
+      artifacts: [],
+      cosmetics: [],
+      runewords: [],
+      equipped: {},
+      enchantments: [],
+      eclipseEssence: 0,
+      ledgerAt: 1_000,
+    };
+    // Local bought something: gold down, upgrade level up, newer ledger.
+    const local = {
+      gold: 700,
+      totalGoldEarned: 1000,
+      totalClicks: 10,
+      upgrades: { 'iron-hammer': 2 },
+      artifacts: [],
+      cosmetics: [],
+      runewords: [],
+      equipped: {},
+      enchantments: [],
+      eclipseEssence: 0,
+      ledgerAt: 2_000,
+    };
+    const merged = mergeEconomy(cloud, local) as Record<string, unknown>;
+    expect(merged['gold']).toBe(700);
+    expect(merged['upgrades']).toEqual({ 'iron-hammer': 2 });
+    expect(merged['totalGoldEarned']).toBe(1000);
+  });
+
+  it('still unions owned content from the poorer device', () => {
+    const phone = {
+      gold: 50,
+      totalGoldEarned: 500,
+      upgrades: { 'iron-hammer': 3 },
+      artifacts: ['obsidian-heart'],
+      cosmetics: [],
+      runewords: [],
+      equipped: {},
+      enchantments: [],
+      eclipseEssence: 0,
+      totalClicks: 900,
+      ledgerAt: 5_000,
+    };
+    const desktop = {
+      gold: 1200,
+      totalGoldEarned: 1200,
+      upgrades: { 'ember-stoker': 4 },
+      artifacts: ['mirrorblade-kael'],
+      cosmetics: ['golden-rail'],
+      runewords: [],
+      equipped: { rail: 'golden' },
+      enchantments: [],
+      eclipseEssence: 0,
+      totalClicks: 120,
+      ledgerAt: 3_000, // older
+    };
+    const merged = mergeEconomy(desktop, phone) as Record<string, unknown>;
+    // Phone is newer → its gold wins (the spend sticks).
+    expect(merged['gold']).toBe(50);
+    // Lifetime max still applies.
+    expect(merged['totalGoldEarned']).toBe(1200);
+    expect(merged['totalClicks']).toBe(900);
+    // Purchases from both sides survive.
+    expect(merged['upgrades']).toEqual({ 'iron-hammer': 3, 'ember-stoker': 4 });
+    expect(new Set(merged['artifacts'] as string[]))
+      .toEqual(new Set(['obsidian-heart', 'mirrorblade-kael']));
+    expect(merged['cosmetics']).toEqual(['golden-rail']);
+  });
+
+  it('is commutative for owned content and lifetime counters', () => {
+    const a = {
+      gold: 40, totalGoldEarned: 40, totalClicks: 900,
+      upgrades: { 'iron-hammer': 3 }, artifacts: ['obsidian-heart'],
+      cosmetics: [], runewords: [], equipped: {}, enchantments: [],
+      eclipseEssence: 5, ledgerAt: 10,
+    };
+    const b = {
+      gold: 1200, totalGoldEarned: 1200, totalClicks: 120,
+      upgrades: { 'iron-hammer': 1, 'ember-stoker': 4 },
+      artifacts: ['mirrorblade-kael'], cosmetics: [], runewords: [],
+      equipped: {}, enchantments: [{ id: 'seekers-lens', expiresAt: 9_000 }],
+      eclipseEssence: 2, ledgerAt: 20,
+    };
+    const ab = mergeEconomy(a, b) as Record<string, unknown>;
+    const ba = mergeEconomy(b, a) as Record<string, unknown>;
+    // Newer ledger (b) wins spendable balances either direction.
+    expect(ab['gold']).toBe(1200);
+    expect(ba['gold']).toBe(1200);
+    expect(ab['eclipseEssence']).toBe(2);
+    expect(ba['eclipseEssence']).toBe(2);
+    expect(ab['totalGoldEarned']).toBe(1200);
+    expect(ba['totalGoldEarned']).toBe(1200);
+    expect(ab['totalClicks']).toBe(900);
+    expect(ba['totalClicks']).toBe(900);
+    expect(ab['upgrades']).toEqual(ba['upgrades']);
+    expect(new Set(ab['artifacts'] as string[])).toEqual(new Set(ba['artifacts'] as string[]));
+  });
+
+  it('keeps unstamped cloud Gold when the local device has never spent', () => {
+    const cloud = {
+      gold: 5000, totalGoldEarned: 5000, upgrades: {}, artifacts: [],
+      cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
+    };
+    const local = {
+      gold: 0, totalGoldEarned: 0, upgrades: {}, artifacts: [],
+      cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
+    };
+    const merged = mergeEconomy(cloud, local) as Record<string, unknown>;
+    expect(merged['gold']).toBe(5000);
+    expect(merged['totalGoldEarned']).toBe(5000);
+  });
+
+  it('treats a missing ledgerAt as older than a stamped one', () => {
+    const legacy = { gold: 9999, totalGoldEarned: 9999, upgrades: {}, artifacts: [],
+      cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0 };
+    const modern = { gold: 100, totalGoldEarned: 9999, upgrades: { x: 1 }, artifacts: [],
+      cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
+      ledgerAt: 50 };
+    const merged = mergeEconomy(legacy, modern) as Record<string, unknown>;
+    expect(merged['gold']).toBe(100);
+    expect(merged['upgrades']).toEqual({ x: 1 });
+  });
+});
+
 describe('summarise', () => {
   it('reads the headline numbers off a progress and an economy blob', () => {
     const summary = summarise(

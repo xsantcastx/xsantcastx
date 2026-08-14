@@ -139,6 +139,15 @@ export interface PlayerEconomy {
    * still paid on the next page load.
    */
   lastIdleAt: number;
+  /**
+   * Epoch ms of the last ledger mutation on this device.
+   *
+   * Cloud merge uses this for last-write-wins on spendable balances (gold,
+   * eclipseEssence). Without it, Math.max across devices silently refunds
+   * every purchase the poorer copy still held. Stamped by EconomyService on
+   * every write; 0 means "never stamped" (pre-ledgerAt blob).
+   */
+  ledgerAt: number;
 }
 
 export function emptyEconomy(): PlayerEconomy {
@@ -167,6 +176,7 @@ export function emptyEconomy(): PlayerEconomy {
     levelsPaid: 1,
     streakWeeksPaid: 0,
     lastIdleAt: 0,
+    ledgerAt: 0,
   };
 }
 

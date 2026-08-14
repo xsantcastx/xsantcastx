@@ -23,13 +23,12 @@
  * deliberately commutative: signing in must never cost anybody progress, and
  * which device signed in first must never matter.
  *
- * The generosity has one visible edge. Gold is spendable, so a device that spent
- * 500 Gold on an upgrade and a device that still holds it merge to *both* the
- * upgrade and the Gold. That is a refund, and it is the intended trade: the
- * alternative — summing, or letting the newer write win — either mints currency
- * out of nothing or silently deletes a purchase, and a shop that occasionally
- * undercharges is a far smaller problem than one that eats an artifact somebody
- * saved a week for.
+ * Spendable balances (Gold, Eclipse Essence) are the exception. Taking the
+ * larger of two balances silently refunds every purchase the poorer device made,
+ * which is how cloud save used to restore Gold a second after you spent it.
+ * Those fields now follow last-write-wins via `ledgerAt` (see mergeEconomy),
+ * while lifetime counters, owned upgrades, artifacts and cosmetics still use
+ * the generous rules so a purchase is never deleted.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,6 +67,10 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     collection: 'economy',
     doc: 'state',
     label: 'Godforge ledger',
+    // Spendable balances need a different rule than lifetime counters.
+    // See mergeEconomy — without this, every purchase is max-merged back
+    // into a refund the moment the cloud still holds the pre-spend Gold.
+    merge: mergeEconomy,
   },
   {
     key: 'eclipse-quests',
@@ -246,6 +249,128 @@ const MAX_ROSTER = 20;
  * service's own rule — worn items are never dropped, then the most valuable are
  * kept — so a merge cannot silently destroy what a visitor is wearing.
  */
+/**
+ * Reconcile two Godforge ledgers without refunding spends.
+ *
+ * The structural max rule is correct for *lifetime* numbers and for owned
+ * content (you should never lose an upgrade or an artifact). It is wrong for
+ * the balances you can spend: Math.max(cloud.gold, local.gold) turns every
+ * purchase into a temporary debit that the next flush or resync restores.
+ *
+ * Rules:
+ *   - Lifetime counters (totalGoldEarned, clicks, shards, prestige…) → max
+ *   - Owned ladders / sets (upgrades, artifacts, cosmetics, runewords) → max/union
+ *   - Spendable balances (gold, eclipseEssence) → last-write-wins by ledgerAt
+ *   - Enchantments → merge by id, later expiry wins (via mergeDeep on the array)
+ *   - lastIdleAt → later timestamp (max is correct)
+ *
+ * ledgerAt is stamped by EconomyService on every mutation that writes the
+ * blob. A blob written before that field existed is treated as older than any
+ * stamped one, so a single signed-in device upgrades cleanly.
+ */
+export function mergeEconomy(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  const remoteAt = numberOf(remote['ledgerAt']);
+  const localAt = numberOf(local['ledgerAt']);
+  // Equal timestamps: prefer local (the device in the visitor's hands).
+  const newer = localAt >= remoteAt ? local : remote;
+  const older = localAt >= remoteAt ? remote : local;
+  // Every save from before ledgerAt exists is 0. Preferring local then would
+  // wipe a seeded/legacy cloud ledger the first time an empty device signed in.
+  // Until either side stamps a spend, spendable balances stay on the old max
+  // rule. The refund bug only starts after a spend, and a spend is what stamps.
+  const bothLegacy = remoteAt === 0 && localAt === 0;
+
+  // Spendable balances come from the newer write only — once a stamp exists.
+  const gold = bothLegacy ? maxOf(remote['gold'], local['gold']) : numberOf(newer['gold']);
+  const eclipseEssence = bothLegacy
+    ? maxOf(remote['eclipseEssence'], local['eclipseEssence'])
+    : numberOf(newer['eclipseEssence']);
+  // Reserved currencies have no sink yet; max is still the safe rule.
+  const aetherFragments = maxOf(remote['aetherFragments'], local['aetherFragments']);
+  const noxFragments = maxOf(remote['noxFragments'], local['noxFragments']);
+  const relicDust = maxOf(remote['relicDust'], local['relicDust']);
+
+  // Lifetime / monotone counters — never go down.
+  const totalGoldEarned = maxOf(remote['totalGoldEarned'], local['totalGoldEarned']);
+  // runGoldEarned is wiped by prestige, so it must follow the newer ledger
+  // the same way gold does — max would undo an Eclipse from the other device.
+  const runGoldEarned = bothLegacy
+    ? maxOf(remote['runGoldEarned'], local['runGoldEarned'])
+    : numberOf(newer['runGoldEarned']);
+  const totalClicks = maxOf(remote['totalClicks'], local['totalClicks']);
+  const autoClicks = maxOf(remote['autoClicks'], local['autoClicks']);
+  const eclipseShards = maxOf(remote['eclipseShards'], local['eclipseShards']);
+  const shardsGranted = maxOf(remote['shardsGranted'], local['shardsGranted']);
+  const prestigeCount = maxOf(remote['prestigeCount'], local['prestigeCount']);
+  const streakDays = maxOf(remote['streakDays'], local['streakDays']);
+  const rpgFlatGold = maxOf(remote['rpgFlatGold'], local['rpgFlatGold']);
+  const levelsPaid = maxOf(remote['levelsPaid'], local['levelsPaid']);
+  const streakWeeksPaid = maxOf(remote['streakWeeksPaid'], local['streakWeeksPaid']);
+  const lastIdleAt = maxOf(remote['lastIdleAt'], local['lastIdleAt']);
+
+  // Owned content: never lose a purchase.
+  const upgrades = mergeUpgradeLevels(remote['upgrades'], local['upgrades']);
+  const artifacts = mergeDeep(asArray(remote['artifacts']), asArray(local['artifacts']));
+  const cosmetics = mergeDeep(asArray(remote['cosmetics']), asArray(local['cosmetics']));
+  const runewords = mergeDeep(asArray(remote['runewords']), asArray(local['runewords']));
+  // Equipped cosmetics: prefer the newer device's choices, fall back to older.
+  const equipped = {
+    ...(isPlainObject(older['equipped']) ? older['equipped'] as Record<string, unknown> : {}),
+    ...(isPlainObject(newer['equipped']) ? newer['equipped'] as Record<string, unknown> : {}),
+  };
+  const enchantments = mergeDeep(
+    asArray(remote['enchantments']),
+    asArray(local['enchantments']),
+  );
+
+  return {
+    version: 2,
+    gold,
+    eclipseEssence,
+    aetherFragments,
+    noxFragments,
+    relicDust,
+    totalGoldEarned,
+    runGoldEarned,
+    totalClicks,
+    autoClicks,
+    eclipseShards,
+    shardsGranted,
+    prestigeCount,
+    streakDays,
+    rpgFlatGold,
+    upgrades,
+    artifacts,
+    cosmetics,
+    runewords,
+    equipped,
+    enchantments,
+    levelsPaid,
+    streakWeeksPaid,
+    lastIdleAt,
+    ledgerAt: Math.max(remoteAt, localAt),
+  };
+}
+
+/** Per-upgrade level: higher level wins, missing keys are kept. */
+function mergeUpgradeLevels(remote: unknown, local: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (isPlainObject(remote)) {
+    for (const [id, level] of Object.entries(remote)) {
+      out[id] = numberOf(level);
+    }
+  }
+  if (isPlainObject(local)) {
+    for (const [id, level] of Object.entries(local)) {
+      out[id] = Math.max(out[id] ?? 0, numberOf(level));
+    }
+  }
+  return out;
+}
+
 function mergeInventory(remote: unknown, local: unknown): unknown {
   if (!isPlainObject(local)) return remote ?? local;
   if (!isPlainObject(remote)) return local;
