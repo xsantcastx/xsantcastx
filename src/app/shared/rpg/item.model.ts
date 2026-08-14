@@ -39,14 +39,21 @@ export type ItemRarity = RuneTier;
 
 export type ItemType = 'rune' | 'runeword' | 'charm' | 'artifact';
 
-export type SlotId =
+/** Canonical eight-slot loadout (C5). */
+export type EquipmentSlotId =
   | 'head'
   | 'chest'
+  | 'hands'
+  | 'legs'
+  | 'feet'
   | 'weapon'
-  | 'offhand'
-  | 'charm1'
-  | 'charm2'
-  | 'charm3';
+  | 'off-hand'
+  | 'trinket';
+
+/** Pre-C5 persisted slot ids. Parsed, then migrated. */
+export type LegacySlotId = 'offhand' | 'charm1' | 'charm2' | 'charm3';
+
+export type SlotId = EquipmentSlotId;
 
 /**
  * What an item can carry.
@@ -130,23 +137,35 @@ export interface SlotDefinition {
 }
 
 /**
- * Seven slots: four worn, three charms.
- *
- * The charm slots accept only charms and the worn slots refuse them, which is
- * what stops the optimal build from being three Void Fragments in the weapon
- * hand. A charm is a modifier on a build, not a build.
+ * Eight slots. head/chest/weapon/off-hand accept today's worn types.
+ * hands/legs/feet/trinket start empty and only take later authored defs.
+ * Charms have no compatible slot — they retire to the bag in C5.
  */
 export const EQUIPMENT_SLOTS: SlotDefinition[] = [
-  { id: 'head',    name: 'Head',     accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 8 },
-  { id: 'chest',   name: 'Chest',    accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 38 },
-  { id: 'weapon',  name: 'Weapon',   accepts: ['rune', 'runeword', 'artifact'], x: 14, y: 32 },
-  { id: 'offhand', name: 'Off-hand', accepts: ['rune', 'runeword', 'artifact'], x: 86, y: 32 },
-  { id: 'charm1',  name: 'Charm I',  accepts: ['charm'], x: 18, y: 74 },
-  { id: 'charm2',  name: 'Charm II', accepts: ['charm'], x: 50, y: 82 },
-  { id: 'charm3',  name: 'Charm III',accepts: ['charm'], x: 82, y: 74 },
+  { id: 'head', name: 'Head', accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 10 },
+  { id: 'chest', name: 'Chest', accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 32 },
+  { id: 'hands', name: 'Hands', accepts: [], x: 24, y: 36 },
+  { id: 'weapon', name: 'Weapon', accepts: ['rune', 'runeword', 'artifact'], x: 16, y: 48 },
+  { id: 'off-hand', name: 'Off-hand', accepts: ['rune', 'runeword', 'artifact'], x: 84, y: 48 },
+  { id: 'legs', name: 'Legs', accepts: [], x: 50, y: 58 },
+  { id: 'feet', name: 'Feet', accepts: [], x: 50, y: 82 },
+  { id: 'trinket', name: 'Trinket', accepts: [], x: 78, y: 18 },
 ];
 
 export const SLOT_IDS: SlotId[] = EQUIPMENT_SLOTS.map(s => s.id);
+export const LEGACY_SLOT_IDS: readonly LegacySlotId[] = ['offhand', 'charm1', 'charm2', 'charm3'];
+export const PARSE_SLOT_IDS: readonly string[] = [...SLOT_IDS, ...LEGACY_SLOT_IDS];
+export const RETIRED_CHARM_TAG = 'retired-charm';
+
+export function canonicalizeSlot(slot: string): SlotId | null {
+  if ((SLOT_IDS as readonly string[]).includes(slot)) return slot as SlotId;
+  if (slot === 'offhand') return 'off-hand';
+  return null;
+}
+
+export function isRetiredCharmSlot(slot: string): boolean {
+  return slot === 'charm1' || slot === 'charm2' || slot === 'charm3';
+}
 
 export const SLOT_BY_ID = new Map(EQUIPMENT_SLOTS.map(s => [s.id, s]));
 

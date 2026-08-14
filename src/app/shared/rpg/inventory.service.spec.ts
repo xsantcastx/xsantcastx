@@ -56,7 +56,15 @@ describe('InventoryService C3 adapter', () => {
     memory = new MemoryGateway();
     memory.writeRaw(INVENTORY_KEY, JSON.stringify({
       version: 1,
-      items: [charm('old-charm'), charm('worn', { equipped: true, slot: 'charm1' })],
+      items: [
+        charm('old-charm'),
+        charm('worn', { equipped: true, slot: 'charm1' as never }),
+        {
+          id: 'seed-helm', name: 'Helm', type: 'artifact', rarity: 'rare',
+          stats: { goldPerSec: 2 }, sellValue: 30, equipped: true, slot: 'head',
+          foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+        },
+      ],
       goldFromSales: 7,
       sold: 1,
     }));
@@ -64,16 +72,17 @@ describe('InventoryService C3 adapter', () => {
   });
 
   it('migrates a v1 blob on load and still exposes GameItems', () => {
-    expect(inventory.snapshot.items.map(row => row.id).sort()).toEqual(['old-charm', 'worn']);
-    expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
+    expect(inventory.snapshot.items.map(row => row.id).sort()).toEqual(['old-charm', 'seed-helm', 'worn']);
+    expect(Object.keys(inventory.snapshot.equipped)).not.toContain('charm1');
+    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
     const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
     expect(stored?.version).toBe(2);
     expect(stored?.legacyBackup?.version).toBe(1);
   });
 
   it('refuses to sell an equipped item and tombs a bag sale', () => {
-    expect(inventory.sell('worn')).toBe(0);
-    expect(inventory.itemById('worn')).toBeTruthy();
+    expect(inventory.sell('seed-helm')).toBe(0);
+    expect(inventory.itemById('seed-helm')).toBeTruthy();
     const gold = inventory.sell('old-charm');
     expect(gold).toBe(12);
     expect(inventory.itemById('old-charm')).toBeUndefined();
@@ -95,6 +104,43 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.sell('old-charm')).toBe(0);
     expect(inventory.itemById('old-charm')).toBeTruthy();
     expect(TestBed.inject(EconomyService).snapshot.gold).toBe(gold);
+  });
+
+  it('retires a worn charm and refuses to equip it again', () => {
+    expect(Object.keys(inventory.snapshot.equipped)).not.toContain('charm1');
+    expect(inventory.snapshot.totals.goldPerSec).toBe(2);
+    expect(inventory.equip('worn', 'head')).toBe(false);
+    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+  });
+
+  it('equips into off-hand and displaces the occupant atomically', () => {
+    const helm = {
+      id: 'helm', name: 'Helm', type: 'artifact' as const, rarity: 'rare' as const,
+      stats: { goldPerSec: 2 }, sellValue: 20, equipped: false,
+      foundAt: '2026-08-03T00:00:00.000Z', soulbound: false,
+    };
+    const blade = {
+      ...helm, id: 'blade', name: 'Blade', stats: { goldPerSec: 3 },
+    };
+    expect(inventory.add(helm)?.id).toBe('helm');
+    expect(inventory.equip('helm', 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('helm');
+    expect(inventory.add(blade)?.id).toBe('blade');
+    expect(inventory.equip('blade', 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('blade');
+    expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
+  });
+
+  it('reverts equip when the cache write does not land', () => {
+    const helm = {
+      id: 'fail-helm', name: 'Fail Helm', type: 'artifact' as const, rarity: 'rare' as const,
+      stats: {}, sellValue: 4, equipped: false, foundAt: '2026-08-04T00:00:00.000Z', soulbound: false,
+    };
+    expect(inventory.add(helm)).toBeTruthy();
+    memory.write = () => { /* swallow */ };
+    expect(inventory.equip('fail-helm', 'off-hand')).toBe(false);
+    expect(inventory.snapshot.equipped['off-hand']).toBeUndefined();
+    expect(inventory.itemById('fail-helm')?.equipped).toBe(false);
   });
 
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {

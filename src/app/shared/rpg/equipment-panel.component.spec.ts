@@ -5,9 +5,10 @@ describe('C4 paper doll manifest', () => {
     expect(PAPER_DOLL_SLOTS.map(slot => slot.slotId)).toEqual([
       'head', 'chest', 'hands', 'weapon', 'off-hand', 'legs', 'feet', 'trinket',
     ]);
-    expect(liveSlotFor('off-hand')).toBe('offhand');
+    expect(liveSlotFor('off-hand')).toBe('off-hand');
     expect(liveSlotFor('hands')).toBeNull();
     expect(liveSlotFor('trinket')).toBeNull();
-    expect(PAPER_DOLL_SLOTS.every(slot => !('overlay' in slot))).toBe(true);
+    expect(PAPER_DOLL_SLOTS.find(slot => slot.slotId === 'weapon')?.overlay?.asset).toContain('weapon-overlay');
+    expect(PAPER_DOLL_SLOTS.find(slot => slot.slotId === 'hands')?.overlay).toBeUndefined();
   });
 });
