@@ -580,10 +580,10 @@ export const DAILY_QUESTS: QuestDefinition[] = [
   {
     id: 'the-explorer',
     title: 'The Explorer',
-    description: 'Stand in ten different places.',
+    description: 'Stand in five different halls.',
     loreText: 'Maps are drawn by people who walked further than they were asked to.',
     type: 'daily',
-    condition: { type: 'page-variety', count: 10 },
+    condition: { type: 'page-variety', count: 5 },
     rewards: { xp: 20 },
     rarity: 'eclipsed',
   },
@@ -618,6 +618,88 @@ export const DAILY_QUESTS: QuestDefinition[] = [
     condition: { type: 'time-on-site', count: 10 },
     rewards: { xp: 20 },
     rarity: 'mortal',
+  },
+
+  // ── Game halls — the public product after the tool pages were retired. ──
+  {
+    id: 'walk-the-world',
+    title: 'Walk the World',
+    description: 'Stand on the World map.',
+    loreText: 'Every road in the five realms starts at the same table. The map does not care which one you take first.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/world'], count: 1 },
+    rewards: { xp: 15 },
+    rarity: 'mortal',
+  },
+  {
+    id: 'face-the-keeper',
+    title: 'Face the Keeper',
+    description: 'Open your character sheet.',
+    loreText: 'The chamber writes down whoever walks in. That is the whole of the rite.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/character'], count: 1 },
+    rewards: { xp: 15 },
+    rarity: 'mortal',
+  },
+  {
+    id: 'strike-the-anvil',
+    title: 'Strike the Anvil',
+    description: 'Enter the Forge.',
+    loreText: 'The anvil does not ask what you came to make. It only asks that you stand close enough to hear it.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/forge/runes'], count: 1 },
+    rewards: { xp: 20 },
+    rarity: 'eclipsed',
+  },
+  {
+    id: 'enter-the-trials',
+    title: 'Enter the Trials',
+    description: 'Walk the Arena gates.',
+    loreText: 'Thirteen doors, and none of them open from the outside. Standing in front of them is still a kind of answer.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/world/trials'], count: 1 },
+    rewards: { xp: 20 },
+    rarity: 'eclipsed',
+  },
+  {
+    id: 'read-the-orders',
+    title: 'Read the Orders',
+    description: 'Open the standing orders.',
+    loreText: 'The board is posted whether anyone reads it or not. The Archivum counts the ones who do.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/world/quests'], count: 1 },
+    rewards: { xp: 15 },
+    rarity: 'mortal',
+  },
+  {
+    id: 'visit-the-market',
+    title: 'Visit the Market',
+    description: 'Walk the market aisle.',
+    loreText: 'Nothing here is free, and nothing here is required. That is why the merchants stay.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/market'], count: 1 },
+    rewards: { xp: 15 },
+    rarity: 'mortal',
+  },
+  {
+    id: 'open-the-codex',
+    title: 'Open the Codex',
+    description: 'Open the ancient record.',
+    loreText: 'The Codex does not care whether you came to remember or to look for what you have not found yet.',
+    type: 'daily',
+    condition: { type: 'page-visit', paths: ['/codex'], count: 1 },
+    rewards: { xp: 15 },
+    rarity: 'mortal',
+  },
+  {
+    id: 'one-gate',
+    title: 'One Gate',
+    description: 'Enter any Arena gate.',
+    loreText: 'The first chain is the only one that feels like a lock. The rest feel like doors you already know how to open.',
+    type: 'daily',
+    condition: { type: 'arena-game', count: 1 },
+    rewards: { xp: 25 },
+    rarity: 'eclipsed',
   },
 ];
 
@@ -686,10 +768,10 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
   {
     id: 'the-architects-eye',
     title: 'The Architect\'s Eye',
-    description: 'Read the Blueprint and walk the Arena.',
+    description: 'Walk the World and open the Codex.',
     loreText: 'Two rooms nobody is required to enter. The Archivum has always held that the people who enter them anyway are the ones worth watching.',
     type: 'weekly',
-    condition: { type: 'page-visit', paths: ['/blueprint', '/codex'], count: 2 },
+    condition: { type: 'page-visit', paths: ['/world', '/codex'], count: 2 },
     rewards: { xp: 50, energy: 'aether' },
     rarity: 'sacred',
   },
@@ -712,6 +794,30 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
     condition: { type: 'realm-spread', count: 4 },
     rewards: { xp: 120 },
     rarity: 'anomalous',
+  },
+  {
+    id: 'walk-the-five-stations',
+    title: 'Walk the Five Stations',
+    description: 'Visit World, Character, the Forge, Quests and the Trials.',
+    loreText: 'Five rooms, one week. The Convergents call it a circuit. Everyone else calls it showing up.',
+    type: 'weekly',
+    condition: {
+      type: 'page-visit',
+      paths: ['/world', '/character', '/forge/runes', '/world/quests', '/world/trials'],
+      count: 5,
+    },
+    rewards: { xp: 80 },
+    rarity: 'sacred',
+  },
+  {
+    id: 'the-long-week',
+    title: 'The Long Week',
+    description: 'Spend sixty minutes in the realms this week.',
+    loreText: 'A week is long enough to stop pretending you were only passing through.',
+    type: 'weekly',
+    condition: { type: 'time-on-site', count: 60 },
+    rewards: { xp: 75 },
+    rarity: 'sacred',
   },
 ];
 
@@ -812,6 +918,24 @@ export const ALL_QUESTS: QuestDefinition[] = [
 export function questById(id: string): QuestDefinition | undefined {
   return ALL_QUESTS.find(q => q.id === id);
 }
+
+/**
+ * True when a quest can be finished on a live game route.
+ *
+ * Tool-use, tool-variety, realm-spread and speed-run all required /tools/*
+ * pages that no longer exist. Those authored quests stay in the pools for
+ * save-history lookups, but they are not drawn onto the public board.
+ */
+export function isPlayableQuest(def: QuestDefinition): boolean {
+  const retired: QuestConditionType[] = ['tool-use', 'tool-variety', 'realm-spread', 'speed-run'];
+  if (retired.includes(def.condition.type)) return false;
+  return !(def.condition.paths ?? []).some(path =>
+    path === '/tools' || path.startsWith('/tools/') || path === '/blueprint' || path === '/embed');
+}
+
+export const PLAYABLE_DAILY_QUESTS = DAILY_QUESTS.filter(isPlayableQuest);
+export const PLAYABLE_WEEKLY_QUESTS = WEEKLY_QUESTS.filter(isPlayableQuest);
+export const PLAYABLE_EPIC_QUESTS = EPIC_QUESTS.filter(isPlayableQuest);
 
 /** How many dailies and weeklies the board shows. */
 export const DAILY_SLOTS = 3;

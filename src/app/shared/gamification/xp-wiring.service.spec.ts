@@ -45,4 +45,13 @@ describe('XpWiringService path identity', () => {
     events.next(new NavigationEnd(1, CANONICAL.world, CANONICAL.world));
     expect(awards.filter(t => t === 'page-visit').length).toBe(1);
   });
+
+  it('does not award tool-use when a retired /tools/* URL lands on /world', async () => {
+    const wiring = TestBed.inject(XpWiringService);
+    wiring.init();
+    await Promise.resolve();
+    events.next(new NavigationEnd(1, '/tools/regex-builder', CANONICAL.world));
+    expect(awards).toEqual(['page-visit']);
+    expect(awards).not.toContain('tool-use');
+  });
 });

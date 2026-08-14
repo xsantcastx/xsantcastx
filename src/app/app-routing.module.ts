@@ -108,8 +108,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
       title: 'The Codex',
       data: {
-        description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, mastery for all 128 tools, and clues to every secret still hidden.',
-        keywords: 'achievements, progression, easter eggs list, xp levels, tool mastery, eclipse realms, codex, xsantcastx',
+        description: 'The ancient record of the Godforge: 140 achievements across five realms, ten ranks of progression, lore scrolls, and clues to every secret still hidden.',
+        keywords: 'achievements, progression, easter eggs list, xp levels, lore, eclipse realms, codex, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -117,7 +117,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/codex`,
           url: `${SITE_URL}/codex`,
           name: 'The Codex — Every Achievement, Rank and Secret',
-          description: 'Every achievement, rank, tool mastery level and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
+          description: 'Every achievement, rank, lore fragment and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
           inLanguage: 'en',
           isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
           author: { '@id': `${SITE_URL}/#person` },
@@ -136,7 +136,7 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
       title: 'The Standing Orders',
       data: {
-        description: 'Three daily quests drawn from thirty, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by using the tools you already use.',
+        description: 'Three daily quests, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by walking the world, the trials, and the forge.',
         keywords: 'daily quests, missions, gamification, eclipse realms, xp, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -201,8 +201,8 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
       title: 'Your Character — Eclipse Realms',
       data: {
-        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, everything you own, your pinned achievements, a thirty-day streak calendar and the tools you actually know.',
-        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, tool mastery, eclipse realms, xsantcastx',
+        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, loadout, everything you own, your pinned achievements and a thirty-day streak calendar.',
+        keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, loadout, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -210,7 +210,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/character`,
           url: `${SITE_URL}/character`,
           name: 'Your Character — Eclipse Realms',
-          description: 'Rank, inventory, realm affinity, achievements, streak and tool mastery for one Convergent. Progression is stored in your own browser.',
+          description: 'Rank, inventory, realm affinity, achievements, streak and loadout for one Convergent. Progression is stored in your own browser.',
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [

@@ -979,82 +979,46 @@
 .fk-cal__next, .fk-cal__hottest { margin: 0; font-size: 13px; color: var(--fk-dim); }
 .fk-cal__next strong { color: #ffb26b; }
 
-/* ── 7. Tool mastery ────────────────────────────────────────────────────── */
+/* ── 7. The Path ───────────────────────────────────────────────────────── */
 
-.fk-mastery__all {
+.fk-path { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+
+.fk-path__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+}
+
+.fk-path__icon { font-size: 22px; line-height: 1; }
+.fk-path__body { display: grid; gap: 2px; min-width: 0; }
+.fk-path__name {
+  font: 600 13px/1.3 'Orbitron', system-ui, sans-serif;
+  color: var(--fk-ink);
+}
+.fk-path__note { font-size: 12px; color: var(--fk-dim); }
+.fk-path__value {
+  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: .06em;
+  color: var(--fk-affinity);
+  white-space: nowrap;
+}
+.fk-path__link {
   font: 600 12px/1 'Orbitron', system-ui, sans-serif;
   letter-spacing: .06em;
   color: var(--fk-affinity);
   text-decoration: none;
-  min-height: 44px; display: inline-flex; align-items: center;
-}
-.fk-mastery__all:hover { text-decoration: underline; }
-
-.fk-mastery { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
-
-.fk-mastery__row {
-  --realm: #A78BFA;
-  --mastery: #A78BFA;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 6, 26, 0.5);
-  transition: border-color .25s ease;
-}
-.fk-mastery__row:hover { border-color: color-mix(in srgb, var(--realm) 45%, transparent); }
-
-.fk-mastery__link {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  grid-template-areas:
-    'icon body stars uses'
-    'icon bar  bar   level';
-  align-items: center;
-  gap: 4px 12px;
   min-height: 44px;
-  padding: 12px 14px;
-  text-decoration: none;
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
 }
-.fk-mastery__link:focus-visible { outline: 2px solid #A78BFA; outline-offset: -2px; border-radius: 12px; }
-
-.fk-mastery__icon { grid-area: icon; font-size: 24px; }
-.fk-mastery__body { grid-area: body; display: grid; gap: 2px; min-width: 0; }
-.fk-mastery__name {
-  font: 600 13px/1.3 'Orbitron', system-ui, sans-serif;
-  color: var(--fk-ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fk-mastery__realm {
-  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--realm);
-}
-.fk-mastery__stars { grid-area: stars; font-size: 13px; letter-spacing: 1px; }
-.fk-mastery__star { color: rgba(255, 255, 255, 0.14); }
-.fk-mastery__star--on { color: var(--mastery); text-shadow: 0 0 7px currentColor; }
-.fk-mastery__uses {
-  grid-area: uses;
-  font-size: 12px; font-variant-numeric: tabular-nums;
-  color: var(--fk-dim);
-  white-space: nowrap;
-}
-.fk-mastery__bar {
-  grid-area: bar;
-  display: block; height: 5px; border-radius: 999px; overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-}
-.fk-mastery__fill {
-  display: block; height: 100%; border-radius: 999px;
-  background: var(--mastery);
-  box-shadow: 0 0 9px -1px var(--mastery);
-  transition: width .6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.fk-mastery__level {
-  grid-area: level;
-  font: 600 10px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: .1em; text-transform: uppercase;
-  color: var(--mastery);
-  white-space: nowrap;
-}
+.fk-path__link:hover { text-decoration: underline; }
+.fk-path__link:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
 
 /* ── 8. Quick links ─────────────────────────────────────────────────────── */
 
@@ -1119,19 +1083,6 @@
   .fk-id__rank { justify-content: flex-start; }
   .fk-id__wallet { flex-direction: column; }
   .fk-id__coin { justify-content: start; }
-
-  /* The mastery row's four-column grid does not survive 375px; stack it. */
-  .fk-mastery__link {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      'icon body'
-      'icon stars'
-      'bar  bar'
-      'uses level';
-    gap: 6px 12px;
-  }
-  .fk-mastery__uses { justify-self: start; }
-  .fk-mastery__level { justify-self: end; }
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────────────── */
@@ -1147,7 +1098,6 @@
   }
   .fk-id__xp-fill,
   .fk-affinity__split-fill,
-  .fk-mastery__fill,
   .fk-inv__face,
   .fk-inv__tip,
   .fk-link,

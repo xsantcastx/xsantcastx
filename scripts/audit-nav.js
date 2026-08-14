@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /**
- * nav-audit.js — proves two things about site navigation:
+ * nav-audit.js — proves three things about the public game:
  *   1. No dead links: every routerLink in a template resolves to a real route.
  *   2. No orphans: every route with a page on the end of it is linked from
  *      site-wide chrome (header bar, tome, tab bar, footer).
+ *   3. No player-facing leftover of the deleted tool product: Character,
+ *      Codex, SEO, and other public templates must not send a player to
+ *      /tools/* or tell them to open, search, or master tools.
  *
- * Run from the repo root: node nav-audit.js
+ * Run from the repo root: node scripts/audit-nav.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -109,6 +112,50 @@ for (const r of declared) {
   if (!chromeLinks.has(r)) orphans.push(r);
 }
 
+// ── 3. Player-facing leftover of the deleted tool product ──────────────────
+// Templates and SEO are what a player reads. Infrastructure (tools-registry,
+// hidden quest pools, historical changelog) is out of scope.
+const PLAYER_FACING = files.filter(f => {
+  const rel = path.relative(path.join(SRC, 'app'), f).replace(/\\/g, '/');
+  if (rel.startsWith('admin/')) return false;
+  if (rel === 'tools/tools-registry.ts') return false;
+  if (rel === 'version.ts') return false;
+  if (rel === 'translation.service.ts') return false;
+  if (/\.spec\.ts$/.test(rel)) return false;
+  return /\.(html|ts)$/.test(rel);
+});
+
+const BANNED = [
+  { re: /routerLink="\/tools(?:\/[^"]*)?"/i, why: 'routerLink to a deleted tool page' },
+  { re: /\[routerLink\]="'\/tools(?:\/[^']*)?'"/i, why: 'bound routerLink to a deleted tool page' },
+  { re: /\[routerLink\]="[^"]*toolRoute/i, why: 'achievement/mastery link to a deleted tool page' },
+  { re: /queryParams\]="\{[^}]*bestiary/i, why: 'Codex Bestiary tab is retired' },
+  { re: /tab:\s*['"]bestiary['"]/i, why: 'Codex Bestiary tab is retired' },
+  { re: /\bOpen a tool\b/i, why: 'instructs a player to open a deleted product' },
+  { re: /\bSearch tools\b/i, why: 'tool Bestiary search' },
+  { re: /\bMaster every tool\b/i, why: 'tool mastery call-to-action' },
+  { re: /\bTools touched\b/i, why: 'tool mastery stat' },
+  { re: /\bTools Mastered\b/i, why: 'tool mastery stat' },
+  { re: /the tools you actually reach for/i, why: 'Character tool-mastery board' },
+  { re: /\bUse a tool\b/i, why: 'tells a player to use a deleted product' },
+  { re: /\bFamiliar Five\b/i, why: 'Character tool-mastery board' },
+  { re: /mastery for all \d+ tools/i, why: 'SEO still selling tool mastery' },
+  { re: /\btool mastery\b/i, why: 'player-facing tool-mastery copy' },
+];
+
+const leftover = [];
+for (const f of PLAYER_FACING) {
+  const rel = path.relative(ROOT, f);
+  const lines = fs.readFileSync(f, 'utf8').split(/\r?\n/);
+  lines.forEach((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('<!--')) return;
+    for (const ban of BANNED) {
+      if (ban.re.test(line)) leftover.push({ file: rel, line: i + 1, why: ban.why, text: trimmed.slice(0, 160) });
+    }
+  });
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────
 console.log('ROUTES DECLARED :', [...declared].filter(r => !redirects.has(r) && r !== '/**' && r !== '/').sort().join(' '));
 console.log('REDIRECTS       :', [...redirects].map(([a, b]) => `${a}→${b}`).join(' '));
@@ -120,6 +167,9 @@ console.log('');
 console.log(orphans.length ? '❌ ORPHANED ROUTES (not linked from header/footer):' : '✅ NO ORPHANED ROUTES');
 for (const o of orphans.sort()) console.log(`   ${o}`);
 console.log('');
+console.log(leftover.length ? '❌ PLAYER-FACING TOOL PRODUCT:' : '✅ NO PLAYER-FACING TOOL PRODUCT');
+for (const hit of leftover) console.log(`   ${hit.file}:${hit.line}  ${hit.why}  —  ${hit.text}`);
+console.log('');
 console.log('CHROME LINKS    :', [...chromeLinks].sort().join(' '));
 
-process.exit(dead.length || orphans.length ? 1 : 0);
+process.exit(dead.length || orphans.length || leftover.length ? 1 : 0);

@@ -194,7 +194,9 @@ export function buildAchievements(): CodexAchievement[] {
       rarity: rarityOf(tier),
       category: categoryById(categoryForEgg(egg)),
       toolTitle: tool?.title ?? null,
-      toolRoute: tool?.route || null,
+      // Retired public tool pages redirect to /world. Unlocked cards no longer
+      // link there — that would send a player to a deleted product.
+      toolRoute: null,
       gate: ARENA_GATE_EGGS[egg.id] ?? null,
       xp: egg.xp ?? EGG_XP,
       unlocked: false,

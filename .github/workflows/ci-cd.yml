@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit public navigation and retired-tool copy
+        run: node scripts/audit-nav.js
+
       - name: Build Angular app
         # Production build runs full AOT compile which is a stricter typecheck
         # than `tsc --noEmit` — TS errors fail the build and gate the deploy.
