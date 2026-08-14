@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mkdirSync } from 'fs';
+import { resolve } from 'path';
 
 const INVENTORY_KEY = 'godforge-inventory';
 
@@ -69,8 +71,25 @@ test.describe('C5 equipment actions', () => {
     await expect(page.getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
 
     await page.getByRole('button', { name: /Head, equipped Crown/ }).click();
+    await expect(page.getByRole('button', { name: 'Unequip' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
+
+    const shotDir = resolve('test-results/c5-equipment');
+    mkdirSync(shotDir, { recursive: true });
+    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'desktop-equipped.png') });
+
     await page.getByRole('button', { name: 'Unequip' }).click();
     await expect(page.getByRole('button', { name: /Head, empty/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Crown/ })).toBeVisible();
+  });
+
+  test('keeps the 375px loadout readable after charm retirement', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await open(page);
+    await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
+    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    const shotDir = resolve('test-results/c5-equipment');
+    mkdirSync(shotDir, { recursive: true });
+    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'mobile-375.png') });
   });
 });
