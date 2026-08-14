@@ -18,6 +18,7 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../translation.service';
 import { FIVE_REALMS, type NarrativeRealm } from '../shared/narrative/five-realms.narrative';
+import { slugifyThreat } from '../shared/entity/entity-resolver.service';
 import { continueFromWorld } from '../shared/narrative/continue-journey';
 import { PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
@@ -27,6 +28,7 @@ import { formatCurrency } from '../shared/economy/economy.model';
 import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
 import { WorldAtlasComponent } from '../world/world-atlas.component';
+import { InspectButtonComponent } from '../shared/entity/inspect-button.component';
 import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
@@ -42,7 +44,7 @@ export interface ForgeStation {
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent]
+  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -221,6 +223,10 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   trackStation(_index: number, station: ForgeStation): string {
     return station.realm.id;
+  }
+
+  creatureId(threat: string): string {
+    return slugifyThreat(threat);
   }
 
   // ─── The Forges ───────────────────────────────────────────────────────

@@ -60,6 +60,10 @@
   <app-command-palette></app-command-palette>
 }
 
+@if (!isEmbedMode) {
+  <app-inspect></app-inspect>
+}
+
 <!-- "Install The Godforge" banner. Bottom-LEFT: every other corner is already
      claimed (flame and achievement drop bottom-right, quest toast bottom-centre,
      cookie banner full-width along the bottom, quest drawer top-right). It also

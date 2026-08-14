@@ -16,6 +16,7 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 
+import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { InventoryService, InventorySnapshot } from './inventory.service';
 import { MagicFindService } from './magic-find.service';
 import {
@@ -44,7 +45,7 @@ interface StatLine {
 @Component({
   selector: 'app-equipment-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InspectButtonComponent],
   template: `
     <section class="ep">
       <header class="ep__head">
@@ -114,6 +115,7 @@ interface StatLine {
           </span>
         </p>
         <p class="ep__detail-lore" *ngIf="item.lore">{{ item.lore }}</p>
+        <app-inspect-button type="item" [id]="item.id"></app-inspect-button>
       </div>
 
       <!-- The bag -->
@@ -165,6 +167,7 @@ interface StatLine {
             >
               Sell {{ item.sellValue | number }}
             </button>
+            <app-inspect-button type="item" [id]="item.id"></app-inspect-button>
             <span class="ep__bound" *ngIf="!inventory.canSell(item)">soulbound</span>
           </li>
         </ul>

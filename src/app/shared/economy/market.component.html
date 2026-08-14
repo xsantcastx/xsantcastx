@@ -356,6 +356,7 @@
                 <span class="mk__row-yield">{{ it.yield }}</span>
 
                 <span class="mk__row-action">
+                  <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
                   @if (it.state === 'held') {
                     <span class="mk__held">HELD</span>
                   } @else if (it.state === 'owned') {
