@@ -89,6 +89,7 @@ import {
   summarise,
   unwrapBlob,
   wrapBlob,
+  stripUndefined,
 } from '../cloud-save/cloud-save.model';
 import {
   DEVICE_ID_KEY,
@@ -1081,7 +1082,7 @@ function preserveMonotonicXp(entry: StateEntry, payload: unknown, cloud: unknown
 /** The document body for a payload — wrapped, except for progression. */
 function envelope(entry: StateEntry, payload: unknown): Record<string, unknown> {
   if (entry.enveloped) return wrapBlob(payload) as unknown as Record<string, unknown>;
-  return payload as Record<string, unknown>;
+  return stripUndefined(payload) as Record<string, unknown>;
 }
 
 function safeParse(raw: string): unknown {

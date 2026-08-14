@@ -19,10 +19,12 @@ import {
   isConflict,
   mergeDeep,
   mergeEconomy,
+  stripUndefined,
   summarise,
   unwrapBlob,
   wrapBlob,
 } from './cloud-save.model';
+import { coerceLedger } from '../economy/economy-ops';
 
 describe('mergeDeep', () => {
   describe('the core rules', () => {
@@ -815,5 +817,30 @@ describe('isConflict', () => {
     const a = { level: 6, xp: 3000, gold: 20, achievements: 5 };
     const b = { level: 4, xp: 900, gold: 800, achievements: 7 };
     expect(isConflict(a, b)).toBe(isConflict(b, a));
+  });
+});
+
+describe('stripUndefined', () => {
+  function containsUndefined(value: unknown): boolean {
+    if (value === undefined) return true;
+    if (value === null || typeof value !== 'object') return false;
+    return Object.values(value).some(containsUndefined);
+  }
+
+  it('drops undefined keys and keeps null', () => {
+    expect(stripUndefined({ a: 1, b: undefined, c: null })).toEqual({ a: 1, c: null });
+  });
+
+  it('makes a coerced credit-gold ledger safe for Firestore', () => {
+    const ledger = coerceLedger({
+      gold: 250,
+      ops: [{
+        id: 'd:1', deviceId: 'd', seq: 1, kind: 'credit-gold',
+        amount: 250, hlc: 1, wall: 1,
+      }],
+    });
+    const envelope = wrapBlob(ledger);
+    expect(containsUndefined(envelope)).toBe(false);
+    expect(envelope.v).not.toBeNull();
   });
 });

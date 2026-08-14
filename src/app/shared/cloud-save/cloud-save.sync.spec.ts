@@ -171,6 +171,7 @@ class FakeFirestore {
   }
 
   private commit(path: string, data: unknown): void {
+    assertNoUndefined(data, path);
     if (this.refuse.has(path)) {
       throw Object.assign(new Error('refused'), { code: 'permission-denied' });
     }
@@ -203,6 +204,18 @@ class FakeFirestore {
 
 function copy<T>(v: T): T {
   return v === undefined ? v : JSON.parse(JSON.stringify(v));
+}
+
+function assertNoUndefined(value: unknown, path: string): void {
+  if (value === undefined) {
+    throw Object.assign(
+      new Error(`Unsupported field value: undefined (found in document ${path})`),
+      { code: 'invalid-argument' },
+    );
+  }
+  if (value !== null && typeof value === 'object') {
+    for (const entry of Object.values(value)) assertNoUndefined(entry, path);
+  }
 }
 
 /** Eggs reach for the network on trigger, which none of this needs. */

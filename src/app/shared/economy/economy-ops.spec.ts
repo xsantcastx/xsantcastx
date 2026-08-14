@@ -67,6 +67,18 @@ describe('economy ops primitives', () => {
       amount: 10, hlc: 1, wall: 1,
     })).toBeNull();
   });
+
+  it('omits optional fields rather than writing undefined', () => {
+    const op = parseOp({
+      id: 'd:1', deviceId: 'd', seq: 1, kind: 'credit-gold',
+      amount: 10, hlc: 1, wall: 1,
+    });
+    expect(op).not.toBeNull();
+    expect('itemId' in op!).toBe(false);
+    expect('slot' in op!).toBe(false);
+    expect('extra' in op!).toBe(false);
+    expect(Object.values(op!).some(value => value === undefined)).toBe(false);
+  });
 });
 
 describe('economy merge lifecycle', () => {
