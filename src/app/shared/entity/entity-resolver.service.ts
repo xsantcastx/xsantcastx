@@ -166,13 +166,7 @@ export class EntityResolver {
     if (!item) return this.missing(ref);
     const facts: EntityFact[] = [
       { label: this.t('inspect.fact.rarity'), value: rarityLabel(item.rarity), exactValue: rarityLabel(item.rarity) },
-      {
-        label: this.t('inspect.fact.location'),
-        value: item.equipped
-          ? this.t('inspect.location.equipped', { slot: item.slot ?? item.explorerId ?? '' })
-          : this.t('inspect.location.bag'),
-        exactValue: item.equipped ? (item.slot ?? item.explorerId ?? '') : 'bag',
-      },
+      this.locationFact(item),
     ];
     for (const key of ITEM_STAT_KEYS) {
       const raw = item.stats[key];
@@ -325,6 +319,28 @@ export class EntityResolver {
       enabled: true,
       href: realmHref(match.id),
     }]);
+  }
+
+  private locationFact(item: { equipped: boolean; slot?: string; explorerId?: string }): EntityFact {
+    if (item.equipped) {
+      return {
+        label: this.t('inspect.fact.location'),
+        value: this.t('inspect.location.equipped', { slot: item.slot ?? '' }),
+        exactValue: item.slot ?? 'equipped',
+      };
+    }
+    if (item.explorerId) {
+      return {
+        label: this.t('inspect.fact.location'),
+        value: this.t('inspect.location.explorer'),
+        exactValue: item.explorerId,
+      };
+    }
+    return {
+      label: this.t('inspect.fact.location'),
+      value: this.t('inspect.location.bag'),
+      exactValue: 'bag',
+    };
   }
 
   private moneyFact(label: string, amount: number, currency: 'gold' | 'essence' = 'gold'): EntityPresentation['facts'][number] {

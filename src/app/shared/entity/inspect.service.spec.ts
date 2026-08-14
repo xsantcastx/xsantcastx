@@ -8,6 +8,7 @@ import { InspectService } from './inspect.service';
 describe('InspectService', () => {
   let inspect: InspectService;
   let router: Router;
+  let i18n: TranslationService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -16,6 +17,8 @@ describe('InspectService', () => {
     }).compileComponents();
     inspect = TestBed.inject(InspectService);
     router = TestBed.inject(Router);
+    i18n = TestBed.inject(TranslationService);
+    i18n.setLanguage('en');
     await router.navigateByUrl('/');
     inspect.start();
   });
@@ -25,5 +28,14 @@ describe('InspectService', () => {
     inspect.open({ type: 'market-listing', id: 'forge-bellows' });
     expect(inspect.view.open).toBeTrue();
     expect(inspect.view.ref).toEqual({ type: 'market-listing', id: 'forge-bellows' });
+  });
+
+  it('re-resolves the open record when the language changes', () => {
+    inspect.open({ type: 'rune', id: 'ash' });
+    expect(inspect.view.resolution?.presentation?.kindLabel).toBe('Rune');
+    i18n.setLanguage('es');
+    expect(inspect.view.resolution?.presentation?.kindLabel).toBe('Runa');
+    expect(inspect.view.resolution?.presentation?.name).toBe('Ash');
+    expect(inspect.view.open).toBeTrue();
   });
 });

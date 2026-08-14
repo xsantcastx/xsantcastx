@@ -20,6 +20,8 @@ test.describe('Quick Inspect', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('role', 'dialog');
     await expect(page.locator('#qi-title')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('.qi :focus')).toHaveCount(1);
     const box = await dialog.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(360);
     expect(box?.width ?? 0).toBeLessThanOrEqual(440);

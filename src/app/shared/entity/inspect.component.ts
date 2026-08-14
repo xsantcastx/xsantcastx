@@ -94,9 +94,7 @@ export class InspectComponent implements OnInit, OnDestroy {
     if (!this.view.open || event.key !== 'Tab') return;
     const root = (event.currentTarget as HTMLElement | null)?.querySelector?.('.qi') as HTMLElement | null;
     if (!root) return;
-    const focusable = Array.from(root.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )).filter(el => el.offsetParent !== null || el === document.activeElement);
+    const focusable = this.trapTargets(root);
     if (focusable.length === 0) {
       event.preventDefault();
       this.titleEl?.nativeElement.focus();
@@ -105,12 +103,23 @@ export class InspectComponent implements OnInit, OnDestroy {
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const active = document.activeElement as HTMLElement | null;
-    if (event.shiftKey && active === first) {
+    if (event.shiftKey && (active === first || active === this.titleEl?.nativeElement)) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && active === last) {
       event.preventDefault();
       first.focus();
     }
+  }
+
+  /** Title is tabindex=-1 so it is not in the default tab list, but it is the
+   *  initial focus. It must be first in the trap or Shift+Tab leaks out. */
+  trapTargets(root: HTMLElement): HTMLElement[] {
+    const listed = Array.from(root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ));
+    const title = this.titleEl?.nativeElement;
+    const merged = title && !listed.includes(title) ? [title, ...listed] : listed;
+    return merged.filter(el => el.offsetParent !== null || el === document.activeElement);
   }
 }

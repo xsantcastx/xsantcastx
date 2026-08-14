@@ -2,18 +2,37 @@ import { TestBed } from '@angular/core/testing';
 
 import { TranslationService } from '../../translation.service';
 import { InventoryService } from '../rpg/inventory.service';
+import { type GameItem } from '../rpg/item.model';
 import { EntityResolver, slugifyThreat } from './entity-resolver.service';
+
+function item(partial: Partial<GameItem> & Pick<GameItem, 'id' | 'name'>): GameItem {
+  return {
+    type: 'charm',
+    rarity: 'rare',
+    stats: {},
+    sellValue: 10,
+    equipped: false,
+    foundAt: '2026-01-01T00:00:00.000Z',
+    soulbound: false,
+    ...partial,
+  };
+}
 
 describe('EntityResolver', () => {
   let resolver: EntityResolver;
   let i18n: TranslationService;
+  const items: GameItem[] = [
+    item({ id: 'bag-1', name: 'Bag Charm' }),
+    item({ id: 'worn-1', name: 'Worn Crown', equipped: true, slot: 'head', type: 'artifact', soulbound: true }),
+    item({ id: 'held-1', name: 'Expedition Charm', explorerId: 'exp-7' }),
+  ];
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
         EntityResolver,
         TranslationService,
-        { provide: InventoryService, useValue: { snapshot: { items: [] } } },
+        { provide: InventoryService, useValue: { snapshot: { items } } },
       ],
     });
     resolver = TestBed.inject(EntityResolver);
@@ -60,5 +79,25 @@ describe('EntityResolver', () => {
   it('does not offer buy, sell, or equip actions', () => {
     const listing = resolver.resolve({ type: 'market-listing', id: 'iron-hammer' });
     expect(listing.actions.some(action => ['buy', 'sell', 'equip'].includes(action.id))).toBeFalse();
+  });
+
+  it('distinguishes bag, player loadout, and explorer-held locations', () => {
+    const bag = resolver.resolve({ type: 'item', id: 'bag-1' }).presentation?.facts
+      .find(fact => fact.label === 'Location');
+    const worn = resolver.resolve({ type: 'item', id: 'worn-1' }).presentation?.facts
+      .find(fact => fact.label === 'Location');
+    const held = resolver.resolve({ type: 'item', id: 'held-1' }).presentation?.facts
+      .find(fact => fact.label === 'Location');
+    expect(bag?.value).toBe('Bag');
+    expect(bag?.exactValue).toBe('bag');
+    expect(worn?.value).toBe('Loadout — head');
+    expect(worn?.exactValue).toBe('head');
+    expect(held?.value).toBe('Held by explorer');
+    expect(held?.exactValue).toBe('exp-7');
+
+    i18n.setLanguage('es');
+    const heldEs = resolver.resolve({ type: 'item', id: 'held-1' }).presentation?.facts
+      .find(fact => fact.exactValue === 'exp-7');
+    expect(heldEs?.value).toBe('En manos de un explorador');
   });
 });
