@@ -6,8 +6,28 @@
  * ops actually applied — an id in the log is not enough, because merge can
  * skip an unaffordable spend and leave the op in place.
  *
- * Terminal receipts may be folded into `commerceApplied` at a checkpoint.
- * Keys are never dropped silently; a later retry still finds the outcome.
+ * Idempotency lives on the same Economy document as the ledger
+ * (`users/{uid}/economy/state`). A single Firestore document cannot keep
+ * every historical key forever and stay under the 1 MiB cap, so C2 does
+ * not promise infinite exact-once replay. The guarantee is:
+ *
+ *   • A retry of the same mutation key is one debit and one grant while
+ *     the receipt is live, or while it sits in `commerceApplied`.
+ *   • Terminal receipts fold into `commerceApplied` only at the same
+ *     acknowledged ledger checkpoint that folds ops — never on a lone ack.
+ *   • A folded key is retained for {@link COMMERCE_RETAIN_MS} after that
+ *     fold, and only forgotten once every recently-seen device has acked
+ *     the fold checkpoint. A device silent for {@link COMMERCE_RETAIN_MS}
+ *     does not block prune.
+ *   • `commerceApplied` is also hard-capped at {@link COMMERCE_APPLIED_MAX}.
+ *     If the cap is reached, the oldest acknowledged folded keys evict
+ *     first so the cloud blob stays bounded.
+ *   • After prune or eviction the key is gone. A later call with that
+ *     same id is a new purchase, not a replay.
+ *
+ * Per-key server/Firestore operation records would lift the retention
+ * ceiling without growing this document. That is a later gateway change;
+ * C2 keeps receipts on the existing owner-writable economy blob.
  */
 export type CommerceKind = 'upgrade' | 'enchantment' | 'artifact' | 'cosmetic';
 export type CommerceStatus = 'pending' | 'committed' | 'rejected' | 'rolled-back';
@@ -23,6 +43,22 @@ export type CommerceCode =
   | 'owned'
   | 'weaker'
   | 'conflict';
+
+export type CommerceAppliedStatus = Exclude<CommerceStatus, 'pending'>;
+
+/** Folded mutation-key outcome. `at` is fold time; `checkpointId` is the acked fold. */
+export interface CommerceAppliedEntry {
+  status: CommerceAppliedStatus;
+  at: number;
+  checkpointId: number;
+}
+
+export type CommerceAppliedMap = Record<string, CommerceAppliedEntry>;
+
+/** Same window as ledger `ACK_STALE_MS`: replay is exact-once for this long after fold. */
+export const COMMERCE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
+/** Hard cap on folded keys so the economy document cannot grow without bound. */
+export const COMMERCE_APPLIED_MAX = 256;
 
 export interface CommerceIntent {
   mutationKey: string;
@@ -113,18 +149,37 @@ export function parseCommerceOps(raw: unknown): CommerceOperation[] {
   return out;
 }
 
-export function parseCommerceApplied(raw: unknown): Record<string, CommerceStatus> {
+export function parseCommerceApplied(raw: unknown): CommerceAppliedMap {
   if (!raw || typeof raw !== 'object') return {};
-  const out: Record<string, CommerceStatus> = {};
+  const out: CommerceAppliedMap = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (value === 'committed' || value === 'rejected' || value === 'rolled-back') out[key] = value;
+    const entry = parseCommerceAppliedEntry(value);
+    if (entry) out[key] = entry;
   }
   return out;
 }
 
+function parseCommerceAppliedEntry(value: unknown): CommerceAppliedEntry | null {
+  if (value === 'committed' || value === 'rejected' || value === 'rolled-back') {
+    return { status: value, at: 0, checkpointId: 0 };
+  }
+  if (!value || typeof value !== 'object') return null;
+  const o = value as Record<string, unknown>;
+  if (o['status'] !== 'committed' && o['status'] !== 'rejected' && o['status'] !== 'rolled-back') {
+    return null;
+  }
+  return {
+    status: o['status'],
+    at: typeof o['at'] === 'number' && Number.isFinite(o['at']) ? o['at'] : 0,
+    checkpointId: typeof o['checkpointId'] === 'number' && Number.isFinite(o['checkpointId'])
+      ? o['checkpointId']
+      : 0,
+  };
+}
+
 export function findCommerceByKey(
   ops: readonly CommerceOperation[],
-  appliedKeys: Record<string, CommerceStatus>,
+  appliedKeys: CommerceAppliedMap,
   mutationKey: string,
 ): CommerceOperation | null {
   const live = ops.find(op => op.mutationKey === mutationKey);
@@ -140,8 +195,8 @@ export function findCommerceByKey(
     currency: 'gold',
     economicOpId: null,
     grantId: null,
-    status: folded,
-    createdAt: 0,
+    status: folded.status,
+    createdAt: folded.at,
   };
 }
 
@@ -187,13 +242,21 @@ export function mergeCommerceOps(
 }
 
 export function mergeCommerceApplied(
-  a: Record<string, CommerceStatus>,
-  b: Record<string, CommerceStatus>,
-): Record<string, CommerceStatus> {
-  const out = { ...a };
-  for (const [key, status] of Object.entries(b)) {
+  a: CommerceAppliedMap,
+  b: CommerceAppliedMap,
+): CommerceAppliedMap {
+  const out: CommerceAppliedMap = {};
+  for (const [key, entry] of Object.entries(a)) out[key] = { ...entry };
+  for (const [key, entry] of Object.entries(b)) {
     const held = out[key];
-    if (!held || STATUS_RANK[status] > STATUS_RANK[held]) out[key] = status;
+    if (!held || STATUS_RANK[entry.status] > STATUS_RANK[held.status]) {
+      out[key] = { ...entry };
+      continue;
+    }
+    if (STATUS_RANK[entry.status] === STATUS_RANK[held.status]
+      && (entry.at < held.at || (entry.at === held.at && entry.checkpointId < held.checkpointId))) {
+      out[key] = { ...entry };
+    }
   }
   return out;
 }
@@ -248,26 +311,108 @@ export function upsertCommerceOp(
   return [...ops.filter(op => op.mutationKey !== next.mutationKey), next];
 }
 
-/** Fold old terminal receipts into the durable applied-key map. Pending stays live. */
+/**
+ * Fold old terminal receipts into `commerceApplied`, then forget keys that
+ * have both aged past the retain window and been acknowledged.
+ *
+ * Callers must invoke this only after the ledger checkpoint ack barrier.
+ * Pending receipts stay live. Terminals beyond `keep` fold after the oldest
+ * acknowledged applied keys are evicted to stay under {@link COMMERCE_APPLIED_MAX}.
+ * Unacked keys are not evicted; those terminals stay live until a later ack.
+ */
 export function compactCommerceReceipts(
   ops: readonly CommerceOperation[],
-  appliedKeys: Record<string, CommerceStatus>,
-  opts: { after?: number; keep?: number } = {},
-): { ops: CommerceOperation[]; appliedKeys: Record<string, CommerceStatus> } {
+  appliedKeys: CommerceAppliedMap,
+  opts: {
+    after?: number;
+    keep?: number;
+    now?: number;
+    checkpointId?: number;
+    retainMs?: number;
+    maxApplied?: number;
+    minAckedCheckpoint?: number;
+  } = {},
+): { ops: CommerceOperation[]; appliedKeys: CommerceAppliedMap } {
   const after = opts.after ?? 64;
   const keep = opts.keep ?? 16;
-  const pending = ops.filter(op => op.status === 'pending');
+  const now = opts.now ?? 0;
+  const checkpointId = opts.checkpointId ?? 0;
+  const retainMs = opts.retainMs ?? COMMERCE_RETAIN_MS;
+  const maxApplied = opts.maxApplied ?? COMMERCE_APPLIED_MAX;
+  const minAckedCheckpoint = opts.minAckedCheckpoint ?? -1;
+
+  const pending = ops.filter(row => row.status === 'pending');
   const terminal = ops
-    .filter(op => op.status !== 'pending')
+    .filter(row => row.status !== 'pending')
     .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
-  if (terminal.length < after) {
-    return { ops: [...pending, ...terminal], appliedKeys: { ...appliedKeys } };
+  const foldCount = terminal.length >= after ? Math.max(0, terminal.length - keep) : 0;
+
+  const nextApplied = pruneCommerceApplied(appliedKeys, {
+    now,
+    retainMs,
+    maxApplied: Math.max(0, maxApplied - foldCount),
+    minAckedCheckpoint,
+  });
+
+  if (foldCount === 0) {
+    return { ops: [...pending, ...terminal], appliedKeys: nextApplied };
   }
+
   const stay = terminal.slice(-keep);
-  const fold = terminal.slice(0, terminal.length - keep);
-  const nextApplied = { ...appliedKeys };
-  for (const op of fold) nextApplied[op.mutationKey] = op.status;
-  return { ops: [...pending, ...stay], appliedKeys: nextApplied };
+  const candidates = terminal.slice(0, foldCount);
+  const room = Math.max(0, maxApplied - Object.keys(nextApplied).length);
+  const fold = candidates.slice(0, room);
+  const overflow = candidates.slice(room);
+  for (const row of fold) {
+    if (row.status === 'pending') continue;
+    nextApplied[row.mutationKey] = {
+      status: row.status,
+      at: now > 0 ? now : row.createdAt,
+      checkpointId,
+    };
+  }
+  return { ops: [...pending, ...overflow, ...stay], appliedKeys: nextApplied };
+}
+
+export function pruneCommerceApplied(
+  appliedKeys: CommerceAppliedMap,
+  opts: {
+    now: number;
+    retainMs: number;
+    maxApplied: number;
+    minAckedCheckpoint: number;
+  },
+): CommerceAppliedMap {
+  const next: CommerceAppliedMap = {};
+  for (const [key, entry] of Object.entries(appliedKeys)) {
+    const acked = entry.checkpointId <= opts.minAckedCheckpoint;
+    const expired = opts.now - entry.at >= opts.retainMs;
+    if (acked && expired) continue;
+    next[key] = { ...entry };
+  }
+  const keys = Object.keys(next);
+  if (keys.length <= opts.maxApplied) return next;
+
+  const ranked = keys
+    .map(key => ({ key, entry: next[key] }))
+    .sort((a, b) =>
+      a.entry.at - b.entry.at
+      || a.entry.checkpointId - b.entry.checkpointId
+      || a.key.localeCompare(b.key));
+  for (const row of ranked) {
+    if (Object.keys(next).length <= opts.maxApplied) break;
+    if (row.entry.checkpointId > opts.minAckedCheckpoint) continue;
+    delete next[row.key];
+  }
+  return next;
+}
+
+/** UTF-8 JSON size of the commerce fields that live on the economy document. */
+export function commerceSaveBytes(
+  ops: readonly CommerceOperation[],
+  appliedKeys: CommerceAppliedMap,
+): number {
+  return new TextEncoder().encode(JSON.stringify({ commerceOps: ops, commerceApplied: appliedKeys })).length;
 }
 
 export function debitGrantOnce(

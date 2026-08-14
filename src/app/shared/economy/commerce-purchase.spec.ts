@@ -134,7 +134,7 @@ describe('EconomyService.purchaseListing', () => {
     const compacted = compactCommerceReceipts(
       [{ ...first.operation!, createdAt: 1 }, ...extras],
       {},
-      { after: 64, keep: 16 },
+      { after: 64, keep: 16, now: 1_000, checkpointId: 0, minAckedCheckpoint: 0 },
     );
     economy['state'].commerceOps = compacted.ops;
     economy['state'].commerceApplied = compacted.appliedKeys;
@@ -143,5 +143,27 @@ describe('EconomyService.purchaseListing', () => {
     expect(again.ok).toBe(true);
     expect(economy.snapshot.gold).toBe(gold);
     expect(economy.levelOf('forge-bellows')).toBe(1);
+  });
+
+  it('treats a pruned mutation key as a new purchase', () => {
+    const intent = {
+      mutationKey: 'buy:forgotten',
+      listingId: 'forge-bellows',
+      kind: 'upgrade' as const,
+      expectedCost: economy.nextCost('forge-bellows'),
+    };
+    const first = economy.purchaseListing(intent);
+    expect(first.ok).toBe(true);
+    economy['state'].commerceOps = [];
+    economy['state'].commerceApplied = {};
+    const gold = economy.snapshot.gold;
+    const level = economy.levelOf('forge-bellows');
+    const again = economy.purchaseListing({
+      ...intent,
+      expectedCost: economy.nextCost('forge-bellows'),
+    });
+    expect(again.ok).toBe(true);
+    expect(economy.snapshot.gold).toBeLessThan(gold);
+    expect(economy.levelOf('forge-bellows')).toBe(level + 1);
   });
 });
