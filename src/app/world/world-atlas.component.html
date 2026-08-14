@@ -1,5 +1,8 @@
-<section class="atlas" [attr.aria-label]="t('world.atlas.region')">
-  <p class="atlas__hint">{{ t('world.atlas.hint') }}</p>
+<section
+  class="atlas"
+  [attr.aria-label]="t('world.atlas.region')"
+  aria-describedby="atlas-hint">
+  <p id="atlas-hint" class="atlas__hint">{{ t('world.atlas.hint') }}</p>
 
   <div class="atlas__frame">
     <picture class="atlas__art">
@@ -50,7 +53,7 @@
         <a
           class="atlas__item"
           [routerLink]="href(spot)"
-          [attr.aria-label]="spot.accessibleLabel">
+          [attr.aria-label]="listName(spot)">
           <span class="atlas__item-name">{{ spot.label }}</span>
           <span class="atlas__item-go">{{ t('world.atlas.open', { name: spot.label }) }}</span>
         </a>

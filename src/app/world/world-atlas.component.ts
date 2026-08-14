@@ -44,6 +44,10 @@ export class WorldAtlasComponent {
     return atlasHref(spot.id);
   }
 
+  listName(spot: AtlasHotspot): string {
+    return `${spot.accessibleLabel}. ${this.t('world.atlas.open', { name: spot.label })}`;
+  }
+
   tone(spot: AtlasHotspot): { color: string; glow: string } {
     return atlasRealmTone(spot.id);
   }
