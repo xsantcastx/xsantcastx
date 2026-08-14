@@ -739,7 +739,33 @@ export interface BlobEnvelope {
 }
 
 export function wrapBlob(value: unknown): BlobEnvelope {
-  return { v: value, updatedAt: new Date().toISOString() };
+  return { v: stripUndefined(value) ?? null, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Firestore rejects `undefined` anywhere in a document. localStorage does
+ * not — JSON.stringify drops those keys — so a blob that hydrates and
+ * flushes locally can still fail the cloud write. Strip at the envelope
+ * so every synced key is safe, not only the ledger.
+ */
+export function stripUndefined(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    // Keep positions. Filtering would turn [itemA, undefined, itemC] into
+    // [itemA, itemC] and silently shift equipment slots, quest steps, etc.
+    // null matches JSON.stringify / localStorage and is legal in Firestore.
+    return Array.from(value, entry => {
+      const cleaned = stripUndefined(entry);
+      return cleaned === undefined ? null : cleaned;
+    });
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    const cleaned = stripUndefined(entry);
+    if (cleaned !== undefined) out[key] = cleaned;
+  }
+  return out;
 }
 
 /** The payload out of an envelope, tolerating a document written before it existed. */

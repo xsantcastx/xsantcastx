@@ -717,20 +717,24 @@ export function parseOp(raw: unknown): EconomyOp | null {
   }
   const hlc = raw['hlc'];
   if (typeof hlc !== 'number' || !Number.isFinite(hlc) || hlc < 0) return null;
-  return {
+  const op: EconomyOp = {
     id,
     deviceId,
     seq,
     kind: kind as EconomyOpKind,
-    amount: typeof amount === 'number' ? amount : undefined,
-    itemId: typeof raw['itemId'] === 'string' ? raw['itemId'] : undefined,
-    slot: typeof raw['slot'] === 'string' ? raw['slot'] : undefined,
-    extra: typeof raw['extra'] === 'string' || typeof raw['extra'] === 'number'
-      ? raw['extra']
-      : undefined,
     hlc,
     wall: numberOf(raw['wall']),
   };
+  // Omit absent optionals. Firestore Transaction.set rejects `undefined`,
+  // and coerceLedger runs on the write path — writing `{ itemId: undefined }`
+  // is how a credit-gold op used to fail the whole economy document.
+  if (typeof amount === 'number') op.amount = amount;
+  if (typeof raw['itemId'] === 'string') op.itemId = raw['itemId'];
+  if (typeof raw['slot'] === 'string') op.slot = raw['slot'];
+  if (typeof raw['extra'] === 'string' || typeof raw['extra'] === 'number') {
+    op.extra = raw['extra'];
+  }
+  return op;
 }
 
 function asOps(value: unknown): EconomyOp[] {
