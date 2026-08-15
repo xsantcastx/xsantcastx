@@ -1,5 +1,7 @@
 /* ── Layout ─────────────────────────────────────────────────── */
 .games-page {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   /* Transparent, not #0a0a0f. There is a painted colosseum behind this route
      now, and an opaque page root is a lid on it. Worth knowing when this looks

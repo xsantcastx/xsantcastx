@@ -27,7 +27,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * `.scene` is `fixed`, not `absolute`, because these routes scroll for several
  * viewports and an absolute layer scrolls away with them, leaving three
- * quarters of the page over bare void.
+ * quarters of the page over bare void. z-index is 0 (not -1): a -1 scene
+ * in the root stacking context paints under in-flow content in Chrome and
+ * over it in WebKit once `body.gf-art-route` is transparent, which is how
+ * /character showed only the painting. Sibling UI must sit at z-index 1.
  *
  * `router-outlet + *` carries routeFadeIn with `fill: forwards`, so every
  * routed host IS a transformed ancestor and should in principle capture a fixed
@@ -90,7 +93,7 @@ let sceneSeq = 0;
     .scene {
       position: fixed;
       inset: 0;
-      z-index: -1;
+      z-index: 0;
       overflow: hidden;
       /* Painted behind the art so the route is never a white flash while the
          image decodes, and so any letterboxing reads as void rather than as a
