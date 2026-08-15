@@ -25,5 +25,7 @@ describe('mintCharm', () => {
     expect(charm.stats).toEqual({ magicFind: 5 });
     expect(charm.definitionId).toBeUndefined();
     expect(formatItemMod('magicFind', 5)).toBe('Magic Find +5%');
+    expect(formatItemMod('goldPerSec', 2.4)).toBe('Gold/sec +2.4');
+    expect(formatItemMod('goldPerSec', 1_250)).toBe('Gold/sec +1.3K');
   });
 });

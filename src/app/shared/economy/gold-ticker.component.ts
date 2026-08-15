@@ -46,7 +46,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { EconomyService, EconomySnapshot } from './economy.service';
-import { formatCompact, formatCurrency, formatRate } from './economy.model';
+import { formatCompact, formatCurrency, formatCurrencyExact, formatRate } from './economy.model';
 
 /**
  * One character of the rendered count.
@@ -283,7 +283,7 @@ export class GoldTickerComponent implements OnInit, OnDestroy {
    */
   get label(): string {
     const rate = formatRate(Math.round(this.snap.perSecond * 10) / 10);
-    return `${formatCurrency(this.snap.gold)} Gold, earning ${rate} a second. Open the Market.`;
+    return `${formatCurrencyExact(this.snap.gold)} Gold, earning ${rate} a second. Open the Market.`;
   }
 
   /**
@@ -342,7 +342,7 @@ export class GoldTickerComponent implements OnInit, OnDestroy {
 }
 
 /**
- * Turn "1,247" into right-anchored cells, carrying over which digits changed.
+ * Turn "1.2K" or "847" into right-anchored cells, carrying over which digits changed.
  *
  * Pure, and exported to nothing — it is the only part of this component worth
  * reasoning about on its own, and keeping it out of the class is what lets the

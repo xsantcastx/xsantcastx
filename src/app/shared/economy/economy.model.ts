@@ -1221,13 +1221,22 @@ export function earnsWhileHidden(e: PlayerEconomy): boolean {
   return e.artifacts.includes('obsidian-heart');
 }
 
-/** 1,247 rather than 1247. Gold is a number people are meant to feel. */
-export function formatCurrency(n: number): string {
+/** Full digits with grouping. Screen readers and inspect exact values. */
+export function formatCurrencyExact(n: number): string {
+  if (!Number.isFinite(n)) return '0';
   return Math.floor(n).toLocaleString('en-US');
 }
 
-/** "+3" — one decimal only when the fraction is actually there. */
+/** 847, then 1.2K / 3.4M / 1.1B / 2T. Wallet, prices, XP, strikes. */
+export function formatCurrency(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  return formatCompact(Math.floor(n));
+}
+
+/** "+3" — compact once the rate no longer fits a chip. */
 export function formatRate(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  if (Math.abs(n) >= 1_000) return formatCompact(n);
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 

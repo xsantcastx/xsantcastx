@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { XpService, type XpSnapshot } from '../gamification/xp.service';
 import { EconomyService, type EconomySnapshot } from '../economy/economy.service';
-import { formatCurrency, formatRate } from '../economy/economy.model';
+import { formatCompact, formatCurrency } from '../economy/economy.model';
 import { StatPanelComponent } from '../rpg/stat-panel.component';
 
 @Component({
@@ -72,7 +72,7 @@ export class HubStatsComponent implements OnInit, OnDestroy {
   t(key: string): string { return this.i18n.translate(key); }
   get gold(): string { return formatCurrency(this.eco.gold); }
   get essence(): string { return formatCurrency(this.eco.essence); }
-  get rate(): string { return formatRate(this.eco.perSecond); }
+  get rate(): string { return formatCompact(this.eco.perSecond); }
   get affinity(): string {
     const aether = Math.round((this.xp.aetherShare ?? 0) * 100);
     return `${aether}% / ${100 - aether}%`;
