@@ -134,6 +134,8 @@ export interface RuneSnapshot {
   rarest: Rune | null;
   /** Gold worth of everything currently held. */
   collectionValue: number;
+  /** rune id → first-found ISO time. */
+  firstFound: Record<string, string>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -491,6 +493,7 @@ export class RuneForgeService {
       unique: Object.keys(ledger.firstFound).length,
       rarest: rarestOf(Object.keys(ledger.firstFound)),
       collectionValue,
+      firstFound: { ...ledger.firstFound },
     };
   }
 }
