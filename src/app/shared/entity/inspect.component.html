@@ -81,7 +81,7 @@
 
         @if (temperPreview) {
           <div class="qi__temper">
-            <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: maxLevel }) }}</p>
+            <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: temperPreview.maxLevel }) }}</p>
             <p class="qi__temper-cost">{{ t('inspect.temper.cost', { gold: temperGold(), mats: temperMats(), chance: temperChance() }) }}</p>
             <button
               type="button"

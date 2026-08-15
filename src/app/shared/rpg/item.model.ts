@@ -120,6 +120,8 @@ export interface GameItem {
    * so the sell path has exactly one thing to check.
    */
   soulbound: boolean;
+  /** Authored definition id. Missing on pre-spec saves. */
+  definitionId?: string;
   /** Successful tempers. Missing means 0. */
   upgradeLevel?: number;
   lastUpgradeAt?: string;
@@ -486,7 +488,7 @@ export function mintRuneItem(
   runeName: string,
   rarity: ItemRarity,
   lore: string,
-  rng: () => number = Math.random,
+  _rng: () => number = Math.random,
   foundAt = new Date().toISOString(),
 ): GameItem {
   return {
@@ -494,7 +496,7 @@ export function mintRuneItem(
     name: `${runeName} Sigil`,
     type: 'rune',
     rarity,
-    stats: rollItemStats(rarity, 'rune', rng),
+    stats: {},
     sellValue: sellValueFor('rune', rarity),
     equipped: false,
     lore,

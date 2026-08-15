@@ -22,7 +22,7 @@ import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
 import { type EntityAction, type EntityFact } from './entity.model';
 import { InventoryService } from '../rpg/inventory.service';
-import { previewUpgrade, upgradeLevelOf, MAX_UPGRADE_LEVEL } from '../rpg/item-upgrade';
+import { previewUpgrade, upgradeLevelOf } from '../rpg/item-upgrade';
 import { formatCurrency } from '../economy/economy.model';
 import type { GameItem } from '../rpg/item.model';
 
@@ -49,7 +49,6 @@ export class InspectComponent implements OnInit, OnDestroy {
   view: InspectView = this.inspect.view;
   sheet = false;
   temperNote: string | null = null;
-  readonly maxLevel = MAX_UPGRADE_LEVEL;
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);

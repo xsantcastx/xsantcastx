@@ -73,13 +73,13 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import { definitionFor } from './item-definition';
 import {
-  applyUpgradeBonus,
+  applyTemperBonus,
   isTemperableKind,
   previewUpgrade,
   rollUpgradeSuccess,
   upgradeLevelOf,
-  MAX_UPGRADE_LEVEL,
   type UpgradePreview,
 } from './item-upgrade';
 
@@ -417,12 +417,11 @@ export class InventoryService {
     if (item.lastUpgradeMutationId === mutationId) {
       return { ok: true, item, replayed: true, leveled: item.lastUpgradeOk === true };
     }
-    if (!isTemperableKind(item.type)) return { ok: false, code: 'kind' };
+    if (!isTemperableKind(item)) return { ok: false, code: 'kind' };
 
     const level = upgradeLevelOf(item);
-    if (level >= MAX_UPGRADE_LEVEL) return { ok: false, code: 'max' };
     const preview = previewUpgrade(item);
-    if (!preview) return { ok: false, code: 'max' };
+    if (!preview || level >= preview.maxLevel) return { ok: false, code: 'max' };
     if (this.economy.snapshot.gold < preview.gold) return { ok: false, code: 'funds' };
     if (preview.materials.some(mat => this.stackOf(mat.id) < mat.quantity)) {
       return { ok: false, code: 'mats' };
@@ -444,7 +443,8 @@ export class InventoryService {
       });
     }
 
-    const success = rollUpgradeSuccess(level, rng);
+    const def = definitionFor(item);
+    const success = rollUpgradeSuccess(level, rng, def);
     let nextItem: GameItem = {
       ...item,
       lastUpgradeAt: foundAt,
@@ -455,13 +455,12 @@ export class InventoryService {
       nextItem = {
         ...nextItem,
         upgradeLevel: level + 1,
-        stats: applyUpgradeBonus(item.stats, item.rarity, 1),
+        stats: applyTemperBonus(item, rng),
       };
     } else if (preview.policy.downgradeOnFail && level > 0) {
       nextItem = {
         ...nextItem,
         upgradeLevel: level - 1,
-        stats: applyUpgradeBonus(item.stats, item.rarity, -1),
       };
     }
 
@@ -495,6 +494,16 @@ export class InventoryService {
       return { ok: true, item: nextItem, replayed: false, leveled: false };
     }
     return { ok: true, item: stored ?? nextItem, replayed: false, leveled: success };
+  }
+
+  /** Spec name. Same writer as `upgrade`. */
+  temper(
+    itemId: string,
+    mutationId: string,
+    now = Date.now(),
+    rng: () => number = Math.random,
+  ): ReturnType<InventoryService['upgrade']> {
+    return this.upgrade(itemId, mutationId, now, rng);
   }
 
   canDrop(item: GameItem): boolean {
