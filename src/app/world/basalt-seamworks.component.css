@@ -1,0 +1,131 @@
+:host { display: block; position: relative; z-index: 1; }
+
+.sw {
+  --seam: #EF4444;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1rem, 4vw, 1.6rem) 4rem;
+  color: #e8ecf1;
+}
+
+.sw__crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.62);
+  margin-bottom: 1.4rem;
+}
+
+.sw__crumb a, .sw__back {
+  color: inherit;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sw__eyebrow {
+  margin: 0 0 0.45rem;
+  font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--seam);
+}
+
+.sw h1 {
+  margin: 0;
+  font: 700 clamp(2rem, 6vw, 3rem)/1.05 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sw__lede, .sw__chapter { margin: 0.7rem 0 0; line-height: 1.5; }
+.sw__chapter { color: rgba(232, 236, 241, 0.7); }
+
+app-current-work-tile { display: block; margin: 1.4rem 0; }
+
+.sw__panel {
+  margin-top: 1.6rem;
+  padding: 1.1rem;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 12px;
+  background: rgba(10, 10, 15, 0.55);
+}
+
+.sw__panel h2 {
+  margin: 0 0 0.6rem;
+  font: 600 0.78rem/1.2 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--seam);
+}
+
+.sw__expect, .sw__chance, .sw__note { margin: 0 0 0.7rem; line-height: 1.5; }
+
+.sw__loot {
+  display: flex;
+  gap: 1rem;
+  margin: 0 0 1rem;
+}
+
+.sw__loot figure { margin: 0; text-align: center; font-size: 0.75rem; }
+.sw__loot img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sw__mine, .sw__ghost {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sw__mine {
+  border: 0;
+  background: var(--seam);
+  color: #140808;
+  font-weight: 700;
+}
+
+.sw__mine:disabled {
+  background: rgba(232, 236, 241, 0.18);
+  color: rgba(232, 236, 241, 0.55);
+  cursor: not-allowed;
+}
+
+.sw__ghost {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: transparent;
+  color: inherit;
+}
+
+.sw__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.sw__alert, .sw__result p { margin: 0.7rem 0 0; }
+.sw__alert { color: #fecaca; }
+
+.sw__sr {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.7);
+}
+
+.sw__back { margin-top: 1.4rem; }
+
+.sw a:focus-visible,
+.sw__mine:focus-visible,
+.sw__ghost:focus-visible {
+  outline: 2px solid #FCA5A5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sw__mine, .sw__loot img { transition: none; animation: none; }
+}

@@ -19,11 +19,12 @@ import {
   type ContinueJourney,
   continueFromRealm,
 } from '../shared/narrative/continue-journey';
+import { InfernalChapterComponent } from './infernal-chapter.component';
 
 @Component({
   selector: 'app-realm-landing',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, InfernalChapterComponent],
   templateUrl: './realm-landing.component.html',
   styleUrls: ['./realm-landing.component.css'],
 })
@@ -73,7 +74,10 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
     if (this.journey.realmId === FIVEFOLD_LOCK.id) return FIVEFOLD_LOCK.status;
     const next = narrativeRealmById(this.journey.realmId);
     return next
-      ? this.t('world.realm.notPlayableNext', { chapter: next.chapterTitle, landmark: next.landmark })
+      ? this.t(
+          next.id === 'infernal' ? 'world.realm.playableNext' : 'world.realm.notPlayableNext',
+          { chapter: next.chapterTitle, landmark: next.landmark },
+        )
       : this.journey.note;
   }
 

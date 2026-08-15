@@ -236,6 +236,9 @@ export class EntityResolver {
           kind: this.t('inspect.kind.recipe'),
         }),
         glyphFallback: '⚔',
+        art: equipment.portrait
+          ? { src: equipment.portrait, alt: equipment.name }
+          : undefined,
         summary: equipment.summary,
         lore: equipment.lore,
         facts: [

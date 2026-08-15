@@ -1,0 +1,92 @@
+<section class="ic" aria-labelledby="ic-title">
+  <p class="ic__eyebrow">{{ t('infernal.eyebrow') }}</p>
+  <h2 id="ic-title">{{ t('infernal.title') }}</h2>
+  <p class="ic__lede">{{ t('infernal.lede') }}</p>
+
+  <ol class="ic__steps" [attr.aria-label]="t('infernal.steps.label')">
+    <li [class.is-current]="step === 'enter'">{{ t('infernal.step.enter') }}</li>
+    <li [class.is-current]="step === 'meet'">{{ t('infernal.step.meet') }}</li>
+    <li [class.is-current]="step === 'inspect'">{{ t('infernal.step.inspect') }}</li>
+    <li [class.is-current]="step === 'choose'">{{ t('infernal.step.choose') }}</li>
+    <li [class.is-current]="step === 'consequence'">{{ t('infernal.step.consequence') }}</li>
+  </ol>
+
+  @if (step === 'enter') {
+    <div class="ic__panel">
+      <p>{{ t('infernal.enter.body') }}</p>
+      <button type="button" class="ic__btn" (click)="go('meet')">{{ t('infernal.enter.continue') }}</button>
+    </div>
+  }
+
+  @if (step === 'meet') {
+    <div class="ic__panel">
+      <p>{{ t('infernal.meet.body') }}</p>
+      @if (place; as realm) {
+        <ul class="ic__people">
+          @for (person of realm.characters; track person.id) {
+            <li>
+              <strong>{{ person.name }}</strong>
+              <span>{{ person.role }}</span>
+              <p>{{ person.want }}</p>
+            </li>
+          }
+        </ul>
+      }
+      <button type="button" class="ic__btn" (click)="go('inspect')">{{ t('infernal.meet.continue') }}</button>
+    </div>
+  }
+
+  @if (step === 'inspect') {
+    <div class="ic__panel">
+      <p>{{ t('infernal.inspect.body') }}</p>
+      <ul class="ic__evidence">
+        @for (item of evidence; track item.id) {
+          <li>
+            <h3>
+              <button
+                type="button"
+                class="ic__ev-hd"
+                [attr.aria-expanded]="isOpen(item.id)"
+                [attr.aria-controls]="'ic-ev-' + item.id"
+                (click)="toggleEvidence(item.id)">
+                {{ t(item.titleKey) }}
+              </button>
+            </h3>
+            <p [id]="'ic-ev-' + item.id" [hidden]="!isOpen(item.id)">{{ t(item.bodyKey) }}</p>
+          </li>
+        }
+      </ul>
+      <button type="button" class="ic__btn" (click)="go('choose')">{{ t('infernal.inspect.continue') }}</button>
+    </div>
+  }
+
+  @if (step === 'choose') {
+    <div class="ic__panel">
+      <p>{{ t('infernal.choose.body') }}</p>
+      <div class="ic__choices">
+        @for (choice of choices; track choice.id) {
+          <button type="button" class="ic__choice" (click)="choose(choice.id)">
+            <strong>{{ t(choice.titleKey) }}</strong>
+            <span>{{ t(choice.bodyKey) }}</span>
+          </button>
+        }
+      </div>
+      @if (persistError) {
+        <p class="ic__error" role="alert">{{ t('infernal.persist') }}</p>
+        <button type="button" class="ic__btn" (click)="retry()">{{ t('infernal.retry') }}</button>
+      }
+    </div>
+  }
+
+  @if (step === 'consequence') {
+    <div class="ic__panel ic__panel--result">
+      @if (chosen(); as pick) {
+        <p class="ic__result-kicker">{{ t('infernal.consequence.kicker') }}</p>
+        <p>{{ t(pick.consequenceKey) }}</p>
+      }
+      <p class="ic__rune">{{ t('infernal.rune', { rune: witness }) }}</p>
+      <p class="ic__later">{{ t('infernal.later') }}</p>
+      <a class="ic__btn ic__btn--link" [routerLink]="seamworksHref">{{ t('infernal.next') }}</a>
+    </div>
+  }
+</section>
