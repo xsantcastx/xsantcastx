@@ -24,6 +24,14 @@
   gap: 1.4rem;
   align-items: start;
 }
+.ld__layout--select {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ld[data-variant='select'] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
 .ld__totals {
   display: flex;
   flex-wrap: wrap;

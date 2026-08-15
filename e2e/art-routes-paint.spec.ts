@@ -99,7 +99,9 @@ test('/character — the sheet paints above the scene', async ({ page }) => {
 
   const sheet = page.locator('.fk').first();
   await expect(sheet).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'The Forge Keeper' })).toBeVisible();
+  await expect(page.locator('.fk-stage__hall')).toHaveText('The Forge Keeper');
+  await expect(page.locator('.fk-stage__title')).toBeVisible();
+  await expect(page.locator('.fk-bank-open')).toBeVisible();
 
   const stack = await page.evaluate(() => {
     const scene = document.querySelector('.scene');

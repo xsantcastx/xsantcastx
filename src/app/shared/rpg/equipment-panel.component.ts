@@ -6,7 +6,7 @@
  * has an approved mapping and is filled.
  */
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -52,6 +52,9 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  /** `select` is doll-only, for the character hall. `full` keeps the bag column. */
+  @Input() variant: 'full' | 'select' = 'full';
 
   readonly dollSrc = PAPER_DOLL_SRC;
   readonly dollSlots = PAPER_DOLL_SLOTS;

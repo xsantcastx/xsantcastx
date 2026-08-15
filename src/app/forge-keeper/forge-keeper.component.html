@@ -12,139 +12,57 @@
   exists after hydration is a panel that pops in.
 -->
 <section class="fk"
+         [class.fk--bank-open]="bankOpen"
          [style.--fk-affinity]="affinityColor"
          [style.--fk-affinity-glow]="affinityGlow">
 
-  <!-- ══ Masthead ═══════════════════════════════════════════════════════ -->
-  <header class="fk__head">
-    <p class="fk__eyebrow">
-      <span class="fk__eyebrow-pulse" aria-hidden="true"></span>
-      Your Forge
-    </p>
-    <h1 class="fk__title">The Forge Keeper</h1>
-    <p class="fk__tagline">everything the realm has written down about you</p>
-  </header>
-
-  <!-- ══ 1. Identity card ═══════════════════════════════════════════════ -->
-  <section class="fk-id" aria-labelledby="fk-id-title">
-
-    <!-- The sigil. Point count *is* the rank — see the note in the component. -->
-    <div class="fk-id__sigil" aria-hidden="true">
-      <svg viewBox="0 0 200 200" class="fk-sigil" role="presentation" focusable="false">
-        <circle class="fk-sigil__ring fk-sigil__ring--outer" cx="100" cy="100" r="88" />
-        <circle class="fk-sigil__ring fk-sigil__ring--inner" cx="100" cy="100" r="66" />
-        @if (sigilPolygon) {
-          <polygon class="fk-sigil__star" [attr.points]="sigilPolygon" />
+  <div class="fk-stage">
+    <header class="fk-stage__name">
+      <p class="fk-stage__hall">The Forge Keeper</p>
+      <h1 class="fk-stage__title" id="fk-id-title">{{ rankTitle }}</h1>
+      <p class="fk-stage__level">Level {{ snap.level.level }}
+        @if (snap.next) {
+          <span class="fk-stage__next">{{ money(snap.toNext) }} XP to {{ snap.next.title }}</span>
         }
-        @for (p of sigilPoints; track $index) {
-          <circle class="fk-sigil__point" [attr.cx]="p.x" [attr.cy]="p.y" r="5" />
-        }
-        <circle class="fk-sigil__core" cx="100" cy="100" r="34" />
-        <image class="fk-sigil__art" [attr.href]="rankSigil(snap.level.level)"
-               x="56" y="56" width="88" height="88" preserveAspectRatio="xMidYMid meet" />
-      </svg>
+      </p>
+    </header>
+
+    <div class="fk-stage__frame">
+      <app-equipment-panel variant="select" />
     </div>
 
-    <div class="fk-id__body">
-      <p class="fk-id__rank" id="fk-id-title">
-        @if (titlePrefix) {
-          <span class="fk-id__prefix">{{ titlePrefix }}</span>
-        }
-        <span class="fk-id__rank-name">{{ rankTitle }}</span>
-        <span class="fk-id__rank-sep" aria-hidden="true">·</span>
-        <span class="fk-id__rank-level">Level {{ snap.level.level }}</span>
-      </p>
+    <div class="fk-stage__bar" aria-label="Purse">
+      <span class="fk-stage__coin">
+        <img src="assets/icons/currencies/gold.png" alt="" width="20" height="20">
+        {{ money(wallet.gold) }}
+      </span>
+      <span class="fk-stage__coin">
+        <img src="assets/icons/currencies/essence.png" alt="" width="20" height="20">
+        {{ money(wallet.essence) }}
+      </span>
+      <span class="fk-stage__rate">{{ perSecond }} / sec</span>
+    </div>
 
-      <!-- XP to the next rank -->
-      <div class="fk-id__xp">
-        <div class="fk-id__xp-bar"
-             role="progressbar"
-             [attr.aria-valuenow]="xpPercent"
-             aria-valuemin="0"
-             aria-valuemax="100"
-             [attr.aria-label]="'Progress to the next rank: ' + xpPercent + '%'">
-          <span class="fk-id__xp-fill" [style.width.%]="xpPercent"></span>
-        </div>
-        <p class="fk-id__xp-nums">
-          <span class="fk-id__xp-count">{{ toNextLabel }}</span>
-          @if (snap.next) {
-            <span class="fk-id__xp-next">
-              {{ money(snap.toNext) }} XP to <strong>{{ snap.next.title }}</strong>
-            </span>
-          }
-        </p>
-      </div>
+    <div class="fk-stage__acts">
+      <a routerLink="/world" class="fk-stage__play">Enter the World</a>
+      <button type="button" class="fk-bank-open" (click)="openBank()">
+        <span class="fk-bank-open__icon" aria-hidden="true">🎒</span>
+        Bank
+        <span class="fk-bank-open__n">{{ tabCount('all').owned }}</span>
+      </button>
+    </div>
 
-      <!-- Wallet -->
-      <div class="fk-id__wallet">
-        <span class="fk-id__coin fk-id__coin--gold">
-          <img class="fk-id__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
-               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
-          <span class="fk-id__coin-val">{{ money(wallet.gold) }}</span>
-          <span class="fk-id__coin-label">Gold</span>
-        </span>
-        <span class="fk-id__coin fk-id__coin--essence">
-          <img class="fk-id__coin-icon gf-icon currency-icon currency-icon--essence"
-               src="assets/icons/currencies/essence.png"
-               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
-          <span class="fk-id__coin-val">{{ money(wallet.essence) }}</span>
-          <span class="fk-id__coin-label">Eclipse Essence</span>
-        </span>
-        <!-- Shards appear only once one has been earned. A permanent-bonus
-             counter reading zero, on a mechanic the visitor has not reached
-             the gate for, is a question with no answer on this page. -->
-        @if (wallet.shards > 0) {
-          <span class="fk-id__coin fk-id__coin--shard">
-            <span class="fk-id__coin-glyph" aria-hidden="true">🌑</span>
-            <span class="fk-id__coin-val">{{ money(wallet.shards) }}</span>
-            <span class="fk-id__coin-label">Eclipse Shards · {{ shardMult }} permanent</span>
-          </span>
-        }
-      </div>
-
-      <!-- What the forge is making right now, and out of what. The Market
-           carries the full breakdown; this is the one line that answers "is it
-           still running" without leaving the profile. -->
-      <p class="fk-id__rate">
-        <span class="fk-id__rate-num">{{ perSecond }}</span>
-        <span class="fk-id__rate-unit">Gold / second</span>
-        @if (wallet.autoPerSecond > 0) {
-          <span class="fk-id__rate-auto">
-            ⚙ {{ autoRate }} auto-{{ wallet.autoPerSecond === 1 ? 'strike' : 'strikes' }}/sec
-          </span>
-        }
-      </p>
-
-      <!-- Provenance -->
-      <dl class="fk-id__meta">
-        <div>
-          <dt>First struck</dt>
-          <dd>{{ memberSinceLabel ?? '—' }}</dd>
-        </div>
-        <div>
-          <dt>Time in the Forge</dt>
-          <dd>{{ forgeTimeLabel }}</dd>
-        </div>
-        <div>
-          <dt>Convergent</dt>
-          <dd class="fk-id__uid">{{ shortId }}</dd>
-        </div>
-      </dl>
-
-      <!--
-        Cloud save, live. The note that used to sit here said "Cloud save is not
-        open yet" and was written when the Firestore adapter behind
-        ProgressStorageService really was an inert stub. It is not: CloudSaveService
-        signs in with Google (popup, falling back to redirect), binds the uid,
-        merges the local blobs against the remote ones and pushes on a timer. The
-        only reason the visitor could not reach any of it is that the one component
-        that mounted the button — the XP bar — is not rendered anywhere in the app.
-        So the button is mounted here, on the sheet the message was on.
-      -->
+    <div class="fk-stage__save">
       <app-cloud-save-button></app-cloud-save-button>
     </div>
-  </section>
 
+    <button type="button" class="fk-stage__records" (click)="showRecords = !showRecords"
+            [attr.aria-expanded]="showRecords">
+      {{ showRecords ? 'Hide records' : 'Records' }}
+    </button>
+  </div>
+
+  @if (showRecords) {
   <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
   <section class="fk-block" aria-labelledby="fk-stats-title">
     <h2 class="fk-block__title" id="fk-stats-title">The Ledger</h2>
@@ -169,7 +87,6 @@
        the cheapest way to keep that true is to not give it any. -->
   <div class="fk-rpg">
     <app-stat-panel />
-    <app-equipment-panel />
   </div>
 
   <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
@@ -230,11 +147,21 @@
       </div>
     </div>
   </section>
+  }
 
-  <!-- ══ 4. Inventory ═══════════════════════════════════════════════════ -->
-  <section class="fk-block" aria-labelledby="fk-inv-title">
-    <h2 class="fk-block__title" id="fk-inv-title">The Vault</h2>
-    <p class="fk-block__note">A catalogue of what the Market sells. Your bag is the loadout above, not this shelf.</p>
+  @if (bankOpen) {
+  <div class="fk-bank" role="dialog" aria-modal="true" aria-labelledby="fk-inv-title">
+    <button type="button" class="fk-bank__scrim" (click)="closeBank()" aria-label="Close bank"></button>
+    <div class="fk-bank__chest">
+      <header class="fk-bank__head">
+        <h2 class="fk-bank__title" id="fk-inv-title">Bank</h2>
+        <p class="fk-bank__count">{{ bankHeld }} held</p>
+        <button type="button" class="fk-bank__mode" (click)="toggleCatalogue()">
+          {{ ownedOnly ? 'Show market catalogue' : 'Show my bank' }}
+        </button>
+        <button type="button" class="fk-bank__close" (click)="closeBank()">Close</button>
+      </header>
+  <section class="fk-block fk-bank__shelf" aria-labelledby="fk-inv-title">
 
     <div class="fk-inv__tabs" role="tablist" aria-label="Inventory shelves">
       @for (tab of inventoryTabs; track tab.key) {
@@ -313,6 +240,25 @@
       }
     </p>
 
+    @if (ownedOnly) {
+    <ul class="fk-bank__slots">
+      @for (stack of bankSlots; track $index) {
+        @if (stack) {
+          <li class="fk-bank__slot"
+              [style.--tier]="stack.lead.rarity.color"
+              [attr.title]="stack.lead.name">
+            <span class="fk-bank__glyph" aria-hidden="true">{{ stack.lead.icon }}</span>
+            @if (stack.count > 1) {
+              <span class="fk-bank__qty">{{ stack.count }}</span>
+            }
+            <span class="fk-sr-only">{{ stack.lead.name }}</span>
+          </li>
+        } @else {
+          <li class="fk-bank__slot fk-bank__slot--empty" aria-hidden="true"></li>
+        }
+      }
+    </ul>
+    } @else {
     <ul class="fk-inv__grid">
       @for (stack of visibleStacks; track stack.id) {
         <!-- The card's own box never moves. Every hover effect lives on the
@@ -404,8 +350,13 @@
         </li>
       }
     </ul>
+    }
   </section>
+    </div>
+  </div>
+  }
 
+  @if (showRecords) {
   <!-- ══ 5. Achievement showcase ════════════════════════════════════════ -->
   <section class="fk-block" aria-labelledby="fk-case-title">
     <div class="fk-block__head-row">
@@ -628,4 +579,5 @@
       <span class="fk-link__note">the five realms</span>
     </a>
   </nav>
+  }
 </section>
