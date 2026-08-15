@@ -1,4 +1,4 @@
-import { buildReel, reelLength, reelOffset, SLOT_FACE_PX, spinMs } from './rune-reel';
+import { buildPickHand, buildReel, PICK_COUNT, reelLength, reelOffset, SLOT_FACE_PX, spinMs } from './rune-reel';
 import { runeById } from './rune.model';
 
 describe('anvil reel', () => {
@@ -14,5 +14,11 @@ describe('anvil reel', () => {
     expect(reelLength('common')).toBeLessThan(reelLength('mythic'));
     expect(spinMs('common')).toBeLessThan(spinMs('singular'));
     expect(reelOffset(16)).toBe(-15 * SLOT_FACE_PX);
+  });
+
+  it('lays out ten distinct backs for a pick', () => {
+    const hand = buildPickHand();
+    expect(hand.length).toBe(PICK_COUNT);
+    expect(new Set(hand.map(slot => slot.mark)).size).toBeGreaterThan(1);
   });
 });
