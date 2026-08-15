@@ -129,7 +129,14 @@
 </section>
 
 <ng-template #tile let-row>
-  <li class="hb__tile" [class.is-on]="selectedId === row.id" [class.is-checked]="isChecked(row)" [attr.data-kind]="row.kind">
+  <li
+    class="hb__tile"
+    [class.is-on]="selectedId === row.id"
+    [class.is-checked]="isChecked(row)"
+    [class.is-fresh]="row.delta"
+    [class.is-rare]="row.isRare"
+    [class.is-new]="row.isNew"
+    [attr.data-kind]="row.kind">
     @if (canDropRow(row)) {
       <label class="hb__check">
         <input type="checkbox" [checked]="isChecked(row)" (click)="toggleCheck(row, $event)">
@@ -148,8 +155,23 @@
           <span class="hb__lvl">+{{ row.dropItem.upgradeLevel }}</span>
         }
       </span>
-      <span class="hb__meta">{{ row.meta }}</span>
-      <span class="hb__qty">×{{ row.qty }}</span>
+      <span class="hb__meta">
+        @if (row.isNew) {
+          <span class="hb__flag hb__flag--new">{{ t('hub.bank.new') }}</span>
+        }
+        @if (row.isRare) {
+          <span class="hb__flag hb__flag--rare">{{ t('hub.bank.rare') }}</span>
+        }
+        @if (!row.isNew && !row.isRare) {
+          {{ row.meta }}
+        }
+      </span>
+      <span class="hb__qty">
+        @if (row.delta) {
+          <span class="hb__gain">{{ t('hub.bank.gain', { n: row.delta }) }}</span>
+        }
+        ×{{ row.qty }}
+      </span>
     </button>
     <div class="hb__actions">
       @if (row.inspectType && row.inspectId) {

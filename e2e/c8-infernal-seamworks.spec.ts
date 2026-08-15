@@ -38,7 +38,7 @@ test.describe('C8 Infernal chapter and Basalt Seamworks', () => {
     const mine = page.getByRole('button', { name: /^Mine$/ });
     await expect(mine).toBeVisible();
     await mine.click();
-    await expect(page.getByText('Bag: +1 Cinder Ore.')).toBeVisible();
+    await expect(page.getByText(/Cinder Ore \+1 · held ×\d+/)).toBeVisible();
     await expect(page.getByText('Mining +2 XP.')).toBeVisible();
     await expect(page.locator('.sw__mine')).toBeDisabled();
     await expect(page.locator('.sw__sr')).toContainText('Recovering');

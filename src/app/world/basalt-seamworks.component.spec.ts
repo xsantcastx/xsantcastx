@@ -53,9 +53,10 @@ describe('BasaltSeamworksComponent', () => {
             snapshot: { bag: [], stacks: [], usedRows: 0, full: false },
             snapshot$: of({ bag: [], stacks: [], usedRows: 0, full: false }),
             init: () => { /* noop */ },
+            stackOf: (id: string) => id === 'cinder-ore' ? 4 : 0,
           },
         },
-        { provide: KeeperPanelService, useValue: { show: () => { /* noop */ } } },
+        { provide: KeeperPanelService, useValue: { show: () => { /* noop */ }, isOpen: false } },
         {
           provide: ChapterGateway,
           useValue: {
@@ -75,9 +76,10 @@ describe('BasaltSeamworksComponent', () => {
     expect(el.textContent).toContain('1 Cinder Ore + 2 Mining XP');
     const mine = el.querySelector('.sw__mine') as HTMLButtonElement;
     expect(mine.textContent?.trim()).toBe('Mine');
+    expect(el.textContent).toContain('×4');
     mine.click();
     fixture.detectChanges();
-    expect(el.textContent).toContain('Bag: +1 Cinder Ore');
+    expect(el.textContent).toContain('Cinder Ore +1 · held ×4');
     expect(el.textContent).not.toContain('Craft');
   });
 });

@@ -23,38 +23,46 @@
     <p class="sw__expect">{{ t('seamworks.expect') }}</p>
     <p class="sw__chance">{{ discoveryLabel() }}</p>
 
-    <div class="sw__loot" aria-hidden="true">
-      <figure>
+    <div class="sw__loot" aria-label="{{ t('seamworks.haul') }}">
+      <figure [class.is-hit]="lastOre > 0">
         <img [src]="ore.art" alt="" width="72" height="72" decoding="async">
         <figcaption>{{ ore.name }}</figcaption>
+        <p class="sw__held">{{ t('seamworks.held', { n: oreHeld }) }}</p>
+        @if (lastOre > 0) {
+          <p class="sw__gain">{{ t('seamworks.gain', { n: lastOre }) }}</p>
+        }
       </figure>
-      <figure>
+      <figure [class.is-hit]="lastEmber > 0" [class.is-rare]="lastEmber > 0 || emberHeld > 0">
         <img [src]="ember.art" alt="" width="72" height="72" decoding="async">
         <figcaption>{{ ember.name }}</figcaption>
+        <p class="sw__held">{{ t('seamworks.held', { n: emberHeld }) }}</p>
+        @if (lastEmber > 0) {
+          <p class="sw__gain sw__gain--rare">{{ t('seamworks.gain.rare', { n: lastEmber }) }}</p>
+        }
       </figure>
     </div>
 
-    <button
-      type="button"
-      class="sw__mine"
-      [disabled]="mineDisabled()"
-      [attr.aria-disabled]="mineDisabled()"
-      (click)="mine()">
-      @if (panelState() === 'recovering') {
-        {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
-      } @else if (panelState() === 'resolving') {
-        {{ t('seamworks.mine.resolving') }}
-      } @else {
-        {{ t('seamworks.mine') }}
-      }
-    </button>
+    <div class="sw__actions">
+      <button
+        type="button"
+        class="sw__mine"
+        [disabled]="mineDisabled()"
+        [attr.aria-disabled]="mineDisabled()"
+        (click)="mine()">
+        @if (panelState() === 'recovering') {
+          {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
+        } @else if (panelState() === 'resolving') {
+          {{ t('seamworks.mine.resolving') }}
+        } @else {
+          {{ t('seamworks.mine') }}
+        }
+      </button>
+      <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
+    </div>
     <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel() }) }}</p>
 
     @if (panelState() === 'capacity') {
       <p class="sw__alert" role="alert">{{ t('seamworks.full') }}</p>
-      <div class="sw__actions">
-        <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
-      </div>
     }
     @if (panelState() === 'location') {
       <p class="sw__alert" role="alert">{{ t('seamworks.away') }}</p>
@@ -68,9 +76,11 @@
     }
 
     @if (lastOp; as op) {
-      <div class="sw__result">
-        <p>{{ t('seamworks.result.ore') }}</p>
-        @if (op.discovery.result !== 'none') {
+      <div class="sw__result" [class.sw__result--rare]="lastEmber > 0">
+        <p>{{ t('seamworks.result.ore', { gain: lastOre, held: oreHeld }) }}</p>
+        @if (lastEmber > 0) {
+          <p class="sw__rare">{{ t('seamworks.result.ember', { gain: lastEmber, held: emberHeld }) }}</p>
+        } @else if (op.discovery.result !== 'none') {
           <p>{{ discoveryLabel() }}</p>
         }
         <p>{{ t('seamworks.result.xp', { amount: op.xpGrant.amount }) }}</p>
