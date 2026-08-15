@@ -517,6 +517,7 @@ describe('the registry', () => {
       'eclipse-lore',
       'eclipse-quests',
       'eclipse-realm-rush-board',
+      'godforge-activity',
       'godforge-economy',
       'godforge-explorers',
       'godforge-inventory',
