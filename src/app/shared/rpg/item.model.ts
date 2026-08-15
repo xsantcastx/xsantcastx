@@ -73,10 +73,14 @@ export interface ItemStats {
   xpBonus?: number;
   /** Percentage bonus to expedition loot quality. Only reads on an explorer. */
   lootBonus?: number;
+  /** Anvil / forge flavor. Displayed; the anvil does not read it yet. */
+  strikePower?: number;
+  /** Mitigation flavor. Displayed; combat does not read it yet. */
+  ward?: number;
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
-  'goldPerSec', 'magicFind', 'xpBonus', 'lootBonus',
+  'goldPerSec', 'magicFind', 'xpBonus', 'lootBonus', 'strikePower', 'ward',
 ];
 
 /** How each stat is written on a tooltip. */
@@ -85,6 +89,8 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   magicFind: 'Magic Find',
   xpBonus: 'XP',
   lootBonus: 'Loot quality',
+  strikePower: 'Strike',
+  ward: 'Ward',
 };
 
 /** True for the stats written as a percentage. */
@@ -93,6 +99,8 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   magicFind: true,
   xpBonus: true,
   lootBonus: true,
+  strikePower: false,
+  ward: false,
 };
 
 /** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
@@ -165,19 +173,18 @@ export interface SlotDefinition {
 }
 
 /**
- * Eight slots. head/chest/weapon/off-hand accept today's worn types.
- * hands/legs/feet/trinket start empty and only take later authored defs.
+ * Eight slots. feet stays empty until a boot def is authored.
  * Charms have no compatible slot — they retire to the bag in C5.
  */
 export const EQUIPMENT_SLOTS: SlotDefinition[] = [
   { id: 'head', name: 'Head', accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 10 },
   { id: 'chest', name: 'Chest', accepts: ['rune', 'runeword', 'artifact'], x: 50, y: 32 },
-  { id: 'hands', name: 'Hands', accepts: [], x: 24, y: 36 },
+  { id: 'hands', name: 'Hands', accepts: ['artifact'], x: 24, y: 36 },
   { id: 'weapon', name: 'Weapon', accepts: ['rune', 'runeword', 'artifact'], x: 16, y: 48 },
   { id: 'off-hand', name: 'Off-hand', accepts: ['rune', 'runeword', 'artifact'], x: 84, y: 48 },
-  { id: 'legs', name: 'Legs', accepts: [], x: 50, y: 58 },
+  { id: 'legs', name: 'Legs', accepts: ['artifact'], x: 50, y: 58 },
   { id: 'feet', name: 'Feet', accepts: [], x: 50, y: 82 },
-  { id: 'trinket', name: 'Trinket', accepts: [], x: 78, y: 18 },
+  { id: 'trinket', name: 'Trinket', accepts: ['artifact'], x: 78, y: 18 },
 ];
 
 export const SLOT_IDS: SlotId[] = EQUIPMENT_SLOTS.map(s => s.id);
@@ -487,7 +494,7 @@ export function mintRuneItem(
 /** Sum a set of stat blocks. Used for equipped totals on both player and explorer. */
 export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {
-    goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0,
+    goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0,
   };
   for (const block of blocks) {
     for (const key of ITEM_STAT_KEYS) {
