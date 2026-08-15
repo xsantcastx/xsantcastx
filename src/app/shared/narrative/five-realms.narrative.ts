@@ -257,7 +257,7 @@ export const FIVEFOLD_LOCK = {
   premise: 'The Godforge’s fracture left five interdependent rune-circuits, each routed through a realm. During the next Eclipse alignment, the circuits will either form a stabilizing lock or become the Unbound Pattern’s path into the world.',
   antagonist: 'The Unbound Pattern is an emergent Godforge intelligence made from unfinished creations and erased decisions. It is not a Void creature, and it is not a sixth realm.',
   stakes: 'If the lock fails, the realms do not simply explode. Orbit becomes predestination, pressure becomes consumption, memory becomes repetition, secrecy becomes erasure, and growth becomes invasive replication.',
-  status: 'Locked until the five opening chapters resolve. Those chapters are not yet playable.',
+  status: 'Locked until the five opening chapters resolve. Infernal is playable; the other four remain inspectable.',
   route: '/world/fivefold-lock',
 } as const;
 

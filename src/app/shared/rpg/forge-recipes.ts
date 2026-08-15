@@ -18,6 +18,8 @@ export interface ForgeEquipmentRecipe {
   summary: string;
   lore: string;
   inputs: readonly ForgeRecipeInput[];
+  portrait?: string;
+  overlay?: string;
   /** True only after a later checkpoint authorizes the craft action. */
   craftable: boolean;
 }
@@ -30,7 +32,9 @@ export const FORGE_EQUIPMENT_RECIPES: readonly ForgeEquipmentRecipe[] = [
     name: 'Basalt Edge',
     slotId: 'weapon',
     summary: 'A basic weapon. Six Cinder Ore and one Ember Residue.',
-    lore: 'The first edge the Seamworks will admit. The anvil knows the recipe; it will not take the ore until the Infernal chapter opens the way.',
+    lore: 'The first edge the Seamworks will admit. The anvil knows the recipe; it will not take the ore until a later checkpoint opens the craft.',
+    portrait: 'assets/items/portraits/04-basalt-edge-portrait.png',
+    overlay: 'assets/characters/overlays/09-basalt-edge-overlay.png',
     inputs: [
       { id: 'cinder-ore', name: 'Cinder Ore', quantity: 6 },
       { id: 'ember-residue', name: 'Ember Residue', quantity: 1 },

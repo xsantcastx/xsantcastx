@@ -2,6 +2,7 @@
 /world/realms/luminous
 /world/realms/celestial
 /world/realms/infernal
+/world/realms/infernal/basalt-seamworks
 /world/realms/umbral
 /world/realms/verdant
 /world/fivefold-lock
