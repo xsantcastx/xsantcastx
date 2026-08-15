@@ -1,15 +1,3 @@
-<!--
-  The painted forge, full-bleed behind everything. Same three-layer pattern the
-  homepage hero uses — artwork, dark gradient, glass UI — and the same markup,
-  which is a <picture> rather than a CSS background for the two reasons the
-  homepage records: art direction (the phone gets a portrait crop of the anvil,
-  not a squeezed landscape) and a JPEG fallback for browsers without WebP. A
-  background-image can do neither without image-set, whose type() branch is
-  exactly what older Safari lacks.
-
-  fetchpriority="high" because on this route the artwork IS the largest
-  contentful paint; left to default it queues behind the app's own scripts.
--->
 <div class="rf-scene" aria-hidden="true">
   <picture class="rf-scene__art">
     <source media="(max-width: 768px)"  type="image/webp" srcset="assets/images/runeforge-hero-768.webp">
@@ -22,401 +10,302 @@
   <span class="rf-scene__overlay"></span>
 </div>
 
-<div class="rf">
+<div class="rf" [class.rf--focus]="striking || landed">
 
-  <!-- ── Header ─────────────────────────────────────────────────────────── -->
   <header class="rf-head">
-    <p class="rf-eyebrow"><span class="rf-eyebrow__pulse"></span> {{ t('forge.eyebrow') }}</p>
-    <h1 class="rf-title">{{ t('forge.title') }}</h1>
-    <p class="rf-tagline">{{ t('forge.tag') }}</p>
-    <nav class="rf-links">
-      <a routerLink="/market" class="rf-link">← The Market</a>
-      <a routerLink="/character" class="rf-link">Your Character →</a>
-      <a routerLink="/codex" class="rf-link">The Codex →</a>
-    </nav>
+    <div class="rf-head__copy">
+      <h1 class="rf-title">{{ t('forge.title') }}</h1>
+      <p class="rf-tag">{{ t('forge.tag') }}</p>
+    </div>
+    <dl class="rf-head__wallet">
+      <div>
+        <dt>{{ t('forge.stat.gold') }}</dt>
+        <dd>{{ money(gold) }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('forge.stat.forges') }}</dt>
+        <dd>{{ strikes }}</dd>
+      </div>
+    </dl>
   </header>
 
-  <!--
-    ── The anvil ─────────────────────────────────────────────────────────────
-    The reveal overlay lives INSIDE this section and is absolutely positioned
-    against it, not fixed against the viewport. `router-outlet + *` carries a
-    `transform` (see the note on routeFadeIn in styles.css), which makes every
-    routed host a containing block — a `position: fixed` child here would be
-    laid out against this component's box, not the screen, and would silently
-    end up as tall as the whole page.
-
-    The screen-level tiers get their drama from `html[data-rune-flare]` in
-    styles.css instead, which is outside the routed host and therefore free to
-    be fixed. Same reasoning that keeps the Flame and the quest drawer siblings
-    of <main>.
-  -->
-  <section class="rf-anvil-bay" [class.rf-anvil-bay--striking]="striking">
-
-    <!--
-      No drawn anvil, no drawn hammer. There is a painted forge behind this
-      section now and it is the whole point of the route; a CSS silhouette on
-      top of it is a second, worse anvil, and a glass panel over it is a lid on
-      the best thing in the picture. The homepage recorded the same lesson when
-      its art landed — the art carries what the CSS used to stand in for.
-
-      What the painting cannot do is react, so that is all this bay still owns:
-      the sparks fly off the strike button on the impact frame, and the button
-      itself is the only opaque thing between the visitor and the artwork.
-    -->
-    <div class="rf-controls">
-      <button
-        type="button"
-        class="rf-strike"
-        [disabled]="!canStrike"
-        (click)="strike()">
-        <span class="rf-strike__label">Strike the Forge</span>
-        <span class="rf-strike__cost">{{ money(strikeCost) }} Gold</span>
-        <span class="rf-sparks" aria-hidden="true">
-          @for (n of [1,2,3,4,5,6,7,8]; track n) {
-            <span class="rf-spark" [style.--i]="n"></span>
-          }
-        </span>
-      </button>
-
-      <p class="rf-purse">
-        <span class="rf-purse__num">{{ money(gold) }}</span> Gold in hand
-      </p>
-
-      @if (broke) {
-        <p class="rf-broke" role="status">
-          The anvil takes {{ money(strikeCost) }} and you are holding
-          {{ money(gold) }}. Let the ember earn a while, or
-          <a routerLink="/market">buy a furnace</a>.
-        </p>
-      }
-    </div>
-
-    <!-- ── The reveal ───────────────────────────────────────────────────── -->
-    @if (reveal && revealTier) {
-    <div
-      class="rf-reveal"
-      [attr.data-tier]="reveal.rune.tier"
-      [attr.data-reveal]="revealTier.reveal"
-      [style.--star-color]="revealTier.color"
-      [style.--star-glow]="revealTier.glow"
-      role="status"
-      aria-live="polite"
-      (click)="dismissReveal()">
-
-      <!--
-        The painted card when there is one, the old text card when there is
-        not. Mote, Seam and Ledger were never painted, and the fallback is not
-        a degraded state — it is exactly what every rune looked like before the
-        sheet arrived.
-
-        `rf-reveal__card--art` drops the panel's own border and background: the
-        painting has its own painted border, and a second one around it reads
-        as a card in a frame in a frame.
-      -->
-      <div class="rf-reveal__card" [class.rf-reveal__card--art]="!!revealCard">
-        <p class="rf-reveal__tier">{{ revealTier.label }}</p>
-
-        @if (revealCard) {
-          <img class="rf-reveal__art"
-               [src]="revealCard.src"
-               [attr.width]="revealCard.width"
-               [attr.height]="revealCard.height"
-               [alt]="reveal.rune.name + ' — ' + reveal.rune.lore"
-               decoding="async" draggable="false">
+  <div class="rf-roll" #rollAnchor>
+    <button
+      type="button"
+      class="rf-strike"
+      [class.rf-strike--spinning]="striking"
+      [disabled]="!canStrike"
+      (click)="strike()">
+      <span class="rf-strike__label">{{ striking ? t('forge.roll.forging') : t('forge.roll') }}</span>
+      <span class="rf-strike__cost">
+        @if (!canAfford && !striking) {
+          {{ t('forge.roll.need', { gold: money(goldShort) }) }}
         } @else {
-          <p class="rf-reveal__name">{{ reveal.rune.name }}</p>
-          <p class="rf-reveal__lore">{{ reveal.rune.lore }}</p>
+          {{ money(strikeCost) }} {{ t('forge.stat.gold') }}
         }
-
-        <p class="rf-reveal__meta">
-          @if (reveal.isNew) {
-            <span class="rf-reveal__new">NEW</span>
-          } @else {
-            <span class="rf-reveal__held">{{ reveal.held }} held</span>
-          }
-          <span class="rf-reveal__odds">{{ chance(reveal.rune) }}</span>
-          @if (reveal.essence > 0) {
-            <span class="rf-reveal__essence">+{{ reveal.essence }} Essence</span>
-          }
-        </p>
-
-        @if (reveal.rune.tier === 'singular') {
-          <p class="rf-reveal__void">THE VOID HAS SPOKEN</p>
-        }
-      </div>
-
-      <!--
-        The scroll, when the same strike turned one up. A sibling of the rune
-        card rather than a child, so the two read as two things that arrived
-        together — which is what happened.
-
-        `stopPropagation` because the overlay's own click dismisses everything,
-        and a visitor reaching for the scroll to read it would otherwise close
-        the thing they were reaching for.
-      -->
-      @if (reveal.scroll) {
-        <article class="rf-scroll" (click)="$event.stopPropagation()">
-          <p class="rf-scroll__flag">
-            <span class="rf-scroll__icon" aria-hidden="true">📜</span>
-            LORE SCROLL DISCOVERED
-          </p>
-          <h3 class="rf-scroll__title">{{ reveal.scroll.title }}</h3>
-          <p class="rf-scroll__subtitle">{{ reveal.scroll.subtitle }}</p>
-
-          <div class="rf-scroll__body">
-            @for (para of scrollParagraphs; track $index) {
-              <p class="rf-scroll__para">{{ para }}</p>
-            }
-          </div>
-
-          <p class="rf-scroll__meta">
-            {{ reveal.scroll.chapterName }}
-            · Part {{ reveal.scroll.partNumber }} of 5
-            · <a routerLink="/codex" [queryParams]="{ tab: 'scrolls' }">Read it in the Codex →</a>
-          </p>
-        </article>
-      }
-    </div>
-    }
-  </section>
-
-  <!-- ── Stats ──────────────────────────────────────────────────────────── -->
-  <section class="rf-stats">
-    <div class="rf-stat">
-      <span class="rf-stat__num">{{ strikes }}</span>
-      <span class="rf-stat__label">Total forges</span>
-    </div>
-    <div class="rf-stat">
-      <span class="rf-stat__num">{{ unique }}<em>/{{ totalRunes }}</em></span>
-      <span class="rf-stat__label">Runes found</span>
-    </div>
-    <div class="rf-stat">
-      <span class="rf-stat__num">{{ craftedCount }}<em>/{{ totalWords }}</em></span>
-      <span class="rf-stat__label">Runewords crafted</span>
-    </div>
-    <div class="rf-stat">
-      <span
-        class="rf-stat__num rf-stat__num--rune"
-        [style.color]="rarest ? rarest.color : null">
-        {{ rarest ? rarest.name : '—' }}
       </span>
-      <span class="rf-stat__label">Rarest rune</span>
-    </div>
-    <div class="rf-stat">
-      <span class="rf-stat__num">{{ money(goldSpent) }}</span>
-      <span class="rf-stat__label">Gold spent forging</span>
-    </div>
-    <div class="rf-stat">
-      <span class="rf-stat__num">{{ money(collectionValue) }}</span>
-      <span class="rf-stat__label">Collection worth</span>
-    </div>
-  </section>
+      @if (striking) {
+        <span class="rf-strike__bar" aria-hidden="true"></span>
+      }
+      <span class="rf-sparks" aria-hidden="true">
+        @for (n of [1,2,3,4,5,6,7,8]; track n) {
+          <span class="rf-spark" [style.--i]="n"></span>
+        }
+      </span>
+    </button>
+  </div>
 
-  <!-- ── Inventory ──────────────────────────────────────────────────────── -->
-  <section class="rf-panel">
-    <h2 class="rf-panel__title">The Rune Ledger</h2>
-    <p class="rf-panel__sub">
-      Every rune the Archivum has a name for. The ones you have not seen keep
-      their names to themselves.
-    </p>
+  <p class="rf-pills" aria-label="{{ t('forge.library.stats') }}">
+    <span class="rf-pill">{{ unique }} / {{ totalRunes }} {{ t('forge.pill.found') }}</span>
+    <span class="rf-pill">{{ completePct }}% {{ t('forge.pill.complete') }}</span>
+    <button type="button" class="rf-pill rf-pill--new" (click)="setFilter('new')">
+      ✦ {{ unseenCount }} {{ t('forge.pill.new') }}
+    </button>
+  </p>
+  <div class="rf-progress" role="progressbar" [attr.aria-valuenow]="completePct" aria-valuemin="0" aria-valuemax="100">
+    <span [style.width.%]="completePct"></span>
+  </div>
+  @if (unique === totalRunes) {
+    <p class="rf-complete">{{ t('forge.library.done') }}</p>
+  }
 
-    @for (tier of tierOrder; track trackTier($index, tier)) {
-      <div class="rf-tier">
-        <p
-          class="rf-tier__head"
-          [style.--star-color]="tiers[tier].color"
-          [style.--star-glow]="tiers[tier].glow">
-          <span class="rf-tier__dot"></span>
-          {{ tiers[tier].label }}
-        </p>
+  <nav class="rf-tabs" aria-label="{{ t('forge.tabs') }}">
+    <button type="button" class="rf-tab" [class.is-on]="tab === 'runes'" (click)="setTab('runes')">{{ t('forge.tab.runes') }}</button>
+    <button type="button" class="rf-tab" [class.is-on]="tab === 'runewords'" (click)="setTab('runewords')">{{ t('forge.tab.runewords') }} {{ craftedCount }}/{{ totalWords }}</button>
+    <button type="button" class="rf-tab" [class.is-on]="tab === 'equipment'" (click)="setTab('equipment')">{{ t('forge.tab.equipment') }}</button>
+  </nav>
 
-        <div class="rf-grid">
-          @for (cell of cellsOf(tier); track trackCell($index, cell)) {
+  @if (tab === 'runes') {
+    <section class="rf-lib" aria-labelledby="rf-lib-title">
+      <h2 id="rf-lib-title" class="rf-lib__title">{{ t('forge.library.title') }}</h2>
+
+      <div class="rf-tools">
+        <div class="rf-filters" role="tablist" [attr.aria-label]="t('forge.filters')">
+          @for (id of filters; track id) {
             <button
               type="button"
-              class="rf-rune"
-              [class.rf-rune--known]="cell.known"
-              [class.rf-rune--empty]="cell.held === 0"
-              [class.rf-rune--open]="inspecting?.id === cell.rune.id"
-              [style.--star-color]="cell.tier.color"
-              [style.--star-glow]="cell.tier.glow"
-              [attr.aria-label]="cell.known
-                ? cell.rune.name + ', ' + cell.tier.label + ', ' + cell.held + ' held'
-                : 'Undiscovered ' + cell.tier.label + ' rune'"
-              (click)="inspect(cell)">
-              <!--
-                The card only once the rune is known. An undiscovered cell that
-                showed its painting would hand over the name written across the
-                top of it, which is the one thing the ledger is withholding —
-                and the same reason the glyph beside it is "?" rather than the
-                rune's name.
-
-                loading="lazy" because this grid is twenty-five cells three
-                screens down the page; eager, it competes with the artwork
-                behind the anvil, which is the thing actually on screen.
-              -->
-              @if (cell.known && cell.card) {
-                <img class="rf-rune__art"
-                     [src]="cell.card.src"
-                     [attr.width]="cell.card.width"
-                     [attr.height]="cell.card.height"
-                     alt="" aria-hidden="true"
-                     loading="lazy" decoding="async" draggable="false">
-              } @else {
-                <span class="rf-rune__glyph">{{ cell.known ? cell.rune.name : '?' }}</span>
-              }
-              @if (cell.held > 0) {
-                <span class="rf-rune__count">{{ cell.held }}</span>
-              }
+              class="rf-filter"
+              [class.is-on]="filter === id"
+              (click)="setFilter(id)">
+              {{ filterLabel(id) }}
             </button>
           }
         </div>
+        <div class="rf-tools__row">
+          <label class="rf-filter-m">
+            <span class="rf-sr">{{ t('forge.filters') }}</span>
+            <select [value]="filter" (change)="setFilter($any($event.target).value)">
+              @for (id of filters; track id) {
+                <option [value]="id">{{ filterLabel(id) }}</option>
+              }
+            </select>
+          </label>
+          <label class="rf-search">
+            <span class="rf-sr">{{ t('forge.search') }}</span>
+            <input
+              type="search"
+              [value]="query"
+              (input)="setQuery($any($event.target).value)"
+              [placeholder]="t('forge.search')">
+          </label>
+          <label class="rf-sort">
+            <span class="rf-sr">{{ t('forge.sort') }}</span>
+            <select [value]="sort" (change)="setSort($any($event.target).value)">
+              @for (id of sorts; track id) {
+                <option [value]="id">{{ t('forge.sort.' + id) }}</option>
+              }
+            </select>
+          </label>
+        </div>
       </div>
-    }
 
-    @if (inspecting) {
-      <div
-        class="rf-inspect"
-        [style.--star-color]="inspecting.color"
-        [style.--star-glow]="tiers[inspecting.tier].glow">
-        <p class="rf-inspect__name">{{ inspecting.name }}</p>
-        <p class="rf-inspect__lore">{{ inspecting.lore }}</p>
-        <p class="rf-inspect__meta">
-          {{ tiers[inspecting.tier].label }}
-          · {{ chance(inspecting) }} a strike
-          · worth {{ money(inspecting.forgeCost) }} Gold
-        </p>
-      </div>
-    }
-  </section>
-
-  <!-- ── Runewords ──────────────────────────────────────────────────────── -->
-  <section class="rf-panel">
-    <h2 class="rf-panel__title">Runewords</h2>
-    <p class="rf-panel__sub">
-      Runes set in the right order, in the right number. Setting a word consumes
-      every rune it names — they do not come back.
-    </p>
-
-    <div class="rf-words">
-      @for (row of recipes; track trackRecipe($index, row)) {
-        <article
-          class="rf-word"
-          [class.rf-word--ready]="row.ready"
-          [class.rf-word--crafted]="row.crafted"
-          [class.rf-word--hidden]="row.hidden"
-          [style.--star-color]="row.tier.color"
-          [style.--star-glow]="row.tier.glow">
-
-          <header class="rf-word__head">
-            <!--
-              The word's card sits in the header next to its name rather than
-              replacing it: unlike a rune reveal, this row has to stay scannable
-              against five siblings, and a wall of six paintings with no text is
-              a wall you have to squint at. `row.card` is already null while the
-              row is hidden, so the "???" state cannot leak the art.
-            -->
-            @if (row.card) {
-              <img class="rf-word__art"
-                   [src]="row.card.src"
-                   [attr.width]="row.card.width"
-                   [attr.height]="row.card.height"
-                   alt="" aria-hidden="true"
-                   loading="lazy" decoding="async" draggable="false">
-            }
-            <h3 class="rf-word__name">{{ row.hidden ? '???' : row.word.name }}</h3>
-            <span class="rf-word__tier">{{ row.tier.label }}</span>
-          </header>
-
-          <p class="rf-word__effect">
-            {{ row.hidden ? 'Unknown until one of its runes is found.' : row.word.effect }}
-          </p>
-
-          <ol class="rf-slots">
-            @for (slot of row.slots; track trackSlot($index)) {
-              <li
-                class="rf-slot"
-                [class.rf-slot--filled]="slot.satisfied"
-                [style.--star-color]="slot.rune.color">
-                <span class="rf-slot__name">{{ row.hidden ? '?' : slot.rune.name }}</span>
-                @if (!row.hidden) {
-                  <span class="rf-slot__held">{{ slot.held }}</span>
-                }
-              </li>
-            }
-          </ol>
-
-          @if (!row.hidden) {
-            <p class="rf-word__lore">{{ row.word.lore }}</p>
-          }
-
-          @if (row.crafted) {
-            <p class="rf-word__done">✦ Set. Its effect is live.</p>
-          } @else {
-            <button
-              type="button"
-              class="rf-forge-btn"
-              [disabled]="!row.ready"
-              (click)="craft(row)">
-              {{ row.ready ? 'Set the word' : 'Runes missing' }}
-            </button>
-          }
-          <app-inspect-button type="runeword" [id]="row.word.id" />
-        </article>
+      @if (unique === 0) {
+        <p class="rf-empty">{{ t('forge.empty') }}</p>
       }
-    </div>
-  </section>
 
-  <section class="rf-panel" aria-labelledby="rf-equip-title">
-    <h2 class="rf-panel__title" id="rf-equip-title">{{ t('forge.recipe.title') }}</h2>
-    <p class="rf-panel__sub">{{ t('forge.recipe.sub') }}</p>
-    <div class="rf-words">
-      @for (recipe of equipmentRecipes; track recipe.id) {
-        <article class="rf-word" [class.rf-word--locked]="!inputReady(recipe)" [class.rf-word--ready]="inputReady(recipe)">
-          <header class="rf-word__head">
-            <h3 class="rf-word__name">{{ recipe.name }}</h3>
-            <span class="rf-word__tier">{{ t('loadout.slot.weapon') }}</span>
-          </header>
-          <p class="rf-word__effect">{{ recipe.summary }}</p>
-          <ol class="rf-slots">
-            @for (input of recipe.inputs; track input.id) {
-              <li class="rf-slot" [class.rf-slot--ready]="heldOf(input.id) >= input.quantity">
-                <span class="rf-slot__name">{{ input.name }}</span>
-                <span class="rf-slot__held">{{ heldOf(input.id) }} / {{ input.quantity }}</span>
-              </li>
-            }
-          </ol>
-          <p class="rf-word__lore">{{ recipe.lore }}</p>
-          @if (!inputReady(recipe)) {
-            <p class="rf-word__done">{{ t('forge.recipe.missing') }} {{ missingLine(recipe) }}</p>
-          }
-          @if (craftError === 'capacity') {
-            <p class="rf-word__done" role="alert">{{ t('forge.recipe.full') }}</p>
-          }
-          @if (craftError === 'persist') {
-            <p class="rf-word__done" role="alert">{{ t('forge.recipe.persist') }}</p>
-            <button type="button" class="rf-forge-btn" (click)="retryCraft(recipe)">{{ t('forge.recipe.retry') }}</button>
-          }
+      <div class="rf-cards">
+        @for (card of visibleCards; track card.rune.id) {
           <button
             type="button"
-            class="rf-forge-btn"
-            [disabled]="!inputReady(recipe)"
-            (click)="craftEquipment(recipe)">
-            {{ t('forge.recipe.craft') }}
+            class="rf-card"
+            [class.rf-card--known]="card.known"
+            [class.rf-card--new]="card.isNew"
+            [class.rf-card--locked]="!card.known"
+            [style.--star]="libColor(card.rune.tier)"
+            [attr.aria-label]="cardA11y(card)"
+            (click)="openCard(card)">
+            <span class="rf-card__top">
+              <span class="rf-card__rarity">{{ card.known ? card.rune.tier : '???' }}</span>
+              @if (card.isNew) {
+                <span class="rf-card__new">✦ {{ t('forge.card.new') }}</span>
+              }
+            </span>
+            <span class="rf-card__mark" aria-hidden="true">
+              @if (card.known && cardArt(card); as art) {
+                <img [src]="art.src" alt="" width="96" height="96" loading="lazy" decoding="async">
+              } @else if (card.known) {
+                {{ card.rune.name.slice(0, 1) }}
+              } @else {
+                {{ lockedMark(card.index) }}
+              }
+            </span>
+            <span class="rf-card__name">{{ card.known ? card.rune.name : t('forge.card.unknown') }}</span>
+            <span class="rf-card__kind">{{ t('forge.card.kind') }}</span>
+            <span class="rf-card__state">{{ cardState(card) }}</span>
           </button>
-          @if (lastCraft; as made) {
-            <div class="rf-word__result">
-              <p>{{ t('forge.recipe.made', { name: made.name }) }}</p>
-              <app-inspect-button type="item" [id]="made.id" />
-              <a class="rf-word__bag" [routerLink]="'/character'" [queryParams]="{ item: made.id }">
-                {{ t('forge.recipe.openBag') }}
-              </a>
-            </div>
-          }
-          <app-inspect-button type="recipe" [id]="recipe.id" />
-        </article>
+        }
+      </div>
+      @if (unique === 0 && hiddenLocked > 0) {
+        <p class="rf-more">+ {{ hiddenLocked }} {{ t('forge.empty.more') }}</p>
       }
-    </div>
-  </section>
+    </section>
+  }
 
+  @if (tab === 'runewords') {
+    <section class="rf-words-wrap" aria-labelledby="rf-words-title">
+      <h2 id="rf-words-title" class="rf-lib__title">{{ t('forge.tab.runewords') }} <em>{{ craftedCount }} / {{ totalWords }}</em></h2>
+      <div class="rf-words">
+        @for (row of recipes; track row.word.id) {
+          <article
+            class="rf-word"
+            [class.rf-word--ready]="row.ready"
+            [class.rf-word--crafted]="row.crafted"
+            [class.rf-word--hidden]="row.hidden"
+            [style.--star]="libColor(row.word.tier)">
+            <header class="rf-word__head">
+              <h3>{{ row.hidden ? '???' : row.word.name }}</h3>
+              <span>{{ row.tier.label }}</span>
+            </header>
+            <p class="rf-word__pips">
+              @for (slot of row.slots; track $index) {
+                <span [class.is-on]="slot.satisfied">{{ row.hidden && !slot.satisfied ? '?' : (knownId(slot.rune.id) ? slot.rune.name.slice(0, 1) : '?') }}</span>
+              }
+            </p>
+            <p class="rf-word__meta">
+              @if (row.hidden) {
+                {{ t('forge.word.locked') }}
+              } @else {
+                {{ wordFound(row) }} / {{ row.slots.length }} {{ t('forge.word.found') }}
+              }
+            </p>
+            @if (!row.hidden && !row.crafted) {
+              <button type="button" class="rf-forge-btn" [disabled]="!row.ready" (click)="craft(row)">
+                {{ row.ready ? t('forge.word.set') : t('forge.word.missing') }}
+              </button>
+            }
+            @if (row.crafted) {
+              <p class="rf-word__done">{{ t('forge.word.live') }}</p>
+            }
+          </article>
+        }
+      </div>
+    </section>
+  }
+
+  @if (tab === 'equipment') {
+    <section class="rf-words-wrap" aria-labelledby="rf-equip-title">
+      <h2 id="rf-equip-title" class="rf-lib__title">{{ t('forge.recipe.title') }}</h2>
+      <div class="rf-words">
+        @for (recipe of equipmentRecipes; track recipe.id) {
+          <article class="rf-word" [class.rf-word--ready]="inputReady(recipe)">
+            <header class="rf-word__head">
+              <h3>{{ recipe.name }}</h3>
+              <span>{{ t('loadout.slot.weapon') }}</span>
+            </header>
+            <p class="rf-word__meta">{{ recipe.summary }}</p>
+            @for (input of recipe.inputs; track input.id) {
+              <p class="rf-word__meta">{{ input.name }} {{ heldOf(input.id) }} / {{ input.quantity }}</p>
+            }
+            <button type="button" class="rf-forge-btn" [disabled]="!inputReady(recipe)" (click)="craftEquipment(recipe)">
+              {{ t('forge.recipe.craft') }}
+            </button>
+            <app-inspect-button type="recipe" [id]="recipe.id" />
+          </article>
+        }
+      </div>
+    </section>
+  }
+
+  @if ((striking || landed) && reveal) {
+    <div class="rf-focus" (click)="dismissFocus()">
+      <div
+        class="rf-reel"
+        [class.rf-reel--spinning]="spinning"
+        [class.rf-reel--landed]="landed"
+        [style.--star-color]="revealTier?.color"
+        [style.--star-glow]="revealTier?.glow"
+        role="dialog"
+        aria-modal="true"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="dismissFocus()">
+        <div class="rf-reel__window">
+          <div
+            class="rf-reel__strip"
+            [style.transform]="reelTransform"
+            [style.transition]="reelTransition"
+            (transitionend)="onReelEnd($event)">
+            @for (face of reel; track $index) {
+              <div class="rf-reel__face" [style.height.px]="facePx">
+                @if (face.card) {
+                  <img [src]="face.card.src" width="216" height="216" [alt]="face.name" decoding="async">
+                } @else {
+                  <span>{{ face.name }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        @if (landed && revealTier) {
+          <p class="rf-reel__result">{{ reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup') }}</p>
+          <p class="rf-reel__name">{{ reveal.rune.name }}</p>
+          <p class="rf-reel__tier">{{ revealTier.label }}</p>
+          @if (!reveal.isNew) {
+            <p class="rf-reel__dup">{{ t('forge.reveal.owned') }}</p>
+          }
+          <button type="button" class="rf-reel__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (detail; as open) {
+    <div class="rf-detail-root" [class.rf-detail-root--sheet]="sheet" (keydown)="onDetailKey($event)">
+      <div class="rf-detail__back" (click)="closeCard()"></div>
+      <aside class="rf-detail" role="dialog" aria-modal="true" [style.--star]="libColor(open.rune.tier)">
+        <header>
+          <div>
+            <p class="rf-detail__tier">{{ open.rune.tier }}</p>
+            <h2>{{ open.rune.name }}</h2>
+          </div>
+          <button type="button" class="rf-detail__x" (click)="closeCard()" [attr.aria-label]="t('forge.detail.close')">×</button>
+        </header>
+        @if (cardArt(open); as art) {
+          <img class="rf-detail__art" [src]="art.src" alt="" width="160" height="160">
+        }
+        <p class="rf-detail__lore">{{ open.rune.lore }}</p>
+        <p class="rf-detail__meta">
+          {{ open.isNew ? t('forge.card.new') : t('forge.card.found') }}
+          @if (open.foundAt) { · {{ open.foundAt.slice(0, 10) }} }
+          · {{ open.held }}
+        </p>
+        <h3>{{ t('forge.detail.used') }}</h3>
+        <ul class="rf-detail__words">
+          @for (word of wordsFor(open.rune.id); track word.id) {
+            <li>
+              <span>{{ wordKnown(word) ? word.name : '???' }}</span>
+              <em>{{ wordProgress(word) }}</em>
+            </li>
+          } @empty {
+            <li>{{ t('forge.detail.none') }}</li>
+          }
+        </ul>
+      </aside>
+    </div>
+  }
+
+  @if (showDock) {
+    <button type="button" class="rf-dock" [disabled]="!canStrike" (click)="strike()">
+      {{ t('forge.roll.dock') }} · {{ money(strikeCost) }}
+    </button>
+  }
 </div>
