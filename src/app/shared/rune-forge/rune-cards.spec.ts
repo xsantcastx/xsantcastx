@@ -7,10 +7,8 @@
  * glyph as though that rune had never been painted. These are pure-data checks
  * — no Firebase, no network — so they run on a clean offline checkout.
  *
- * What they cannot check is that the .webp files are actually on disk; Karma has
- * no filesystem. `scripts/build-scene-art.py` is what puts them there, and it
- * derives its output names from the same source sheet these entries were
- * generated from.
+ * What they cannot check is that the PNG files are actually on disk; Karma has
+ * no filesystem. The masters are copied from the Eclipse Realms asset library.
  */
 import { RUNES, RUNEWORDS } from './rune.model';
 import { ARTIFACTS } from '../economy/economy.model';
@@ -60,11 +58,9 @@ describe('rune-cards', () => {
       expect(Object.keys(RUNEWORD_CARDS).filter(id => !ids.has(id))).toEqual([]);
     });
 
-    /* The catalogue calls this one "the-convergents-will". If a future rename
-       makes the filename derivable, this is the test that says so. */
-    it('keeps the catalogue name for The Convergent’s Will', () => {
+    it('keeps the catalogue stem for The Convergent’s Will', () => {
       expect(runewordCard('convergents-will')!.src)
-        .toContain('runeword-26-the-convergents-will');
+        .toContain('26-convergents-will');
     });
   });
 
@@ -81,7 +77,7 @@ describe('rune-cards', () => {
 
     it('keeps the catalogue name for the Mirrorblade', () => {
       expect(artifactCard('mirrorblade-kael')!.src)
-        .toContain('artifact-30-mirrorblade-of-kael');
+        .toContain('30-mirrorblade-of-kael');
     });
   });
 
@@ -92,8 +88,10 @@ describe('rune-cards', () => {
       ...Object.values(ARTIFACT_CARDS),
     ];
 
-    it('points at a webp under the runes asset folder', () => {
-      for (const c of all) expect(c.src).toMatch(/^assets\/icons\/runes\/[a-z0-9-]+\.webp$/);
+    it('points at a PNG under the items asset folders', () => {
+      for (const c of all) {
+        expect(c.src).toMatch(/^assets\/items\/(runes|runewords|artifacts)\/[a-z0-9-]+\.png$/);
+      }
     });
 
     /* Intrinsic dimensions exist to stop the ledger reflowing as cards decode,

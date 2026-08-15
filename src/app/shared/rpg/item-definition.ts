@@ -29,7 +29,8 @@ export type ItemStyle =
   | 'luminous'
   | 'umbral'
   | 'verdant'
-  | 'void';
+  | 'void'
+  | 'void-touched';
 
 export type ItemStatKey = keyof ItemStats;
 
@@ -76,12 +77,17 @@ const STYLE_MF: Partial<Record<ItemStyle, number>> = {
 const STYLE_LOOT: Partial<Record<ItemStyle, number>> = {
   umbral: 1.08,
 };
+const STYLE_WARD: Partial<Record<ItemStyle, number>> = {
+  umbral: 1.08,
+  'void-touched': 1.08,
+};
 
 function styleBias(style: ItemStyle, key: ItemStatKey): number {
   if (key === 'goldPerSec') return STYLE_GOLD[style] ?? 1;
   if (key === 'xpBonus') return STYLE_XP[style] ?? 1;
   if (key === 'magicFind') return STYLE_MF[style] ?? 1;
   if (key === 'lootBonus') return STYLE_LOOT[style] ?? 1;
+  if (key === 'ward') return STYLE_WARD[style] ?? 1;
   return 1;
 }
 
@@ -97,7 +103,7 @@ export function rollItemStats(
 ): ItemStats {
   if (!def.rollKeys.length) return {};
   const [lo, hi] = RARITY_MULT[rarity] ?? RARITY_MULT.common;
-  const voidWiden = def.style === 'void' ? 0.1 : 0;
+  const voidWiden = def.style === 'void' || def.style === 'void-touched' ? 0.1 : 0;
   const low = lo * (1 - voidWiden);
   const high = hi * (1 + voidWiden);
   const stats: ItemStats = {};
@@ -160,40 +166,40 @@ function eq(
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
   eq('eclipse-longblade', 'Eclipse Longblade', 'weapon', 'neutral',
-    ['goldPerSec'], { goldPerSec: 3 },
+    ['goldPerSec', 'strikePower'], { goldPerSec: 0.4, strikePower: 1 },
     'A neutral blade with a violet eclipse seam; it is carried to make a boundary visible before it is crossed.'),
   eq('keeper-staff', 'Keeper Staff', 'weapon', 'neutral',
-    ['xpBonus', 'goldPerSec'], { xpBonus: 6, goldPerSec: 0.4 },
+    ['xpBonus', 'goldPerSec'], { xpBonus: 2, goldPerSec: 0.15 },
     'A grounded conduit for reading unstable runes without claiming they belong to the bearer.'),
-  eq('void-buckler', 'Void Buckler', 'off-hand', 'void',
-    ['lootBonus', 'goldPerSec'], { lootBonus: 8, goldPerSec: 0.3 },
+  eq('void-buckler', 'Void Buckler', 'off-hand', 'void-touched',
+    ['ward', 'magicFind'], { ward: 1, magicFind: 1 },
     'A small shield that turns an incoming possibility aside rather than trying to erase it.'),
   eq('keepers-cowl', "Keeper's Cowl", 'head', 'neutral',
-    ['magicFind'], { magicFind: 4 },
+    ['magicFind', 'xpBonus'], { magicFind: 1.5, xpBonus: 1 },
     'A practical mantle hood that protects a witness from spectacle while leaving their actions accountable.'),
   eq('keepers-mantle', "Keeper's Mantle", 'chest', 'neutral',
-    ['magicFind', 'xpBonus'], { magicFind: 3, xpBonus: 3 },
+    ['goldPerSec', 'ward'], { goldPerSec: 0.25, ward: 0.5 },
     'Woven with repairable seams so every field repair remains legible to the next Keeper.'),
-  eq('godforge-gauntlets', 'Godforge Gauntlets', 'hands', 'infernal',
-    ['goldPerSec'], { goldPerSec: 1.5 },
+  eq('godforge-gauntlets', 'Godforge Gauntlets', 'hands', 'neutral',
+    ['strikePower', 'goldPerSec'], { strikePower: 1.2, goldPerSec: 0.1 },
     'Insulated hands for handling fragments whose effects must be felt before they are controlled.'),
   eq('astral-pendant', 'Astral Pendant', 'trinket', 'celestial',
-    ['magicFind'], { magicFind: 8 },
+    ['magicFind', 'xpBonus'], { magicFind: 2, xpBonus: 1.5 },
     'A suspended star-metal measure that vibrates when a route\'s stated rule and actual behavior diverge.'),
-  eq('anchor-ring', 'Anchor Ring', 'trinket', 'neutral',
-    ['xpBonus'], { xpBonus: 8 },
+  eq('anchor-ring', 'Anchor Ring', 'trinket', 'celestial',
+    ['ward', 'xpBonus'], { ward: 0.5, xpBonus: 1 },
     'A four-point band used to mark a temporary boundary, never a claim of permanent dominion.'),
   eq('astral-helm', 'Astral Helm', 'head', 'celestial',
-    ['xpBonus'], { xpBonus: 10 },
+    ['xpBonus', 'magicFind'], { xpBonus: 2.5, magicFind: 1 },
     'A Celestial field helm that makes shifting trajectories visible as light across its surface.'),
   eq('infernal-cuirass', 'Infernal Cuirass', 'chest', 'infernal',
-    ['goldPerSec'], { goldPerSec: 5 },
+    ['goldPerSec', 'ward'], { goldPerSec: 0.45, ward: 0.8 },
     'An iron-black chest piece whose ember seams show where its bearer is carrying heat for someone else.'),
-  eq('luminous-greaves', 'Luminous Greaves', 'feet', 'luminous',
-    ['magicFind'], { magicFind: 7 },
+  eq('luminous-greaves', 'Luminous Greaves', 'legs', 'luminous',
+    ['magicFind', 'goldPerSec'], { magicFind: 2, goldPerSec: 0.12 },
     'Ivory-and-gold leg armor that leaves a faint trail only when the wearer\'s path can be honestly described.'),
   eq('verdant-bracers', 'Verdant Bracers', 'hands', 'verdant',
-    ['xpBonus', 'goldPerSec'], { xpBonus: 5, goldPerSec: 0.8 },
+    ['xpBonus', 'ward'], { xpBonus: 1.5, ward: 0.4 },
     'Rootwood guards that tighten near invasive growth and loosen near cooperative repair.'),
   {
     id: 'basalt-edge',
