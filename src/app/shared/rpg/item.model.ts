@@ -95,11 +95,25 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   lootBonus: true,
 };
 
-/** Diablo-style mod line: `Gold/sec +2.4`. */
+/** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
 export function formatItemMod(key: keyof ItemStats, value: number): string {
   const sign = value >= 0 ? '+' : '';
   const suffix = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
-  return `${ITEM_STAT_LABELS[key]} ${sign}${value}${suffix}`;
+  const shown = key === 'goldPerSec' ? compactStat(value) : String(value);
+  return `${ITEM_STAT_LABELS[key]} ${sign}${shown}${suffix}`;
+}
+
+function compactStat(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return trimStat(n / 1_000_000_000) + 'B';
+  if (abs >= 1_000_000) return trimStat(n / 1_000_000) + 'M';
+  if (abs >= 1_000) return trimStat(n / 1_000) + 'K';
+  return String(n);
+}
+
+function trimStat(n: number): string {
+  const fixed = n.toFixed(1);
+  return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
 }
 
 export interface GameItem {

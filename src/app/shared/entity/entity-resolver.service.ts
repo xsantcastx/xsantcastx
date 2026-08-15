@@ -12,7 +12,7 @@ import {
   COSMETICS,
   ENCHANTMENTS,
   formatCompact,
-  formatCurrency,
+  formatCurrencyExact,
   upgradeById,
 } from '../economy/economy.model';
 import { FIVE_REALMS, realmHref } from '../narrative/five-realms.narrative';
@@ -395,7 +395,7 @@ export class EntityResolver {
   }
 
   private moneyFact(label: string, amount: number, currency: 'gold' | 'essence' = 'gold'): EntityPresentation['facts'][number] {
-    const exact = `${formatCurrency(amount)} ${currency === 'essence' ? 'Essence' : 'Gold'}`;
+    const exact = `${formatCurrencyExact(amount)} ${currency === 'essence' ? 'Essence' : 'Gold'}`;
     return {
       label,
       value: `${formatCompact(amount)} ${currency === 'essence' ? 'Essence' : 'Gold'}`,
