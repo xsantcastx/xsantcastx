@@ -872,6 +872,28 @@
   color: rgba(232, 236, 241, 0.35);
 }
 
+.rf-word__result {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.4rem;
+}
+
+.rf-word__bag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #ffc669;
+}
+
+.rf-word__bag:focus-visible {
+  outline: 2px solid #ffc669;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-word--ready, .rf-forge-btn { transition: none; box-shadow: none; }
+}
+
 /* ── Keyframes ───────────────────────────────────────────────────────────── */
 
 @keyframes rfPulse {

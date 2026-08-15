@@ -27,7 +27,9 @@ test.describe('C6 Forge normalization', () => {
     await expect(page.getByRole('heading', { name: 'Strike the Anvil' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Equipment recipes' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Basalt Edge' })).toBeVisible();
-    await expect(page.getByText('Listed. Not craftable yet.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Craft' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Craft' })).toBeDisabled();
+    await expect(page.getByText(/Need/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Set the word' }).or(page.getByRole('button', { name: 'Runes missing' }))).toHaveCount(6);
     await page.locator('#rf-equip-title').locator('..').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();

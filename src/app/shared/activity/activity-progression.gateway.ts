@@ -73,13 +73,33 @@ export class ActivityProgressionGateway {
     this.ledger = this.load();
     this.lastHlc = this.highestHlc(this.ledger);
     this.publish();
+    this.syncCraftedFlag();
     this.saves.register(ACTIVITY_KEY, {
       rehydrate: () => {
         this.ledger = this.load();
         this.lastHlc = this.highestHlc(this.ledger);
         this.publish();
+        this.syncCraftedFlag();
       },
     });
+  }
+
+  markCraftedBasaltEdge(): boolean {
+    if (!this.isBrowser) return false;
+    if (this.ledger.craftedBasaltEdge) return true;
+    const previous = this.ledger;
+    this.ledger = { ...this.ledger, craftedBasaltEdge: true };
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
+    this.publish();
+    return true;
+  }
+
+  private syncCraftedFlag(): void {
+    if (this.ledger.craftedBasaltEdge) return;
+    if (this.inventory.hasBasaltEdge()) this.markCraftedBasaltEdge();
   }
 
   selectCurrentWork(disciplineId: DisciplineId, locationId: string, now = Date.now()): CurrentWork | null {

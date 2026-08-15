@@ -86,6 +86,16 @@
                 <li>
                   <a class="qi__btn qi__btn--link" [routerLink]="action.href" (click)="close()">{{ action.label }}</a>
                 </li>
+              } @else {
+                <li>
+                  <button
+                    type="button"
+                    class="qi__btn"
+                    [disabled]="!action.enabled"
+                    (click)="runAction(action)">
+                    {{ action.label }}
+                  </button>
+                </li>
               }
             }
           </ul>
