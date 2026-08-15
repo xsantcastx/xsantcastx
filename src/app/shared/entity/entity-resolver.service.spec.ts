@@ -76,6 +76,14 @@ describe('EntityResolver', () => {
     expect(JSON.stringify(rune)).not.toMatch(/bubble/i);
   });
 
+  it('resolves the locked Basalt Edge recipe without a craft action', () => {
+    const recipe = resolver.resolve({ type: 'recipe', id: 'basalt-edge' });
+    expect(recipe.state).toBe('ready');
+    expect(recipe.presentation?.name).toBe('Basalt Edge');
+    expect(recipe.presentation?.facts.some(fact => fact.exactValue?.includes('Cinder Ore'))).toBeTrue();
+    expect(recipe.actions.some(action => action.id === 'craft')).toBeFalse();
+  });
+
   it('does not offer buy, sell, or equip actions', () => {
     const listing = resolver.resolve({ type: 'market-listing', id: 'iron-hammer' });
     expect(listing.actions.some(action => ['buy', 'sell', 'equip'].includes(action.id))).toBeFalse();
