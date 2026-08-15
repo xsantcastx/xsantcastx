@@ -87,11 +87,19 @@ export const INVENTORY_KEY = 'godforge-inventory';
  */
 export const MAX_INVENTORY = INVENTORY_BAG_CAP;
 
+export interface InventoryStackView {
+  stackKey: string;
+  definitionId: string;
+  quantity: number;
+}
+
 export interface InventorySnapshot {
   /** Everything held, newest first. */
   items: GameItem[];
   /** Unequipped, newest first — what the bag grid renders. */
   bag: GameItem[];
+  /** Material stacks derived from grant/consume ops. Live after Mine. */
+  stacks: InventoryStackView[];
   /** slot id → the item in it, for the seven player slots. */
   equipped: Partial<Record<SlotId, GameItem>>;
   /** Summed stats of everything the *player* wears. Explorer kit is not counted. */
@@ -671,6 +679,7 @@ export class InventoryService {
     return {
       items,
       bag: items.filter(i => !i.equipped && !i.explorerId),
+      stacks: stacksFromLedger(ledger),
       equipped,
       totals: sumStats(wornBlocks),
       goldFromSales: ledger.goldFromSales,
@@ -708,4 +717,19 @@ export class InventoryService {
       return 'unknown';
     }
   }
+}
+
+function stacksFromLedger(ledger: InventoryLedger): InventoryStackView[] {
+  const keys = new Set<string>();
+  for (const row of ledger.records) {
+    if (row.kind === 'stack') keys.add(row.stackKey);
+  }
+  for (const op of ledger.stackOps) keys.add(op.stackKey);
+  const out: InventoryStackView[] = [];
+  for (const stackKey of keys) {
+    const quantity = stackQuantity(ledger.stackOps, stackKey);
+    if (quantity <= 0) continue;
+    out.push({ stackKey, definitionId: stackKey, quantity });
+  }
+  return out.sort((a, b) => a.stackKey.localeCompare(b.stackKey));
 }

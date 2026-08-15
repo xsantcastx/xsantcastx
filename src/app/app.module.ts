@@ -37,6 +37,7 @@ import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.compon
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
 import { InspectComponent } from './shared/entity/inspect.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
+import { KeeperPanelComponent } from './shared/character/keeper-panel.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
 import { PwaService } from './shared/pwa.service';
@@ -78,7 +79,8 @@ import { PwaService } from './shared/pwa.service';
     GodforgeLoaderComponent,
     InstallPromptComponent,
     InspectComponent,
-    CurrentWorkTileComponent
+    CurrentWorkTileComponent,
+    KeeperPanelComponent
 ],
   providers: [
     provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),

@@ -51,8 +51,7 @@ import { LEVELS, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
-import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
-import { EquipmentPanelComponent } from '../shared/rpg/equipment-panel.component';
+import { CharacterHubComponent } from '../shared/character/character-hub.component';
 import { InventoryService } from '../shared/rpg/inventory.service';
 import { SLOT_IDS } from '../shared/rpg/item.model';
 import {
@@ -306,8 +305,7 @@ function tierForEssence(cost: number): EclipseRarity {
     RouterLink,
     CloudSaveButtonComponent,
     ArtSceneComponent,
-    StatPanelComponent,
-    EquipmentPanelComponent,
+    CharacterHubComponent,
   ],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],

@@ -47,6 +47,8 @@ import { EconomyService, EconomySnapshot } from '../shared/economy/economy.servi
 import { formatCurrency } from '../shared/economy/economy.model';
 import { MORE_NAV, NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
+import { CharacterHubService } from '../shared/character/character-hub.service';
+import { InventoryService } from '../shared/rpg/inventory.service';
 
 interface TomeSection {
   titleKey: string;
@@ -83,6 +85,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private lastScrollY = 0;
   private tomeUnreg?: () => void;
   private readonly overlays = inject(OverlayStackService);
+  private readonly hub = inject(CharacterHubService);
+  private readonly inventory = inject(InventoryService);
+  private invSub?: Subscription;
+  private hubSub?: Subscription;
 
   /** Above this width the tome and the tab bar are not rendered. */
   private static readonly MOBILE_NAV_BREAKPOINT = 960;
@@ -171,6 +177,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.economy.init();
       this.xpSub = this.xp.snapshot$.subscribe(s => { this.snap = s; this.cdr.markForCheck(); });
       this.ecoSub = this.economy.snapshot$.subscribe(e => { this.eco = e; this.cdr.markForCheck(); });
+      this.inventory.init();
+      this.invSub = this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck());
+      this.hubSub = new Subscription();
+      this.hubSub.add(this.hub.drawer$.subscribe(() => this.cdr.markForCheck()));
+      this.hubSub.add(this.hub.tab$.subscribe(() => this.cdr.markForCheck()));
     }
   }
 
@@ -206,6 +217,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.langSub?.unsubscribe();
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
+    this.invSub?.unsubscribe();
+    this.hubSub?.unsubscribe();
     this.tomeUnreg?.();
     this.tomeUnreg = undefined;
     this.setBodyScrollLock(false);
@@ -334,6 +347,23 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   translate(key: string): string {
     return this.translationService.translate(key);
+  }
+
+  get bagCount(): number {
+    return this.inventory.snapshot.stacks.reduce((n, row) => n + row.quantity, 0)
+      + this.inventory.snapshot.bag.length;
+  }
+  get characterPanelOpen(): boolean { return this.hub.drawerOpen && this.hub.tab !== 'bank'; }
+  get bankPanelOpen(): boolean { return this.hub.drawerOpen && this.hub.tab === 'bank'; }
+
+  openCharacter(): void {
+    this.closeMobileMenu();
+    this.hub.openDrawer(this.hub.tab === 'bank' ? 'loadout' : this.hub.tab);
+  }
+
+  openBank(): void {
+    this.closeMobileMenu();
+    this.hub.openDrawer('bank');
   }
 
   // ── Tome ──────────────────────────────────────────────────────────────

@@ -264,6 +264,14 @@ describe('InventoryService C9 Basalt Edge craft', () => {
     expect(inventory.grantStack('ember:1', 'ember-residue', 1)).toBe(true);
   }
 
+  it('publishes live material stacks for the Bank', () => {
+    expect(inventory.snapshot.stacks).toEqual([]);
+    expect(inventory.grantStack('ore:bank', 'cinder-ore', 3)).toBe(true);
+    expect(inventory.snapshot.stacks).toEqual([
+      { stackKey: 'cinder-ore', definitionId: 'cinder-ore', quantity: 3 },
+    ]);
+  });
+
   it('consumes 6+1 once and mints one weapon', () => {
     fillRecipe();
     const first = inventory.craftBasaltEdge('craft-a', 1_000);
