@@ -24,13 +24,16 @@ test.describe('C6 Forge normalization', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/rune-forge');
     await expect(page).toHaveURL(/\/forge\/runes/);
-    await expect(page.getByRole('heading', { name: 'Strike the Anvil' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Rune Forge' })).toBeVisible();
+    await page.getByRole('button', { name: 'Equipment' }).click();
     await expect(page.getByRole('heading', { name: 'Equipment recipes' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Basalt Edge' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeDisabled();
     await expect(page.getByText(/Need/)).toBeVisible();
+    await page.getByRole('button', { name: /Runewords/ }).click();
     await expect(page.getByRole('button', { name: 'Set the word' }).or(page.getByRole('button', { name: 'Runes missing' }))).toHaveCount(6);
+    await page.getByRole('button', { name: 'Equipment' }).click();
     await page.locator('#rf-equip-title').locator('..').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('dialog').locator('span[aria-hidden="true"]', { hasText: '6 Cinder Ore + 1 Ember Residue' })).toBeVisible();
