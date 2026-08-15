@@ -27,8 +27,7 @@
  *   head→head, chest→chest, weapon→weapon, offhand→off-hand;
  *   hands/legs/feet/trinket start empty;
  *   charm1–3 unequip to bag and stay frozen (“Requires the future charm system”).
- * C3 preserves the current seven SlotId values so existing Character UI
- * and rpgFlatGold stay unchanged.
+ * C5 applies that map: offhand → off-hand, charm1–3 bag + retired tag.
  */
 import type { GameItem, ItemRarity, ItemStats, ItemType, SlotId } from './item.model';
 

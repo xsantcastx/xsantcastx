@@ -9,6 +9,7 @@ import {
   migrateV1,
   parseInventoryLedger,
   projectEconomy,
+  retireCharms,
   projectRunes,
   pruneTombstones,
   stackQuantity,
@@ -118,7 +119,7 @@ describe('inventory adapter (C3)', () => {
     const a = ledger({ records: [instance('a', { revision: revision(5, 'phone') })], hlc: 5 });
     const b = ledger({ records: [instance('b', { revision: revision(6, 'tablet') })], hlc: 6 });
     const c = ledger({
-      records: [instance('a', { revision: revision(8, 'phone', 2), location: { kind: 'equipped', slotId: 'charm1' } })],
+      records: [instance('a', { revision: revision(8, 'phone', 2), location: { kind: 'equipped', slotId: 'head' } })],
       hlc: 8,
     });
     const ab = mergeInventoryLedgers(a, b);
@@ -129,7 +130,7 @@ describe('inventory adapter (C3)', () => {
     expect(abc.records.find(row => row.id === 'a')?.kind === 'instance'
       && abc.records.find(row => row.id === 'a')?.kind === 'instance'
       ? (abc.records.find(row => row.id === 'a') as OwnedItemInstance).location
-      : null).toEqual({ kind: 'equipped', slotId: 'charm1' });
+      : null).toEqual({ kind: 'equipped', slotId: 'head' });
     expect(bca.records.map(row => row.id).sort()).toEqual(abc.records.map(row => row.id).sort());
     expect(mergeInventoryLedgers(ab, ab).records.length).toBe(ab.records.length);
   });
@@ -174,7 +175,7 @@ describe('inventory adapter (C3)', () => {
   it('clock skew does not beat a lower HLC', () => {
     const earlier = instance('ring', {
       revision: revision(50, 'phone'),
-      location: { kind: 'equipped', slotId: 'charm1' },
+      location: { kind: 'equipped', slotId: 'head' },
       acquiredAt: '2020-01-01T00:00:00.000Z',
     });
     const skewed = instance('ring', {
@@ -187,7 +188,7 @@ describe('inventory adapter (C3)', () => {
       ledger({ records: [skewed], hlc: 10 }),
     );
     const live = merged.records[0] as OwnedItemInstance;
-    expect(live.location).toEqual({ kind: 'equipped', slotId: 'charm1' });
+    expect(live.location).toEqual({ kind: 'equipped', slotId: 'head' });
     expect(compareRevision(skewed.revision, earlier.revision)).toBeLessThan(0);
   });
 
@@ -256,7 +257,7 @@ describe('inventory adapter (C3)', () => {
   });
 
   it('does not evict worn, explorer, soulbound, zero-value, or stack records', () => {
-    const worn = instance('worn', { location: { kind: 'equipped', slotId: 'charm1' }, sellValue: 1 });
+    const worn = instance('worn', { location: { kind: 'equipped', slotId: 'head' }, sellValue: 1 });
     const carried = instance('carried', { location: { kind: 'explorer', explorerId: 'e1' }, sellValue: 1 });
     const bound = instance('bound', { soulbound: true, sellValue: 99 });
     const worthless = instance('worthless', { sellValue: 0 });
@@ -347,7 +348,7 @@ describe('inventory adapter (C3)', () => {
     const future = instance('ring', {
       revision: revision(20, 'tablet'),
       acquiredAt: '2040-01-01T00:00:00.000Z',
-      location: { kind: 'equipped', slotId: 'charm1' },
+      location: { kind: 'equipped', slotId: 'head' },
     });
     const ab = mergeInventoryLedgers(ledger({ records: [past] }), ledger({ records: [future] }));
     const ba = mergeInventoryLedgers(ledger({ records: [future] }), ledger({ records: [past] }));
@@ -377,5 +378,105 @@ describe('inventory adapter (C3)', () => {
     const twice = mergeInventoryLedgers(once, mergeInventoryLedgers(b, a));
     expect(twice.records.map(row => row.id).sort()).toEqual(['a', 'b']);
     expect(twice.goldFromSales).toBe(9);
+  });
+
+  it('maps offhand to off-hand and bags retired charms', () => {
+    const raw = {
+      version: 2,
+      records: [
+        instance('blade', { type: 'artifact', location: { kind: 'equipped', slotId: 'offhand' as 'head' } }),
+        instance('charm', { type: 'charm', location: { kind: 'equipped', slotId: 'charm1' as 'head' } }),
+      ],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+    const blade = parsed.records.find(row => row.id === 'blade') as OwnedItemInstance;
+    const charm = parsed.records.find(row => row.id === 'charm') as OwnedItemInstance;
+    expect(blade.location).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect(charm.location).toEqual({ kind: 'bag' });
+    const retired = retireCharms(parsed, 'phone', 1_000);
+    expect(retired.retiredIds).toContain('charm');
+    expect((retired.ledger.records.find(row => row.id === 'charm') as OwnedItemInstance).tags)
+      .toContain('retired-charm');
+    expect(retireCharms(retired.ledger, 'phone', 2_000).retiredIds).toEqual([]);
+  });
+
+  it('two devices retiring the same charm merge to one bagged tagged record', () => {
+    const worn = instance('charm', {
+      type: 'charm',
+      location: { kind: 'equipped', slotId: 'charm1' as 'head' },
+      revision: revision(1, 'seed'),
+    });
+    const raw = {
+      version: 2,
+      records: [worn],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+    const phone = retireCharms(parsed, 'phone', 1_000);
+    const tablet = retireCharms(parsed, 'tablet', 1_000);
+    const ab = mergeInventoryLedgers(phone.ledger, tablet.ledger);
+    const ba = mergeInventoryLedgers(tablet.ledger, phone.ledger);
+    const loc = (blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === 'charm') as OwnedItemInstance).location;
+    expect(loc(ab)).toEqual({ kind: 'bag' });
+    expect(loc(ba)).toEqual({ kind: 'bag' });
+    expect((ab.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
+    expect((ba.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
+    expect(ab.records.map(row => row.id)).toEqual(ba.records.map(row => row.id));
+  });
+
+  it('C4 offhand and C5 off-hand merge to the canonical slot both ways', () => {
+    const c4 = {
+      version: 2,
+      records: [instance('blade', {
+        type: 'artifact',
+        location: { kind: 'equipped', slotId: 'offhand' as 'head' },
+        revision: revision(2, 'phone'),
+      })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 2, legacyBackup: null,
+    };
+    const c5 = {
+      version: 2,
+      records: [instance('blade', {
+        type: 'artifact',
+        location: { kind: 'equipped', slotId: 'off-hand' },
+        revision: revision(3, 'tablet'),
+      })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 3, legacyBackup: null,
+    };
+    const ab = mergeInventoryLedgers(c4, c5);
+    const ba = mergeInventoryLedgers(c5, c4);
+    const loc = (blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === 'blade') as OwnedItemInstance).location;
+    expect(loc(ab)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect(loc(ba)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect(ab.records.filter(row =>
+      row.kind === 'instance' && row.location.kind === 'equipped',
+    ).length).toBe(1);
+  });
+
+  it('two different items on offhand and off-hand collapse to one equipped claimant', () => {
+    const c4 = instance('shield', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'offhand' as 'head' },
+      revision: revision(2, 'phone'),
+    });
+    const c5 = instance('buckler', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'off-hand' },
+      revision: revision(3, 'tablet'),
+    });
+    const ab = mergeInventoryLedgers(ledger({ records: [c4] }), ledger({ records: [c5] }));
+    const ba = mergeInventoryLedgers(ledger({ records: [c5] }), ledger({ records: [c4] }));
+    const equipped = (blob: InventoryLedger) => blob.records.filter(row =>
+      row.kind === 'instance' && row.location.kind === 'equipped',
+    ) as OwnedItemInstance[];
+    expect(equipped(ab)).toEqual(equipped(ba));
+    expect(equipped(ab).length).toBe(1);
+    expect(equipped(ab)[0].id).toBe('buckler');
+    expect(equipped(ab)[0].location).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect((ab.records.find(row => row.id === 'shield') as OwnedItemInstance).location)
+      .toEqual({ kind: 'bag' });
   });
 });

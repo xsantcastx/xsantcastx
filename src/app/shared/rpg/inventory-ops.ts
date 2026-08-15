@@ -12,7 +12,15 @@
  * {@link INVENTORY_STACK_OPS_MAX}. C4/C5 should not lean on unbounded
  * stack history without a retain/ack window like commerce receipts.
  */
-import { SLOT_IDS, type GameItem, type ItemType, type SlotId } from './item.model';
+import {
+  PARSE_SLOT_IDS,
+  RETIRED_CHARM_TAG,
+  canonicalizeSlot,
+  isRetiredCharmSlot,
+  type GameItem,
+  type ItemType,
+  type SlotId,
+} from './item.model';
 import {
   INVENTORY_BAG_CAP,
   INVENTORY_STACK_OPS_MAX,
@@ -70,8 +78,9 @@ export function locationOf(item: GameItem): ItemLocation {
   if (typeof item.explorerId === 'string' && item.explorerId) {
     return { kind: 'explorer', explorerId: item.explorerId };
   }
-  if (item.equipped && item.slot && SLOT_IDS.includes(item.slot)) {
-    return { kind: 'equipped', slotId: item.slot };
+  if (item.equipped && item.slot && PARSE_SLOT_IDS.includes(item.slot)) {
+    const slot = canonicalizeSlot(item.slot);
+    if (slot) return { kind: 'equipped', slotId: slot };
   }
   return { kind: 'bag' };
 }
@@ -197,8 +206,8 @@ export function parseGameItem(raw: unknown): GameItem | null {
     stats,
     sellValue: finiteNumber(raw['sellValue']),
     equipped,
-    slot: equipped && typeof slot === 'string' && SLOT_IDS.includes(slot as SlotId)
-      ? slot as SlotId
+    slot: equipped && typeof slot === 'string' && PARSE_SLOT_IDS.includes(slot)
+      ? (canonicalizeSlot(slot) ?? undefined)
       : undefined,
     explorerId: typeof raw['explorerId'] === 'string' ? raw['explorerId'] : undefined,
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
@@ -247,6 +256,38 @@ export function coerceInventoryLedger(raw: unknown): InventoryLedger | null {
   const v1 = parseInventoryV1(raw);
   if (v1) return migrateV1(v1, true);
   return null;
+}
+
+/**
+ * C5: bag every charm and tag it so it cannot be worn again.
+ * offhand → off-hand is handled in parseLocation. Idempotent.
+ */
+export function retireCharms(
+  ledger: InventoryLedger,
+  deviceId: string,
+  now: number,
+): { ledger: InventoryLedger; retiredIds: string[] } {
+  const retiredIds: string[] = [];
+  let next = ledger;
+  for (const row of ledger.records) {
+    if (row.kind !== 'instance' || row.type !== 'charm') continue;
+    const tagged = row.tags.includes(RETIRED_CHARM_TAG);
+    const bagged = row.location.kind === 'bag';
+    if (tagged && bagged) continue;
+    const stepped = nextRevision(next, deviceId, now, row.revision);
+    next = {
+      ...next,
+      hlc: stepped.hlc,
+      records: next.records.map(entry => entry.id !== row.id ? entry : {
+        ...row,
+        location: { kind: 'bag' },
+        tags: tagged ? row.tags : [...row.tags, RETIRED_CHARM_TAG],
+        revision: stepped.revision,
+      }),
+    };
+    retiredIds.push(row.id);
+  }
+  return { ledger: next, retiredIds };
 }
 
 export function dropLegacyBackup(ledger: InventoryLedger): InventoryLedger {
@@ -518,8 +559,12 @@ function parseLocation(raw: unknown): ItemLocation | null {
   if (raw['kind'] === 'explorer' && typeof raw['explorerId'] === 'string' && raw['explorerId']) {
     return { kind: 'explorer', explorerId: raw['explorerId'] };
   }
-  if (raw['kind'] === 'equipped' && typeof raw['slotId'] === 'string' && SLOT_IDS.includes(raw['slotId'] as SlotId)) {
-    return { kind: 'equipped', slotId: raw['slotId'] as SlotId };
+  if (raw['kind'] === 'equipped' && typeof raw['slotId'] === 'string' && PARSE_SLOT_IDS.includes(raw['slotId'])) {
+    if (isRetiredCharmSlot(raw['slotId'])) {
+      return { kind: 'bag' };
+    }
+    const slot = canonicalizeSlot(raw['slotId']);
+    if (slot) return { kind: 'equipped', slotId: slot };
   }
   return null;
 }

@@ -19,6 +19,17 @@
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
         <img class="ld__doll-art" [src]="dollSrc" [alt]="t('loadout.doll.alt')"
              width="720" height="720" loading="lazy" decoding="async">
+        <img *ngFor="let slot of filledOverlays"
+             class="ld__overlay"
+             [src]="slot.overlay!.asset"
+             alt=""
+             loading="lazy"
+             decoding="async"
+             [style.left.%]="slot.overlay!.x"
+             [style.top.%]="slot.overlay!.y"
+             [style.width.%]="slot.overlay!.width"
+             [style.height.%]="slot.overlay!.height"
+             [style.z-index]="slot.overlay!.zIndex">
         <button
           *ngFor="let slot of dollSlots"
           type="button"
@@ -27,9 +38,10 @@
           [class.ld__slot--empty]="!itemInDoll(slot) && !!slot.liveSlot"
           [class.ld__slot--locked]="!slot.liveSlot"
           [class.ld__slot--selected]="selectedSlot === slot.slotId"
+          [class.ld__slot--target]="isTarget(slot)"
           [style.left.%]="slot.control.x"
           [style.top.%]="slot.control.y"
-          (click)="onSlotClick(slot, $event)"
+          (click)="onSlotClick(slot)"
           [attr.aria-label]="slotAnnounce(slot)"
           [attr.aria-pressed]="selectedSlot === slot.slotId"
         >
@@ -44,16 +56,17 @@
         </button>
       </div>
 
-      <div class="ld__charms" *ngIf="legacyCharms.length">
+      <div class="ld__expand" *ngIf="expandedItem as worn">
+        <p class="ld__expand-name">{{ worn.name }}</p>
+        <div class="ld__expand-actions">
+          <app-inspect-button type="item" [id]="worn.id"></app-inspect-button>
+          <button type="button" class="ld__unequip" (click)="unequipExpanded()">{{ t('loadout.unequip') }}</button>
+        </div>
+      </div>
+
+      <div class="ld__charms" *ngIf="retiredCharms.length">
         <h3 class="ld__charms-title">{{ t('loadout.charms.title') }}</h3>
         <p class="ld__charms-note">{{ t('loadout.charms.note') }}</p>
-        <ul class="ld__charms-list">
-          <li *ngFor="let charm of legacyCharms">
-            <span class="ld__charm-name">{{ charm.name }}</span>
-            <span class="ld__charm-slot">{{ charm.slot }}</span>
-            <app-inspect-button type="item" [id]="charm.id"></app-inspect-button>
-          </li>
-        </ul>
       </div>
     </div>
 
@@ -123,7 +136,8 @@
             <button type="button" class="ld__sell" *ngIf="inventory.canSell(item)" (click)="askSell(item)">
               {{ t('loadout.sell', { n: compact(item.sellValue) }) }}
             </button>
-            <span class="ld__bound" *ngIf="!inventory.canSell(item)">{{ t('loadout.soulbound') }}</span>
+            <span class="ld__bound" *ngIf="item.type === 'charm'">{{ t('loadout.charms.note') }}</span>
+            <span class="ld__bound" *ngIf="item.type !== 'charm' && !inventory.canSell(item)">{{ t('loadout.soulbound') }}</span>
           </div>
         </li>
       </ul>

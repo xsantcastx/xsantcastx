@@ -45,13 +45,21 @@ export class RpgWiringService {
     this.inventory.init();
     this.roster.init();
 
-    // Both mirrors are recomputed from scratch on every change to either source,
-    // which is cheap (a sum over at most seven worn items) and removes any
-    // question of the two staying in step. The setters on EconomyService both
-    // return early when the value has not moved, so a burst of publishes costs
-    // one write, not one per event.
+    // Recompute from scratch on every source publish. Cheap (a sum over the
+    // worn items) and keeps the two ledgers in step. Economy merge still
+    // maxes persisted rpgFlatGold — a device that last wrote the pre-C5
+    // charm bonus would otherwise keep paying it after inventory bagged the
+    // charm.
+    //
+    // Attach walks STATE_ENTRIES with economy before inventory. Mirror
+    // inventory synchronously; defer the economy remirror a microtask so
+    // a same-tick inventory rehydrate/retire is visible before we write
+    // rpgFlatGold. A later inventory-only snapshot still remirrors now.
     this.stats.snapshot$.subscribe(() => this.mirror());
     this.inventory.snapshot$.subscribe(() => this.mirror());
+    this.economy.snapshot$.subscribe(() => {
+      queueMicrotask(() => this.mirror());
+    });
     this.mirror();
   }
 
