@@ -1605,6 +1605,8 @@ export class TranslationService {
     'forge.word.set':           { en: 'Set the word', es: 'Fijar la palabra' },
     'forge.word.missing':       { en: 'Runes missing', es: 'Faltan runas' },
     'forge.word.live':          { en: 'Set. Its effect is live.', es: 'Fijada. El efecto esta activo.' },
+    'forge.pick.title':         { en: 'Choose a card', es: 'Elige una carta' },
+    'forge.pick.card':          { en: 'Card {{n}}', es: 'Carta {{n}}' },
     'forge.reveal.new':         { en: 'New rune discovered', es: 'Nueva runa descubierta' },
     'forge.reveal.dup':         { en: 'Rune found', es: 'Runa hallada' },
     'forge.reveal.owned':       { en: 'Already discovered', es: 'Ya descubierta' },

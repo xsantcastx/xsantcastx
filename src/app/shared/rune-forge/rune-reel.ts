@@ -54,3 +54,20 @@ export function buildReel(
 export function reelOffset(length: number): number {
   return -Math.max(0, length - 1) * SLOT_FACE_PX;
 }
+
+export const PICK_COUNT = 10;
+const PICK_MARKS = ['◈', '◇', '☽', 'ϟ', '✦', '✶', '⬡', '⟡', '☼', '☖'] as const;
+
+export interface PickSlot {
+  index: number;
+  mark: string;
+}
+
+/** Ten backs. The ledger already wrote the winner; the pick is theatrical. */
+export function buildPickHand(count = PICK_COUNT): PickSlot[] {
+  const n = Math.max(2, Math.floor(count));
+  return Array.from({ length: n }, (_, index) => ({
+    index,
+    mark: PICK_MARKS[index % PICK_MARKS.length],
+  }));
+}
