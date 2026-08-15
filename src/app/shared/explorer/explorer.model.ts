@@ -68,9 +68,9 @@ export interface MissionDefinition {
 
 /**
  * Three lengths, priced so that sitting on the short one is never the optimal
- * play: the hour pays roughly 20× the two-minute run for 30× the time, and it
- * is the only mission where a scroll is genuinely likely. Someone who checks in
- * twice a day should out-earn someone who refreshes all afternoon.
+ * play: the hour pays roughly 20× the two-minute run for 30× the time. Rune
+ * finds on return are a thousandth of the old rates. Someone who checks in
+ * twice a day should still out-earn someone who refreshes all afternoon.
  */
 export const MISSIONS: MissionDefinition[] = [
   {
@@ -79,10 +79,10 @@ export const MISSIONS: MissionDefinition[] = [
     label: '2 min',
     flavour: 'To the edge of the light and back before the coals cool.',
     duration: 2 * 60_000,
-    goldMin: 50,
-    goldMax: 100,
+    goldMin: 5_000,
+    goldMax: 10_000,
     xp: 5,
-    runeChance: 0.05,
+    runeChance: 0.00005,
   },
   {
     id: 'delve',
@@ -90,10 +90,10 @@ export const MISSIONS: MissionDefinition[] = [
     label: '10 min',
     flavour: 'Far enough in that the way back has to be remembered.',
     duration: 10 * 60_000,
-    goldMin: 200,
-    goldMax: 500,
+    goldMin: 20_000,
+    goldMax: 50_000,
     xp: 25,
-    runeChance: 0.15,
+    runeChance: 0.00015,
   },
   {
     id: 'expedition',
@@ -101,10 +101,10 @@ export const MISSIONS: MissionDefinition[] = [
     label: '1 hour',
     flavour: 'They pack for a week and are gone for an afternoon. Nobody has explained it.',
     duration: 60 * 60_000,
-    goldMin: 1_000,
-    goldMax: 3_000,
+    goldMin: 100_000,
+    goldMax: 300_000,
     xp: 120,
-    runeChance: 0.30,
+    runeChance: 0.0003,
   },
 ];
 

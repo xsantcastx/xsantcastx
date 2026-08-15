@@ -931,7 +931,7 @@ export function totalUpgradeLevels(e: PlayerEconomy): number {
 export const SHARD_BONUS = 0.05;
 
 /** All-time Gold that opens the reset on its own. */
-export const PRESTIGE_GOLD_THRESHOLD = 10_000_000;
+export const PRESTIGE_GOLD_THRESHOLD = 1_000_000_000;
 /** The rank that opens it instead, for a visitor who got there another way. */
 export const PRESTIGE_LEVEL_THRESHOLD = 10;
 

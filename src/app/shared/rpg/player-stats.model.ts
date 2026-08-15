@@ -133,7 +133,7 @@ export const STAT_IDS: StatId[] = STAT_DEFINITIONS.map(s => s.id);
 export const POINTS_PER_LEVEL = 3;
 
 /** What a respec costs. Flat — a build should be cheap to regret. */
-export const RESPEC_COST = 1_000;
+export const RESPEC_COST = 100_000;
 
 /**
  * The floor on Market prices after Charisma.
