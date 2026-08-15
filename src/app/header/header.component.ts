@@ -47,6 +47,8 @@ import { EconomyService, EconomySnapshot } from '../shared/economy/economy.servi
 import { formatCurrency } from '../shared/economy/economy.model';
 import { MORE_NAV, NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
+import { InventoryService } from '../shared/rpg/inventory.service';
+import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
 interface TomeSection {
   titleKey: string;
@@ -67,6 +69,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private eggs = inject(EasterEggService);
   private xp = inject(XpService);
   private economy = inject(EconomyService);
+  private inventory = inject(InventoryService);
+  readonly keeper = inject(KeeperPanelService);
 
   private navbarEl: HTMLElement | null = null;
   private scrollHandler?: () => void;
@@ -145,6 +149,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   get xpNow(): number { return this.snap.xp; }
   /** The XP figure the next rank starts at, for the "1,364 / 2,500" readout. */
   get xpTarget(): number { return this.snap.next ? this.snap.next.minXp : this.snap.xp; }
+  get bagCount(): number { return this.inventory.snapshot.bag.length; }
+
+  openCharacter(): void { this.closeMobileMenu(); this.keeper.toggle('character'); }
+  openBank(): void { this.closeMobileMenu(); this.keeper.toggle('bank'); }
 
   ngOnInit(): void {
     this.langSub = this.translationService.currentLanguage$.subscribe(lang => {
@@ -169,6 +177,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       // tool awards XP or the ambient forge ticks Gold.
       void this.xp.init();
       this.economy.init();
+      this.inventory.init();
       this.xpSub = this.xp.snapshot$.subscribe(s => { this.snap = s; this.cdr.markForCheck(); });
       this.ecoSub = this.economy.snapshot$.subscribe(e => { this.eco = e; this.cdr.markForCheck(); });
     }

@@ -80,6 +80,7 @@ import { CodexAchievement, buildAchievements } from '../codex/codex.model';
 import { PIN_SLOTS, PinnedAchievementsService } from './pinned-achievements.service';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
+import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
@@ -326,6 +327,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   private readonly pins = inject(PinnedAchievementsService);
   private readonly storage = inject(ProgressStorageService);
   private readonly overlays = inject(OverlayStackService);
+  private readonly keeperPanel = inject(KeeperPanelService);
 
   private subs: Subscription[] = [];
 
@@ -441,10 +443,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   }
 
   openBank(): void {
-    if (this.bankOpen) return;
-    this.bankOpen = true;
-    this.unbank = this.overlays.push('keeper-bank', () => this.closeBank());
-    if (this.isBrowser) document.body.style.overflow = 'hidden';
+    this.keeperPanel.show('bank');
   }
 
   closeBank(): void {
