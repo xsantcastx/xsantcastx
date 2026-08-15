@@ -451,5 +451,32 @@ describe('inventory adapter (C3)', () => {
       (blob.records.find(row => row.id === 'blade') as OwnedItemInstance).location;
     expect(loc(ab)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
     expect(loc(ba)).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect(ab.records.filter(row =>
+      row.kind === 'instance' && row.location.kind === 'equipped',
+    ).length).toBe(1);
+  });
+
+  it('two different items on offhand and off-hand collapse to one equipped claimant', () => {
+    const c4 = instance('shield', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'offhand' as 'head' },
+      revision: revision(2, 'phone'),
+    });
+    const c5 = instance('buckler', {
+      type: 'artifact',
+      location: { kind: 'equipped', slotId: 'off-hand' },
+      revision: revision(3, 'tablet'),
+    });
+    const ab = mergeInventoryLedgers(ledger({ records: [c4] }), ledger({ records: [c5] }));
+    const ba = mergeInventoryLedgers(ledger({ records: [c5] }), ledger({ records: [c4] }));
+    const equipped = (blob: InventoryLedger) => blob.records.filter(row =>
+      row.kind === 'instance' && row.location.kind === 'equipped',
+    ) as OwnedItemInstance[];
+    expect(equipped(ab)).toEqual(equipped(ba));
+    expect(equipped(ab).length).toBe(1);
+    expect(equipped(ab)[0].id).toBe('buckler');
+    expect(equipped(ab)[0].location).toEqual({ kind: 'equipped', slotId: 'off-hand' });
+    expect((ab.records.find(row => row.id === 'shield') as OwnedItemInstance).location)
+      .toEqual({ kind: 'bag' });
   });
 });
