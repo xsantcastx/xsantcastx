@@ -1099,6 +1099,193 @@
   .fk-id__coin { justify-content: start; }
 }
 
+/* ── Character hall (RuneScape select) ─────────────────────────────────── */
+
+.fk-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-height: calc(100dvh - 140px);
+  padding: 12px 0 32px;
+}
+
+.fk-stage__name { text-align: center; }
+.fk-stage__hall {
+  margin: 0 0 4px;
+  font: 600 11px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #c9a84c;
+}
+.fk-stage__title {
+  margin: 0;
+  font: 700 clamp(28px, 5vw, 42px)/1.1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  color: #f4e7c3;
+  text-shadow: 0 2px 0 #1a1204, 0 0 24px rgba(201, 168, 76, .35);
+}
+.fk-stage__level {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #cbb98a;
+}
+.fk-stage__next { display: block; margin-top: 4px; color: #8d7b52; font-size: 12px; }
+
+.fk-stage__frame {
+  width: min(420px, 100%);
+  padding: 14px 14px 8px;
+  border: 3px solid #6a5424;
+  box-shadow:
+    inset 0 0 0 1px #c9a84c,
+    0 0 0 4px #1a1208,
+    0 24px 50px rgba(0, 0, 0, .55);
+  background:
+    linear-gradient(180deg, rgba(42, 30, 12, .55), rgba(10, 8, 6, .72));
+}
+
+.fk-stage__bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  font: 700 14px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  color: #f4e7c3;
+}
+.fk-stage__coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fk-stage__rate { color: #9fb4ae; font-family: system-ui, sans-serif; font-weight: 600; }
+
+.fk-stage__acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.fk-stage__play,
+.fk-bank-open,
+.fk-stage__records {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 2px;
+  border: 2px solid #c9a84c;
+  background: linear-gradient(180deg, #3d2a0e, #1a1208);
+  color: #f4e7c3;
+  font: 700 13px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.fk-stage__play { background: linear-gradient(180deg, #5a3d12, #2a1a06); }
+.fk-bank-open__n {
+  min-width: 1.4em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: #1a1208;
+  color: #c9a84c;
+  font-variant-numeric: tabular-nums;
+}
+.fk-stage__save { width: min(360px, 100%); }
+.fk-stage__records { border-color: #6a5424; color: #cbb98a; }
+
+/* ── Bank chest ────────────────────────────────────────────────────────── */
+
+.fk-bank {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.fk-bank__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(4, 2, 8, .78);
+  cursor: pointer;
+}
+.fk-bank__chest {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 100%);
+  max-height: min(88dvh, 820px);
+  overflow: auto;
+  padding: 16px;
+  border: 3px solid #6a5424;
+  box-shadow: inset 0 0 0 1px #c9a84c, 0 24px 70px rgba(0, 0, 0, .75);
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(201, 168, 76, .08), transparent 60%),
+    #120e08;
+}
+.fk-bank__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fk-bank__title {
+  margin: 0;
+  font: 700 22px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  color: #f4e7c3;
+}
+.fk-bank__count { margin: 0 auto 0 0; color: #cbb98a; font-size: 13px; }
+.fk-bank__mode,
+.fk-bank__close {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #6a5424;
+  background: #1a1208;
+  color: #f4e7c3;
+  cursor: pointer;
+  font: 600 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+}
+.fk-bank__shelf { margin: 0; padding: 0; background: transparent; border: 0; }
+
+.fk-bank__slots {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+.fk-bank__slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4a3a1c;
+  background:
+    linear-gradient(180deg, #2a2110, #14100a);
+  color: #f4e7c3;
+  box-shadow: inset 0 0 0 1px rgba(201, 168, 76, .18);
+}
+.fk-bank__slot--empty {
+  background: #0c0a06;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, .65);
+}
+.fk-bank__glyph { font-size: 22px; line-height: 1; }
+.fk-bank__qty {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font: 700 11px/1 system-ui, sans-serif;
+  color: #ffd97a;
+}
+
+@media (max-width: 620px) {
+  .fk-bank__slots { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .fk-stage { min-height: auto; }
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
