@@ -13,7 +13,8 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { formatCompact } from '../economy/economy.model';
-import { InventoryService, InventorySnapshot, MAX_INVENTORY } from './inventory.service';
+import { InventoryService, InventorySnapshot, InventoryStackView, MAX_INVENTORY } from './inventory.service';
+import { materialDisplay } from './material-catalog';
 import { MagicFindService } from './magic-find.service';
 import {
   GameItem,
@@ -69,6 +70,8 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   selectedId: string | null = null;
   selectedSlot: string | null = null;
   confirming: GameItem | null = null;
+  dropping: GameItem | null = null;
+  droppingStack: InventoryStackView | null = null;
   category: BagCategory = 'all';
   rarity: BagRarity = 'all';
   sort: BagSort = 'newest';
@@ -211,6 +214,55 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     this.selectedId = this.selectedId === item.id ? null : item.id;
   }
 
+  stackName(stack: InventoryStackView): string {
+    return materialDisplay(stack.stackKey)?.name ?? stack.stackKey;
+  }
+
+  stackArt(stack: InventoryStackView): string | null {
+    return materialDisplay(stack.stackKey)?.art ?? null;
+  }
+
+  onTileActivate(event: MouseEvent, item: GameItem): void {
+    if (event.shiftKey) {
+      event.preventDefault();
+      this.askDrop(item);
+      return;
+    }
+    this.select(item);
+  }
+
+  askDrop(item: GameItem): void {
+    if (!this.inventory.canDrop(item)) return;
+    if (this.inventory.needsConfirm(item)) {
+      this.dropping = item;
+      this.confirming = null;
+      return;
+    }
+    this.inventory.drop(item.id);
+  }
+
+  confirmDrop(): void {
+    if (!this.dropping) return;
+    this.inventory.drop(this.dropping.id);
+    this.dropping = null;
+  }
+
+  askDropStack(stack: InventoryStackView): void {
+    if (stack.quantity > 1) {
+      this.droppingStack = stack;
+      this.dropping = null;
+      this.confirming = null;
+      return;
+    }
+    this.inventory.dropStack(stack.stackKey);
+  }
+
+  confirmDropStack(): void {
+    if (!this.droppingStack) return;
+    this.inventory.dropStack(this.droppingStack.stackKey);
+    this.droppingStack = null;
+  }
+
   setCategory(value: string): void { this.setFilter('category', this.oneOf(value, CATS, 'all')); }
   setRarity(value: string): void { this.setFilter('rarity', this.oneOf(value, RARS, 'all')); }
   setSort(value: string): void { this.setFilter('sort', this.oneOf(value, SORTS, 'newest')); }
@@ -251,6 +303,8 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     if (!this.confirming) return;
     this.inventory.sell(this.confirming.id);
     this.confirming = null;
+    this.dropping = null;
+    this.droppingStack = null;
   }
 
   private bagCategory(item: GameItem): BagCategory {

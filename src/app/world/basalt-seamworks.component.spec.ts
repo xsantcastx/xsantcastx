@@ -1,7 +1,7 @@
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
@@ -9,6 +9,8 @@ import { emptyActivityLedger } from '../shared/activity/activity.model';
 import { ChapterGateway } from '../shared/narrative/chapter.gateway';
 import { emptyChapterLedger } from '../shared/narrative/chapter.model';
 import { BasaltSeamworksComponent } from './basalt-seamworks.component';
+import { InventoryService } from '../shared/rpg/inventory.service';
+import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
 describe('BasaltSeamworksComponent', () => {
   let fixture: ComponentFixture<BasaltSeamworksComponent>;
@@ -19,6 +21,7 @@ describe('BasaltSeamworksComponent', () => {
     init: () => { /* noop */ },
     selectCurrentWork: () => ({ locationId: 'infernal/basalt-seamworks' }),
     recoveryRemainingMs: () => 0,
+    bagCanTakeOre: () => true,
     resolveMine: () => ({
       ok: true as const,
       replayed: false,
@@ -44,6 +47,15 @@ describe('BasaltSeamworksComponent', () => {
         TranslationService,
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: ActivityProgressionGateway, useValue: activity },
+        {
+          provide: InventoryService,
+          useValue: {
+            snapshot: { bag: [], stacks: [], usedRows: 0, full: false },
+            snapshot$: of({ bag: [], stacks: [], usedRows: 0, full: false }),
+            init: () => { /* noop */ },
+          },
+        },
+        { provide: KeeperPanelService, useValue: { show: () => { /* noop */ } } },
         {
           provide: ChapterGateway,
           useValue: {
