@@ -6,7 +6,7 @@
  * instance/stack writer; Rune Forge remains the rune-count writer.
  */
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -18,7 +18,16 @@ import { GameItem } from '../rpg/item.model';
 import { RuneForgeService, type RuneSnapshot } from '../rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../rune-forge/rune.model';
 import { runeCard } from '../rune-forge/rune-cards';
+import { GameStateGateway } from '../save/game-state.gateway';
 import { CharacterHubService } from './character-hub.service';
+import {
+  FRESH_MS,
+  isRareItemTier,
+  isRareStack,
+  loadSeen,
+  markSeen,
+  persistSeen,
+} from './bank-unseen';
 
 export type BankKind = 'all' | 'items' | 'materials' | 'runes';
 export type BankSort = 'newest' | 'name';
@@ -35,12 +44,16 @@ export interface BankRow {
   dropItem?: GameItem;
   dropStack?: InventoryStackView;
   foundAt?: string;
+  isNew?: boolean;
+  isRare?: boolean;
+  delta?: number;
 }
 
 @Component({
   selector: 'app-hub-bank',
   standalone: true,
   imports: [NgTemplateOutlet, InspectButtonComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './hub-bank.component.html',
   styleUrls: ['./hub-bank.component.css'],
 })
@@ -50,7 +63,16 @@ export class HubBankComponent implements OnInit, OnDestroy {
   private readonly hub = inject(CharacterHubService);
   private readonly i18n = inject(TranslationService);
   private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(GameStateGateway);
+  private readonly cdr = inject(ChangeDetectorRef);
   private sub?: Subscription;
+  private seen = new Set<string>();
+  private prevQty = new Map<string, number>();
+  private fresh = new Map<string, { delta: number; rare: boolean; until: number }>();
+  private seeded = false;
+  private gotInv = false;
+  private gotRunes = false;
+  private freshTimer: ReturnType<typeof setTimeout> | null = null;
 
   snap: InventorySnapshot = this.inventory.snapshot;
   runeSnap: RuneSnapshot = this.runes.snapshot;
@@ -71,20 +93,31 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.runes.init();
     this.sub = this.inventory.snapshot$.subscribe(snap => {
       this.snap = snap;
+      this.gotInv = true;
+      this.noteSnapshot();
       this.pruneChecked();
+      this.cdr.markForCheck();
     });
-    this.sub.add(this.runes.snapshot$.subscribe(snap => { this.runeSnap = snap; }));
+    this.sub.add(this.runes.snapshot$.subscribe(snap => {
+      this.runeSnap = snap;
+      this.gotRunes = true;
+      this.noteSnapshot();
+      this.cdr.markForCheck();
+    }));
     this.sub.add(this.hub.armed$.subscribe(id => {
       if (id) this.selectedId = id;
+      this.cdr.markForCheck();
     }));
     this.sub.add(this.route.queryParamMap.subscribe(params => {
       const focus = params.get('item');
       if (focus) this.selectedId = focus;
+      this.cdr.markForCheck();
     }));
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    if (this.freshTimer !== null) clearTimeout(this.freshTimer);
   }
 
   t(key: string, vars?: Record<string, string | number>): string {
@@ -151,6 +184,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
   select(row: BankRow): void {
     this.selectedId = this.selectedId === row.id ? null : row.id;
     this.hub.arm(row.dropItem && this.selectedId === row.id ? row.dropItem.id : null);
+    this.acknowledge(row.id);
   }
 
   askDrop(item: GameItem, event?: Event): void {
@@ -261,11 +295,85 @@ export class HubBankComponent implements OnInit, OnDestroy {
   private sorted(rows: BankRow[]): BankRow[] {
     return [...rows].sort((a, b) => {
       if (this.sort === 'name') return a.name.localeCompare(b.name);
+      const fresh = (b.delta ?? 0) - (a.delta ?? 0);
+      if (fresh) return fresh;
+      const news = Number(!!b.isNew) - Number(!!a.isNew);
+      if (news) return news;
       return (b.foundAt ?? '').localeCompare(a.foundAt ?? '') || a.name.localeCompare(b.name);
     });
   }
 
+  private decorate(row: BankRow): BankRow {
+    const mark = this.fresh.get(row.id);
+    const live = !!mark && mark.until > Date.now();
+    const rare = this.rowRare(row);
+    return {
+      ...row,
+      isNew: this.seeded && !this.seen.has(row.id),
+      isRare: rare,
+      delta: live && mark ? mark.delta : 0,
+    };
+  }
+
+  private rowRare(row: BankRow): boolean {
+    if (row.dropStack && isRareStack(row.dropStack.stackKey)) return true;
+    return !!row.dropItem && isRareItemTier(row.dropItem.rarity);
+  }
+
+  private acknowledge(id: string): void {
+    this.seen = markSeen(this.seen, id);
+    persistSeen(this.store, this.seen);
+    this.cdr.markForCheck();
+  }
+
+  private noteSnapshot(): void {
+    const rows = this.rawRows();
+    if (!this.seeded) {
+      if (!this.gotInv || !this.gotRunes) return;
+      this.seen = loadSeen(this.store, rows.map(row => row.id));
+      for (const row of rows) this.prevQty.set(row.id, row.qty);
+      this.seeded = true;
+      return;
+    }
+    const now = Date.now();
+    for (const row of rows) {
+      const before = this.prevQty.get(row.id) ?? 0;
+      if (row.qty > before) {
+        this.fresh.set(row.id, {
+          delta: row.qty - before,
+          rare: this.rowRare(row),
+          until: now + FRESH_MS,
+        });
+      }
+      this.prevQty.set(row.id, row.qty);
+    }
+    this.pruneFresh(now);
+    this.scheduleFresh();
+  }
+
+  private pruneFresh(now = Date.now()): void {
+    for (const [id, mark] of this.fresh) {
+      if (mark.until <= now) this.fresh.delete(id);
+    }
+  }
+
+  private scheduleFresh(): void {
+    if (this.freshTimer !== null) clearTimeout(this.freshTimer);
+    let next = Infinity;
+    for (const mark of this.fresh.values()) next = Math.min(next, mark.until);
+    if (!Number.isFinite(next)) return;
+    this.freshTimer = setTimeout(() => {
+      this.pruneFresh();
+      this.cdr.markForCheck();
+      this.scheduleFresh();
+    }, Math.max(0, next - Date.now()));
+  }
+
   private allRows(): BankRow[] {
+    return this.rawRows().map(row => this.decorate(row));
+  }
+
+  private rawRows(): BankRow[] {
     const rows: BankRow[] = [];
     for (const item of this.snap.bag) {
       const kind = item.type === 'rune' || item.type === 'runeword' ? item.type : 'item';

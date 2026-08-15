@@ -89,6 +89,27 @@
   padding: 0.4rem;
 }
 .hb__tile.is-on, .hb__tile.is-checked { border-color: #c9a84c; }
+.hb__tile.is-fresh {
+  border-color: #c9a84c;
+  box-shadow: 0 0 16px -6px rgba(201, 168, 76, 0.85);
+}
+.hb__tile.is-rare { border-color: #E4A83A; }
+.hb__tile.is-new:not(.is-rare) { border-color: #d6a84f; }
+.hb__flag {
+  display: inline-block;
+  margin-right: 0.35rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+.hb__flag--new { color: #d6a84f; }
+.hb__flag--rare { color: #E4A83A; }
+.hb__gain {
+  display: block;
+  color: #d6a84f;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
 .hb__check {
   position: absolute;
   top: 4px; right: 4px;
@@ -130,7 +151,15 @@
   font-size: 0.68rem;
 }
 .hb__meta { grid-column: 2; font-size: 0.72rem; color: #8b7a52; }
-.hb__qty { grid-column: 3; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; }
+.hb__qty {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: right;
+}
 .hb__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
 .hb__confirm {
