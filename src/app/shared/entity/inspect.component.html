@@ -79,6 +79,23 @@
           </dl>
         }
 
+        @if (temperPreview) {
+          <div class="qi__temper">
+            <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: maxLevel }) }}</p>
+            <p class="qi__temper-cost">{{ t('inspect.temper.cost', { gold: temperGold(), mats: temperMats(), chance: temperChance() }) }}</p>
+            <button
+              type="button"
+              class="qi__btn"
+              [disabled]="!canTemper"
+              (click)="temper()">
+              {{ t('inspect.temper.act') }}
+            </button>
+            @if (temperNote) {
+              <p class="qi__temper-note" role="status">{{ temperNote }}</p>
+            }
+          </div>
+        }
+
         @if (view.resolution?.actions?.length) {
           <ul class="qi__actions">
             @for (action of view.resolution?.actions ?? []; track action.id) {

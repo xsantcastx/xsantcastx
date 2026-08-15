@@ -73,6 +73,15 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import {
+  applyUpgradeBonus,
+  isTemperableKind,
+  previewUpgrade,
+  rollUpgradeSuccess,
+  upgradeLevelOf,
+  MAX_UPGRADE_LEVEL,
+  type UpgradePreview,
+} from './item-upgrade';
 
 export const INVENTORY_KEY = 'godforge-inventory';
 
@@ -374,6 +383,118 @@ export class InventoryService {
     this.publish();
     this.acquired$$.next(item);
     return { ok: true, item, replayed: false };
+  }
+
+  previewUpgrade(item: GameItem): UpgradePreview | null {
+    return previewUpgrade(item);
+  }
+
+  canUpgrade(item: GameItem): boolean {
+    const preview = previewUpgrade(item);
+    if (!preview) return false;
+    if (this.economy.snapshot.gold < preview.gold) return false;
+    return preview.materials.every(mat => this.stackOf(mat.id) >= mat.quantity);
+  }
+
+  /**
+   * Temper one instance. Same mutation id replays the stored result.
+   * Gold and materials are spent even on a fail. Inventory writes first;
+   * a missed Gold debit rolls the ledger back.
+   */
+  upgrade(
+    itemId: string,
+    mutationId: string,
+    now = Date.now(),
+    rng: () => number = Math.random,
+  ):
+    | { ok: true; item: GameItem; replayed: boolean; leveled: boolean }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'max' | 'kind' | 'funds' | 'mats' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!itemId || !mutationId || !Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    const item = this.itemById(itemId);
+    if (!item) return { ok: false, code: 'missing' };
+    if (item.lastUpgradeMutationId === mutationId) {
+      return { ok: true, item, replayed: true, leveled: item.lastUpgradeOk === true };
+    }
+    if (!isTemperableKind(item.type)) return { ok: false, code: 'kind' };
+
+    const level = upgradeLevelOf(item);
+    if (level >= MAX_UPGRADE_LEVEL) return { ok: false, code: 'max' };
+    const preview = previewUpgrade(item);
+    if (!preview) return { ok: false, code: 'max' };
+    if (this.economy.snapshot.gold < preview.gold) return { ok: false, code: 'funds' };
+    if (preview.materials.some(mat => this.stackOf(mat.id) < mat.quantity)) {
+      return { ok: false, code: 'mats' };
+    }
+
+    const previous = this.ledger;
+    const foundAt = new Date(now).toISOString();
+    let stackOps = this.ledger.stackOps;
+    for (const mat of preview.materials) {
+      const stepped = this.advanceRevision();
+      stackOps = applyStackOp(stackOps, {
+        id: `${mutationId}:${mat.id}`,
+        stackKey: mat.id,
+        kind: 'consume',
+        quantity: mat.quantity,
+        hlc: stepped.revision.hlc,
+        deviceId: stepped.revision.deviceId,
+        sequence: stepped.revision.sequence,
+      });
+    }
+
+    const success = rollUpgradeSuccess(level, rng);
+    let nextItem: GameItem = {
+      ...item,
+      lastUpgradeAt: foundAt,
+      lastUpgradeMutationId: mutationId,
+      lastUpgradeOk: success,
+    };
+    if (success) {
+      nextItem = {
+        ...nextItem,
+        upgradeLevel: level + 1,
+        stats: applyUpgradeBonus(item.stats, item.rarity, 1),
+      };
+    } else if (preview.policy.downgradeOnFail && level > 0) {
+      nextItem = {
+        ...nextItem,
+        upgradeLevel: level - 1,
+        stats: applyUpgradeBonus(item.stats, item.rarity, -1),
+      };
+    }
+
+    this.ledger = { ...this.ledger, stackOps };
+    if (preview.materials.some(mat => this.stackOf(mat.id) < 0)) {
+      this.ledger = previous;
+      return { ok: false, code: 'mats' };
+    }
+
+    if (!success && preview.policy.shatterOnFail) {
+      const row = this.ledger.records.find(entry => entry.id === itemId);
+      const gone = this.advanceRevision(row?.revision);
+      this.ledger = tombstoneRecord(this.ledger, itemId, gone.revision, now);
+    } else {
+      this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(nextItem)));
+    }
+
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    if (!this.economy.spendGold(preview.gold, 'temper')) {
+      this.ledger = previous;
+      this.save();
+      this.publish();
+      return { ok: false, code: 'funds' };
+    }
+    this.publish();
+    const stored = this.itemById(itemId);
+    if (!success && preview.policy.shatterOnFail) {
+      return { ok: true, item: nextItem, replayed: false, leveled: false };
+    }
+    return { ok: true, item: stored ?? nextItem, replayed: false, leveled: success };
   }
 
   canDrop(item: GameItem): boolean {

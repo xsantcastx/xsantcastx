@@ -122,6 +122,13 @@
   font-size: 0.72rem;
 }
 .hb__name { font-weight: 600; padding-right: 36px; }
+.hb__lvl {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid #c9a84c;
+  color: #c9a84c;
+  font-size: 0.68rem;
+}
 .hb__meta { grid-column: 2; font-size: 0.72rem; color: #8b7a52; }
 .hb__qty { grid-column: 3; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; }
 .hb__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

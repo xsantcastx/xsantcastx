@@ -181,6 +181,12 @@ export class EntityResolver {
         exactValue: exact,
       });
     }
+    const level = item.upgradeLevel ?? 0;
+    facts.push({
+      label: this.t('inspect.fact.temper'),
+      value: this.t('inspect.fact.temperValue', { n: level }),
+      exactValue: String(level),
+    });
     if (!item.soulbound) {
       facts.push(this.moneyFact(this.t('inspect.fact.sellValue'), item.sellValue));
     }

@@ -22,6 +22,9 @@ import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
 import { type EntityAction, type EntityFact } from './entity.model';
 import { InventoryService } from '../rpg/inventory.service';
+import { previewUpgrade, upgradeLevelOf, MAX_UPGRADE_LEVEL } from '../rpg/item-upgrade';
+import { formatCurrency } from '../economy/economy.model';
+import type { GameItem } from '../rpg/item.model';
 
 @Component({
   selector: 'app-inspect',
@@ -45,6 +48,8 @@ export class InspectComponent implements OnInit, OnDestroy {
 
   view: InspectView = this.inspect.view;
   sheet = false;
+  temperNote: string | null = null;
+  readonly maxLevel = MAX_UPGRADE_LEVEL;
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
@@ -52,9 +57,11 @@ export class InspectComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.inspect.start();
+    this.inventory.init();
     this.sub = this.inspect.view$.subscribe(view => {
       const opened = view.open && !this.view.open;
       this.view = view;
+      if (opened) this.temperNote = null;
       this.cdr.markForCheck();
       if (opened) {
         const focusTitle = () => this.titleEl?.nativeElement.focus();
@@ -62,6 +69,7 @@ export class InspectComponent implements OnInit, OnDestroy {
         else setTimeout(focusTitle, 0);
       }
     });
+    this.sub.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
     if (this.isBrowser && typeof window.matchMedia === 'function') {
       this.media = window.matchMedia('(max-width: 768px)');
       this.sheet = this.media.matches;
@@ -93,6 +101,58 @@ export class InspectComponent implements OnInit, OnDestroy {
     this.inventory.init();
     this.inventory.equip(this.view.ref.id, 'weapon');
     this.inspect.retry();
+  }
+
+  get inspectedItem(): GameItem | null {
+    const ref = this.view.ref;
+    if (!ref || ref.type !== 'item') return null;
+    return this.inventory.itemById(ref.id) ?? null;
+  }
+
+  get temperPreview() {
+    const item = this.inspectedItem;
+    return item ? previewUpgrade(item) : null;
+  }
+
+  get temperLevel(): number {
+    return this.inspectedItem ? upgradeLevelOf(this.inspectedItem) : 0;
+  }
+
+  get canTemper(): boolean {
+    return !!this.inspectedItem && this.inventory.canUpgrade(this.inspectedItem);
+  }
+
+  temperGold(): string {
+    return this.temperPreview ? formatCurrency(this.temperPreview.gold) : '';
+  }
+
+  temperChance(): string {
+    return this.temperPreview ? `${Math.round(this.temperPreview.successChance * 100)}` : '';
+  }
+
+  temperMats(): string {
+    return this.temperPreview
+      ? this.temperPreview.materials.map(row => `×${row.quantity} ${row.id}`).join(' · ')
+      : '';
+  }
+
+  temper(): void {
+    const item = this.inspectedItem;
+    if (!item) return;
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `temper-${Date.now()}`;
+    const result = this.inventory.upgrade(item.id, id);
+    if (!result.ok) {
+      this.temperNote = this.t('inspect.temper.blocked');
+      this.cdr.markForCheck();
+      return;
+    }
+    this.temperNote = result.leveled
+      ? this.t('inspect.temper.ok', { n: upgradeLevelOf(result.item) })
+      : this.t('inspect.temper.fail');
+    this.inspect.retry();
+    this.cdr.markForCheck();
   }
 
   factValue(fact: EntityFact): string {
