@@ -93,3 +93,25 @@ test('/world — atlas artwork decodes', async ({ page }) => {
     .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth), { timeout: 15000 })
     .toBeGreaterThan(0);
 });
+
+test('/character — the sheet paints above the scene', async ({ page }) => {
+  await page.goto('/character', { waitUntil: 'domcontentloaded' });
+
+  const sheet = page.locator('.fk').first();
+  await expect(sheet).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The Forge Keeper' })).toBeVisible();
+
+  const stack = await page.evaluate(() => {
+    const scene = document.querySelector('.scene');
+    const fk = document.querySelector('.fk');
+    if (!scene || !fk) return null;
+    return {
+      sceneZ: getComputedStyle(scene).zIndex,
+      sheetZ: getComputedStyle(fk).zIndex,
+    };
+  });
+
+  expect(stack, 'scene and .fk must both be in the DOM').not.toBeNull();
+  expect(Number(stack!.sheetZ), `.fk z-index should beat the scene (${stack!.sceneZ})`)
+    .toBeGreaterThan(Number(stack!.sceneZ));
+});
