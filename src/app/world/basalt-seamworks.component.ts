@@ -27,6 +27,8 @@ import {
 import { ChapterGateway } from '../shared/narrative/chapter.gateway';
 import { infernalChoiceById } from '../shared/narrative/infernal-chapter';
 import { CINDER_ORE_DISPLAY, EMBER_RESIDUE_DISPLAY } from '../shared/rpg/material-catalog';
+import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
+import { InventoryService } from '../shared/rpg/inventory.service';
 
 type MinePanelState =
   | 'available'
@@ -46,6 +48,8 @@ type MinePanelState =
 })
 export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   private readonly activity = inject(ActivityProgressionGateway);
+  private readonly keeper = inject(KeeperPanelService);
+  private readonly inventory = inject(InventoryService);
   private readonly chapters = inject(ChapterGateway);
   private readonly i18n = inject(TranslationService);
   private readonly title = inject(Title);
@@ -73,6 +77,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     this.chapters.init();
     this.title.setTitle(this.t('seamworks.titlePage'));
     this.sub = this.activity.snapshot$.subscribe(snap => { this.snap = snap; });
+    this.sub.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
     this.sub.add(this.i18n.currentLanguage$.subscribe(() => {
       this.title.setTitle(this.t('seamworks.titlePage'));
     }));
@@ -80,6 +85,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       if (!this.activity.snapshot.currentWork) {
         this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID);
       }
+      if (!this.activity.bagCanTakeOre()) this.keeper.show('bank');
       this.clock = setInterval(() => {
         this.now = Date.now();
         this.cdr.markForCheck();
@@ -107,11 +113,15 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   panelState(): MinePanelState {
     if (this.busy) return 'resolving';
     if (this.lastError === 'persist') return 'persist';
-    if (this.lastError === 'capacity') return 'capacity';
+    if (!this.activity.bagCanTakeOre()) return 'capacity';
     if (this.lastError === 'location' || this.lastError === 'not-selected') return 'location';
     if (this.remain() > 0) return 'recovering';
     if (!this.isBrowser) return 'unavailable';
     return 'available';
+  }
+
+  openBag(): void {
+    this.keeper.show('bank');
   }
 
   mineDisabled(): boolean {
@@ -139,6 +149,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       return;
     }
     this.lastError = result.code;
+    if (result.code === 'capacity') this.keeper.show('bank');
     if (result.code !== 'persist') this.pendingId = null;
   }
 

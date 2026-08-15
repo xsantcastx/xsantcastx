@@ -1,0 +1,37 @@
+:host { display: block; }
+
+.ch__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ch__tab {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 2px solid #6a5424;
+  background: #1a1208;
+  color: #f4e7c3;
+  font: 700 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ch__tab.is-on {
+  border-color: #c9a84c;
+  background: #3d2a0e;
+}
+.ch__tab:focus-visible {
+  outline: 2px solid #ffc669;
+  outline-offset: 2px;
+}
+.ch__more { color: #cbb98a; }
+
+.ch[data-variant='drawer'] .ch__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #120e08;
+  padding-bottom: 6px;
+}

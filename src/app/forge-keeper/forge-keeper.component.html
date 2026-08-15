@@ -12,139 +12,46 @@
   exists after hydration is a panel that pops in.
 -->
 <section class="fk"
+         [class.fk--bank-open]="bankOpen"
          [style.--fk-affinity]="affinityColor"
          [style.--fk-affinity-glow]="affinityGlow">
 
-  <!-- ══ Masthead ═══════════════════════════════════════════════════════ -->
-  <header class="fk__head">
-    <p class="fk__eyebrow">
-      <span class="fk__eyebrow-pulse" aria-hidden="true"></span>
-      Your Forge
-    </p>
-    <h1 class="fk__title">The Forge Keeper</h1>
-    <p class="fk__tagline">everything the realm has written down about you</p>
-  </header>
-
-  <!-- ══ 1. Identity card ═══════════════════════════════════════════════ -->
-  <section class="fk-id" aria-labelledby="fk-id-title">
-
-    <!-- The sigil. Point count *is* the rank — see the note in the component. -->
-    <div class="fk-id__sigil" aria-hidden="true">
-      <svg viewBox="0 0 200 200" class="fk-sigil" role="presentation" focusable="false">
-        <circle class="fk-sigil__ring fk-sigil__ring--outer" cx="100" cy="100" r="88" />
-        <circle class="fk-sigil__ring fk-sigil__ring--inner" cx="100" cy="100" r="66" />
-        @if (sigilPolygon) {
-          <polygon class="fk-sigil__star" [attr.points]="sigilPolygon" />
+  <div class="fk-stage">
+    <header class="fk-stage__name">
+      <p class="fk-stage__hall">The Forge Keeper</p>
+      <h1 class="fk-stage__title" id="fk-id-title">{{ rankTitle }}</h1>
+      <p class="fk-stage__level">Level {{ snap.level.level }}
+        @if (snap.next) {
+          <span class="fk-stage__next">{{ money(snap.toNext) }} XP to {{ snap.next.title }}</span>
         }
-        @for (p of sigilPoints; track $index) {
-          <circle class="fk-sigil__point" [attr.cx]="p.x" [attr.cy]="p.y" r="5" />
-        }
-        <circle class="fk-sigil__core" cx="100" cy="100" r="34" />
-        <image class="fk-sigil__art" [attr.href]="rankSigil(snap.level.level)"
-               x="56" y="56" width="88" height="88" preserveAspectRatio="xMidYMid meet" />
-      </svg>
+      </p>
+    </header>
+
+    <div class="fk-stage__bar" aria-label="Purse">
+      <span class="fk-stage__coin">
+        <img src="assets/icons/currencies/gold.png" alt="" width="20" height="20">
+        {{ money(wallet.gold) }}
+      </span>
+      <span class="fk-stage__coin">
+        <img src="assets/icons/currencies/essence.png" alt="" width="20" height="20">
+        {{ money(wallet.essence) }}
+      </span>
+      <span class="fk-stage__rate">{{ perSecond }} / sec</span>
     </div>
 
-    <div class="fk-id__body">
-      <p class="fk-id__rank" id="fk-id-title">
-        @if (titlePrefix) {
-          <span class="fk-id__prefix">{{ titlePrefix }}</span>
-        }
-        <span class="fk-id__rank-name">{{ rankTitle }}</span>
-        <span class="fk-id__rank-sep" aria-hidden="true">·</span>
-        <span class="fk-id__rank-level">Level {{ snap.level.level }}</span>
-      </p>
+    <div class="fk-stage__acts">
+      <a routerLink="/world" class="fk-stage__play">Enter the World</a>
+      <button type="button" class="fk-catalogue-open" (click)="openCatalogue()">
+        Catalogue
+      </button>
+    </div>
 
-      <!-- XP to the next rank -->
-      <div class="fk-id__xp">
-        <div class="fk-id__xp-bar"
-             role="progressbar"
-             [attr.aria-valuenow]="xpPercent"
-             aria-valuemin="0"
-             aria-valuemax="100"
-             [attr.aria-label]="'Progress to the next rank: ' + xpPercent + '%'">
-          <span class="fk-id__xp-fill" [style.width.%]="xpPercent"></span>
-        </div>
-        <p class="fk-id__xp-nums">
-          <span class="fk-id__xp-count">{{ toNextLabel }}</span>
-          @if (snap.next) {
-            <span class="fk-id__xp-next">
-              {{ money(snap.toNext) }} XP to <strong>{{ snap.next.title }}</strong>
-            </span>
-          }
-        </p>
-      </div>
-
-      <!-- Wallet -->
-      <div class="fk-id__wallet">
-        <span class="fk-id__coin fk-id__coin--gold">
-          <img class="fk-id__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
-               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
-          <span class="fk-id__coin-val">{{ money(wallet.gold) }}</span>
-          <span class="fk-id__coin-label">Gold</span>
-        </span>
-        <span class="fk-id__coin fk-id__coin--essence">
-          <img class="fk-id__coin-icon gf-icon currency-icon currency-icon--essence"
-               src="assets/icons/currencies/essence.png"
-               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
-          <span class="fk-id__coin-val">{{ money(wallet.essence) }}</span>
-          <span class="fk-id__coin-label">Eclipse Essence</span>
-        </span>
-        <!-- Shards appear only once one has been earned. A permanent-bonus
-             counter reading zero, on a mechanic the visitor has not reached
-             the gate for, is a question with no answer on this page. -->
-        @if (wallet.shards > 0) {
-          <span class="fk-id__coin fk-id__coin--shard">
-            <span class="fk-id__coin-glyph" aria-hidden="true">🌑</span>
-            <span class="fk-id__coin-val">{{ money(wallet.shards) }}</span>
-            <span class="fk-id__coin-label">Eclipse Shards · {{ shardMult }} permanent</span>
-          </span>
-        }
-      </div>
-
-      <!-- What the forge is making right now, and out of what. The Market
-           carries the full breakdown; this is the one line that answers "is it
-           still running" without leaving the profile. -->
-      <p class="fk-id__rate">
-        <span class="fk-id__rate-num">{{ perSecond }}</span>
-        <span class="fk-id__rate-unit">Gold / second</span>
-        @if (wallet.autoPerSecond > 0) {
-          <span class="fk-id__rate-auto">
-            ⚙ {{ autoRate }} auto-{{ wallet.autoPerSecond === 1 ? 'strike' : 'strikes' }}/sec
-          </span>
-        }
-      </p>
-
-      <!-- Provenance -->
-      <dl class="fk-id__meta">
-        <div>
-          <dt>First struck</dt>
-          <dd>{{ memberSinceLabel ?? '—' }}</dd>
-        </div>
-        <div>
-          <dt>Time in the Forge</dt>
-          <dd>{{ forgeTimeLabel }}</dd>
-        </div>
-        <div>
-          <dt>Convergent</dt>
-          <dd class="fk-id__uid">{{ shortId }}</dd>
-        </div>
-      </dl>
-
-      <!--
-        Cloud save, live. The note that used to sit here said "Cloud save is not
-        open yet" and was written when the Firestore adapter behind
-        ProgressStorageService really was an inert stub. It is not: CloudSaveService
-        signs in with Google (popup, falling back to redirect), binds the uid,
-        merges the local blobs against the remote ones and pushes on a timer. The
-        only reason the visitor could not reach any of it is that the one component
-        that mounted the button — the XP bar — is not rendered anywhere in the app.
-        So the button is mounted here, on the sheet the message was on.
-      -->
+    <div class="fk-stage__save">
       <app-cloud-save-button></app-cloud-save-button>
     </div>
-  </section>
 
+    <app-character-hub variant="page">
+      <div hubRecords>
   <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
   <section class="fk-block" aria-labelledby="fk-stats-title">
     <h2 class="fk-block__title" id="fk-stats-title">The Ledger</h2>
@@ -169,7 +76,6 @@
        the cheapest way to keep that true is to not give it any. -->
   <div class="fk-rpg">
     <app-stat-panel />
-    <app-equipment-panel />
   </div>
 
   <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
@@ -229,181 +135,6 @@
 
       </div>
     </div>
-  </section>
-
-  <!-- ══ 4. Inventory ═══════════════════════════════════════════════════ -->
-  <section class="fk-block" aria-labelledby="fk-inv-title">
-    <h2 class="fk-block__title" id="fk-inv-title">The Vault</h2>
-    <p class="fk-block__note">A catalogue of what the Market sells. Your bag is the loadout above, not this shelf.</p>
-
-    <div class="fk-inv__tabs" role="tablist" aria-label="Inventory shelves">
-      @for (tab of inventoryTabs; track tab.key) {
-        <button type="button"
-                class="fk-inv__tab"
-                [class.fk-inv__tab--active]="inventoryFilter === tab.key"
-                role="tab"
-                [attr.aria-selected]="inventoryFilter === tab.key"
-                (click)="selectInventory(tab.key)">
-          <span class="fk-inv__tab-icon" aria-hidden="true">{{ tab.icon }}</span>
-          {{ tab.label }}
-          <span class="fk-inv__tab-count">{{ tabCount(tab.key).owned }}/{{ tabCount(tab.key).total }}</span>
-        </button>
-      }
-    </div>
-
-    <!-- Tier band. Counts are against the current shelf and search, so a chip
-         reading 0 warns you the grid behind it is empty. -->
-    <div class="fk-inv__tiers" role="group" aria-label="Filter by tier">
-      @for (key of rarityFilters; track key) {
-        <button type="button"
-                class="fk-inv__tier-chip"
-                [class.fk-inv__tier-chip--active]="rarityFilter === key"
-                [class.fk-inv__tier-chip--empty]="rarityCount(key) === 0"
-                [style.--tier]="rarityDef(key)?.color || '#e8ecf1'"
-                [style.--tier-glow]="rarityDef(key)?.glow || 'rgba(232, 236, 241, 0.45)'"
-                [attr.aria-pressed]="rarityFilter === key"
-                (click)="selectRarity(key)">
-          @if (rarityDef(key); as def) {
-            <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + def.id"
-                 [src]="def.icon" alt="" aria-hidden="true" width="14" height="14"
-                 loading="lazy" decoding="async" draggable="false">
-          }
-          {{ rarityLabel(key) }}
-          <span class="fk-inv__tier-count">{{ rarityCount(key) }}</span>
-        </button>
-      }
-    </div>
-
-    <div class="fk-inv__controls">
-      <label class="fk-inv__search">
-        <span class="fk-inv__search-icon" aria-hidden="true">🔍</span>
-        <span class="fk-sr-only">Search the vault</span>
-        <input type="search"
-               class="fk-inv__search-input"
-               placeholder="Search the vault…"
-               autocomplete="off"
-               [value]="inventorySearch"
-               (input)="onInventorySearch($any($event.target).value)">
-      </label>
-
-      <label class="fk-inv__sort">
-        <span class="fk-sr-only">Sort the vault</span>
-        <!-- Selected marked on the option rather than bound on the select: a
-             `[value]` on the select applies before @for has rendered anything
-             for it to match, and silently falls back to the first option. -->
-        <select class="fk-inv__sort-select"
-                (change)="selectSort($any($event.target).value)">
-          @for (opt of sortOptions; track opt.key) {
-            <option [value]="opt.key" [selected]="opt.key === inventorySort">{{ opt.label }}</option>
-          }
-        </select>
-      </label>
-
-      @if (inventoryFiltered) {
-        <button type="button" class="fk-inv__clear" (click)="clearInventoryFilters()">
-          ✕ Clear
-        </button>
-      }
-    </div>
-
-    <p class="fk-inv__result" aria-live="polite">
-      {{ visibleStacks.length }} {{ visibleStacks.length === 1 ? 'entry' : 'entries' }}
-      @if (visibleUnitCount !== visibleStacks.length) {
-        · {{ visibleUnitCount }} units
-      }
-    </p>
-
-    <ul class="fk-inv__grid">
-      @for (stack of visibleStacks; track stack.id) {
-        <!-- The card's own box never moves. Every hover effect lives on the
-             face inside it, so lifting the art cannot walk out from under the
-             cursor and drop the hover that caused the lift. -->
-        <li class="fk-inv__card"
-            [class.fk-inv__card--locked]="!stack.lead.owned"
-            [class.fk-inv__card--open]="isOpen(stack)"
-            [class.fk-inv__card--stacked]="stack.count > 1"
-            [attr.data-kind]="stack.lead.kind"
-            [style.--tier]="stack.lead.rarity.color"
-            [style.--tier-glow]="stack.lead.rarity.glow">
-
-          <div class="fk-inv__face">
-            <span class="fk-inv__icon" aria-hidden="true">{{ stack.lead.icon }}</span>
-
-            <div class="fk-inv__body">
-              <p class="fk-inv__name">
-                {{ stack.lead.name }}
-                @if (stack.lead.owned && stack.lead.kind === 'artifact') {
-                  <span class="fk-inv__owned" aria-label="Owned">✅</span>
-                }
-                @if (stack.lead.equipped) {
-                  <span class="fk-inv__equipped">✨ {{ stack.lead.equipped }}</span>
-                }
-              </p>
-              <p class="fk-inv__effect">{{ stack.lead.effect }}</p>
-              <p class="fk-inv__flavour">{{ stack.lead.flavour }}</p>
-
-              @if (stack.lead.owned && stack.lead.kind === 'enchantment') {
-                <p class="fk-inv__timer">⏳ {{ timeLeft(stack.lead) ?? 'expiring' }}</p>
-              }
-              @if (!stack.lead.owned) {
-                <p class="fk-inv__price">
-                  <a routerLink="/market" class="fk-inv__price-link">
-                    <img class="gf-icon currency-icon" [class.currency-icon--essence]="stack.lead.currency !== 'gold'"
-                         [src]="'assets/icons/currencies/' + (stack.lead.currency === 'gold' ? 'gold' : 'essence') + '.png'"
-                         alt="" aria-hidden="true" width="14" height="14"
-                         loading="lazy" decoding="async" draggable="false">
-                    {{ money(stack.lead.cost) }} in The Market
-                  </a>
-                </p>
-              }
-
-              @if (canOpen(stack)) {
-                <button type="button"
-                        class="fk-inv__expand"
-                        [attr.aria-expanded]="isOpen(stack)"
-                        (click)="toggleStack(stack)">
-                  {{ isOpen(stack) ? 'Hide the stack' : 'What is in the stack?' }}
-                </button>
-              }
-
-              @if (isOpen(stack)) {
-                <ul class="fk-inv__units">
-                  @for (unit of stackUnits(stack); track unit.label) {
-                    <li class="fk-inv__unit">
-                      <span class="fk-inv__unit-label">{{ unit.label }}</span>
-                      <span class="fk-inv__unit-note">{{ unit.note }}</span>
-                    </li>
-                  }
-                </ul>
-              }
-            </div>
-
-            <span class="fk-inv__tier">
-              <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + stack.lead.rarity.id"
-                   [src]="stack.lead.rarity.icon" alt="" aria-hidden="true" width="16" height="16"
-                   loading="lazy" decoding="async" draggable="false">
-              {{ stack.lead.rarity.label }}
-            </span>
-
-            @if (stack.count > 1) {
-              <span class="fk-inv__count"
-                    [attr.aria-label]="stack.count + ' held'">×{{ stack.count }}</span>
-            }
-          </div>
-
-          <!-- Sits outside the card box and takes no pointer events, so it can
-               never be the thing the cursor is over. -->
-          <span class="fk-inv__tip" aria-hidden="true">{{ stackMeta(stack) }}</span>
-        </li>
-      } @empty {
-        <li class="fk-inv__empty">
-          <p class="fk-inv__empty-line">Nothing on this shelf matches.</p>
-          <button type="button" class="fk-inv__clear" (click)="clearInventoryFilters()">
-            ✕ Clear the filters
-          </button>
-        </li>
-      }
-    </ul>
   </section>
 
   <!-- ══ 5. Achievement showcase ════════════════════════════════════════ -->
@@ -628,4 +359,214 @@
       <span class="fk-link__note">the five realms</span>
     </a>
   </nav>
+      </div>
+    </app-character-hub>
+
+  @if (bankOpen) {
+  <div class="fk-bank" role="dialog" aria-modal="true" aria-labelledby="fk-inv-title">
+    <button type="button" class="fk-bank__scrim" (click)="closeBank()" aria-label="Close bank"></button>
+    <div class="fk-bank__chest">
+      <header class="fk-bank__head">
+        <h2 class="fk-bank__title" id="fk-inv-title">Bank</h2>
+        <p class="fk-bank__count">{{ bankHeld }} held</p>
+        <button type="button" class="fk-bank__mode" (click)="toggleCatalogue()">
+          {{ ownedOnly ? 'Show market catalogue' : 'Show my bank' }}
+        </button>
+        <button type="button" class="fk-bank__close" (click)="closeBank()">Close</button>
+      </header>
+  <section class="fk-block fk-bank__shelf" aria-labelledby="fk-inv-title">
+
+    <div class="fk-inv__tabs" role="tablist" aria-label="Inventory shelves">
+      @for (tab of inventoryTabs; track tab.key) {
+        <button type="button"
+                class="fk-inv__tab"
+                [class.fk-inv__tab--active]="inventoryFilter === tab.key"
+                role="tab"
+                [attr.aria-selected]="inventoryFilter === tab.key"
+                (click)="selectInventory(tab.key)">
+          <span class="fk-inv__tab-icon" aria-hidden="true">{{ tab.icon }}</span>
+          {{ tab.label }}
+          <span class="fk-inv__tab-count">{{ tabCount(tab.key).owned }}/{{ tabCount(tab.key).total }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Tier band. Counts are against the current shelf and search, so a chip
+         reading 0 warns you the grid behind it is empty. -->
+    <div class="fk-inv__tiers" role="group" aria-label="Filter by tier">
+      @for (key of rarityFilters; track key) {
+        <button type="button"
+                class="fk-inv__tier-chip"
+                [class.fk-inv__tier-chip--active]="rarityFilter === key"
+                [class.fk-inv__tier-chip--empty]="rarityCount(key) === 0"
+                [style.--tier]="rarityDef(key)?.color || '#e8ecf1'"
+                [style.--tier-glow]="rarityDef(key)?.glow || 'rgba(232, 236, 241, 0.45)'"
+                [attr.aria-pressed]="rarityFilter === key"
+                (click)="selectRarity(key)">
+          @if (rarityDef(key); as def) {
+            <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + def.id"
+                 [src]="def.icon" alt="" aria-hidden="true" width="14" height="14"
+                 loading="lazy" decoding="async" draggable="false">
+          }
+          {{ rarityLabel(key) }}
+          <span class="fk-inv__tier-count">{{ rarityCount(key) }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="fk-inv__controls">
+      <label class="fk-inv__search">
+        <span class="fk-inv__search-icon" aria-hidden="true">🔍</span>
+        <span class="fk-sr-only">Search the vault</span>
+        <input type="search"
+               class="fk-inv__search-input"
+               placeholder="Search the vault…"
+               autocomplete="off"
+               [value]="inventorySearch"
+               (input)="onInventorySearch($any($event.target).value)">
+      </label>
+
+      <label class="fk-inv__sort">
+        <span class="fk-sr-only">Sort the vault</span>
+        <!-- Selected marked on the option rather than bound on the select: a
+             `[value]` on the select applies before @for has rendered anything
+             for it to match, and silently falls back to the first option. -->
+        <select class="fk-inv__sort-select"
+                (change)="selectSort($any($event.target).value)">
+          @for (opt of sortOptions; track opt.key) {
+            <option [value]="opt.key" [selected]="opt.key === inventorySort">{{ opt.label }}</option>
+          }
+        </select>
+      </label>
+
+      @if (inventoryFiltered) {
+        <button type="button" class="fk-inv__clear" (click)="clearInventoryFilters()">
+          ✕ Clear
+        </button>
+      }
+    </div>
+
+    <p class="fk-inv__result" aria-live="polite">
+      {{ visibleStacks.length }} {{ visibleStacks.length === 1 ? 'entry' : 'entries' }}
+      @if (visibleUnitCount !== visibleStacks.length) {
+        · {{ visibleUnitCount }} units
+      }
+    </p>
+
+    @if (ownedOnly) {
+    <ul class="fk-bank__slots">
+      @for (stack of bankSlots; track $index) {
+        @if (stack) {
+          <li class="fk-bank__slot"
+              [style.--tier]="stack.lead.rarity.color"
+              [attr.title]="stack.lead.name">
+            <span class="fk-bank__glyph" aria-hidden="true">{{ stack.lead.icon }}</span>
+            @if (stack.count > 1) {
+              <span class="fk-bank__qty">{{ stack.count }}</span>
+            }
+            <span class="fk-sr-only">{{ stack.lead.name }}</span>
+          </li>
+        } @else {
+          <li class="fk-bank__slot fk-bank__slot--empty" aria-hidden="true"></li>
+        }
+      }
+    </ul>
+    } @else {
+    <ul class="fk-inv__grid">
+      @for (stack of visibleStacks; track stack.id) {
+        <!-- The card's own box never moves. Every hover effect lives on the
+             face inside it, so lifting the art cannot walk out from under the
+             cursor and drop the hover that caused the lift. -->
+        <li class="fk-inv__card"
+            [class.fk-inv__card--locked]="!stack.lead.owned"
+            [class.fk-inv__card--open]="isOpen(stack)"
+            [class.fk-inv__card--stacked]="stack.count > 1"
+            [attr.data-kind]="stack.lead.kind"
+            [style.--tier]="stack.lead.rarity.color"
+            [style.--tier-glow]="stack.lead.rarity.glow">
+
+          <div class="fk-inv__face">
+            <span class="fk-inv__icon" aria-hidden="true">{{ stack.lead.icon }}</span>
+
+            <div class="fk-inv__body">
+              <p class="fk-inv__name">
+                {{ stack.lead.name }}
+                @if (stack.lead.owned && stack.lead.kind === 'artifact') {
+                  <span class="fk-inv__owned" aria-label="Owned">✅</span>
+                }
+                @if (stack.lead.equipped) {
+                  <span class="fk-inv__equipped">✨ {{ stack.lead.equipped }}</span>
+                }
+              </p>
+              <p class="fk-inv__effect">{{ stack.lead.effect }}</p>
+              <p class="fk-inv__flavour">{{ stack.lead.flavour }}</p>
+
+              @if (stack.lead.owned && stack.lead.kind === 'enchantment') {
+                <p class="fk-inv__timer">⏳ {{ timeLeft(stack.lead) ?? 'expiring' }}</p>
+              }
+              @if (!stack.lead.owned) {
+                <p class="fk-inv__price">
+                  <a routerLink="/market" class="fk-inv__price-link">
+                    <img class="gf-icon currency-icon" [class.currency-icon--essence]="stack.lead.currency !== 'gold'"
+                         [src]="'assets/icons/currencies/' + (stack.lead.currency === 'gold' ? 'gold' : 'essence') + '.png'"
+                         alt="" aria-hidden="true" width="14" height="14"
+                         loading="lazy" decoding="async" draggable="false">
+                    {{ money(stack.lead.cost) }} in The Market
+                  </a>
+                </p>
+              }
+
+              @if (canOpen(stack)) {
+                <button type="button"
+                        class="fk-inv__expand"
+                        [attr.aria-expanded]="isOpen(stack)"
+                        (click)="toggleStack(stack)">
+                  {{ isOpen(stack) ? 'Hide the stack' : 'What is in the stack?' }}
+                </button>
+              }
+
+              @if (isOpen(stack)) {
+                <ul class="fk-inv__units">
+                  @for (unit of stackUnits(stack); track unit.label) {
+                    <li class="fk-inv__unit">
+                      <span class="fk-inv__unit-label">{{ unit.label }}</span>
+                      <span class="fk-inv__unit-note">{{ unit.note }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+
+            <span class="fk-inv__tier">
+              <img class="fk-tier-icon gf-icon" [ngClass]="'rarity-' + stack.lead.rarity.id"
+                   [src]="stack.lead.rarity.icon" alt="" aria-hidden="true" width="16" height="16"
+                   loading="lazy" decoding="async" draggable="false">
+              {{ stack.lead.rarity.label }}
+            </span>
+
+            @if (stack.count > 1) {
+              <span class="fk-inv__count"
+                    [attr.aria-label]="stack.count + ' held'">×{{ stack.count }}</span>
+            }
+          </div>
+
+          <!-- Sits outside the card box and takes no pointer events, so it can
+               never be the thing the cursor is over. -->
+          <span class="fk-inv__tip" aria-hidden="true">{{ stackMeta(stack) }}</span>
+        </li>
+      } @empty {
+        <li class="fk-inv__empty">
+          <p class="fk-inv__empty-line">Nothing on this shelf matches.</p>
+          <button type="button" class="fk-inv__clear" (click)="clearInventoryFilters()">
+            ✕ Clear the filters
+          </button>
+        </li>
+      }
+    </ul>
+    }
+  </section>
+    </div>
+  </div>
+  }
+  </div>
 </section>
