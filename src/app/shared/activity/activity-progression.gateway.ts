@@ -139,8 +139,11 @@ export class ActivityProgressionGateway {
     }
 
     const discovery = rollDiscovery({
-      eligibleIndex: miningEligibleCount(this.ledger.operations, locationId) + 1,
-      previousEmber: hasEmberBeforeCraft(this.ledger.operations),
+      eligibleIndex: Math.max(
+        this.ledger.miningAccepted,
+        miningEligibleCount(this.ledger.operations, locationId),
+      ) + 1,
+      previousEmber: this.ledger.emberGranted || hasEmberBeforeCraft(this.ledger.operations),
       craftedBasaltEdge: this.ledger.craftedBasaltEdge,
       roll: input.roll ?? Math.random(),
     });
@@ -160,6 +163,11 @@ export class ActivityProgressionGateway {
       operations,
       progress: progressFromOps(operations),
       currentWork: rebuildCurrentWork(work, operations),
+      emberGranted: this.ledger.emberGranted || operation.discovery.result !== 'none',
+      miningAccepted: Math.max(
+        this.ledger.miningAccepted,
+        miningEligibleCount(operations, locationId),
+      ),
     };
     this.lastHlc = operation.hlcRevision;
 

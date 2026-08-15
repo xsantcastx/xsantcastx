@@ -72,6 +72,12 @@ export interface ActivityLedger {
   operations: ActivityOperation[];
   /** True after a later checkpoint crafts Basalt Edge. C7 never sets this. */
   craftedBasaltEdge: boolean;
+  /**
+   * Totals that survive the 256-op window. Merge takes the max against
+   * live ops so dropping oldest rows cannot shrink XP or re-arm ember.
+   */
+  emberGranted: boolean;
+  miningAccepted: number;
 }
 
 export const ACTIVITY_KEY = 'godforge-activity';
@@ -110,5 +116,7 @@ export function emptyActivityLedger(): ActivityLedger {
     progress: emptyProgress(),
     operations: [],
     craftedBasaltEdge: false,
+    emberGranted: false,
+    miningAccepted: 0,
   };
 }

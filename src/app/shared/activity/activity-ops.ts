@@ -14,6 +14,7 @@ import {
   EMBER_RESIDUE_ID,
   MINING_XP_PER_ACTION,
   emptyActivityLedger,
+  emptyProgress,
   locationDefinition,
   type ActivityDiscovery,
   type ActivityInventoryGrant,
@@ -133,6 +134,17 @@ export function progressFromOps(ops: readonly ActivityOperation[]): DisciplinePr
   return { version: 1, xpByDiscipline };
 }
 
+export function maxProgress(...rows: DisciplineProgress[]): DisciplineProgress {
+  const xpByDiscipline: Partial<Record<DisciplineId, number>> = {};
+  for (const row of rows) {
+    for (const [id, amount] of Object.entries(row.xpByDiscipline)) {
+      const key = id as DisciplineId;
+      xpByDiscipline[key] = Math.max(xpByDiscipline[key] ?? 0, amount ?? 0);
+    }
+  }
+  return { version: 1, xpByDiscipline };
+}
+
 export function rebuildCurrentWork(work: CurrentWork | null, ops: readonly ActivityOperation[]): CurrentWork | null {
   if (!work) return null;
   const newest = newestOperation(ops, work);
@@ -151,14 +163,23 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     if (!held || compareHlc(op.hlcRevision, held.hlcRevision) > 0) byId.set(op.id, op);
   }
   let operations = [...byId.values()].sort((x, y) => compareHlc(x.hlcRevision, y.hlcRevision));
+  const progress = maxProgress(a.progress, b.progress, progressFromOps(operations));
+  const emberGranted = a.emberGranted || b.emberGranted || hasEmberBeforeCraft(operations);
+  const miningAccepted = Math.max(
+    a.miningAccepted,
+    b.miningAccepted,
+    miningEligibleCount(operations, BASALT_SEAMWORKS_ID),
+  );
   if (operations.length > ACTIVITY_OPS_MAX) operations = operations.slice(-ACTIVITY_OPS_MAX);
   const currentWork = pickCurrentWork(a.currentWork, b.currentWork);
   return {
     version: ACTIVITY_SCHEMA_VERSION,
     currentWork: rebuildCurrentWork(currentWork, operations),
-    progress: progressFromOps(operations),
+    progress,
     operations,
     craftedBasaltEdge: a.craftedBasaltEdge || b.craftedBasaltEdge,
+    emberGranted,
+    miningAccepted,
   };
 }
 
@@ -181,13 +202,34 @@ export function coerceActivityLedger(raw: unknown): ActivityLedger | null {
       operations.push(op);
     }
   }
+  const derived = progressFromOps(operations);
+  const stored = parseProgress(raw['progress']);
   return {
     version: 1,
     currentWork: parseCurrentWork(raw['currentWork']),
-    progress: progressFromOps(operations),
+    progress: maxProgress(derived, stored),
     operations,
     craftedBasaltEdge: raw['craftedBasaltEdge'] === true,
+    emberGranted: raw['emberGranted'] === true || hasEmberBeforeCraft(operations),
+    miningAccepted: Math.max(finiteCount(raw['miningAccepted']), miningEligibleCount(operations, BASALT_SEAMWORKS_ID)),
   };
+}
+
+function parseProgress(raw: unknown): DisciplineProgress {
+  if (!isPlain(raw)) return emptyProgress();
+  const xpByDiscipline: Partial<Record<DisciplineId, number>> = {};
+  if (isPlain(raw['xpByDiscipline'])) {
+    for (const [id, amount] of Object.entries(raw['xpByDiscipline'])) {
+      if (isDiscipline(id) && typeof amount === 'number' && Number.isFinite(amount)) {
+        xpByDiscipline[id] = amount;
+      }
+    }
+  }
+  return { version: 1, xpByDiscipline };
+}
+
+function finiteCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 function parseCurrentWork(raw: unknown): CurrentWork | null {

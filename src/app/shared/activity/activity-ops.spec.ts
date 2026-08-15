@@ -1,4 +1,5 @@
 import {
+  ACTIVITY_OPS_MAX,
   BASALT_SEAMWORKS_ID,
   CINDER_ORE_ID,
   EMBER_RESIDUE_ID,
@@ -150,7 +151,31 @@ describe('C7 activity ops', () => {
       progress: emptyActivityLedger().progress,
       operations: [],
       craftedBasaltEdge: false,
+      emberGranted: false,
+      miningAccepted: 0,
     });
     expect(coerceActivityLedger({ version: 2 })).toBeNull();
+  });
+
+  it('keeps Mining XP and ember after the 256-op window drops oldest rows', () => {
+    const early = Array.from({ length: 8 }, (_, i) => mine(`early-${i}`, {
+      hlcRevision: hlc(i + 1, 0, 'phone', i + 1),
+      discovery: { rolled: true, result: i === 7 ? 'first-craft-guarantee' : 'none' },
+    }));
+    const rest = Array.from({ length: ACTIVITY_OPS_MAX }, (_, i) => mine(`late-${i}`, {
+      hlcRevision: hlc(100 + i, 0, 'phone', 20 + i),
+      discovery: { rolled: true, result: 'none' },
+    }));
+    const full = ledger({ operations: [...early, ...rest] });
+    expect(full.progress.xpByDiscipline.mining).toBe((ACTIVITY_OPS_MAX + 8) * 2);
+    const other = ledger({ operations: rest.slice(-10) });
+    const ab = mergeActivityLedgers(full, other);
+    const ba = mergeActivityLedgers(other, full);
+    expect(ab.operations.length).toBe(ACTIVITY_OPS_MAX);
+    expect(ab.progress.xpByDiscipline.mining).toBe((ACTIVITY_OPS_MAX + 8) * 2);
+    expect(ba.progress.xpByDiscipline.mining).toBe(ab.progress.xpByDiscipline.mining);
+    expect(ab.emberGranted).toBe(true);
+    expect(ab.miningAccepted).toBe(ACTIVITY_OPS_MAX + 8);
+    expect(ab.operations.some(op => op.discovery.result === 'first-craft-guarantee')).toBe(false);
   });
 });
