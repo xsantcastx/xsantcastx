@@ -250,6 +250,13 @@ describe('InventoryService C3 adapter', () => {
     expect(stored?.tombstones.some(row => row.id === 'old-charm')).toBe(true);
   });
 
+  it('drops many bag rows in one write', () => {
+    expect(inventory.grantStack('g-bulk', 'cinder-ore', 2)).toBe(true);
+    expect(inventory.dropMany(['old-charm'], ['cinder-ore'])).toBe(2);
+    expect(inventory.itemById('old-charm')).toBeUndefined();
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+  });
+
   it('drops a material stack and frees the bag row', () => {
     expect(inventory.grantStack('g1', 'cinder-ore', 4)).toBe(true);
     expect(inventory.stackOf('cinder-ore')).toBe(4);
