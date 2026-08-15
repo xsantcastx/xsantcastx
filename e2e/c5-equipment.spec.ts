@@ -54,7 +54,7 @@ async function open(page: Page): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await page.locator('.ld').waitFor();
+  await page.locator('.ch, .ld').waitFor();
 }
 
 async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
@@ -73,7 +73,7 @@ test.describe('C5 equipment actions', () => {
     await openPanel(page, 'bank');
     await expect(page.getByRole('button', { name: /Old Charm/ })).toBeVisible();
     await page.getByRole('button', { name: /Crown/ }).click();
-    await page.locator('.kp__tab', { hasText: 'Character' }).click();
+    await page.locator('.kp').getByRole('tab', { name: 'Loadout' }).click();
     await expect(page.locator('.kp')).toBeVisible();
     await expect(page.locator('.kp .ld__slot--target')).toHaveCount(4);
     await page.locator('.kp').getByRole('button', { name: /Head, empty/ }).click();

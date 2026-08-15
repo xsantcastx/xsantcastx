@@ -66,7 +66,7 @@ async function openCharacter(page: Page, url = '/character'): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await page.locator('.ld').waitFor();
+  await page.locator('.ch, .ld').waitFor();
 }
 
 const shotDir = resolve('test-results/c4-character');
@@ -88,7 +88,7 @@ test.describe('C4 Character presentation', () => {
     const headBox = await head.boundingBox();
     expect(headBox?.width ?? 0).toBeGreaterThanOrEqual(44);
     expect(headBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-    await page.locator('.kp__tab', { hasText: 'Character' }).click();
+    await page.locator('.kp').getByRole('tab', { name: 'Loadout' }).click();
     const panelHead = page.locator('.kp').getByRole('button', { name: /Head, equipped Ash Circlet/ });
     await panelHead.focus();
     await expect(panelHead).toBeFocused();
@@ -104,7 +104,7 @@ test.describe('C4 Character presentation', () => {
   test('keeps /forge-keeper and nav on the new loadout, not the old silhouette', async ({ page }) => {
     await openCharacter(page, '/forge-keeper');
     await expect(page).toHaveURL(/\/character/);
-    await expect(page.locator('.ld')).toBeVisible();
+    await expect(page.locator('.ch, .ld').first()).toBeVisible();
     await expect(page.locator('.ep__figure, .ep__slot')).toHaveCount(0);
     await page.getByRole('link', { name: /Character|Personaje/ }).first().click();
     await expect(page.locator('.kp')).toBeVisible();
@@ -116,12 +116,12 @@ test.describe('C4 Character presentation', () => {
     await page.locator('.gfpill--bag').click();
     await expect(page.locator('.kp')).toBeVisible();
     await expect(page).toHaveURL(/\/character/);
-    await page.locator('.ld__field select').first().selectOption('runes');
+    await page.locator('.kp').getByRole('button', { name: 'Runes' }).click();
     await expect(page).not.toHaveURL(/bag=runes/);
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
-    await page.locator('.ld__field select').nth(1).selectOption('legendary');
-    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.kp input[type="search"]').fill('zzzz');
+    await expect(page.getByText(/The chest is empty|El cofre esta vacio/)).toBeVisible();
+    await page.locator('.kp input[type="search"]').fill('');
     await expect(page).not.toHaveURL(/bag=/);
   });
 
@@ -141,11 +141,10 @@ test.describe('C4 Character presentation', () => {
         || style.visibility === 'hidden'
         || style.opacity === '0';
     }, { timeout: 8000 });
-    await page.locator('.ld').waitFor();
+    await page.locator('.ch, .ld').waitFor();
     await page.locator('.gfpill--bag').click();
     await expect(page.locator('.kp')).toBeVisible();
-    await expect(page.getByText(/The bag is empty|La bolsa esta vacia/)).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Market' }).first()).toBeVisible();
+    await expect(page.getByText(/The chest is empty|El cofre esta vacio/)).toBeVisible();
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.kp').screenshot({ path: resolve(shotDir, 'mobile-empty.png') });
   });

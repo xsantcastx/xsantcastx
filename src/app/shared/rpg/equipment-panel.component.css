@@ -42,6 +42,11 @@
   font-size: 0.82rem;
   color: #cfe6df;
 }
+.ld__armed {
+  margin: 0 0 8px;
+  color: #c9a84c;
+  font-size: 13px;
+}
 .ld__totals--empty { color: #8b9c97; }
 
 .ld__doll {

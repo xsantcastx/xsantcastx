@@ -1,0 +1,95 @@
+<section class="hb" aria-labelledby="hb-title">
+  <header class="hb__head">
+    <div>
+      <h2 id="hb-title">{{ t('hub.bank.title') }}</h2>
+      <p>{{ t('hub.bank.tag', { n: rows.length }) }}</p>
+    </div>
+    <button
+      type="button"
+      class="hb__filters-toggle"
+      [attr.aria-expanded]="filtersOpen"
+      (click)="filtersOpen = !filtersOpen">
+      {{ t('hub.bank.filters') }}
+    </button>
+  </header>
+
+  <form class="hb__filters" [class.is-open]="filtersOpen" (submit)="$event.preventDefault()">
+    <div class="hb__kinds" role="group" [attr.aria-label]="t('hub.bank.kinds')">
+      @for (opt of kinds; track opt) {
+        <button
+          type="button"
+          class="hb__kind"
+          [class.is-on]="kind === opt"
+          (click)="kind = opt">
+          {{ t('hub.bank.kind.' + opt) }}
+        </button>
+      }
+    </div>
+    <label class="hb__search">
+      <span>{{ t('hub.bank.search') }}</span>
+      <input type="search" [value]="query" (input)="query = $any($event.target).value">
+    </label>
+  </form>
+
+  @if (snap.full) {
+    <p class="hb__full" role="status">{{ t('loadout.bag.full') }}</p>
+  }
+
+  @if (!rows.length) {
+    <p class="hb__empty">{{ t('hub.bank.empty') }}</p>
+  } @else {
+    <ul class="hb__grid">
+      @for (row of rows; track row.id) {
+        <li class="hb__tile" [class.is-on]="selectedId === row.id" [attr.data-kind]="row.kind">
+          <button type="button" class="hb__face" (click)="select(row)" [attr.aria-pressed]="selectedId === row.id">
+            @if (row.art) {
+              <img class="hb__art" [src]="row.art" alt="" width="40" height="40" decoding="async">
+            } @else {
+              <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2) }}</span>
+            }
+            <span class="hb__name">{{ row.name }}</span>
+            <span class="hb__meta">{{ row.meta }}</span>
+            <span class="hb__qty">×{{ row.qty }}</span>
+          </button>
+          @if (selectedId === row.id) {
+            <div class="hb__actions">
+              @if (row.inspectType && row.inspectId) {
+                <app-inspect-button [type]="row.inspectType" [id]="row.inspectId" />
+              }
+              @if (row.dropItem && inventory.canDrop(row.dropItem)) {
+                <button type="button" class="hb__drop" (click)="askDrop(row.dropItem)">
+                  {{ t('loadout.drop') }}
+                </button>
+              }
+              @if (row.dropStack) {
+                <button type="button" class="hb__drop" (click)="askDropStack(row.dropStack)">
+                  {{ t('loadout.drop') }}
+                </button>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (dropping; as item) {
+    <div class="hb__confirm" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">
+      <p>{{ t('loadout.drop.confirmBody', { name: item.name }) }}</p>
+      <div class="hb__confirm-actions">
+        <button type="button" class="hb__drop" (click)="confirmDrop()">{{ t('loadout.drop.confirmYes') }}</button>
+        <button type="button" class="hb__keep" (click)="dropping = null">{{ t('loadout.drop.confirmNo') }}</button>
+      </div>
+    </div>
+  }
+
+  @if (droppingStack; as stack) {
+    <div class="hb__confirm" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">
+      <p>{{ t('loadout.drop.confirmStack', { name: materialName(stack), n: stack.quantity }) }}</p>
+      <div class="hb__confirm-actions">
+        <button type="button" class="hb__drop" (click)="confirmDropStack()">{{ t('loadout.drop.confirmYes') }}</button>
+        <button type="button" class="hb__keep" (click)="droppingStack = null">{{ t('loadout.drop.confirmNo') }}</button>
+      </div>
+    </div>
+  }
+</section>

@@ -160,7 +160,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   openCharacter(): void { this.closeMobileMenu(); this.keeper.toggle('character'); }
   openBank(): void { this.closeMobileMenu(); this.keeper.toggle('bank'); }
 
-  get characterPanelOpen(): boolean { return this.keeper.isOpen && this.keeper.tab === 'character'; }
+  get characterPanelOpen(): boolean { return this.keeper.isOpen && this.keeper.tab !== 'bank'; }
   get bankPanelOpen(): boolean { return this.keeper.isOpen && this.keeper.tab === 'bank'; }
 
   /** Left-click opens the side panel. Modified clicks still go to /character. */

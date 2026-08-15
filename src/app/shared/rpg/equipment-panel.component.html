@@ -17,6 +17,7 @@
       <ng-template #emptyTotals>
         <p class="ld__totals ld__totals--empty">{{ t('loadout.stat.empty') }}</p>
       </ng-template>
+      <p class="ld__armed" *ngIf="armed">{{ t('loadout.armed', { name: armed.name }) }}</p>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
         <img class="ld__doll-art" [src]="dollSrc" [alt]="t('loadout.doll.alt')"

@@ -138,7 +138,7 @@ describe('HeaderComponent', () => {
     component.onHallClick(event, character);
     expect(event.defaultPrevented).toBeTrue();
     expect(component.keeper.isOpen).toBeTrue();
-    expect(component.keeper.tab).toBe('character');
+    expect(component.keeper.tab).toBe('loadout');
     expect(prevented).toBeTrue();
   });
 });
