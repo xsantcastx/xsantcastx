@@ -21,8 +21,12 @@
       </p>
       <h1 class="rl__title">{{ place.name }}</h1>
       <p class="rl__function">{{ place.function }}</p>
-      <p class="rl__status">{{ t('world.realm.status') }}</p>
+      <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : t('world.realm.status') }}</p>
     </header>
+
+    @if (place.id === 'infernal') {
+      <app-infernal-chapter></app-infernal-chapter>
+    }
 
     <section class="rl__faction" aria-labelledby="rl-faction">
       <h2 id="rl-faction">{{ place.faction }}</h2>
@@ -70,7 +74,7 @@
 
     <section class="rl__people" aria-labelledby="rl-people">
       <h2 id="rl-people">{{ t('world.realm.people') }}</h2>
-      <p class="rl__people-note">{{ t('world.realm.peopleNote') }}</p>
+      <p class="rl__people-note">{{ place.id === 'infernal' ? t('world.realm.peopleNotePlayable') : t('world.realm.peopleNote') }}</p>
       <ul class="rl__chars">
         @for (person of place.characters; track person.id) {
           <li>
@@ -98,7 +102,7 @@
     </section>
 
     <footer class="rl__foot">
-      <p class="rl__rune">{{ t('world.realm.witnessRune') }} <strong>{{ place.witnessRune }}</strong></p>
+      <p class="rl__rune">{{ place.id === 'infernal' ? t('world.realm.witnessRuneLive') : t('world.realm.witnessRune') }} <strong>{{ place.witnessRune }}</strong></p>
       @if (journey) {
         <a class="rl__continue" [routerLink]="journey.route">
           <span class="rl__continue-label">{{ t('world.realm.continue') }}</span>

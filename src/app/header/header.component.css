@@ -970,6 +970,9 @@
    burger, and nothing else. The tome renders the essence and rank pills at full
    size the moment it opens, /forge-keeper is a permanent bottom tab, and gold
    stays in the bar because it is the number people are watching. */
+@media (max-width: 960px) {
+  .gfnav__standing app-current-work-tile { display: none; }
+}
 @media (max-width: 560px) {
   .gfnav__standing .gfpill--essence,
   .gfnav__standing .gfpill--rank { display: none; }
@@ -1118,7 +1121,8 @@
 
   .gfnav__standing .gfpill,
   .gfnav__standing app-gold-ticker,
-  .gfnav__standing app-cloud-save-chip {
+  .gfnav__standing app-cloud-save-chip,
+  .gfnav__standing app-current-work-tile {
     width: 100%;
   }
 

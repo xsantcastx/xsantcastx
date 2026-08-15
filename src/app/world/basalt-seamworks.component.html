@@ -1,0 +1,80 @@
+<app-art-scene art="bg-basalt-seamworks" focus="center 58%" />
+
+<article class="sw" [attr.data-state]="panelState()">
+  <nav class="sw__crumb" [attr.aria-label]="t('world.crumb.label')">
+    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
+    <span aria-hidden="true">/</span>
+    <a [routerLink]="infernalHref">{{ t('world.atlas.label.infernal') }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ t('work.location.seamworks') }}</span>
+  </nav>
+
+  <header class="sw__hero">
+    <p class="sw__eyebrow">{{ t('seamworks.eyebrow') }}</p>
+    <h1>{{ t('work.location.seamworks') }}</h1>
+    <p class="sw__lede">{{ t('seamworks.lede') }}</p>
+    <p class="sw__chapter">{{ chapterNote() }}</p>
+  </header>
+
+  <app-current-work-tile></app-current-work-tile>
+
+  <section class="sw__panel" aria-labelledby="sw-mine-title">
+    <h2 id="sw-mine-title">{{ t('seamworks.panel.title') }}</h2>
+    <p class="sw__expect">{{ t('seamworks.expect') }}</p>
+    <p class="sw__chance">{{ discoveryLabel() }}</p>
+
+    <div class="sw__loot" aria-hidden="true">
+      <figure>
+        <img [src]="ore.art" alt="" width="72" height="72" decoding="async">
+        <figcaption>{{ ore.name }}</figcaption>
+      </figure>
+      <figure>
+        <img [src]="ember.art" alt="" width="72" height="72" decoding="async">
+        <figcaption>{{ ember.name }}</figcaption>
+      </figure>
+    </div>
+
+    <button
+      type="button"
+      class="sw__mine"
+      [disabled]="mineDisabled()"
+      [attr.aria-disabled]="mineDisabled()"
+      (click)="mine()">
+      @if (panelState() === 'recovering') {
+        {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
+      } @else if (panelState() === 'resolving') {
+        {{ t('seamworks.mine.resolving') }}
+      } @else {
+        {{ t('seamworks.mine') }}
+      }
+    </button>
+    <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel() }) }}</p>
+
+    @if (panelState() === 'capacity') {
+      <p class="sw__alert" role="alert">{{ t('seamworks.full') }}</p>
+    }
+    @if (panelState() === 'location') {
+      <p class="sw__alert" role="alert">{{ t('seamworks.away') }}</p>
+    }
+    @if (panelState() === 'persist') {
+      <p class="sw__alert" role="alert">{{ t('seamworks.persist') }}</p>
+      <div class="sw__actions">
+        <button type="button" class="sw__ghost" (click)="retry()">{{ t('seamworks.retry') }}</button>
+        <button type="button" class="sw__ghost" (click)="refresh()">{{ t('seamworks.refresh') }}</button>
+      </div>
+    }
+
+    @if (lastOp; as op) {
+      <div class="sw__result">
+        <p>{{ t('seamworks.result.ore') }}</p>
+        @if (op.discovery.result !== 'none') {
+          <p>{{ discoveryLabel() }}</p>
+        }
+        <p>{{ t('seamworks.result.xp', { amount: op.xpGrant.amount }) }}</p>
+      </div>
+    }
+  </section>
+
+  <p class="sw__note">{{ t('seamworks.note') }}</p>
+  <a class="sw__back" [routerLink]="infernalHref">{{ t('seamworks.back') }}</a>
+</article>

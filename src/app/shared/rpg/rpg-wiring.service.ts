@@ -26,6 +26,7 @@ import { InventoryService } from './inventory.service';
 import { PlayerStatsService } from './player-stats.service';
 import { ExplorerRosterService } from './explorer-roster.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
+import { ChapterGateway } from '../narrative/chapter.gateway';
 
 @Injectable({ providedIn: 'root' })
 export class RpgWiringService {
@@ -35,6 +36,7 @@ export class RpgWiringService {
   private readonly inventory = inject(InventoryService);
   private readonly roster = inject(ExplorerRosterService);
   private readonly activity = inject(ActivityProgressionGateway);
+  private readonly chapters = inject(ChapterGateway);
 
   private started = false;
 
@@ -47,6 +49,7 @@ export class RpgWiringService {
     this.inventory.init();
     this.roster.init();
     this.activity.init();
+    this.chapters.init();
 
     // Recompute from scratch on every source publish. Cheap (a sum over the
     // worn items) and keeps the two ledgers in step. Economy merge still

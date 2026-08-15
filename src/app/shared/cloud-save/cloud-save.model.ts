@@ -39,6 +39,7 @@
 import { mergeEconomyLedgers } from '../economy/economy-ops';
 import { mergeInventoryLedgers } from '../rpg/inventory-ops';
 import { mergeActivityLedgers } from '../activity/activity-ops';
+import { mergeChapterLedgers } from '../narrative/chapter-ops';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -183,6 +184,13 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeActivity,
   },
   {
+    key: 'godforge-chapter',
+    collection: 'progress',
+    doc: 'chapter',
+    label: 'chapter positions',
+    merge: mergeChapter,
+  },
+  {
     key: 'godforge-stats',
     collection: 'progress',
     doc: 'stats',
@@ -271,6 +279,10 @@ function mergeInventory(remote: unknown, local: unknown): unknown {
 
 function mergeActivity(remote: unknown, local: unknown): unknown {
   return mergeActivityLedgers(remote, local);
+}
+
+function mergeChapter(remote: unknown, local: unknown): unknown {
+  return mergeChapterLedgers(remote, local);
 }
 
 /**

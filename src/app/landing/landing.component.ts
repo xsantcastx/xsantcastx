@@ -29,6 +29,7 @@ import { RouterModule } from '@angular/router';
 import { AdsenseComponent } from '../shared/adsense/adsense.component';
 import { WorldAtlasComponent } from '../world/world-atlas.component';
 import { InspectButtonComponent } from '../shared/entity/inspect-button.component';
+import { CurrentWorkTileComponent } from '../shared/activity/current-work-tile.component';
 import { RuneForgeService } from '../shared/rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
@@ -44,7 +45,7 @@ export interface ForgeStation {
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent]
+  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent, CurrentWorkTileComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
