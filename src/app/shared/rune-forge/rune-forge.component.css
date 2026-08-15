@@ -752,6 +752,10 @@
   opacity: 0.55;
 }
 
+.rf-word--locked {
+  border-style: dashed;
+}
+
 .rf-word__head {
   display: flex;
   /* Was `baseline`, which is right for text against text but drops a 60px

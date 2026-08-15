@@ -41,6 +41,9 @@ import {
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
 import { InspectService } from '../entity/inspect.service';
+import { InspectButtonComponent } from '../entity/inspect-button.component';
+import { TranslationService } from '../../translation.service';
+import { FORGE_EQUIPMENT_RECIPES } from '../rpg/forge-recipes';
 
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
@@ -87,7 +90,7 @@ function isHeavy(tier: RuneTier): boolean {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, InspectButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
@@ -101,7 +104,10 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly doc = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly inspectOverlay = inject(InspectService);
+  private readonly i18n = inject(TranslationService);
   private readonly subs = new Subscription();
+  readonly equipmentRecipes = FORGE_EQUIPMENT_RECIPES;
+  t(key: string): string { return this.i18n.translate(key); }
 
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
