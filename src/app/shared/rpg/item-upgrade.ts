@@ -4,7 +4,7 @@
  * Gold = def.temperGoldBase * (1.65 ** level).
  * Cinder Ore = 1 + level. Ember every even next-level; 2 once level ≥ 6.
  *
- * Success adds 3–8% of the current primary stat (rarity-scaled). Never
+ * Success adds 3–8% of each current rollKey (rarity-scaled). Never
  * re-rolls the item. Failures consume cost. Harsh downgrade/shatter flags
  * exist and default off.
  */
@@ -12,7 +12,6 @@ import { CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../activity/activity.model';
 import {
   definitionFor,
   isTemperableItem,
-  primaryRollKey,
   type ItemDefinition,
   type ItemStatKey,
 } from './item-definition';
@@ -141,8 +140,8 @@ export function rollUpgradeSuccess(
 }
 
 /**
- * Add 3–8% of the current primary stat, rarity-scaled.
- * Only touches the definition's rollKeys (or keys already on the item).
+ * Add 3–8% of each current rollKey, rarity-scaled.
+ * Never a full re-roll.
  */
 export function applyTemperBonus(
   item: GameItem,
@@ -152,18 +151,16 @@ export function applyTemperBonus(
   const keys: ItemStatKey[] = def?.rollKeys?.length
     ? [...def.rollKeys]
     : (Object.keys(item.stats) as ItemStatKey[]);
-  const primary = def ? primaryRollKey(def) : keys[0] ?? null;
-  if (!primary) return { ...item.stats };
-  const current = item.stats[primary] ?? 0;
-  if (current <= 0) return { ...item.stats };
-  const pct = 0.03 + rng() * 0.05;
+  if (!keys.length) return { ...item.stats };
   const scale = RARITY_TEMPER_SCALE[item.rarity] ?? 1;
-  const bonus = current * pct * scale;
   const next: ItemStats = { ...item.stats };
-  const value = current + bonus;
-  next[primary] = primary === 'goldPerSec'
-    ? Math.round(value * 10) / 10
-    : Math.round(value * 10) / 10;
+  for (const key of keys) {
+    const current = item.stats[key] ?? 0;
+    if (current <= 0) continue;
+    const pct = 0.03 + rng() * 0.05;
+    const value = current + current * pct * scale;
+    next[key] = Math.round(value * 10) / 10;
+  }
   return next;
 }
 
