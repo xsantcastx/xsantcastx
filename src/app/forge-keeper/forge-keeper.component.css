@@ -18,7 +18,18 @@
  * Every animation over a second has a `prefers-reduced-motion` stop. The sigil
  * in particular: it is the centrepiece and it rotates, so the reduced-motion
  * path parks it rather than removing it.
+ *
+ * `.scene` is `position: fixed; z-index: -1`. In Blink that sits under in-flow
+ * content; in WebKit it can paint over siblings with auto z-index, which is
+ * how /character showed only the painting and the site footer. Isolate the
+ * host and keep the sheet at z-index 1 so the three-layer stack is the same
+ * in both engines.
  */
+
+:host {
+  display: block;
+  isolation: isolate;
+}
 
 .fk {
   --fk-ink: #F2ECFF;
