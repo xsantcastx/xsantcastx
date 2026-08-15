@@ -54,11 +54,7 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
         <p class="kp__who">{{ rankTitle }} · {{ rankLevel }}</p>
 
         <div class="kp__body">
-          @if (tab === 'character') {
-            <app-equipment-panel variant="select" />
-          } @else {
-            <app-equipment-panel variant="full" />
-          }
+          <app-equipment-panel [variant]="tab === 'bank' ? 'bank' : 'select'" />
         </div>
 
         <a routerLink="/character" class="kp__hall" (click)="close()">Open the hall →</a>

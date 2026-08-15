@@ -79,6 +79,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private langSub?: Subscription;
   private xpSub?: Subscription;
   private ecoSub?: Subscription;
+  private invSub?: Subscription;
+  private keeperSub?: Subscription;
   private lastHeaderOffset = 96;
   private lastNavHeight = -1;
   private lockedScrollY = 0;
@@ -92,6 +94,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private static readonly MOBILE_NAV_BREAKPOINT = 960;
   private static readonly DESKTOP_HEADER_OFFSET = 20;
   private static readonly DESKTOP_SIDEBAR_W = 236;
+  private static readonly MOBILE_TAB_BAR_H = 58;
 
   currentLang = 'en';
   mobileMenuOpen = false;
@@ -154,6 +157,21 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   openCharacter(): void { this.closeMobileMenu(); this.keeper.toggle('character'); }
   openBank(): void { this.closeMobileMenu(); this.keeper.toggle('bank'); }
 
+  get characterPanelOpen(): boolean { return this.keeper.isOpen && this.keeper.tab === 'character'; }
+  get bankPanelOpen(): boolean { return this.keeper.isOpen && this.keeper.tab === 'bank'; }
+
+  /** Left-click opens the side panel. Modified clicks still go to /character. */
+  onHallClick(event: MouseEvent, hall: NavDestination): void {
+    if (hall.id !== 'character') return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    this.openCharacter();
+  }
+
+  hallIsActive(hall: NavDestination): boolean {
+    return hall.id === 'character' && this.keeper.isOpen;
+  }
+
   ngOnInit(): void {
     this.langSub = this.translationService.currentLanguage$.subscribe(lang => {
       const changed = this.currentLang !== lang;
@@ -180,6 +198,9 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.inventory.init();
       this.xpSub = this.xp.snapshot$.subscribe(s => { this.snap = s; this.cdr.markForCheck(); });
       this.ecoSub = this.economy.snapshot$.subscribe(e => { this.eco = e; this.cdr.markForCheck(); });
+      this.invSub = this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck());
+      this.keeperSub = this.keeper.open$.subscribe(() => this.cdr.markForCheck());
+      this.keeperSub.add(this.keeper.tab$.subscribe(() => this.cdr.markForCheck()));
     }
   }
 
@@ -209,12 +230,15 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
       const root = document.documentElement.style;
       root.removeProperty('--nav-h');
       root.removeProperty('--shell-sidebar-w');
+      root.removeProperty('--gftabs-h');
       root.removeProperty('--header-offset');
     }
     this.routerSub?.unsubscribe();
     this.langSub?.unsubscribe();
     this.xpSub?.unsubscribe();
     this.ecoSub?.unsubscribe();
+    this.invSub?.unsubscribe();
+    this.keeperSub?.unsubscribe();
     this.tomeUnreg?.();
     this.tomeUnreg = undefined;
     this.setBodyScrollLock(false);
@@ -299,6 +323,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
         this.lastNavHeight = 0;
         document.documentElement.style.setProperty('--nav-h', '0px');
       }
+      document.documentElement.style.setProperty('--gftabs-h', '0px');
       document.documentElement.style.setProperty(
         '--shell-sidebar-w',
         `${HeaderComponent.DESKTOP_SIDEBAR_W}px`,
@@ -314,6 +339,10 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     }
 
     document.documentElement.style.setProperty('--shell-sidebar-w', '0px');
+    document.documentElement.style.setProperty(
+      '--gftabs-h',
+      `${HeaderComponent.MOBILE_TAB_BAR_H}px`,
+    );
 
     const measuredHeight = this.navbarEl.offsetHeight;
     if (this.lastNavHeight !== measuredHeight) {

@@ -53,8 +53,8 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  /** `select` is doll-only, for the character hall. `full` keeps the bag column. */
-  @Input() variant: 'full' | 'select' = 'full';
+  /** `select` is doll-only. `bank` is bag-only. `full` is both, and may sync the URL. */
+  @Input() variant: 'full' | 'select' | 'bank' = 'full';
 
   readonly dollSrc = PAPER_DOLL_SRC;
   readonly dollSlots = PAPER_DOLL_SLOTS;
@@ -87,23 +87,25 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
         this.confirming = null;
       }
     });
-    this.sub.add(this.route.queryParamMap.subscribe(params => {
-      const bag = this.oneOf(params.get('bag'), CATS, 'all');
-      const rarity = this.oneOf(params.get('rarity'), RARS, 'all');
-      const sort = this.oneOf(params.get('sort'), SORTS, 'newest');
-      const query = params.get('q') ?? '';
-      const focus = params.get('item');
-      this.category = bag;
-      this.rarity = rarity;
-      this.sort = sort;
-      this.query = query;
-      if (focus) this.selectedId = focus;
-      const dirty =
-        this.invalid(params.get('bag'), CATS)
-        || this.invalid(params.get('rarity'), RARS)
-        || this.invalid(params.get('sort'), SORTS);
-      if (dirty) this.writeQuery({ bag, rarity, sort, q: query || null }, true);
-    }));
+    if (this.syncsUrl) {
+      this.sub.add(this.route.queryParamMap.subscribe(params => {
+        const bag = this.oneOf(params.get('bag'), CATS, 'all');
+        const rarity = this.oneOf(params.get('rarity'), RARS, 'all');
+        const sort = this.oneOf(params.get('sort'), SORTS, 'newest');
+        const query = params.get('q') ?? '';
+        const focus = params.get('item');
+        this.category = bag;
+        this.rarity = rarity;
+        this.sort = sort;
+        this.query = query;
+        if (focus) this.selectedId = focus;
+        const dirty =
+          this.invalid(params.get('bag'), CATS)
+          || this.invalid(params.get('rarity'), RARS)
+          || this.invalid(params.get('sort'), SORTS);
+        if (dirty) this.writeQuery({ bag, rarity, sort, q: query || null }, true);
+      }));
+    }
     this.ready = this.isBrowser;
   }
 
@@ -206,20 +208,35 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   }
 
   select(item: GameItem): void {
-    if (item.type === 'charm') {
-      this.selectedId = this.selectedId === item.id ? null : item.id;
-      return;
-    }
     this.selectedId = this.selectedId === item.id ? null : item.id;
   }
 
-  setCategory(value: string): void { this.writeQuery({ bag: this.oneOf(value, CATS, 'all') }); }
-  setRarity(value: string): void { this.writeQuery({ rarity: this.oneOf(value, RARS, 'all') }); }
-  setSort(value: string): void { this.writeQuery({ sort: this.oneOf(value, SORTS, 'newest') }); }
-  setQuery(value: string): void { this.writeQuery({ q: value }, true); }
+  setCategory(value: string): void { this.setFilter('category', this.oneOf(value, CATS, 'all')); }
+  setRarity(value: string): void { this.setFilter('rarity', this.oneOf(value, RARS, 'all')); }
+  setSort(value: string): void { this.setFilter('sort', this.oneOf(value, SORTS, 'newest')); }
+  setQuery(value: string): void {
+    this.query = value;
+    if (this.syncsUrl) this.writeQuery({ q: value }, true);
+  }
 
   clearFilters(): void {
-    this.writeQuery({ bag: 'all', rarity: 'all', sort: 'newest', q: null });
+    this.category = 'all';
+    this.rarity = 'all';
+    this.sort = 'newest';
+    this.query = '';
+    if (this.syncsUrl) this.writeQuery({ bag: 'all', rarity: 'all', sort: 'newest', q: null });
+  }
+
+  private get syncsUrl(): boolean { return this.variant === 'full'; }
+
+  private setFilter(kind: 'category' | 'rarity' | 'sort', value: string): void {
+    if (kind === 'category') this.category = value as BagCategory;
+    if (kind === 'rarity') this.rarity = value as BagRarity;
+    if (kind === 'sort') this.sort = value as BagSort;
+    if (!this.syncsUrl) return;
+    if (kind === 'category') this.writeQuery({ bag: value });
+    if (kind === 'rarity') this.writeQuery({ rarity: value });
+    if (kind === 'sort') this.writeQuery({ sort: value });
   }
 
   askSell(item: GameItem): void {

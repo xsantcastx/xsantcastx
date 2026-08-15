@@ -67,12 +67,8 @@ async function openVault(page: Page, seed = true): Promise<void> {
     },
   );
   await page.goto('/character');
-  await page.locator('.fk-bank-open').click();
+  await page.locator('.fk-catalogue-open').click();
   await page.locator('.fk-bank').waitFor();
-  // Catalogue cards only exist when the market shelf is open; the bank
-  // itself is the slot grid. Open the old shelf so the hover regression
-  // still has a card to measure.
-  await page.locator('.fk-bank__mode').click();
   await page.locator('.fk-inv__card').first().waitFor();
   await expect(page.locator('.fk-inv__result')).toContainText('entries');
 }

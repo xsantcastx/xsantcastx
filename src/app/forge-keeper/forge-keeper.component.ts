@@ -446,6 +446,15 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     this.keeperPanel.show('bank');
   }
 
+  openCatalogue(): void {
+    this.ownedOnly = false;
+    this.refreshInventoryView();
+    if (this.bankOpen) return;
+    this.bankOpen = true;
+    this.unbank = this.overlays.push('character-catalogue', () => this.closeBank());
+    if (this.isBrowser) document.body.style.overflow = 'hidden';
+  }
+
   closeBank(): void {
     if (!this.bankOpen) return;
     this.bankOpen = false;
