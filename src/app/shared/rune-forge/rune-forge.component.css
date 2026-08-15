@@ -53,7 +53,14 @@
 }
 .rf-head__wallet dd { margin: 0.15rem 0 0; font-weight: 700; color: #d6a84f; }
 
-.rf-roll { display: flex; justify-content: center; margin-bottom: 0.85rem; }
+.rf-roll {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+.rf-strike--auto { border-color: #d6a84f; }
 .rf-strike {
   position: relative;
   width: min(260px, 100%);
@@ -259,6 +266,7 @@
   display: grid;
   place-items: center;
   padding: 1.5rem 1rem;
+  overflow: auto;
   background: rgba(9, 11, 15, 0.78);
 }
 .rf-pick {
@@ -307,6 +315,20 @@
 .rf-pick__card.is-other { opacity: 0.28; transform: none; }
 .rf-pick__card img { width: 72%; height: auto; object-fit: contain; }
 .rf-pick__back { font-size: 2rem; color: #d6a84f; }
+.rf-pick__new {
+  position: absolute;
+  bottom: 0.45rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #d6a84f;
+}
+.rf-pick__card { position: relative; }
+.rf-pick--batch .rf-pick__card {
+  min-height: 148px;
+  cursor: default;
+}
+.rf-pick--batch .rf-pick__card:hover { transform: none; }
 .rf-pick__name { margin: 0; font-size: 1.7rem; }
 .rf-pick__tier, .rf-pick__dup { margin: 0; color: #8f969f; }
 .rf-pick__done {

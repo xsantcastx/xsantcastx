@@ -1567,6 +1567,8 @@ export class TranslationService {
     'forge.roll.forging':       { en: 'Forging...', es: 'Forjando...' },
     'forge.roll.need':          { en: 'Need {{gold}} more gold', es: 'Faltan {{gold}} de oro' },
     'forge.roll.dock':          { en: 'Roll', es: 'Lanzar' },
+    'forge.roll.auto':          { en: 'Auto ×10', es: 'Auto ×10' },
+    'forge.roll.auto.done':     { en: '{{n}} strikes · ✦ {{new}} new', es: '{{n}} golpes · ✦ {{new}} nuevas' },
     'forge.library.title':      { en: 'Your rune library', es: 'Tu biblioteca' },
     'forge.library.stats':      { en: 'Collection', es: 'Coleccion' },
     'forge.library.done':       { en: 'The Archivum knows your name', es: 'El Archivum conoce tu nombre' },
