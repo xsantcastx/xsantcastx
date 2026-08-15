@@ -1,5 +1,5 @@
-import { buildReel, reelLength, reelOffset, SLOT_FACE_PX, spinMs } from './rune-reel';
-import { runeById } from './rune.model';
+import { AUTO_ROLLS, buildPickHand, buildReel, PICK_COUNT, reelLength, reelOffset, SLOT_FACE_PX, spinMs } from './rune-reel';
+import { runeById, STRIKE_COST } from './rune.model';
 
 describe('anvil reel', () => {
   it('ends on the winning rune and never repeats the winner mid-strip', () => {
@@ -14,5 +14,17 @@ describe('anvil reel', () => {
     expect(reelLength('common')).toBeLessThan(reelLength('mythic'));
     expect(spinMs('common')).toBeLessThan(spinMs('singular'));
     expect(reelOffset(16)).toBe(-15 * SLOT_FACE_PX);
+  });
+
+  it('lays out ten distinct backs for a pick', () => {
+    const hand = buildPickHand();
+    expect(hand.length).toBe(PICK_COUNT);
+    expect(new Set(hand.map(slot => slot.mark)).size).toBeGreaterThan(1);
+    expect(AUTO_ROLLS).toBe(10);
+  });
+
+  it('prices Auto ×10 as ten full strikes', () => {
+    expect(AUTO_ROLLS).toBe(PICK_COUNT);
+    expect(AUTO_ROLLS * STRIKE_COST).toBe(100_000);
   });
 });
