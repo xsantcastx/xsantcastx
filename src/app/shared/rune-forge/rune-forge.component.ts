@@ -46,12 +46,8 @@ import {
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
 import {
-  SLOT_FACE_PX,
-  buildReel,
-  reelLength,
-  reelOffset,
-  spinMs,
-  type ReelFace,
+  buildPickHand,
+  type PickSlot,
 } from './rune-reel';
 import {
   LIBRARY_FILTERS,
@@ -107,8 +103,7 @@ interface RecipeRow {
   card: CardArt | null;
 }
 
-/** Fallback if transitionend is missed. Added to the authored spin. */
-const SPIN_TAIL_MS = 80;
+
 
 /** Epic and above earn the sub-bass voice on the reveal cue. */
 function isHeavy(tier: RuneTier): boolean {
@@ -144,9 +139,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
-  private spinTimer: ReturnType<typeof setTimeout> | null = null;
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
-  private spinFrame = 0;
 
   readonly strikeCost = STRIKE_COST;
   readonly tierOrder = RUNE_TIER_ORDER;
@@ -193,17 +186,13 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
    * a screen reader announces does not change either way.
    */
   revealCard: CardArt | null = null;
-  /** Faces in the slot window. Last entry is the strike that already landed. */
-  reel: ReelFace[] = [];
-  reelOffset = 0;
-  reelMs = 0;
-  spinning = false;
+  picks: PickSlot[] = [];
+  chosen: number | null = null;
   landed = false;
   loreOpen = false;
-  readonly facePx = SLOT_FACE_PX;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
   scrollParagraphs: string[] = [];
-  /** True while the reel is in motion. */
+  /** True while a pick is open. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
   inspecting: Rune | null = null;
@@ -351,7 +340,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.removeHeroPreloads();
     this.markArtRoute(false);
     this.subs.unsubscribe();
-    this.clearSpin();
     this.dockWatch?.disconnect();
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
     // Navigating away mid-Mythic would otherwise leave the whole site under a
@@ -398,16 +386,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.isBrowser && window.matchMedia('(max-width: 768px)').matches;
   }
 
-  get reelTransform(): string {
-    return `translate3d(0, ${this.reelOffset}px, 0)`;
-  }
-
-  get reelTransition(): string {
-    return this.spinning && this.reelMs > 0
-      ? `transform ${this.reelMs}ms cubic-bezier(0.12, 0.82, 0.08, 1)`
-      : 'none';
-  }
-
   strike(): void {
     if (!this.isBrowser || this.striking) return;
 
@@ -425,40 +403,26 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const tier = tierOf(find.rune.tier);
     this.audio.strike(tier.semitones);
-    this.clearSpin();
     this.striking = true;
     this.landed = false;
     this.loreOpen = false;
-    this.spinning = false;
-    this.reelOffset = 0;
-    this.reelMs = 0;
+    this.chosen = null;
+    this.picks = buildPickHand();
     this.reveal = find;
     this.revealTier = tier;
     this.revealCard = runeCard(find.rune.id);
-    this.reel = buildReel(find.rune, reelLength(find.rune.tier));
     this.scrollParagraphs = find.scroll
       ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
       : [];
     this.cdr.markForCheck();
 
-    if (this.prefersReducedMotion()) {
-      this.finishSpin();
-      return;
-    }
-
-    this.spinFrame = requestAnimationFrame(() => {
-      this.spinFrame = requestAnimationFrame(() => {
-        this.spinning = true;
-        this.reelMs = spinMs(find.rune.tier);
-        this.reelOffset = reelOffset(this.reel.length);
-        this.cdr.markForCheck();
-        this.spinTimer = setTimeout(() => this.finishSpin(), this.reelMs + SPIN_TAIL_MS);
-      });
-    });
+    if (this.prefersReducedMotion()) this.choosePick(0);
   }
 
-  onReelEnd(event: TransitionEvent): void {
-    if (event.propertyName !== 'transform') return;
+  choosePick(index: number): void {
+    if (this.chosen !== null || !this.reveal) return;
+    if (index < 0 || index >= this.picks.length) return;
+    this.chosen = index;
     this.finishSpin();
   }
 
@@ -472,8 +436,9 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   dismissFocus(): void {
     if (this.striking && !this.landed) return;
     this.landed = false;
-    this.spinning = false;
     this.striking = false;
+    this.chosen = null;
+    this.picks = [];
     this.cdr.markForCheck();
   }
 
@@ -581,12 +546,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private finishSpin(): void {
     if (this.landed || !this.reveal || !this.revealTier) return;
-    this.clearSpin();
-    this.spinning = false;
     this.landed = true;
-    this.striking = false;
-    this.reelOffset = reelOffset(this.reel.length);
-    this.reelMs = 0;
     const find = this.reveal;
     const tier = this.revealTier;
     if (find.rune.tier === 'singular') {
@@ -597,17 +557,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);
     this.cdr.markForCheck();
-  }
-
-  private clearSpin(): void {
-    if (this.spinTimer !== null) {
-      clearTimeout(this.spinTimer);
-      this.spinTimer = null;
-    }
-    if (this.spinFrame) {
-      cancelAnimationFrame(this.spinFrame);
-      this.spinFrame = 0;
-    }
   }
 
   private prefersReducedMotion(): boolean {
