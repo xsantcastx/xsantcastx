@@ -372,7 +372,7 @@
     <p class="rf-panel__sub">{{ t('forge.recipe.sub') }}</p>
     <div class="rf-words">
       @for (recipe of equipmentRecipes; track recipe.id) {
-        <article class="rf-word rf-word--locked">
+        <article class="rf-word" [class.rf-word--locked]="!inputReady(recipe)" [class.rf-word--ready]="inputReady(recipe)">
           <header class="rf-word__head">
             <h3 class="rf-word__name">{{ recipe.name }}</h3>
             <span class="rf-word__tier">{{ t('loadout.slot.weapon') }}</span>
@@ -380,14 +380,39 @@
           <p class="rf-word__effect">{{ recipe.summary }}</p>
           <ol class="rf-slots">
             @for (input of recipe.inputs; track input.id) {
-              <li class="rf-slot">
+              <li class="rf-slot" [class.rf-slot--ready]="heldOf(input.id) >= input.quantity">
                 <span class="rf-slot__name">{{ input.name }}</span>
-                <span class="rf-slot__held">{{ input.quantity }}</span>
+                <span class="rf-slot__held">{{ heldOf(input.id) }} / {{ input.quantity }}</span>
               </li>
             }
           </ol>
           <p class="rf-word__lore">{{ recipe.lore }}</p>
-          <p class="rf-word__done">{{ t('forge.recipe.locked') }}</p>
+          @if (!inputReady(recipe)) {
+            <p class="rf-word__done">{{ t('forge.recipe.missing') }} {{ missingLine(recipe) }}</p>
+          }
+          @if (craftError === 'capacity') {
+            <p class="rf-word__done" role="alert">{{ t('forge.recipe.full') }}</p>
+          }
+          @if (craftError === 'persist') {
+            <p class="rf-word__done" role="alert">{{ t('forge.recipe.persist') }}</p>
+            <button type="button" class="rf-forge-btn" (click)="retryCraft(recipe)">{{ t('forge.recipe.retry') }}</button>
+          }
+          <button
+            type="button"
+            class="rf-forge-btn"
+            [disabled]="!inputReady(recipe)"
+            (click)="craftEquipment(recipe)">
+            {{ t('forge.recipe.craft') }}
+          </button>
+          @if (lastCraft; as made) {
+            <div class="rf-word__result">
+              <p>{{ t('forge.recipe.made', { name: made.name }) }}</p>
+              <app-inspect-button type="item" [id]="made.id" />
+              <a class="rf-word__bag" [routerLink]="'/character'" [queryParams]="{ item: made.id }">
+                {{ t('forge.recipe.openBag') }}
+              </a>
+            </div>
+          }
           <app-inspect-button type="recipe" [id]="recipe.id" />
         </article>
       }

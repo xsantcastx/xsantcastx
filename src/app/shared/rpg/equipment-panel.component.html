@@ -127,7 +127,8 @@
             class="ld__tile"
             [class.ld__tile--selected]="selectedId === item.id">
           <button type="button" class="ld__tile-face" (click)="select(item)" [attr.aria-pressed]="selectedId === item.id">
-            <span class="ld__tile-orb" aria-hidden="true">{{ initialsOf(item) }}</span>
+            <img *ngIf="tileArt(item) as art" class="ld__tile-art" [src]="art" alt="" width="40" height="40" decoding="async">
+            <span *ngIf="!tileArt(item)" class="ld__tile-orb" aria-hidden="true">{{ initialsOf(item) }}</span>
             <span class="ld__tile-name">{{ item.name }}</span>
             <span class="ld__tile-meta">{{ label(item) }} · {{ compact(item.sellValue) }}</span>
           </button>

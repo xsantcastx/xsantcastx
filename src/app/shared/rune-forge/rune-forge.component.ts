@@ -43,7 +43,10 @@ import { CardArt, runeCard, runewordCard } from './rune-cards';
 import { InspectService } from '../entity/inspect.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
-import { FORGE_EQUIPMENT_RECIPES } from '../rpg/forge-recipes';
+import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
+import { ForgeCraftGateway } from '../rpg/forge-craft.gateway';
+import { InventoryService } from '../rpg/inventory.service';
+import type { GameItem } from '../rpg/item.model';
 
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
@@ -105,9 +108,16 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly inspectOverlay = inject(InspectService);
   private readonly i18n = inject(TranslationService);
+  private readonly crafts = inject(ForgeCraftGateway);
+  private readonly inventory = inject(InventoryService);
   private readonly subs = new Subscription();
   readonly equipmentRecipes = FORGE_EQUIPMENT_RECIPES;
-  t(key: string): string { return this.i18n.translate(key); }
+  pendingCraftId: string | null = null;
+  lastCraft: GameItem | null = null;
+  craftError: 'missing' | 'capacity' | 'persist' | null = null;
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
 
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
@@ -181,6 +191,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     // artwork this page now has, and running both is two forges at once.
     this.markArtRoute(true);
     if (!this.isBrowser) return;
+    this.crafts.init();
 
     this.subs.add(this.forge.snapshot$.subscribe(snap => {
       this.cells = RUNES.map(rune => ({
@@ -204,6 +215,44 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       this.gold = snap.gold;
       this.cdr.markForCheck();
     }));
+
+    this.subs.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
+  }
+
+  heldOf(id: string): number {
+    return this.inventory.stackOf(id);
+  }
+
+  inputReady(recipe: ForgeEquipmentRecipe): boolean {
+    return recipe.inputs.every(input => this.heldOf(input.id) >= input.quantity);
+  }
+
+  missingLine(recipe: ForgeEquipmentRecipe): string {
+    const missing = recipe.inputs
+      .filter(input => this.heldOf(input.id) < input.quantity)
+      .map(input => `${input.quantity} ${input.name} (${this.heldOf(input.id)})`);
+    return missing.join(' · ');
+  }
+
+  craftEquipment(recipe: ForgeEquipmentRecipe): void {
+    if (!recipe.craftable) return;
+    const mutationId = this.pendingCraftId ?? newCraftId();
+    this.pendingCraftId = mutationId;
+    const result = this.crafts.craftBasaltEdge(mutationId);
+    if (!result.ok) {
+      this.craftError = result.code === 'ssr' || result.code === 'clock' ? 'persist' : result.code;
+      if (result.code !== 'persist') this.pendingCraftId = null;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.craftError = null;
+    this.pendingCraftId = null;
+    this.lastCraft = result.item;
+    this.cdr.markForCheck();
+  }
+
+  retryCraft(recipe: ForgeEquipmentRecipe): void {
+    this.craftEquipment(recipe);
   }
 
   private addHeroPreloads(): void {
@@ -437,4 +486,11 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       card: hidden ? null : runewordCard(word.id),
     };
   }
+}
+
+function newCraftId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `craft-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
