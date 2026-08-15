@@ -40,6 +40,14 @@ import {
   tierOf,
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
+import {
+  SLOT_FACE_PX,
+  buildReel,
+  reelLength,
+  reelOffset,
+  spinMs,
+  type ReelFace,
+} from './rune-reel';
 import { InspectService } from '../entity/inspect.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
@@ -82,8 +90,8 @@ interface RecipeRow {
   card: CardArt | null;
 }
 
-/** How long the reveal card stays up before the anvil is armed again. */
-const REVEAL_GRACE_MS = 320;
+/** Fallback if transitionend is missed. Added to the authored spin. */
+const SPIN_TAIL_MS = 80;
 
 /** Epic and above earn the sub-bass voice on the reveal cue. */
 function isHeavy(tier: RuneTier): boolean {
@@ -119,8 +127,9 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
-  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+  private spinTimer: ReturnType<typeof setTimeout> | null = null;
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
+  private spinFrame = 0;
 
   readonly strikeCost = STRIKE_COST;
   readonly tierOrder = RUNE_TIER_ORDER;
@@ -153,9 +162,17 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
    * a screen reader announces does not change either way.
    */
   revealCard: CardArt | null = null;
+  /** Faces in the slot window. Last entry is the strike that already landed. */
+  reel: ReelFace[] = [];
+  reelOffset = 0;
+  reelMs = 0;
+  spinning = false;
+  landed = false;
+  loreOpen = false;
+  readonly facePx = SLOT_FACE_PX;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
   scrollParagraphs: string[] = [];
-  /** True while the hammer animation runs, so a second click cannot land. */
+  /** True while the reel is in motion. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
   inspecting: Rune | null = null;
@@ -285,7 +302,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     this.removeHeroPreloads();
     this.markArtRoute(false);
     this.subs.unsubscribe();
-    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.clearSpin();
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
     // Navigating away mid-Mythic would otherwise leave the whole site under a
     // red wash until the next reload.
@@ -300,6 +317,16 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     return this.isBrowser && !this.striking && this.gold >= STRIKE_COST;
   }
 
+  get reelTransform(): string {
+    return `translate3d(0, ${this.reelOffset}px, 0)`;
+  }
+
+  get reelTransition(): string {
+    return this.spinning && this.reelMs > 0
+      ? `transform ${this.reelMs}ms cubic-bezier(0.12, 0.82, 0.08, 1)`
+      : 'none';
+  }
+
   strike(): void {
     if (!this.isBrowser || this.striking) return;
 
@@ -309,59 +336,91 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // The hammer falls first and the rune is resolved under it, so the reveal
-    // lands on the impact frame rather than before the hammer has moved.
-    this.striking = true;
-    this.reveal = null;
-    this.revealTier = null;
-
     const find = this.forge.strike();
     if (!find) {
-      // Gold went between the check and the spend — another tab, most likely.
-      this.striking = false;
       this.broke = true;
       return;
     }
 
     const tier = tierOf(find.rune.tier);
     this.audio.strike(tier.semitones);
+    this.clearSpin();
+    this.striking = true;
+    this.landed = false;
+    this.loreOpen = false;
+    this.spinning = false;
+    this.reelOffset = 0;
+    this.reelMs = 0;
+    this.reveal = find;
+    this.revealTier = tier;
+    this.revealCard = runeCard(find.rune.id);
+    this.reel = buildReel(find.rune, reelLength(find.rune.tier));
+    this.scrollParagraphs = find.scroll
+      ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+      : [];
+    this.cdr.markForCheck();
+
+    if (this.prefersReducedMotion()) {
+      this.finishSpin();
+      return;
+    }
+
+    this.spinFrame = requestAnimationFrame(() => {
+      this.spinFrame = requestAnimationFrame(() => {
+        this.spinning = true;
+        this.reelMs = spinMs(find.rune.tier);
+        this.reelOffset = reelOffset(this.reel.length);
+        this.cdr.markForCheck();
+        this.spinTimer = setTimeout(() => this.finishSpin(), this.reelMs + SPIN_TAIL_MS);
+      });
+    });
+  }
+
+  onReelEnd(event: TransitionEvent): void {
+    if (event.propertyName !== 'transform') return;
+    this.finishSpin();
+  }
+
+  toggleLore(): void {
+    if (!this.reveal?.scroll) return;
+    this.loreOpen = !this.loreOpen;
+    if (this.loreOpen) this.scrolls.markRead(this.reveal.scroll.id);
+    this.cdr.markForCheck();
+  }
+
+  private finishSpin(): void {
+    if (this.landed || !this.reveal || !this.revealTier) return;
+    this.clearSpin();
+    this.spinning = false;
+    this.landed = true;
+    this.striking = false;
+    this.reelOffset = reelOffset(this.reel.length);
+    this.reelMs = 0;
+    const find = this.reveal;
+    const tier = this.revealTier;
     if (find.rune.tier === 'singular') {
       this.audio.voidRumble();
     } else {
       this.audio.runeReveal(tier.semitones, isHeavy(find.rune.tier));
     }
-
-    this.reveal = find;
-    this.revealTier = tier;
-    this.revealCard = runeCard(find.rune.id);
-    // Split once, here, rather than in a template getter that would re-split on
-    // every change-detection pass for the whole time the card is up.
-    this.scrollParagraphs = find.scroll
-      ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
-      : [];
     if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);
     this.cdr.markForCheck();
-
-    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
-    this.revealTimer = setTimeout(() => {
-      this.striking = false;
-      this.revealTimer = null;
-      this.cdr.markForCheck();
-    }, REVEAL_GRACE_MS);
   }
 
-  /** Dismiss the reveal card early. The cinematic tiers are worth sitting through. */
-  dismissReveal(): void {
-    // Dismissing is how you finish reading, so it is also what marks the scroll
-    // read — the alternative is a Codex that shows a "new" dot on a page the
-    // visitor has just had open in front of them.
-    if (this.reveal?.scroll) this.scrolls.markRead(this.reveal.scroll.id);
-    this.reveal = null;
-    this.revealTier = null;
-    this.revealCard = null;
-    this.scrollParagraphs = [];
-    this.cdr.markForCheck();
+  private clearSpin(): void {
+    if (this.spinTimer !== null) {
+      clearTimeout(this.spinTimer);
+      this.spinTimer = null;
+    }
+    if (this.spinFrame) {
+      cancelAnimationFrame(this.spinFrame);
+      this.spinFrame = 0;
+    }
+  }
+
+  private prefersReducedMotion(): boolean {
+    return this.isBrowser && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   /**
