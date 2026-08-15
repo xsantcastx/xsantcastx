@@ -1232,7 +1232,7 @@ export class TranslationService {
     'godforge.anvil.scrolls':         { en: 'scrolls',                  es: 'pergaminos' },
     'godforge.anvil.words':           { en: 'runewords',                es: 'palabras' },
     'godforge.anvil.cta':             { en: 'Strike the Forge →',       es: 'Golpea la forja →' },
-    'godforge.anvil.cost':            { en: '10 Gold a strike',         es: '10 de oro por golpe' },
+    'godforge.anvil.cost':            { en: '10,000 Gold a strike',     es: '10.000 de oro por golpe' },
 
     'godforge.journey.eyebrow':       { en: 'Begin Your Journey',       es: 'Comienza tu viaje' },
     'godforge.journey.title':         { en: 'The Eclipse is a pressure, not a prize', es: 'El Eclipse es una presion, no un premio' },
