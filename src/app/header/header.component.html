@@ -60,6 +60,7 @@
       <!-- .gt--bar marks this as the instance in the crowded row: below 420px it
            drops its rate pill and keeps the count. The tome's instance carries
            no such class and keeps both. -->
+      <app-current-work-tile class="cwt--bar"></app-current-work-tile>
       <app-gold-ticker class="gt--bar"></app-gold-ticker>
       <a routerLink="/market" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"
@@ -165,6 +166,7 @@
       <!-- Same ticker as the command bar. It renders its compact "/s" unit at
            this width, and both instances share one service, so whichever is on
            screen is always showing the same second. -->
+      <app-current-work-tile></app-current-work-tile>
       <app-gold-ticker></app-gold-ticker>
       <span class="gfpill gfpill--essence">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png"

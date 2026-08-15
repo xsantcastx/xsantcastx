@@ -39,11 +39,21 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      path: 'world/realms/infernal/basalt-seamworks',
+      loadComponent: () => import('./world/basalt-seamworks.component').then(m => m.BasaltSeamworksComponent),
+      title: 'Basalt Seamworks — Eclipse Realms',
+      data: {
+        description: 'Mine Cinder Ore at the Basalt Seamworks. Active Mining only; no travel reward and no background trickle.',
+        keywords: 'eclipse realms, infernal, basalt seamworks, mining, cinder ore',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+      }
+    },
+  {
       path: 'world/realms/:realmId',
       loadComponent: () => import('./world/realm-landing.component').then(m => m.RealmLandingComponent),
       title: 'Realm — Eclipse Realms',
       data: {
-        description: 'Inspect one of the five Eclipse Realms: faction, landmark, hazard, resource, threat, and unresolved conflict. Opening chapters are not yet playable.',
+        description: 'Inspect one of the five Eclipse Realms: faction, landmark, hazard, resource, threat, and unresolved conflict. Infernal\'s opening chapter is playable.',
         keywords: 'eclipse realms, luminous, celestial, infernal, umbral, verdant',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       }

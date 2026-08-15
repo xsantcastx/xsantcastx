@@ -92,7 +92,7 @@ describe('canonical player routing', () => {
     }
   });
 
-  const pages = ['/character', '/world', '/world/realms/luminous', '/world/fivefold-lock', '/forge/runes', '/world/trials', '/world/quests', '/sanctum', '/market', '/codex'] as const;
+  const pages = ['/character', '/world', '/world/realms/luminous', '/world/realms/infernal/basalt-seamworks', '/world/fivefold-lock', '/forge/runes', '/world/trials', '/world/quests', '/sanctum', '/market', '/codex'] as const;
 
   for (const url of pages) {
     it(`resolves ${url} (not 404)`, async () => {

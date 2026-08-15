@@ -9,6 +9,8 @@ describe('C6 forge equipment recipes', () => {
       '6:cinder-ore',
       '1:ember-residue',
     ]);
+    expect(recipe?.portrait).toContain('04-basalt-edge-portrait.png');
+    expect(recipe?.overlay).toContain('09-basalt-edge-overlay.png');
     expect(FORGE_EQUIPMENT_RECIPES.every(row => row.craftable === false)).toBe(true);
   });
 });

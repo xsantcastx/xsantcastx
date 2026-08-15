@@ -80,6 +80,7 @@ describe('EntityResolver', () => {
     const recipe = resolver.resolve({ type: 'recipe', id: 'basalt-edge' });
     expect(recipe.state).toBe('ready');
     expect(recipe.presentation?.name).toBe('Basalt Edge');
+    expect(recipe.presentation?.art?.src).toContain('04-basalt-edge-portrait.png');
     expect(recipe.presentation?.facts.some(fact => fact.exactValue?.includes('Cinder Ore'))).toBeTrue();
     expect(recipe.actions.some(action => action.id === 'craft')).toBeFalse();
   });

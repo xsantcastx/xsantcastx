@@ -1,0 +1,129 @@
+:host { display: block; }
+
+.ic {
+  margin-top: 2rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.ic__eyebrow {
+  margin: 0 0 0.4rem;
+  font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #EF4444;
+}
+
+.ic h2 {
+  margin: 0 0 0.6rem;
+  font: 700 1.35rem/1.2 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.ic__lede { margin: 0 0 1rem; color: rgba(232, 236, 241, 0.86); }
+
+.ic__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0 0 1.1rem;
+  list-style: none;
+}
+
+.ic__steps li {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: rgba(232, 236, 241, 0.55);
+  border: 1px solid rgba(232, 236, 241, 0.12);
+}
+
+.ic__steps li.is-current {
+  color: #fff;
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.ic__panel p { margin: 0 0 1rem; line-height: 1.55; }
+
+.ic__people, .ic__evidence {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.ic__people li, .ic__evidence li, .ic__choice {
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: rgba(10, 10, 15, 0.4);
+}
+
+.ic__people span { display: block; color: #EF4444; font-size: 0.8rem; }
+.ic__people p { margin: 0.4rem 0 0; }
+
+.ic__ev-hd, .ic__btn, .ic__choice {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ic__ev-hd {
+  width: 100%;
+  font: 600 0.95rem/1.3 inherit;
+}
+
+.ic__btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 1rem;
+  border-radius: 8px;
+  background: #EF4444;
+  color: #140808;
+  font-weight: 700;
+}
+
+.ic__btn--link {
+  text-decoration: none;
+}
+
+.ic__choices {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ic__choice {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.ic__choice:hover, .ic__choice:focus-visible {
+  border-color: #EF4444;
+}
+
+.ic__choice span { color: rgba(232, 236, 241, 0.78); font-size: 0.9rem; }
+
+.ic__error { color: #fecaca; }
+.ic__rune { font-weight: 600; }
+.ic__later { color: rgba(232, 236, 241, 0.7); }
+
+.ic__btn:focus-visible,
+.ic__choice:focus-visible,
+.ic__ev-hd:focus-visible {
+  outline: 2px solid #FCA5A5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ic, .ic__btn, .ic__choice { transition: none; }
+}

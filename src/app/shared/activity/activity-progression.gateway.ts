@@ -107,6 +107,22 @@ export class ActivityProgressionGateway {
     return work;
   }
 
+  recoveryEndsAt(): number | null {
+    const work = this.ledger.currentWork;
+    if (!work) return null;
+    const last = newestOperation(this.ledger.operations, work);
+    if (!last) return null;
+    const lastAt = Date.parse(last.resolvedAt);
+    if (!Number.isFinite(lastAt)) return null;
+    return lastAt + MINING_RECOVERY_MS;
+  }
+
+  recoveryRemainingMs(now = Date.now()): number {
+    const end = this.recoveryEndsAt();
+    if (end == null) return 0;
+    return Math.max(0, end - now);
+  }
+
   resolveMine(input: {
     mutationId: string;
     locationId?: string;

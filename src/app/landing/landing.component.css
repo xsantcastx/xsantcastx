@@ -2106,6 +2106,7 @@
 }
 
 .gfxp--hero { margin: 0.2rem 0 0.1rem; }
+.gfh__welcome app-current-work-tile { display: block; margin: 0.55rem 0; }
 .gfh__wallet { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .gfbtn {
