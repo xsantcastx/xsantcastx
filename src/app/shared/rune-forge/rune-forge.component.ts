@@ -12,15 +12,20 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
+  HostListener,
+  AfterViewInit,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
+  ViewChild,
   inject,
 } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
+import { GameStateGateway } from '../save/game-state.gateway';
 import { EconomyService } from '../economy/economy.service';
 import { ForgeAudioService } from '../economy/forge-audio.service';
 import { formatCurrency } from '../economy/economy.model';
@@ -40,7 +45,27 @@ import {
   tierOf,
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
-import { InspectService } from '../entity/inspect.service';
+import {
+  SLOT_FACE_PX,
+  buildReel,
+  reelLength,
+  reelOffset,
+  spinMs,
+  type ReelFace,
+} from './rune-reel';
+import {
+  LIBRARY_FILTERS,
+  LIBRARY_SORTS,
+  filterCards,
+  lockedMark,
+  sortCards,
+  wordsUsing,
+  type LibraryCard,
+  type LibraryFilter,
+  type LibrarySort,
+  type LibraryTab,
+} from './rune-library';
+import { loadSeen, markSeen, persistSeen } from './rune-unseen';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
@@ -82,8 +107,8 @@ interface RecipeRow {
   card: CardArt | null;
 }
 
-/** How long the reveal card stays up before the anvil is armed again. */
-const REVEAL_GRACE_MS = 320;
+/** Fallback if transitionend is missed. Added to the authored spin. */
+const SPIN_TAIL_MS = 80;
 
 /** Epic and above earn the sub-bass voice on the reveal cue. */
 function isHeavy(tier: RuneTier): boolean {
@@ -98,7 +123,7 @@ function isHeavy(tier: RuneTier): boolean {
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
 })
-export class RuneForgeComponent implements OnInit, OnDestroy {
+export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly forge = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
@@ -106,7 +131,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly scrolls = inject(LoreScrollService);
   private readonly doc = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly inspectOverlay = inject(InspectService);
+  private readonly store = inject(GameStateGateway);
   private readonly i18n = inject(TranslationService);
   private readonly crafts = inject(ForgeCraftGateway);
   private readonly inventory = inject(InventoryService);
@@ -119,8 +144,9 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
-  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+  private spinTimer: ReturnType<typeof setTimeout> | null = null;
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
+  private spinFrame = 0;
 
   readonly strikeCost = STRIKE_COST;
   readonly tierOrder = RUNE_TIER_ORDER;
@@ -141,6 +167,20 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   craftedCount = 0;
   rarest: Rune | null = null;
   collectionValue = 0;
+  firstFound: Record<string, string> = {};
+  cards: LibraryCard[] = [];
+  seen = new Set<string>();
+  tab: LibraryTab = 'runes';
+  filter: LibraryFilter = 'all';
+  sort: LibrarySort = 'rarity';
+  query = '';
+  detail: LibraryCard | null = null;
+  showDock = false;
+  readonly filters = LIBRARY_FILTERS;
+  readonly sorts = LIBRARY_SORTS;
+  readonly lockedMark = lockedMark;
+  @ViewChild('rollAnchor') rollAnchor?: ElementRef<HTMLElement>;
+  private dockWatch?: IntersectionObserver;
 
   /** The rune the anvil just produced. Null between strikes. */
   reveal: RuneFind | null = null;
@@ -153,9 +193,17 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
    * a screen reader announces does not change either way.
    */
   revealCard: CardArt | null = null;
+  /** Faces in the slot window. Last entry is the strike that already landed. */
+  reel: ReelFace[] = [];
+  reelOffset = 0;
+  reelMs = 0;
+  spinning = false;
+  landed = false;
+  loreOpen = false;
+  readonly facePx = SLOT_FACE_PX;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
   scrollParagraphs: string[] = [];
-  /** True while the hammer animation runs, so a second click cannot land. */
+  /** True while the reel is in motion. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
   inspecting: Rune | null = null;
@@ -208,6 +256,20 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       this.craftedCount = snap.crafted.length;
       this.rarest = snap.rarest;
       this.collectionValue = snap.collectionValue;
+      this.firstFound = snap.firstFound;
+      const foundIds = Object.keys(snap.firstFound);
+      if (this.seen.size === 0) this.seen = loadSeen(this.store, foundIds);
+      this.cards = RUNES.map((rune, index) => {
+        const known = rune.id in snap.firstFound;
+        return {
+          rune,
+          known,
+          isNew: known && !this.seen.has(rune.id),
+          held: snap.held[rune.id] ?? 0,
+          foundAt: snap.firstFound[rune.id] ?? null,
+          index,
+        };
+      });
       this.cdr.markForCheck();
     }));
 
@@ -217,6 +279,10 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     }));
 
     this.subs.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
+  }
+
+  ngAfterViewInit(): void {
+    this.watchDock();
   }
 
   heldOf(id: string): number {
@@ -285,7 +351,8 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     this.removeHeroPreloads();
     this.markArtRoute(false);
     this.subs.unsubscribe();
-    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.clearSpin();
+    this.dockWatch?.disconnect();
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
     // Navigating away mid-Mythic would otherwise leave the whole site under a
     // red wash until the next reload.
@@ -300,6 +367,47 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     return this.isBrowser && !this.striking && this.gold >= STRIKE_COST;
   }
 
+  get canAfford(): boolean {
+    return this.gold >= STRIKE_COST;
+  }
+
+  get goldShort(): number {
+    return Math.max(0, STRIKE_COST - this.gold);
+  }
+
+  get completePct(): number {
+    return Math.round((this.unique / this.totalRunes) * 100);
+  }
+
+  get unseenCount(): number {
+    return this.cards.filter(card => card.isNew).length;
+  }
+
+  get visibleCards(): LibraryCard[] {
+    const filtered = filterCards(this.cards, this.filter, this.query, RUNEWORDS);
+    const sorted = sortCards(filtered, this.sort);
+    if (this.unique === 0) return sorted.filter(card => !card.known).slice(0, 8);
+    return sorted;
+  }
+
+  get hiddenLocked(): number {
+    return Math.max(0, this.totalRunes - this.visibleCards.length);
+  }
+
+  get sheet(): boolean {
+    return this.isBrowser && window.matchMedia('(max-width: 768px)').matches;
+  }
+
+  get reelTransform(): string {
+    return `translate3d(0, ${this.reelOffset}px, 0)`;
+  }
+
+  get reelTransition(): string {
+    return this.spinning && this.reelMs > 0
+      ? `transform ${this.reelMs}ms cubic-bezier(0.12, 0.82, 0.08, 1)`
+      : 'none';
+  }
+
   strike(): void {
     if (!this.isBrowser || this.striking) return;
 
@@ -309,59 +417,201 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // The hammer falls first and the rune is resolved under it, so the reveal
-    // lands on the impact frame rather than before the hammer has moved.
-    this.striking = true;
-    this.reveal = null;
-    this.revealTier = null;
-
     const find = this.forge.strike();
     if (!find) {
-      // Gold went between the check and the spend — another tab, most likely.
-      this.striking = false;
       this.broke = true;
       return;
     }
 
     const tier = tierOf(find.rune.tier);
     this.audio.strike(tier.semitones);
+    this.clearSpin();
+    this.striking = true;
+    this.landed = false;
+    this.loreOpen = false;
+    this.spinning = false;
+    this.reelOffset = 0;
+    this.reelMs = 0;
+    this.reveal = find;
+    this.revealTier = tier;
+    this.revealCard = runeCard(find.rune.id);
+    this.reel = buildReel(find.rune, reelLength(find.rune.tier));
+    this.scrollParagraphs = find.scroll
+      ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+      : [];
+    this.cdr.markForCheck();
+
+    if (this.prefersReducedMotion()) {
+      this.finishSpin();
+      return;
+    }
+
+    this.spinFrame = requestAnimationFrame(() => {
+      this.spinFrame = requestAnimationFrame(() => {
+        this.spinning = true;
+        this.reelMs = spinMs(find.rune.tier);
+        this.reelOffset = reelOffset(this.reel.length);
+        this.cdr.markForCheck();
+        this.spinTimer = setTimeout(() => this.finishSpin(), this.reelMs + SPIN_TAIL_MS);
+      });
+    });
+  }
+
+  onReelEnd(event: TransitionEvent): void {
+    if (event.propertyName !== 'transform') return;
+    this.finishSpin();
+  }
+
+  toggleLore(): void {
+    if (!this.reveal?.scroll) return;
+    this.loreOpen = !this.loreOpen;
+    if (this.loreOpen) this.scrolls.markRead(this.reveal.scroll.id);
+    this.cdr.markForCheck();
+  }
+
+  dismissFocus(): void {
+    if (this.striking && !this.landed) return;
+    this.landed = false;
+    this.spinning = false;
+    this.striking = false;
+    this.cdr.markForCheck();
+  }
+
+  setTab(tab: LibraryTab): void {
+    this.tab = tab;
+    this.closeCard();
+  }
+
+  setFilter(filter: string): void {
+    if (!(LIBRARY_FILTERS as readonly string[]).includes(filter)) return;
+    this.filter = filter as LibraryFilter;
+    this.tab = 'runes';
+    this.cdr.markForCheck();
+  }
+
+  setSort(sort: string): void {
+    if ((LIBRARY_SORTS as readonly string[]).includes(sort)) this.sort = sort as LibrarySort;
+  }
+
+  setQuery(value: string): void {
+    this.query = value;
+  }
+
+  filterLabel(id: LibraryFilter): string {
+    if (id === 'new') return `✦ ${this.t('forge.pill.new')}`;
+    if (id === 'all') return this.t('forge.filter.all');
+    return this.t('forge.filter.' + id);
+  }
+
+  libColor(tier: RuneTier): string {
+    return LIB_COLOR[tier];
+  }
+
+  cardArt(card: LibraryCard): CardArt | null {
+    return card.known ? runeCard(card.rune.id) : null;
+  }
+
+  cardState(card: LibraryCard): string {
+    if (!card.known) return this.t('forge.card.locked');
+    if (card.isNew) return this.t('forge.card.new');
+    if (card.held > 1) return this.t('forge.card.dup');
+    return this.t('forge.card.found');
+  }
+
+  cardA11y(card: LibraryCard): string {
+    if (!card.known) return this.t('forge.card.locked');
+    return `${card.rune.name}, ${card.rune.tier}, ${this.cardState(card)}`;
+  }
+
+  openCard(card: LibraryCard): void {
+    if (!card.known) return;
+    this.detail = card;
+    this.seen = markSeen(this.seen, card.rune.id);
+    persistSeen(this.store, this.seen);
+    this.cards = this.cards.map(row => row.rune.id === card.rune.id ? { ...row, isNew: false } : row);
+    this.cdr.markForCheck();
+  }
+
+  closeCard(): void {
+    this.detail = null;
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.detail) this.closeCard();
+    else if (this.landed) this.dismissFocus();
+  }
+
+  onDetailKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') this.closeCard();
+  }
+
+  wordsFor(runeId: string): typeof RUNEWORDS[number][] {
+    return wordsUsing(runeId, RUNEWORDS);
+  }
+
+  wordKnown(word: { runes: readonly string[] }): boolean {
+    return word.runes.some(id => this.knownId(id));
+  }
+
+  wordProgress(word: { runes: readonly string[] }): string {
+    const n = word.runes.filter(id => this.knownId(id)).length;
+    return `${n} / ${word.runes.length}`;
+  }
+
+  wordFound(row: RecipeRow): number {
+    return row.slots.filter(slot => this.knownId(slot.rune.id)).length;
+  }
+
+  knownId(id: string): boolean {
+    return id in this.firstFound;
+  }
+
+  private watchDock(): void {
+    if (!this.isBrowser || typeof IntersectionObserver === 'undefined') return;
+    const el = this.rollAnchor?.nativeElement;
+    if (!el) return;
+    this.dockWatch = new IntersectionObserver(entries => {
+      this.showDock = entries.some(entry => !entry.isIntersecting);
+      this.cdr.markForCheck();
+    }, { threshold: 0 });
+    this.dockWatch.observe(el);
+  }
+
+  private finishSpin(): void {
+    if (this.landed || !this.reveal || !this.revealTier) return;
+    this.clearSpin();
+    this.spinning = false;
+    this.landed = true;
+    this.striking = false;
+    this.reelOffset = reelOffset(this.reel.length);
+    this.reelMs = 0;
+    const find = this.reveal;
+    const tier = this.revealTier;
     if (find.rune.tier === 'singular') {
       this.audio.voidRumble();
     } else {
       this.audio.runeReveal(tier.semitones, isHeavy(find.rune.tier));
     }
-
-    this.reveal = find;
-    this.revealTier = tier;
-    this.revealCard = runeCard(find.rune.id);
-    // Split once, here, rather than in a template getter that would re-split on
-    // every change-detection pass for the whole time the card is up.
-    this.scrollParagraphs = find.scroll
-      ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
-      : [];
     if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);
     this.cdr.markForCheck();
-
-    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
-    this.revealTimer = setTimeout(() => {
-      this.striking = false;
-      this.revealTimer = null;
-      this.cdr.markForCheck();
-    }, REVEAL_GRACE_MS);
   }
 
-  /** Dismiss the reveal card early. The cinematic tiers are worth sitting through. */
-  dismissReveal(): void {
-    // Dismissing is how you finish reading, so it is also what marks the scroll
-    // read — the alternative is a Codex that shows a "new" dot on a page the
-    // visitor has just had open in front of them.
-    if (this.reveal?.scroll) this.scrolls.markRead(this.reveal.scroll.id);
-    this.reveal = null;
-    this.revealTier = null;
-    this.revealCard = null;
-    this.scrollParagraphs = [];
-    this.cdr.markForCheck();
+  private clearSpin(): void {
+    if (this.spinTimer !== null) {
+      clearTimeout(this.spinTimer);
+      this.spinTimer = null;
+    }
+    if (this.spinFrame) {
+      cancelAnimationFrame(this.spinFrame);
+      this.spinFrame = 0;
+    }
+  }
+
+  private prefersReducedMotion(): boolean {
+    return this.isBrowser && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   /**
@@ -398,14 +648,6 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
   // Inventory and crafting
   // ───────────────────────────────────────────────────────────────────────────
-
-  inspect(cell: RuneCell): void {
-    this.inspecting = this.inspecting?.id === cell.rune.id ? null : cell.rune;
-    if (cell.known) {
-      this.inspectOverlay.open({ type: 'rune', id: cell.rune.id });
-    }
-    this.cdr.markForCheck();
-  }
 
   craft(row: RecipeRow): void {
     if (!row.ready) return;
@@ -487,6 +729,16 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     };
   }
 }
+
+const LIB_COLOR: Record<RuneTier, string> = {
+  common: '#8E98A5',
+  uncommon: '#4DB6AC',
+  rare: '#4C8DFF',
+  epic: '#A66CFF',
+  legendary: '#E4A83A',
+  mythic: '#E95757',
+  singular: '#EDE7D8',
+};
 
 function newCraftId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
