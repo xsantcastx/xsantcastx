@@ -57,29 +57,39 @@ async function open(page: Page): Promise<void> {
   await page.locator('.ld').waitFor();
 }
 
+async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
+  if (tab === 'bank') await page.locator('.gfpill--bag').click();
+  else await page.locator('.gfpill--rank').click();
+  await page.locator('.kp').waitFor();
+}
+
 test.describe('C5 equipment actions', () => {
   test('migrates off-hand, retires charms, and equips from an armed tile', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
     await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
     await expect(page.locator('.ld__charms-note')).toBeVisible();
+
+    await openPanel(page, 'bank');
     await expect(page.getByRole('button', { name: /Old Charm/ })).toBeVisible();
-
     await page.getByRole('button', { name: /Crown/ }).click();
-    await expect(page.locator('.ld__slot--target')).toHaveCount(4);
-    await page.getByRole('button', { name: /Head, empty/ }).click();
-    await expect(page.getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
+    await page.locator('.kp__tab', { hasText: 'Character' }).click();
+    await expect(page.locator('.kp')).toBeVisible();
+    await expect(page.locator('.kp .ld__slot--target')).toHaveCount(4);
+    await page.locator('.kp').getByRole('button', { name: /Head, empty/ }).click();
+    await expect(page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /Head, equipped Crown/ }).click();
-    await expect(page.getByRole('button', { name: 'Unequip' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
+    await page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ }).click();
+    await expect(page.locator('.kp').getByRole('button', { name: 'Unequip' })).toBeVisible();
+    await expect(page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
 
     const shotDir = resolve('test-results/c5-equipment');
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'desktop-equipped.png') });
+    await page.locator('.kp').screenshot({ path: resolve(shotDir, 'desktop-equipped.png') });
 
-    await page.getByRole('button', { name: 'Unequip' }).click();
-    await expect(page.getByRole('button', { name: /Head, empty/ })).toBeVisible();
+    await page.locator('.kp').getByRole('button', { name: 'Unequip' }).click();
+    await expect(page.locator('.kp').getByRole('button', { name: /Head, empty/ })).toBeVisible();
+    await page.locator('.kp__tab', { hasText: 'Bank' }).click();
     await expect(page.getByRole('button', { name: /Crown/ })).toBeVisible();
   });
 

@@ -5,8 +5,10 @@
     <p class="ld__tag">{{ t('loadout.tag') }}</p>
   </header>
 
-  <div class="ld__layout" [class.ld__layout--select]="variant === 'select'">
-    <div class="ld__doll-col">
+  <div class="ld__layout"
+       [class.ld__layout--select]="variant === 'select'"
+       [class.ld__layout--bank]="variant === 'bank'">
+    <div class="ld__doll-col" *ngIf="variant !== 'bank'">
       <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
         <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
         <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
@@ -70,7 +72,7 @@
       </div>
     </div>
 
-    <div class="ld__bag-col" *ngIf="variant === 'full'">
+    <div class="ld__bag-col" *ngIf="variant !== 'select'">
       <div class="ld__bag-head">
         <h3 class="ld__bag-title" id="ld-bag-title">{{ t('loadout.bag.title') }}</h3>
         <p class="ld__bag-count" [class.ld__bag-count--full]="snap.full">

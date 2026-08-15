@@ -75,25 +75,30 @@ test.describe('C4 Character presentation', () => {
   test('renders the paper doll and bag tiles without equipping on slot click', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openCharacter(page);
-    await expect(page.getByRole('heading', { name: 'What you carry into the dark' })).toBeVisible();
+    await expect(page.locator('.fk-stage__hall')).toHaveText('The Forge Keeper');
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
     await expect(page.locator('.ld__charms-note')).toBeVisible();
+
+    await page.locator('.gfpill--bag').click();
+    await expect(page.locator('.kp')).toBeVisible();
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
 
-    const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ });
+    const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ }).first();
     const headBox = await head.boundingBox();
     expect(headBox?.width ?? 0).toBeGreaterThanOrEqual(44);
     expect(headBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-    await head.focus();
-    await expect(head).toBeFocused();
+    await page.locator('.kp__tab', { hasText: 'Character' }).click();
+    const panelHead = page.locator('.kp').getByRole('button', { name: /Head, equipped Ash Circlet/ });
+    await panelHead.focus();
+    await expect(panelHead).toBeFocused();
     await page.keyboard.press('Enter');
-    await page.locator('.ld__expand').getByRole('button', { name: 'Inspect' }).click();
+    await page.locator('.kp .ld__expand').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
 
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'desktop-loadout.png') });
+    await page.locator('.kp').screenshot({ path: resolve(shotDir, 'desktop-loadout.png') });
   });
 
   test('keeps /forge-keeper and nav on the new loadout, not the old silhouette', async ({ page }) => {
@@ -102,15 +107,17 @@ test.describe('C4 Character presentation', () => {
     await expect(page.locator('.ld')).toBeVisible();
     await expect(page.locator('.ep__figure, .ep__slot')).toHaveCount(0);
     await page.getByRole('link', { name: /Character|Personaje/ }).first().click();
-    await expect(page.locator('.ld__title')).toBeVisible();
+    await expect(page.locator('.kp')).toBeVisible();
+    await expect(page.locator('.kp .ld__doll-art')).toBeVisible();
   });
 
-  test('normalizes bag query params and filters the tile list', async ({ page }) => {
+  test('filters the bank tiles without writing bag query params onto the route', async ({ page }) => {
     await openCharacter(page, '/character?bag=eclipse&sort=hot&rarity=none');
-    await expect(page).not.toHaveURL(/bag=eclipse/);
-    await expect(page).not.toHaveURL(/sort=hot/);
+    await page.locator('.gfpill--bag').click();
+    await expect(page.locator('.kp')).toBeVisible();
+    await expect(page).toHaveURL(/\/character/);
     await page.locator('.ld__field select').first().selectOption('runes');
-    await expect(page).toHaveURL(/bag=runes/);
+    await expect(page).not.toHaveURL(/bag=runes/);
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
     await page.locator('.ld__field select').nth(1).selectOption('legendary');
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
@@ -135,9 +142,11 @@ test.describe('C4 Character presentation', () => {
         || style.opacity === '0';
     }, { timeout: 8000 });
     await page.locator('.ld').waitFor();
+    await page.locator('.gfpill--bag').click();
+    await expect(page.locator('.kp')).toBeVisible();
     await expect(page.getByText(/The bag is empty|La bolsa esta vacia/)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Market' }).first()).toBeVisible();
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'mobile-empty.png') });
+    await page.locator('.kp').screenshot({ path: resolve(shotDir, 'mobile-empty.png') });
   });
 });

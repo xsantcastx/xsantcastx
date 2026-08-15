@@ -10,6 +10,7 @@ import { AnalyticsService } from '../analytics.service';
 import { EasterEggService } from '../shared/easter-eggs/easter-egg.service';
 import { XpService } from '../shared/gamification/xp.service';
 import { EconomyService } from '../shared/economy/economy.service';
+import { InventoryService } from '../shared/rpg/inventory.service';
 import { CANONICAL } from '../shared/canonical-routes';
 import { PRIMARY_NAV } from '../shared/nav/nav.manifest';
 
@@ -58,6 +59,14 @@ describe('HeaderComponent', () => {
           useValue: {
             snapshot: { gold: 0, essence: 0 },
             snapshot$: of({ gold: 0, essence: 0 }),
+            init: () => {},
+          },
+        },
+        {
+          provide: InventoryService,
+          useValue: {
+            snapshot: { bag: [] },
+            snapshot$: of({ bag: [] }),
             init: () => {},
           },
         },
@@ -119,5 +128,17 @@ describe('HeaderComponent', () => {
     const worldHall = [...fixture.nativeElement.querySelectorAll('.gfnav__hall')]
       .find((el: Element) => el.getAttribute('href') === CANONICAL.world || el.getAttribute('ng-reflect-router-link') === CANONICAL.world);
     expect(worldHall.classList.contains('is-active')).toBeFalse();
+  });
+
+  it('opens the keeper panel from the Character hall instead of navigating', () => {
+    fixture.detectChanges();
+    const character = PRIMARY_NAV.find(h => h.id === 'character')!;
+    const event = new MouseEvent('click', { button: 0, bubbles: true, cancelable: true });
+    const prevented = !event.defaultPrevented;
+    component.onHallClick(event, character);
+    expect(event.defaultPrevented).toBeTrue();
+    expect(component.keeper.isOpen).toBeTrue();
+    expect(component.keeper.tab).toBe('character');
+    expect(prevented).toBeTrue();
   });
 });

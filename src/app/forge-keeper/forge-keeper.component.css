@@ -1166,6 +1166,7 @@
 }
 .fk-stage__play,
 .fk-bank-open,
+.fk-catalogue-open,
 .fk-stage__records {
   min-height: 48px;
   padding: 0 18px;
@@ -1192,6 +1193,7 @@
   font-variant-numeric: tabular-nums;
 }
 .fk-stage__save { width: min(360px, 100%); }
+.fk-catalogue-open,
 .fk-stage__records { border-color: #6a5424; color: #cbb98a; }
 
 /* ── Bank chest ────────────────────────────────────────────────────────── */

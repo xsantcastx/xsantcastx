@@ -24,10 +24,12 @@
   gap: 1.4rem;
   align-items: start;
 }
-.ld__layout--select {
+.ld__layout--select,
+.ld__layout--bank {
   grid-template-columns: minmax(0, 1fr);
 }
-.ld[data-variant='select'] {
+.ld[data-variant='select'],
+.ld[data-variant='bank'] {
   background: transparent;
   border: 0;
   padding: 0;

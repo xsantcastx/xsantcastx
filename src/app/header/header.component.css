@@ -287,6 +287,13 @@ button.gftome__keeper {
 }
 
 .gfpill--bag { min-width: 44px; }
+.gfpill--rank.is-on,
+.gfpill--bag.is-on,
+.gfpill--bag:hover,
+.gfpill--bag:focus-visible {
+  border-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
+  box-shadow: 0 0 20px -8px var(--primary-color);
+}
 
 .gfnav__keeper {
   display: grid;
@@ -627,6 +634,37 @@ button.gftome__keeper {
   color: #0b0716;
   background: linear-gradient(160deg, #dcd0ff, var(--primary-color));
   box-shadow: 0 0 16px -4px var(--primary-color);
+}
+.gftome__keeper.is-on,
+.gftome__bank.is-on {
+  border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
+}
+.gftome__bank {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(var(--gfnav-void), 0.6);
+  color: var(--gfnav-ink);
+  cursor: pointer;
+}
+.gftome__bank-icon { font-size: 1.1rem; }
+.gftome__bank-text {
+  margin-right: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.gftome__bank-n {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-color);
 }
 
 .gftome__pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.4rem; }
