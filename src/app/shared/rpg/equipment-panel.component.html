@@ -23,6 +23,8 @@
              class="ld__overlay"
              [src]="slot.overlay!.asset"
              alt=""
+             loading="lazy"
+             decoding="async"
              [style.left.%]="slot.overlay!.x"
              [style.top.%]="slot.overlay!.y"
              [style.width.%]="slot.overlay!.width"

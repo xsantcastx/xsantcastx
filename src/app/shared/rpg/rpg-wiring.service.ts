@@ -49,11 +49,17 @@ export class RpgWiringService {
     // worn items) and keeps the two ledgers in step. Economy merge still
     // maxes persisted rpgFlatGold — a device that last wrote the pre-C5
     // charm bonus would otherwise keep paying it after inventory bagged the
-    // charm. Remirroring on the economy snapshot heals that after rehydrate.
-    // The setters return early when the value has not moved.
+    // charm.
+    //
+    // Attach walks STATE_ENTRIES with economy before inventory. Mirror
+    // inventory synchronously; defer the economy remirror a microtask so
+    // a same-tick inventory rehydrate/retire is visible before we write
+    // rpgFlatGold. A later inventory-only snapshot still remirrors now.
     this.stats.snapshot$.subscribe(() => this.mirror());
     this.inventory.snapshot$.subscribe(() => this.mirror());
-    this.economy.snapshot$.subscribe(() => this.mirror());
+    this.economy.snapshot$.subscribe(() => {
+      queueMicrotask(() => this.mirror());
+    });
     this.mirror();
   }
 

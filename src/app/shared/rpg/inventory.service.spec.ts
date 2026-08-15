@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ECONOMY_KEY, EconomyService } from '../economy/economy.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { INVENTORY_KEY, InventoryService } from './inventory.service';
+import { INVENTORY_KEY, InventoryService, MAX_INVENTORY } from './inventory.service';
 import type { GameItem } from './item.model';
 import { coerceInventoryLedger } from './inventory-ops';
 
@@ -145,6 +145,31 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
   });
 
+  it('displaces at the 250-row cap without evicting the occupant', () => {
+    const fillers = MAX_INVENTORY - inventory.snapshot.items.length - 1;
+    for (let i = 0; i < fillers; i++) {
+      expect(inventory.add({
+        id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
+        stats: {}, sellValue: 1, equipped: false,
+        foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+      })).toBeTruthy();
+    }
+    const spare = {
+      id: 'spare', name: 'Spare', type: 'artifact' as const, rarity: 'rare' as const,
+      stats: {}, sellValue: 5, equipped: false,
+      foundAt: '2026-08-06T00:00:00.000Z', soulbound: false,
+    };
+    expect(inventory.add(spare)).toBeTruthy();
+    expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY);
+    expect(inventory.equip('spare', 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('spare');
+    expect(inventory.itemById('seed-helm')).toBeTruthy();
+    expect(inventory.snapshot.bag.some(row => row.id === 'seed-helm')).toBe(true);
+    expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY);
+    const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
+    expect(stored?.tombstones.some(row => row.id === 'seed-helm')).toBe(false);
+  });
+
   it('reverts equip when the cache write does not land', () => {
     const helm = {
       id: 'fail-helm', name: 'Fail Helm', type: 'artifact' as const, rarity: 'rare' as const,
@@ -155,6 +180,18 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.equip('fail-helm', 'off-hand')).toBe(false);
     expect(inventory.snapshot.equipped['off-hand']).toBeUndefined();
     expect(inventory.itemById('fail-helm')?.equipped).toBe(false);
+  });
+
+  it('rolls explorer kit back when the cache write misses', () => {
+    const loaned = {
+      id: 'kit', name: 'Kit', type: 'artifact' as const, rarity: 'rare' as const,
+      stats: {}, sellValue: 3, equipped: false,
+      foundAt: '2026-08-07T00:00:00.000Z', soulbound: false,
+    };
+    expect(inventory.add(loaned)).toBeTruthy();
+    memory.write = () => { /* swallow */ };
+    expect(inventory.equipOnExplorer('kit', 'scout-1', 2)).toBe(false);
+    expect(inventory.itemById('kit')?.explorerId).toBeUndefined();
   });
 
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
