@@ -379,7 +379,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Small Charm of Fortune',
     rarity: 'common',
     magicFind: 5,
-    weight: 0.60,
+    weight: 0.9996,
     lore: 'Somebody’s luck, worn smooth and handed on. It did not save them either.',
   },
   {
@@ -387,7 +387,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Charm of the Seeker',
     rarity: 'rare',
     magicFind: 15,
-    weight: 0.25,
+    weight: 0.00025,
     lore: 'It does not find things. It makes you the sort of person things are found by.',
   },
   {
@@ -395,7 +395,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Eclipse Eye',
     rarity: 'epic',
     magicFind: 25,
-    weight: 0.11,
+    weight: 0.00011,
     lore: 'Open at the moment the light went, and never given a reason to close since.',
   },
   {
@@ -403,7 +403,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Lucky Rabbit’s Foot',
     rarity: 'legendary',
     magicFind: 35,
-    weight: 0.035,
+    weight: 0.000035,
     lore: 'The Archivum has never established what a rabbit was. The luck is not in dispute.',
   },
   {
@@ -411,7 +411,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Void Fragment',
     rarity: 'mythic',
     magicFind: 100,
-    weight: 0.005,
+    weight: 0.000005,
     lore: 'A piece of the thing the realms were carved out of, small enough to carry. Nothing near it is quite as likely as it was.',
   },
 ];

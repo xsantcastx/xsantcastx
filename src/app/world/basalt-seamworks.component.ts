@@ -63,7 +63,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   readonly ore = CINDER_ORE_DISPLAY;
   readonly ember = EMBER_RESIDUE_DISPLAY;
   readonly recoveryMs = MINING_RECOVERY_MS;
-  readonly chance = Math.round(EMBER_DISCOVERY_CHANCE * 100);
+  readonly chance = Number((EMBER_DISCOVERY_CHANCE * 100).toPrecision(2));
 
   snap: ActivityLedger = this.activity.snapshot;
   now = Date.now();

@@ -108,15 +108,15 @@ export interface LevelDefinition {
  */
 export const LEVELS: LevelDefinition[] = [
   { level: 1,  title: 'Wanderer',        minXp: 0 },
-  { level: 2,  title: 'Seeker',          minXp: 100 },
-  { level: 3,  title: 'Forgehand',       minXp: 300 },
-  { level: 4,  title: 'Realm Walker',    minXp: 600 },
-  { level: 5,  title: 'Convergent',      minXp: 1000 },
-  { level: 6,  title: 'Shadow Weaver',   minXp: 1500 },
-  { level: 7,  title: 'Neon Architect',  minXp: 2500 },
-  { level: 8,  title: 'Godforge Keeper', minXp: 4000 },
-  { level: 9,  title: 'Eclipse Sage',    minXp: 6000 },
-  { level: 10, title: 'Eclipse Lord',    minXp: 10000 },
+  { level: 2,  title: 'Seeker',          minXp: 10_000 },
+  { level: 3,  title: 'Forgehand',       minXp: 30_000 },
+  { level: 4,  title: 'Realm Walker',    minXp: 60_000 },
+  { level: 5,  title: 'Convergent',      minXp: 100_000 },
+  { level: 6,  title: 'Shadow Weaver',   minXp: 150_000 },
+  { level: 7,  title: 'Neon Architect',  minXp: 250_000 },
+  { level: 8,  title: 'Godforge Keeper', minXp: 400_000 },
+  { level: 9,  title: 'Eclipse Sage',    minXp: 600_000 },
+  { level: 10, title: 'Eclipse Lord',    minXp: 1_000_000 },
 ];
 
 /** The rank held at a given lifetime XP total. */
