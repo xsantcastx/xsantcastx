@@ -19,6 +19,8 @@ import { FIVE_REALMS, realmHref } from '../narrative/five-realms.narrative';
 import { questById } from '../quests/quest.model';
 import { RARITIES } from '../rarity/rarity.model';
 import { forgeRecipeById } from '../rpg/forge-recipes';
+import { BASALT_EDGE_PORTRAIT, isBasaltEdge } from '../rpg/material-catalog';
+import { slotAccepts } from '../rpg/item.model';
 import { InventoryService } from '../rpg/inventory.service';
 import { ITEM_STAT_IS_PERCENT, ITEM_STAT_KEYS, ITEM_STAT_LABELS, rarityLabel } from '../rpg/item.model';
 import { RUNES, RUNEWORDS, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
@@ -183,17 +185,25 @@ export class EntityResolver {
       facts.push(this.moneyFact(this.t('inspect.fact.sellValue'), item.sellValue));
     }
     const tier = RUNE_TIERS[item.rarity];
+    const canEquipWeapon = isBasaltEdge(item) && slotAccepts('weapon', item);
     return this.ready({
       ref,
       name: item.name,
       kindLabel: this.t('inspect.kind.item'),
       accessibleName: this.t('inspect.a11y.named', { name: item.name, kind: this.t('inspect.kind.item') }),
       rarity: { id: item.rarity, label: rarityLabel(item.rarity), color: tier.color, glow: tier.glow },
+      art: isBasaltEdge(item) ? { src: BASALT_EDGE_PORTRAIT, alt: item.name } : undefined,
       glyphFallback: '◈',
       summary: item.lore ?? item.name,
       lore: item.lore,
       facts,
-    });
+    }, canEquipWeapon ? [{
+      id: 'equip',
+      label: item.equipped ? this.t('inspect.action.equipped') : this.t('inspect.action.equip'),
+      kind: 'primary',
+      enabled: !item.equipped,
+      unavailableReason: item.equipped ? this.t('inspect.action.equipped') : undefined,
+    }] : []);
   }
 
   private rune(ref: EntityRef): EntityResolution {
@@ -246,8 +256,8 @@ export class EntityResolver {
           { label: this.t('inspect.fact.slot'), value: this.t('loadout.slot.weapon'), exactValue: equipment.slotId },
           {
             label: this.t('inspect.fact.status'),
-            value: this.t('forge.recipe.locked'),
-            exactValue: this.t('forge.recipe.locked'),
+            value: equipment.craftable ? this.t('forge.recipe.ready') : this.t('forge.recipe.locked'),
+            exactValue: equipment.craftable ? this.t('forge.recipe.ready') : this.t('forge.recipe.locked'),
           },
         ],
       });

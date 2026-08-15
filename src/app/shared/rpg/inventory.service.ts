@@ -65,6 +65,14 @@ import {
   tombstoneRecord,
   upsertRecord,
 } from './inventory-ops';
+import { CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../activity/activity.model';
+import {
+  BASALT_EDGE_RECIPE_ID,
+  basaltEdgeItemId,
+  forgeRecipeById,
+  mintBasaltEdge,
+} from './forge-recipes';
+import { isBasaltEdge } from './material-catalog';
 
 export const INVENTORY_KEY = 'godforge-inventory';
 
@@ -283,6 +291,79 @@ export class InventoryService {
     }
     this.publish();
     return true;
+  }
+
+  missingCraftInputs(recipeId = BASALT_EDGE_RECIPE_ID): { id: string; need: number; have: number }[] {
+    const recipe = forgeRecipeById(recipeId);
+    if (!recipe) return [{ id: recipeId, need: 1, have: 0 }];
+    return recipe.inputs
+      .map(input => ({
+        id: input.id,
+        need: input.quantity,
+        have: this.stackOf(input.id),
+      }))
+      .filter(row => row.have < row.need);
+  }
+
+  canAcceptInstance(): boolean {
+    return this.ledger.records.filter(row => row.source === 'inventory').length < MAX_INVENTORY;
+  }
+
+  hasBasaltEdge(): boolean {
+    return this.items.some(item => isBasaltEdge(item));
+  }
+
+  /**
+   * C9 first craft. Same mutation id returns the stored weapon.
+   * Consume + mint are one ledger write. A failed persist rolls back both.
+   */
+  craftBasaltEdge(mutationId: string, now = Date.now()):
+    | { ok: true; item: GameItem; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'capacity' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!mutationId || !Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    const itemId = basaltEdgeItemId(mutationId);
+    const existing = this.itemById(itemId);
+    if (existing) return { ok: true, item: existing, replayed: true };
+
+    if (this.missingCraftInputs().length) return { ok: false, code: 'missing' };
+    if (!this.canAcceptInstance()) return { ok: false, code: 'capacity' };
+
+    const previous = this.ledger;
+    const foundAt = new Date(now).toISOString();
+    const item = mintBasaltEdge(itemId, foundAt);
+    const consumes: Array<{ id: string; stackKey: string; quantity: number }> = [
+      { id: `${mutationId}:cinder`, stackKey: CINDER_ORE_ID, quantity: 6 },
+      { id: `${mutationId}:ember`, stackKey: EMBER_RESIDUE_ID, quantity: 1 },
+    ];
+
+    let stackOps = this.ledger.stackOps;
+    for (const consume of consumes) {
+      const stepped = this.advanceRevision();
+      stackOps = applyStackOp(stackOps, {
+        id: consume.id,
+        stackKey: consume.stackKey,
+        kind: 'consume',
+        quantity: consume.quantity,
+        hlc: stepped.revision.hlc,
+        deviceId: stepped.revision.deviceId,
+        sequence: stepped.revision.sequence,
+      });
+    }
+    this.ledger = { ...this.ledger, stackOps };
+    this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(item)));
+    if (this.stackOf(CINDER_ORE_ID) < 0 || this.stackOf(EMBER_RESIDUE_ID) < 0) {
+      this.ledger = previous;
+      return { ok: false, code: 'missing' };
+    }
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    this.acquired$$.next(item);
+    return { ok: true, item, replayed: false };
   }
 
   /**

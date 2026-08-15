@@ -1,9 +1,9 @@
 /**
- * forge-recipes.ts — C6 equipment recipe catalogue.
+ * forge-recipes.ts — C9 first-craft catalogue.
  *
- * Read-only presentation. Basalt Edge is listed so the Forge namespace can
- * show the approved first-craft recipe. C6 must not consume materials or
- * mint the weapon.
+ * Basalt Edge is the public first craft: 6 Cinder Ore + 1 Ember Residue.
+ * The ForgeCraftGateway consumes and mints. This file stays the recipe
+ * definition.
  */
 export interface ForgeRecipeInput {
   id: string;
@@ -32,17 +32,37 @@ export const FORGE_EQUIPMENT_RECIPES: readonly ForgeEquipmentRecipe[] = [
     name: 'Basalt Edge',
     slotId: 'weapon',
     summary: 'A basic weapon. Six Cinder Ore and one Ember Residue.',
-    lore: 'The first edge the Seamworks will admit. The anvil knows the recipe; it will not take the ore until a later checkpoint opens the craft.',
+    lore: 'The first edge the Seamworks will admit. Six Cinder Ore and one Ember Residue, struck once into a unique weapon.',
     portrait: 'assets/items/portraits/04-basalt-edge-portrait.png',
     overlay: 'assets/characters/overlays/09-basalt-edge-overlay.png',
     inputs: [
       { id: 'cinder-ore', name: 'Cinder Ore', quantity: 6 },
       { id: 'ember-residue', name: 'Ember Residue', quantity: 1 },
     ],
-    craftable: false,
+    craftable: true,
   },
 ];
 
 export function forgeRecipeById(id: string): ForgeEquipmentRecipe | undefined {
   return FORGE_EQUIPMENT_RECIPES.find(row => row.id === id);
+}
+
+export function basaltEdgeItemId(mutationId: string): string {
+  return `${mutationId}:item`;
+}
+
+export function mintBasaltEdge(id: string, foundAt: string): import('./item.model').GameItem {
+  const recipe = forgeRecipeById(BASALT_EDGE_RECIPE_ID)!;
+  return {
+    id,
+    name: recipe.name,
+    type: 'artifact',
+    rarity: 'uncommon',
+    stats: {},
+    sellValue: 0,
+    equipped: false,
+    lore: recipe.lore,
+    foundAt,
+    soulbound: true,
+  };
 }
