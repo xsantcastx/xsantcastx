@@ -65,21 +65,21 @@ describe('C7 activity ops', () => {
     expect(same.sequence).toBe(2);
   });
 
-  it('rolls 8% ember, then guarantees on the eighth eligible action', () => {
+  it('rolls 0.08% ember, then guarantees on the 800th eligible action', () => {
     expect(rollDiscovery({
-      eligibleIndex: 1, previousEmber: false, craftedBasaltEdge: false, roll: 0.07,
+      eligibleIndex: 1, previousEmber: false, craftedBasaltEdge: false, roll: 0.0007,
     }).result).toBe('ember-residue');
     expect(rollDiscovery({
       eligibleIndex: 3, previousEmber: false, craftedBasaltEdge: false, roll: 0.5,
     }).result).toBe('none');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: false, craftedBasaltEdge: false, roll: 0.99,
+      eligibleIndex: 800, previousEmber: false, craftedBasaltEdge: false, roll: 0.99,
     }).result).toBe('first-craft-guarantee');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: true, craftedBasaltEdge: false, roll: 0.01,
+      eligibleIndex: 800, previousEmber: true, craftedBasaltEdge: false, roll: 0.0001,
     }).result).toBe('none');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: false, craftedBasaltEdge: true, roll: 0.99,
+      eligibleIndex: 800, previousEmber: false, craftedBasaltEdge: true, roll: 0.99,
     }).result).toBe('none');
   });
 

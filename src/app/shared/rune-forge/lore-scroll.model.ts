@@ -476,12 +476,12 @@ export function scrollsOfChapter(chapter: LoreChapterId): LoreScroll[] {
  * place in this feature where the ladder stops climbing.
  */
 export const SCROLL_CHANCE: Record<RuneTier, number> = {
-  common: 0.10,
-  uncommon: 0.20,
-  rare: 0.40,
-  epic: 0.60,
-  legendary: 0.75,
-  mythic: 0.90,
+  common: 0.001,
+  uncommon: 0.002,
+  rare: 0.004,
+  epic: 0.006,
+  legendary: 0.0075,
+  mythic: 0.009,
   singular: 1.00,
 };
 

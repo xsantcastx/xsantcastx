@@ -1366,7 +1366,7 @@ export class TranslationService {
     'seamworks.chapter.resolved': { en: 'Recorded brace: {{choice}}', es: 'Refuerzo registrado: {{choice}}' },
     'seamworks.panel.title': { en: 'Mining · Basalt Seamworks', es: 'Mineria · Basalt Seamworks' },
     'seamworks.expect': { en: 'Expected: 1 Cinder Ore + 2 Mining XP.', es: 'Esperado: 1 Cinder Ore + 2 XP de mineria.' },
-    'seamworks.discovery.pending': { en: 'Bonus discovery: {{chance}}% Ember Residue after the first eligible strike. The eighth strike guarantees one if none appeared.', es: 'Descubrimiento extra: {{chance}}% Ember Residue tras el primer golpe valido. El octavo lo garantiza si no aparecio antes.' },
+    'seamworks.discovery.pending': { en: 'Bonus discovery: {{chance}}% Ember Residue after the first eligible strike. The 800th strike guarantees one if none appeared.', es: 'Descubrimiento extra: {{chance}}% Ember Residue tras el primer golpe valido. El golpe 800 lo garantiza si no aparecio antes.' },
     'seamworks.discovery.bonus': { en: 'Bonus discovery: Ember Residue.', es: 'Descubrimiento extra: Ember Residue.' },
     'seamworks.discovery.guarantee': { en: 'First craft guarantee: Ember Residue.', es: 'Garantia del primer forjado: Ember Residue.' },
     'seamworks.discovery.none': { en: 'No bonus this strike.', es: 'Sin extra en este golpe.' },
