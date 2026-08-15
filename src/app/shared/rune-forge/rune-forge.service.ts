@@ -71,7 +71,7 @@ export const BRIDGE_ESSENCE_PER_STRIKE = 1;
  * enough that a Void Fragment stays a story, high enough that a new player sees
  * a Small Charm of Fortune within their first evening.
  */
-export const CHARM_DROP_CHANCE = 0.08;
+export const CHARM_DROP_CHANCE = 0.0008;
 
 interface RuneLedger {
   version: 1;

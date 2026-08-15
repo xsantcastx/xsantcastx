@@ -16,7 +16,7 @@
  * identical stats, which deletes the reason to keep looking after the first one.
  * Rolling once at mint and persisting the result is what makes an inventory
  * worth reading — and it is why `GameItem.stats` is data on the record rather
- * than a lookup through `ITEM_ROLLS`.
+ * than a lookup through a rarity table.
  *
  * It also means the bands below can be retuned without silently rewriting every
  * item already in a save. An item minted under the old bands keeps its numbers,
@@ -95,6 +95,27 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   lootBonus: true,
 };
 
+/** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
+export function formatItemMod(key: keyof ItemStats, value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  const suffix = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
+  const shown = key === 'goldPerSec' ? compactStat(value) : String(value);
+  return `${ITEM_STAT_LABELS[key]} ${sign}${shown}${suffix}`;
+}
+
+function compactStat(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return trimStat(n / 1_000_000_000) + 'B';
+  if (abs >= 1_000_000) return trimStat(n / 1_000_000) + 'M';
+  if (abs >= 1_000) return trimStat(n / 1_000) + 'K';
+  return String(n);
+}
+
+function trimStat(n: number): string {
+  const fixed = n.toFixed(1);
+  return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
+}
+
 export interface GameItem {
   id: string;
   name: string;
@@ -120,6 +141,13 @@ export interface GameItem {
    * so the sell path has exactly one thing to check.
    */
   soulbound: boolean;
+  /** Authored definition id. Missing on pre-spec saves. */
+  definitionId?: string;
+  /** Successful tempers. Missing means 0. */
+  upgradeLevel?: number;
+  lastUpgradeAt?: string;
+  lastUpgradeMutationId?: string;
+  lastUpgradeOk?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,86 +222,47 @@ export type Band = readonly [min: number, max: number];
 export type RollTable = Partial<Record<keyof ItemStats, Band>>;
 
 /**
- * What each rarity rolls.
+ * Legacy rarity bands. Mint no longer reads this table.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * A NOTE ON MYTHIC
- * ─────────────────────────────────────────────────────────────────────────────
- * The design brief for this tier reads "ALL stats +10 to +30". Taken literally
- * that puts Mythic's Gold/sec band (10–30) *below* Legendary's (20–50), so the
- * rarer item is the worse one on the stat players read first — and Mythic is
- * roughly three times rarer than Legendary. Every other step on this ladder
- * climbs on every axis, and a single inversion is the kind of thing that reads
- * as a bug even when it is deliberate.
- *
- * So Mythic keeps the *shape* the brief asked for — every stat at once, which is
- * what distinguishes it from Legendary's two — at a band that clears Legendary
- * on all of them: 30–60. Singular is 50–100 exactly as specified, and stays the
- * only tier that cannot roll badly.
+ * Equipment rolls go through `item-definition.rollItemStats` at
+ * `mintEquipment`. Charms stay fixed-MF in `mintCharm`. Runes mint empty.
+ * These bands remain only so `rollQuality` can score definition-less saves.
  */
 export const ITEM_ROLLS: Record<ItemRarity, RollTable> = {
   common: {
-    goldPerSec: [0.1, 0.5],
+    goldPerSec: [0.2, 1],
   },
   uncommon: {
-    goldPerSec: [0.5, 2],
-    magicFind: [0, 2],
+    goldPerSec: [1, 4],
+    magicFind: [1, 4],
   },
   rare: {
-    goldPerSec: [2, 8],
-    magicFind: [1, 5],
+    goldPerSec: [6, 18],
+    magicFind: [3, 10],
   },
   epic: {
-    goldPerSec: [8, 20],
-    magicFind: [3, 10],
-    xpBonus: [5, 12],
+    goldPerSec: [20, 55],
+    magicFind: [8, 18],
+    xpBonus: [6, 14],
   },
   legendary: {
-    goldPerSec: [20, 50],
-    magicFind: [5, 15],
-    xpBonus: [10, 25],
+    goldPerSec: [70, 180],
+    magicFind: [12, 28],
+    xpBonus: [12, 30],
   },
   mythic: {
-    goldPerSec: [30, 60],
-    magicFind: [30, 60],
-    xpBonus: [30, 60],
-    lootBonus: [30, 60],
+    goldPerSec: [200, 480],
+    magicFind: [25, 55],
+    xpBonus: [25, 50],
+    lootBonus: [25, 50],
   },
   singular: {
-    goldPerSec: [50, 100],
-    magicFind: [50, 100],
-    xpBonus: [50, 100],
-    lootBonus: [50, 100],
+    goldPerSec: [500, 1400],
+    magicFind: [40, 80],
+    xpBonus: [40, 80],
+    lootBonus: [40, 80],
   },
 };
-
-/**
- * Roll one number inside a band.
- *
- * Gold/sec keeps one decimal and the percentages are whole, because "+7.3% XP"
- * is a number nobody can compare at a glance and "+0.3 Gold/sec" is a number
- * that has to keep its decimal or the whole Common tier rounds to zero.
- */
-function rollStat(key: keyof ItemStats, band: Band, rng: () => number): number {
-  const raw = band[0] + rng() * (band[1] - band[0]);
-  return key === 'goldPerSec'
-    ? Math.round(raw * 10) / 10
-    : Math.round(raw);
-}
-
-/** Roll a full stat block for a rarity. */
-export function rollItemStats(
-  rarity: ItemRarity,
-  rng: () => number = Math.random,
-): ItemStats {
-  const table = ITEM_ROLLS[rarity] ?? ITEM_ROLLS.common;
-  const stats: ItemStats = {};
-  for (const key of ITEM_STAT_KEYS) {
-    const band = table[key];
-    if (band) stats[key] = rollStat(key, band, rng);
-  }
-  return stats;
-}
 
 /**
  * How good a roll was, 0–1, averaged across its stats.
@@ -379,7 +368,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Small Charm of Fortune',
     rarity: 'common',
     magicFind: 5,
-    weight: 0.60,
+    weight: 0.9996,
     lore: 'Somebody’s luck, worn smooth and handed on. It did not save them either.',
   },
   {
@@ -387,7 +376,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Charm of the Seeker',
     rarity: 'rare',
     magicFind: 15,
-    weight: 0.25,
+    weight: 0.00025,
     lore: 'It does not find things. It makes you the sort of person things are found by.',
   },
   {
@@ -395,7 +384,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Eclipse Eye',
     rarity: 'epic',
     magicFind: 25,
-    weight: 0.11,
+    weight: 0.00011,
     lore: 'Open at the moment the light went, and never given a reason to close since.',
   },
   {
@@ -403,7 +392,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Lucky Rabbit’s Foot',
     rarity: 'legendary',
     magicFind: 35,
-    weight: 0.035,
+    weight: 0.000035,
     lore: 'The Archivum has never established what a rabbit was. The luck is not in dispute.',
   },
   {
@@ -411,7 +400,7 @@ export const MF_CHARMS: CharmSeed[] = [
     name: 'Void Fragment',
     rarity: 'mythic',
     magicFind: 100,
-    weight: 0.005,
+    weight: 0.000005,
     lore: 'A piece of the thing the realms were carved out of, small enough to carry. Nothing near it is quite as likely as it was.',
   },
 ];
@@ -459,6 +448,7 @@ export function mintCharm(seed: CharmSeed, foundAt = new Date().toISOString()): 
     lore: seed.lore,
     foundAt,
     soulbound: false,
+    upgradeLevel: 0,
   };
 }
 
@@ -476,7 +466,7 @@ export function mintRuneItem(
   runeName: string,
   rarity: ItemRarity,
   lore: string,
-  rng: () => number = Math.random,
+  _rng: () => number = Math.random,
   foundAt = new Date().toISOString(),
 ): GameItem {
   return {
@@ -484,12 +474,13 @@ export function mintRuneItem(
     name: `${runeName} Sigil`,
     type: 'rune',
     rarity,
-    stats: rollItemStats(rarity, rng),
+    stats: {},
     sellValue: sellValueFor('rune', rarity),
     equipped: false,
     lore,
     foundAt,
     soulbound: false,
+    upgradeLevel: 0,
   };
 }
 

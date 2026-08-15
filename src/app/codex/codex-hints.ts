@@ -216,7 +216,7 @@ export const EGG_HINTS: Record<string, string> = {
   // ── The Rune Forge ── the hints name the price, never the odds. A hint that
   // says "one in two thousand" turns a run of bad luck into a grievance; one
   // that says "keep striking" leaves it a run of bad luck.
-  'rune-first': 'Ten Gold on the anvil buys one answer. Any answer counts.',
+  'rune-first': 'Ten thousand Gold on the anvil buys one answer. Any answer counts.',
   'rune-collector': 'Ten different answers. The anvil repeats itself far more than it surprises you.',
   'rune-master': 'Twenty different answers. By here you know the common five by their colour alone.',
   'rune-complete-set': 'Every rune the Archivum has a name for. Including the one it will not say aloud.',

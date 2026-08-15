@@ -65,21 +65,21 @@ describe('C7 activity ops', () => {
     expect(same.sequence).toBe(2);
   });
 
-  it('rolls 8% ember, then guarantees on the eighth eligible action', () => {
+  it('rolls 0.08% ember, then guarantees on the 800th eligible action', () => {
     expect(rollDiscovery({
-      eligibleIndex: 1, previousEmber: false, craftedBasaltEdge: false, roll: 0.07,
+      eligibleIndex: 1, previousEmber: false, craftedBasaltEdge: false, roll: 0.0007,
     }).result).toBe('ember-residue');
     expect(rollDiscovery({
       eligibleIndex: 3, previousEmber: false, craftedBasaltEdge: false, roll: 0.5,
     }).result).toBe('none');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: false, craftedBasaltEdge: false, roll: 0.99,
+      eligibleIndex: 800, previousEmber: false, craftedBasaltEdge: false, roll: 0.99,
     }).result).toBe('first-craft-guarantee');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: true, craftedBasaltEdge: false, roll: 0.01,
+      eligibleIndex: 800, previousEmber: true, craftedBasaltEdge: false, roll: 0.0001,
     }).result).toBe('none');
     expect(rollDiscovery({
-      eligibleIndex: 8, previousEmber: false, craftedBasaltEdge: true, roll: 0.99,
+      eligibleIndex: 800, previousEmber: false, craftedBasaltEdge: true, roll: 0.99,
     }).result).toBe('none');
   });
 
@@ -147,6 +147,7 @@ describe('C7 activity ops', () => {
   it('rejects a corrupt blob instead of inventing operations', () => {
     expect(coerceActivityLedger({ version: 1, operations: [{ id: 1 }] })).toEqual({
       version: 1,
+      era: 0,
       currentWork: null,
       progress: emptyActivityLedger().progress,
       operations: [],
@@ -155,6 +156,16 @@ describe('C7 activity ops', () => {
       miningAccepted: 0,
     });
     expect(coerceActivityLedger({ version: 2 })).toBeNull();
+  });
+
+  it('drops prior-era mining when the other side is the current generation', () => {
+    const oldMine = ledger({ era: 0, operations: [mine('old-strike')] });
+    const fresh = ledger({ era: 55 });
+    const ab = mergeActivityLedgers(oldMine, fresh);
+    const ba = mergeActivityLedgers(fresh, oldMine);
+    expect(ab.era).toBe(55);
+    expect(ab.operations).toEqual([]);
+    expect(ba.operations).toEqual([]);
   });
 
   it('keeps Mining XP and ember after the 256-op window drops oldest rows', () => {

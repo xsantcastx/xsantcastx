@@ -206,7 +206,7 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
       title: 'The Forge — Strike the Anvil | Eclipse Realms',
       data: {
-        description: 'Twenty-five runes across seven rarity tiers, from Ash at one strike in eight to the Void at one in two thousand, and six Runewords that turn a handful of them into a permanent bonus. Ten Gold a strike. Everything is stored in your own browser.',
+        description: 'Twenty-five runes across seven rarity tiers, from Ash as the floor of every strike to the Void at one in two million, and six Runewords that turn a handful of them into a permanent bonus. Ten thousand Gold a strike. Everything is stored in your own browser.',
         keywords: 'rune forge, runes, runewords, crafting, gacha, drop table, idle game, gold, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {

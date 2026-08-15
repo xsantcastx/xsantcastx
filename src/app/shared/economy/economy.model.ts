@@ -256,16 +256,16 @@ export const ESSENCE_PER_STREAK_WEEK = 25;
  * each need a Gold value maintained alongside their XP value, and the two would
  * drift the first time a quest was rebalanced.
  *
- * A daily at 15-25 XP lands at the 10 floor; a weekly at 100-150 XP lands
- * between 33 and 50; an epic at 300+ is capped at 50. Which is the 10-50 band
- * the economy was specified with, without a second table to keep honest.
+ * A daily at 15-25 XP lands at the 1,000 floor; a weekly at 100-150 XP lands
+ * between 3,300 and 5,000; an epic at 300+ is capped at 5,000. Same band as
+ * before, times 100, so quest Gold still moves the shop after the price hike.
  */
 export function goldForQuestXp(xp: number): number {
-  return Math.max(10, Math.min(50, Math.round(xp / 3)));
+  return Math.max(1_000, Math.min(5_000, Math.round(xp / 3) * 100));
 }
 
 /** Every purchase multiplies the next one by this. The Cookie Clicker curve. */
-export const PRICE_SCALE = 1.15;
+export const PRICE_SCALE = 1.25;
 
 /**
  * What the next level of a repeatable item costs, given how many are owned.
@@ -307,7 +307,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+0.5 Gold/sec',
     flavour: 'Air is the cheapest thing a forge is hungry for.',
     icon: '🜂',
-    baseCost: 50,
+    baseCost: 5_000,
     ratePerSecond: 0.5,
   },
   {
@@ -316,7 +316,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+1 Gold/sec',
     flavour: 'Someone has to turn the coals while you are away.',
     icon: '🔥',
-    baseCost: 200,
+    baseCost: 20_000,
     ratePerSecond: 1,
   },
   {
@@ -325,7 +325,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+2 Gold/sec',
     flavour: 'Umbral heat. It burns colder and it burns longer.',
     icon: '🌑',
-    baseCost: 500,
+    baseCost: 50_000,
     ratePerSecond: 2,
   },
   {
@@ -334,7 +334,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+5 Gold/sec',
     flavour: 'A shard of the moment the Sun broke, still cooling.',
     icon: '🌘',
-    baseCost: 2_000,
+    baseCost: 200_000,
     ratePerSecond: 5,
   },
   {
@@ -343,7 +343,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+10 Gold/sec',
     flavour: 'The forge no longer needs you to want anything.',
     icon: '💠',
-    baseCost: 10_000,
+    baseCost: 1_000_000,
     ratePerSecond: 10,
   },
   {
@@ -352,7 +352,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+25 Gold/sec',
     flavour: 'Both realms are pouring into the same crucible now. Neither was asked.',
     icon: '🌀',
-    baseCost: 50_000,
+    baseCost: 5_000_000,
     ratePerSecond: 25,
   },
   {
@@ -361,7 +361,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+50 Gold/sec',
     flavour: 'The light does not notice it is being taken. That is the design.',
     icon: '🌬️',
-    baseCost: 200_000,
+    baseCost: 20_000_000,
     ratePerSecond: 50,
   },
   {
@@ -370,7 +370,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+100 Gold/sec',
     flavour: 'It reaps a field nobody planted, and the field keeps coming back.',
     icon: '🌾',
-    baseCost: 500_000,
+    baseCost: 50_000_000,
     ratePerSecond: 100,
   },
   {
@@ -379,7 +379,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+250 Gold/sec',
     flavour: 'The Archivum filed the schematics under things that should not hold.',
     icon: '☢️',
-    baseCost: 2_000_000,
+    baseCost: 200_000_000,
     ratePerSecond: 250,
   },
   {
@@ -388,7 +388,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     effect: '+1,000 Gold/sec',
     flavour: 'You did not rebuild it. You only got close enough to warm your hands.',
     icon: '☀️',
-    baseCost: 10_000_000,
+    baseCost: 1_000_000_000,
     ratePerSecond: 1_000,
   },
 ];
@@ -420,7 +420,7 @@ export const HAMMER_UPGRADES: HammerUpgrade[] = [
     effect: '+2 per strike',
     flavour: 'Honest metal. It will outlast three of its owners.',
     icon: '🔨',
-    baseCost: 100,
+    baseCost: 10_000,
     goldPerClick: 2,
     visual: 'none',
   },
@@ -430,7 +430,7 @@ export const HAMMER_UPGRADES: HammerUpgrade[] = [
     effect: '+5 per strike',
     flavour: 'Cut from the glass the first eclipse left behind.',
     icon: '⚒️',
-    baseCost: 500,
+    baseCost: 50_000,
     goldPerClick: 5,
     visual: 'none',
   },
@@ -440,7 +440,7 @@ export const HAMMER_UPGRADES: HammerUpgrade[] = [
     effect: '+10 per strike, and sparks',
     flavour: 'Light does not need to be swung hard to land.',
     icon: '⚡',
-    baseCost: 2_000,
+    baseCost: 200_000,
     goldPerClick: 10,
     visual: 'spark',
   },
@@ -450,7 +450,7 @@ export const HAMMER_UPGRADES: HammerUpgrade[] = [
     effect: '+20 per strike, and a shadow trail',
     flavour: 'It arrives slightly before you decide to swing it.',
     icon: '🕳️',
-    baseCost: 5_000,
+    baseCost: 500_000,
     goldPerClick: 20,
     visual: 'shadow',
   },
@@ -460,7 +460,7 @@ export const HAMMER_UPGRADES: HammerUpgrade[] = [
     effect: '+50 per strike, and the realm flinches',
     flavour: 'Held by four Convergents. Three of them are still standing.',
     icon: '🌗',
-    baseCost: 20_000,
+    baseCost: 2_000_000,
     goldPerClick: 50,
     visual: 'quake',
   },
@@ -495,7 +495,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +10%',
     flavour: 'You stopped losing heat out of the back of it.',
     icon: '📐',
-    baseCost: 1_000,
+    baseCost: 100_000,
     bonus: 0.1,
   },
   {
@@ -504,7 +504,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +25%',
     flavour: 'The bellows and the coals finally agree on a rhythm.',
     icon: '⚙️',
-    baseCost: 10_000,
+    baseCost: 1_000_000,
     bonus: 0.25,
   },
   {
@@ -513,7 +513,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +50%',
     flavour: 'Nothing here is wasted any more, including you.',
     icon: '🔱',
-    baseCost: 100_000,
+    baseCost: 10_000_000,
     bonus: 0.5,
   },
   {
@@ -522,7 +522,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +100% — everything doubles',
     flavour: 'The forge stopped being a thing you operate some time ago.',
     icon: '👑',
-    baseCost: 1_000_000,
+    baseCost: 100_000_000,
     bonus: 1,
   },
 ];
@@ -562,7 +562,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+1 strike/sec',
     flavour: 'Paid in room, board and the chance to hold the hammer.',
     icon: '🧑‍🏭',
-    baseCost: 5_000,
+    baseCost: 500_000,
     clicksPerSecond: 1,
   },
   {
@@ -571,7 +571,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+5 strikes/sec',
     flavour: 'It has one instruction and has never once misread it.',
     icon: '🗿',
-    baseCost: 50_000,
+    baseCost: 5_000_000,
     clicksPerSecond: 5,
   },
   {
@@ -580,7 +580,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+20 strikes/sec',
     flavour: 'Twenty arms, no shoulders, and a sound the Archivum will not transcribe.',
     icon: '🤖',
-    baseCost: 500_000,
+    baseCost: 50_000_000,
     clicksPerSecond: 20,
   },
 ];
@@ -621,7 +621,7 @@ export const EXPEDITION_UPGRADES: ExpeditionUpgrade[] = [
     effect: '+1 explorer out at once',
     flavour: 'They ask for a lamp, a week of rations, and no supervision whatsoever.',
     icon: '🧭',
-    baseCost: 2_500,
+    baseCost: 250_000,
     explorers: 1,
   },
 ];
@@ -702,7 +702,7 @@ export const ENCHANTMENTS: Enchantment[] = [
     effect: '+10% XP for 24h',
     flavour: 'You notice slightly more than you did yesterday.',
     icon: '🔍',
-    cost: 5,
+    cost: 500,
     multiplier: 1.1,
     hours: 24,
   },
@@ -712,7 +712,7 @@ export const ENCHANTMENTS: Enchantment[] = [
     effect: '+25% XP for 24h',
     flavour: 'The Archivum has started writing your name down.',
     icon: '📖',
-    cost: 15,
+    cost: 1_500,
     multiplier: 1.25,
     hours: 24,
   },
@@ -722,7 +722,7 @@ export const ENCHANTMENTS: Enchantment[] = [
     effect: '+50% XP for 24h',
     flavour: 'Both realms lean in at once. It is not comfortable.',
     icon: '🕯️',
-    cost: 50,
+    cost: 5_000,
     multiplier: 1.5,
     hours: 24,
   },
@@ -732,7 +732,7 @@ export const ENCHANTMENTS: Enchantment[] = [
     effect: '2× all XP for 24h',
     flavour: 'For one day the broken Sun is on your side of the sky.',
     icon: '🌒',
-    cost: 100,
+    cost: 10_000,
     multiplier: 2,
     hours: 24,
   },
@@ -760,7 +760,7 @@ export const ARTIFACTS: Artifact[] = [
     effect: 'The forge keeps earning while the tab is hidden.',
     lore: 'It was cut from a furnace that had been cold for six hundred years and was still warm in the centre. The Archivum stopped asking why.',
     icon: '🖤',
-    cost: 100,
+    cost: 10_000,
     tier: 'sacred',
   },
   {
@@ -769,7 +769,7 @@ export const ARTIFACTS: Artifact[] = [
     effect: 'Whichever energy you have less of pays double XP.',
     lore: 'Kael carried it into the Verge to cut the two realms apart and came back having only made them symmetrical. He counted it a failure. Nobody else does.',
     icon: '🗡️',
-    cost: 200,
+    cost: 20_000,
     tier: 'sacred',
   },
   {
@@ -778,7 +778,7 @@ export const ARTIFACTS: Artifact[] = [
     effect: 'Quest rewards are doubled, permanently.',
     lore: 'Two dawns were promised and two dawns came. The third was not promised to anyone, which is why it is still owed.',
     icon: '🌅',
-    cost: 500,
+    cost: 50_000,
     tier: 'anomalous',
   },
   {
@@ -787,7 +787,7 @@ export const ARTIFACTS: Artifact[] = [
     effect: 'Lore chapters open at half the usual number of uses.',
     lore: 'The Solarii wrote everything twice: once for the reader they had, and once for the reader who would arrive already knowing. This is the second copy.',
     icon: '📜',
-    cost: 1_000,
+    cost: 100_000,
     tier: 'anomalous',
   },
   {
@@ -796,7 +796,7 @@ export const ARTIFACTS: Artifact[] = [
     effect: 'Everything doubles. Gold, strikes, idle, XP.',
     lore: 'There is one. It has been in the hands of four people and none of them wrote down what it was like, which the Archivum regards as the single greatest failure in its record.',
     icon: '☀️',
-    cost: 5_000,
+    cost: 500_000,
     tier: 'mythic',
   },
 ];
@@ -837,7 +837,7 @@ export const COSMETICS: Cosmetic[] = [
     effect: 'Recolours the trail behind your cursor.',
     flavour: 'Everyone leaves something. Choose what.',
     icon: '✨',
-    cost: 500,
+    cost: 50_000,
     slot: 'trail',
     variants: [
       { id: 'aether', label: 'Aether sparkles', color: '#A78BFA' },
@@ -851,7 +851,7 @@ export const COSMETICS: Cosmetic[] = [
     effect: 'A word before your rank, everywhere it is shown.',
     flavour: 'The realms have never agreed on what to call you. Decide for them.',
     icon: '🏷️',
-    cost: 1_000,
+    cost: 100_000,
     slot: 'prefix',
     variants: [
       { id: 'relentless', label: 'The Relentless', color: '#E8752A' },
@@ -868,7 +868,7 @@ export const COSMETICS: Cosmetic[] = [
     effect: 'Tints the whole site toward one realm.',
     flavour: 'You have been standing in someone else\'s light this entire time.',
     icon: '🎨',
-    cost: 2_000,
+    cost: 200_000,
     slot: 'theme',
     variants: [
       { id: 'luminous', label: 'Luminous', color: '#E8D44D' },
@@ -883,7 +883,7 @@ export const COSMETICS: Cosmetic[] = [
     effect: 'Reworks the progression bar in the header.',
     flavour: 'The measure of you, in a frame you picked.',
     icon: '📊',
-    cost: 5_000,
+    cost: 500_000,
     slot: 'xpbar',
     variants: [
       { id: 'ornate', label: 'Ornate', color: '#C9A84C' },
@@ -899,7 +899,7 @@ export const COSMETICS: Cosmetic[] = [
     effect: 'Borders every card in the Codex.',
     flavour: 'A wall is a wall. A framed wall is a record.',
     icon: '🖼️',
-    cost: 10_000,
+    cost: 1_000_000,
     slot: 'frame',
     variants: [
       { id: 'golden', label: 'Golden', color: '#C9A84C' },
@@ -931,7 +931,7 @@ export function totalUpgradeLevels(e: PlayerEconomy): number {
 export const SHARD_BONUS = 0.05;
 
 /** All-time Gold that opens the reset on its own. */
-export const PRESTIGE_GOLD_THRESHOLD = 10_000_000;
+export const PRESTIGE_GOLD_THRESHOLD = 1_000_000_000;
 /** The rank that opens it instead, for a visitor who got there another way. */
 export const PRESTIGE_LEVEL_THRESHOLD = 10;
 
@@ -1221,13 +1221,22 @@ export function earnsWhileHidden(e: PlayerEconomy): boolean {
   return e.artifacts.includes('obsidian-heart');
 }
 
-/** 1,247 rather than 1247. Gold is a number people are meant to feel. */
-export function formatCurrency(n: number): string {
+/** Full digits with grouping. Screen readers and inspect exact values. */
+export function formatCurrencyExact(n: number): string {
+  if (!Number.isFinite(n)) return '0';
   return Math.floor(n).toLocaleString('en-US');
 }
 
-/** "+3" — one decimal only when the fraction is actually there. */
+/** 847, then 1.2K / 3.4M / 1.1B / 2T. Wallet, prices, XP, strikes. */
+export function formatCurrency(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  return formatCompact(Math.floor(n));
+}
+
+/** "+3" — compact once the rate no longer fits a chip. */
 export function formatRate(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  if (Math.abs(n) >= 1_000) return formatCompact(n);
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 

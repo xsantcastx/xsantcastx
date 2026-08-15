@@ -50,6 +50,7 @@ describe('HubBankComponent', () => {
             needsConfirm: () => false,
             drop: () => true,
             dropStack: () => true,
+            dropMany: () => 0,
           },
         },
         {
@@ -72,5 +73,13 @@ describe('HubBankComponent', () => {
     expect(text).toContain(RUNES[0].name);
     expect(text).toContain('×3');
     expect(text).toContain('×2');
+  });
+
+  it('keeps Drop on the tile so a full bag does not hide the action', () => {
+    const drop = [...fixture.nativeElement.querySelectorAll('button')]
+      .find((el: HTMLButtonElement) => el.textContent?.includes('loadout.drop'));
+    expect(drop).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.hb__manage')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.hb__confirm')).toBeNull();
   });
 });
