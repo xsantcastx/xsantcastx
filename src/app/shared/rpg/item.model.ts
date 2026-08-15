@@ -16,7 +16,7 @@
  * identical stats, which deletes the reason to keep looking after the first one.
  * Rolling once at mint and persisting the result is what makes an inventory
  * worth reading — and it is why `GameItem.stats` is data on the record rather
- * than a lookup through `ITEM_ROLLS`.
+ * than a lookup through a rarity table.
  *
  * It also means the bands below can be retuned without silently rewriting every
  * item already in a save. An item minted under the old bands keeps its numbers,
@@ -94,6 +94,13 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   xpBonus: true,
   lootBonus: true,
 };
+
+/** Diablo-style mod line: `Gold/sec +2.4`. */
+export function formatItemMod(key: keyof ItemStats, value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  const suffix = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
+  return `${ITEM_STAT_LABELS[key]} ${sign}${value}${suffix}`;
+}
 
 export interface GameItem {
   id: string;
@@ -201,22 +208,11 @@ export type Band = readonly [min: number, max: number];
 export type RollTable = Partial<Record<keyof ItemStats, Band>>;
 
 /**
- * What each rarity rolls.
+ * Legacy rarity bands. Mint no longer reads this table.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * A NOTE ON MYTHIC
- * ─────────────────────────────────────────────────────────────────────────────
- * The design brief for this tier reads "ALL stats +10 to +30". Taken literally
- * that puts Mythic's Gold/sec band (10–30) *below* Legendary's (20–50), so the
- * rarer item is the worse one on the stat players read first — and Mythic is
- * roughly three times rarer than Legendary. Every other step on this ladder
- * climbs on every axis, and a single inversion is the kind of thing that reads
- * as a bug even when it is deliberate.
- *
- * So Mythic keeps the *shape* the brief asked for — every stat at once, which is
- * what distinguishes it from Legendary's two — at a band that clears Legendary
- * on all of them: 30–60. Singular is 50–100 exactly as specified, and stays the
- * only tier that cannot roll badly.
+ * Equipment rolls go through `item-definition.rollItemStats` at
+ * `mintEquipment`. Charms stay fixed-MF in `mintCharm`. Runes mint empty.
+ * These bands remain only so `rollQuality` can score definition-less saves.
  */
 export const ITEM_ROLLS: Record<ItemRarity, RollTable> = {
   common: {
@@ -253,38 +249,6 @@ export const ITEM_ROLLS: Record<ItemRarity, RollTable> = {
     lootBonus: [40, 80],
   },
 };
-
-/**
- * Roll one number inside a band.
- *
- * Gold/sec keeps one decimal and the percentages are whole, because "+7.3% XP"
- * is a number nobody can compare at a glance and "+0.3 Gold/sec" is a number
- * that has to keep its decimal or the whole Common tier rounds to zero.
- */
-function rollStat(key: keyof ItemStats, band: Band, rng: () => number): number {
-  const raw = band[0] + rng() * (band[1] - band[0]);
-  return key === 'goldPerSec'
-    ? Math.round(raw * 10) / 10
-    : Math.round(raw);
-}
-
-/**
- * Roll a full stat block. `type` is reserved so a later band split cannot
- * fork callers; today rarity owns the table.
- */
-export function rollItemStats(
-  rarity: ItemRarity,
-  _type: ItemType = 'artifact',
-  rng: () => number = Math.random,
-): ItemStats {
-  const table = ITEM_ROLLS[rarity] ?? ITEM_ROLLS.common;
-  const stats: ItemStats = {};
-  for (const key of ITEM_STAT_KEYS) {
-    const band = table[key];
-    if (band) stats[key] = rollStat(key, band, rng);
-  }
-  return stats;
-}
 
 /**
  * How good a roll was, 0–1, averaged across its stats.

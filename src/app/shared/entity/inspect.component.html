@@ -66,15 +66,24 @@
         }
 
         @if (place.facts.length) {
+          <ul class="qi__mods">
+            @for (fact of place.facts; track fact.label) {
+              @if (fact.kind === 'mod') {
+                <li class="qi__mod">{{ fact.value }}</li>
+              }
+            }
+          </ul>
           <dl class="qi__facts">
             @for (fact of place.facts; track fact.label) {
-              <div>
-                <dt>{{ fact.label }}</dt>
-                <dd>
-                  <span aria-hidden="true">{{ fact.value }}</span>
-                  <span class="qi__sr">{{ factValue(fact) }}</span>
-                </dd>
-              </div>
+              @if (fact.kind !== 'mod') {
+                <div>
+                  <dt>{{ fact.label }}</dt>
+                  <dd>
+                    <span aria-hidden="true">{{ fact.value }}</span>
+                    <span class="qi__sr">{{ factValue(fact) }}</span>
+                  </dd>
+                </div>
+              }
             }
           </dl>
         }

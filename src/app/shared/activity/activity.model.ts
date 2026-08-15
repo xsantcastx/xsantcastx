@@ -67,6 +67,8 @@ export interface ActivityOperation {
 
 export interface ActivityLedger {
   version: 1;
+  /** Missing or below REALM_ERA is prior-generation ore and is emptied. */
+  era?: number;
   currentWork: CurrentWork | null;
   progress: DisciplineProgress;
   operations: ActivityOperation[];
@@ -112,6 +114,7 @@ export function emptyProgress(): DisciplineProgress {
 export function emptyActivityLedger(): ActivityLedger {
   return {
     version: ACTIVITY_SCHEMA_VERSION,
+    era: 55,
     currentWork: null,
     progress: emptyProgress(),
     operations: [],

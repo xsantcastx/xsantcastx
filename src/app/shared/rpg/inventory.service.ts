@@ -73,6 +73,8 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import { INVENTORY_ERA } from './inventory.model';
+import { eraIsCurrent, ledgerFromPriorEra } from '../save/realm-era';
 import { definitionFor } from './item-definition';
 import {
   applyTemperBonus,
@@ -893,7 +895,11 @@ export class InventoryService {
     try {
       const raw = this.store.readRaw(INVENTORY_KEY);
       if (!raw) return emptyInventoryLedger();
-      return coerceInventoryLedger(JSON.parse(raw)) ?? emptyInventoryLedger();
+      const loaded = coerceInventoryLedger(JSON.parse(raw)) ?? emptyInventoryLedger();
+      if (eraIsCurrent(this.store) && ledgerFromPriorEra(loaded.era)) {
+        return emptyInventoryLedger();
+      }
+      return loaded.era === INVENTORY_ERA ? loaded : { ...loaded, era: INVENTORY_ERA };
     } catch {
       return emptyInventoryLedger();
     }

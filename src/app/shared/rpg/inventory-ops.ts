@@ -22,6 +22,7 @@ import {
   type SlotId,
 } from './item.model';
 import {
+  INVENTORY_ERA,
   INVENTORY_BAG_CAP,
   INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
@@ -50,6 +51,7 @@ export function emptyInventoryLedger(): InventoryLedger {
     sold: 0,
     hlc: 0,
     legacyBackup: null,
+    era: INVENTORY_ERA,
   };
 }
 
@@ -163,6 +165,7 @@ export function migrateV1(blob: InventoryBlobV1, keepBackup = true): InventoryLe
     sold: finiteNumber(blob.sold),
     hlc: records.reduce((max, row) => Math.max(max, row.revision.hlc), 0),
     legacyBackup: keepBackup ? cloneV1(blob) : null,
+    era: 0,
   };
 }
 
@@ -261,6 +264,7 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     sold: finiteNumber(raw['sold']),
     hlc: finiteNumber(raw['hlc']),
     legacyBackup: parseInventoryV1(raw['legacyBackup']),
+    era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
   };
 }
 
@@ -382,6 +386,9 @@ export function applyStackOp(
 export function mergeInventoryLedgers(remote: unknown, local: unknown): InventoryLedger {
   const a = coerceInventoryLedger(remote) ?? emptyInventoryLedger();
   const b = coerceInventoryLedger(local) ?? emptyInventoryLedger();
+  const aEra = a.era ?? 0;
+  const bEra = b.era ?? 0;
+  if (aEra !== bEra) return aEra > bEra ? { ...a, era: aEra } : { ...b, era: bEra };
   const tombstones = mergeTombstones(a.tombstones, b.tombstones);
   const tombById = new Map(tombstones.map(row => [row.id, row]));
   const byId = new Map<string, OwnedItemRecord>();
@@ -414,6 +421,7 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     sold: Math.max(a.sold, b.sold),
     hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
+    era: Math.max(aEra, bEra),
   };
 }
 

@@ -110,8 +110,6 @@ export function rollItemStats(
   return stats;
 }
 
-// unused var guard — I referenced `style` wrongly above. Fix in a moment.
-
 export function mintEquipment(
   defId: string,
   rarity: ItemRarity,

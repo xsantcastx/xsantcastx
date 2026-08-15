@@ -32,6 +32,8 @@
 import type { GameItem, ItemRarity, ItemStats, ItemType, SlotId } from './item.model';
 
 export const INVENTORY_SCHEMA_VERSION = 2 as const;
+/** Bump wipes bag, stacks, and worn pieces. Cloud copies without this era empty too. */
+export const INVENTORY_ERA = 55 as const;
 export const INVENTORY_LEGACY_VERSION = 1 as const;
 /** Same window as ledger ACK_STALE_MS: tombstones survive this long after delete. */
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
@@ -130,6 +132,7 @@ export interface InventoryLedger {
   hlc: number;
   /** Original v1 blob, kept until the first successful cloud merge. */
   legacyBackup: InventoryBlobV1 | null;
+  era?: number;
 }
 
 export type EconomyProjectionInput = {

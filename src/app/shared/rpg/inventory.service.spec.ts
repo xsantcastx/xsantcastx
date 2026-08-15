@@ -301,6 +301,10 @@ describe('InventoryService C3 adapter', () => {
     expect(replay.replayed).toBe(true);
     expect(inventory.itemById('temper-blade')?.upgradeLevel).toBe(1);
 
+    const alias = inventory.temper('temper-blade', 'u-win', 7_000, () => 0.99);
+    expect(alias.ok).toBe(true);
+    if (alias.ok) expect(alias.replayed).toBe(true);
+
     const maxed = {
       ...inventory.itemById('temper-blade')!,
       upgradeLevel: 10,
@@ -351,6 +355,22 @@ describe('InventoryService C3 adapter', () => {
   });
 });
 
+describe('InventoryService era 55 wipe', () => {
+  it('empties a prior-era bag when the generation stamp is already current', () => {
+    const memory = new MemoryGateway();
+    memory.writeRaw('godforge-realm-era', '55');
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 1,
+      items: [charm('old-charm')],
+      goldFromSales: 7,
+      sold: 1,
+    }));
+    const inventory = configure(memory);
+    expect(inventory.itemById('old-charm')).toBeUndefined();
+    expect(inventory.snapshot.items.length).toBe(0);
+  });
+});
+
 describe('InventoryService C9 Basalt Edge craft', () => {
   let memory: MemoryGateway;
   let inventory: InventoryService;
@@ -375,6 +395,8 @@ describe('InventoryService C9 Basalt Edge craft', () => {
       expect(first.item.id).toBe(again.item.id);
       expect(first.item.name).toBe('Basalt Edge');
       expect(first.item.equipped).toBe(false);
+      expect(first.item.definitionId).toBe('basalt-edge');
+      expect(first.item.stats.goldPerSec).toBeGreaterThan(0);
     }
     expect(inventory.stackOf('cinder-ore')).toBe(0);
     expect(inventory.stackOf('ember-residue')).toBe(0);

@@ -12,6 +12,7 @@ import { DEVICE_ID_KEY } from '../economy/economy-ops';
 import { InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   ACTIVITY_KEY,
   MINING_RECOVERY_MS,
@@ -240,7 +241,11 @@ export class ActivityProgressionGateway {
     try {
       const raw = this.store.readRaw(ACTIVITY_KEY);
       if (!raw) return emptyActivityLedger();
-      return coerceActivityLedger(JSON.parse(raw)) ?? emptyActivityLedger();
+      const loaded = coerceActivityLedger(JSON.parse(raw)) ?? emptyActivityLedger();
+      if (eraIsCurrent(this.store) && ledgerFromPriorEra(loaded.era)) {
+        return emptyActivityLedger();
+      }
+      return loaded.era === REALM_ERA ? loaded : { ...loaded, era: REALM_ERA };
     } catch {
       return emptyActivityLedger();
     }

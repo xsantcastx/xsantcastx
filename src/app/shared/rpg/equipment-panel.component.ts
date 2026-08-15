@@ -19,6 +19,8 @@ import { materialDisplay } from './material-catalog';
 import { MagicFindService } from './magic-find.service';
 import {
   GameItem,
+  ITEM_STAT_KEYS,
+  formatItemMod,
   rarityLabel,
   slotAccepts,
 } from './item.model';
@@ -218,6 +220,16 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     if (!worn) return;
     this.inventory.unequip(worn.id);
     this.selectedSlot = null;
+  }
+
+  modsOf(item: GameItem): string[] {
+    const mods: string[] = [];
+    for (const key of ITEM_STAT_KEYS) {
+      const value = item.stats[key];
+      if (value == null) continue;
+      mods.push(formatItemMod(key, value));
+    }
+    return mods;
   }
 
   select(item: GameItem): void {
