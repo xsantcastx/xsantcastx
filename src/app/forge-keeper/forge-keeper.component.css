@@ -39,6 +39,7 @@
   --fk-affinity-glow: rgba(167, 139, 250, 0.6);
 
   position: relative;
+  z-index: 1;
   max-width: 1120px;
   margin: 0 auto;
   padding: clamp(20px, 4vw, 44px) clamp(14px, 4vw, 28px) 96px;
@@ -70,9 +71,11 @@
 .fk__title {
   margin: 0 0 10px;
   font: 700 clamp(26px, 5vw, 44px)/1.15 'Orbitron', system-ui, sans-serif;
+  color: #ffd97a;
   background: linear-gradient(92deg, #ffd97a, #E8752A 46%, #c48bff);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .fk__tagline {
