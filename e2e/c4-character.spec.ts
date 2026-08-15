@@ -78,7 +78,7 @@ test.describe('C4 Character presentation', () => {
     await expect(page.getByRole('heading', { name: 'What you carry into the dark' })).toBeVisible();
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
-    await expect(page.getByText('Requires the future charm system.')).toBeVisible();
+    await expect(page.locator('.ld__charms-note')).toBeVisible();
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
 
     const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ });
@@ -88,6 +88,7 @@ test.describe('C4 Character presentation', () => {
     await head.focus();
     await expect(head).toBeFocused();
     await page.keyboard.press('Enter');
+    await page.locator('.ld__expand').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
 
@@ -111,7 +112,7 @@ test.describe('C4 Character presentation', () => {
     await page.locator('.ld__field select').first().selectOption('runes');
     await expect(page).toHaveURL(/bag=runes/);
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
-    await page.locator('.ld__field select').first().selectOption('charms');
+    await page.locator('.ld__field select').nth(1).selectOption('legendary');
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(page).not.toHaveURL(/bag=/);

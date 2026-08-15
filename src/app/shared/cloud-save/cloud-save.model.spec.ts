@@ -342,7 +342,7 @@ describe('the RPG layer', () => {
           tags: ['charm'], soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z',
           revision: { hlc: 20, deviceId: 'phone', sequence: 1 }, source: 'inventory',
           name: 'a', type: 'charm', stats: {}, sellValue: 10,
-          location: { kind: 'equipped', slotId: 'charm1' },
+          location: { kind: 'equipped', slotId: 'head' },
         }],
         tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 20, legacyBackup: null,
       };
@@ -358,7 +358,7 @@ describe('the RPG layer', () => {
       const ab = merge(worn, bagged);
       const ba = merge(bagged, worn);
       expect(ab.records.length).toBe(1);
-      expect(ab.records[0].location).toEqual({ kind: 'equipped', slotId: 'charm1' });
+      expect(ab.records[0].location).toEqual({ kind: 'equipped', slotId: 'head' });
       expect(ba.records[0].location).toEqual(ab.records[0].location);
     });
 
@@ -375,7 +375,7 @@ describe('the RPG layer', () => {
         item(`${prefix}${i}`, { sellValue: i }));
       const merged = merge(
         { version: 1, items: many('r'), goldFromSales: 0, sold: 0 },
-        { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'charm1', sellValue: 0 })], goldFromSales: 0, sold: 0 },
+        { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'head', sellValue: 0 })], goldFromSales: 0, sold: 0 },
       );
       expect(merged.records.length).toBe(250);
       expect(merged.records.some(i => i.id === 'worn')).toBe(true);

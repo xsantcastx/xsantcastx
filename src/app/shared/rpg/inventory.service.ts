@@ -58,6 +58,7 @@ import {
   itemsFromLedger,
   nextRevision,
   projectEconomy,
+  retireCharms,
   tombstoneRecord,
   upsertRecord,
 } from './inventory-ops';
@@ -123,7 +124,9 @@ export class InventoryService {
     this.economy.init();
     this.deviceId = this.readDeviceId();
     this.ledger = this.load();
-    if (this.ledger.legacyBackup) this.save();
+    const retired = retireCharms(this.ledger, this.deviceId, Date.now());
+    this.ledger = retired.ledger;
+    if (this.ledger.legacyBackup || retired.retiredIds.length) this.save();
     this.publish();
 
     // `save()` writes this whole bag from memory, so items merged in from another
@@ -132,10 +135,14 @@ export class InventoryService {
     this.saves.register(INVENTORY_KEY, {
       rehydrate: () => {
         this.ledger = this.load();
+        const retired = retireCharms(this.ledger, this.deviceId, Date.now());
+        this.ledger = retired.ledger;
+        let dirty = retired.retiredIds.length > 0;
         if (this.store.attached && this.ledger.legacyBackup) {
           this.ledger = dropLegacyBackup(this.ledger);
-          this.save();
+          dirty = true;
         }
+        if (dirty) this.save();
         this.publish();
       },
     });
@@ -251,6 +258,8 @@ export class InventoryService {
     if (!this.isBrowser) return false;
     const item = this.itemById(itemId);
     if (!item) return false;
+    if (item.explorerId) return false;
+    if (item.type === 'charm') return false;
 
     const occupied = new Set<SlotId>(
       this.items
@@ -260,11 +269,21 @@ export class InventoryService {
 
     let target = slot ?? firstSlotFor(item, occupied);
     if (!target) {
-      // Every compatible slot is taken — swap the first one that accepts it.
       target = SLOT_IDS.find(s => slotAccepts(s, item)) ?? null;
     }
     if (!target || !slotAccepts(target, item)) return false;
 
+    const occupant = this.items.find(row =>
+      row.equipped && row.slot === target && row.id !== itemId,
+    );
+    // Bag-tile cap: a displace that is not a bag swap would add a bag row.
+    // Refuse rather than evict the occupant (or anyone else) to make room.
+    const incomingFromBag = !item.equipped && !item.explorerId;
+    if (occupant && this.snapshot.bag.length >= MAX_INVENTORY && !incomingFromBag) {
+      return false;
+    }
+
+    const previous = this.ledger;
     this.ledger = this.mapInstances(row => {
       if (row.id === itemId) {
         return this.withRevision({
@@ -277,7 +296,17 @@ export class InventoryService {
       }
       return row;
     });
-    this.save();
+    if (occupant) {
+      const kept = this.ledger.records.find(row => row.id === occupant.id);
+      if (!kept || kept.kind !== 'instance' || kept.location.kind !== 'bag') {
+        this.ledger = previous;
+        return false;
+      }
+    }
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
     this.publish();
     return true;
   }
@@ -287,10 +316,14 @@ export class InventoryService {
     const item = this.itemById(itemId);
     if (!item || (!item.equipped && !item.explorerId)) return false;
 
+    const previous = this.ledger;
     this.ledger = this.mapInstances(row =>
       row.id === itemId ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
     );
-    this.save();
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
     this.publish();
     return true;
   }
@@ -316,12 +349,16 @@ export class InventoryService {
     const worn = this.itemsOnExplorer(explorerId).filter(i => i.id !== itemId);
     if (worn.length >= capacity) return false;
 
+    const previous = this.ledger;
     this.ledger = this.mapInstances(row =>
       row.id === itemId
         ? this.withRevision({ ...row, location: { kind: 'explorer', explorerId } })
         : row,
     );
-    this.save();
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
     this.publish();
     return true;
   }
@@ -331,12 +368,16 @@ export class InventoryService {
     if (!this.isBrowser) return;
     if (!this.items.some(i => i.explorerId === explorerId)) return;
 
+    const previous = this.ledger;
     this.ledger = this.mapInstances(row =>
       row.location.kind === 'explorer' && row.location.explorerId === explorerId
         ? this.withRevision({ ...row, location: { kind: 'bag' } })
         : row,
     );
-    this.save();
+    if (!this.save()) {
+      this.ledger = previous;
+      return;
+    }
     this.publish();
   }
 
