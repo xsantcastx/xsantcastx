@@ -26,14 +26,13 @@
 
   <!-- ── Header ─────────────────────────────────────────────────────────── -->
   <header class="rf-head">
-    <p class="rf-eyebrow"><span class="rf-eyebrow__pulse"></span> The Rune Forge</p>
-    <h1 class="rf-title">Strike the Anvil</h1>
-    <p class="rf-tagline">
-      twenty-five names, and the anvil only ever says one of them at a time
-    </p>
+    <p class="rf-eyebrow"><span class="rf-eyebrow__pulse"></span> {{ t('forge.eyebrow') }}</p>
+    <h1 class="rf-title">{{ t('forge.title') }}</h1>
+    <p class="rf-tagline">{{ t('forge.tag') }}</p>
     <nav class="rf-links">
       <a routerLink="/market" class="rf-link">← The Market</a>
       <a routerLink="/character" class="rf-link">Your Character →</a>
+      <a routerLink="/codex" class="rf-link">The Codex →</a>
     </nav>
   </header>
 
@@ -362,6 +361,34 @@
               {{ row.ready ? 'Set the word' : 'Runes missing' }}
             </button>
           }
+          <app-inspect-button type="runeword" [id]="row.word.id" />
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="rf-panel" aria-labelledby="rf-equip-title">
+    <h2 class="rf-panel__title" id="rf-equip-title">{{ t('forge.recipe.title') }}</h2>
+    <p class="rf-panel__sub">{{ t('forge.recipe.sub') }}</p>
+    <div class="rf-words">
+      @for (recipe of equipmentRecipes; track recipe.id) {
+        <article class="rf-word rf-word--locked">
+          <header class="rf-word__head">
+            <h3 class="rf-word__name">{{ recipe.name }}</h3>
+            <span class="rf-word__tier">{{ t('loadout.slot.weapon') }}</span>
+          </header>
+          <p class="rf-word__effect">{{ recipe.summary }}</p>
+          <ol class="rf-slots">
+            @for (input of recipe.inputs; track input.id) {
+              <li class="rf-slot">
+                <span class="rf-slot__name">{{ input.name }}</span>
+                <span class="rf-slot__held">{{ input.quantity }}</span>
+              </li>
+            }
+          </ol>
+          <p class="rf-word__lore">{{ recipe.lore }}</p>
+          <p class="rf-word__done">{{ t('forge.recipe.locked') }}</p>
+          <app-inspect-button type="recipe" [id]="recipe.id" />
         </article>
       }
     </div>

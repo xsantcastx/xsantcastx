@@ -18,6 +18,7 @@ import {
 import { FIVE_REALMS, realmHref } from '../narrative/five-realms.narrative';
 import { questById } from '../quests/quest.model';
 import { RARITIES } from '../rarity/rarity.model';
+import { forgeRecipeById } from '../rpg/forge-recipes';
 import { InventoryService } from '../rpg/inventory.service';
 import { ITEM_STAT_IS_PERCENT, ITEM_STAT_KEYS, ITEM_STAT_LABELS, rarityLabel } from '../rpg/item.model';
 import { RUNES, RUNEWORDS, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
@@ -49,8 +50,8 @@ export class EntityResolver {
         case 'market-listing': return this.listing(ref);
         case 'item': return this.item(ref);
         case 'rune': return this.rune(ref);
-        case 'runeword':
-        case 'recipe': return this.runeword(ref);
+        case 'runeword': return this.runeword(ref);
+        case 'recipe': return this.recipe(ref);
         case 'realm': return this.realm(ref);
         case 'quest': return this.quest(ref);
         case 'creature':
@@ -218,6 +219,37 @@ export class EntityResolver {
         },
       ],
     });
+  }
+
+  private recipe(ref: EntityRef): EntityResolution {
+    const equipment = forgeRecipeById(ref.id);
+    if (equipment) {
+      const recipe = equipment.inputs
+        .map(input => `${input.quantity} ${input.name}`)
+        .join(' + ');
+      return this.ready({
+        ref: { type: 'recipe', id: equipment.id },
+        name: equipment.name,
+        kindLabel: this.t('inspect.kind.recipe'),
+        accessibleName: this.t('inspect.a11y.named', {
+          name: equipment.name,
+          kind: this.t('inspect.kind.recipe'),
+        }),
+        glyphFallback: '⚔',
+        summary: equipment.summary,
+        lore: equipment.lore,
+        facts: [
+          { label: this.t('inspect.fact.recipe'), value: recipe, exactValue: recipe },
+          { label: this.t('inspect.fact.slot'), value: this.t('loadout.slot.weapon'), exactValue: equipment.slotId },
+          {
+            label: this.t('inspect.fact.status'),
+            value: this.t('forge.recipe.locked'),
+            exactValue: this.t('forge.recipe.locked'),
+          },
+        ],
+      });
+    }
+    return this.runeword({ ...ref, type: 'recipe' });
   }
 
   private runeword(ref: EntityRef): EntityResolution {
