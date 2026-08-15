@@ -12,15 +12,20 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
+  HostListener,
+  AfterViewInit,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
+  ViewChild,
   inject,
 } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
+import { GameStateGateway } from '../save/game-state.gateway';
 import { EconomyService } from '../economy/economy.service';
 import { ForgeAudioService } from '../economy/forge-audio.service';
 import { formatCurrency } from '../economy/economy.model';
@@ -48,7 +53,19 @@ import {
   spinMs,
   type ReelFace,
 } from './rune-reel';
-import { InspectService } from '../entity/inspect.service';
+import {
+  LIBRARY_FILTERS,
+  LIBRARY_SORTS,
+  filterCards,
+  lockedMark,
+  sortCards,
+  wordsUsing,
+  type LibraryCard,
+  type LibraryFilter,
+  type LibrarySort,
+  type LibraryTab,
+} from './rune-library';
+import { loadSeen, markSeen, persistSeen } from './rune-unseen';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
@@ -106,7 +123,7 @@ function isHeavy(tier: RuneTier): boolean {
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
 })
-export class RuneForgeComponent implements OnInit, OnDestroy {
+export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly forge = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
@@ -114,7 +131,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   private readonly scrolls = inject(LoreScrollService);
   private readonly doc = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly inspectOverlay = inject(InspectService);
+  private readonly store = inject(GameStateGateway);
   private readonly i18n = inject(TranslationService);
   private readonly crafts = inject(ForgeCraftGateway);
   private readonly inventory = inject(InventoryService);
@@ -150,6 +167,20 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   craftedCount = 0;
   rarest: Rune | null = null;
   collectionValue = 0;
+  firstFound: Record<string, string> = {};
+  cards: LibraryCard[] = [];
+  seen = new Set<string>();
+  tab: LibraryTab = 'runes';
+  filter: LibraryFilter = 'all';
+  sort: LibrarySort = 'rarity';
+  query = '';
+  detail: LibraryCard | null = null;
+  showDock = false;
+  readonly filters = LIBRARY_FILTERS;
+  readonly sorts = LIBRARY_SORTS;
+  readonly lockedMark = lockedMark;
+  @ViewChild('rollAnchor') rollAnchor?: ElementRef<HTMLElement>;
+  private dockWatch?: IntersectionObserver;
 
   /** The rune the anvil just produced. Null between strikes. */
   reveal: RuneFind | null = null;
@@ -225,6 +256,20 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
       this.craftedCount = snap.crafted.length;
       this.rarest = snap.rarest;
       this.collectionValue = snap.collectionValue;
+      this.firstFound = snap.firstFound;
+      const foundIds = Object.keys(snap.firstFound);
+      if (this.seen.size === 0) this.seen = loadSeen(this.store, foundIds);
+      this.cards = RUNES.map((rune, index) => {
+        const known = rune.id in snap.firstFound;
+        return {
+          rune,
+          known,
+          isNew: known && !this.seen.has(rune.id),
+          held: snap.held[rune.id] ?? 0,
+          foundAt: snap.firstFound[rune.id] ?? null,
+          index,
+        };
+      });
       this.cdr.markForCheck();
     }));
 
@@ -234,6 +279,10 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     }));
 
     this.subs.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
+  }
+
+  ngAfterViewInit(): void {
+    this.watchDock();
   }
 
   heldOf(id: string): number {
@@ -303,6 +352,7 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     this.markArtRoute(false);
     this.subs.unsubscribe();
     this.clearSpin();
+    this.dockWatch?.disconnect();
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
     // Navigating away mid-Mythic would otherwise leave the whole site under a
     // red wash until the next reload.
@@ -315,6 +365,37 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
 
   get canStrike(): boolean {
     return this.isBrowser && !this.striking && this.gold >= STRIKE_COST;
+  }
+
+  get canAfford(): boolean {
+    return this.gold >= STRIKE_COST;
+  }
+
+  get goldShort(): number {
+    return Math.max(0, STRIKE_COST - this.gold);
+  }
+
+  get completePct(): number {
+    return Math.round((this.unique / this.totalRunes) * 100);
+  }
+
+  get unseenCount(): number {
+    return this.cards.filter(card => card.isNew).length;
+  }
+
+  get visibleCards(): LibraryCard[] {
+    const filtered = filterCards(this.cards, this.filter, this.query, RUNEWORDS);
+    const sorted = sortCards(filtered, this.sort);
+    if (this.unique === 0) return sorted.filter(card => !card.known).slice(0, 8);
+    return sorted;
+  }
+
+  get hiddenLocked(): number {
+    return Math.max(0, this.totalRunes - this.visibleCards.length);
+  }
+
+  get sheet(): boolean {
+    return this.isBrowser && window.matchMedia('(max-width: 768px)').matches;
   }
 
   get reelTransform(): string {
@@ -388,6 +469,116 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  dismissFocus(): void {
+    if (this.striking && !this.landed) return;
+    this.landed = false;
+    this.spinning = false;
+    this.striking = false;
+    this.cdr.markForCheck();
+  }
+
+  setTab(tab: LibraryTab): void {
+    this.tab = tab;
+    this.closeCard();
+  }
+
+  setFilter(filter: string): void {
+    if (!(LIBRARY_FILTERS as readonly string[]).includes(filter)) return;
+    this.filter = filter as LibraryFilter;
+    this.tab = 'runes';
+    this.cdr.markForCheck();
+  }
+
+  setSort(sort: string): void {
+    if ((LIBRARY_SORTS as readonly string[]).includes(sort)) this.sort = sort as LibrarySort;
+  }
+
+  setQuery(value: string): void {
+    this.query = value;
+  }
+
+  filterLabel(id: LibraryFilter): string {
+    if (id === 'new') return `✦ ${this.t('forge.pill.new')}`;
+    if (id === 'all') return this.t('forge.filter.all');
+    return this.t('forge.filter.' + id);
+  }
+
+  libColor(tier: RuneTier): string {
+    return LIB_COLOR[tier];
+  }
+
+  cardArt(card: LibraryCard): CardArt | null {
+    return card.known ? runeCard(card.rune.id) : null;
+  }
+
+  cardState(card: LibraryCard): string {
+    if (!card.known) return this.t('forge.card.locked');
+    if (card.isNew) return this.t('forge.card.new');
+    if (card.held > 1) return this.t('forge.card.dup');
+    return this.t('forge.card.found');
+  }
+
+  cardA11y(card: LibraryCard): string {
+    if (!card.known) return this.t('forge.card.locked');
+    return `${card.rune.name}, ${card.rune.tier}, ${this.cardState(card)}`;
+  }
+
+  openCard(card: LibraryCard): void {
+    if (!card.known) return;
+    this.detail = card;
+    this.seen = markSeen(this.seen, card.rune.id);
+    persistSeen(this.store, this.seen);
+    this.cards = this.cards.map(row => row.rune.id === card.rune.id ? { ...row, isNew: false } : row);
+    this.cdr.markForCheck();
+  }
+
+  closeCard(): void {
+    this.detail = null;
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.detail) this.closeCard();
+    else if (this.landed) this.dismissFocus();
+  }
+
+  onDetailKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') this.closeCard();
+  }
+
+  wordsFor(runeId: string): typeof RUNEWORDS[number][] {
+    return wordsUsing(runeId, RUNEWORDS);
+  }
+
+  wordKnown(word: { runes: readonly string[] }): boolean {
+    return word.runes.some(id => this.knownId(id));
+  }
+
+  wordProgress(word: { runes: readonly string[] }): string {
+    const n = word.runes.filter(id => this.knownId(id)).length;
+    return `${n} / ${word.runes.length}`;
+  }
+
+  wordFound(row: RecipeRow): number {
+    return row.slots.filter(slot => this.knownId(slot.rune.id)).length;
+  }
+
+  knownId(id: string): boolean {
+    return id in this.firstFound;
+  }
+
+  private watchDock(): void {
+    if (!this.isBrowser || typeof IntersectionObserver === 'undefined') return;
+    const el = this.rollAnchor?.nativeElement;
+    if (!el) return;
+    this.dockWatch = new IntersectionObserver(entries => {
+      this.showDock = entries.some(entry => !entry.isIntersecting);
+      this.cdr.markForCheck();
+    }, { threshold: 0 });
+    this.dockWatch.observe(el);
+  }
+
   private finishSpin(): void {
     if (this.landed || !this.reveal || !this.revealTier) return;
     this.clearSpin();
@@ -457,14 +648,6 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
   // Inventory and crafting
   // ───────────────────────────────────────────────────────────────────────────
-
-  inspect(cell: RuneCell): void {
-    this.inspecting = this.inspecting?.id === cell.rune.id ? null : cell.rune;
-    if (cell.known) {
-      this.inspectOverlay.open({ type: 'rune', id: cell.rune.id });
-    }
-    this.cdr.markForCheck();
-  }
 
   craft(row: RecipeRow): void {
     if (!row.ready) return;
@@ -546,6 +729,16 @@ export class RuneForgeComponent implements OnInit, OnDestroy {
     };
   }
 }
+
+const LIB_COLOR: Record<RuneTier, string> = {
+  common: '#8E98A5',
+  uncommon: '#4DB6AC',
+  rare: '#4C8DFF',
+  epic: '#A66CFF',
+  legendary: '#E4A83A',
+  mythic: '#E95757',
+  singular: '#EDE7D8',
+};
 
 function newCraftId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
