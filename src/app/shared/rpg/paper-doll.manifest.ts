@@ -2,9 +2,9 @@
  * paper-doll.manifest.ts — C5 slot shell + approved overlays.
  *
  * Overlay assets are the approved transparent slot copies, shown only when
- * that slot is filled. hands/legs/feet/trinket have no overlay yet because
- * nothing can occupy them. Never use concept crops. Basalt Edge swaps
- * the weapon overlay when that instance is worn.
+ * that slot is filled. hands/legs/trinket are live without overlays yet.
+ * feet stays locked. Never use concept crops. Basalt Edge swaps the
+ * weapon overlay when that instance is worn.
  */
 import type { SlotId } from './item.model';
 
@@ -54,12 +54,12 @@ const full: Omit<PaperDollOverlay, 'asset' | 'zIndex'> = { x: 0, y: 0, width: 10
 export const PAPER_DOLL_SLOTS: readonly PaperDollSlotManifest[] = [
   { slotId: 'head', liveSlot: 'head', labelKey: 'loadout.slot.head', glyph: DOLL_SLOT_GLYPH.head, control: { x: 50, y: 10 }, overlay: { ...full, asset: 'assets/characters/overlays/01-head-overlay.png', zIndex: 4 } },
   { slotId: 'chest', liveSlot: 'chest', labelKey: 'loadout.slot.chest', glyph: DOLL_SLOT_GLYPH.chest, control: { x: 50, y: 32 }, overlay: { ...full, asset: 'assets/characters/overlays/02-chest-overlay.png', zIndex: 3 } },
-  { slotId: 'hands', labelKey: 'loadout.slot.hands', glyph: DOLL_SLOT_GLYPH.hands, control: { x: 24, y: 36 } },
+  { slotId: 'hands', liveSlot: 'hands', labelKey: 'loadout.slot.hands', glyph: DOLL_SLOT_GLYPH.hands, control: { x: 24, y: 36 } },
   { slotId: 'weapon', liveSlot: 'weapon', labelKey: 'loadout.slot.weapon', glyph: DOLL_SLOT_GLYPH.weapon, control: { x: 16, y: 48 }, overlay: { ...full, asset: 'assets/characters/overlays/06-weapon-overlay.png', zIndex: 5 } },
   { slotId: 'off-hand', liveSlot: 'off-hand', labelKey: 'loadout.slot.offhand', glyph: DOLL_SLOT_GLYPH['off-hand'], control: { x: 84, y: 48 }, overlay: { ...full, asset: 'assets/characters/overlays/07-off-hand-overlay.png', zIndex: 5 } },
-  { slotId: 'legs', labelKey: 'loadout.slot.legs', glyph: DOLL_SLOT_GLYPH.legs, control: { x: 50, y: 58 } },
+  { slotId: 'legs', liveSlot: 'legs', labelKey: 'loadout.slot.legs', glyph: DOLL_SLOT_GLYPH.legs, control: { x: 50, y: 58 } },
   { slotId: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 82 } },
-  { slotId: 'trinket', labelKey: 'loadout.slot.trinket', glyph: DOLL_SLOT_GLYPH.trinket, control: { x: 78, y: 18 } },
+  { slotId: 'trinket', liveSlot: 'trinket', labelKey: 'loadout.slot.trinket', glyph: DOLL_SLOT_GLYPH.trinket, control: { x: 78, y: 18 } },
 ];
 
 export function liveSlotFor(doll: DollSlotId): SlotId | null {
