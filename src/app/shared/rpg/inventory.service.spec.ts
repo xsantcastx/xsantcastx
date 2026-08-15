@@ -194,6 +194,51 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.itemById('kit')?.explorerId).toBeUndefined();
   });
 
+  it('refuses a bag-growing displace when the bag already has 250 tiles', () => {
+    TestBed.resetTestingModule();
+    const fills = Array.from({ length: MAX_INVENTORY }, (_, i) => ({
+      id: `fill-${i}`, definitionId: `artifact:fill-${i}`, kind: 'instance' as const,
+      category: 'artifacts' as const, tags: ['artifact'], rarity: 'common',
+      soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 't', sequence: i + 1 }, source: 'inventory' as const,
+      name: `Fill ${i}`, type: 'artifact' as const, stats: {}, sellValue: 1,
+      location: { kind: 'bag' as const },
+    }));
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 2,
+      records: [
+        ...fills,
+        {
+          id: 'helm', definitionId: 'artifact:helm', kind: 'instance',
+          category: 'artifacts', tags: ['artifact'], rarity: 'rare', soulbound: false,
+          acquiredAt: '2026-08-01T00:00:00.000Z',
+          revision: { hlc: 2, deviceId: 't', sequence: 1 }, source: 'inventory',
+          name: 'Helm', type: 'artifact', stats: {}, sellValue: 8,
+          location: { kind: 'equipped', slotId: 'head' },
+        },
+        {
+          id: 'blade', definitionId: 'artifact:blade', kind: 'instance',
+          category: 'artifacts', tags: ['artifact'], rarity: 'rare', soulbound: false,
+          acquiredAt: '2026-08-01T00:00:00.000Z',
+          revision: { hlc: 2, deviceId: 't', sequence: 2 }, source: 'inventory',
+          name: 'Blade', type: 'artifact', stats: {}, sellValue: 8,
+          location: { kind: 'equipped', slotId: 'chest' },
+        },
+      ],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 2, legacyBackup: null,
+    }));
+    inventory = configure(memory);
+    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
+    expect(inventory.equip('blade', 'head')).toBe(false);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('helm');
+    expect(inventory.snapshot.equipped['chest']?.id).toBe('blade');
+    expect(inventory.itemById('helm')).toBeTruthy();
+    expect(inventory.equip('fill-0', 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('fill-0');
+    expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
+    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
+  });
+
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
     const registry = TestBed.inject(LocalSaveRegistry);
     memory.attached = false;

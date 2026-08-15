@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 
+import { emptyLedger, mergeEconomyLedgers } from '../economy/economy-ops';
 import { ECONOMY_KEY, EconomyService } from '../economy/economy.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { coerceInventoryLedger, mergeInventoryLedgers, retireCharms } from './inventory-ops';
 import { INVENTORY_KEY, InventoryService } from './inventory.service';
 import { RpgWiringService } from './rpg-wiring.service';
 
@@ -116,6 +118,57 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
 
     expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
     expect(economy.snapshot.breakdown.rpg).toBe(2);
+  });
+
+  it('two-device economy max then remirror drops retired charm gold', async () => {
+    const helm = {
+      id: 'seed-helm', definitionId: 'artifact:Helm', kind: 'instance' as const,
+      category: 'artifacts' as const, tags: ['artifact'], rarity: 'rare',
+      soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 'seed', sequence: 1 }, source: 'inventory' as const,
+      name: 'Helm', type: 'artifact' as const, stats: { goldPerSec: 2 }, sellValue: 30,
+      location: { kind: 'equipped' as const, slotId: 'head' as const },
+    };
+    const charm = {
+      id: 'worn', definitionId: 'charm:worn', kind: 'instance' as const,
+      category: 'equipment' as const, tags: ['charm'], rarity: 'common',
+      soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z',
+      revision: { hlc: 1, deviceId: 'seed', sequence: 2 }, source: 'inventory' as const,
+      name: 'worn', type: 'charm' as const, stats: { goldPerSec: 4 }, sellValue: 12,
+      location: { kind: 'equipped' as const, slotId: 'charm1' as 'head' },
+    };
+    const raw = {
+      version: 2, records: [helm, charm], tombstones: [], stackOps: [],
+      goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+    const deviceA = retireCharms(parsed, 'phone', 1_000).ledger;
+    const deviceB = parsed;
+    const mergedInv = mergeInventoryLedgers(deviceA, deviceB);
+    const mergedEco = mergeEconomyLedgers(
+      { ...emptyLedger(), rpgFlatGold: 2 },
+      { ...emptyLedger(), rpgFlatGold: 6 },
+    );
+    expect(mergedEco.rpgFlatGold).toBe(6);
+    expect((mergedInv.records.find(row => row.id === 'worn') as { location: unknown }).location)
+      .toEqual({ kind: 'bag' });
+
+    const memory = new MemoryGateway();
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify(mergedInv));
+    memory.writeRaw(ECONOMY_KEY, JSON.stringify(mergedEco));
+    TestBed.configureTestingModule({
+      providers: [
+        RpgWiringService,
+        InventoryService,
+        EconomyService,
+        LocalSaveRegistry,
+        { provide: GameStateGateway, useValue: memory },
+      ],
+    });
+    TestBed.inject(RpgWiringService).init();
+    await Promise.resolve();
+    expect(TestBed.inject(InventoryService).snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+    expect(TestBed.inject(EconomyService).snapshot.breakdown.rpg).toBe(2);
   });
 
   it('does not advance rpgFlatGold when equip save rolls back', async () => {
