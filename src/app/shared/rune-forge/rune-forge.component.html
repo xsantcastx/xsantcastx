@@ -36,7 +36,7 @@
       [class.rf-strike--spinning]="striking && !landed"
       [disabled]="!canStrike"
       (click)="strike()">
-      <span class="rf-strike__label">{{ striking ? t('forge.roll.forging') : t('forge.roll') }}</span>
+      <span class="rf-strike__label">{{ striking && !batch.length ? t('forge.roll.forging') : t('forge.roll') }}</span>
       <span class="rf-strike__cost">
         @if (!canAfford && !striking) {
           {{ t('forge.roll.need', { gold: money(goldShort) }) }}
@@ -44,12 +44,26 @@
           {{ money(strikeCost) }} {{ t('forge.stat.gold') }}
         }
       </span>
-      @if (striking) {
+      @if (striking && !batch.length) {
         <span class="rf-strike__bar" aria-hidden="true"></span>
       }
       <span class="rf-sparks" aria-hidden="true">
         @for (n of [1,2,3,4,5,6,7,8]; track n) {
           <span class="rf-spark" [style.--i]="n"></span>
+        }
+      </span>
+    </button>
+    <button
+      type="button"
+      class="rf-strike rf-strike--auto"
+      [disabled]="!canAuto"
+      (click)="strikeMany()">
+      <span class="rf-strike__label">{{ t('forge.roll.auto') }}</span>
+      <span class="rf-strike__cost">
+        @if (!canAuto && !striking) {
+          {{ t('forge.roll.need', { gold: money(autoShort) }) }}
+        } @else {
+          {{ money(autoCost) }} {{ t('forge.stat.gold') }}
         }
       </span>
     </button>
@@ -231,40 +245,60 @@
       <div
         class="rf-pick"
         [class.rf-pick--landed]="landed"
+        [class.rf-pick--batch]="batch.length > 0"
         [style.--star-color]="revealTier?.color"
         [style.--star-glow]="revealTier?.glow"
         role="dialog"
         aria-modal="true"
-        [attr.aria-label]="t('forge.pick.title')"
+        [attr.aria-label]="batch.length ? t('forge.roll.auto') : t('forge.pick.title')"
         (click)="$event.stopPropagation()">
-        <p class="rf-pick__prompt">{{ landed ? (reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup')) : t('forge.pick.title') }}</p>
-        <div class="rf-pick__grid">
-          @for (slot of picks; track slot.index) {
-            <button
-              type="button"
-              class="rf-pick__card"
-              [class.is-chosen]="chosen === slot.index"
-              [class.is-other]="chosen !== null && chosen !== slot.index"
-              [disabled]="chosen !== null"
-              (click)="choosePick(slot.index)">
-              @if (chosen === slot.index && revealCard) {
-                <img [src]="revealCard.src" width="200" height="200" [alt]="reveal.rune.name" decoding="async">
-              } @else if (chosen === slot.index) {
-                <span class="rf-pick__name">{{ reveal.rune.name }}</span>
-              } @else {
-                <span class="rf-pick__back" aria-hidden="true">{{ slot.mark }}</span>
-                <span class="rf-sr">{{ t('forge.pick.card', { n: slot.index + 1 }) }}</span>
-              }
-            </button>
-          }
-        </div>
-        @if (landed && revealTier) {
-          <p class="rf-pick__name">{{ reveal.rune.name }}</p>
-          <p class="rf-pick__tier">{{ revealTier.label }}</p>
-          @if (!reveal.isNew) {
-            <p class="rf-pick__dup">{{ t('forge.reveal.owned') }}</p>
-          }
+        @if (batch.length) {
+          <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
+          <div class="rf-pick__grid">
+            @for (find of batch; track $index) {
+              <div class="rf-pick__card is-chosen" [style.--star-color]="libColor(find.rune.tier)">
+                @if (runeCardOf(find.rune.id); as art) {
+                  <img [src]="art.src" width="200" height="200" [alt]="find.rune.name" decoding="async">
+                } @else {
+                  <span class="rf-pick__name">{{ find.rune.name }}</span>
+                }
+                @if (find.isNew) {
+                  <span class="rf-pick__new">✦ {{ t('forge.card.new') }}</span>
+                }
+              </div>
+            }
+          </div>
           <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+        } @else {
+          <p class="rf-pick__prompt">{{ landed ? (reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup')) : t('forge.pick.title') }}</p>
+          <div class="rf-pick__grid">
+            @for (slot of picks; track slot.index) {
+              <button
+                type="button"
+                class="rf-pick__card"
+                [class.is-chosen]="chosen === slot.index"
+                [class.is-other]="chosen !== null && chosen !== slot.index"
+                [disabled]="chosen !== null"
+                (click)="choosePick(slot.index)">
+                @if (chosen === slot.index && revealCard) {
+                  <img [src]="revealCard.src" width="200" height="200" [alt]="reveal.rune.name" decoding="async">
+                } @else if (chosen === slot.index) {
+                  <span class="rf-pick__name">{{ reveal.rune.name }}</span>
+                } @else {
+                  <span class="rf-pick__back" aria-hidden="true">{{ slot.mark }}</span>
+                  <span class="rf-sr">{{ t('forge.pick.card', { n: slot.index + 1 }) }}</span>
+                }
+              </button>
+            }
+          </div>
+          @if (landed && revealTier) {
+            <p class="rf-pick__name">{{ reveal.rune.name }}</p>
+            <p class="rf-pick__tier">{{ revealTier.label }}</p>
+            @if (!reveal.isNew) {
+              <p class="rf-pick__dup">{{ t('forge.reveal.owned') }}</p>
+            }
+            <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+          }
         }
       </div>
     </div>

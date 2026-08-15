@@ -55,6 +55,7 @@ export function reelOffset(length: number): number {
   return -Math.max(0, length - 1) * SLOT_FACE_PX;
 }
 
+export const AUTO_ROLLS = 10;
 export const PICK_COUNT = 10;
 const PICK_MARKS = ['◈', '◇', '☽', 'ϟ', '✦', '✶', '⬡', '⟡', '☼', '☖'] as const;
 

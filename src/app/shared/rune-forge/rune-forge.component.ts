@@ -46,6 +46,7 @@ import {
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
 import {
+  AUTO_ROLLS,
   buildPickHand,
   type PickSlot,
 } from './rune-reel';
@@ -188,6 +189,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   revealCard: CardArt | null = null;
   picks: PickSlot[] = [];
   chosen: number | null = null;
+  batch: RuneFind[] = [];
   landed = false;
   loreOpen = false;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
@@ -363,6 +365,22 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(0, STRIKE_COST - this.gold);
   }
 
+  get autoCost(): number {
+    return STRIKE_COST * AUTO_ROLLS;
+  }
+
+  get autoShort(): number {
+    return Math.max(0, this.autoCost - this.gold);
+  }
+
+  get canAuto(): boolean {
+    return this.isBrowser && !this.striking && this.gold >= this.autoCost;
+  }
+
+  get batchNew(): number {
+    return this.batch.filter(find => find.isNew).length;
+  }
+
   get completePct(): number {
     return Math.round((this.unique / this.totalRunes) * 100);
   }
@@ -407,6 +425,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.landed = false;
     this.loreOpen = false;
     this.chosen = null;
+    this.batch = [];
     this.picks = buildPickHand();
     this.reveal = find;
     this.revealTier = tier;
@@ -417,6 +436,45 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
 
     if (this.prefersReducedMotion()) this.choosePick(0);
+  }
+
+  strikeMany(count = AUTO_ROLLS): void {
+    if (!this.isBrowser || this.striking) return;
+    this.broke = false;
+    if (this.gold < STRIKE_COST * count) {
+      this.broke = true;
+      return;
+    }
+
+    const finds: RuneFind[] = [];
+    for (let i = 0; i < count; i++) {
+      const find = this.forge.strike();
+      if (!find) break;
+      finds.push(find);
+    }
+    if (!finds.length) {
+      this.broke = true;
+      return;
+    }
+
+    const last = finds[finds.length - 1];
+    const best = finds.reduce((acc, find) =>
+      RUNE_TIER_ORDER.indexOf(find.rune.tier) > RUNE_TIER_ORDER.indexOf(acc.rune.tier) ? find : acc, last);
+    this.audio.strike(tierOf(best.rune.tier).semitones);
+    this.striking = true;
+    this.landed = true;
+    this.loreOpen = false;
+    this.chosen = null;
+    this.picks = [];
+    this.batch = finds;
+    this.reveal = last;
+    this.revealTier = tierOf(last.rune.tier);
+    this.revealCard = runeCard(last.rune.id);
+    this.scrollParagraphs = [];
+    if (best.rune.tier === 'singular') this.audio.voidRumble();
+    else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavy(best.rune.tier));
+    this.flare(best.rune.tier, tierOf(best.rune.tier).duration);
+    this.cdr.markForCheck();
   }
 
   choosePick(index: number): void {
@@ -439,6 +497,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.striking = false;
     this.chosen = null;
     this.picks = [];
+    this.batch = [];
     this.cdr.markForCheck();
   }
 
@@ -474,6 +533,10 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   cardArt(card: LibraryCard): CardArt | null {
     return card.known ? runeCard(card.rune.id) : null;
+  }
+
+  runeCardOf(id: string): CardArt | null {
+    return runeCard(id);
   }
 
   cardState(card: LibraryCard): string {
