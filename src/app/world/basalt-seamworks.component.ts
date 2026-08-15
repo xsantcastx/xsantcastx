@@ -19,7 +19,9 @@ import {
 } from '../shared/activity/activity-progression.gateway';
 import {
   BASALT_SEAMWORKS_ID,
+  CINDER_ORE_ID,
   EMBER_DISCOVERY_CHANCE,
+  EMBER_RESIDUE_ID,
   MINING_RECOVERY_MS,
   type ActivityLedger,
   type ActivityOperation,
@@ -68,6 +70,10 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   snap: ActivityLedger = this.activity.snapshot;
   now = Date.now();
   lastOp: ActivityOperation | null = null;
+  lastOre = 0;
+  lastEmber = 0;
+  oreHeld = 0;
+  emberHeld = 0;
   lastError: ActivityRejectCode | null = null;
   pendingId: string | null = null;
   busy = false;
@@ -77,7 +83,11 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     this.chapters.init();
     this.title.setTitle(this.t('seamworks.titlePage'));
     this.sub = this.activity.snapshot$.subscribe(snap => { this.snap = snap; });
-    this.sub.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
+    this.sub.add(this.inventory.snapshot$.subscribe(() => {
+      this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
+      this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      this.cdr.markForCheck();
+    }));
     this.sub.add(this.i18n.currentLanguage$.subscribe(() => {
       this.title.setTitle(this.t('seamworks.titlePage'));
     }));
@@ -144,8 +154,14 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     this.busy = false;
     if (result.ok) {
       this.lastOp = result.operation;
+      this.lastOre = grantQty(result.operation, CINDER_ORE_ID);
+      this.lastEmber = grantQty(result.operation, EMBER_RESIDUE_ID);
       this.lastError = null;
       this.pendingId = null;
+      this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
+      this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      if (this.lastEmber > 0 || this.keeper.isOpen) this.keeper.show('bank');
+      this.cdr.markForCheck();
       return;
     }
     this.lastError = result.code;
@@ -175,6 +191,12 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     if (!pick) return this.t('seamworks.chapter.missing');
     return this.t('seamworks.chapter.resolved', { choice: this.t(pick.titleKey) });
   }
+}
+
+function grantQty(op: ActivityOperation, definitionId: string): number {
+  return op.inventoryGrants
+    .filter(grant => grant.definitionId === definitionId)
+    .reduce((sum, grant) => sum + grant.quantity, 0);
 }
 
 function newMutationId(): string {

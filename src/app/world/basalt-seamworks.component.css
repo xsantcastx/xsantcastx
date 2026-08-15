@@ -64,20 +64,47 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .sw__expect, .sw__chance, .sw__note { margin: 0 0 0.7rem; line-height: 1.5; }
 
 .sw__loot {
-  display: flex;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
   margin: 0 0 1rem;
 }
 
-.sw__loot figure { margin: 0; text-align: center; font-size: 0.75rem; }
+.sw__loot figure {
+  margin: 0;
+  padding: 0.7rem 0.6rem 0.8rem;
+  text-align: center;
+  font-size: 0.75rem;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.sw__loot figure.is-hit { border-color: #d6a84f; }
+.sw__loot figure.is-rare { border-color: #E4A83A; }
 .sw__loot img {
   display: block;
   width: 72px;
   height: 72px;
   object-fit: contain;
+  margin: 0 auto 0.35rem;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.35);
 }
+.sw__loot figcaption { color: rgba(232, 236, 241, 0.78); }
+.sw__held {
+  margin: 0.35rem 0 0;
+  font: 700 1.35rem/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.sw__gain {
+  margin: 0.25rem 0 0;
+  color: #d6a84f;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+.sw__gain--rare, .sw__rare { color: #E4A83A; font-weight: 700; }
 
 .sw__mine, .sw__ghost {
   min-width: 44px;
@@ -110,6 +137,14 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 
 .sw__alert, .sw__result p { margin: 0.7rem 0 0; }
 .sw__alert { color: #fecaca; }
+.sw__result {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(214, 168, 79, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+.sw__result--rare { border-color: #E4A83A; }
 
 .sw__sr {
   margin: 0.55rem 0 0;
