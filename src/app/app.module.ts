@@ -30,6 +30,7 @@ import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
+import { KeeperPanelComponent } from './shared/keeper/keeper-panel.component';
 import { CloudSaveChipComponent } from './shared/cloud-save/cloud-save-chip.component';
 import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.component';
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
@@ -72,6 +73,7 @@ import { PwaService } from './shared/pwa.service';
     QuestToastComponent,
     ForgeFlameComponent,
     CloudSaveMergeDialogComponent,
+    KeeperPanelComponent,
     CloudSaveChipComponent,
     CloudSaveButtonComponent,
     GoldTickerComponent,

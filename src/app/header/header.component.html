@@ -30,6 +30,8 @@
       @for (hall of primaryNav; track hall.id) {
         <a [routerLink]="hall.route" routerLinkActive="is-active"
            [routerLinkActiveOptions]="{ exact: hall.exact === true }"
+           [class.is-active]="hallIsActive(hall)"
+           (click)="onHallClick($event, hall)"
            class="gfnav__hall">
           <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
           {{ translate(hall.labelKey) }}
@@ -67,13 +69,24 @@
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
         <span class="gfpill__val">{{ essence }}</span>
       </a>
-      <a routerLink="/character" class="gfpill gfpill--rank"
-         [attr.aria-label]="'Level ' + rankLevel + ' — ' + rankTitle">
+      <button type="button" class="gfpill gfpill--rank"
+         (click)="openCharacter()"
+         [class.is-on]="characterPanelOpen"
+         [attr.aria-pressed]="characterPanelOpen"
+         [attr.aria-label]="'Character, level ' + rankLevel + ' — ' + rankTitle">
         <img class="gfpill__icon gf-icon rank-current" [src]="rankSigil(rankLevel)"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
         <span class="gfpill__val">{{ rankLevel }}</span>
         <span class="gfpill__rank-title">{{ rankTitle }}</span>
-      </a>
+      </button>
+
+      <button type="button" class="gfpill gfpill--bag" (click)="openBank()"
+              [class.is-on]="bankPanelOpen"
+              [attr.aria-pressed]="bankPanelOpen"
+              [attr.aria-label]="'Bank, ' + bagCount + ' items'">
+        <span class="gfpill__bag" aria-hidden="true">🎒</span>
+        <span class="gfpill__val">{{ bagCount }}</span>
+      </button>
 
       <!-- Cloud save. Signed out it is the Google mark and "Sign In"; signed in
            it is the avatar with the sync state on it, linking to the full
@@ -93,10 +106,13 @@
                 (click)="setLanguage('es')">ES</button>
       </div>
 
-      <a routerLink="/character" routerLinkActive="is-active" class="gfnav__keeper"
+      <button type="button" class="gfnav__keeper"
+         (click)="openCharacter()"
+         [class.is-active]="characterPanelOpen"
+         [attr.aria-pressed]="characterPanelOpen"
          [attr.aria-label]="translate('gfnav.keeperLabel')">
         <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
-      </a>
+      </button>
 
       <button type="button" class="gfnav__burger" [class.is-open]="mobileMenuOpen"
               (click)="toggleMobileMenu()" [attr.aria-expanded]="mobileMenuOpen"
@@ -142,8 +158,9 @@
     </div>
 
     <!-- Who you are, at the front of the book. -->
-    <a routerLink="/character" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
-       (click)="closeMobileMenu()">
+    <button type="button" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
+       [class.is-on]="characterPanelOpen"
+       (click)="openCharacter()">
       <img class="gftome__keeper-sigil gf-icon rank-current" [src]="rankSigil(rankLevel)"
            alt="" aria-hidden="true" width="40" height="40"
            decoding="async" draggable="false">
@@ -152,7 +169,15 @@
         <span class="gftome__keeper-rank">{{ rankTitle }}</span>
       </span>
       <span class="gftome__keeper-lvl">{{ rankLevel }}</span>
-    </a>
+    </button>
+
+    <button type="button" class="gftome__bank" [tabIndex]="mobileMenuOpen ? 0 : -1"
+            [class.is-on]="bankPanelOpen"
+            (click)="openBank()">
+      <span class="gftome__bank-icon" aria-hidden="true">🎒</span>
+      <span class="gftome__bank-text">Bank</span>
+      <span class="gftome__bank-n">{{ bagCount }}</span>
+    </button>
 
     <div class="gfxp">
       <p class="gfxp__label">
@@ -203,7 +228,9 @@
           <a class="gftome__link" role="menuitem"
              [routerLink]="hall.route" routerLinkActive="is-active"
              [routerLinkActiveOptions]="{ exact: hall.exact === true }"
-             [tabIndex]="mobileMenuOpen ? 0 : -1" (click)="closeMobileMenu()">
+             [class.is-active]="hallIsActive(hall)"
+             [tabIndex]="mobileMenuOpen ? 0 : -1"
+             (click)="onHallClick($event, hall); closeMobileMenu()">
             <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
             <span class="gftome__link-name">{{ translate(hall.labelKey) }}</span>
             @if (hall.hintKey) {
@@ -264,6 +291,8 @@
   @for (tab of tabs; track tab.id) {
     <a [routerLink]="tab.route" routerLinkActive="is-active"
        [routerLinkActiveOptions]="{ exact: tab.exact === true }"
+       [class.is-active]="hallIsActive(tab)"
+       (click)="onHallClick($event, tab)"
        class="gftabs__tab">
       <!-- Both states are in the DOM and cross-faded with opacity rather than
            swapped on [src]. A src swap fetches the active PNG at the moment

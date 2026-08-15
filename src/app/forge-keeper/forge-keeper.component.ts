@@ -52,7 +52,7 @@ import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.servi
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
 import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
-import { EquipmentPanelComponent } from '../shared/rpg/equipment-panel.component';
+import { CharacterHubComponent } from '../shared/character/character-hub.component';
 import { InventoryService } from '../shared/rpg/inventory.service';
 import { SLOT_IDS } from '../shared/rpg/item.model';
 import {
@@ -79,6 +79,8 @@ import { ARENA_PLAYABLE } from '../arena/games/arena-game.model';
 import { CodexAchievement, buildAchievements } from '../codex/codex.model';
 import { PIN_SLOTS, PinnedAchievementsService } from './pinned-achievements.service';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
+import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
+import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
@@ -307,7 +309,7 @@ function tierForEssence(cost: number): EclipseRarity {
     CloudSaveButtonComponent,
     ArtSceneComponent,
     StatPanelComponent,
-    EquipmentPanelComponent,
+    CharacterHubComponent,
   ],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
@@ -324,6 +326,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   private readonly eggs = inject(EasterEggService);
   private readonly pins = inject(PinnedAchievementsService);
   private readonly storage = inject(ProgressStorageService);
+  private readonly overlays = inject(OverlayStackService);
+  private readonly keeperPanel = inject(KeeperPanelService);
 
   private subs: Subscription[] = [];
 
@@ -385,6 +389,11 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   inventorySort: InventorySort = 'rarity';
   /** Raw contents of the search box. Matched against name, effect and flavour. */
   inventorySearch = '';
+  /** Bank shows what you hold. Catalogue is the old market shelf, behind a toggle. */
+  ownedOnly = true;
+  bankOpen = false;
+  showRecords = false;
+  private unbank?: () => void;
 
   inventory: InventoryItem[] = this.buildInventory(ZERO_ECONOMY);
 
@@ -429,6 +438,34 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
     if (this.ticker !== null) clearInterval(this.ticker);
+    this.unbank?.();
+    if (this.isBrowser) document.body.style.overflow = '';
+  }
+
+  openBank(): void {
+    this.keeperPanel.show('bank');
+  }
+
+  openCatalogue(): void {
+    this.ownedOnly = false;
+    this.refreshInventoryView();
+    if (this.bankOpen) return;
+    this.bankOpen = true;
+    this.unbank = this.overlays.push('character-catalogue', () => this.closeBank());
+    if (this.isBrowser) document.body.style.overflow = 'hidden';
+  }
+
+  closeBank(): void {
+    if (!this.bankOpen) return;
+    this.bankOpen = false;
+    this.unbank?.();
+    this.unbank = undefined;
+    if (this.isBrowser) document.body.style.overflow = '';
+  }
+
+  toggleCatalogue(): void {
+    this.ownedOnly = !this.ownedOnly;
+    this.refreshInventoryView();
   }
 
   /**
@@ -837,6 +874,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
    * chip counts then cannot disagree about what a filter means.
    */
   private survivesFilters(item: InventoryItem, tier: RarityFilter): boolean {
+    if (this.ownedOnly && !item.owned) return false;
     if (this.inventoryFilter !== 'all'
       && item.kind !== this.inventoryFilter.slice(0, -1)) return false;
     if (tier !== 'all' && item.tier !== tier) return false;
@@ -902,6 +940,17 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
           || Number(b.lead.owned) - Number(a.lead.owned)
           || byName;
     }
+  }
+
+  /** Owned stacks plus empty pads so the bank reads as a grid of slots. */
+  get bankSlots(): Array<InventoryStack | null> {
+    const held = this.visibleStacks;
+    const pad = Math.max(0, 40 - held.length);
+    return [...held, ...Array<InventoryStack | null>(pad).fill(null)];
+  }
+
+  get bankHeld(): number {
+    return this.visibleStacks.length;
   }
 
   /** Re-derive the visible shelf. Every control and every ledger tick calls this. */

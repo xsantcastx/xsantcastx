@@ -143,6 +143,11 @@ export class ActivityProgressionGateway {
     return Math.max(0, end - now);
   }
 
+  /** Live bag check — do not latch a capacity error after the player drops. */
+  bagCanTakeOre(): boolean {
+    return this.inventory.canAcceptStackGrant('cinder-ore');
+  }
+
   resolveMine(input: {
     mutationId: string;
     locationId?: string;

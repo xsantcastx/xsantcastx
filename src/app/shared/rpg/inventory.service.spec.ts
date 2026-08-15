@@ -239,6 +239,27 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
   });
 
+  it('drops an unequipped item without paying gold and refuses worn gear', () => {
+    const gold = TestBed.inject(EconomyService).snapshot.gold;
+    expect(inventory.drop('seed-helm')).toBe(false);
+    expect(inventory.itemById('seed-helm')).toBeTruthy();
+    expect(inventory.drop('old-charm')).toBe(true);
+    expect(inventory.itemById('old-charm')).toBeUndefined();
+    expect(TestBed.inject(EconomyService).snapshot.gold).toBe(gold);
+    const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
+    expect(stored?.tombstones.some(row => row.id === 'old-charm')).toBe(true);
+  });
+
+  it('drops a material stack and frees the bag row', () => {
+    expect(inventory.grantStack('g1', 'cinder-ore', 4)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(4);
+    expect(inventory.snapshot.stacks.some(row => row.stackKey === 'cinder-ore')).toBe(true);
+    expect(inventory.dropStack('cinder-ore')).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+    expect(inventory.snapshot.stacks.length).toBe(0);
+    expect(inventory.canAcceptStackGrant('cinder-ore')).toBe(true);
+  });
+
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
     const registry = TestBed.inject(LocalSaveRegistry);
     memory.attached = false;

@@ -87,17 +87,27 @@ export const INVENTORY_KEY = 'godforge-inventory';
  */
 export const MAX_INVENTORY = INVENTORY_BAG_CAP;
 
+export interface InventoryStackView {
+  id: string;
+  stackKey: string;
+  quantity: number;
+}
+
 export interface InventorySnapshot {
   /** Everything held, newest first. */
   items: GameItem[];
   /** Unequipped, newest first — what the bag grid renders. */
   bag: GameItem[];
+  /** Material stacks (ore, residue). Each occupies one bag row. */
+  stacks: InventoryStackView[];
   /** slot id → the item in it, for the seven player slots. */
   equipped: Partial<Record<SlotId, GameItem>>;
   /** Summed stats of everything the *player* wears. Explorer kit is not counted. */
   totals: Required<ItemStats>;
   goldFromSales: number;
   sold: number;
+  /** Inventory-source rows counting toward the cap, including stacks. */
+  usedRows: number;
   /** True when the bag is at its ceiling, so the panel can say so. */
   full: boolean;
 }
@@ -364,6 +374,68 @@ export class InventoryService {
     this.publish();
     this.acquired$$.next(item);
     return { ok: true, item, replayed: false };
+  }
+
+  canDrop(item: GameItem): boolean {
+    return !item.equipped && !item.explorerId;
+  }
+
+  /**
+   * Destroy one unequipped instance. No Gold. Frees a bag row so Mine can
+   * take a new stack. Worn and explorer-held items stay put.
+   */
+  drop(itemId: string): boolean {
+    if (!this.isBrowser) return false;
+    const item = this.itemById(itemId);
+    if (!item || !this.canDrop(item)) return false;
+
+    const row = this.ledger.records.find(entry => entry.id === itemId);
+    if (!row || row.kind !== 'instance') return false;
+    const gone = this.advanceRevision(row.revision);
+    const previous = this.ledger;
+    this.ledger = tombstoneRecord(this.ledger, itemId, gone.revision, Date.now());
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
+    this.publish();
+    return true;
+  }
+
+  /**
+   * Destroy a material stack (all of it). The empty stack row is tombstoned
+   * so it stops occupying the 250-row cap.
+   */
+  dropStack(stackKey: string): boolean {
+    if (!this.isBrowser || !stackKey) return false;
+    const have = this.stackOf(stackKey);
+    if (have <= 0) return false;
+    const row = this.ledger.records.find(
+      entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
+    );
+    if (!row) return false;
+
+    const stepped = this.advanceRevision(row.revision);
+    const previous = this.ledger;
+    const consumed = applyStackOp(this.ledger.stackOps, {
+      id: `drop:${stackKey}:${stepped.revision.hlc}:${stepped.revision.sequence}`,
+      stackKey,
+      kind: 'consume',
+      quantity: have,
+      hlc: stepped.revision.hlc,
+      deviceId: stepped.revision.deviceId,
+      sequence: stepped.revision.sequence,
+    });
+    this.ledger = {
+      ...tombstoneRecord(this.ledger, row.id, stepped.revision, Date.now()),
+      stackOps: consumed,
+    };
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
+    this.publish();
+    return true;
   }
 
   /**
@@ -668,14 +740,27 @@ export class InventoryService {
       }
     }
 
+    const stacks: InventoryStackView[] = [];
+    for (const row of ledger.records) {
+      if (row.kind !== 'stack' || row.source !== 'inventory') continue;
+      const quantity = stackQuantity(ledger.stackOps, row.stackKey);
+      if (quantity <= 0) continue;
+      stacks.push({ id: row.id, stackKey: row.stackKey, quantity });
+    }
+    stacks.sort((a, b) => a.stackKey.localeCompare(b.stackKey));
+
+    const usedRows = ledger.records.filter(row => row.source === 'inventory').length;
+
     return {
       items,
       bag: items.filter(i => !i.equipped && !i.explorerId),
+      stacks,
       equipped,
       totals: sumStats(wornBlocks),
       goldFromSales: ledger.goldFromSales,
       sold: ledger.sold,
-      full: items.length >= MAX_INVENTORY,
+      usedRows,
+      full: usedRows >= MAX_INVENTORY,
     };
   }
 

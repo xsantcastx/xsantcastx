@@ -67,9 +67,9 @@ async function openVault(page: Page, seed = true): Promise<void> {
     },
   );
   await page.goto('/character');
+  await page.locator('.fk-catalogue-open').click();
+  await page.locator('.fk-bank').waitFor();
   await page.locator('.fk-inv__card').first().waitFor();
-  // The shelf is prerendered empty and refilled after hydration; waiting for a
-  // card is not the same as waiting for the ledger to have landed on it.
   await expect(page.locator('.fk-inv__result')).toContainText('entries');
 }
 

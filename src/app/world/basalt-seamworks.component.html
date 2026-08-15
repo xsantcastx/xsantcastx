@@ -52,6 +52,9 @@
 
     @if (panelState() === 'capacity') {
       <p class="sw__alert" role="alert">{{ t('seamworks.full') }}</p>
+      <div class="sw__actions">
+        <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
+      </div>
     }
     @if (panelState() === 'location') {
       <p class="sw__alert" role="alert">{{ t('seamworks.away') }}</p>
