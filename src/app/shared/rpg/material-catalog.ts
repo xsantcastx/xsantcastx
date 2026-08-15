@@ -24,6 +24,11 @@ export const EMBER_RESIDUE_DISPLAY: MaterialDisplay = {
 
 export const BASALT_EDGE_PORTRAIT = 'assets/items/portraits/04-basalt-edge-portrait.png';
 export const BASALT_EDGE_OVERLAY = 'assets/characters/overlays/09-basalt-edge-overlay.png';
+export const BASALT_EDGE_NAME = 'Basalt Edge';
+
+export function isBasaltEdge(item: { name?: string; id?: string }): boolean {
+  return item.name === BASALT_EDGE_NAME || (item.id?.includes('basalt-edge') ?? false);
+}
 
 const BY_ID: Record<string, MaterialDisplay> = {
   [CINDER_ORE_DISPLAY.id]: CINDER_ORE_DISPLAY,

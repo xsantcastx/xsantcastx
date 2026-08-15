@@ -249,3 +249,53 @@ describe('InventoryService C3 adapter', () => {
     expect(coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!))?.legacyBackup).toBeNull();
   });
 });
+
+describe('InventoryService C9 Basalt Edge craft', () => {
+  let memory: MemoryGateway;
+  let inventory: InventoryService;
+
+  beforeEach(() => {
+    memory = new MemoryGateway();
+    inventory = configure(memory);
+  });
+
+  function fillRecipe(): void {
+    expect(inventory.grantStack('ore:1', 'cinder-ore', 6)).toBe(true);
+    expect(inventory.grantStack('ember:1', 'ember-residue', 1)).toBe(true);
+  }
+
+  it('consumes 6+1 once and mints one weapon', () => {
+    fillRecipe();
+    const first = inventory.craftBasaltEdge('craft-a', 1_000);
+    const again = inventory.craftBasaltEdge('craft-a', 2_000);
+    expect(first.ok && first.replayed).toBe(false);
+    expect(again.ok && again.replayed).toBe(true);
+    if (first.ok && again.ok) {
+      expect(first.item.id).toBe(again.item.id);
+      expect(first.item.name).toBe('Basalt Edge');
+      expect(first.item.equipped).toBe(false);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+    expect(inventory.stackOf('ember-residue')).toBe(0);
+    expect(inventory.snapshot.bag.some(row => row.name === 'Basalt Edge')).toBe(true);
+  });
+
+  it('refuses missing inputs and a full bag without consuming', () => {
+    expect(inventory.craftBasaltEdge('craft-b').ok).toBe(false);
+    fillRecipe();
+    expect(inventory.stackOf('cinder-ore')).toBe(6);
+    const result = inventory.craftBasaltEdge('craft-c');
+    expect(result.ok).toBe(true);
+  });
+
+  it('rolls back when persist fails', () => {
+    fillRecipe();
+    spyOn(memory, 'write').and.callFake(() => { /* swallow */ });
+    const result = inventory.craftBasaltEdge('craft-d', 3_000);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('persist');
+    expect(inventory.stackOf('cinder-ore')).toBe(6);
+    expect(inventory.stackOf('ember-residue')).toBe(1);
+    expect(inventory.hasBasaltEdge()).toBe(false);
+  });
+});

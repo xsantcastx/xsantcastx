@@ -25,6 +25,7 @@ import {
   PAPER_DOLL_SRC,
   type PaperDollSlotManifest,
 } from './paper-doll.manifest';
+import { BASALT_EDGE_OVERLAY, BASALT_EDGE_PORTRAIT, isBasaltEdge } from './material-catalog';
 
 const CATS = ['all', 'charms', 'runes', 'artifacts'] as const;
 const RARS = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'] as const;
@@ -88,10 +89,12 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
       const rarity = this.oneOf(params.get('rarity'), RARS, 'all');
       const sort = this.oneOf(params.get('sort'), SORTS, 'newest');
       const query = params.get('q') ?? '';
+      const focus = params.get('item');
       this.category = bag;
       this.rarity = rarity;
       this.sort = sort;
       this.query = query;
+      if (focus) this.selectedId = focus;
       const dirty =
         this.invalid(params.get('bag'), CATS)
         || this.invalid(params.get('rarity'), RARS)
@@ -136,7 +139,19 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   }
 
   get filledOverlays(): PaperDollSlotManifest[] {
-    return this.dollSlots.filter(slot => slot.overlay && this.itemInDoll(slot));
+    return this.dollSlots
+      .filter(slot => slot.overlay && this.itemInDoll(slot))
+      .map(slot => {
+        const item = this.itemInDoll(slot);
+        if (item && isBasaltEdge(item) && slot.slotId === 'weapon' && slot.overlay) {
+          return { ...slot, overlay: { ...slot.overlay, asset: BASALT_EDGE_OVERLAY } };
+        }
+        return slot;
+      });
+  }
+
+  tileArt(item: GameItem): string | null {
+    return isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : null;
   }
 
   isTarget(slot: PaperDollSlotManifest): boolean {

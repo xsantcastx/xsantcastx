@@ -20,7 +20,8 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
-import { type EntityFact } from './entity.model';
+import { type EntityAction, type EntityFact } from './entity.model';
+import { InventoryService } from '../rpg/inventory.service';
 
 @Component({
   selector: 'app-inspect',
@@ -32,6 +33,7 @@ import { type EntityFact } from './entity.model';
 })
 export class InspectComponent implements OnInit, OnDestroy {
   private readonly inspect = inject(InspectService);
+  private readonly inventory = inject(InventoryService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -83,6 +85,13 @@ export class InspectComponent implements OnInit, OnDestroy {
   }
 
   retry(): void {
+    this.inspect.retry();
+  }
+
+  runAction(action: EntityAction): void {
+    if (action.id !== 'equip' || !action.enabled || !this.view.ref) return;
+    this.inventory.init();
+    this.inventory.equip(this.view.ref.id, 'weapon');
     this.inspect.retry();
   }
 

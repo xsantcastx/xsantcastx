@@ -3,7 +3,8 @@
  *
  * Overlay assets are the approved transparent slot copies, shown only when
  * that slot is filled. hands/legs/feet/trinket have no overlay yet because
- * nothing can occupy them. Never use concept crops or Basalt Edge here.
+ * nothing can occupy them. Never use concept crops. Basalt Edge swaps
+ * the weapon overlay when that instance is worn.
  */
 import type { SlotId } from './item.model';
 
