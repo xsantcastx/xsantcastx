@@ -1,8 +1,9 @@
 /**
- * keeper-panel.component.ts — character + bank as a side drawer.
+ * keeper-panel.component.ts — the Character hub as a side drawer.
  *
  * Mounted in AppComponent as a sibling of the header. Opening it from the
  * navbar must not put the drawer inside the header's z-index:1000 context.
+ * Docks on the right with no scrim so Mine stays clickable.
  */
 import {
   ChangeDetectionStrategy,
@@ -16,43 +17,31 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
-import { EquipmentPanelComponent } from '../rpg/equipment-panel.component';
 import { InventoryService } from '../rpg/inventory.service';
 import { QuestService } from '../quests/quest.service';
 import { XpService } from '../gamification/xp.service';
-import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
+import { CharacterHubComponent } from '../character/character-hub.component';
+import { CharacterHubService, type HubTab } from '../character/character-hub.service';
+import { KeeperPanelService } from './keeper-panel.service';
 
 @Component({
   selector: 'app-keeper-panel',
   standalone: true,
-  imports: [CommonModule, RouterLink, EquipmentPanelComponent],
+  imports: [CommonModule, RouterLink, CharacterHubComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open) {
-      <aside class="kp" role="complementary" [attr.aria-label]="tab === 'bank' ? 'Bank' : 'Character'">
+      <aside class="kp" role="complementary" [attr.aria-label]="label">
         <header class="kp__head">
-          <div class="kp__tabs" role="tablist">
-            <button type="button" role="tab" class="kp__tab"
-                    [class.is-on]="tab === 'character'"
-                    [attr.aria-selected]="tab === 'character'"
-                    (click)="setTab('character')">Character</button>
-            <button type="button" role="tab" class="kp__tab"
-                    [class.is-on]="tab === 'bank'"
-                    [attr.aria-selected]="tab === 'bank'"
-                    (click)="setTab('bank')">
-              Bank
-              @if (bagCount > 0) {
-                <span class="kp__n">{{ bagCount }}</span>
-              }
-            </button>
-          </div>
+          <p class="kp__who">{{ rankTitle }} · {{ rankLevel }}</p>
+          @if (bagCount > 0) {
+            <span class="kp__n">{{ bagCount }}</span>
+          }
           <button type="button" class="kp__x" (click)="close()" aria-label="Close">✕</button>
         </header>
 
-        <p class="kp__who">{{ rankTitle }} · {{ rankLevel }}</p>
-
         <div class="kp__body">
-          <app-equipment-panel [variant]="tab === 'bank' ? 'bank' : 'select'" />
+          <app-character-hub variant="drawer" />
         </div>
 
         <a routerLink="/character" class="kp__hall" (click)="close()">Open the hall →</a>
@@ -63,7 +52,7 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
     .kp {
       position: fixed; z-index: 93;
       top: 0; right: 0; left: auto;
-      width: min(360px, 42vw);
+      width: min(400px, 46vw);
       height: 100dvh;
       display: flex; flex-direction: column;
       overflow: hidden;
@@ -79,26 +68,25 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
       padding: 12px 12px 8px;
       flex: none;
     }
-    .kp__tabs { display: flex; gap: 6px; flex: 1; }
-    .kp__tab, .kp__x, .kp__hall {
-      min-height: 40px; padding: 0 12px;
+    .kp__who {
+      margin: 0;
+      flex: 1;
+      color: #cbb98a; font-size: 13px;
+    }
+    .kp__n {
+      padding: 1px 5px;
+      background: #0c0a06; color: #c9a84c;
+      font-variant-numeric: tabular-nums;
+    }
+    .kp__x, .kp__hall {
+      min-height: 44px; padding: 0 12px;
       border: 2px solid #6a5424;
       background: #1a1208; color: #f4e7c3;
       font: 700 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
       letter-spacing: .06em; text-transform: uppercase;
       cursor: pointer;
     }
-    .kp__tab.is-on { border-color: #c9a84c; background: #3d2a0e; }
-    .kp__n {
-      margin-left: 6px; padding: 1px 5px;
-      background: #0c0a06; color: #c9a84c;
-      font-variant-numeric: tabular-nums;
-    }
     .kp__x { flex: none; }
-    .kp__who {
-      margin: 0 12px 8px;
-      color: #cbb98a; font-size: 13px;
-    }
     .kp__body {
       flex: 1; min-height: 0;
       overflow: auto;
@@ -116,8 +104,8 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
         right: 0;
         top: auto;
         bottom: var(--gftabs-h, 0px);
-        width: min(360px, 78vw);
-        height: min(58dvh, 520px);
+        width: min(400px, 92vw);
+        height: min(62dvh, 560px);
         border-left: 3px solid #6a5424;
         border-top: 3px solid #6a5424;
       }
@@ -126,6 +114,7 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
 })
 export class KeeperPanelComponent implements OnInit, OnDestroy {
   private readonly keeper = inject(KeeperPanelService);
+  private readonly hub = inject(CharacterHubService);
   private readonly overlays = inject(OverlayStackService);
   private readonly quests = inject(QuestService);
   private readonly xp = inject(XpService);
@@ -135,11 +124,14 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   private unreg?: () => void;
 
   open = false;
-  tab: KeeperTab = 'character';
+  tab: HubTab = 'loadout';
 
   get rankTitle(): string { return this.xp.snapshot.level.title; }
   get rankLevel(): number { return this.xp.snapshot.level.level; }
   get bagCount(): number { return this.inventory.snapshot.usedRows; }
+  get label(): string {
+    return this.tab === 'bank' ? 'Bank' : 'Character';
+  }
 
   ngOnInit(): void {
     this.inventory.init();
@@ -154,7 +146,7 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
       }
       this.cdr.markForCheck();
     }));
-    this.subs.add(this.keeper.tab$.subscribe(tab => {
+    this.subs.add(this.hub.tab$.subscribe(tab => {
       this.tab = tab;
       this.cdr.markForCheck();
     }));
@@ -168,5 +160,4 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   }
 
   close(): void { this.keeper.close(); }
-  setTab(tab: KeeperTab): void { this.keeper.setTab(tab); }
 }

@@ -1,0 +1,40 @@
+<section class="ch" [attr.data-variant]="variant">
+  <div class="ch__tabs" role="tablist" [attr.aria-label]="t('hub.tabs')">
+    @for (id of tabs; track id) {
+      <button
+        type="button"
+        role="tab"
+        class="ch__tab"
+        [class.is-on]="tab === id"
+        [attr.aria-selected]="tab === id"
+        [attr.aria-controls]="'ch-panel-' + id"
+        [id]="'ch-tab-' + id"
+        (click)="select(id)">
+        {{ t('hub.tab.' + id) }}
+      </button>
+    }
+  </div>
+
+  <div class="ch__panel" role="tabpanel" [id]="'ch-panel-' + tab" [attr.aria-labelledby]="'ch-tab-' + tab">
+    @switch (tab) {
+      @case ('loadout') {
+        <app-equipment-panel variant="select" />
+      }
+      @case ('bank') {
+        <app-hub-bank />
+      }
+      @case ('skills') {
+        <app-hub-skills />
+      }
+      @case ('stats') {
+        <app-hub-stats />
+      }
+      @case ('records') {
+        <ng-content select="[hubRecords]"></ng-content>
+        @if (variant === 'drawer') {
+          <p class="ch__more">{{ t('hub.records.drawer') }}</p>
+        }
+      }
+    }
+  </div>
+</section>

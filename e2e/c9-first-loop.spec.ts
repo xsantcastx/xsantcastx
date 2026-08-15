@@ -69,7 +69,7 @@ test.describe('C9 first loop craft and equip', () => {
     await page.getByRole('link', { name: 'Open in bag' }).click();
     await expect(page).toHaveURL(/\/character/);
     await expect(page.getByText('Basalt Edge').first()).toBeVisible();
-    await page.locator('.ld').screenshot({ path: resolve(shotDir, 'desktop-bag.png') });
+    await page.locator('.ch, .ld').first().screenshot({ path: resolve(shotDir, 'desktop-bag.png') });
   });
 
   test('375px missing-input and reduced-motion craft stay readable', async ({ page }) => {

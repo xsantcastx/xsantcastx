@@ -13,6 +13,7 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { formatCompact } from '../economy/economy.model';
+import { CharacterHubService } from '../character/character-hub.service';
 import { InventoryService, InventorySnapshot, InventoryStackView, MAX_INVENTORY } from './inventory.service';
 import { materialDisplay } from './material-catalog';
 import { MagicFindService } from './magic-find.service';
@@ -48,6 +49,7 @@ export type BagSort = typeof SORTS[number];
 })
 export class EquipmentPanelComponent implements OnInit, OnDestroy {
   readonly inventory = inject(InventoryService);
+  readonly hub = inject(CharacterHubService);
   readonly magicFind = inject(MagicFindService);
   private readonly i18n = inject(TranslationService);
   private readonly route = inject(ActivatedRoute);
@@ -86,10 +88,16 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
       if (this.selectedId && !snap.items.some(item => item.id === this.selectedId)) {
         this.selectedId = null;
       }
+      if (this.hub.armedId && !snap.bag.some(item => item.id === this.hub.armedId)) {
+        this.hub.arm(null);
+      }
       if (this.confirming && !snap.bag.some(item => item.id === this.confirming!.id)) {
         this.confirming = null;
       }
     });
+    this.sub.add(this.hub.armed$.subscribe(id => {
+      if (id) this.selectedId = id;
+    }));
     if (this.syncsUrl) {
       this.sub.add(this.route.queryParamMap.subscribe(params => {
         const bag = this.oneOf(params.get('bag'), CATS, 'all');
@@ -138,7 +146,8 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   }
 
   get armed(): GameItem | null {
-    return this.snap.bag.find(item => item.id === this.selectedId) ?? null;
+    const id = this.selectedId ?? this.hub.armedId;
+    return this.snap.bag.find(item => item.id === id) ?? null;
   }
 
   get expandedItem(): GameItem | null {
@@ -197,6 +206,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     if (armed && slot.liveSlot && slotAccepts(slot.liveSlot, armed)) {
       this.inventory.equip(armed.id, slot.liveSlot);
       this.selectedId = null;
+      this.hub.arm(null);
       this.selectedSlot = slot.slotId;
       return;
     }
@@ -212,6 +222,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
 
   select(item: GameItem): void {
     this.selectedId = this.selectedId === item.id ? null : item.id;
+    this.hub.arm(this.selectedId);
   }
 
   stackName(stack: InventoryStackView): string {
