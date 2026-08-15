@@ -38,17 +38,8 @@
 
   <!--
     ── The anvil ─────────────────────────────────────────────────────────────
-    The reveal overlay lives INSIDE this section and is absolutely positioned
-    against it, not fixed against the viewport. `router-outlet + *` carries a
-    `transform` (see the note on routeFadeIn in styles.css), which makes every
-    routed host a containing block — a `position: fixed` child here would be
-    laid out against this component's box, not the screen, and would silently
-    end up as tall as the whole page.
-
-    The screen-level tiers get their drama from `html[data-rune-flare]` in
-    styles.css instead, which is outside the routed host and therefore free to
-    be fixed. Same reasoning that keeps the Flame and the quest drawer siblings
-    of <main>.
+    The strike lands in the slot window here, in flow. No overlay, no page
+    scroll. High-tier drama still comes from `html[data-rune-flare]`.
   -->
   <section class="rf-anvil-bay" [class.rf-anvil-bay--striking]="striking">
 
@@ -63,6 +54,89 @@
       the sparks fly off the strike button on the impact frame, and the button
       itself is the only opaque thing between the visitor and the artwork.
     -->
+    <div
+      class="rf-slot"
+      [class.rf-slot--spinning]="spinning"
+      [class.rf-slot--landed]="landed"
+      [attr.data-tier]="reveal?.rune.tier || null"
+      [attr.data-reveal]="revealTier?.reveal || null"
+      [style.--star-color]="revealTier?.color"
+      [style.--star-glow]="revealTier?.glow"
+      role="status"
+      aria-live="polite"
+      [attr.aria-busy]="spinning">
+
+      <div class="rf-slot__window">
+        @if (reel.length) {
+          <div
+            class="rf-slot__reel"
+            [style.transform]="reelTransform"
+            [style.transition]="reelTransition"
+            (transitionend)="onReelEnd($event)">
+            @for (face of reel; track $index) {
+              <div class="rf-slot__face" [style.height.px]="facePx">
+                @if (face.card) {
+                  <img
+                    class="rf-slot__art"
+                    [src]="face.card.src"
+                    width="216"
+                    height="216"
+                    [alt]="face.name"
+                    decoding="async"
+                    draggable="false">
+                } @else {
+                  <span class="rf-slot__glyph">{{ face.name }}</span>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="rf-slot__idle">Await the strike</p>
+        }
+      </div>
+
+      @if (landed && reveal && revealTier) {
+        <p class="rf-slot__call">
+          <span class="rf-slot__tier">{{ revealTier.label }}</span>
+          <span class="rf-slot__name">{{ reveal.rune.name }}</span>
+        </p>
+        <p class="rf-slot__meta">
+          @if (reveal.isNew) {
+            <span class="rf-reveal__new">NEW</span>
+          } @else {
+            <span>{{ reveal.held }} held</span>
+          }
+          <span>{{ chance(reveal.rune) }}</span>
+          @if (reveal.essence > 0) {
+            <span class="rf-reveal__essence">+{{ reveal.essence }} Essence</span>
+          }
+        </p>
+        @if (reveal.rune.tier === 'singular') {
+          <p class="rf-reveal__void">THE VOID HAS SPOKEN</p>
+        }
+        @if (reveal.scroll) {
+          <button type="button" class="rf-lore" (click)="toggleLore()">
+            Lore scroll · {{ reveal.scroll.title }}
+          </button>
+          @if (loreOpen) {
+            <article class="rf-scroll">
+              <p class="rf-scroll__subtitle">{{ reveal.scroll.subtitle }}</p>
+              <div class="rf-scroll__body">
+                @for (para of scrollParagraphs; track $index) {
+                  <p class="rf-scroll__para">{{ para }}</p>
+                }
+              </div>
+              <p class="rf-scroll__meta">
+                {{ reveal.scroll.chapterName }}
+                · Part {{ reveal.scroll.partNumber }} of 5
+                · <a routerLink="/codex" [queryParams]="{ tab: 'scrolls' }">Read it in the Codex →</a>
+              </p>
+            </article>
+          }
+        }
+      }
+    </div>
+
     <div class="rf-controls">
       <button
         type="button"
@@ -90,94 +164,6 @@
         </p>
       }
     </div>
-
-    <!-- ── The reveal ───────────────────────────────────────────────────── -->
-    @if (reveal && revealTier) {
-    <div
-      class="rf-reveal"
-      [attr.data-tier]="reveal.rune.tier"
-      [attr.data-reveal]="revealTier.reveal"
-      [style.--star-color]="revealTier.color"
-      [style.--star-glow]="revealTier.glow"
-      role="status"
-      aria-live="polite"
-      (click)="dismissReveal()">
-
-      <!--
-        The painted card when there is one, the old text card when there is
-        not. Mote, Seam and Ledger were never painted, and the fallback is not
-        a degraded state — it is exactly what every rune looked like before the
-        sheet arrived.
-
-        `rf-reveal__card--art` drops the panel's own border and background: the
-        painting has its own painted border, and a second one around it reads
-        as a card in a frame in a frame.
-      -->
-      <div class="rf-reveal__card" [class.rf-reveal__card--art]="!!revealCard">
-        <p class="rf-reveal__tier">{{ revealTier.label }}</p>
-
-        @if (revealCard) {
-          <img class="rf-reveal__art"
-               [src]="revealCard.src"
-               [attr.width]="revealCard.width"
-               [attr.height]="revealCard.height"
-               [alt]="reveal.rune.name + ' — ' + reveal.rune.lore"
-               decoding="async" draggable="false">
-        } @else {
-          <p class="rf-reveal__name">{{ reveal.rune.name }}</p>
-          <p class="rf-reveal__lore">{{ reveal.rune.lore }}</p>
-        }
-
-        <p class="rf-reveal__meta">
-          @if (reveal.isNew) {
-            <span class="rf-reveal__new">NEW</span>
-          } @else {
-            <span class="rf-reveal__held">{{ reveal.held }} held</span>
-          }
-          <span class="rf-reveal__odds">{{ chance(reveal.rune) }}</span>
-          @if (reveal.essence > 0) {
-            <span class="rf-reveal__essence">+{{ reveal.essence }} Essence</span>
-          }
-        </p>
-
-        @if (reveal.rune.tier === 'singular') {
-          <p class="rf-reveal__void">THE VOID HAS SPOKEN</p>
-        }
-      </div>
-
-      <!--
-        The scroll, when the same strike turned one up. A sibling of the rune
-        card rather than a child, so the two read as two things that arrived
-        together — which is what happened.
-
-        `stopPropagation` because the overlay's own click dismisses everything,
-        and a visitor reaching for the scroll to read it would otherwise close
-        the thing they were reaching for.
-      -->
-      @if (reveal.scroll) {
-        <article class="rf-scroll" (click)="$event.stopPropagation()">
-          <p class="rf-scroll__flag">
-            <span class="rf-scroll__icon" aria-hidden="true">📜</span>
-            LORE SCROLL DISCOVERED
-          </p>
-          <h3 class="rf-scroll__title">{{ reveal.scroll.title }}</h3>
-          <p class="rf-scroll__subtitle">{{ reveal.scroll.subtitle }}</p>
-
-          <div class="rf-scroll__body">
-            @for (para of scrollParagraphs; track $index) {
-              <p class="rf-scroll__para">{{ para }}</p>
-            }
-          </div>
-
-          <p class="rf-scroll__meta">
-            {{ reveal.scroll.chapterName }}
-            · Part {{ reveal.scroll.partNumber }} of 5
-            · <a routerLink="/codex" [queryParams]="{ tab: 'scrolls' }">Read it in the Codex →</a>
-          </p>
-        </article>
-      }
-    </div>
-    }
   </section>
 
   <!-- ── Stats ──────────────────────────────────────────────────────────── -->
