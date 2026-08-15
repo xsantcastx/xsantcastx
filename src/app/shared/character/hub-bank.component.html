@@ -4,16 +4,18 @@
       <h2 id="hb-title">{{ t('hub.bank.title') }}</h2>
       <p>{{ t('hub.bank.tag', { n: rows.length }) }}</p>
     </div>
-    <button
-      type="button"
-      class="hb__filters-toggle"
-      [attr.aria-expanded]="filtersOpen"
-      (click)="filtersOpen = !filtersOpen">
-      {{ t('hub.bank.filters') }}
-    </button>
   </header>
 
-  <form class="hb__filters" [class.is-open]="filtersOpen" (submit)="$event.preventDefault()">
+  <div class="hb__manage">
+    <label class="hb__search">
+      <span class="visually-hidden">{{ t('hub.bank.search') }}</span>
+      <input
+        type="search"
+        [value]="query"
+        (input)="query = $any($event.target).value"
+        [attr.placeholder]="t('hub.bank.search')">
+    </label>
+
     <div class="hb__kinds" role="group" [attr.aria-label]="t('hub.bank.kinds')">
       @for (opt of kinds; track opt) {
         <button
@@ -25,52 +27,37 @@
         </button>
       }
     </div>
-    <label class="hb__search">
-      <span>{{ t('hub.bank.search') }}</span>
-      <input type="search" [value]="query" (input)="query = $any($event.target).value">
-    </label>
-  </form>
+
+    <div class="hb__sorts" role="group" [attr.aria-label]="t('hub.bank.sort')">
+      @for (opt of sorts; track opt) {
+        <button
+          type="button"
+          class="hb__kind"
+          [class.is-on]="sort === opt"
+          (click)="sort = opt">
+          {{ t('hub.bank.sort.' + opt) }}
+        </button>
+      }
+    </div>
+
+    <div class="hb__bulk">
+      <button type="button" class="hb__keep" (click)="selectAllDroppable()" [disabled]="!droppableRows.length">
+        {{ t('hub.bank.selectAll') }}
+      </button>
+      <button type="button" class="hb__keep" (click)="clearChecked()" [disabled]="!checkedCount">
+        {{ t('hub.bank.clear') }}
+      </button>
+      <button type="button" class="hb__drop" (click)="askDropChecked()" [disabled]="!checkedCount">
+        {{ t('hub.bank.dropSelected', { n: checkedCount }) }}
+      </button>
+      <button type="button" class="hb__drop" (click)="askDropJunk()" [disabled]="!junkCount">
+        {{ t('hub.bank.dropJunk', { n: junkCount }) }}
+      </button>
+    </div>
+  </div>
 
   @if (snap.full) {
     <p class="hb__full" role="status">{{ t('loadout.bag.full') }}</p>
-  }
-
-  @if (!rows.length) {
-    <p class="hb__empty">{{ t('hub.bank.empty') }}</p>
-  } @else {
-    <ul class="hb__grid">
-      @for (row of rows; track row.id) {
-        <li class="hb__tile" [class.is-on]="selectedId === row.id" [attr.data-kind]="row.kind">
-          <button type="button" class="hb__face" (click)="select(row)" [attr.aria-pressed]="selectedId === row.id">
-            @if (row.art) {
-              <img class="hb__art" [src]="row.art" alt="" width="40" height="40" decoding="async">
-            } @else {
-              <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2) }}</span>
-            }
-            <span class="hb__name">{{ row.name }}</span>
-            <span class="hb__meta">{{ row.meta }}</span>
-            <span class="hb__qty">×{{ row.qty }}</span>
-          </button>
-          @if (selectedId === row.id) {
-            <div class="hb__actions">
-              @if (row.inspectType && row.inspectId) {
-                <app-inspect-button [type]="row.inspectType" [id]="row.inspectId" />
-              }
-              @if (row.dropItem && inventory.canDrop(row.dropItem)) {
-                <button type="button" class="hb__drop" (click)="askDrop(row.dropItem)">
-                  {{ t('loadout.drop') }}
-                </button>
-              }
-              @if (row.dropStack) {
-                <button type="button" class="hb__drop" (click)="askDropStack(row.dropStack)">
-                  {{ t('loadout.drop') }}
-                </button>
-              }
-            </div>
-          }
-        </li>
-      }
-    </ul>
   }
 
   @if (dropping; as item) {
@@ -78,7 +65,7 @@
       <p>{{ t('loadout.drop.confirmBody', { name: item.name }) }}</p>
       <div class="hb__confirm-actions">
         <button type="button" class="hb__drop" (click)="confirmDrop()">{{ t('loadout.drop.confirmYes') }}</button>
-        <button type="button" class="hb__keep" (click)="dropping = null">{{ t('loadout.drop.confirmNo') }}</button>
+        <button type="button" class="hb__keep" (click)="cancelConfirm()">{{ t('loadout.drop.confirmNo') }}</button>
       </div>
     </div>
   }
@@ -88,8 +75,91 @@
       <p>{{ t('loadout.drop.confirmStack', { name: materialName(stack), n: stack.quantity }) }}</p>
       <div class="hb__confirm-actions">
         <button type="button" class="hb__drop" (click)="confirmDropStack()">{{ t('loadout.drop.confirmYes') }}</button>
-        <button type="button" class="hb__keep" (click)="droppingStack = null">{{ t('loadout.drop.confirmNo') }}</button>
+        <button type="button" class="hb__keep" (click)="cancelConfirm()">{{ t('loadout.drop.confirmNo') }}</button>
       </div>
     </div>
   }
+
+  @if (pendingBulk; as bulk) {
+    <div class="hb__confirm" role="alertdialog" [attr.aria-label]="t('hub.bank.bulkTitle')">
+      <p>{{ t('hub.bank.bulkBody', { n: bulk.items.length + bulk.stacks.length }) }}</p>
+      <div class="hb__confirm-actions">
+        <button type="button" class="hb__drop" (click)="confirmBulk()">{{ t('loadout.drop.confirmYes') }}</button>
+        <button type="button" class="hb__keep" (click)="cancelConfirm()">{{ t('loadout.drop.confirmNo') }}</button>
+      </div>
+    </div>
+  }
+
+  @if (!rows.length) {
+    <p class="hb__empty">{{ t('hub.bank.empty') }}</p>
+  } @else {
+    @if (itemRows.length) {
+      <section class="hb__shelf" [attr.aria-label]="t('hub.bank.kind.items')">
+        <h3 class="hb__shelf-title">{{ t('hub.bank.kind.items') }} · {{ itemRows.length }}</h3>
+        <ul class="hb__grid">
+          @for (row of itemRows; track row.id) {
+            <ng-container *ngTemplateOutlet="tile; context: { $implicit: row }"></ng-container>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (materialRows.length) {
+      <section class="hb__shelf" [attr.aria-label]="t('hub.bank.kind.materials')">
+        <h3 class="hb__shelf-title">{{ t('hub.bank.kind.materials') }} · {{ materialRows.length }}</h3>
+        <ul class="hb__grid">
+          @for (row of materialRows; track row.id) {
+            <ng-container *ngTemplateOutlet="tile; context: { $implicit: row }"></ng-container>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (runeRows.length) {
+      <details class="hb__ledger" [attr.open]="kind === 'runes' ? true : null">
+        <summary>{{ t('hub.bank.kind.runes') }} · {{ runeRows.length }}</summary>
+        <ul class="hb__grid">
+          @for (row of runeRows; track row.id) {
+            <ng-container *ngTemplateOutlet="tile; context: { $implicit: row }"></ng-container>
+          }
+        </ul>
+      </details>
+    }
+  }
 </section>
+
+<ng-template #tile let-row>
+  <li class="hb__tile" [class.is-on]="selectedId === row.id" [class.is-checked]="isChecked(row)" [attr.data-kind]="row.kind">
+    @if (canDropRow(row)) {
+      <label class="hb__check">
+        <input type="checkbox" [checked]="isChecked(row)" (click)="toggleCheck(row, $event)">
+        <span class="visually-hidden">{{ t('hub.bank.mark', { name: row.name }) }}</span>
+      </label>
+    }
+    <button type="button" class="hb__face" (click)="select(row)" [attr.aria-pressed]="selectedId === row.id">
+      @if (row.art) {
+        <img class="hb__art" [src]="row.art" alt="" width="40" height="40" decoding="async">
+      } @else {
+        <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2) }}</span>
+      }
+      <span class="hb__name">{{ row.name }}</span>
+      <span class="hb__meta">{{ row.meta }}</span>
+      <span class="hb__qty">×{{ row.qty }}</span>
+    </button>
+    <div class="hb__actions">
+      @if (row.inspectType && row.inspectId) {
+        <app-inspect-button [type]="row.inspectType" [id]="row.inspectId" />
+      }
+      @if (row.dropItem && inventory.canDrop(row.dropItem)) {
+        <button type="button" class="hb__drop" (click)="askDrop(row.dropItem, $event)">
+          {{ t('loadout.drop') }}
+        </button>
+      }
+      @if (row.dropStack) {
+        <button type="button" class="hb__drop" (click)="askDropStack(row.dropStack, $event)">
+          {{ t('loadout.drop') }}
+        </button>
+      }
+    </div>
+  </li>
+</ng-template>

@@ -439,6 +439,60 @@ export class InventoryService {
   }
 
   /**
+   * Destroy many unequipped instances and/or stacks in one write.
+   * Used by Bank manage so dropping a full bag is not N localStorage hits.
+   */
+  dropMany(itemIds: readonly string[], stackKeys: readonly string[] = []): number {
+    if (!this.isBrowser) return 0;
+    const previous = this.ledger;
+    let next = this.ledger;
+    let count = 0;
+
+    for (const itemId of itemIds) {
+      const item = this.itemById(itemId);
+      if (!item || !this.canDrop(item)) continue;
+      const row = next.records.find(entry => entry.id === itemId);
+      if (!row || row.kind !== 'instance') continue;
+      const gone = this.advanceRevision(row.revision);
+      next = tombstoneRecord(next, itemId, gone.revision, Date.now());
+      count += 1;
+    }
+
+    for (const stackKey of stackKeys) {
+      if (!stackKey) continue;
+      const have = stackQuantity(next.stackOps, stackKey);
+      if (have <= 0) continue;
+      const row = next.records.find(
+        entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
+      );
+      if (!row) continue;
+      const stepped = this.advanceRevision(row.revision);
+      next = {
+        ...tombstoneRecord(next, row.id, stepped.revision, Date.now()),
+        stackOps: applyStackOp(next.stackOps, {
+          id: `drop:${stackKey}:${stepped.revision.hlc}:${stepped.revision.sequence}`,
+          stackKey,
+          kind: 'consume',
+          quantity: have,
+          hlc: stepped.revision.hlc,
+          deviceId: stepped.revision.deviceId,
+          sequence: stepped.revision.sequence,
+        }),
+      };
+      count += 1;
+    }
+
+    if (!count) return 0;
+    this.ledger = next;
+    if (!this.save()) {
+      this.ledger = previous;
+      return 0;
+    }
+    this.publish();
+    return count;
+  }
+
+  /**
    * The cheapest thing in the bag that is not being worn, ignoring one id.
    *
    * `exceptId` is the item that has just been added — a drop that arrives into a
