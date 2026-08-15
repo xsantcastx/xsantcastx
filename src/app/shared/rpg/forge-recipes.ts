@@ -5,7 +5,7 @@
  * The ForgeCraftGateway consumes and mints. This file stays the recipe
  * definition.
  */
-import { rollItemStats } from './item.model';
+import { mintEquipment } from './item-definition';
 export interface ForgeRecipeInput {
   id: string;
   name: string;
@@ -57,18 +57,17 @@ export function mintBasaltEdge(
   foundAt: string,
   rng: () => number = Math.random,
 ): import('./item.model').GameItem {
-  const recipe = forgeRecipeById(BASALT_EDGE_RECIPE_ID)!;
-  return {
+  return mintEquipment('basalt-edge', 'uncommon', rng, foundAt, id) ?? {
     id,
-    name: recipe.name,
+    name: 'Basalt Edge',
     type: 'artifact',
     rarity: 'uncommon',
-    stats: rollItemStats('uncommon', 'artifact', rng),
+    stats: {},
     sellValue: 0,
     equipped: false,
-    lore: recipe.lore,
     foundAt,
     soulbound: true,
     upgradeLevel: 0,
+    definitionId: 'basalt-edge',
   };
 }

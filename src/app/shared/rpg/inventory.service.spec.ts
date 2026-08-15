@@ -272,9 +272,11 @@ describe('InventoryService C3 adapter', () => {
       foundAt: '2026-08-01T00:00:00.000Z',
       soulbound: true,
       upgradeLevel: 0,
+      definitionId: 'basalt-edge',
     })).toBeTruthy();
     expect(inventory.grantStack('ore-t', 'cinder-ore', 20)).toBe(true);
     const goldBefore = economy.snapshot.gold;
+    const oreBefore = inventory.stackOf('cinder-ore');
     const fail = inventory.upgrade('temper-blade', 'u-fail', 4_000, () => 0.99);
     expect(fail.ok).toBe(true);
     if (!fail.ok) return;
@@ -282,7 +284,7 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.itemById('temper-blade')?.upgradeLevel ?? 0).toBe(0);
     expect(inventory.itemById('temper-blade')?.stats.goldPerSec).toBe(2);
     expect(economy.snapshot.gold).toBeLessThan(goldBefore);
-    expect(inventory.stackOf('cinder-ore')).toBe(16);
+    expect(inventory.stackOf('cinder-ore')).toBe(oreBefore - 1);
 
     const midGold = economy.snapshot.gold;
     const win = inventory.upgrade('temper-blade', 'u-win', 5_000, () => 0);
@@ -290,7 +292,7 @@ describe('InventoryService C3 adapter', () => {
     if (!win.ok) return;
     expect(win.leveled).toBe(true);
     expect(inventory.itemById('temper-blade')?.upgradeLevel).toBe(1);
-    expect(inventory.itemById('temper-blade')?.stats.goldPerSec).toBe(2.2);
+    expect(inventory.itemById('temper-blade')?.stats.goldPerSec ?? 0).toBeGreaterThan(2);
     expect(economy.snapshot.gold).toBeLessThan(midGold);
 
     const replay = inventory.upgrade('temper-blade', 'u-win', 6_000, () => 0.99);
@@ -307,7 +309,10 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.canUpgrade(maxed)).toBe(false);
   });
 
-  it('refuses temper when gold or ore is short', () => {
+  it('refuses temper without spending when gold or ore is short', () => {
+    const economy = TestBed.inject(EconomyService);
+    const gold = economy.snapshot.gold;
+    const ore = inventory.stackOf('cinder-ore');
     expect(inventory.add({
       id: 'broke-blade',
       name: 'Basalt Edge',
@@ -318,8 +323,11 @@ describe('InventoryService C3 adapter', () => {
       equipped: false,
       foundAt: '2026-08-01T00:00:00.000Z',
       soulbound: true,
+      definitionId: 'basalt-edge',
     })).toBeTruthy();
     expect(inventory.upgrade('broke-blade', 'u-broke').ok).toBe(false);
+    expect(economy.snapshot.gold).toBe(gold);
+    expect(inventory.stackOf('cinder-ore')).toBe(ore);
   });
 
   it('drops a material stack and frees the bag row', () => {

@@ -98,7 +98,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
   const wall = Date.parse(acquiredAt);
   return {
     id: item.id,
-    definitionId: `${item.type}:${item.name}`,
+    definitionId: item.definitionId || `${item.type}:${item.name}`,
     kind: 'instance',
     category: categoryOf(item.type),
     tags: [item.type],
@@ -138,6 +138,7 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lore: record.lore,
     foundAt: record.acquiredAt,
     soulbound: record.soulbound,
+    definitionId: record.definitionId,
     upgradeLevel: record.upgradeLevel,
     lastUpgradeAt: record.lastUpgradeAt,
     lastUpgradeMutationId: record.lastUpgradeMutationId,
@@ -234,6 +235,7 @@ export function parseGameItem(raw: unknown): GameItem | null {
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     foundAt: typeof raw['foundAt'] === 'string' ? raw['foundAt'] : new Date(0).toISOString(),
     soulbound: raw['soulbound'] === true,
+    definitionId: typeof raw['definitionId'] === 'string' ? raw['definitionId'] : undefined,
     ...parseUpgradeFields(raw),
   };
 }

@@ -1,31 +1,36 @@
 /**
- * item-upgrade.ts — temper costs, fail policy, and upgrade stat steps.
+ * item-upgrade.ts — temper costs, fail policy, and success bonus.
  *
- * Pure. InventoryService is the only writer that applies these to a record.
+ * Gold = def.temperGoldBase * (1.65 ** level).
+ * Cinder Ore = 1 + level. Ember every even next-level; 2 once level ≥ 6.
  *
- * Fail policy (data, not hardcoded in the writer):
- *   levels 0–6  consume cost only
- *   levels 7–9  consume cost and drop one level (`downgradeOnFail`)
- *   `shatterOnFail` is authored false — a high-level wipe stays a flag.
- *
- * Upgrade gain is a fixed per-rarity step, not a re-roll. A good mint stays
- * ahead of a mediocre mint that survived ten tempers, so raw drops still matter.
+ * Success adds 3–8% of the current primary stat (rarity-scaled). Never
+ * re-rolls the item. Failures consume cost. Harsh downgrade/shatter flags
+ * exist and default off.
  */
 import { CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../activity/activity.model';
 import {
-  ITEM_ROLLS,
-  ITEM_STAT_KEYS,
+  definitionFor,
+  isTemperableItem,
+  primaryRollKey,
+  type ItemDefinition,
+  type ItemStatKey,
+} from './item-definition';
+import {
   type GameItem,
   type ItemRarity,
   type ItemStats,
-  type ItemType,
 } from './item.model';
 
 export const MAX_UPGRADE_LEVEL = 10;
+export const DEFAULT_TEMPER_GOLD_BASE = 50_000;
 
-/** Chance to go from level i → i+1. */
 export const UPGRADE_SUCCESS_CHANCE: readonly number[] = [
   0.90, 0.85, 0.80, 0.70, 0.60, 0.50, 0.40, 0.35, 0.30, 0.25,
+];
+
+export const ARTIFACT_SUCCESS_CHANCE: readonly number[] = [
+  0.55, 0.45, 0.35, 0.25, 0.15,
 ];
 
 export interface UpgradeFailPolicy {
@@ -34,7 +39,7 @@ export interface UpgradeFailPolicy {
   shatterOnFail: boolean;
 }
 
-/** Index = current level (the attempt about to be paid). */
+/** Default off for harsh outcomes. Flip in data to opt in. */
 export const UPGRADE_FAIL_POLICY: readonly UpgradeFailPolicy[] = [
   { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
   { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
@@ -43,9 +48,9 @@ export const UPGRADE_FAIL_POLICY: readonly UpgradeFailPolicy[] = [
   { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
   { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
   { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
-  { consumeCost: true, downgradeOnFail: true, shatterOnFail: false },
-  { consumeCost: true, downgradeOnFail: true, shatterOnFail: false },
-  { consumeCost: true, downgradeOnFail: true, shatterOnFail: false },
+  { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
+  { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
+  { consumeCost: true, downgradeOnFail: false, shatterOnFail: false },
 ];
 
 export interface UpgradeMaterialCost {
@@ -59,27 +64,17 @@ export interface UpgradePreview {
   materials: UpgradeMaterialCost[];
   successChance: number;
   policy: UpgradeFailPolicy;
+  maxLevel: number;
 }
 
-/** Fixed Gold/sec added per successful temper, by rarity. */
-const GOLD_STEP: Record<ItemRarity, number> = {
-  common: 0.08,
-  uncommon: 0.2,
-  rare: 1.2,
-  epic: 3,
-  legendary: 10,
-  mythic: 25,
-  singular: 80,
-};
-
-const PERCENT_STEP: Record<ItemRarity, number> = {
-  common: 0,
-  uncommon: 0,
-  rare: 0.4,
-  epic: 0.6,
-  legendary: 1,
-  mythic: 2,
-  singular: 3,
+const RARITY_TEMPER_SCALE: Record<ItemRarity, number> = {
+  common: 0.85,
+  uncommon: 0.95,
+  rare: 1,
+  epic: 1.05,
+  legendary: 1.1,
+  mythic: 1.15,
+  singular: 1.2,
 };
 
 export function upgradeLevelOf(item: Pick<GameItem, 'upgradeLevel'>): number {
@@ -87,75 +82,108 @@ export function upgradeLevelOf(item: Pick<GameItem, 'upgradeLevel'>): number {
   return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
-export function isTemperableKind(type: ItemType): boolean {
-  return type === 'artifact' || type === 'rune' || type === 'runeword';
+export function isTemperableKind(item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): boolean {
+  return isTemperableItem(item);
+}
+
+export function maxTemperOf(item: GameItem): number {
+  return definitionFor(item)?.maxTemper ?? MAX_UPGRADE_LEVEL;
 }
 
 export function failPolicyFor(level: number): UpgradeFailPolicy {
   return UPGRADE_FAIL_POLICY[level] ?? UPGRADE_FAIL_POLICY[UPGRADE_FAIL_POLICY.length - 1];
 }
 
-export function successChanceFor(level: number): number {
+export function successChanceFor(level: number, def?: ItemDefinition): number {
+  if (def?.family === 'artifact') {
+    return ARTIFACT_SUCCESS_CHANCE[level] ?? 0;
+  }
   return UPGRADE_SUCCESS_CHANCE[level] ?? 0;
 }
 
-/**
- * Gold to attempt the next level. 20,000 × 2.25^level, matching the ×100 shop.
- */
-export function upgradeGoldCost(level: number): number {
-  return Math.ceil(20_000 * Math.pow(2.25, Math.max(0, level)));
+export function upgradeGoldCost(level: number, base = DEFAULT_TEMPER_GOLD_BASE): number {
+  return Math.ceil(base * Math.pow(1.65, Math.max(0, level)));
 }
 
 export function upgradeMaterialCost(level: number): UpgradeMaterialCost[] {
-  const next = level + 1;
   const mats: UpgradeMaterialCost[] = [
-    { id: CINDER_ORE_ID, quantity: 4 * next },
+    { id: CINDER_ORE_ID, quantity: 1 + level },
   ];
-  if (next % 3 === 0) {
-    mats.push({ id: EMBER_RESIDUE_ID, quantity: next / 3 });
+  const next = level + 1;
+  if (next % 2 === 0) {
+    mats.push({ id: EMBER_RESIDUE_ID, quantity: level >= 6 ? 2 : 1 });
   }
   return mats;
 }
 
 export function previewUpgrade(item: GameItem): UpgradePreview | null {
+  if (!isTemperableItem(item)) return null;
   const level = upgradeLevelOf(item);
-  if (!isTemperableKind(item.type) || level >= MAX_UPGRADE_LEVEL) return null;
+  const def = definitionFor(item);
+  const max = def?.maxTemper ?? MAX_UPGRADE_LEVEL;
+  if (level >= max) return null;
   return {
     nextLevel: level + 1,
-    gold: upgradeGoldCost(level),
+    gold: upgradeGoldCost(level, def?.temperGoldBase ?? DEFAULT_TEMPER_GOLD_BASE),
     materials: upgradeMaterialCost(level),
-    successChance: successChanceFor(level),
+    successChance: successChanceFor(level, def),
     policy: failPolicyFor(level),
+    maxLevel: max,
   };
 }
 
-export function rollUpgradeSuccess(level: number, rng: () => number = Math.random): boolean {
-  return rng() < successChanceFor(level);
+export function rollUpgradeSuccess(
+  level: number,
+  rng: () => number = Math.random,
+  def?: ItemDefinition,
+): boolean {
+  return rng() < successChanceFor(level, def);
 }
 
 /**
- * Apply or reverse one temper step. Only touches stats the rarity band owns
- * (plus Gold/sec, which every temperable item gains).
+ * Add 3–8% of the current primary stat, rarity-scaled.
+ * Only touches the definition's rollKeys (or keys already on the item).
  */
+export function applyTemperBonus(
+  item: GameItem,
+  rng: () => number = Math.random,
+): ItemStats {
+  const def = definitionFor(item);
+  const keys: ItemStatKey[] = def?.rollKeys?.length
+    ? [...def.rollKeys]
+    : (Object.keys(item.stats) as ItemStatKey[]);
+  const primary = def ? primaryRollKey(def) : keys[0] ?? null;
+  if (!primary) return { ...item.stats };
+  const current = item.stats[primary] ?? 0;
+  if (current <= 0) return { ...item.stats };
+  const pct = 0.03 + rng() * 0.05;
+  const scale = RARITY_TEMPER_SCALE[item.rarity] ?? 1;
+  const bonus = current * pct * scale;
+  const next: ItemStats = { ...item.stats };
+  const value = current + bonus;
+  next[primary] = primary === 'goldPerSec'
+    ? Math.round(value * 10) / 10
+    : Math.round(value * 10) / 10;
+  return next;
+}
+
+/** @deprecated use applyTemperBonus — kept for the one reverse path if flags turn on */
 export function applyUpgradeBonus(
   stats: ItemStats,
   rarity: ItemRarity,
   direction: 1 | -1 = 1,
 ): ItemStats {
-  const next: ItemStats = { ...stats };
-  const gold = GOLD_STEP[rarity] ?? 0;
-  if (gold) {
-    const value = (next.goldPerSec ?? 0) + gold * direction;
-    next.goldPerSec = Math.max(0, Math.round(value * 10) / 10);
-  }
-  const band = ITEM_ROLLS[rarity] ?? {};
-  const pct = PERCENT_STEP[rarity] ?? 0;
-  for (const key of ITEM_STAT_KEYS) {
-    if (key === 'goldPerSec') continue;
-    if (!band[key] && next[key] == null) continue;
-    if (!pct) continue;
-    const value = (next[key] ?? 0) + pct * direction;
-    next[key] = Math.max(0, Math.round(value * 10) / 10);
-  }
-  return next;
+  const dummy: GameItem = {
+    id: 'tmp',
+    name: 'tmp',
+    type: 'artifact',
+    rarity,
+    stats,
+    sellValue: 0,
+    equipped: false,
+    foundAt: '',
+    soulbound: false,
+  };
+  if (direction < 0) return stats;
+  return applyTemperBonus(dummy, () => 0);
 }
