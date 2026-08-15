@@ -10,10 +10,9 @@ import {
   Component,
   OnDestroy,
   OnInit,
-  PLATFORM_ID,
   inject,
 } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
@@ -30,8 +29,7 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open) {
-      <div class="kp__scrim" (click)="close()" aria-hidden="true"></div>
-      <aside class="kp" role="dialog" aria-modal="true" [attr.aria-label]="tab === 'bank' ? 'Bank' : 'Character'">
+      <aside class="kp" role="complementary" [attr.aria-label]="tab === 'bank' ? 'Bank' : 'Character'">
         <header class="kp__head">
           <div class="kp__tabs" role="tablist">
             <button type="button" role="tab" class="kp__tab"
@@ -62,19 +60,16 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
     }
   `,
   styles: [`
-    .kp__scrim {
-      position: fixed; inset: 0; z-index: 92;
-      background: rgba(4, 2, 8, .55);
-    }
     .kp {
       position: fixed; z-index: 93;
-      top: 0; left: var(--shell-sidebar-w, 0);
-      width: min(440px, 100vw);
+      top: 0; right: 0; left: auto;
+      width: min(360px, 42vw);
       height: 100dvh;
       display: flex; flex-direction: column;
       overflow: hidden;
-      border-right: 3px solid #6a5424;
-      box-shadow: inset -1px 0 0 #c9a84c, 16px 0 40px rgba(0,0,0,.55);
+      border-left: 3px solid #6a5424;
+      box-shadow: inset 1px 0 0 #c9a84c, -16px 0 40px rgba(0,0,0,.45);
+      pointer-events: auto;
       background:
         radial-gradient(ellipse 80% 30% at 50% 0%, rgba(201,168,76,.08), transparent 60%),
         #120e08;
@@ -117,9 +112,14 @@ import { KeeperPanelService, KeeperTab } from './keeper-panel.service';
     }
     @media (max-width: 960px) {
       .kp {
-        left: 0;
-        top: var(--nav-h, 56px);
-        height: calc(100dvh - var(--nav-h, 56px) - var(--gftabs-h, 0px));
+        left: auto;
+        right: 0;
+        top: auto;
+        bottom: var(--gftabs-h, 0px);
+        width: min(360px, 78vw);
+        height: min(58dvh, 520px);
+        border-left: 3px solid #6a5424;
+        border-top: 3px solid #6a5424;
       }
     }
   `],
@@ -131,7 +131,6 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   private readonly xp = inject(XpService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private subs = new Subscription();
   private unreg?: () => void;
 
@@ -140,7 +139,7 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
 
   get rankTitle(): string { return this.xp.snapshot.level.title; }
   get rankLevel(): number { return this.xp.snapshot.level.level; }
-  get bagCount(): number { return this.inventory.snapshot.bag.length; }
+  get bagCount(): number { return this.inventory.snapshot.usedRows; }
 
   ngOnInit(): void {
     this.inventory.init();
@@ -149,11 +148,9 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
       if (open) {
         this.quests.closeDrawer();
         this.unreg ??= this.overlays.push('keeper-panel', () => this.keeper.close());
-        if (this.isBrowser) document.body.style.overflow = 'hidden';
       } else {
         this.unreg?.();
         this.unreg = undefined;
-        if (this.isBrowser) document.body.style.overflow = '';
       }
       this.cdr.markForCheck();
     }));
@@ -168,7 +165,6 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.unsubscribe();
     this.unreg?.();
-    if (this.isBrowser) document.body.style.overflow = '';
   }
 
   close(): void { this.keeper.close(); }

@@ -230,7 +230,18 @@
 .ld__tile-name { font-weight: 600; }
 .ld__tile-meta { font-size: 0.72rem; color: #8b9c97; }
 .ld__tile-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
-.ld__sell, .ld__clear, .ld__confirm-yes, .ld__confirm-no {
+.ld__bag-hint, .ld__bag-full {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: #cbb98a;
+}
+.ld__bag-full { color: #ffc669; }
+.ld__tile-art {
+  width: 36px; height: 36px; border-radius: 8px;
+  object-fit: contain;
+  background: rgba(164, 139, 255, 0.16);
+}
+.ld__drop, .ld__sell, .ld__clear, .ld__confirm-yes, .ld__confirm-no {
   min-height: 44px;
   min-width: 44px;
   padding: 0 0.8rem;
@@ -241,7 +252,13 @@
   cursor: pointer;
   font: inherit;
 }
+.ld__drop {
+  border-color: rgba(232, 117, 42, 0.5);
+  background: rgba(232, 117, 42, 0.12);
+  color: #ffb07a;
+}
 .ld__sell:focus-visible,
+.ld__drop:focus-visible,
 .ld__clear:focus-visible,
 .ld__confirm-yes:focus-visible,
 .ld__confirm-no:focus-visible,

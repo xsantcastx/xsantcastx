@@ -76,9 +76,11 @@
       <div class="ld__bag-head">
         <h3 class="ld__bag-title" id="ld-bag-title">{{ t('loadout.bag.title') }}</h3>
         <p class="ld__bag-count" [class.ld__bag-count--full]="snap.full">
-          {{ t('loadout.bag.count', { n: snap.bag.length, max: bagCap }) }}
+          {{ t('loadout.bag.count', { n: snap.usedRows, max: bagCap }) }}
         </p>
       </div>
+      <p class="ld__bag-hint" *ngIf="variant === 'bank'">{{ t('loadout.drop.hint') }}</p>
+      <p class="ld__bag-full" *ngIf="snap.full" role="status">{{ t('loadout.bag.full') }}</p>
 
       <form class="ld__filters" (submit)="$event.preventDefault()">
         <label class="ld__field">
@@ -110,7 +112,7 @@
         <span class="visually-hidden">{{ t('loadout.loading') }}</span>
       </div>
 
-      <div class="ld__empty" *ngIf="ready && !snap.bag.length">
+      <div class="ld__empty" *ngIf="ready && !snap.bag.length && !snap.stacks.length">
         <p>{{ t('loadout.empty.body') }}</p>
         <nav class="ld__empty-links">
           <a routerLink="/forge/runes">{{ t('loadout.empty.forge') }}</a>
@@ -124,11 +126,25 @@
         <button type="button" class="ld__clear" (click)="clearFilters()">{{ t('loadout.none.clear') }}</button>
       </div>
 
-      <ul class="ld__tiles" *ngIf="ready && visible.length">
+      <ul class="ld__tiles" *ngIf="ready && (visible.length || snap.stacks.length)">
+        <li *ngFor="let stack of snap.stacks"
+            class="ld__tile ld__tile--stack">
+          <div class="ld__tile-face">
+            <img *ngIf="stackArt(stack) as art" class="ld__tile-art" [src]="art" alt="" width="36" height="36">
+            <span class="ld__tile-orb" *ngIf="!stackArt(stack)" aria-hidden="true">{{ stack.stackKey.slice(0, 2).toUpperCase() }}</span>
+            <span class="ld__tile-name">{{ stackName(stack) }}</span>
+            <span class="ld__tile-meta">×{{ stack.quantity }}</span>
+          </div>
+          <div class="ld__tile-actions">
+            <button type="button" class="ld__drop" (click)="askDropStack(stack)">
+              {{ t('loadout.drop') }}
+            </button>
+          </div>
+        </li>
         <li *ngFor="let item of visible; trackBy: trackItem"
             class="ld__tile"
             [class.ld__tile--selected]="selectedId === item.id">
-          <button type="button" class="ld__tile-face" (click)="select(item)" [attr.aria-pressed]="selectedId === item.id">
+          <button type="button" class="ld__tile-face" (click)="onTileActivate($event, item)" [attr.aria-pressed]="selectedId === item.id">
             <img *ngIf="tileArt(item) as art" class="ld__tile-art" [src]="art" alt="" width="40" height="40" decoding="async">
             <span *ngIf="!tileArt(item)" class="ld__tile-orb" aria-hidden="true">{{ initialsOf(item) }}</span>
             <span class="ld__tile-name">{{ item.name }}</span>
@@ -136,11 +152,14 @@
           </button>
           <div class="ld__tile-actions">
             <app-inspect-button type="item" [id]="item.id"></app-inspect-button>
+            <button type="button" class="ld__drop" *ngIf="inventory.canDrop(item)" (click)="askDrop(item)">
+              {{ t('loadout.drop') }}
+            </button>
             <button type="button" class="ld__sell" *ngIf="inventory.canSell(item)" (click)="askSell(item)">
               {{ t('loadout.sell', { n: compact(item.sellValue) }) }}
             </button>
             <span class="ld__bound" *ngIf="item.type === 'charm'">{{ t('loadout.charms.note') }}</span>
-            <span class="ld__bound" *ngIf="item.type !== 'charm' && !inventory.canSell(item)">{{ t('loadout.soulbound') }}</span>
+            <span class="ld__bound" *ngIf="item.type !== 'charm' && !inventory.canSell(item) && !inventory.canDrop(item)">{{ t('loadout.soulbound') }}</span>
           </div>
         </li>
       </ul>
@@ -152,6 +171,22 @@
     <div class="ld__confirm-actions">
       <button type="button" class="ld__confirm-yes" (click)="confirmSell()">{{ t('loadout.confirm.yes') }}</button>
       <button type="button" class="ld__confirm-no" (click)="confirming = null">{{ t('loadout.confirm.no') }}</button>
+    </div>
+  </div>
+
+  <div class="ld__confirm" *ngIf="dropping as item" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">
+    <p>{{ t('loadout.drop.confirmBody', { name: item.name }) }}</p>
+    <div class="ld__confirm-actions">
+      <button type="button" class="ld__confirm-yes" (click)="confirmDrop()">{{ t('loadout.drop.confirmYes') }}</button>
+      <button type="button" class="ld__confirm-no" (click)="dropping = null">{{ t('loadout.drop.confirmNo') }}</button>
+    </div>
+  </div>
+
+  <div class="ld__confirm" *ngIf="droppingStack as stack" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">
+    <p>{{ t('loadout.drop.confirmStack', { name: stackName(stack), n: stack.quantity }) }}</p>
+    <div class="ld__confirm-actions">
+      <button type="button" class="ld__confirm-yes" (click)="confirmDropStack()">{{ t('loadout.drop.confirmYes') }}</button>
+      <button type="button" class="ld__confirm-no" (click)="droppingStack = null">{{ t('loadout.drop.confirmNo') }}</button>
     </div>
   </div>
 </section>
