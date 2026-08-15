@@ -75,6 +75,7 @@ test.describe('C4 Character presentation', () => {
   test('renders the paper doll and bag tiles without equipping on slot click', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openCharacter(page);
+    await expect(page.getByRole('heading', { name: 'The Forge Keeper' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'What you carry into the dark' })).toBeVisible();
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
