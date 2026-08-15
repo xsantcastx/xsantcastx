@@ -22,6 +22,7 @@ import {
   type SlotId,
 } from './item.model';
 import {
+  INVENTORY_ERA,
   INVENTORY_BAG_CAP,
   INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
@@ -50,6 +51,7 @@ export function emptyInventoryLedger(): InventoryLedger {
     sold: 0,
     hlc: 0,
     legacyBackup: null,
+    era: INVENTORY_ERA,
   };
 }
 
@@ -98,7 +100,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
   const wall = Date.parse(acquiredAt);
   return {
     id: item.id,
-    definitionId: `${item.type}:${item.name}`,
+    definitionId: item.definitionId || `${item.type}:${item.name}`,
     kind: 'instance',
     category: categoryOf(item.type),
     tags: [item.type],
@@ -117,6 +119,10 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     stats: { ...item.stats },
     sellValue: typeof item.sellValue === 'number' && Number.isFinite(item.sellValue) ? item.sellValue : 0,
     location: locationOf(item),
+    upgradeLevel: item.upgradeLevel,
+    lastUpgradeAt: item.lastUpgradeAt,
+    lastUpgradeMutationId: item.lastUpgradeMutationId,
+    lastUpgradeOk: item.lastUpgradeOk,
   };
 }
 
@@ -134,6 +140,11 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lore: record.lore,
     foundAt: record.acquiredAt,
     soulbound: record.soulbound,
+    definitionId: record.definitionId,
+    upgradeLevel: record.upgradeLevel,
+    lastUpgradeAt: record.lastUpgradeAt,
+    lastUpgradeMutationId: record.lastUpgradeMutationId,
+    lastUpgradeOk: record.lastUpgradeOk,
   };
 }
 
@@ -154,6 +165,7 @@ export function migrateV1(blob: InventoryBlobV1, keepBackup = true): InventoryLe
     sold: finiteNumber(blob.sold),
     hlc: records.reduce((max, row) => Math.max(max, row.revision.hlc), 0),
     legacyBackup: keepBackup ? cloneV1(blob) : null,
+    era: 0,
   };
 }
 
@@ -180,6 +192,19 @@ export function parseInventoryV1(raw: unknown): InventoryBlobV1 | null {
     items,
     goldFromSales: finiteNumber(raw['goldFromSales']),
     sold: finiteNumber(raw['sold']),
+  };
+}
+
+function parseUpgradeFields(raw: Record<string, unknown>): Pick<
+  GameItem,
+  'upgradeLevel' | 'lastUpgradeAt' | 'lastUpgradeMutationId' | 'lastUpgradeOk'
+> {
+  const level = raw['upgradeLevel'];
+  return {
+    upgradeLevel: typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.floor(level)) : undefined,
+    lastUpgradeAt: typeof raw['lastUpgradeAt'] === 'string' ? raw['lastUpgradeAt'] : undefined,
+    lastUpgradeMutationId: typeof raw['lastUpgradeMutationId'] === 'string' ? raw['lastUpgradeMutationId'] : undefined,
+    lastUpgradeOk: typeof raw['lastUpgradeOk'] === 'boolean' ? raw['lastUpgradeOk'] : undefined,
   };
 }
 
@@ -213,6 +238,8 @@ export function parseGameItem(raw: unknown): GameItem | null {
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     foundAt: typeof raw['foundAt'] === 'string' ? raw['foundAt'] : new Date(0).toISOString(),
     soulbound: raw['soulbound'] === true,
+    definitionId: typeof raw['definitionId'] === 'string' ? raw['definitionId'] : undefined,
+    ...parseUpgradeFields(raw),
   };
 }
 
@@ -237,6 +264,7 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     sold: finiteNumber(raw['sold']),
     hlc: finiteNumber(raw['hlc']),
     legacyBackup: parseInventoryV1(raw['legacyBackup']),
+    era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
   };
 }
 
@@ -358,6 +386,9 @@ export function applyStackOp(
 export function mergeInventoryLedgers(remote: unknown, local: unknown): InventoryLedger {
   const a = coerceInventoryLedger(remote) ?? emptyInventoryLedger();
   const b = coerceInventoryLedger(local) ?? emptyInventoryLedger();
+  const aEra = a.era ?? 0;
+  const bEra = b.era ?? 0;
+  if (aEra !== bEra) return aEra > bEra ? { ...a, era: aEra } : { ...b, era: bEra };
   const tombstones = mergeTombstones(a.tombstones, b.tombstones);
   const tombById = new Map(tombstones.map(row => [row.id, row]));
   const byId = new Map<string, OwnedItemRecord>();
@@ -390,6 +421,7 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     sold: Math.max(a.sold, b.sold),
     hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
+    era: Math.max(aEra, bEra),
   };
 }
 
@@ -550,6 +582,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     stats,
     sellValue: finiteNumber(raw['sellValue']),
     location,
+    ...parseUpgradeFields(raw),
   };
 }
 

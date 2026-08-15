@@ -3,6 +3,7 @@
  *
  * Shared by /character and the keeper drawer. Equip lives only on Loadout.
  */
+import { ViewportScroller } from '@angular/common';
 import { Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -33,6 +34,7 @@ export class CharacterHubComponent implements OnInit, OnDestroy {
   private readonly i18n = inject(TranslationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly viewport = inject(ViewportScroller);
   private sub?: Subscription;
   private focusedItem = false;
 
@@ -69,12 +71,13 @@ export class CharacterHubComponent implements OnInit, OnDestroy {
   select(tab: HubTab): void {
     this.hub.setTab(tab);
     if (this.variant === 'page') {
+      const pos = this.viewport.getScrollPosition();
       void this.router.navigate([], {
         relativeTo: this.route,
         queryParams: { tab },
         queryParamsHandling: 'merge',
         replaceUrl: true,
-      });
+      }).then(() => this.viewport.scrollToPosition(pos));
     }
   }
 }

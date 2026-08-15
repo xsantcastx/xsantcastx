@@ -157,6 +157,9 @@ export function rebuildCurrentWork(work: CurrentWork | null, ops: readonly Activ
 export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityLedger {
   const a = coerceActivityLedger(remote) ?? emptyActivityLedger();
   const b = coerceActivityLedger(local) ?? emptyActivityLedger();
+  const aEra = a.era ?? 0;
+  const bEra = b.era ?? 0;
+  if (aEra !== bEra) return aEra > bEra ? { ...a, era: aEra } : { ...b, era: bEra };
   const byId = new Map<string, ActivityOperation>();
   for (const op of [...a.operations, ...b.operations]) {
     const held = byId.get(op.id);
@@ -174,6 +177,7 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
   const currentWork = pickCurrentWork(a.currentWork, b.currentWork);
   return {
     version: ACTIVITY_SCHEMA_VERSION,
+    era: Math.max(aEra, bEra),
     currentWork: rebuildCurrentWork(currentWork, operations),
     progress,
     operations,
@@ -206,6 +210,7 @@ export function coerceActivityLedger(raw: unknown): ActivityLedger | null {
   const stored = parseProgress(raw['progress']);
   return {
     version: 1,
+    era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
     currentWork: parseCurrentWork(raw['currentWork']),
     progress: maxProgress(derived, stored),
     operations,

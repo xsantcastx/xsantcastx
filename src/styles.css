@@ -842,10 +842,11 @@ app-root {
 }
 
 /* ===== Route transition =====
-   200ms on the Material curve, matching styles/interactions.css. The transform
-   stays: it makes every routed host a containing block, which is exactly why
-   the flame, the quest drawer and the install prompt are siblings of <main>
-   rather than children of a routed page. Dropping it would silently move them. */
+   200ms on the Material curve, matching styles/interactions.css. The last
+   keyframe must be `transform: none`. `translateY(0)` is still a transform
+   and would make every routed host a containing block, so art-scene's
+   position:fixed painting would scroll with the page and jump when
+   Character tabs change height. */
 router-outlet + * {
   animation: routeFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -857,7 +858,7 @@ router-outlet + * {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 

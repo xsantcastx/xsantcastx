@@ -250,6 +250,90 @@ describe('InventoryService C3 adapter', () => {
     expect(stored?.tombstones.some(row => row.id === 'old-charm')).toBe(true);
   });
 
+  it('drops many bag rows in one write', () => {
+    expect(inventory.grantStack('g-bulk', 'cinder-ore', 2)).toBe(true);
+    expect(inventory.dropMany(['old-charm'], ['cinder-ore'])).toBe(2);
+    expect(inventory.itemById('old-charm')).toBeUndefined();
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+  });
+
+  it('tempers an instance on success and consumes cost on fail without leveling', () => {
+    const economy = TestBed.inject(EconomyService);
+    economy.init();
+    economy.earnGold(100_000, 'test');
+    expect(inventory.add({
+      id: 'temper-blade',
+      name: 'Basalt Edge',
+      type: 'artifact',
+      rarity: 'uncommon',
+      stats: { goldPerSec: 2 },
+      sellValue: 0,
+      equipped: false,
+      foundAt: '2026-08-01T00:00:00.000Z',
+      soulbound: true,
+      upgradeLevel: 0,
+      definitionId: 'basalt-edge',
+    })).toBeTruthy();
+    expect(inventory.grantStack('ore-t', 'cinder-ore', 20)).toBe(true);
+    const goldBefore = economy.snapshot.gold;
+    const oreBefore = inventory.stackOf('cinder-ore');
+    const fail = inventory.upgrade('temper-blade', 'u-fail', 4_000, () => 0.99);
+    expect(fail.ok).toBe(true);
+    if (!fail.ok) return;
+    expect(fail.leveled).toBe(false);
+    expect(inventory.itemById('temper-blade')?.upgradeLevel ?? 0).toBe(0);
+    expect(inventory.itemById('temper-blade')?.stats.goldPerSec).toBe(2);
+    expect(economy.snapshot.gold).toBeLessThan(goldBefore);
+    expect(inventory.stackOf('cinder-ore')).toBe(oreBefore - 1);
+
+    const midGold = economy.snapshot.gold;
+    const win = inventory.upgrade('temper-blade', 'u-win', 5_000, () => 0);
+    expect(win.ok).toBe(true);
+    if (!win.ok) return;
+    expect(win.leveled).toBe(true);
+    expect(inventory.itemById('temper-blade')?.upgradeLevel).toBe(1);
+    expect(inventory.itemById('temper-blade')?.stats.goldPerSec ?? 0).toBeGreaterThan(2);
+    expect(economy.snapshot.gold).toBeLessThan(midGold);
+
+    const replay = inventory.upgrade('temper-blade', 'u-win', 6_000, () => 0.99);
+    expect(replay.ok).toBe(true);
+    if (!replay.ok) return;
+    expect(replay.replayed).toBe(true);
+    expect(inventory.itemById('temper-blade')?.upgradeLevel).toBe(1);
+
+    const alias = inventory.temper('temper-blade', 'u-win', 7_000, () => 0.99);
+    expect(alias.ok).toBe(true);
+    if (alias.ok) expect(alias.replayed).toBe(true);
+
+    const maxed = {
+      ...inventory.itemById('temper-blade')!,
+      upgradeLevel: 10,
+    };
+    expect(inventory.previewUpgrade(maxed)).toBeNull();
+    expect(inventory.canUpgrade(maxed)).toBe(false);
+  });
+
+  it('refuses temper without spending when gold or ore is short', () => {
+    const economy = TestBed.inject(EconomyService);
+    const gold = economy.snapshot.gold;
+    const ore = inventory.stackOf('cinder-ore');
+    expect(inventory.add({
+      id: 'broke-blade',
+      name: 'Basalt Edge',
+      type: 'artifact',
+      rarity: 'uncommon',
+      stats: { goldPerSec: 1 },
+      sellValue: 0,
+      equipped: false,
+      foundAt: '2026-08-01T00:00:00.000Z',
+      soulbound: true,
+      definitionId: 'basalt-edge',
+    })).toBeTruthy();
+    expect(inventory.upgrade('broke-blade', 'u-broke').ok).toBe(false);
+    expect(economy.snapshot.gold).toBe(gold);
+    expect(inventory.stackOf('cinder-ore')).toBe(ore);
+  });
+
   it('drops a material stack and frees the bag row', () => {
     expect(inventory.grantStack('g1', 'cinder-ore', 4)).toBe(true);
     expect(inventory.stackOf('cinder-ore')).toBe(4);
@@ -268,6 +352,22 @@ describe('InventoryService C3 adapter', () => {
     memory.attached = true;
     registry.rehydrate(INVENTORY_KEY);
     expect(coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!))?.legacyBackup).toBeNull();
+  });
+});
+
+describe('InventoryService era 55 wipe', () => {
+  it('empties a prior-era bag when the generation stamp is already current', () => {
+    const memory = new MemoryGateway();
+    memory.writeRaw('godforge-realm-era', '55');
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 1,
+      items: [charm('old-charm')],
+      goldFromSales: 7,
+      sold: 1,
+    }));
+    const inventory = configure(memory);
+    expect(inventory.itemById('old-charm')).toBeUndefined();
+    expect(inventory.snapshot.items.length).toBe(0);
   });
 });
 
@@ -295,6 +395,8 @@ describe('InventoryService C9 Basalt Edge craft', () => {
       expect(first.item.id).toBe(again.item.id);
       expect(first.item.name).toBe('Basalt Edge');
       expect(first.item.equipped).toBe(false);
+      expect(first.item.definitionId).toBe('basalt-edge');
+      expect(first.item.stats.goldPerSec).toBeGreaterThan(0);
     }
     expect(inventory.stackOf('cinder-ore')).toBe(0);
     expect(inventory.stackOf('ember-residue')).toBe(0);

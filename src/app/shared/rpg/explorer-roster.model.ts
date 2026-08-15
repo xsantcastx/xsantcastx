@@ -66,32 +66,32 @@ export const EXPLORER_TIERS: Record<ExplorerRarity, ExplorerTierDefinition> = {
   common: {
     id: 'common', label: 'Common',
     inventorySlots: 1, speed: 1.0, lootBonus: 0, maxEquipSlots: 0,
-    color: '#8f98a8', glow: 'rgba(143, 152, 168, 0.45)', weight: 0.55,
+    color: '#8f98a8', glow: 'rgba(143, 152, 168, 0.45)', weight: 0.99721,
   },
   uncommon: {
     id: 'uncommon', label: 'Uncommon',
     inventorySlots: 2, speed: 0.8, lootBonus: 10, maxEquipSlots: 1,
-    color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)', weight: 0.26,
+    color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)', weight: 0.0026,
   },
   rare: {
     id: 'rare', label: 'Rare',
     inventorySlots: 3, speed: 0.6, lootBonus: 25, maxEquipSlots: 2,
-    color: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)', weight: 0.12,
+    color: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)', weight: 0.00012,
   },
   epic: {
     id: 'epic', label: 'Epic',
     inventorySlots: 4, speed: 0.4, lootBonus: 50, maxEquipSlots: 3,
-    color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)', weight: 0.05,
+    color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)', weight: 0.00005,
   },
   legendary: {
     id: 'legendary', label: 'Legendary',
     inventorySlots: 5, speed: 0.3, lootBonus: 100, maxEquipSlots: 4,
-    color: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)', weight: 0.015,
+    color: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)', weight: 0.000015,
   },
   mythic: {
     id: 'mythic', label: 'Mythic',
     inventorySlots: 6, speed: 0.1, lootBonus: 200, maxEquipSlots: 5,
-    color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)', weight: 0.005,
+    color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)', weight: 0.000005,
   },
 };
 

@@ -11,16 +11,16 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * A NOTE ON THE DROP TABLE
  * ─────────────────────────────────────────────────────────────────────────────
- * `dropRate` is the chance of *that individual rune*, not of its tier. The tier
- * budgets are 60 / 25 / 10 / 3.5 / 1 / 0.3 / 0.05 percent, and each tier splits
- * its budget evenly across its members — so Void, alone in Singular, carries the
- * whole 0.0005, while each of the five Common runes carries 0.12.
+ * `dropRate` is the chance of *that individual rune*, not of its tier. The
+ * rare-and-better budgets are a thousandth of the original 10 / 3.5 / 1 / 0.3 /
+ * 0.05 percent ladder, Uncommon is a hundredth of 25%, and Common absorbs the
+ * rest so the anvil still pays something. Void, alone in Singular, now carries
+ * 0.0000005. Each Common still splits the remaining mass evenly.
  *
- * Those budgets sum to 0.9985, not 1. That is deliberate and it is why
+ * Those budgets sum to just under 1. That is deliberate and it is why
  * `rollRune()` normalises against the measured total rather than assuming a
  * unit interval: a table that has to sum to exactly 1 is a table nobody can
- * edit without a calculator, and the 0.15% rounding error would otherwise have
- * to be swept into Common, quietly making the published "60%" false.
+ * edit without a calculator.
  *
  * `forgeCost` is what the rune is *worth*, not what a strike costs. A strike is
  * a single flat price (`STRIKE_COST`) and pays out one rune from this table —
@@ -43,7 +43,7 @@ export interface Rune {
   id: string;
   name: string;
   tier: RuneTier;
-  /** Chance of this exact rune on one strike. Void is 0.0005. */
+  /** Chance of this exact rune on one strike. Void is 5e-7. */
   dropRate: number;
   /** What the rune is worth in Gold. See the note above — this is not a price. */
   forgeCost: number;
@@ -103,37 +103,37 @@ export interface RuneTierDefinition {
  */
 export const RUNE_TIERS: Record<RuneTier, RuneTierDefinition> = {
   common: {
-    id: 'common', label: 'Common', budget: 0.60, worth: 100, sellValue: 50,
+    id: 'common', label: 'Common', budget: 0.9973515, worth: 10_000, sellValue: 5_000,
     color: '#8f98a8', glow: 'rgba(143, 152, 168, 0.45)',
     reveal: 'plain', sound: 'blip', semitones: 0, duration: 1600, xp: 2,
   },
   uncommon: {
-    id: 'uncommon', label: 'Uncommon', budget: 0.25, worth: 500, sellValue: 250,
+    id: 'uncommon', label: 'Uncommon', budget: 0.0025, worth: 50_000, sellValue: 25_000,
     color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)',
     reveal: 'glow', sound: 'blip', semitones: 2, duration: 2000, xp: 8,
   },
   rare: {
-    id: 'rare', label: 'Rare', budget: 0.10, worth: 2_000, sellValue: 1_000,
+    id: 'rare', label: 'Rare', budget: 0.0001, worth: 200_000, sellValue: 100_000,
     color: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)',
     reveal: 'burst', sound: 'chime', semitones: 4, duration: 2600, xp: 30,
   },
   epic: {
-    id: 'epic', label: 'Epic', budget: 0.035, worth: 10_000, sellValue: 5_000,
+    id: 'epic', label: 'Epic', budget: 0.000035, worth: 1_000_000, sellValue: 500_000,
     color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)',
     reveal: 'shimmer', sound: 'horn', semitones: 5, duration: 3200, xp: 90,
   },
   legendary: {
-    id: 'legendary', label: 'Legendary', budget: 0.01, worth: 50_000, sellValue: 25_000,
+    id: 'legendary', label: 'Legendary', budget: 0.00001, worth: 5_000_000, sellValue: 2_500_000,
     color: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)',
     reveal: 'edge', sound: 'horn', semitones: 7, duration: 4200, xp: 300,
   },
   mythic: {
-    id: 'mythic', label: 'Mythic', budget: 0.003, worth: 200_000, sellValue: 100_000,
+    id: 'mythic', label: 'Mythic', budget: 0.000003, worth: 20_000_000, sellValue: 10_000_000,
     color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)',
     reveal: 'flash', sound: 'impact', semitones: 10, duration: 5600, xp: 1_200,
   },
   singular: {
-    id: 'singular', label: 'Singular', budget: 0.0005, worth: 1_000_000, sellValue: 500_000,
+    id: 'singular', label: 'Singular', budget: 0.0000005, worth: 100_000_000, sellValue: 50_000_000,
     color: '#e6dcff', glow: 'rgba(230, 220, 255, 0.95)',
     reveal: 'void', sound: 'prism', semitones: 12, duration: 9000, xp: 5_000,
   },
@@ -150,9 +150,9 @@ export const RUNE_TIER_ORDER: RuneTier[] = [
  * the floor of the ladder is worth" is the rule, and a second literal is a
  * second thing to forget when the ladder is retuned.
  *
- * At 100 Gold a strike, the Singular tier's 0.05% works out to a two-million
- * Gold expectation before the Void turns up. That is the intended shape — the
- * last rune in the game should be measured in months, not in an afternoon.
+ * At 10,000 Gold a strike, the Singular tier's 0.00005% works out to twenty
+ * billion Gold before the Void turns up. That is the intended shape — the last
+ * rune in the game should be measured in years, not in an afternoon.
  */
 export const STRIKE_COST = RUNE_TIERS.common.worth;
 
@@ -266,7 +266,7 @@ export function tierOf(tier: RuneTier): RuneTierDefinition {
 }
 
 /**
- * The measured total of the drop table — 0.9985 with the published budgets.
+ * The measured total of the drop table — just under 1 with the published budgets.
  *
  * Computed rather than hardcoded so that adding a rune, retiring one, or
  * retuning a budget cannot silently skew every rate below it in the table.
@@ -437,9 +437,9 @@ export interface Runeword {
  *
  * Note that Convergence appears in two recipes and is consumed by both, so a
  * player who wants Godforge Mastery *and* Breath of the Void needs two Mythic
- * drops of the same rune at 0.15% each. That is the intended shape of the
+ * drops of the same rune at 0.00015% each. That is the intended shape of the
  * endgame: the last word is not gated on skill or on time so much as on being
- * the kind of person who is still striking the anvil after the fifth thousand.
+ * the kind of person who is still striking the anvil after the five-millionth.
  */
 export const RUNEWORDS: Runeword[] = [
   {

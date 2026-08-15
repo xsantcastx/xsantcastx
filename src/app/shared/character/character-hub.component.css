@@ -1,10 +1,23 @@
 :host { display: block; }
 
+.ch {
+  overflow-anchor: none;
+}
+
+.ch[data-variant='page'] {
+  min-height: 70vh;
+}
+
 .ch__tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
+}
+
+.ch__panel {
+  min-height: 28rem;
+  overflow-anchor: none;
 }
 .ch__tab {
   min-height: 44px;

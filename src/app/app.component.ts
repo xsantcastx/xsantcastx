@@ -17,6 +17,8 @@ import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
 import { InlineFlameService } from './shared/economy/inline-flame.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
+import { GameStateGateway } from './shared/save/game-state.gateway';
+import { applyRealmEra } from './shared/save/realm-era';
 
 @Component({
     selector: 'app-root',
@@ -41,6 +43,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
   private inlineFlame = inject(InlineFlameService);
+  private readonly saves = inject(GameStateGateway);
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -92,6 +95,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.realms.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
+
+    applyRealmEra(this.saves);
 
     this.inlineFlameSub = this.inlineFlame.active$.subscribe(active => {
       this.showCornerFlame = !this.isEmbedMode && !active;

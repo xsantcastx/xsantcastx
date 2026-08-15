@@ -5,7 +5,7 @@ import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
-import { ACTIVITY_KEY, BASALT_SEAMWORKS_ID, MINING_RECOVERY_MS } from './activity.model';
+import { ACTIVITY_KEY, BASALT_SEAMWORKS_ID, EMBER_GUARANTEE_AT, MINING_RECOVERY_MS, MINING_XP_PER_ACTION } from './activity.model';
 
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
@@ -85,21 +85,21 @@ describe('ActivityProgressionGateway', () => {
     expect(elsewhere.code).toBe('location');
   });
 
-  it('guarantees ember on the eighth eligible action', () => {
+  it('guarantees ember on the 800th eligible action', () => {
     let t = 4_000;
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i < EMBER_GUARANTEE_AT; i++) {
       const result = gateway.resolveMine({ mutationId: `m${i}`, now: t, roll: 0.99 });
       expect(result.ok).toBe(true);
       t += MINING_RECOVERY_MS + 1;
     }
     expect(inventory.stackOf('ember-residue')).toBe(0);
-    const eighth = gateway.resolveMine({ mutationId: 'm8', now: t, roll: 0.99 });
-    expect(eighth.ok).toBe(true);
-    if (!eighth.ok) return;
-    expect(eighth.operation.discovery.result).toBe('first-craft-guarantee');
-    expect(inventory.stackOf('cinder-ore')).toBe(8);
+    const last = gateway.resolveMine({ mutationId: `m${EMBER_GUARANTEE_AT}`, now: t, roll: 0.99 });
+    expect(last.ok).toBe(true);
+    if (!last.ok) return;
+    expect(last.operation.discovery.result).toBe('first-craft-guarantee');
+    expect(inventory.stackOf('cinder-ore')).toBe(EMBER_GUARANTEE_AT);
     expect(inventory.stackOf('ember-residue')).toBe(1);
-    expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(16);
+    expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(EMBER_GUARANTEE_AT * MINING_XP_PER_ACTION);
   });
 
   it('refuses to create an operation when the bag cannot take ore', () => {

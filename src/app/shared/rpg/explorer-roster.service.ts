@@ -46,7 +46,7 @@ export const ROSTER_KEY = 'godforge-roster';
  * arrive with a Mythic explorer and nobody has to decide which of the two the
  * strike "was".
  */
-export const EXPLORER_DROP_CHANCE = 0.05;
+export const EXPLORER_DROP_CHANCE = 0.0005;
 
 /**
  * The roster's ceiling.

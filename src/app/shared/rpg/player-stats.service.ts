@@ -35,6 +35,7 @@ import { EconomyService } from '../economy/economy.service';
 import { XpService } from '../gamification/xp.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   PlayerStats,
   POINTS_PER_LEVEL,
@@ -55,6 +56,7 @@ export const PLAYER_STATS_KEY = 'godforge-stats';
 
 interface StatsBlob {
   version: 1;
+  era?: number;
   stats: PlayerStats;
   /**
    * The highest rank already paid points for.
@@ -69,7 +71,7 @@ interface StatsBlob {
 }
 
 function emptyBlob(): StatsBlob {
-  return { version: 1, stats: emptyStats(), levelsGranted: 1, respecs: 0 };
+  return { version: 1, era: REALM_ERA, stats: emptyStats(), levelsGranted: 1, respecs: 0 };
 }
 
 /** What the panel renders. Derived, never persisted. */
@@ -281,6 +283,7 @@ export class PlayerStatsService {
       if (!raw) return emptyBlob();
       const parsed = JSON.parse(raw) as Partial<StatsBlob>;
       const empty = emptyBlob();
+      if (eraIsCurrent(this.store) && ledgerFromPriorEra(parsed.era)) return empty;
 
       // Every stat is rebuilt through `whole()` rather than spread, because the
       // blob is user-writable and a hand-edited "luck": "lots" would otherwise
@@ -294,6 +297,7 @@ export class PlayerStatsService {
 
       return {
         version: 1,
+        era: REALM_ERA,
         stats,
         levelsGranted: Math.max(1, whole(parsed.levelsGranted) || empty.levelsGranted),
         respecs: whole(parsed.respecs),

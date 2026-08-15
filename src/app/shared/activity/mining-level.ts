@@ -4,8 +4,8 @@
  * Spec table, not a curve. Level 2 unlocks a later discovery table.
  * Level 3 is reserved. No yield multiplier.
  */
-export const MINING_XP_TO_LEVEL_2 = 30;
-export const MINING_XP_TO_LEVEL_3 = 90;
+export const MINING_XP_TO_LEVEL_2 = 3_000;
+export const MINING_XP_TO_LEVEL_3 = 9_000;
 
 export interface MiningLevelView {
   level: number;

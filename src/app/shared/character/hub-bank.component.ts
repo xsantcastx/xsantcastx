@@ -1,9 +1,11 @@
 /**
  * hub-bank.component.ts — instances, material stacks, and rune ledger rows.
  *
- * Read-only composition plus Drop. Inventory remains the instance/stack
- * writer; Rune Forge remains the rune-count writer. Mine grants appear live.
+ * Manage lives at the top: search, sort, multi-select, Drop. Confirm is a
+ * sticky overlay so a full bag never hides the action. Inventory remains the
+ * instance/stack writer; Rune Forge remains the rune-count writer.
  */
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -19,6 +21,7 @@ import { runeCard } from '../rune-forge/rune-cards';
 import { CharacterHubService } from './character-hub.service';
 
 export type BankKind = 'all' | 'items' | 'materials' | 'runes';
+export type BankSort = 'newest' | 'name';
 
 export interface BankRow {
   id: string;
@@ -31,12 +34,13 @@ export interface BankRow {
   inspectId?: string;
   dropItem?: GameItem;
   dropStack?: InventoryStackView;
+  foundAt?: string;
 }
 
 @Component({
   selector: 'app-hub-bank',
   standalone: true,
-  imports: [InspectButtonComponent],
+  imports: [NgTemplateOutlet, InspectButtonComponent],
   templateUrl: './hub-bank.component.html',
   styleUrls: ['./hub-bank.component.css'],
 })
@@ -51,17 +55,24 @@ export class HubBankComponent implements OnInit, OnDestroy {
   snap: InventorySnapshot = this.inventory.snapshot;
   runeSnap: RuneSnapshot = this.runes.snapshot;
   kind: BankKind = 'all';
+  sort: BankSort = 'newest';
   query = '';
   filtersOpen = false;
   selectedId: string | null = null;
+  checked = new Set<string>();
   dropping: GameItem | null = null;
   droppingStack: InventoryStackView | null = null;
+  pendingBulk: { items: string[]; stacks: string[]; rares: number } | null = null;
   readonly kinds: BankKind[] = ['all', 'items', 'materials', 'runes'];
+  readonly sorts: BankSort[] = ['newest', 'name'];
 
   ngOnInit(): void {
     this.inventory.init();
     this.runes.init();
-    this.sub = this.inventory.snapshot$.subscribe(snap => { this.snap = snap; });
+    this.sub = this.inventory.snapshot$.subscribe(snap => {
+      this.snap = snap;
+      this.pruneChecked();
+    });
     this.sub.add(this.runes.snapshot$.subscribe(snap => { this.runeSnap = snap; }));
     this.sub.add(this.hub.armed$.subscribe(id => {
       if (id) this.selectedId = id;
@@ -85,14 +96,56 @@ export class HubBankComponent implements OnInit, OnDestroy {
   }
 
   get rows(): BankRow[] {
-    const needle = this.query.trim().toLowerCase();
-    return this.allRows().filter(row => {
-      if (this.kind === 'items' && row.kind !== 'item') return false;
-      if (this.kind === 'materials' && row.kind !== 'material') return false;
-      if (this.kind === 'runes' && row.kind !== 'rune' && row.kind !== 'runeword') return false;
-      if (needle && !row.name.toLowerCase().includes(needle)) return false;
-      return true;
-    });
+    return this.sorted(this.filtered(this.allRows()));
+  }
+
+  get itemRows(): BankRow[] {
+    return this.rows.filter(row => row.kind === 'item');
+  }
+
+  get materialRows(): BankRow[] {
+    return this.rows.filter(row => row.kind === 'material');
+  }
+
+  get runeRows(): BankRow[] {
+    return this.rows.filter(row => row.kind === 'rune' || row.kind === 'runeword');
+  }
+
+  get droppableRows(): BankRow[] {
+    return this.rows.filter(row => this.canDropRow(row));
+  }
+
+  get checkedCount(): number {
+    return this.droppableRows.filter(row => this.checked.has(row.id)).length;
+  }
+
+  get junkCount(): number {
+    return this.droppableRows.filter(row => this.isJunk(row)).length;
+  }
+
+  canDropRow(row: BankRow): boolean {
+    if (row.dropStack) return true;
+    return !!row.dropItem && this.inventory.canDrop(row.dropItem);
+  }
+
+  isChecked(row: BankRow): boolean {
+    return this.checked.has(row.id);
+  }
+
+  toggleCheck(row: BankRow, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canDropRow(row)) return;
+    if (this.checked.has(row.id)) this.checked.delete(row.id);
+    else this.checked.add(row.id);
+    this.checked = new Set(this.checked);
+  }
+
+  selectAllDroppable(): void {
+    this.checked = new Set(this.droppableRows.map(row => row.id));
+  }
+
+  clearChecked(): void {
+    this.checked = new Set();
   }
 
   select(row: BankRow): void {
@@ -100,11 +153,13 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.hub.arm(row.dropItem && this.selectedId === row.id ? row.dropItem.id : null);
   }
 
-  askDrop(item: GameItem): void {
+  askDrop(item: GameItem, event?: Event): void {
+    event?.stopPropagation();
     if (!this.inventory.canDrop(item)) return;
     if (this.inventory.needsConfirm(item)) {
       this.dropping = item;
       this.droppingStack = null;
+      this.pendingBulk = null;
       return;
     }
     this.inventory.drop(item.id);
@@ -118,10 +173,12 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.dropping = null;
   }
 
-  askDropStack(stack: InventoryStackView): void {
+  askDropStack(stack: InventoryStackView, event?: Event): void {
+    event?.stopPropagation();
     if (stack.quantity > 1) {
       this.droppingStack = stack;
       this.dropping = null;
+      this.pendingBulk = null;
       return;
     }
     this.inventory.dropStack(stack.stackKey);
@@ -133,8 +190,98 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.droppingStack = null;
   }
 
+  askDropChecked(): void {
+    const picked = this.droppableRows.filter(row => this.checked.has(row.id));
+    this.queueBulk(picked);
+  }
+
+  askDropJunk(): void {
+    this.queueBulk(this.droppableRows.filter(row => this.isJunk(row)));
+  }
+
+  confirmBulk(): void {
+    if (!this.pendingBulk) return;
+    this.inventory.dropMany(this.pendingBulk.items, this.pendingBulk.stacks);
+    this.pendingBulk = null;
+    this.clearChecked();
+    this.hub.arm(null);
+  }
+
+  cancelConfirm(): void {
+    this.dropping = null;
+    this.droppingStack = null;
+    this.pendingBulk = null;
+  }
+
+  private queueBulk(rows: BankRow[]): void {
+    if (!rows.length) return;
+    const items = rows.filter(row => row.dropItem).map(row => row.dropItem!.id);
+    const stacks = rows.filter(row => row.dropStack).map(row => row.dropStack!.stackKey);
+    const rares = rows.filter(row => row.dropItem && this.inventory.needsConfirm(row.dropItem)).length
+      + rows.filter(row => row.dropStack && row.dropStack.quantity > 1).length;
+    if (rares > 0 || rows.length > 1) {
+      this.pendingBulk = { items, stacks, rares };
+      this.dropping = null;
+      this.droppingStack = null;
+      return;
+    }
+    this.inventory.dropMany(items, stacks);
+    this.clearChecked();
+  }
+
+  private isJunk(row: BankRow): boolean {
+    if (row.dropStack) return false;
+    return !!row.dropItem
+      && this.inventory.canDrop(row.dropItem)
+      && (row.dropItem.rarity === 'common' || row.dropItem.rarity === 'uncommon');
+  }
+
+  private pruneChecked(): void {
+    const live = new Set(this.allRows().map(row => row.id));
+    let dirty = false;
+    for (const id of this.checked) {
+      if (live.has(id)) continue;
+      this.checked.delete(id);
+      dirty = true;
+    }
+    if (dirty) this.checked = new Set(this.checked);
+  }
+
+  private filtered(rows: BankRow[]): BankRow[] {
+    const needle = this.query.trim().toLowerCase();
+    return rows.filter(row => {
+      if (this.kind === 'items' && row.kind !== 'item') return false;
+      if (this.kind === 'materials' && row.kind !== 'material') return false;
+      if (this.kind === 'runes' && row.kind !== 'rune' && row.kind !== 'runeword') return false;
+      if (needle && !row.name.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }
+
+  private sorted(rows: BankRow[]): BankRow[] {
+    return [...rows].sort((a, b) => {
+      if (this.sort === 'name') return a.name.localeCompare(b.name);
+      return (b.foundAt ?? '').localeCompare(a.foundAt ?? '') || a.name.localeCompare(b.name);
+    });
+  }
+
   private allRows(): BankRow[] {
     const rows: BankRow[] = [];
+    for (const item of this.snap.bag) {
+      const kind = item.type === 'rune' || item.type === 'runeword' ? item.type : 'item';
+      rows.push({
+        id: item.id,
+        kind,
+        name: item.name,
+        qty: 1,
+        meta: item.type,
+        art: isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : undefined,
+        inspectType: 'item',
+        inspectId: item.id,
+        dropItem: item,
+        foundAt: item.foundAt,
+      });
+    }
     for (const stack of this.snap.stacks) {
       const display = materialDisplay(stack.stackKey);
       rows.push({
@@ -145,6 +292,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
         meta: this.t('hub.bank.material'),
         art: display?.art,
         dropStack: stack,
+        foundAt: '9999',
       });
     }
     for (const rune of RUNES) {
@@ -172,20 +320,6 @@ export class HubBankComponent implements OnInit, OnDestroy {
         meta: this.t('hub.bank.runeword'),
         inspectType: 'runeword',
         inspectId: id,
-      });
-    }
-    for (const item of this.snap.bag) {
-      const kind = item.type === 'rune' || item.type === 'runeword' ? item.type : 'item';
-      rows.push({
-        id: item.id,
-        kind,
-        name: item.name,
-        qty: 1,
-        meta: item.type,
-        art: isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : undefined,
-        inspectType: 'item',
-        inspectId: item.id,
-        dropItem: item,
       });
     }
     return rows;

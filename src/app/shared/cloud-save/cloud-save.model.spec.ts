@@ -415,6 +415,15 @@ describe('the RPG layer', () => {
       expect(merged.stats).toEqual({ luck: 3 });
       expect(merged.respecs).toBe(7);
     });
+
+    it('does not restore a prior-era build over a wiped sheet', () => {
+      const merged = merge(
+        { version: 1, era: 0, stats: { strength: 40 }, levelsGranted: 20, respecs: 3 },
+        { version: 1, era: 55, stats: { unallocated: 0 }, levelsGranted: 1, respecs: 0 },
+      );
+      expect(merged.levelsGranted).toBe(1);
+      expect(merged.stats).toEqual({ unallocated: 0 });
+    });
   });
 
   describe('the roster and its expeditions', () => {

@@ -67,6 +67,8 @@ export interface ActivityOperation {
 
 export interface ActivityLedger {
   version: 1;
+  /** Missing or below REALM_ERA is prior-generation ore and is emptied. */
+  era?: number;
   currentWork: CurrentWork | null;
   progress: DisciplineProgress;
   operations: ActivityOperation[];
@@ -88,8 +90,8 @@ export const MINING_XP_PER_ACTION = 2;
 export const CINDER_ORE_ID = 'cinder-ore';
 export const EMBER_RESIDUE_ID = 'ember-residue';
 export const BASALT_SEAMWORKS_ID = 'infernal/basalt-seamworks';
-export const EMBER_DISCOVERY_CHANCE = 0.08;
-export const EMBER_GUARANTEE_AT = 8;
+export const EMBER_DISCOVERY_CHANCE = 0.0008;
+export const EMBER_GUARANTEE_AT = 800;
 
 export const BASALT_SEAMWORKS: ActivityLocationDefinition = {
   id: BASALT_SEAMWORKS_ID,
@@ -112,6 +114,7 @@ export function emptyProgress(): DisciplineProgress {
 export function emptyActivityLedger(): ActivityLedger {
   return {
     version: ACTIVITY_SCHEMA_VERSION,
+    era: 55,
     currentWork: null,
     progress: emptyProgress(),
     operations: [],

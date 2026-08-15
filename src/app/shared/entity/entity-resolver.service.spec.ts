@@ -64,8 +64,8 @@ describe('EntityResolver', () => {
   it('exposes exact values alongside compact display', () => {
     const listing = resolver.resolve({ type: 'market-listing', id: 'the-first-sun' });
     const price = listing.presentation?.facts.find(fact => fact.label === 'Price');
-    expect(price?.exactValue).toContain('10,000,000');
-    expect(price?.value).toContain('10M');
+    expect(price?.exactValue).toContain('1,000,000,000');
+    expect(price?.value).toContain('1B');
   });
 
   it('translates kind labels without rewriting lore', () => {
