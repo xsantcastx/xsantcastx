@@ -40,6 +40,8 @@ export interface EntityFact {
   label: string;
   value: string;
   exactValue?: string;
+  /** Item mods render as `Gold/sec +2.4` instead of a dt/dd pair. */
+  kind?: 'mod' | 'meta';
 }
 
 export interface EntityPresentation {

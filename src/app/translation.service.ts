@@ -1445,7 +1445,7 @@ export class TranslationService {
     'loadout.stat.gold': { en: 'Gold/sec', es: 'Oro/s' },
     'loadout.stat.mf': { en: 'MF', es: 'SM' },
     'loadout.stat.xp': { en: 'XP', es: 'XP' },
-    'loadout.stat.empty': { en: 'Nothing equipped — the slots are cold', es: 'Nada equipado — las ranuras estan frias' },
+    'loadout.stat.empty': { en: 'Nothing equipped. Mine at Basalt Seamworks, craft an Edge, then temper it.', es: 'Nada equipado. Mina en Basalt Seamworks, forja un filo y templalo.' },
     'loadout.doll.label': { en: 'Keeper paper doll', es: 'Muneco del Guardian' },
     'loadout.doll.alt': { en: 'Neutral Keeper paper doll. Equipment slots sit on top; the drawing is not proof of worn items.', es: 'Muneco neutral del Guardian. Las ranuras van encima; el dibujo no prueba equipo.' },
     'loadout.slot.head': { en: 'Head', es: 'Cabeza' },

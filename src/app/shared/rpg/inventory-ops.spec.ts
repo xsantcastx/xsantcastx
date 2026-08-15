@@ -135,6 +135,20 @@ describe('inventory adapter (C3)', () => {
     expect(mergeInventoryLedgers(ab, ab).records.length).toBe(ab.records.length);
   });
 
+  it('drops the prior-era bag when the other side is the current generation', () => {
+    const oldBag = ledger({
+      era: 0,
+      records: [instance('old-crown', { revision: revision(99) })],
+      hlc: 99,
+    });
+    const fresh = ledger({ era: 55, hlc: 1 });
+    const ab = mergeInventoryLedgers(oldBag, fresh);
+    const ba = mergeInventoryLedgers(fresh, oldBag);
+    expect(ab.era).toBe(55);
+    expect(ab.records).toEqual([]);
+    expect(ba.records).toEqual([]);
+  });
+
   it('sell versus equip: the higher revision wins the whole record', () => {
     const equipped = ledger({
       records: [instance('helm', {

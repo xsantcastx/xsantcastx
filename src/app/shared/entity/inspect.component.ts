@@ -141,7 +141,7 @@ export class InspectComponent implements OnInit, OnDestroy {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `temper-${Date.now()}`;
-    const result = this.inventory.upgrade(item.id, id);
+    const result = this.inventory.temper(item.id, id);
     if (!result.ok) {
       this.temperNote = this.t('inspect.temper.blocked');
       this.cdr.markForCheck();

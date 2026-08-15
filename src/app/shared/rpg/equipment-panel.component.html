@@ -63,6 +63,9 @@
         <p class="ld__expand-name">{{ worn.name }}
           <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
         </p>
+        <ul class="ld__mods" *ngIf="modsOf(worn).length">
+          <li *ngFor="let mod of modsOf(worn)">{{ mod }}</li>
+        </ul>
         <div class="ld__expand-actions">
           <app-inspect-button type="item" [id]="worn.id"></app-inspect-button>
           <button type="button" class="ld__unequip" (click)="unequipExpanded()">{{ t('loadout.unequip') }}</button>

@@ -322,6 +322,12 @@ function mergeStatBuild(remote: unknown, local: unknown): unknown {
   if (!isPlainObject(local)) return remote ?? local;
   if (!isPlainObject(remote)) return local;
 
+  const remoteEra = numberOf(remote['era']);
+  const localEra = numberOf(local['era']);
+  if (remoteEra !== localEra) {
+    return remoteEra > localEra ? remote : local;
+  }
+
   const remoteRank = numberOf(remote['levelsGranted']);
   const localRank = numberOf(local['levelsGranted']);
   // Ties go to the device in the visitor's hands: two builds settled to the same

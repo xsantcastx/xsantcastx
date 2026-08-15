@@ -22,7 +22,7 @@ import { forgeRecipeById } from '../rpg/forge-recipes';
 import { BASALT_EDGE_PORTRAIT, isBasaltEdge } from '../rpg/material-catalog';
 import { slotAccepts } from '../rpg/item.model';
 import { InventoryService } from '../rpg/inventory.service';
-import { ITEM_STAT_IS_PERCENT, ITEM_STAT_KEYS, ITEM_STAT_LABELS, rarityLabel } from '../rpg/item.model';
+import { ITEM_STAT_KEYS, formatItemMod, rarityLabel } from '../rpg/item.model';
 import { RUNES, RUNEWORDS, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
 import {
   type EntityAction,
@@ -174,11 +174,11 @@ export class EntityResolver {
     for (const key of ITEM_STAT_KEYS) {
       const raw = item.stats[key];
       if (raw == null) continue;
-      const exact = ITEM_STAT_IS_PERCENT[key] ? `${raw}` : String(raw);
       facts.push({
-        label: ITEM_STAT_LABELS[key],
-        value: ITEM_STAT_IS_PERCENT[key] ? `${raw}%` : String(raw),
-        exactValue: exact,
+        kind: 'mod',
+        label: formatItemMod(key, raw),
+        value: formatItemMod(key, raw),
+        exactValue: String(raw),
       });
     }
     const level = item.upgradeLevel ?? 0;

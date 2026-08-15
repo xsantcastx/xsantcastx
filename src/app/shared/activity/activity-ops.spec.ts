@@ -147,6 +147,7 @@ describe('C7 activity ops', () => {
   it('rejects a corrupt blob instead of inventing operations', () => {
     expect(coerceActivityLedger({ version: 1, operations: [{ id: 1 }] })).toEqual({
       version: 1,
+      era: 0,
       currentWork: null,
       progress: emptyActivityLedger().progress,
       operations: [],
@@ -155,6 +156,16 @@ describe('C7 activity ops', () => {
       miningAccepted: 0,
     });
     expect(coerceActivityLedger({ version: 2 })).toBeNull();
+  });
+
+  it('drops prior-era mining when the other side is the current generation', () => {
+    const oldMine = ledger({ era: 0, operations: [mine('old-strike')] });
+    const fresh = ledger({ era: 55 });
+    const ab = mergeActivityLedgers(oldMine, fresh);
+    const ba = mergeActivityLedgers(fresh, oldMine);
+    expect(ab.era).toBe(55);
+    expect(ab.operations).toEqual([]);
+    expect(ba.operations).toEqual([]);
   });
 
   it('keeps Mining XP and ember after the 256-op window drops oldest rows', () => {

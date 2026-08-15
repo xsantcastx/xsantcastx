@@ -31,4 +31,14 @@ describe('item definition rolls', () => {
     expect(item.stats.goldPerSec).toBe(rolled);
     expect(again.goldPerSec).not.toBe(rolled);
   });
+
+  it('prices the first Basalt temper at four 10k strikes', () => {
+    const edge = itemDefinitionById('basalt-edge')!;
+    const cuirass = itemDefinitionById('infernal-cuirass')!;
+    expect(edge.temperGoldBase).toBe(40_000);
+    expect(cuirass.base.goldPerSec).toBe(5);
+    const uncommon = rollItemStats(cuirass, 'uncommon', () => 0.5);
+    expect(uncommon.goldPerSec).toBeGreaterThan(4);
+    expect(uncommon.goldPerSec).toBeLessThan(7);
+  });
 });
