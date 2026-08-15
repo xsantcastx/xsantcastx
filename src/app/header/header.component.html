@@ -93,10 +93,21 @@
                 (click)="setLanguage('es')">ES</button>
       </div>
 
-      <a routerLink="/character" routerLinkActive="is-active" class="gfnav__keeper"
+      <button type="button" class="gfnav__bank"
+              [class.is-on]="bankPanelOpen"
+              (click)="openBank()"
+              [attr.aria-pressed]="bankPanelOpen"
+              [attr.aria-label]="translate('hub.tab.bank')">
+        <span class="gfnav__bank-mark" aria-hidden="true">▣</span>
+        <span class="gfnav__bank-n">{{ bagCount }}</span>
+      </button>
+      <button type="button" class="gfnav__keeper"
+         (click)="openCharacter()"
+         [class.is-active]="characterPanelOpen"
+         [attr.aria-pressed]="characterPanelOpen"
          [attr.aria-label]="translate('gfnav.keeperLabel')">
         <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
-      </a>
+      </button>
 
       <button type="button" class="gfnav__burger" [class.is-open]="mobileMenuOpen"
               (click)="toggleMobileMenu()" [attr.aria-expanded]="mobileMenuOpen"
@@ -142,8 +153,9 @@
     </div>
 
     <!-- Who you are, at the front of the book. -->
-    <a routerLink="/character" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
-       (click)="closeMobileMenu()">
+    <button type="button" class="gftome__keeper" [tabIndex]="mobileMenuOpen ? 0 : -1"
+       [class.is-on]="characterPanelOpen"
+       (click)="openCharacter()">
       <img class="gftome__keeper-sigil gf-icon rank-current" [src]="rankSigil(rankLevel)"
            alt="" aria-hidden="true" width="40" height="40"
            decoding="async" draggable="false">
@@ -152,7 +164,15 @@
         <span class="gftome__keeper-rank">{{ rankTitle }}</span>
       </span>
       <span class="gftome__keeper-lvl">{{ rankLevel }}</span>
-    </a>
+    </button>
+
+    <button type="button" class="gftome__bank" [tabIndex]="mobileMenuOpen ? 0 : -1"
+            [class.is-on]="bankPanelOpen"
+            (click)="openBank()">
+      <span class="gftome__bank-icon" aria-hidden="true">▣</span>
+      <span>{{ translate('hub.tab.bank') }}</span>
+      <span class="gftome__bank-n">{{ bagCount }}</span>
+    </button>
 
     <div class="gfxp">
       <p class="gfxp__label">

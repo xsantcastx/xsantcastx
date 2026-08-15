@@ -1,8 +1,8 @@
-<section class="ld" [attr.data-ready]="ready ? '1' : '0'">
+<section class="ld" [attr.data-ready]="ready ? '1' : '0'" [attr.data-surface]="surface">
   <header class="ld__head">
     <p class="ld__eyebrow">{{ t('loadout.eyebrow') }}</p>
-    <h2 class="ld__title">{{ t('loadout.title') }}</h2>
-    <p class="ld__tag">{{ t('loadout.tag') }}</p>
+    <h2 class="ld__title">{{ t(surface === 'loadout' ? 'hub.loadout.title' : 'loadout.title') }}</h2>
+    <p class="ld__tag">{{ t(surface === 'loadout' ? 'hub.loadout.tag' : 'loadout.tag') }}</p>
   </header>
 
   <div class="ld__layout">
@@ -72,13 +72,13 @@
 
     <div class="ld__bag-col">
       <div class="ld__bag-head">
-        <h3 class="ld__bag-title" id="ld-bag-title">{{ t('loadout.bag.title') }}</h3>
+        <h3 class="ld__bag-title" id="ld-bag-title">{{ t(surface === 'loadout' ? 'hub.loadout.wear' : 'loadout.bag.title') }}</h3>
         <p class="ld__bag-count" [class.ld__bag-count--full]="snap.full">
           {{ t('loadout.bag.count', { n: snap.bag.length, max: bagCap }) }}
         </p>
       </div>
 
-      <form class="ld__filters" (submit)="$event.preventDefault()">
+      <form class="ld__filters" *ngIf="surface !== 'loadout'" (submit)="$event.preventDefault()">
         <label class="ld__field">
           <span>{{ t('loadout.filter.category') }}</span>
           <select [value]="category" (change)="setCategory($any($event.target).value)">
@@ -109,8 +109,8 @@
       </div>
 
       <div class="ld__empty" *ngIf="ready && !snap.bag.length">
-        <p>{{ t('loadout.empty.body') }}</p>
-        <nav class="ld__empty-links">
+        <p>{{ t(surface === 'loadout' ? 'hub.loadout.empty' : 'loadout.empty.body') }}</p>
+        <nav class="ld__empty-links" *ngIf="surface !== 'loadout'">
           <a routerLink="/forge/runes">{{ t('loadout.empty.forge') }}</a>
           <a routerLink="/world">{{ t('loadout.empty.world') }}</a>
           <a routerLink="/market">{{ t('loadout.empty.market') }}</a>

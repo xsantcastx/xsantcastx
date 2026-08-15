@@ -308,6 +308,42 @@
 .gfnav__keeper:hover .gfnav__keeper-glyph::before,
 .gfnav__keeper:hover .gfnav__keeper-glyph::after { background: var(--primary-color); }
 
+.gfnav__bank {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(var(--gfnav-void), 0.62);
+  color: #f4e7c3;
+  cursor: pointer;
+}
+.gfnav__bank.is-on,
+.gfnav__bank:focus-visible {
+  border-color: #c9a84c;
+}
+.gfnav__bank-n { font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+
+.gftome__bank {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 44px;
+  margin: 0 0 0.6rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 10px;
+  background: rgba(18, 14, 8, 0.55);
+  color: #f4e7c3;
+  cursor: pointer;
+}
+.gftome__bank.is-on { border-color: #c9a84c; }
+.gftome__bank-n { margin-left: auto; }
+
 /* ── Hamburger ─────────────────────────────────────────────────────────── */
 
 /* Bars are absolutely positioned: stacked with margins the open-state
@@ -906,6 +942,7 @@
 }
 @media (max-width: 1240px) {
   .gfnav__keeper { display: none; }   /* the rank pill already goes there */
+  .gfnav__bank { display: none; }
 }
 
 /* Halls no longer shed. Desktop is a sidebar with room for every

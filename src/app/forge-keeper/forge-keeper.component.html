@@ -145,8 +145,9 @@
     </div>
   </section>
 
-  <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
-  <section class="fk-block" aria-labelledby="fk-stats-title">
+  <app-character-hub variant="page">
+    <div hubRecords>
+  <section class="fk-block" aria-labelledby="fk-stats-title" hidden>
     <h2 class="fk-block__title" id="fk-stats-title">The Ledger</h2>
     <p class="fk-block__note">every number the realm has counted since you arrived</p>
 
@@ -167,11 +168,6 @@
        services, which is why they mount as components rather than as more
        blocks on this template: this page's rule is that it owns no state, and
        the cheapest way to keep that true is to not give it any. -->
-  <div class="fk-rpg">
-    <app-stat-panel />
-    <app-equipment-panel />
-  </div>
-
   <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
   <section class="fk-block fk-affinity" aria-labelledby="fk-affinity-title">
     <h2 class="fk-block__title" id="fk-affinity-title">Realm Affinity</h2>
@@ -231,8 +227,7 @@
     </div>
   </section>
 
-  <!-- ══ 4. Inventory ═══════════════════════════════════════════════════ -->
-  <section class="fk-block" aria-labelledby="fk-inv-title">
+  <section class="fk-block" aria-labelledby="fk-inv-title" hidden>
     <h2 class="fk-block__title" id="fk-inv-title">The Vault</h2>
     <p class="fk-block__note">A catalogue of what the Market sells. Your bag is the loadout above, not this shelf.</p>
 
@@ -555,6 +550,8 @@
       }
     </div>
   </section>
+    </div>
+  </app-character-hub>
 
   <!-- ══ 7. The Path — loadout and next game steps ══════════════════════ -->
   <section class="fk-block" aria-labelledby="fk-path-title">

@@ -50,6 +50,10 @@
   <app-quest-drawer></app-quest-drawer>
 }
 
+@if (!isEmbedMode) {
+  <app-keeper-panel></app-keeper-panel>
+}
+
 <!-- Quest claims and lore unlocks -->
 @if (!isEmbedMode) {
   <app-quest-toast></app-quest-toast>

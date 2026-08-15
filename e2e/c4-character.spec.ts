@@ -66,7 +66,7 @@ async function openCharacter(page: Page, url = '/character'): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await page.locator('.ld').waitFor();
+  await page.locator('.ch, .ld').first().waitFor();
 }
 
 const shotDir = resolve('test-results/c4-character');
@@ -75,7 +75,7 @@ test.describe('C4 Character presentation', () => {
   test('renders the paper doll and bag tiles without equipping on slot click', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openCharacter(page);
-    await expect(page.getByRole('heading', { name: 'What you carry into the dark' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Loadout' }).first()).toBeVisible();
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
     await expect(page.locator('.ld__charms-note')).toBeVisible();
@@ -105,17 +105,12 @@ test.describe('C4 Character presentation', () => {
     await expect(page.locator('.ld__title')).toBeVisible();
   });
 
-  test('normalizes bag query params and filters the tile list', async ({ page }) => {
-    await openCharacter(page, '/character?bag=eclipse&sort=hot&rarity=none');
-    await expect(page).not.toHaveURL(/bag=eclipse/);
-    await expect(page).not.toHaveURL(/sort=hot/);
-    await page.locator('.ld__field select').first().selectOption('runes');
-    await expect(page).toHaveURL(/bag=runes/);
+  test('Bank lists instances and can filter to runes', async ({ page }) => {
+    await openCharacter(page, '/character?tab=bank');
+    await expect(page.getByRole('heading', { name: 'Bank' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
-    await page.locator('.ld__field select').nth(1).selectOption('legendary');
-    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
-    await page.getByRole('button', { name: 'Clear filters' }).click();
-    await expect(page).not.toHaveURL(/bag=/);
+    await page.getByRole('button', { name: /^Runes$/ }).click();
+    await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
   });
 
   test('shows empty-bag paths and a 375px layout', async ({ page }) => {
@@ -134,9 +129,8 @@ test.describe('C4 Character presentation', () => {
         || style.visibility === 'hidden'
         || style.opacity === '0';
     }, { timeout: 8000 });
-    await page.locator('.ld').waitFor();
-    await expect(page.getByText(/The bag is empty|La bolsa esta vacia/)).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Market' }).first()).toBeVisible();
+    await page.locator('.ch, .ld').first().waitFor();
+    await expect(page.getByText(/Nothing to wear|Nada que vestir/)).toBeVisible();
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.ld').screenshot({ path: resolve(shotDir, 'mobile-empty.png') });
   });
