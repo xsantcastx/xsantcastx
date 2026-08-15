@@ -273,9 +273,16 @@ export class InventoryService {
     }
     if (!target || !slotAccepts(target, item)) return false;
 
-    // Displace is a location swap on existing records. The 250 cap is on
-    // owned inventory rows, not bag tiles, so this cannot grow the ledger
-    // or evict the occupant. Unequip is the same: one row changes kind.
+    const occupant = this.items.find(row =>
+      row.equipped && row.slot === target && row.id !== itemId,
+    );
+    // Bag-tile cap: a displace that is not a bag swap would add a bag row.
+    // Refuse rather than evict the occupant (or anyone else) to make room.
+    const incomingFromBag = !item.equipped && !item.explorerId;
+    if (occupant && this.snapshot.bag.length >= MAX_INVENTORY && !incomingFromBag) {
+      return false;
+    }
+
     const previous = this.ledger;
     this.ledger = this.mapInstances(row => {
       if (row.id === itemId) {
@@ -289,6 +296,13 @@ export class InventoryService {
       }
       return row;
     });
+    if (occupant) {
+      const kept = this.ledger.records.find(row => row.id === occupant.id);
+      if (!kept || kept.kind !== 'instance' || kept.location.kind !== 'bag') {
+        this.ledger = previous;
+        return false;
+      }
+    }
     if (!this.save()) {
       this.ledger = previous;
       return false;
