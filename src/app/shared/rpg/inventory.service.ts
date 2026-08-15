@@ -49,8 +49,10 @@ import {
   INVENTORY_BAG_CAP,
   type InventoryLedger,
   type OwnedItemInstance,
+  type OwnedItemStack,
 } from './inventory.model';
 import {
+  applyStackOp,
   coerceInventoryLedger,
   dropLegacyBackup,
   emptyInventoryLedger,
@@ -59,6 +61,7 @@ import {
   nextRevision,
   projectEconomy,
   retireCharms,
+  stackQuantity,
   tombstoneRecord,
   upsertRecord,
 } from './inventory-ops';
@@ -219,6 +222,67 @@ export class InventoryService {
     this.publish();
     this.acquired$$.next(item);
     return item;
+  }
+
+  /** Count of a material stack derived from grant/consume ops. */
+  stackOf(stackKey: string): number {
+    return stackQuantity(this.ledger.stackOps, stackKey);
+  }
+
+  /**
+   * C7 grant adapter. Same grant id is a no-op. A new stack at the 250-row
+   * cap is refused — Mine must not evict to land ore.
+   */
+  canAcceptStackGrant(stackKey: string): boolean {
+    if (this.ledger.records.some(row => row.kind === 'stack' && row.stackKey === stackKey && row.source === 'inventory')) {
+      return true;
+    }
+    return this.ledger.records.filter(row => row.source === 'inventory').length < MAX_INVENTORY;
+  }
+
+  grantStack(grantId: string, stackKey: string, quantity: number): boolean {
+    if (!this.isBrowser || !grantId || !stackKey || quantity <= 0) return false;
+    if (this.ledger.stackOps.some(op => op.id === grantId)) return true;
+    if (!this.canAcceptStackGrant(stackKey)) return false;
+
+    const stepped = this.advanceRevision();
+    const previous = this.ledger;
+    let records = this.ledger.records;
+    if (!records.some(row => row.kind === 'stack' && row.stackKey === stackKey && row.source === 'inventory')) {
+      const row: OwnedItemStack = {
+        id: `stack:${stackKey}`,
+        definitionId: stackKey,
+        kind: 'stack',
+        category: 'materials',
+        tags: ['material', stackKey],
+        soulbound: false,
+        acquiredAt: new Date().toISOString(),
+        revision: stepped.revision,
+        source: 'inventory',
+        stackKey,
+        location: { kind: 'bag' },
+      };
+      records = [...records, row];
+    }
+    this.ledger = {
+      ...this.ledger,
+      records,
+      stackOps: applyStackOp(this.ledger.stackOps, {
+        id: grantId,
+        stackKey,
+        kind: 'grant',
+        quantity,
+        hlc: stepped.revision.hlc,
+        deviceId: stepped.revision.deviceId,
+        sequence: stepped.revision.sequence,
+      }),
+    };
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
+    this.publish();
+    return true;
   }
 
   /**
