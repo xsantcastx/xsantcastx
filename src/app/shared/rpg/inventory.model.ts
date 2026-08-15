@@ -81,6 +81,10 @@ export interface OwnedItemInstance extends OwnedItemBase {
   stats: ItemStats;
   sellValue: number;
   location: ItemLocation;
+  upgradeLevel?: number;
+  lastUpgradeAt?: string;
+  lastUpgradeMutationId?: string;
+  lastUpgradeOk?: boolean;
 }
 
 export interface OwnedItemStack extends OwnedItemBase {

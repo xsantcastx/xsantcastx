@@ -120,6 +120,11 @@ export interface GameItem {
    * so the sell path has exactly one thing to check.
    */
   soulbound: boolean;
+  /** Successful tempers. Missing means 0. */
+  upgradeLevel?: number;
+  lastUpgradeAt?: string;
+  lastUpgradeMutationId?: string;
+  lastUpgradeOk?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,37 +218,37 @@ export type RollTable = Partial<Record<keyof ItemStats, Band>>;
  */
 export const ITEM_ROLLS: Record<ItemRarity, RollTable> = {
   common: {
-    goldPerSec: [0.1, 0.5],
+    goldPerSec: [0.2, 1],
   },
   uncommon: {
-    goldPerSec: [0.5, 2],
-    magicFind: [0, 2],
+    goldPerSec: [1, 4],
+    magicFind: [1, 4],
   },
   rare: {
-    goldPerSec: [2, 8],
-    magicFind: [1, 5],
+    goldPerSec: [6, 18],
+    magicFind: [3, 10],
   },
   epic: {
-    goldPerSec: [8, 20],
-    magicFind: [3, 10],
-    xpBonus: [5, 12],
+    goldPerSec: [20, 55],
+    magicFind: [8, 18],
+    xpBonus: [6, 14],
   },
   legendary: {
-    goldPerSec: [20, 50],
-    magicFind: [5, 15],
-    xpBonus: [10, 25],
+    goldPerSec: [70, 180],
+    magicFind: [12, 28],
+    xpBonus: [12, 30],
   },
   mythic: {
-    goldPerSec: [30, 60],
-    magicFind: [30, 60],
-    xpBonus: [30, 60],
-    lootBonus: [30, 60],
+    goldPerSec: [200, 480],
+    magicFind: [25, 55],
+    xpBonus: [25, 50],
+    lootBonus: [25, 50],
   },
   singular: {
-    goldPerSec: [50, 100],
-    magicFind: [50, 100],
-    xpBonus: [50, 100],
-    lootBonus: [50, 100],
+    goldPerSec: [500, 1400],
+    magicFind: [40, 80],
+    xpBonus: [40, 80],
+    lootBonus: [40, 80],
   },
 };
 
@@ -261,9 +266,13 @@ function rollStat(key: keyof ItemStats, band: Band, rng: () => number): number {
     : Math.round(raw);
 }
 
-/** Roll a full stat block for a rarity. */
+/**
+ * Roll a full stat block. `type` is reserved so a later band split cannot
+ * fork callers; today rarity owns the table.
+ */
 export function rollItemStats(
   rarity: ItemRarity,
+  _type: ItemType = 'artifact',
   rng: () => number = Math.random,
 ): ItemStats {
   const table = ITEM_ROLLS[rarity] ?? ITEM_ROLLS.common;
@@ -459,6 +468,7 @@ export function mintCharm(seed: CharmSeed, foundAt = new Date().toISOString()): 
     lore: seed.lore,
     foundAt,
     soulbound: false,
+    upgradeLevel: 0,
   };
 }
 
@@ -484,12 +494,13 @@ export function mintRuneItem(
     name: `${runeName} Sigil`,
     type: 'rune',
     rarity,
-    stats: rollItemStats(rarity, rng),
+    stats: rollItemStats(rarity, 'rune', rng),
     sellValue: sellValueFor('rune', rarity),
     equipped: false,
     lore,
     foundAt,
     soulbound: false,
+    upgradeLevel: 0,
   };
 }
 

@@ -117,6 +117,10 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     stats: { ...item.stats },
     sellValue: typeof item.sellValue === 'number' && Number.isFinite(item.sellValue) ? item.sellValue : 0,
     location: locationOf(item),
+    upgradeLevel: item.upgradeLevel,
+    lastUpgradeAt: item.lastUpgradeAt,
+    lastUpgradeMutationId: item.lastUpgradeMutationId,
+    lastUpgradeOk: item.lastUpgradeOk,
   };
 }
 
@@ -134,6 +138,10 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lore: record.lore,
     foundAt: record.acquiredAt,
     soulbound: record.soulbound,
+    upgradeLevel: record.upgradeLevel,
+    lastUpgradeAt: record.lastUpgradeAt,
+    lastUpgradeMutationId: record.lastUpgradeMutationId,
+    lastUpgradeOk: record.lastUpgradeOk,
   };
 }
 
@@ -183,6 +191,19 @@ export function parseInventoryV1(raw: unknown): InventoryBlobV1 | null {
   };
 }
 
+function parseUpgradeFields(raw: Record<string, unknown>): Pick<
+  GameItem,
+  'upgradeLevel' | 'lastUpgradeAt' | 'lastUpgradeMutationId' | 'lastUpgradeOk'
+> {
+  const level = raw['upgradeLevel'];
+  return {
+    upgradeLevel: typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.floor(level)) : undefined,
+    lastUpgradeAt: typeof raw['lastUpgradeAt'] === 'string' ? raw['lastUpgradeAt'] : undefined,
+    lastUpgradeMutationId: typeof raw['lastUpgradeMutationId'] === 'string' ? raw['lastUpgradeMutationId'] : undefined,
+    lastUpgradeOk: typeof raw['lastUpgradeOk'] === 'boolean' ? raw['lastUpgradeOk'] : undefined,
+  };
+}
+
 export function parseGameItem(raw: unknown): GameItem | null {
   if (!isPlainObject(raw)) return null;
   if (typeof raw['id'] !== 'string' || !raw['id']) return null;
@@ -213,6 +234,7 @@ export function parseGameItem(raw: unknown): GameItem | null {
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     foundAt: typeof raw['foundAt'] === 'string' ? raw['foundAt'] : new Date(0).toISOString(),
     soulbound: raw['soulbound'] === true,
+    ...parseUpgradeFields(raw),
   };
 }
 
@@ -550,6 +572,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     stats,
     sellValue: finiteNumber(raw['sellValue']),
     location,
+    ...parseUpgradeFields(raw),
   };
 }
 

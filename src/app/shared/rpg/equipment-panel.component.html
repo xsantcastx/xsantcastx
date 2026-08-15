@@ -60,7 +60,9 @@
       </div>
 
       <div class="ld__expand" *ngIf="expandedItem as worn">
-        <p class="ld__expand-name">{{ worn.name }}</p>
+        <p class="ld__expand-name">{{ worn.name }}
+          <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
+        </p>
         <div class="ld__expand-actions">
           <app-inspect-button type="item" [id]="worn.id"></app-inspect-button>
           <button type="button" class="ld__unequip" (click)="unequipExpanded()">{{ t('loadout.unequip') }}</button>
@@ -148,7 +150,9 @@
           <button type="button" class="ld__tile-face" (click)="onTileActivate($event, item)" [attr.aria-pressed]="selectedId === item.id">
             <img *ngIf="tileArt(item) as art" class="ld__tile-art" [src]="art" alt="" width="40" height="40" decoding="async">
             <span *ngIf="!tileArt(item)" class="ld__tile-orb" aria-hidden="true">{{ initialsOf(item) }}</span>
-            <span class="ld__tile-name">{{ item.name }}</span>
+            <span class="ld__tile-name">{{ item.name }}
+              <span class="ld__lvl" *ngIf="item.upgradeLevel">+{{ item.upgradeLevel }}</span>
+            </span>
             <span class="ld__tile-meta">{{ label(item) }} · {{ compact(item.sellValue) }}</span>
           </button>
           <div class="ld__tile-actions">

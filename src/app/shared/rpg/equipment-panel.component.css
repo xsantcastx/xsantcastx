@@ -122,6 +122,13 @@
   align-items: center;
 }
 .ld__expand-name { margin: 0; font-weight: 600; }
+.ld__lvl {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid #c9a84c;
+  color: #c9a84c;
+  font-size: 0.68rem;
+}
 .ld__expand-actions, .ld__unequip { display: flex; gap: 0.35rem; }
 .ld__unequip {
   min-height: 44px;

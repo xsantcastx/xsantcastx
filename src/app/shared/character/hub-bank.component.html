@@ -142,7 +142,12 @@
       } @else {
         <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2) }}</span>
       }
-      <span class="hb__name">{{ row.name }}</span>
+      <span class="hb__name">
+        {{ row.name }}
+        @if (row.dropItem?.upgradeLevel) {
+          <span class="hb__lvl">+{{ row.dropItem.upgradeLevel }}</span>
+        }
+      </span>
       <span class="hb__meta">{{ row.meta }}</span>
       <span class="hb__qty">×{{ row.qty }}</span>
     </button>

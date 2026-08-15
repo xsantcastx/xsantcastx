@@ -157,6 +157,16 @@
   color: rgba(214, 221, 235, 0.58);
 }
 
+.qi__temper {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(18, 14, 8, 0.45);
+}
+.qi__temper-lvl, .qi__temper-cost, .qi__temper-note { margin: 0 0 0.5rem; }
+.qi__temper-note { color: #c9a84c; }
+.qi__btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .qi__facts dd { margin: 0.15rem 0 0; }
 
 .qi__actions {
