@@ -5,7 +5,16 @@ import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
-import { ACTIVITY_KEY, BASALT_SEAMWORKS_ID, EMBER_GUARANTEE_AT, MINING_RECOVERY_MS, MINING_XP_PER_ACTION } from './activity.model';
+import {
+  ACTIVITY_KEY,
+  BASALT_SEAMWORKS_ID,
+  EMBER_GUARANTEE_AT,
+  INFERNAL_HEARTSTONE_ID,
+  MINING_RECOVERY_MS,
+  MINING_XP_PER_ACTION,
+  SLAG_FRAGMENT_ID,
+} from './activity.model';
+import { xpForLevel } from './mining-level';
 
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
@@ -114,6 +123,58 @@ describe('ActivityProgressionGateway', () => {
     expect(refused).toEqual({ ok: false, code: 'capacity' });
     expect(inventory.stackOf('cinder-ore')).toBe(0);
     expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+  });
+
+  it('refuses a tier the current level has not reached', () => {
+    const refused = gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9, oreId: SLAG_FRAGMENT_ID });
+    expect(refused).toEqual({ ok: false, code: 'tier-locked' });
+    expect(inventory.stackOf(SLAG_FRAGMENT_ID)).toBe(0);
+    expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+  });
+
+  it('grants a higher tier\'s ore and XP once its level is reached', () => {
+    // Seed straight to level 8 rather than looping ~3,600 Cinder strikes —
+    // the level curve, not this test, owns how XP maps to level.
+    // resolvedAt is epoch-relative so a later `now` of 10_000 reads as after
+    // it — the gateway rejects any strike whose clock is behind the last op.
+    const op = {
+      id: 'seed-level-8',
+      hlcRevision: { wallTimeMs: 1, logicalCounter: 0, deviceId: 'seed', sequence: 1 },
+      kind: 'active' as const,
+      disciplineId: 'mining' as const,
+      locationId: BASALT_SEAMWORKS_ID,
+      resolvedAt: new Date(1_000).toISOString(),
+      xpGrant: { id: 'seed-level-8:xp', amount: xpForLevel(8) },
+      inventoryGrants: [],
+      discovery: { rolled: true, result: 'none' as const },
+    };
+    memory.write(ACTIVITY_KEY, {
+      version: 1,
+      era: 55,
+      currentWork: null,
+      progress: { version: 1, xpByDiscipline: { mining: xpForLevel(8) } },
+      operations: [op],
+      craftedBasaltEdge: false,
+      emberGranted: false,
+      miningAccepted: 1,
+    });
+    TestBed.resetTestingModule();
+    const levelled = configure(memory);
+    expect(levelled.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 10_000)).toBeTruthy();
+    const freshInventory = TestBed.inject(InventoryService);
+
+    const result = levelled.resolveMine({ mutationId: 'm2', now: 10_000, roll: 0.9, oreId: SLAG_FRAGMENT_ID });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.operation.xpGrant.amount).toBe(5);
+    expect(result.operation.inventoryGrants.map(g => g.definitionId)).toEqual([SLAG_FRAGMENT_ID]);
+    expect(freshInventory.stackOf(SLAG_FRAGMENT_ID)).toBe(1);
+
+    // Still under level 20 — Infernal Heartstone stays out of reach.
+    const tooDeep = levelled.resolveMine({
+      mutationId: 'm3', now: 10_000 + MINING_RECOVERY_MS + 1, roll: 0.9, oreId: INFERNAL_HEARTSTONE_ID,
+    });
+    expect(tooDeep).toEqual({ ok: false, code: 'tier-locked' });
   });
 
   it('rehydrates the merged ledger without awarding again', () => {

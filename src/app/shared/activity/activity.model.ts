@@ -95,10 +95,38 @@ export const ACTIVITY_OPS_MAX = 256;
 export const MINING_RECOVERY_MS = 2500;
 export const MINING_XP_PER_ACTION = 2;
 export const CINDER_ORE_ID = 'cinder-ore';
+export const SLAG_FRAGMENT_ID = 'slag-fragment';
+export const INFERNAL_HEARTSTONE_ID = 'infernal-heartstone';
 export const EMBER_RESIDUE_ID = 'ember-residue';
 export const BASALT_SEAMWORKS_ID = 'infernal/basalt-seamworks';
 export const EMBER_DISCOVERY_CHANCE = 0.0008;
 export const EMBER_GUARANTEE_AT = 800;
+
+export interface MiningTier {
+  oreId: string;
+  /** Mining level required to select this seam. Cinder Ore is 1 — always open. */
+  unlockLevel: number;
+  xpPerAction: number;
+}
+
+/**
+ * A1: three ore grades gated by level, each paying more XP per strike, so
+ * the reward for climbing the mining curve is a visibly better action, not
+ * just a smaller number on the same rock forever.
+ */
+export const MINING_TIERS: readonly MiningTier[] = [
+  { oreId: CINDER_ORE_ID, unlockLevel: 1, xpPerAction: MINING_XP_PER_ACTION },
+  { oreId: SLAG_FRAGMENT_ID, unlockLevel: 8, xpPerAction: 5 },
+  { oreId: INFERNAL_HEARTSTONE_ID, unlockLevel: 20, xpPerAction: 12 },
+];
+
+export function miningTierFor(oreId: string): MiningTier | undefined {
+  return MINING_TIERS.find(tier => tier.oreId === oreId);
+}
+
+export function isMiningTierUnlocked(tier: MiningTier, level: number): boolean {
+  return level >= tier.unlockLevel;
+}
 
 export const BASALT_SEAMWORKS: ActivityLocationDefinition = {
   id: BASALT_SEAMWORKS_ID,
