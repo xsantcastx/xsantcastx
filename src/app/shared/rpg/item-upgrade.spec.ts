@@ -60,4 +60,28 @@ describe('item upgrade table', () => {
     expect(up.goldPerSec ?? 0).toBeLessThan(2.3);
     expect(up.magicFind).toBeUndefined();
   });
+
+  /*
+   * Rounding to one decimal used to erase a real chunk of successful tempers:
+   * on a common Basalt Edge (~1.3 goldPerSec) a 3-8% gain is 0.04-0.10, and
+   * anything under 0.05 rounded straight back to the starting number. A
+   * player could pay 40,000+ gold, roll a success, and see nothing change.
+   * Every roll in the success range must now produce a visible gain.
+   */
+  it('never lets a successful temper round back to the starting value', () => {
+    const common: GameItem = { ...blade(0), rarity: 'common', stats: { goldPerSec: 1.3 } };
+    for (let i = 0; i <= 20; i++) {
+      const roll = i / 20; // sweep the full 3-8% pct range rollUpgradeSuccess draws from
+      const up = applyTemperBonus(common, () => roll);
+      expect(up.goldPerSec).toBeGreaterThan(1.3);
+    }
+  });
+
+  it('keeps the smallest visible step to two decimals, not a float artifact', () => {
+    const common: GameItem = { ...blade(0), rarity: 'common', stats: { goldPerSec: 1.3 } };
+    const up = applyTemperBonus(common, () => 0);
+    // 1.3 * 1.03 * 0.85 (common scale) lands just under the old 0.05 rounding
+    // threshold; confirm it is still exactly representable at 2 decimals.
+    expect(Number.isInteger((up.goldPerSec ?? 0) * 100)).toBe(true);
+  });
 });
