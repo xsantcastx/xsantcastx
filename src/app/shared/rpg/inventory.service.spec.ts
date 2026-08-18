@@ -344,6 +344,36 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.canAcceptStackGrant('cinder-ore')).toBe(true);
   });
 
+  /*
+   * dropStack took no quantity at all, so every "Drop" on a stack emptied it —
+   * the confirm copy said "Drop all N" because that was the literal truth, and
+   * a player asking to drop one ore lost the lot.
+   */
+  it('drops only the amount asked for and keeps the row', () => {
+    expect(inventory.grantStack('g-part', 'cinder-ore', 20)).toBe(true);
+    expect(inventory.dropStack('cinder-ore', 1)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(19);
+    expect(inventory.snapshot.stacks.some(row => row.stackKey === 'cinder-ore')).toBe(true);
+
+    expect(inventory.dropStack('cinder-ore', 9)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(10);
+  });
+
+  it('clamps an over-large drop to what is held and then clears the row', () => {
+    expect(inventory.grantStack('g-clamp', 'cinder-ore', 3)).toBe(true);
+    expect(inventory.dropStack('cinder-ore', 999)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+    expect(inventory.snapshot.stacks.length).toBe(0);
+  });
+
+  it('refuses a non-positive or junk amount rather than emptying the stack', () => {
+    expect(inventory.grantStack('g-junk', 'cinder-ore', 5)).toBe(true);
+    for (const bad of [0, -3, NaN]) {
+      expect(inventory.dropStack('cinder-ore', bad as number)).toBe(false);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(5);
+  });
+
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
     const registry = TestBed.inject(LocalSaveRegistry);
     memory.attached = false;

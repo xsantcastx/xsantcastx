@@ -1280,3 +1280,81 @@
   .mk__eclipse-fill { transition: none; }
   .mk__buy:hover:not(:disabled), .mk__patron-cta:hover, .mk__eclipse-btn:hover { transform: none; }
 }
+
+/* ── Flat listing card ────────────────────────────────────────────────────
+   Replaces the disclosure tile. Everything a buying decision needs — art,
+   rarity, category, what it does, price, Buy — is visible without a click. The
+   old tile hid the effect text behind an expand, so browsing 37 listings meant
+   37 clicks to learn what any of them did.
+
+   Two columns, not three: the page grid is `250px minmax(0,1fr) 288px` inside a
+   988px shell, so this column is ~409px at any desktop width. A price rail
+   beside the body left the name about 170px and wrapped every title. The buy
+   row spans underneath instead, which also gives the button a real target. */
+.mk__card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  width: 100%;
+}
+.mk__card .mk__tile-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+}
+.mk__card .mk__tile-art { width: 100%; height: 100%; object-fit: contain; }
+
+.mk__card-body { min-width: 0; grid-column: 2; }
+.mk__card-body .mk__tile-name {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--mk-ink, #e8ecf1);
+}
+.mk__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gf-dim);
+}
+.mk__card-cat, .mk__card-yield, .mk__card-owned { white-space: nowrap; }
+.mk__card-owned { color: var(--gf-accent-text); }
+.mk__card .mk__row-effect {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mk-dim, #9fb4ae);
+}
+
+/* Price and Buy sit on their own row, full width. */
+.mk__card-buy {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gf-edge);
+}
+.mk__card-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gf-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+.mk__card-buy .mk__buy { margin-left: auto; }

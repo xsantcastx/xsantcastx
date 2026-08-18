@@ -75,7 +75,7 @@ import {
 import { isBasaltEdge } from './material-catalog';
 import { INVENTORY_ERA } from './inventory.model';
 import { eraIsCurrent, ledgerFromPriorEra } from '../save/realm-era';
-import { definitionFor } from './item-definition';
+import { definitionFor, itemFitsSlot } from './item-definition';
 import {
   applyTemperBonus,
   isTemperableKind,
@@ -538,10 +538,27 @@ export class InventoryService {
    * Destroy a material stack (all of it). The empty stack row is tombstoned
    * so it stops occupying the 250-row cap.
    */
-  dropStack(stackKey: string): boolean {
+  /**
+   * Destroy part or all of a material stack.
+   *
+   * `quantity` omitted means the whole stack. It used to be the *only*
+   * behaviour — there was no quantity parameter at all, so every "Drop" on a
+   * stack emptied it, and the confirm copy said "Drop all N" because that was
+   * the literal truth. Dropping one ore now drops one ore.
+   *
+   * The stack's record is tombstoned only when the last unit goes; a partial
+   * drop leaves the row in place so the count keeps rendering.
+   */
+  dropStack(stackKey: string, quantity?: number): boolean {
     if (!this.isBrowser || !stackKey) return false;
     const have = this.stackOf(stackKey);
     if (have <= 0) return false;
+
+    const asked = quantity === undefined ? have : Math.floor(quantity);
+    if (!Number.isFinite(asked) || asked <= 0) return false;
+    const take = Math.min(have, asked);
+    const emptiesStack = take >= have;
+
     const row = this.ledger.records.find(
       entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
     );
@@ -553,15 +570,15 @@ export class InventoryService {
       id: `drop:${stackKey}:${stepped.revision.hlc}:${stepped.revision.sequence}`,
       stackKey,
       kind: 'consume',
-      quantity: have,
+      quantity: take,
       hlc: stepped.revision.hlc,
       deviceId: stepped.revision.deviceId,
       sequence: stepped.revision.sequence,
     });
-    this.ledger = {
-      ...tombstoneRecord(this.ledger, row.id, stepped.revision, Date.now()),
-      stackOps: consumed,
-    };
+    this.ledger = emptiesStack
+      ? { ...tombstoneRecord(this.ledger, row.id, stepped.revision, Date.now()), stackOps: consumed }
+      : { ...this.ledger, stackOps: consumed, hlc: Math.max(this.ledger.hlc, stepped.revision.hlc) };
+
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -672,9 +689,9 @@ export class InventoryService {
 
     let target = slot ?? firstSlotFor(item, occupied);
     if (!target) {
-      target = SLOT_IDS.find(s => slotAccepts(s, item)) ?? null;
+      target = SLOT_IDS.find(s => itemFitsSlot(s, item)) ?? null;
     }
-    if (!target || !slotAccepts(target, item)) return false;
+    if (!target || !itemFitsSlot(target, item)) return false;
 
     const occupant = this.items.find(row =>
       row.equipped && row.slot === target && row.id !== itemId,

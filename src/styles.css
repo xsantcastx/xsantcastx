@@ -149,8 +149,8 @@
      character sheet had each grown their own private set (--mk-* and --fk-*),
      so #E8752A carried three different names and the character hub ended up a
      flat, square-cornered brown against the Market's rounded glass. These are
-     the shared stops; --mk-*/--fk-* stay as local aliases where a file needs a
-     surface-specific tint. */
+     the shared stops; the --mk- and --fk- prefixes stay as local aliases where
+     a file needs a surface-specific tint. */
   --gf-panel: rgba(15, 10, 30, 0.8);
   --gf-panel-solid: rgba(10, 7, 22, 0.95);
   --gf-edge: rgba(255, 255, 255, 0.07);

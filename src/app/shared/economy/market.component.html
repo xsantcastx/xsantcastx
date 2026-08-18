@@ -341,7 +341,6 @@
         <ul class="mk__tiles">
           @for (it of pageItems; track it.id) {
             <li class="mk__tile"
-                [class.mk__tile--open]="isExpanded(it.id)"
                 [class.mk__tile--owned]="it.owned > 0"
                 [class.mk__tile--held]="it.state === 'held' || it.state === 'owned'"
                 [class.mk__tile--flash]="isFlashing(it.id)"
@@ -352,13 +351,14 @@
                 [style.--tier]="it.rarityColor"
                 [style.--tier-glow]="it.rarityGlow">
 
-              <button type="button"
-                      class="mk__tile-trigger"
-                      [id]="'mk-tile-' + it.id"
-                      [attr.aria-expanded]="isExpanded(it.id)"
-                      [attr.aria-controls]="'mk-exp-' + it.id"
-                      [attr.aria-label]="t(isExpanded(it.id) ? 'market.collapse' : 'market.expand', { name: it.name })"
-                      (click)="toggleTile(it.id)">
+              <!--
+                Flat card, no expand. Every listing shows its art, rarity,
+                price, what it does and its Buy button at once. The tile used to
+                be a disclosure button: you clicked it to find out what the
+                thing did and clicked again to buy, which made browsing a
+                catalogue of 37 items a lot of clicking to learn very little.
+              -->
+              <div class="mk__card">
                 <span class="mk__tile-icon" aria-hidden="true">
                   @if (it.art; as card) {
                     <img class="mk__tile-art" [src]="card.src" [attr.srcset]="card.srcset"
@@ -369,43 +369,21 @@
                     <span class="mk__tile-glyph">{{ it.icon }}</span>
                   }
                 </span>
-                <span class="mk__tile-name">{{ it.name }}</span>
-                <span class="mk__tile-state">
-                  <span class="mk__badge">{{ rarityLabel(it.rarity) }}</span>
-                  @if (it.state === 'held' || it.state === 'owned') {
-                    <span class="mk__tile-key">{{ t('market.state.' + it.state) }}</span>
-                  } @else if (it.state === 'locked') {
-                    <span class="mk__tile-key">{{ t('market.state.locked') }} · {{ format(it.cost) }}</span>
-                  } @else {
-                    <span class="mk__tile-key">
-                      <img class="gf-icon currency-icon"
-                           [class.currency-icon--essence]="it.currency === 'essence'"
-                           [src]="it.currency === 'essence'
-                                    ? 'assets/icons/currencies/essence.png'
-                                    : 'assets/icons/currencies/gold.png'"
-                           [alt]="it.currency === 'essence' ? t('market.essence') : t('market.gold')"
-                           width="14" height="14" loading="lazy" decoding="async" draggable="false">
-                      {{ format(it.cost) }}
-                    </span>
-                  }
-                </span>
-              </button>
 
-              @if (isExpanded(it.id)) {
-                <div class="mk__tile-exp" [id]="'mk-exp-' + it.id" role="region"
-                     [attr.aria-labelledby]="'mk-tile-' + it.id">
-                  <p class="mk__row-effect">{{ it.effect }}</p>
-                  <p class="mk__row-lore">{{ it.lore }}</p>
-                  <p class="mk__tile-meta">
-                    <span>{{ categoryLabel(it.category) }}</span>
-                    <span>{{ it.yield }}</span>
+                <div class="mk__card-body">
+                  <h3 class="mk__tile-name">{{ it.name }}</h3>
+                  <p class="mk__card-meta">
+                    <span class="mk__badge">{{ rarityLabel(it.rarity) }}</span>
+                    <span class="mk__card-cat">{{ categoryLabel(it.category) }}</span>
+                    <span class="mk__card-yield">{{ it.yield }}</span>
                     @if (it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic') {
-                      <span>×{{ it.owned }}</span>
+                      <span class="mk__card-owned">{{ t('market.owned.n', { n: it.owned }) }}</span>
                     }
                     @if (isRunning(it)) {
                       <span class="mk__row-timer">{{ enchantRemaining }}</span>
                     }
                   </p>
+                  <p class="mk__row-effect">{{ it.effect }}</p>
 
                   @if (it.state === 'owned' && it.cosmetic; as cos) {
                     <span class="mk__variants" role="group" [attr.aria-label]="it.name + ' variants'">
@@ -421,25 +399,38 @@
                       }
                     </span>
                   }
-
-                  <div class="mk__tile-actions">
-                    <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
-                    @if (it.state === 'held') {
-                      <span class="mk__held">{{ t('market.state.held') }}</span>
-                    } @else if (it.state === 'owned') {
-                      <span class="mk__held mk__held--owned">{{ t('market.state.owned') }}</span>
-                    } @else {
-                      <button type="button" class="mk__buy"
-                              [disabled]="it.state !== 'buy' || isBuying(it.id)"
-                              [attr.aria-busy]="isBuying(it.id)"
-                              (click)="buy(it)"
-                              [attr.aria-label]="t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
-                        {{ isBuying(it.id) ? t('market.buy.in-flight') : (it.state === 'buy' ? it.verb : t('market.state.locked')) }}
-                      </button>
-                    }
-                  </div>
                 </div>
-              }
+
+                <div class="mk__card-buy">
+                  <span class="mk__card-price">
+                    @if (it.state === 'held' || it.state === 'owned') {
+                      <span class="mk__held" [class.mk__held--owned]="it.state === 'owned'">
+                        {{ t('market.state.' + it.state) }}
+                      </span>
+                    } @else {
+                      <img class="gf-icon currency-icon"
+                           [class.currency-icon--essence]="it.currency === 'essence'"
+                           [src]="it.currency === 'essence'
+                                    ? 'assets/icons/currencies/essence.png'
+                                    : 'assets/icons/currencies/gold.png'"
+                           [alt]="it.currency === 'essence' ? t('market.essence') : t('market.gold')"
+                           width="16" height="16" loading="lazy" decoding="async" draggable="false">
+                      <b>{{ format(it.cost) }}</b>
+                    }
+                  </span>
+
+                  @if (it.state !== 'held' && it.state !== 'owned') {
+                    <button type="button" class="mk__buy"
+                            [disabled]="it.state !== 'buy' || isBuying(it.id)"
+                            [attr.aria-busy]="isBuying(it.id)"
+                            (click)="buy(it)"
+                            [attr.aria-label]="t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
+                      {{ isBuying(it.id) ? t('market.buy.in-flight') : (it.state === 'buy' ? it.verb : t('market.state.locked')) }}
+                    </button>
+                  }
+                  <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
+                </div>
+              </div>
             </li>
           }
         </ul>
