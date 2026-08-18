@@ -22,12 +22,16 @@ import {
   CINDER_ORE_ID,
   EMBER_DISCOVERY_CHANCE,
   EMBER_RESIDUE_ID,
+  MINING_TIERS,
+  isMiningTierUnlocked,
   type ActivityLedger,
   type ActivityOperation,
+  type MiningTier,
 } from '../shared/activity/activity.model';
+import { miningLevelView } from '../shared/activity/mining-level';
 import { ChapterGateway } from '../shared/narrative/chapter.gateway';
 import { infernalChoiceById } from '../shared/narrative/infernal-chapter';
-import { CINDER_ORE_DISPLAY, EMBER_RESIDUE_DISPLAY } from '../shared/rpg/material-catalog';
+import { CINDER_ORE_DISPLAY, EMBER_RESIDUE_DISPLAY, materialDisplay, type MaterialDisplay } from '../shared/rpg/material-catalog';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { InventoryService } from '../shared/rpg/inventory.service';
@@ -71,9 +75,12 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
 
   readonly locationId = BASALT_SEAMWORKS_ID;
   readonly infernalHref = '/world/realms/infernal';
-  readonly ore = CINDER_ORE_DISPLAY;
+  readonly tiers = MINING_TIERS;
   readonly ember = EMBER_RESIDUE_DISPLAY;
   readonly chance = Number((EMBER_DISCOVERY_CHANCE * 100).toPrecision(2));
+
+  /** Which seam is armed right now. Cinder Ore is always open, so it's the default. */
+  selectedOreId: string = CINDER_ORE_ID;
 
   snap: ActivityLedger = this.activity.snapshot;
   now = Date.now();
@@ -105,8 +112,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     this.title.setTitle(this.t('seamworks.titlePage'));
     this.sub = this.activity.snapshot$.subscribe(snap => { this.snap = snap; });
     this.sub.add(this.inventory.snapshot$.subscribe(() => {
-      this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
-      this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      this.refreshHeld();
       this.cdr.markForCheck();
     }));
     this.sub.add(this.i18n.currentLanguage$.subscribe(() => {
@@ -116,12 +122,49 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       if (!this.activity.snapshot.currentWork) {
         this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID);
       }
-      if (!this.activity.bagCanTakeOre()) this.keeper.show('bank');
+      if (!this.activity.bagCanTakeOre(this.selectedOreId)) this.keeper.show('bank');
       this.clock = setInterval(() => {
         this.now = Date.now();
         this.cdr.markForCheck();
       }, 100);
     }
+  }
+
+  /** Mining level derived the same way hub-skills.component reads it: off the live XP total, not a cached field. */
+  currentLevel(): number {
+    return miningLevelView(this.snap.progress.xpByDiscipline.mining ?? 0).level;
+  }
+
+  tierUnlocked(tier: MiningTier): boolean {
+    return isMiningTierUnlocked(tier, this.currentLevel());
+  }
+
+  selectTier(tier: MiningTier): void {
+    if (!this.tierUnlocked(tier) || this.selectedOreId === tier.oreId) return;
+    this.selectedOreId = tier.oreId;
+    // A stale "+1 Cinder Ore" result from the old seam would misdescribe the
+    // new one, so the last-strike readout clears on every tier switch.
+    this.lastOp = null;
+    this.lastOre = 0;
+    this.lastEmber = 0;
+    this.refreshHeld();
+  }
+
+  selectedTier(): MiningTier {
+    return this.tiers.find(tier => tier.oreId === this.selectedOreId) ?? this.tiers[0];
+  }
+
+  get ore(): MaterialDisplay {
+    return materialDisplay(this.selectedOreId) ?? CINDER_ORE_DISPLAY!;
+  }
+
+  tierArt(tier: MiningTier): MaterialDisplay {
+    return materialDisplay(tier.oreId) ?? CINDER_ORE_DISPLAY!;
+  }
+
+  private refreshHeld(): void {
+    this.oreHeld = this.inventory.stackOf(this.selectedOreId);
+    this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
   }
 
   ngOnDestroy(): void {
@@ -162,7 +205,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   panelState(): MinePanelState {
     if (this.busy) return 'resolving';
     if (this.lastError === 'persist') return 'persist';
-    if (!this.activity.bagCanTakeOre()) return 'capacity';
+    if (!this.activity.bagCanTakeOre(this.selectedOreId)) return 'capacity';
     if (this.lastError === 'location' || this.lastError === 'not-selected') return 'location';
     if (this.remain() > 0) return 'recovering';
     if (!this.isBrowser) return 'unavailable';
@@ -194,16 +237,16 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     const result = this.activity.resolveMine({
       mutationId,
       locationId: BASALT_SEAMWORKS_ID,
+      oreId: this.selectedOreId,
     });
     this.busy = false;
     if (result.ok) {
       this.lastOp = result.operation;
-      this.lastOre = grantQty(result.operation, CINDER_ORE_ID);
+      this.lastOre = grantQty(result.operation, this.selectedOreId);
       this.lastEmber = grantQty(result.operation, EMBER_RESIDUE_ID);
       this.lastError = null;
       this.pendingId = null;
-      this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
-      this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      this.refreshHeld();
       if (this.lastOre > 0) this.spawnFloater('ore', `+${this.lastOre}`);
       if (this.lastEmber > 0) this.spawnFloater('ember', `+${this.lastEmber}`);
       this.levelUp.checkMining(xpBefore, this.snap.progress.xpByDiscipline.mining ?? 0);

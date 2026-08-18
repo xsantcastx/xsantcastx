@@ -15,8 +15,11 @@ import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   ACTIVITY_KEY,
+  MINING_TIERS,
   emptyActivityLedger,
+  isMiningTierUnlocked,
   locationDefinition,
+  miningTierFor,
   type ActivityLedger,
   type ActivityOperation,
   type CurrentWork,
@@ -45,7 +48,8 @@ export type ActivityRejectCode =
   | 'recovering'
   | 'clock'
   | 'capacity'
-  | 'persist';
+  | 'persist'
+  | 'tier-locked';
 
 export type ActivityResolveResult =
   | { ok: true; operation: ActivityOperation; replayed: boolean }
@@ -129,6 +133,10 @@ export class ActivityProgressionGateway {
     return work;
   }
 
+  private currentMiningLevel(): number {
+    return miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
+  }
+
   /**
    * How long the seam takes to recover right now, given the current level
    * and whatever is in the weapon slot. Recomputed live rather than baked
@@ -138,20 +146,18 @@ export class ActivityProgressionGateway {
    * wait.
    */
   currentMiningRecoveryMs(): number {
-    const level = miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
     const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
-    return effectiveMiningRecoveryMs(level, strikePower);
+    return effectiveMiningRecoveryMs(this.currentMiningLevel(), strikePower);
   }
 
   /** Whole-percent readout for the Seamworks page. 0 hides the line entirely. */
   miningSpeedupPct(): number {
-    const level = miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
     const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
     // The bare call resolves to the imported pure function above, not to this
     // method — a class method name isn't in scope inside its own body, only
     // `this.miningSpeedupPct` would be. Same name is deliberate symmetry with
     // currentMiningRecoveryMs()/effectiveMiningRecoveryMs() just above.
-    return miningSpeedupPct(level, strikePower);
+    return miningSpeedupPct(this.currentMiningLevel(), strikePower);
   }
 
   recoveryEndsAt(): number | null {
@@ -171,13 +177,15 @@ export class ActivityProgressionGateway {
   }
 
   /** Live bag check — do not latch a capacity error after the player drops. */
-  bagCanTakeOre(): boolean {
-    return this.inventory.canAcceptStackGrant('cinder-ore');
+  bagCanTakeOre(oreId = 'cinder-ore'): boolean {
+    return this.inventory.canAcceptStackGrant(oreId);
   }
 
   resolveMine(input: {
     mutationId: string;
     locationId?: string;
+    /** Which seam tier to strike. Defaults to Cinder Ore — always unlocked. */
+    oreId?: string;
     now?: number;
     roll?: number;
   }): ActivityResolveResult {
@@ -195,6 +203,13 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'location' };
     }
 
+    // The client picks a seam; the gateway is the only party trusted to
+    // decide whether the Keeper's level has actually opened it.
+    const tier = (input.oreId ? miningTierFor(input.oreId) : undefined) ?? MINING_TIERS[0];
+    if (!isMiningTierUnlocked(tier, this.currentMiningLevel())) {
+      return { ok: false, code: 'tier-locked' };
+    }
+
     const last = newestOperation(this.ledger.operations, work);
     if (last) {
       const lastAt = Date.parse(last.resolvedAt);
@@ -202,7 +217,7 @@ export class ActivityProgressionGateway {
       if (now < lastAt + this.currentMiningRecoveryMs()) return { ok: false, code: 'recovering' };
     }
 
-    if (!this.inventory.canAcceptStackGrant('cinder-ore')) {
+    if (!this.inventory.canAcceptStackGrant(tier.oreId)) {
       return { ok: false, code: 'capacity' };
     }
 
@@ -221,6 +236,8 @@ export class ActivityProgressionGateway {
       previousHlc: this.lastHlc,
       now,
       locationId,
+      oreId: tier.oreId,
+      xpAmount: tier.xpPerAction,
       discovery,
     });
 

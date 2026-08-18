@@ -20,7 +20,29 @@
 
   <section class="sw__panel" aria-labelledby="sw-mine-title">
     <h2 id="sw-mine-title">{{ t('seamworks.panel.title') }}</h2>
-    <p class="sw__expect">{{ t('seamworks.expect') }}</p>
+
+    <div class="sw__tiers" role="group" [attr.aria-label]="t('seamworks.tier.title')">
+      @for (tier of tiers; track tier.oreId) {
+        <button
+          type="button"
+          class="sw__tier"
+          [class.sw__tier--active]="tier.oreId === selectedOreId"
+          [class.sw__tier--locked]="!tierUnlocked(tier)"
+          [disabled]="!tierUnlocked(tier)"
+          [attr.aria-pressed]="tier.oreId === selectedOreId"
+          (click)="selectTier(tier)">
+          <img [src]="tierArt(tier).art" [attr.srcset]="tierArt(tier).srcset" sizes="32px" alt="" width="32" height="32" decoding="async">
+          <span class="sw__tier-name">{{ tierArt(tier).name }}</span>
+          @if (tierUnlocked(tier)) {
+            <span class="sw__tier-xp">{{ t('seamworks.tier.xp', { xp: tier.xpPerAction }) }}</span>
+          } @else {
+            <span class="sw__tier-lock">{{ t('seamworks.tier.locked', { level: tier.unlockLevel }) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <p class="sw__expect">{{ t('seamworks.expect', { ore: ore.name, xp: selectedTier().xpPerAction }) }}</p>
     <p class="sw__chance">{{ discoveryLabel() }}</p>
     @if (speedupPct() > 0) {
       <p class="sw__speedup">{{ t('seamworks.speedup', { pct: speedupPct() }) }}</p>
@@ -76,10 +98,10 @@
       </button>
       <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
     </div>
-    <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel() }) }}</p>
+    <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel(), ore: ore.name }) }}</p>
 
     @if (panelState() === 'capacity') {
-      <p class="sw__alert" role="alert">{{ t('seamworks.full') }}</p>
+      <p class="sw__alert" role="alert">{{ t('seamworks.full', { ore: ore.name }) }}</p>
     }
     @if (panelState() === 'location') {
       <p class="sw__alert" role="alert">{{ t('seamworks.away') }}</p>
@@ -94,7 +116,7 @@
 
     @if (lastOp; as op) {
       <div class="sw__result" [class.sw__result--rare]="lastEmber > 0">
-        <p>{{ t('seamworks.result.ore', { gain: lastOre, held: oreHeld }) }}</p>
+        <p>{{ t('seamworks.result.ore', { ore: ore.name, gain: lastOre, held: oreHeld }) }}</p>
         @if (lastEmber > 0) {
           <p class="sw__rare">{{ t('seamworks.result.ember', { gain: lastEmber, held: emberHeld }) }}</p>
         } @else if (op.discovery.result !== 'none') {

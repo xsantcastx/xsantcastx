@@ -3,8 +3,13 @@ import {
   BASALT_SEAMWORKS_ID,
   CINDER_ORE_ID,
   EMBER_RESIDUE_ID,
+  INFERNAL_HEARTSTONE_ID,
+  MINING_TIERS,
   MINING_XP_PER_ACTION,
+  SLAG_FRAGMENT_ID,
   emptyActivityLedger,
+  isMiningTierUnlocked,
+  miningTierFor,
   type ActivityLedger,
   type ActivityOperation,
   type HlcRevision,
@@ -137,6 +142,34 @@ describe('C7 activity ops', () => {
       ledger({ currentWork: { ...work, lastResolvedAt: 'other-stale' } }),
     );
     expect(merged.currentWork?.lastResolvedAt).toBe(op.resolvedAt);
+  });
+
+  it('grants the requested tier\'s ore and XP, not the Cinder Ore default', () => {
+    const op = buildMineOperation({
+      id: 'heartstone-1', deviceId: 'phone', previousHlc: null, now: 10,
+      locationId: BASALT_SEAMWORKS_ID,
+      oreId: INFERNAL_HEARTSTONE_ID,
+      xpAmount: 12,
+      discovery: { rolled: true, result: 'none' },
+    });
+    expect(op.xpGrant).toEqual({ id: 'heartstone-1:xp', amount: 12 });
+    expect(op.inventoryGrants.map(row => row.definitionId)).toEqual([INFERNAL_HEARTSTONE_ID]);
+  });
+
+  it('defines three mining tiers with strictly increasing unlock levels and XP', () => {
+    expect(MINING_TIERS.map(t => t.oreId)).toEqual([CINDER_ORE_ID, SLAG_FRAGMENT_ID, INFERNAL_HEARTSTONE_ID]);
+    for (let i = 1; i < MINING_TIERS.length; i++) {
+      expect(MINING_TIERS[i].unlockLevel).toBeGreaterThan(MINING_TIERS[i - 1].unlockLevel);
+      expect(MINING_TIERS[i].xpPerAction).toBeGreaterThan(MINING_TIERS[i - 1].xpPerAction);
+    }
+    expect(MINING_TIERS[0].unlockLevel).toBe(1);
+  });
+
+  it('locks a tier below its level and opens it at or above', () => {
+    const heartstone = miningTierFor(INFERNAL_HEARTSTONE_ID)!;
+    expect(isMiningTierUnlocked(heartstone, 19)).toBe(false);
+    expect(isMiningTierUnlocked(heartstone, 20)).toBe(true);
+    expect(isMiningTierUnlocked(heartstone, 99)).toBe(true);
   });
 
   it('counts seamworks mining ops for the guarantee window', () => {

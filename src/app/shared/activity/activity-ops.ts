@@ -96,11 +96,16 @@ export function buildMineOperation(input: {
   previousHlc: HlcRevision | null;
   now: number;
   locationId: string;
+  /** Defaults to Cinder Ore — the always-unlocked tier — so existing callers are unaffected. */
+  oreId?: string;
+  xpAmount?: number;
   discovery: ActivityDiscovery;
 }): ActivityOperation {
+  const oreId = input.oreId ?? CINDER_ORE_ID;
+  const xpAmount = input.xpAmount ?? MINING_XP_PER_ACTION;
   const grants: ActivityInventoryGrant[] = [{
     id: `${input.id}:ore`,
-    definitionId: CINDER_ORE_ID,
+    definitionId: oreId,
     quantity: 1,
   }];
   if (input.discovery.result !== 'none') {
@@ -117,7 +122,7 @@ export function buildMineOperation(input: {
     disciplineId: 'mining',
     locationId: input.locationId,
     resolvedAt: new Date(input.now).toISOString(),
-    xpGrant: { id: `${input.id}:xp`, amount: MINING_XP_PER_ACTION },
+    xpGrant: { id: `${input.id}:xp`, amount: xpAmount },
     inventoryGrants: grants,
     discovery: input.discovery,
   };

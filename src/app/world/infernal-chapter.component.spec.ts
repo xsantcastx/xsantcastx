@@ -40,6 +40,10 @@ describe('InfernalChapterComponent', () => {
         { provide: ChapterGateway, useValue: gateway },
       ],
     }).compileComponents();
+    // Sibling specs call setLanguage('es'), which persists to localStorage
+    // and survives into whichever spec Karma runs next. Assertions here read
+    // English copy, so pin it rather than depend on run order.
+    TestBed.inject(TranslationService).setLanguage('en');
     fixture = TestBed.createComponent(InfernalChapterComponent);
     fixture.detectChanges();
   });
