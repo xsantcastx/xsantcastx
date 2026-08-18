@@ -24,16 +24,26 @@
     <p class="sw__chance">{{ discoveryLabel() }}</p>
 
     <div class="sw__loot" aria-label="{{ t('seamworks.haul') }}">
-      <figure [class.is-hit]="lastOre > 0">
-        <img [src]="ore.art" alt="" width="72" height="72" decoding="async">
+      <figure [class.is-hit]="lastOre > 0" [class.is-striking]="oreFloaters().length > 0">
+        <div class="sw__art-wrap">
+          <img [src]="ore.art" [attr.srcset]="ore.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of oreFloaters(); track f.id) {
+            <span class="sw__float" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
         <figcaption>{{ ore.name }}</figcaption>
         <p class="sw__held">{{ t('seamworks.held', { n: oreHeld }) }}</p>
         @if (lastOre > 0) {
           <p class="sw__gain">{{ t('seamworks.gain', { n: lastOre }) }}</p>
         }
       </figure>
-      <figure [class.is-hit]="lastEmber > 0" [class.is-rare]="lastEmber > 0 || emberHeld > 0">
-        <img [src]="ember.art" alt="" width="72" height="72" decoding="async">
+      <figure [class.is-hit]="lastEmber > 0" [class.is-rare]="lastEmber > 0 || emberHeld > 0" [class.is-striking]="emberFloaters().length > 0">
+        <div class="sw__art-wrap">
+          <img [src]="ember.art" [attr.srcset]="ember.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of emberFloaters(); track f.id) {
+            <span class="sw__float sw__float--rare" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
         <figcaption>{{ ember.name }}</figcaption>
         <p class="sw__held">{{ t('seamworks.held', { n: emberHeld }) }}</p>
         @if (lastEmber > 0) {
@@ -46,16 +56,20 @@
       <button
         type="button"
         class="sw__mine"
+        [class.sw__mine--struck]="oreFloaters().length > 0"
         [disabled]="mineDisabled()"
         [attr.aria-disabled]="mineDisabled()"
         (click)="mine()">
-        @if (panelState() === 'recovering') {
-          {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
-        } @else if (panelState() === 'resolving') {
-          {{ t('seamworks.mine.resolving') }}
-        } @else {
-          {{ t('seamworks.mine') }}
-        }
+        <img class="sw__mine-art" [src]="ore.art" alt="" width="26" height="26" aria-hidden="true" decoding="async">
+        <span>
+          @if (panelState() === 'recovering') {
+            {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
+          } @else if (panelState() === 'resolving') {
+            {{ t('seamworks.mine.resolving') }}
+          } @else {
+            {{ t('seamworks.mine') }}
+          }
+        </span>
       </button>
       <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
     </div>

@@ -42,6 +42,14 @@ type MinePanelState =
   | 'persist'
   | 'unavailable';
 
+type FloaterKind = 'ore' | 'ember';
+
+interface Floater {
+  id: number;
+  kind: FloaterKind;
+  text: string;
+}
+
 @Component({
   selector: 'app-basalt-seamworks',
   standalone: true,
@@ -80,6 +88,19 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   pendingId: string | null = null;
   busy = false;
 
+  /**
+   * The "+1 Cinder Ore" that rises off the art on a successful strike.
+   *
+   * A `@for` array keyed by a fresh id per grant, not a single nullable
+   * field toggled by `@if`: Angular reuses a view across an `@if` block's
+   * truthy-to-truthy transitions, so a field that stays "set" across two
+   * consecutive strikes would never restart the CSS animation on the second
+   * one. A brand-new array entry forces a brand-new DOM node every time.
+   */
+  floaters: Floater[] = [];
+  private floaterSeq = 0;
+  private floaterTimers: Array<ReturnType<typeof setTimeout>> = [];
+
   ngOnInit(): void {
     this.activity.init();
     this.chapters.init();
@@ -108,6 +129,19 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     if (this.clock) clearInterval(this.clock);
+    for (const t of this.floaterTimers) clearTimeout(t);
+  }
+
+  oreFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'ore'); }
+  emberFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'ember'); }
+
+  private spawnFloater(kind: FloaterKind, text: string): void {
+    const id = ++this.floaterSeq;
+    this.floaters = [...this.floaters, { id, kind, text }];
+    this.floaterTimers.push(setTimeout(() => {
+      this.floaters = this.floaters.filter(f => f.id !== id);
+      this.cdr.markForCheck();
+    }, 900));
   }
 
   t(key: string, vars?: Record<string, string | number>): string {
@@ -167,6 +201,8 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       this.pendingId = null;
       this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
       this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      if (this.lastOre > 0) this.spawnFloater('ore', `+${this.lastOre}`);
+      if (this.lastEmber > 0) this.spawnFloater('ember', `+${this.lastEmber}`);
       this.levelUp.checkMining(xpBefore, this.snap.progress.xpByDiscipline.mining ?? 0);
       if (this.lastEmber > 0 || this.keeper.isOpen) this.keeper.show('bank');
       this.cdr.markForCheck();
