@@ -206,6 +206,19 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.t('loadout.slot.announce.filled', { name, item: item.name });
   }
 
+  /**
+   * Hover summary for a well. The loadout had no tooltips at all — the only way
+   * to see what a worn item does was to open the full Inspect dialog, which is
+   * a heavy gesture for "what am I wearing".
+   */
+  slotTooltip(slot: PaperDollSlotManifest): string {
+    const item = this.itemInDoll(slot);
+    if (!item) return this.slotAnnounce(slot);
+    const mods = this.modsOf(item).join(' · ');
+    const level = item.upgradeLevel ? ` +${item.upgradeLevel}` : '';
+    return mods ? `${item.name}${level} — ${mods}` : `${item.name}${level}`;
+  }
+
   onSlotClick(slot: PaperDollSlotManifest): void {
     const armed = this.armed;
     if (armed && slot.liveSlot && slotAccepts(slot.liveSlot, armed)) {

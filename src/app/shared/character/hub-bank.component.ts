@@ -156,6 +156,27 @@ export class HubBankComponent implements OnInit, OnDestroy {
     return this.droppableRows.filter(row => this.isJunk(row)).length;
   }
 
+  /**
+   * Placeholder wells drawn behind an empty or part-filled shelf.
+   *
+   * An inventory that renders as one sentence of prose reads as a settings
+   * page. The grid is what makes it read as a bag. This is a display shape
+   * only — the real cap is INVENTORY_BAG_CAP and is not implied here.
+   */
+  padsFor(count: number): readonly number[] {
+    const target = count === 0 ? 12 : Math.max(0, 4 - (count % 4)) % 4;
+    return Array.from({ length: target }, (_, i) => i);
+  }
+
+  /** Hover/assistive summary for a row: what it is, how many, and its state. */
+  tooltipFor(row: BankRow): string {
+    const bits = [row.name, `x${row.qty}`, row.meta];
+    if (row.dropItem?.upgradeLevel) bits.push(`+${row.dropItem.upgradeLevel}`);
+    if (row.isRare) bits.push(this.t('hub.bank.rare'));
+    if (row.isNew) bits.push(this.t('hub.bank.new'));
+    return bits.filter(Boolean).join(' · ');
+  }
+
   canDropRow(row: BankRow): boolean {
     if (row.dropStack) return true;
     return !!row.dropItem && this.inventory.canDrop(row.dropItem);

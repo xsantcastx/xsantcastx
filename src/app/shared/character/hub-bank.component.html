@@ -92,6 +92,11 @@
 
   @if (!rows.length) {
     <p class="hb__empty">{{ t('hub.bank.empty') }}</p>
+    <ul class="hb__grid" aria-hidden="true">
+      @for (pad of padsFor(0); track pad) {
+        <li class="hb__tile hb__tile--pad"></li>
+      }
+    </ul>
   } @else {
     @if (itemRows.length) {
       <section class="hb__shelf" [attr.aria-label]="t('hub.bank.kind.items')">
@@ -99,6 +104,9 @@
         <ul class="hb__grid">
           @for (row of itemRows; track row.id) {
             <ng-container *ngTemplateOutlet="tile; context: { $implicit: row }"></ng-container>
+          }
+          @for (pad of padsFor(itemRows.length); track pad) {
+            <li class="hb__tile hb__tile--pad" aria-hidden="true"></li>
           }
         </ul>
       </section>
@@ -110,6 +118,9 @@
         <ul class="hb__grid">
           @for (row of materialRows; track row.id) {
             <ng-container *ngTemplateOutlet="tile; context: { $implicit: row }"></ng-container>
+          }
+          @for (pad of padsFor(materialRows.length); track pad) {
+            <li class="hb__tile hb__tile--pad" aria-hidden="true"></li>
           }
         </ul>
       </section>
@@ -137,17 +148,13 @@
     [class.is-rare]="row.isRare"
     [class.is-new]="row.isNew"
     [attr.data-kind]="row.kind">
-    @if (canDropRow(row)) {
-      <label class="hb__check">
-        <input type="checkbox" [checked]="isChecked(row)" (click)="toggleCheck(row, $event)">
-        <span class="visually-hidden">{{ t('hub.bank.mark', { name: row.name }) }}</span>
-      </label>
-    }
-    <button type="button" class="hb__face" (click)="select(row)" [attr.aria-pressed]="selectedId === row.id">
+    <button type="button" class="hb__face" (click)="select(row)"
+            [attr.aria-pressed]="selectedId === row.id"
+            [attr.title]="tooltipFor(row)">
       @if (row.art) {
         <img class="hb__art" [src]="row.art" alt="" width="40" height="40" decoding="async">
       } @else {
-        <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2) }}</span>
+        <span class="hb__orb" aria-hidden="true">{{ row.name.slice(0, 2).toUpperCase() }}</span>
       }
       <span class="hb__name">
         {{ row.name }}
@@ -174,6 +181,12 @@
       </span>
     </button>
     <div class="hb__actions">
+      @if (canDropRow(row)) {
+        <label class="hb__check">
+          <input type="checkbox" [checked]="isChecked(row)" (click)="toggleCheck(row, $event)">
+          <span class="visually-hidden">{{ t('hub.bank.mark', { name: row.name }) }}</span>
+        </label>
+      }
       @if (row.inspectType && row.inspectId) {
         <app-inspect-button [type]="row.inspectType" [id]="row.inspectId" />
       }

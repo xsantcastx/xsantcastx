@@ -244,7 +244,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  color: #8f8;
+  color: var(--success-color);
   font: 600 0.92rem/1.35 var(--font-lore);
 }
 .ld__expand-name { margin: 0; font-weight: 600; }
@@ -360,11 +360,7 @@
   display: grid; place-items: center;
   background: rgba(164, 139, 255, 0.16);
 }
-.ld__tile-art {
-  width: 36px; height: 36px; border-radius: 8px;
-  object-fit: contain;
-  background: rgba(0, 0, 0, 0.35);
-}
+
 .ld__tile-name { font-weight: 600; }
 .ld__tile-meta { font-size: 0.72rem; color: #8b9c97; }
 .ld__tile-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
@@ -424,11 +420,6 @@
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
 }
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); border: 0;
-}
-
 .ld__confirm {
   margin-top: 1rem;
   padding: 0.8rem;
