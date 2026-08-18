@@ -385,6 +385,75 @@ describe('inventory adapter (C3)', () => {
     expect(merged.stackOps[0].id).toBe(`grant:${ops.length - INVENTORY_STACK_OPS_MAX}`);
   });
 
+  // The cap used to *subtract* the overflow from the player's total, because
+  // stack quantities are derived by summing the log. Mined ore vanished.
+  it('folds overflow into a checkpoint instead of dropping the quantity', () => {
+    const total = INVENTORY_STACK_OPS_MAX + 40;
+    const ops = Array.from({ length: total }, (_, i) => ({
+      id: `grant:${i}`,
+      stackKey: 'cinder-ore',
+      kind: 'grant' as const,
+      quantity: 1,
+      hlc: i + 1,
+      deviceId: 'phone',
+      sequence: i + 1,
+    }));
+    const merged = mergeInventoryLedgers(ledger({ stackOps: ops }), ledger({ stackOps: [] }));
+
+    expect(merged.stackOps.length).toBe(INVENTORY_STACK_OPS_MAX);
+    expect(stackQuantity(merged.stackOps, 'cinder-ore', merged.stackCheckpoints)).toBe(total);
+    const checkpoint = merged.stackCheckpoints?.find(cp => cp.stackKey === 'cinder-ore');
+    expect(checkpoint?.quantity).toBe(40);
+  });
+
+  it('keeps the quantity stable across repeated merges past the cap', () => {
+    const total = INVENTORY_STACK_OPS_MAX + 40;
+    const ops = Array.from({ length: total }, (_, i) => ({
+      id: `grant:${i}`,
+      stackKey: 'cinder-ore',
+      kind: 'grant' as const,
+      quantity: 1,
+      hlc: i + 1,
+      deviceId: 'phone',
+      sequence: i + 1,
+    }));
+    const once = mergeInventoryLedgers(ledger({ stackOps: ops }), ledger({ stackOps: [] }));
+    const twice = mergeInventoryLedgers(once, once);
+    const thrice = mergeInventoryLedgers(twice, ledger({ stackOps: ops }));
+
+    for (const round of [once, twice, thrice]) {
+      expect(stackQuantity(round.stackOps, 'cinder-ore', round.stackCheckpoints)).toBe(total);
+    }
+  });
+
+  it('does not double-count an op already folded into a checkpoint', () => {
+    const covered = {
+      id: 'grant:old',
+      stackKey: 'cinder-ore',
+      kind: 'grant' as const,
+      quantity: 7,
+      hlc: 5,
+      deviceId: 'phone',
+      sequence: 1,
+    };
+    const checkpoints = [{ stackKey: 'cinder-ore', quantity: 7, upToHlc: 5 }];
+    expect(stackQuantity([covered], 'cinder-ore', checkpoints)).toBe(7);
+  });
+
+  it('counts consumes that arrive after the checkpoint watermark', () => {
+    const checkpoints = [{ stackKey: 'cinder-ore', quantity: 10, upToHlc: 5 }];
+    const spend = {
+      id: 'consume:1',
+      stackKey: 'cinder-ore',
+      kind: 'consume' as const,
+      quantity: 4,
+      hlc: 9,
+      deviceId: 'phone',
+      sequence: 1,
+    };
+    expect(stackQuantity([spend], 'cinder-ore', checkpoints)).toBe(6);
+  });
+
   it('repeated delivery of the same two ledgers does not duplicate items', () => {
     const a = ledger({ records: [instance('a')], goldFromSales: 4 });
     const b = ledger({ records: [instance('b')], goldFromSales: 9 });

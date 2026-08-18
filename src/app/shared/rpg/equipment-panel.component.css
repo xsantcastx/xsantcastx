@@ -126,7 +126,7 @@
   margin: 0;
   padding: 0;
   color: #8f8;
-  font: 600 0.92rem/1.35 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 600 0.92rem/1.35 var(--font-lore);
 }
 .ld__expand-name { margin: 0; font-weight: 600; }
 .ld__lvl {

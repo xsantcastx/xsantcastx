@@ -136,6 +136,12 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   pendingCraftId: string | null = null;
   lastCraft: GameItem | null = null;
   craftError: 'missing' | 'capacity' | 'persist' | null = null;
+  /**
+   * Which recipe the current `lastCraft` / `craftError` belongs to. The state
+   * above is component-level, so without this every recipe card renders the
+   * same banner once a second craftable recipe exists.
+   */
+  craftRecipeId: string | null = null;
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
   }
@@ -295,9 +301,11 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!recipe.craftable) return;
     const mutationId = this.pendingCraftId ?? newCraftId();
     this.pendingCraftId = mutationId;
+    this.craftRecipeId = recipe.id;
     const result = this.crafts.craftBasaltEdge(mutationId);
     if (!result.ok) {
       this.craftError = result.code === 'ssr' || result.code === 'clock' ? 'persist' : result.code;
+      this.lastCraft = null;
       if (result.code !== 'persist') this.pendingCraftId = null;
       this.cdr.markForCheck();
       return;

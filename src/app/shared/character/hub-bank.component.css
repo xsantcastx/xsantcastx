@@ -10,7 +10,7 @@
   border: 0;
 }
 
-.hb h2 { margin: 0 0 0.25rem; font: 700 1.15rem/1.2 Palatino, 'Palatino Linotype', 'Times New Roman', serif; color: #f4e7c3; }
+.hb h2 { margin: 0 0 0.25rem; font: 700 1.15rem/1.2 var(--font-lore); color: #f4e7c3; }
 .hb__head { margin-bottom: 0.6rem; }
 .hb__head p { margin: 0; color: #cbb98a; font-size: 0.88rem; }
 
@@ -62,7 +62,7 @@
 .hb__shelf-title, .hb__ledger summary {
   margin: 0 0 0.45rem;
   color: #c9a84c;
-  font: 700 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 700 12px/1 var(--font-lore);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -142,7 +142,19 @@
   background: #0c0a06;
   font-size: 0.72rem;
 }
-.hb__name { font-weight: 600; padding-right: 36px; }
+/*
+ * Clears the 44px checkbox parked at `right: 4px` — so 48px, not 36px. The old
+ * 12px shortfall let long names (systematically longer in Spanish) slide under
+ * the control, with no ellipsis to signal it.
+ */
+.hb__name {
+  font-weight: 600;
+  padding-right: 48px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .hb__lvl {
   margin-left: 6px;
   padding: 1px 5px;
@@ -162,9 +174,16 @@
 }
 .hb__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
+/*
+ * Sticks at 0, not below a measured offset. `top: 148px` was a hand-measured
+ * guess at `.hb__manage`'s height, but that block wraps (`flex-wrap` chip rows)
+ * — so in Spanish, where "Drop"/"Keep" become "Descartar"/"Conservar", the bar
+ * grew past 148px and the confirm stuck underneath it, half-hidden. This is an
+ * alertdialog, so covering the filter bar while it is open is correct.
+ */
 .hb__confirm {
   position: sticky;
-  top: 148px;
+  top: 0;
   z-index: 4;
   margin: 0 0 12px;
   padding: 12px;

@@ -255,7 +255,7 @@ export class InventoryService {
 
   /** Count of a material stack derived from grant/consume ops. */
   stackOf(stackKey: string): number {
-    return stackQuantity(this.ledger.stackOps, stackKey);
+    return stackQuantity(this.ledger.stackOps, stackKey, this.ledger.stackCheckpoints ?? []);
   }
 
   /**
@@ -592,7 +592,7 @@ export class InventoryService {
 
     for (const stackKey of stackKeys) {
       if (!stackKey) continue;
-      const have = stackQuantity(next.stackOps, stackKey);
+      const have = stackQuantity(next.stackOps, stackKey, next.stackCheckpoints ?? []);
       if (have <= 0) continue;
       const row = next.records.find(
         entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
@@ -933,7 +933,7 @@ export class InventoryService {
     const stacks: InventoryStackView[] = [];
     for (const row of ledger.records) {
       if (row.kind !== 'stack' || row.source !== 'inventory') continue;
-      const quantity = stackQuantity(ledger.stackOps, row.stackKey);
+      const quantity = stackQuantity(ledger.stackOps, row.stackKey, ledger.stackCheckpoints ?? []);
       if (quantity <= 0) continue;
       stacks.push({ id: row.id, stackKey: row.stackKey, quantity });
     }

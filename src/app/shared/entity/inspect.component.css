@@ -3,7 +3,7 @@
 .qi-root {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: var(--z-modal);
   pointer-events: none;
 }
 
@@ -155,7 +155,7 @@
 .qi__mod {
   margin: 0;
   color: #8f8;
-  font: 600 0.95rem/1.35 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 600 0.95rem/1.35 var(--font-lore);
 }
 
 .qi__facts {

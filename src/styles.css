@@ -124,6 +124,25 @@
      borders, glows and rules where contrast rules do not apply. */
   --forge-gold-text: #E0A857;
   --forge-void: #0a0a0f;
+
+  /* ===== Layer scale =====
+     There was no scale. Thirty-plus distinct z-index values had accumulated
+     across the game surfaces, and three components doing the same job — a
+     fixed, full-screen modal — sat at 45, 80 and 1200. Only the 1200 one
+     actually cleared the header, so the other two opened *underneath* the
+     chrome. Anything fixed should name a step here rather than invent one.
+
+     Ordering is deliberate: a modal outranks the header, because a modal that
+     opens behind the site chrome is broken, whereas a header behind a modal
+     is correct. Toasts sit above modals so a failure is never hidden by the
+     dialog that caused it. */
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-scene-veil: 30;
+  --z-drawer: 900;
+  --z-header: 1000;
+  --z-modal: 1200;
+  --z-toast: 1300;
 }
 
 /* ===== Resets ===== */
