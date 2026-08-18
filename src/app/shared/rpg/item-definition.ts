@@ -11,6 +11,7 @@ import {
   type ItemType,
   type SlotId,
   sellValueFor,
+  slotAccepts,
 } from './item.model';
 
 export type ItemFamily =
@@ -333,6 +334,20 @@ const BY_NAME = new Map(ITEM_DEFINITIONS.map(def => [def.name, def]));
 
 export function itemDefinitionById(id: string): ItemDefinition | undefined {
   return BY_ID.get(id);
+}
+
+/**
+ * Whether `item` belongs in `slot`, honouring the definition's intended slot.
+ *
+ * `slotAccepts` in item.model only checks the item *type*, and every authored
+ * equipment piece is `type: 'artifact'` — so by that test a helm "fits" the
+ * weapon slot. Legacy/definition-less items keep the type-only rule so nothing
+ * that used to equip stops equipping.
+ */
+export function itemFitsSlot(slot: SlotId, item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): boolean {
+  if (!slotAccepts(slot, item as GameItem)) return false;
+  const def = definitionFor(item);
+  return !def?.slot || def.slot === slot;
 }
 
 export function definitionFor(item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): ItemDefinition | undefined {

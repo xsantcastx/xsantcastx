@@ -239,9 +239,26 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.inventory.dropStack(stack.stackKey);
   }
 
-  confirmDropStack(): void {
+  /**
+   * The amounts the confirm dialog offers, smallest first, never above what is
+   * held. Dropping a stack used to be all-or-nothing — this is the fix for it.
+   */
+  dropChoices(stack: InventoryStackView): readonly number[] {
+    const held = stack.quantity;
+    const steps = [1, 10, 100].filter(n => n < held);
+    return [...steps, held];
+  }
+
+  /** Label for a choice: an amount, or "all N" for the one that empties it. */
+  dropChoiceLabel(stack: InventoryStackView, n: number): string {
+    return n >= stack.quantity
+      ? this.t('loadout.drop.choiceAll', { n })
+      : this.t('loadout.drop.choiceSome', { n });
+  }
+
+  confirmDropStack(quantity?: number): void {
     if (!this.droppingStack) return;
-    this.inventory.dropStack(this.droppingStack.stackKey);
+    this.inventory.dropStack(this.droppingStack.stackKey, quantity);
     this.droppingStack = null;
   }
 

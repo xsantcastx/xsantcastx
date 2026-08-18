@@ -338,7 +338,6 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   queryState: MarketQuery = { ...MARKET_QUERY_DEFAULTS };
   searchDraft = '';
-  expandedId: string | null = null;
   eclipseOpen = false;
   catalogueError = false;
   hydrated = false;
@@ -426,7 +425,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-    this.releaseTileStack();
+    this.unstackTile?.();
     this.escapeUnlisten?.();
     this.revealObserver?.disconnect();
   }
@@ -832,48 +831,19 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  isExpanded(id: string): boolean { return this.expandedId === id; }
-
-  toggleTile(id: string): void {
-    if (this.expandedId === id) {
-      this.collapseTile();
-      return;
-    }
-    this.expandTile(id);
-  }
-
-  private expandTile(id: string): void {
-    this.releaseTileStack();
-    this.expandedId = id;
-    this.unstackTile = this.overlays.push('market-tile', () => this.collapseTile());
-    this.cdr.markForCheck();
-  }
-
-  collapseTile(): void {
-    const id = this.expandedId;
-    this.releaseTileStack();
-    this.expandedId = null;
-    if (id) this.focusTile(id);
-    this.cdr.markForCheck();
-  }
-
-  private focusTile(id: string): void {
-    if (!this.isBrowser) return;
-    const el = this.host.nativeElement.querySelector(`#mk-tile-${id}`) as HTMLElement | null;
-    el?.focus();
-  }
-
-  private releaseTileStack(): void {
-    this.unstackTile?.();
-    this.unstackTile = undefined;
-  }
+  /*
+   * Tiles no longer expand — every listing shows its art, rarity, price, effect
+   * and Buy button at once. `collapseTile` survives as a no-op because the
+   * catalogue picks in the sidebar call it before re-running a query, and
+   * keeping the call site honest is cheaper than threading a flag through it.
+   */
+  collapseTile(): void { /* nothing to collapse; kept for call-site clarity */ }
 
   private armEscape(): void {
     if (typeof document === 'undefined') return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' && event.key !== 'Esc') return;
       if (this.inspect.view.open) return;
-      if (this.expandedId) return;
       if (this.eclipseArmed) {
         this.disarm();
         this.cdr.markForCheck();

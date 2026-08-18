@@ -74,7 +74,11 @@
     <div class="hb__confirm" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">
       <p>{{ t('loadout.drop.confirmStack', { name: materialName(stack), n: stack.quantity }) }}</p>
       <div class="hb__confirm-actions">
-        <button type="button" class="hb__drop" (click)="confirmDropStack()">{{ t('loadout.drop.confirmYes') }}</button>
+        @for (n of dropChoices(stack); track n) {
+          <button type="button" class="hb__drop" (click)="confirmDropStack(n)">
+            {{ dropChoiceLabel(stack, n) }}
+          </button>
+        }
         <button type="button" class="hb__keep" (click)="cancelConfirm()">{{ t('loadout.drop.confirmNo') }}</button>
       </div>
     </div>

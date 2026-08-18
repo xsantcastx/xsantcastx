@@ -450,3 +450,90 @@
     background-image: none;
   }
 }
+
+/* ── Slot picker ──────────────────────────────────────────────────────────
+   Selecting a well opens this: what is worn there, then everything in the bag
+   that fits. Equipping used to need the Bank tab to arm an item first, which
+   meant already knowing which of your items was a helm. */
+.ld__picker {
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  border: 1px solid var(--gf-edge-strong);
+  border-radius: var(--gf-radius);
+  background: var(--gf-panel);
+}
+.ld__picker-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 0.6rem;
+}
+.ld__picker-title {
+  margin: 0;
+  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gf-accent-text);
+}
+.ld__picker-close {
+  min-width: 44px; min-height: 44px;
+  border: 0; background: transparent;
+  color: var(--gf-dim); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.ld__picker-close:hover { color: var(--gf-ink); }
+.ld__picker-close:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
+
+.ld__worn {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid var(--gf-edge);
+}
+.ld__worn-art { object-fit: contain; }
+.ld__worn-body { min-width: 0; }
+.ld__worn .ld__expand-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
+
+.ld__picker-label {
+  margin: 0 0 0.45rem;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gf-dim);
+}
+.ld__picker-empty { margin: 0; color: var(--gf-faint); font-size: 0.82rem; }
+
+.ld__picker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ld__pick {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 10px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--gf-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+.ld__pick:hover { border-color: var(--gf-accent); transform: translateX(2px); }
+.ld__pick:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
+.ld__pick-art, .ld__pick-orb { grid-row: 1 / span 2; width: 36px; height: 36px; object-fit: contain; }
+.ld__pick-orb {
+  display: grid; place-items: center;
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gf-faint); font-size: 0.7rem;
+}
+.ld__pick-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld__pick-mods {
+  color: var(--gf-dim); font-size: 0.72rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld__pick { transition: none; }
+  .ld__pick:hover { transform: none; }
+}
