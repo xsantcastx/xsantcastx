@@ -117,9 +117,9 @@
                       [attr.data-currency]="c.currency"
                       [attr.aria-pressed]="queryState.category === c.id"
                       (click)="selectCategory(c.id)">
-                @if (c.icon) {
+                @if (markOf(c); as mark) {
                   <img class="mk__facet-icon gf-icon shop-icon"
-                       [src]="'assets/icons/shops/' + c.icon + '.png'"
+                       [src]="mark"
                        alt="" aria-hidden="true" width="22" height="22"
                        loading="lazy" decoding="async" draggable="false">
                 } @else {
@@ -361,7 +361,8 @@
                       (click)="toggleTile(it.id)">
                 <span class="mk__tile-icon" aria-hidden="true">
                   @if (it.art; as card) {
-                    <img class="mk__tile-art" [src]="card.src"
+                    <img class="mk__tile-art" [src]="card.src" [attr.srcset]="card.srcset"
+                         sizes="72px"
                          [attr.width]="card.width" [attr.height]="card.height"
                          alt="" loading="lazy" decoding="async" draggable="false">
                   } @else {

@@ -8,8 +8,8 @@
  * carries a 96/256 ladder instead and the same set weighs 8 MB.
  *
  * Manifest keys are the catalogue filename with the painter's two-digit prefix
- * stripped, which matches the model id everywhere except the three artifacts
- * below, where the file name is more verbose than the id.
+ * stripped, which matches the model id everywhere except the handful aliased in
+ * `art.ts`, where the file name is more verbose than the id.
  *
  * Twenty-two of the twenty-five runes were painted; Mote, Seam and Ledger are
  * absent. Callers keep a text glyph for null.
@@ -20,8 +20,8 @@ import {
   ART_ITEMS_ARTIFACTS,
   ART_ITEMS_RUNES,
   ART_ITEMS_RUNEWORDS,
-  type ArtEntry,
 } from '../art/art-manifest.generated';
+import { ART_ALIAS, type ArtEntry } from '../art/art';
 
 export interface CardArt {
   /** Path from the app root, no leading slash. */
@@ -31,13 +31,6 @@ export interface CardArt {
   width: number;
   height: number;
 }
-
-/** Model id -> manifest key, for the three artifacts whose filename is wordier. */
-const ARTIFACT_KEY: Readonly<Record<string, string>> = {
-  'mirrorblade-kael': 'mirrorblade-of-kael',
-  'relic-third-dawn': 'relic-of-the-third-dawn',
-  'fragment-first-sun': 'fragment-of-the-first-sun',
-};
 
 function card(entry: ArtEntry | undefined): CardArt | null {
   return entry ? { src: entry.src, srcset: entry.srcset, width: entry.width, height: entry.height } : null;
@@ -62,7 +55,7 @@ export const RUNEWORD_CARDS: Readonly<Record<string, CardArt>> = toCards(ART_ITE
 export const ARTIFACT_CARDS: Readonly<Record<string, CardArt>> = (() => {
   const byFileStem = toCards(ART_ITEMS_ARTIFACTS);
   const out: Record<string, CardArt> = { ...byFileStem };
-  for (const [modelId, fileKey] of Object.entries(ARTIFACT_KEY)) {
+  for (const [modelId, fileKey] of Object.entries(ART_ALIAS)) {
     const hit = byFileStem[fileKey];
     if (!hit) continue;
     out[modelId] = hit;

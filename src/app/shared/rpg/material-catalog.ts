@@ -11,7 +11,8 @@
  * Names still live here rather than in the manifest: the importer knows about
  * files, not about what a thing is called in either language.
  */
-import { ART_ALL, ART_ITEMS_PORTRAITS, type ArtEntry } from '../art/art-manifest.generated';
+import { ART_ITEMS_PORTRAITS } from '../art/art-manifest.generated';
+import { artFor, type ArtEntry } from '../art/art';
 
 export interface MaterialDisplay {
   id: string;
@@ -37,14 +38,14 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'infernal-heartstone': 'Infernal Heartstone',
 };
 
-function displayFor(id: string, name: string, entry: ArtEntry | undefined): MaterialDisplay | undefined {
+function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {
   if (!entry) return undefined;
   return { id, name, art: entry.src, srcset: entry.srcset };
 }
 
 const BY_ID: Record<string, MaterialDisplay> = {};
 for (const [id, name] of Object.entries(MATERIAL_NAMES)) {
-  const row = displayFor(id, name, ART_ALL[id]);
+  const row = displayFor(id, name, artFor(id));
   if (row) BY_ID[id] = row;
 }
 
@@ -64,11 +65,13 @@ export function materialDisplay(id: string): MaterialDisplay | undefined {
 
 /**
  * Art for any catalogued thing — equipment, artifact, material, consumable,
- * quest object — by its `ITEM_DEFINITIONS` id. Basalt Edge is special-cased to
- * its authored portrait because the craft names it rather than carrying the id.
+ * quest object — by its `ITEM_DEFINITIONS` id.
+ *
+ * Basalt Edge is matched by name as well as id because a crafted instance
+ * carries a minted id rather than the definition's; the id-to-file difference
+ * itself is handled by ART_ALIAS, not here.
  */
 export function itemArt(item: { name?: string; id?: string; definitionId?: string }): ArtEntry | null {
-  if (isBasaltEdge(item)) return ART_ITEMS_PORTRAITS['basalt-edge-portrait'] ?? null;
-  const key = item.definitionId ?? item.id;
-  return key ? ART_ALL[key] ?? null : null;
+  if (isBasaltEdge(item)) return artFor('basalt-edge');
+  return artFor(item.definitionId ?? item.id);
 }
