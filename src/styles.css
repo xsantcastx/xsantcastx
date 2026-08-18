@@ -255,7 +255,15 @@ body {
   background-position: center, center, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
   background-repeat: no-repeat;
   min-height: 100vh;
-  overflow-x: hidden;
+  /* `clip`, NOT `hidden`. `overflow-x: hidden` here computed to `hidden auto`,
+     which made <body> a scroll container that never scrolls (its height is its
+     content) — and every page-level `position: sticky` on the site stuck to
+     THAT scrollport, i.e. did nothing (the market's filter rail was declared
+     sticky for months and never pinned). `clip` keeps the horizontal clipping
+     with no scroll container; horizontal page scroll is blocked by html's
+     `overflow-x: hidden` above, which is what propagates to the viewport.
+     Do not revert to `hidden`. */
+  overflow-x: clip;
   transition: color 0.6s ease;
   position: relative;
 }
