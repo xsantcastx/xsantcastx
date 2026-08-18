@@ -312,6 +312,11 @@ export class TranslationService {
     'donation.form.error': { en: 'The signal scattered. Try again in a moment.', es: 'La senal se disperso. Intentalo de nuevo.' },
 
     // Footer
+    // These two were referenced but never defined. `translate()` falls back to
+    // returning the key, which is truthy — so the `|| 'Address copied'` idiom
+    // at the call site never fired and the toast literally read "footer.copied".
+    'footer.copied': { en: 'Address copied to clipboard', es: 'Direccion copiada al portapapeles' },
+    'footer.copy.error': { en: 'Could not copy the address', es: 'No se pudo copiar la direccion' },
     'footer.donate': { en: 'Fuel the mission', es: 'Alimenta la mision' },
     'footer.donate.desc': { en: 'Every coin keeps another star alive in this universe.', es: 'Cada moneda mantiene viva una estrella mas en este universo.' },
     'footer.paypal.title': { en: 'PayPal portal', es: 'Portal PayPal' },

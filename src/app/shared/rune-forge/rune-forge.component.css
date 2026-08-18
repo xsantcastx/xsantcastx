@@ -22,7 +22,7 @@
   margin: 0 auto;
   padding: 1rem clamp(0.8rem, 2vw, 1.5rem) 5.5rem;
   color: #eee9dd;
-  font-family: Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font-family: var(--font-lore);
 }
 
 .rf-head {
@@ -258,11 +258,51 @@
   cursor: pointer;
 }
 .rf-forge-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.rf-forge-btn:hover:not(:disabled) { background: rgba(214, 168, 79, 0.12); }
+
+/* Craft feedback — restored after PR #57 dropped it. Success, bag-full,
+   persist-failure + retry, and a missing-inputs line. See the template. */
+.rf-lib__sub { margin: -0.3rem 0 0.7rem; font-size: 0.78rem; color: #8f969f; }
+.rf-word__status:empty { display: none; }
+.rf-word__note {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #8f969f;
+}
+.rf-word__note--warn {
+  padding: 0.4rem 0.55rem;
+  border-left: 2px solid #e0813a;
+  border-radius: 0 4px 4px 0;
+  background: rgba(224, 129, 58, 0.09);
+  color: #f0b98a;
+}
+.rf-word__meta--short { color: #c98d63; }
+.rf-word__result {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(214, 168, 79, 0.34);
+  border-radius: 8px;
+  background: rgba(214, 168, 79, 0.08);
+}
+.rf-word__made { margin: 0 0 0.4rem; font-size: 0.8rem; color: #f0e2c2; }
+.rf-word__result-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.rf-word__bag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.7rem;
+  border-radius: 8px;
+  color: #d6a84f;
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+.rf-word__bag:hover, .rf-word__bag:focus-visible { text-decoration: underline; }
 
 .rf-focus {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: 1.5rem 1rem;
@@ -342,7 +382,7 @@
   cursor: pointer;
 }
 
-.rf-detail-root { position: fixed; inset: 0; z-index: 45; }
+.rf-detail-root { position: fixed; inset: 0; z-index: var(--z-modal); }
 .rf-detail__back { position: absolute; inset: 0; background: rgba(9, 11, 15, 0.45); }
 .rf-detail {
   position: absolute;

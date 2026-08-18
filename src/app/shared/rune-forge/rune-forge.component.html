@@ -219,6 +219,7 @@
   @if (tab === 'equipment') {
     <section class="rf-words-wrap" aria-labelledby="rf-equip-title">
       <h2 id="rf-equip-title" class="rf-lib__title">{{ t('forge.recipe.title') }}</h2>
+      <p class="rf-lib__sub">{{ t('forge.recipe.sub') }}</p>
       <div class="rf-words">
         @for (recipe of equipmentRecipes; track recipe.id) {
           <article class="rf-word" [class.rf-word--ready]="inputReady(recipe)">
@@ -228,11 +229,54 @@
             </header>
             <p class="rf-word__meta">{{ recipe.summary }}</p>
             @for (input of recipe.inputs; track input.id) {
-              <p class="rf-word__meta">{{ input.name }} {{ heldOf(input.id) }} / {{ input.quantity }}</p>
+              <p class="rf-word__meta" [class.rf-word__meta--short]="heldOf(input.id) < input.quantity">
+                {{ input.name }} {{ heldOf(input.id) }} / {{ input.quantity }}
+              </p>
             }
-            <button type="button" class="rf-forge-btn" [disabled]="!inputReady(recipe)" (click)="craftEquipment(recipe)">
+
+            <button
+              type="button"
+              class="rf-forge-btn"
+              [disabled]="!recipe.craftable || !inputReady(recipe)"
+              (click)="craftEquipment(recipe)">
               {{ t('forge.recipe.craft') }}
             </button>
+
+            <!--
+              Craft feedback. PR #57 dropped this block when it rewrote the
+              template; the handler kept setting the state and nothing read it,
+              so a craft — success or failure — produced no visible change.
+              One polite live region per recipe so a screen reader announces the
+              outcome without the button losing focus.
+            -->
+            <div class="rf-word__status" aria-live="polite">
+              @if (!inputReady(recipe)) {
+                <p class="rf-word__note">{{ t('forge.recipe.missing') }} {{ missingLine(recipe) }}</p>
+              }
+              @if (craftRecipeId === recipe.id) {
+                @if (craftError === 'capacity') {
+                  <p class="rf-word__note rf-word__note--warn" role="alert">{{ t('forge.recipe.full') }}</p>
+                }
+                @if (craftError === 'persist') {
+                  <p class="rf-word__note rf-word__note--warn" role="alert">{{ t('forge.recipe.persist') }}</p>
+                  <button type="button" class="rf-forge-btn rf-forge-btn--ghost" (click)="retryCraft(recipe)">
+                    {{ t('forge.recipe.retry') }}
+                  </button>
+                }
+                @if (lastCraft; as made) {
+                  <div class="rf-word__result">
+                    <p class="rf-word__made">{{ t('forge.recipe.made', { name: made.name }) }}</p>
+                    <div class="rf-word__result-actions">
+                      <app-inspect-button type="item" [id]="made.id" />
+                      <a class="rf-word__bag" [routerLink]="'/character'" [queryParams]="{ item: made.id }">
+                        {{ t('forge.recipe.openBag') }}
+                      </a>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+
             <app-inspect-button type="recipe" [id]="recipe.id" />
           </article>
         }

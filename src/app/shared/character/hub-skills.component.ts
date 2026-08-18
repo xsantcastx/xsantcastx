@@ -35,7 +35,7 @@ import type { ActivityLedger } from '../activity/activity.model';
   `,
   styles: [`
     :host { display: block; }
-    .hs h2 { margin: 0 0 0.3rem; font: 700 1.15rem/1.2 Palatino, 'Palatino Linotype', 'Times New Roman', serif; color: #f4e7c3; }
+    .hs h2 { margin: 0 0 0.3rem; font: 700 1.15rem/1.2 var(--font-lore); color: #f4e7c3; }
     .hs__tag { margin: 0 0 1rem; color: #cbb98a; }
     app-current-work-tile { display: block; margin-bottom: 1rem; }
     .hs__card {

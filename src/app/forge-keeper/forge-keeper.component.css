@@ -19,16 +19,20 @@
  * in particular: it is the centrepiece and it rotates, so the reduced-motion
  * path parks it rather than removing it.
  *
- * `.scene` is `position: fixed; z-index: -1`. In Blink that sits under in-flow
- * content; in WebKit it can paint over siblings with auto z-index, which is
- * how /character showed only the painting and the site footer. Isolate the
- * host and keep the sheet at z-index 1 so the three-layer stack is the same
- * in both engines.
+ * `.scene` is `position: fixed; z-index: 0` (see art-scene.component.ts) and
+ * `.fk` below is `z-index: 1`, so the sheet paints over the painting in both
+ * Blink and WebKit. That pairing is the whole fix.
+ *
+ * Do NOT add `isolation: isolate` here. It was added once against a stale
+ * description of this file — by then `.scene` was already 0, not -1 — and it
+ * created a stacking context on the routed host whose own z-index is `auto`.
+ * That trapped `.fk-bank` (a fixed, full-screen modal at z-index 80) below the
+ * header, the Forge Flame and the combo FX layer, and made raising its z-index
+ * a no-op. A wrong value is fixable; a trapped stacking context is not.
  */
 
 :host {
   display: block;
-  isolation: isolate;
 }
 
 .fk {
@@ -1113,14 +1117,14 @@
 .fk-stage__name { text-align: center; }
 .fk-stage__hall {
   margin: 0 0 4px;
-  font: 600 11px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 600 11px/1 var(--font-lore);
   letter-spacing: .22em;
   text-transform: uppercase;
   color: #c9a84c;
 }
 .fk-stage__title {
   margin: 0;
-  font: 700 clamp(28px, 5vw, 42px)/1.1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 700 clamp(28px, 5vw, 42px)/1.1 var(--font-lore);
   color: #f4e7c3;
   text-shadow: 0 2px 0 #1a1204, 0 0 24px rgba(201, 168, 76, .35);
 }
@@ -1148,7 +1152,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 16px;
-  font: 700 14px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 700 14px/1 var(--font-lore);
   color: #f4e7c3;
 }
 .fk-stage__coin {
@@ -1174,7 +1178,7 @@
   border: 2px solid #c9a84c;
   background: linear-gradient(180deg, #3d2a0e, #1a1208);
   color: #f4e7c3;
-  font: 700 13px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 700 13px/1 var(--font-lore);
   letter-spacing: .06em;
   text-transform: uppercase;
   text-decoration: none;
@@ -1201,7 +1205,7 @@
 .fk-bank {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -1235,7 +1239,7 @@
 }
 .fk-bank__title {
   margin: 0;
-  font: 700 22px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 700 22px/1 var(--font-lore);
   color: #f4e7c3;
 }
 .fk-bank__count { margin: 0 auto 0 0; color: #cbb98a; font-size: 13px; }
@@ -1247,7 +1251,7 @@
   background: #1a1208;
   color: #f4e7c3;
   cursor: pointer;
-  font: 600 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  font: 600 12px/1 var(--font-lore);
 }
 .fk-bank__shelf { margin: 0; padding: 0; background: transparent; border: 0; }
 

@@ -33,6 +33,7 @@ import {
   type InventoryRecordSource,
   type InventoryRevision,
   type InventoryStackOp,
+  type InventoryStackCheckpoint,
   type InventoryTombstone,
   type ItemLocation,
   type OwnedItemCategory,
@@ -260,6 +261,7 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     records: dedupeRecordSlots(records),
     tombstones: parseTombstones(raw['tombstones']),
     stackOps: parseStackOps(raw['stackOps']),
+    stackCheckpoints: parseStackCheckpoints(raw['stackCheckpoints']),
     goldFromSales: finiteNumber(raw['goldFromSales']),
     sold: finiteNumber(raw['sold']),
     hlc: finiteNumber(raw['hlc']),
@@ -364,15 +366,34 @@ export function projectRunes(input: RuneProjectionInput): OwnedItemRecord[] {
   return out;
 }
 
-export function stackQuantity(ops: readonly InventoryStackOp[], stackKey: string): number {
+/**
+ * Net quantity held for one stack.
+ *
+ * `checkpoints` carries the compacted history for stacks whose op log has been
+ * folded past {@link INVENTORY_STACK_OPS_MAX}; omit it only for a log known not
+ * to have been compacted. Ops at or below the checkpoint watermark are already
+ * counted in it and are skipped here, so passing both never double-counts.
+ */
+export function stackQuantity(
+  ops: readonly InventoryStackOp[],
+  stackKey: string,
+  checkpoints: readonly InventoryStackCheckpoint[] = [],
+): number {
+  const checkpoint = checkpoints.find(cp => cp.stackKey === stackKey);
   const seen = new Set<string>();
-  let qty = 0;
+  let qty = checkpoint?.quantity ?? 0;
   for (const op of ops) {
     if (op.stackKey !== stackKey || seen.has(op.id)) continue;
+    if (checkpoint && op.hlc <= checkpoint.upToHlc) continue;
     seen.add(op.id);
     qty += op.kind === 'grant' ? op.quantity : -op.quantity;
   }
   return Math.max(0, qty);
+}
+
+/** {@link stackQuantity} against a whole ledger, checkpoints included. */
+export function stackQuantityOf(ledger: InventoryLedger, stackKey: string): number {
+  return stackQuantity(ledger.stackOps, stackKey, ledger.stackCheckpoints ?? []);
 }
 
 export function applyStackOp(
@@ -407,7 +428,12 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     }
   }
 
-  const stackOps = mergeStackOps(a.stackOps, b.stackOps);
+  const stacks = mergeStackOps(
+    a.stackOps,
+    b.stackOps,
+    a.stackCheckpoints ?? [],
+    b.stackCheckpoints ?? [],
+  );
   let records = dedupeRecordSlots([...byId.values()]);
   records = evictRecordsToCap(records, INVENTORY_BAG_CAP, tombstones, Date.now());
   return {
@@ -416,7 +442,8 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     // Cap only. Age-pruning here would drop a winning tombstone and let a
     // stale live record resurrect on the next merge.
     tombstones: pruneTombstones(tombstones, Date.now(), Number.MAX_SAFE_INTEGER),
-    stackOps,
+    stackOps: stacks.ops,
+    stackCheckpoints: stacks.checkpoints,
     goldFromSales: Math.max(a.goldFromSales, b.goldFromSales),
     sold: Math.max(a.sold, b.sold),
     hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc)),
@@ -521,14 +548,84 @@ export function pruneTombstones(
     .slice(-max);
 }
 
-function mergeStackOps(a: InventoryStackOp[], b: InventoryStackOp[]): InventoryStackOp[] {
+/** Highest `upToHlc` per stack wins; that checkpoint already covers the lower one. */
+function mergeStackCheckpoints(
+  a: readonly InventoryStackCheckpoint[],
+  b: readonly InventoryStackCheckpoint[],
+): InventoryStackCheckpoint[] {
+  const byKey = new Map<string, InventoryStackCheckpoint>();
+  for (const cp of [...a, ...b]) {
+    const held = byKey.get(cp.stackKey);
+    if (!held || cp.upToHlc > held.upToHlc) byKey.set(cp.stackKey, cp);
+  }
+  return [...byKey.values()].sort((x, y) => x.stackKey.localeCompare(y.stackKey));
+}
+
+/**
+ * Union stack ops by mutation id, then compact rather than truncate.
+ *
+ * Overflow past {@link INVENTORY_STACK_OPS_MAX} is *folded into* the per-stack
+ * checkpoint instead of being dropped, so a derived quantity survives the cap.
+ * Ops already covered by a checkpoint watermark are discarded, which is what
+ * makes repeated merges idempotent.
+ */
+function mergeStackOps(
+  a: readonly InventoryStackOp[],
+  b: readonly InventoryStackOp[],
+  checkpointsA: readonly InventoryStackCheckpoint[],
+  checkpointsB: readonly InventoryStackCheckpoint[],
+): { ops: InventoryStackOp[]; checkpoints: InventoryStackCheckpoint[] } {
+  const checkpoints = new Map(
+    mergeStackCheckpoints(checkpointsA, checkpointsB).map(cp => [cp.stackKey, { ...cp }]),
+  );
+
   const byId = new Map<string, InventoryStackOp>();
   for (const op of [...a, ...b]) {
-    if (!byId.has(op.id)) byId.set(op.id, op);
+    if (byId.has(op.id)) continue;
+    // Already folded into a checkpoint — replaying it would double-count.
+    const cp = checkpoints.get(op.stackKey);
+    if (cp && op.hlc <= cp.upToHlc) continue;
+    byId.set(op.id, op);
   }
+
   const merged = [...byId.values()].sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
-  if (merged.length <= INVENTORY_STACK_OPS_MAX) return merged;
-  return merged.slice(-INVENTORY_STACK_OPS_MAX);
+  if (merged.length <= INVENTORY_STACK_OPS_MAX) {
+    return { ops: merged, checkpoints: [...checkpoints.values()] };
+  }
+
+  // Provisional split, then widen it: the watermark is an hlc, so any op left
+  // behind that shares an hlc with a folded op for the same stack would be
+  // discarded by the `op.hlc <= cp.upToHlc` gate on the next merge. Fold those
+  // too, so `kept` and the checkpoint never overlap.
+  const cut = merged.length - INVENTORY_STACK_OPS_MAX;
+  const watermark = new Map<string, number>();
+  for (const op of merged.slice(0, cut)) {
+    watermark.set(op.stackKey, Math.max(watermark.get(op.stackKey) ?? 0, op.hlc));
+  }
+
+  const overflow: InventoryStackOp[] = [];
+  const kept: InventoryStackOp[] = [];
+  for (const [i, op] of merged.entries()) {
+    const mark = watermark.get(op.stackKey);
+    if (i < cut || (mark !== undefined && op.hlc <= mark)) overflow.push(op);
+    else kept.push(op);
+  }
+
+  for (const op of overflow) {
+    const cp = checkpoints.get(op.stackKey)
+      ?? { stackKey: op.stackKey, quantity: 0, upToHlc: 0 };
+    const delta = op.kind === 'grant' ? op.quantity : -op.quantity;
+    checkpoints.set(op.stackKey, {
+      stackKey: op.stackKey,
+      quantity: Math.max(0, cp.quantity + delta),
+      upToHlc: Math.max(cp.upToHlc, op.hlc),
+    });
+  }
+
+  return {
+    ops: kept,
+    checkpoints: [...checkpoints.values()].sort((x, y) => x.stackKey.localeCompare(y.stackKey)),
+  };
 }
 
 function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
@@ -623,6 +720,24 @@ function parseTombstones(raw: unknown): InventoryTombstone[] {
       id: row['id'],
       revision,
       deletedAt: finiteNumber(row['deletedAt']),
+    });
+  }
+  return out;
+}
+
+/** Absent on saves written before compaction existed — an empty list is correct there. */
+function parseStackCheckpoints(raw: unknown): InventoryStackCheckpoint[] {
+  if (!Array.isArray(raw)) return [];
+  const out: InventoryStackCheckpoint[] = [];
+  const seen = new Set<string>();
+  for (const row of raw) {
+    if (!isPlainObject(row)) continue;
+    if (typeof row['stackKey'] !== 'string' || !row['stackKey'] || seen.has(row['stackKey'])) continue;
+    seen.add(row['stackKey']);
+    out.push({
+      stackKey: row['stackKey'],
+      quantity: Math.max(0, finiteNumber(row['quantity'])),
+      upToHlc: Math.max(0, finiteNumber(row['upToHlc'])),
     });
   }
   return out;
