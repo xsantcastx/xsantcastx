@@ -62,6 +62,11 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 
 .sw__expect, .sw__chance, .sw__note { margin: 0 0 0.7rem; line-height: 1.5; }
+.sw__speedup {
+  margin: -0.3rem 0 0.7rem;
+  font-size: 0.78rem;
+  color: var(--gf-accent-text, #d6a84f);
+}
 
 .sw__loot {
   display: grid;

@@ -21,6 +21,7 @@ describe('BasaltSeamworksComponent', () => {
     init: () => { /* noop */ },
     selectCurrentWork: () => ({ locationId: 'infernal/basalt-seamworks' }),
     recoveryRemainingMs: () => 0,
+    miningSpeedupPct: () => 0,
     bagCanTakeOre: () => true,
     resolveMine: () => ({
       ok: true as const,

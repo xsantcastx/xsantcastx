@@ -1379,6 +1379,7 @@ export class TranslationService {
     'seamworks.discovery.guarantee': { en: 'First craft guarantee: Ember Residue.', es: 'Garantia del primer forjado: Ember Residue.' },
     'seamworks.discovery.none': { en: 'No bonus this strike.', es: 'Sin extra en este golpe.' },
     'seamworks.mine': { en: 'Mine', es: 'Minar' },
+    'seamworks.speedup': { en: 'Your level and weapon: seams recover {{pct}}% faster.', es: 'Tu nivel y arma: las vetas se recuperan {{pct}}% mas rapido.' },
     'seamworks.mine.wait': { en: 'Recovering {{seconds}}s', es: 'Recuperando {{seconds}}s' },
     'seamworks.mine.resolving': { en: 'Resolving', es: 'Resolviendo' },
     'seamworks.status.available': { en: 'Mine is ready.', es: 'Minar esta listo.' },

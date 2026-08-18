@@ -14,7 +14,6 @@ import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
 import {
   BASALT_SEAMWORKS_ID,
-  MINING_RECOVERY_MS,
   type ActivityLedger,
 } from './activity.model';
 import { miningLevelView } from './mining-level';
@@ -151,9 +150,12 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
   recoveryLine(): string {
     const remain = this.activity.recoveryRemainingMs(Date.now());
     if (remain <= 0) return this.t('work.tile.ready');
+    // The player's actual current cooldown, not the flat baseline: once level
+    // or gear has shortened it, showing the old 2.5s constant here would make
+    // the "of Ns" half of this line simply wrong.
     return this.t('work.tile.recovering', {
       seconds: (remain / 1000).toFixed(1),
-      wait: (MINING_RECOVERY_MS / 1000).toFixed(1),
+      wait: (this.activity.currentMiningRecoveryMs() / 1000).toFixed(1),
     });
   }
 
