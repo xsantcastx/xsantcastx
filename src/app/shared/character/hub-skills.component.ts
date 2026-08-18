@@ -17,7 +17,7 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
-import { miningLevelView } from '../activity/mining-level';
+import { levelProgressPct, miningLevelView } from '../activity/mining-level';
 import { CurrentWorkTileComponent } from '../activity/current-work-tile.component';
 import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { artFor } from '../art/art';
@@ -50,13 +50,13 @@ interface LockedSkill {
             <h3 class="hs__name">{{ t('work.discipline.mining') }}</h3>
             <p class="hs__level">
               <span class="hs__lvl-n">{{ view.level }}</span>
-              <span class="hs__lvl-x">{{ t('hub.skills.xpLine', { xp: view.xp, next: view.next ?? view.xp }) }}</span>
+              <span class="hs__lvl-x">{{ t('hub.skills.xpLine', { xp: view.into, next: view.span || view.into }) }}</span>
             </p>
             <div class="hs__bar"
                  role="progressbar"
-                 [attr.aria-valuenow]="view.xp"
+                 [attr.aria-valuenow]="view.into"
                  aria-valuemin="0"
-                 [attr.aria-valuemax]="view.next ?? view.xp"
+                 [attr.aria-valuemax]="view.span || view.into"
                  [attr.aria-label]="t('hub.skills.barLabel', { name: t('work.discipline.mining') })">
               <span class="hs__bar-fill" [style.width.%]="pct"></span>
             </div>
@@ -200,10 +200,6 @@ export class HubSkillsComponent implements OnInit, OnDestroy {
     return miningLevelView(this.snap.progress.xpByDiscipline.mining ?? 0);
   }
 
-  /** Fill for the XP bar. A capped skill reads full rather than empty. */
-  get pct(): number {
-    const v = this.view;
-    if (!v.next) return 100;
-    return Math.max(0, Math.min(100, Math.round((v.xp / v.next) * 100)));
-  }
+  /** Fill for the XP bar — progress *within* the level, not against the total. */
+  get pct(): number { return levelProgressPct(this.view); }
 }
