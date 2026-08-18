@@ -29,6 +29,10 @@ const LEDGER = {
   sold: 0,
   hlc: 2,
   legacyBackup: null,
+  // Must match INVENTORY_ERA (inventory.model.ts). PR #55 added an era wipe;
+  // a seed without this parses to era 0 and is discarded on load, which left
+  // the bag empty and Craft disabled no matter what the ledger said.
+  era: 55,
 };
 
 async function open(page: Page, url: string): Promise<void> {
@@ -36,6 +40,10 @@ async function open(page: Page, url: string): Promise<void> {
     window.localStorage.setItem('xsantcastx_consent', 'denied');
     window.sessionStorage.setItem('visit-counted', '1');
     window.localStorage.setItem('easter-eggs-found', JSON.stringify(['forge-self-aware']));
+    // applyRealmEra() removes godforge-inventory outright at boot unless this
+    // stamp is already current, so the seed has to carry it or it is wiped
+    // before the app ever reads it. Keep in step with INVENTORY_ERA.
+    window.localStorage.setItem('godforge-realm-era', '55');
     window.localStorage.setItem('godforge-inventory', JSON.stringify(ledger));
   }, LEDGER);
   await page.goto(url, { waitUntil: 'load' });
@@ -53,6 +61,9 @@ test.describe('C9 first loop craft and equip', () => {
   test('crafts Basalt Edge, inspects it, and equips the weapon', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/forge/runes');
+    // PR #57 turned /forge/runes into a tabbed library; recipes live behind
+    // the Equipment tab and 'runes' is the default.
+    await page.getByRole('button', { name: 'Equipment' }).click();
     const craft = page.getByRole('button', { name: 'Craft' });
     await expect(craft).toBeEnabled();
     await craft.click();
@@ -81,8 +92,9 @@ test.describe('C9 first loop craft and equip', () => {
       window.localStorage.setItem('easter-eggs-found', JSON.stringify(['forge-self-aware']));
     });
     await page.goto('/forge/runes', { waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Equipment' }).click();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeDisabled();
-    await expect(page.getByText(/Need/)).toBeVisible();
+    await expect(page.locator('.rf-word__note')).toContainText(/Need/);
     const shotDir = resolve('test-results/c9-first-loop');
     mkdirSync(shotDir, { recursive: true });
     await page.locator('#rf-equip-title').locator('..').screenshot({

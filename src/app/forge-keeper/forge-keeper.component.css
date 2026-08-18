@@ -33,6 +33,16 @@
 
 :host {
   display: block;
+
+  /* Art-scene's scrim stops. Every route had been taking the 0.3/0.85 defaults,
+     which are tuned for pages that open with breathing room — the Market and
+     the Arena both start well below the fold. This sheet does the opposite: the
+     eyebrow, the name and the stat row all sit at y=0, in the lightest part of
+     the gradient, over the busiest part of a 3:2 vault painting. "9.9K XP to
+     Seeker" was unreadable because of it. Heavier at the top, and the ramp
+     reaches full dark sooner so the loadout below sits on near-solid ground. */
+  --scene-top: 0.5;
+  --scene-mid: 0.9;
 }
 
 .fk {

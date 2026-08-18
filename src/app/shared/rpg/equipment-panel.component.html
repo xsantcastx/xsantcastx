@@ -48,12 +48,33 @@
           [attr.aria-label]="slotAnnounce(slot)"
           [attr.aria-pressed]="selectedSlot === slot.slotId"
         >
-          <span class="ld__slot-glyph"
-                [ngStyle]="{
-                  'mask-image': 'url(' + slot.glyph + ')',
-                  '-webkit-mask-image': 'url(' + slot.glyph + ')'
-                }"
-                aria-hidden="true"></span>
+          <!-- Worn gear shows its own art; an empty well keeps the carved slot
+               glyph so the loadout still reads as eight named slots. -->
+          <ng-container *ngIf="itemInDoll(slot) as worn; else slotGlyph">
+            <img *ngIf="tileArt(worn) as art"
+                 class="ld__slot-art"
+                 [src]="art"
+                 [attr.srcset]="tileArtSrcset(worn)"
+                 sizes="56px"
+                 alt=""
+                 width="56" height="56"
+                 loading="lazy" decoding="async">
+            <span *ngIf="!tileArt(worn)"
+                  class="ld__slot-glyph"
+                  [ngStyle]="{
+                    'mask-image': 'url(' + slot.glyph + ')',
+                    '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                  }"
+                  aria-hidden="true"></span>
+          </ng-container>
+          <ng-template #slotGlyph>
+            <span class="ld__slot-glyph"
+                  [ngStyle]="{
+                    'mask-image': 'url(' + slot.glyph + ')',
+                    '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                  }"
+                  aria-hidden="true"></span>
+          </ng-template>
           <span class="ld__slot-name">{{ t(slot.labelKey) }}</span>
           <span class="ld__slot-state">{{ itemInDoll(slot)?.name || t(slot.liveSlot ? 'loadout.slot.empty' : 'loadout.slot.locked') }}</span>
         </button>

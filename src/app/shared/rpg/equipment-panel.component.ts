@@ -29,7 +29,7 @@ import {
   PAPER_DOLL_SRC,
   type PaperDollSlotManifest,
 } from './paper-doll.manifest';
-import { BASALT_EDGE_OVERLAY, BASALT_EDGE_PORTRAIT, isBasaltEdge } from './material-catalog';
+import { itemArt } from './material-catalog';
 
 const CATS = ['all', 'charms', 'runes', 'artifacts'] as const;
 const RARS = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'] as const;
@@ -157,20 +157,23 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return slot ? this.itemInDoll(slot) : null;
   }
 
+  /**
+   * No slot carries a body-aligned overlay yet — see paper-doll.manifest.ts for
+   * why the previous ones were item masters, not doll layers. Kept so the
+   * template's loop and the manifest's optional `overlay` stay honest the day
+   * authored overlays exist.
+   */
   get filledOverlays(): PaperDollSlotManifest[] {
-    return this.dollSlots
-      .filter(slot => slot.overlay && this.itemInDoll(slot))
-      .map(slot => {
-        const item = this.itemInDoll(slot);
-        if (item && isBasaltEdge(item) && slot.slotId === 'weapon' && slot.overlay) {
-          return { ...slot, overlay: { ...slot.overlay, asset: BASALT_EDGE_OVERLAY } };
-        }
-        return slot;
-      });
+    return this.dollSlots.filter(slot => slot.overlay && this.itemInDoll(slot));
   }
 
+  /** Art for a slot or a bag tile. Resolves every catalogued id, not just one. */
   tileArt(item: GameItem): string | null {
-    return isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : null;
+    return itemArt(item)?.src ?? null;
+  }
+
+  tileArtSrcset(item: GameItem): string | null {
+    return itemArt(item)?.srcset ?? null;
   }
 
   isTarget(slot: PaperDollSlotManifest): boolean {

@@ -12,12 +12,12 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
-import { isBasaltEdge, materialDisplay, BASALT_EDGE_PORTRAIT } from '../rpg/material-catalog';
+import { materialDisplay, itemArt } from '../rpg/material-catalog';
 import { InventoryService, type InventorySnapshot, type InventoryStackView } from '../rpg/inventory.service';
 import { GameItem } from '../rpg/item.model';
 import { RuneForgeService, type RuneSnapshot } from '../rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../rune-forge/rune.model';
-import { runeCard } from '../rune-forge/rune-cards';
+import { runeCard, runewordCard } from '../rune-forge/rune-cards';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { CharacterHubService } from './character-hub.service';
 import {
@@ -383,7 +383,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
         name: item.name,
         qty: 1,
         meta: item.type,
-        art: isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : undefined,
+        art: itemArt(item)?.src,
         inspectType: 'item',
         inspectId: item.id,
         dropItem: item,
@@ -426,6 +426,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
         name: word.name,
         qty: 1,
         meta: this.t('hub.bank.runeword'),
+        art: runewordCard(id)?.src,
         inspectType: 'runeword',
         inspectId: id,
       });

@@ -143,6 +143,28 @@
   --z-header: 1000;
   --z-modal: 1200;
   --z-toast: 1300;
+
+  /* ===== Game surface =====
+     One panel language for every Eclipse Realms surface. The Market and the
+     character sheet had each grown their own private set (--mk-* and --fk-*),
+     so #E8752A carried three different names and the character hub ended up a
+     flat, square-cornered brown against the Market's rounded glass. These are
+     the shared stops; --mk-*/--fk-* stay as local aliases where a file needs a
+     surface-specific tint. */
+  --gf-panel: rgba(15, 10, 30, 0.8);
+  --gf-panel-solid: rgba(10, 7, 22, 0.95);
+  --gf-edge: rgba(255, 255, 255, 0.07);
+  --gf-edge-strong: rgba(201, 168, 76, 0.34);
+  --gf-ink: #efe7d2;
+  --gf-dim: #9c8f74;
+  --gf-faint: #7b7259;
+  --gf-accent: var(--forge-gold);
+  --gf-accent-text: var(--forge-gold-text);
+  --gf-violet: #a78bff;
+
+  --gf-radius-sm: 8px;
+  --gf-radius: 12px;
+  --gf-radius-lg: 18px;
 }
 
 /* ===== Resets ===== */
