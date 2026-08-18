@@ -22,6 +22,9 @@
     <h2 id="sw-mine-title">{{ t('seamworks.panel.title') }}</h2>
     <p class="sw__expect">{{ t('seamworks.expect') }}</p>
     <p class="sw__chance">{{ discoveryLabel() }}</p>
+    @if (speedupPct() > 0) {
+      <p class="sw__speedup">{{ t('seamworks.speedup', { pct: speedupPct() }) }}</p>
+    }
 
     <div class="sw__loot" aria-label="{{ t('seamworks.haul') }}">
       <figure [class.is-hit]="lastOre > 0" [class.is-striking]="oreFloaters().length > 0">

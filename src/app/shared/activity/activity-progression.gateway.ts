@@ -15,7 +15,6 @@ import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   ACTIVITY_KEY,
-  MINING_RECOVERY_MS,
   emptyActivityLedger,
   locationDefinition,
   type ActivityLedger,
@@ -23,6 +22,8 @@ import {
   type CurrentWork,
   type DisciplineId,
 } from './activity.model';
+import { effectiveMiningRecoveryMs, miningSpeedupPct } from './mining-recovery';
+import { miningLevelView } from './mining-level';
 import {
   buildMineOperation,
   coerceActivityLedger,
@@ -128,6 +129,31 @@ export class ActivityProgressionGateway {
     return work;
   }
 
+  /**
+   * How long the seam takes to recover right now, given the current level
+   * and whatever is in the weapon slot. Recomputed live rather than baked
+   * into the operation at strike time: a Keeper who levels up or re-equips
+   * mid-wait should see the remaining time drop immediately, the same way a
+   * cooldown-reduction buff works in most games — not only affect the next
+   * wait.
+   */
+  currentMiningRecoveryMs(): number {
+    const level = miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
+    const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
+    return effectiveMiningRecoveryMs(level, strikePower);
+  }
+
+  /** Whole-percent readout for the Seamworks page. 0 hides the line entirely. */
+  miningSpeedupPct(): number {
+    const level = miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
+    const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
+    // The bare call resolves to the imported pure function above, not to this
+    // method — a class method name isn't in scope inside its own body, only
+    // `this.miningSpeedupPct` would be. Same name is deliberate symmetry with
+    // currentMiningRecoveryMs()/effectiveMiningRecoveryMs() just above.
+    return miningSpeedupPct(level, strikePower);
+  }
+
   recoveryEndsAt(): number | null {
     const work = this.ledger.currentWork;
     if (!work) return null;
@@ -135,7 +161,7 @@ export class ActivityProgressionGateway {
     if (!last) return null;
     const lastAt = Date.parse(last.resolvedAt);
     if (!Number.isFinite(lastAt)) return null;
-    return lastAt + MINING_RECOVERY_MS;
+    return lastAt + this.currentMiningRecoveryMs();
   }
 
   recoveryRemainingMs(now = Date.now()): number {
@@ -173,7 +199,7 @@ export class ActivityProgressionGateway {
     if (last) {
       const lastAt = Date.parse(last.resolvedAt);
       if (!Number.isFinite(lastAt) || now < lastAt) return { ok: false, code: 'clock' };
-      if (now < lastAt + MINING_RECOVERY_MS) return { ok: false, code: 'recovering' };
+      if (now < lastAt + this.currentMiningRecoveryMs()) return { ok: false, code: 'recovering' };
     }
 
     if (!this.inventory.canAcceptStackGrant('cinder-ore')) {

@@ -22,7 +22,6 @@ import {
   CINDER_ORE_ID,
   EMBER_DISCOVERY_CHANCE,
   EMBER_RESIDUE_ID,
-  MINING_RECOVERY_MS,
   type ActivityLedger,
   type ActivityOperation,
 } from '../shared/activity/activity.model';
@@ -74,7 +73,6 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   readonly infernalHref = '/world/realms/infernal';
   readonly ore = CINDER_ORE_DISPLAY;
   readonly ember = EMBER_RESIDUE_DISPLAY;
-  readonly recoveryMs = MINING_RECOVERY_MS;
   readonly chance = Number((EMBER_DISCOVERY_CHANCE * 100).toPrecision(2));
 
   snap: ActivityLedger = this.activity.snapshot;
@@ -154,6 +152,11 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
 
   remainLabel(): string {
     return (this.remain() / 1000).toFixed(1);
+  }
+
+  /** 0 hides the line entirely — see miningSpeedupPct's own doc comment. */
+  speedupPct(): number {
+    return this.activity.miningSpeedupPct();
   }
 
   panelState(): MinePanelState {

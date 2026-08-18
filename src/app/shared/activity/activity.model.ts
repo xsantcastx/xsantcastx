@@ -85,6 +85,13 @@ export interface ActivityLedger {
 export const ACTIVITY_KEY = 'godforge-activity';
 export const ACTIVITY_SCHEMA_VERSION = 1 as const;
 export const ACTIVITY_OPS_MAX = 256;
+/**
+ * The level-1, no-weapon baseline. Not what actually gates a strike any
+ * more — see mining-recovery.ts's effectiveMiningRecoveryMs, which starts
+ * from this exact number and shortens it with level and weapon strikePower.
+ * Kept here, not moved, so nothing importing the flat baseline for display
+ * or a test fixture has to know mining-recovery.ts exists.
+ */
 export const MINING_RECOVERY_MS = 2500;
 export const MINING_XP_PER_ACTION = 2;
 export const CINDER_ORE_ID = 'cinder-ore';
