@@ -158,8 +158,19 @@ export function applyTemperBonus(
     const current = item.stats[key] ?? 0;
     if (current <= 0) continue;
     const pct = 0.03 + rng() * 0.05;
-    const value = current + current * pct * scale;
-    next[key] = Math.round(value * 10) / 10;
+    const raw = current + current * pct * scale;
+    let value = Math.round(raw * 100) / 100;
+    // A success must always be visible. Rounding to one decimal used to erase
+    // roughly 30% of successful tempers on a common Basalt Edge (~1.3
+    // goldPerSec): a 3-8% gain on that value is 0.04-0.10, and anything under
+    // 0.05 rounded straight back to the number the player started with — a
+    // "success" that charged 40,000+ gold and changed nothing on screen. Two
+    // decimals shrinks that dead zone to almost nothing; this guarantees it
+    // away entirely by refusing to let a real gain round down to zero.
+    if (value <= current) {
+      value = Math.round((current + 0.01) * 100) / 100;
+    }
+    next[key] = value;
   }
   return next;
 }
