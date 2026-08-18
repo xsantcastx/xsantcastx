@@ -1,50 +1,73 @@
+/*
+ * character-hub.component.css — the five-tab shell.
+ *
+ * Re-skinned onto the shared --gf-* game surface. This file used to carry a
+ * private brown palette (#6a5424 / #1a1208 / #3d2a0e) with square corners and
+ * no tokens, while the Market next door was rounded glass — the same tab strip
+ * looked like two different products depending on which route you were on.
+ */
+
 :host { display: block; }
 
-.ch {
-  overflow-anchor: none;
-}
+.ch { overflow-anchor: none; }
 
-.ch[data-variant='page'] {
-  min-height: 70vh;
-}
+.ch[data-variant='page'] { min-height: 70vh; }
 
 .ch__tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .ch__panel {
-  min-height: 28rem;
+  /* Was a flat 28rem, which left dead space under the shorter panels. */
+  min-height: 22rem;
   overflow-anchor: none;
 }
+
 .ch__tab {
   min-height: 44px;
   min-width: 44px;
-  padding: 0 12px;
-  border: 2px solid #6a5424;
-  background: #1a1208;
-  color: #f4e7c3;
-  font: 700 12px/1 var(--font-lore);
-  letter-spacing: 0.06em;
+  padding: 0 14px;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background: var(--gf-panel);
+  color: var(--gf-dim);
+  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.ch__tab:hover {
+  border-color: var(--gf-edge-strong);
+  color: var(--gf-ink);
 }
 .ch__tab.is-on {
-  border-color: #c9a84c;
-  background: #3d2a0e;
+  border-color: var(--gf-accent);
+  background: rgba(201, 168, 76, 0.1);
+  color: var(--gf-accent-text);
+  box-shadow: 0 0 20px -8px rgba(201, 168, 76, 0.8);
 }
 .ch__tab:focus-visible {
-  outline: 2px solid #ffc669;
+  outline: 2px solid var(--gf-accent-text);
   outline-offset: 2px;
 }
-.ch__more { color: #cbb98a; }
+
+.ch__more { color: var(--gf-dim); }
 
 .ch[data-variant='drawer'] .ch__tabs {
   position: sticky;
   top: 0;
-  z-index: 1;
-  background: #120e08;
-  padding-bottom: 6px;
+  z-index: var(--z-sticky, 20);
+  padding-bottom: 8px;
+  background: var(--gf-panel-solid);
+  backdrop-filter: blur(10px);
+}
+
+/* The drawer is 400px at most and the strip is five items; at that width the
+   labels have to shrink before they wrap to a third row. */
+@media (max-width: 480px) {
+  .ch__tab { padding: 0 10px; font-size: 11px; letter-spacing: 0.06em; }
 }

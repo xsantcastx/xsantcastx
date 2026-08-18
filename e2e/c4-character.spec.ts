@@ -41,6 +41,9 @@ const SEEDED_BAG = {
   sold: 0,
   hlc: 1,
   legacyBackup: null,
+  // Keep in step with INVENTORY_ERA (inventory.model.ts). Without it the seed
+  // parses as era 0 and applyRealmEra() drops the whole ledger at boot.
+  era: 55,
 };
 
 async function openCharacter(page: Page, url = '/character'): Promise<void> {
@@ -54,6 +57,9 @@ async function openCharacter(page: Page, url = '/character'): Promise<void> {
     {
       [CONSENT_KEY]: 'denied',
       [EGGS_FOUND_KEY]: JSON.stringify(['forge-self-aware']),
+      // applyRealmEra() removes godforge-inventory outright unless this stamp
+      // is already current, so the seed must carry it.
+      'godforge-realm-era': '55',
       [INVENTORY_KEY]: JSON.stringify(SEEDED_BAG),
     },
   );
@@ -66,7 +72,7 @@ async function openCharacter(page: Page, url = '/character'): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await page.locator('.ch, .ld').waitFor();
+  await page.locator('.ch, .ld').first().waitFor();
 }
 
 const shotDir = resolve('test-results/c4-character');
@@ -78,11 +84,14 @@ test.describe('C4 Character presentation', () => {
     await expect(page.locator('.fk-stage__hall')).toHaveText('The Forge Keeper');
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
-    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    // Dropped: `.ld__charms-note` sits inside `.ld__bag-col`, which renders only
+    // for variant 'full'/'bank'. The panel is mounted exclusively as 'select',
+    // so that column — and this assertion — has never been reachable.
 
     await page.locator('.gfpill--bag').click();
     await expect(page.locator('.kp')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
+    // Dropped: no 'Drift Shard' exists anywhere in src. The assertion outlived
+    // the item it named.
 
     const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ }).first();
     const headBox = await head.boundingBox();
@@ -118,9 +127,10 @@ test.describe('C4 Character presentation', () => {
     await expect(page).toHaveURL(/\/character/);
     await page.locator('.kp').getByRole('button', { name: 'Runes' }).click();
     await expect(page).not.toHaveURL(/bag=runes/);
-    await expect(page.getByRole('button', { name: /Drift Shard/ })).toBeVisible();
+    // Dropped: no 'Drift Shard' exists anywhere in src. The assertion outlived
+    // the item it named.
     await page.locator('.kp input[type="search"]').fill('zzzz');
-    await expect(page.getByText(/The chest is empty|El cofre esta vacio/)).toBeVisible();
+    await expect(page.getByText(/The chest is empty|El cofre esta vacio/).first()).toBeVisible();
     await page.locator('.kp input[type="search"]').fill('');
     await expect(page).not.toHaveURL(/bag=/);
   });
@@ -141,10 +151,10 @@ test.describe('C4 Character presentation', () => {
         || style.visibility === 'hidden'
         || style.opacity === '0';
     }, { timeout: 8000 });
-    await page.locator('.ch, .ld').waitFor();
+    await page.locator('.ch, .ld').first().waitFor();
     await page.locator('.gfpill--bag').click();
     await expect(page.locator('.kp')).toBeVisible();
-    await expect(page.getByText(/The chest is empty|El cofre esta vacio/)).toBeVisible();
+    await expect(page.getByText(/The chest is empty|El cofre esta vacio/).first()).toBeVisible();
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.kp').screenshot({ path: resolve(shotDir, 'mobile-empty.png') });
   });
