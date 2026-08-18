@@ -30,6 +30,7 @@ import { ChapterGateway } from '../shared/narrative/chapter.gateway';
 import { infernalChoiceById } from '../shared/narrative/infernal-chapter';
 import { CINDER_ORE_DISPLAY, EMBER_RESIDUE_DISPLAY } from '../shared/rpg/material-catalog';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
+import { LevelUpService } from '../shared/activity/level-up.service';
 import { InventoryService } from '../shared/rpg/inventory.service';
 
 type MinePanelState =
@@ -51,6 +52,7 @@ type MinePanelState =
 export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly keeper = inject(KeeperPanelService);
+  private readonly levelUp = inject(LevelUpService);
   private readonly inventory = inject(InventoryService);
   private readonly chapters = inject(ChapterGateway);
   private readonly i18n = inject(TranslationService);
@@ -147,6 +149,11 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     const mutationId = this.pendingId ?? newMutationId();
     this.pendingId = mutationId;
     this.busy = true;
+    // Captured before the strike resolves. this.snap updates synchronously
+    // off the gateway's BehaviorSubject, so comparing it against the same
+    // field right after resolveMine() returns is enough to catch a crossing —
+    // no separate read of the gateway is needed.
+    const xpBefore = this.snap.progress.xpByDiscipline.mining ?? 0;
     const result = this.activity.resolveMine({
       mutationId,
       locationId: BASALT_SEAMWORKS_ID,
@@ -160,6 +167,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       this.pendingId = null;
       this.oreHeld = this.inventory.stackOf(CINDER_ORE_ID);
       this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+      this.levelUp.checkMining(xpBefore, this.snap.progress.xpByDiscipline.mining ?? 0);
       if (this.lastEmber > 0 || this.keeper.isOpen) this.keeper.show('bank');
       this.cdr.markForCheck();
       return;

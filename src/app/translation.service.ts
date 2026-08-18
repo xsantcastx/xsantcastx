@@ -1327,6 +1327,9 @@ export class TranslationService {
     'work.tile.state.recovering': { en: 'Recovering', es: 'Recuperando' },
     'work.tile.state.away': { en: 'Elsewhere', es: 'En otro lugar' },
     'work.discipline.mining': { en: 'Mining', es: 'Mineria' },
+    'levelUp.eyebrow': { en: 'Level up', es: 'Subida de nivel' },
+    'levelUp.milestone': { en: 'Milestone reached', es: 'Hito alcanzado' },
+    'levelUp.title': { en: '{{skill}} — Level {{level}}', es: '{{skill}} — Nivel {{level}}' },
     'work.location.seamworks': { en: 'Basalt Seamworks', es: 'Basalt Seamworks' },
 
     'infernal.eyebrow': { en: 'Opening chapter', es: 'Capitulo de apertura' },

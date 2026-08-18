@@ -55,6 +55,11 @@
   <app-quest-toast></app-quest-toast>
 }
 
+<!-- Skill level-ups -->
+@if (!isEmbedMode) {
+  <app-level-up-banner></app-level-up-banner>
+}
+
 <!-- Site-wide Cmd+K / Ctrl+K command palette -->
 @if (!isEmbedMode) {
   <app-command-palette></app-command-palette>
