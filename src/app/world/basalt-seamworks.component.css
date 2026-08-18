@@ -79,16 +79,44 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.28);
 }
-.sw__loot figure.is-hit { border-color: #d6a84f; }
+.sw__loot figure.is-hit { border-color: var(--gf-accent, #d6a84f); }
 .sw__loot figure.is-rare { border-color: #E4A83A; }
+/*
+ * The art wrapper is the anchor for the floating "+1" — see .sw__float. It
+ * used to be a bare <img>; the wrapper adds nothing visible on its own, it
+ * just gives the floater a positioned parent to rise out of.
+ */
+.sw__art-wrap { position: relative; margin: 0 auto 0.35rem; width: 72px; }
 .sw__loot img {
   display: block;
   width: 72px;
   height: 72px;
   object-fit: contain;
-  margin: 0 auto 0.35rem;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.35);
+  transition: transform 200ms ease;
+}
+/* A brief scale while a floater is alive — the art itself reacts to the hit,
+   not just the number rising off it. Lifecycle shared with .sw__float via
+   the same floaters array, so nothing here needs its own timer. */
+.sw__loot figure.is-striking img { transform: scale(1.08); }
+
+.sw__float {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translate(-50%, 0);
+  font: 700 0.95rem/1 'Orbitron', system-ui, sans-serif;
+  color: var(--gf-accent-text, #E0A857);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  animation: swFloatUp 900ms ease-out forwards;
+}
+.sw__float--rare { color: #E4A83A; }
+@keyframes swFloatUp {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.85); }
+  18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -36px) scale(1); }
 }
 .sw__loot figcaption { color: rgba(232, 236, 241, 0.78); }
 .sw__held {
@@ -99,7 +127,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 .sw__gain {
   margin: 0.25rem 0 0;
-  color: #d6a84f;
+  color: var(--gf-accent, #d6a84f);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.72rem;
@@ -115,17 +143,40 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 
 .sw__mine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   border: 0;
   background: var(--seam);
   color: #140808;
   font-weight: 700;
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
+/* A warm-toned ore icon on the button's own red risked blending into it —
+   a dark chip plus a hairline ring keeps it legible regardless of the art's
+   own colour, the same defence the loadout's slot wells use. */
+.sw__mine-art {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 6px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+/* Same lifecycle as .sw__float: lit for exactly as long as a floater is
+   alive, so the button visibly answers the click that caused it. */
+.sw__mine--struck {
+  box-shadow: 0 0 0 2px rgba(20, 8, 8, 0.25), 0 0 18px -2px var(--seam);
+}
+.sw__mine:active:not(:disabled) { transform: scale(0.96); }
 
 .sw__mine:disabled {
   background: rgba(232, 236, 241, 0.18);
   color: rgba(232, 236, 241, 0.55);
   cursor: not-allowed;
 }
+.sw__mine:disabled .sw__mine-art { opacity: 0.5; }
 
 .sw__ghost {
   border: 1px solid rgba(239, 68, 68, 0.4);
@@ -162,5 +213,12 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sw__mine, .sw__loot img { transition: none; animation: none; }
+  .sw__mine, .sw__mine:active:not(:disabled), .sw__loot img, .sw__float {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
+  /* Still appears and still clears on the same timer as the motion version —
+     only the rise-and-fade is skipped, not the feedback itself. */
+  .sw__float { opacity: 1; top: -6px; }
 }
