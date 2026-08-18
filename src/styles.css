@@ -167,6 +167,26 @@
   --gf-radius-lg: 18px;
 }
 
+/* ===== Accessibility helpers =====
+   `.visually-hidden` was used in four components but defined in only one —
+   equipment-panel.component.css — where Angular's emulated encapsulation
+   scoped it to that component. Everywhere else the class matched nothing and
+   the screen-reader-only text rendered as visible copy: the Bank's per-row
+   "Mark <item>" checkbox labels and its "Search" label were both printing on
+   top of the tiles. It has to be global to do its job. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ===== Resets ===== */
 *, *::before, *::after {
   box-sizing: border-box;

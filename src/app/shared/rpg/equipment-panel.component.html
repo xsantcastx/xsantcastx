@@ -46,6 +46,7 @@
           [style.top.%]="slot.control.y"
           (click)="onSlotClick(slot)"
           [attr.aria-label]="slotAnnounce(slot)"
+          [attr.title]="slotTooltip(slot)"
           [attr.aria-pressed]="selectedSlot === slot.slotId"
         >
           <!-- Worn gear shows its own art; an empty well keeps the carved slot

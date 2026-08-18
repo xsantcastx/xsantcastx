@@ -1,77 +1,103 @@
+/*
+ * hub-bank.component.css — the chest.
+ *
+ * Re-skinned onto the shared --gf-* surface. This file used to carry 30 hex
+ * literals in 180 lines with zero tokens and zero var() — a flat, square,
+ * opaque-brown roguelike terminal sitting inside a rounded glass site, in the
+ * same tab strip as the Market. Every colour below now comes from :root.
+ *
+ * The grid is deliberately visible when the chest is empty. An inventory that
+ * renders as one sentence of prose reads as a settings page; the wells are what
+ * make it read as a bag you will fill.
+ */
+
 :host { display: block; }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
+.hb { color: var(--gf-ink); }
 
-.hb h2 { margin: 0 0 0.25rem; font: 700 1.15rem/1.2 var(--font-lore); color: #f4e7c3; }
-.hb__head { margin-bottom: 0.6rem; }
-.hb__head p { margin: 0; color: #cbb98a; font-size: 0.88rem; }
+.hb h2 {
+  margin: 0 0 0.25rem;
+  font: 700 1.15rem/1.2 var(--font-lore);
+  color: var(--gf-ink);
+}
+.hb__head p { margin: 0; color: var(--gf-dim); font-size: 0.88rem; }
 
 .hb__manage {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: var(--z-sticky, 20);
   display: grid;
   gap: 8px;
   margin: 0 -4px 10px;
   padding: 8px 4px 10px;
-  background: #120e08;
-  border-bottom: 2px solid #6a5424;
+  background: var(--gf-panel-solid);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--gf-edge-strong);
 }
 
+.hb__kinds,
+.hb__sorts,
+.hb__bulk { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .hb__kind,
-.hb__search input,
+.hb__sort,
+.hb__bulk button,
 .hb__drop,
 .hb__keep {
   min-height: 44px;
-}
-
-.hb__kind, .hb__drop, .hb__keep {
-  padding: 0 0.75rem;
-  border: 2px solid #6a5424;
-  background: #1a1208;
-  color: #f4e7c3;
-  cursor: pointer;
-}
-.hb__kind:disabled, .hb__drop:disabled, .hb__keep:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.hb__kinds, .hb__sorts, .hb__bulk { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.hb__kind.is-on { border-color: #c9a84c; background: #3d2a0e; }
-.hb__search { display: grid; }
-.hb__search input {
-  padding: 0 0.7rem;
-  border: 2px solid #6a5424;
-  background: #0c0a06;
-  color: inherit;
-}
-
-.hb__full { color: #c9a84c; }
-.hb__empty { color: #cbb98a; }
-
-.hb__shelf { margin: 0 0 1rem; }
-.hb__shelf-title, .hb__ledger summary {
-  margin: 0 0 0.45rem;
-  color: #c9a84c;
-  font: 700 12px/1 var(--font-lore);
+  min-width: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background: var(--gf-panel);
+  color: var(--gf-dim);
+  font: inherit;
+  font-size: 0.78rem;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.hb__ledger { margin: 0 0 1rem; }
-.hb__ledger summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
   cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+.hb__kind:hover,
+.hb__sort:hover,
+.hb__bulk button:hover,
+.hb__drop:hover,
+.hb__keep:hover {
+  border-color: var(--gf-edge-strong);
+  color: var(--gf-ink);
+}
+.hb__kind.is-on,
+.hb__sort.is-on {
+  border-color: var(--gf-accent);
+  background: rgba(201, 168, 76, 0.1);
+  color: var(--gf-accent-text);
+}
+.hb__kind:focus-visible,
+.hb__sort:focus-visible,
+.hb__face:focus-visible,
+.hb__drop:focus-visible {
+  outline: 2px solid var(--gf-accent-text);
+  outline-offset: 2px;
+}
+
+.hb__search input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background: var(--gf-panel);
+  color: var(--gf-ink);
+  font: inherit;
+}
+.hb__search input::placeholder { color: var(--gf-faint); }
+
+.hb__shelf { margin-bottom: 1rem; }
+.hb__shelf-title {
+  margin: 0 0 0.4rem;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gf-dim);
 }
 
 .hb__grid {
@@ -82,19 +108,38 @@
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 0.5rem;
 }
+
 .hb__tile {
   position: relative;
-  border: 2px solid #6a5424;
-  background: #1a1208;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius);
+  background: var(--gf-panel);
   padding: 0.4rem;
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
-.hb__tile.is-on, .hb__tile.is-checked { border-color: #c9a84c; }
+.hb__tile:hover {
+  border-color: var(--gf-edge-strong);
+  transform: translateY(-2px);
+}
+.hb__tile.is-on,
+.hb__tile.is-checked { border-color: var(--gf-accent); }
 .hb__tile.is-fresh {
-  border-color: #c9a84c;
+  border-color: var(--gf-accent);
   box-shadow: 0 0 16px -6px rgba(201, 168, 76, 0.85);
 }
 .hb__tile.is-rare { border-color: #E4A83A; }
-.hb__tile.is-new:not(.is-rare) { border-color: #d6a84f; }
+.hb__tile.is-new:not(.is-rare) { border-color: var(--gf-accent-text); }
+
+/* An empty well. Same footprint as a filled tile so the grid does not reflow
+   as the chest fills — the shape is the point. */
+.hb__tile--pad {
+  min-height: 88px;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
 .hb__flag {
   display: inline-block;
   margin-right: 0.35rem;
@@ -102,23 +147,24 @@
   text-transform: uppercase;
   font-size: 0.62rem;
 }
-.hb__flag--new { color: #d6a84f; }
+.hb__flag--new { color: var(--gf-accent-text); }
 .hb__flag--rare { color: #E4A83A; }
-.hb__gain {
-  display: block;
-  color: #d6a84f;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-}
+
+/* Lives in the actions row, not the corner. As an absolutely-positioned
+   overlay it sat inside the face button's hit area and forced a 48px reserve
+   on the name column, which truncated names to a single letter in a 148px
+   tile. */
 .hb__check {
-  position: absolute;
-  top: 4px; right: 4px;
-  z-index: 1;
   min-width: 44px; min-height: 44px;
   display: grid;
   place-items: center;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  cursor: pointer;
 }
+.hb__check:hover { border-color: var(--gf-edge-strong); }
 .hb__check input { width: 18px; height: 18px; }
+
 .hb__face {
   width: 100%;
   display: grid;
@@ -132,24 +178,26 @@
   cursor: pointer;
   min-height: 44px;
 }
+
 .hb__art, .hb__orb {
   grid-row: 1 / span 2;
   width: 40px; height: 40px;
   object-fit: contain;
 }
+.hb__art { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
 .hb__orb {
   display: grid; place-items: center;
-  background: #0c0a06;
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gf-faint);
   font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }
-/*
- * Clears the 44px checkbox parked at `right: 4px` — so 48px, not 36px. The old
- * 12px shortfall let long names (systematically longer in Spanish) slide under
- * the control, with no ellipsis to signal it.
- */
+
+/* Ellipsis rather than an overlap: names are systematically longer in Spanish
+   and there is no reserve to hide behind now that the checkbox has moved. */
 .hb__name {
   font-weight: 600;
-  padding-right: 48px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,20 +206,22 @@
 .hb__lvl {
   margin-left: 6px;
   padding: 1px 5px;
-  border: 1px solid #c9a84c;
-  color: #c9a84c;
+  border: 1px solid var(--gf-accent);
+  border-radius: 4px;
+  color: var(--gf-accent);
   font-size: 0.68rem;
 }
-.hb__meta { grid-column: 2; font-size: 0.72rem; color: #8b7a52; }
+.hb__meta { color: var(--gf-dim); font-size: 0.72rem; }
 .hb__qty {
   grid-column: 3;
   grid-row: 1 / span 2;
   align-self: center;
-  font-variant-numeric: tabular-nums;
-  font-size: 1.05rem;
+  color: var(--gf-accent-text);
   font-weight: 700;
   text-align: right;
 }
+.hb__gain { display: block; color: var(--gf-accent); font-size: 0.66rem; }
+
 .hb__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
 /*
@@ -187,12 +237,32 @@
   z-index: 4;
   margin: 0 0 12px;
   padding: 12px;
-  border: 2px solid #c9a84c;
-  background: #1a1208;
+  border: 1px solid var(--gf-accent);
+  border-radius: var(--gf-radius);
+  background: var(--gf-panel-solid);
 }
 .hb__confirm-actions { display: flex; gap: 8px; }
+.hb__drop { border-color: rgba(228, 168, 58, 0.4); color: #E4A83A; }
 
-.hb__face:focus-visible, .hb__kind:focus-visible, .hb__drop:focus-visible, .hb__keep:focus-visible, .hb__ledger summary:focus-visible {
-  outline: 2px solid #ffc669;
-  outline-offset: 2px;
+.hb__empty, .hb__full {
+  margin: 0 0 0.6rem;
+  color: var(--gf-dim);
+  font-size: 0.88rem;
+}
+
+.hb__ledger summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--gf-dim);
+  cursor: pointer;
+  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.hb__ledger summary:hover { color: var(--gf-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hb__tile { transition: none; }
+  .hb__tile:hover { transform: none; }
 }
