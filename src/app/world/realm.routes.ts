@@ -77,6 +77,9 @@ export const REALM_ROUTES: Routes = FIVE_REALMS.map(realm => ({
     import('./realm-landing.component').then(m => m.RealmLandingComponent),
   title: `${realm.name} — Eclipse Realms`,
   data: {
+    // RealmLandingComponent's id source on a literal path: these routes
+    // declare no `:realmId`, so paramMap is empty on them.
+    realmId: realm.id,
     description: realmDescription(realm),
     keywords: [
       'eclipse realms',
