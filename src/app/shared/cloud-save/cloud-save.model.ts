@@ -281,6 +281,23 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeExchange,
   },
   {
+    key: 'eclipse-npc',
+    collection: 'progress',
+    doc: 'npc',
+    label: 'NPC chains',
+    // `{ version, claimed: string[], seen: string[] }` — and the structural
+    // rules land exactly right on all three, which is why there is no hand-
+    // written merge here. `version` is a number and takes the max; `claimed`
+    // is a set of step receipts, and a step claimed on either device is
+    // claimed, so the union is the only honest answer; `seen` is a set of
+    // heard-line ids where the union simply means both devices' reading
+    // history is remembered. Nothing here is spendable and nothing here is a
+    // first-discovery date, so neither of the two traps that needed custom
+    // rules elsewhere applies. `NpcQuestService.load()` re-clamps `seen` to
+    // its cap on the way in, which is what keeps a union of two long
+    // histories from growing without bound.
+  },
+  {
     key: 'godforge-pro',
     collection: 'progress',
     doc: 'pro',

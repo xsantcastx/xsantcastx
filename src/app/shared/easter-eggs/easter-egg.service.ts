@@ -36,6 +36,20 @@ export const EASTER_EGGS: EasterEgg[] = [
   { id: 'speed-demon',     name: 'Speed Demon',          description: 'Visited five different halls in under 60 seconds',  tool: 'global',  rarity: 'rare',      icon: '⚡' },
   { id: 'explorer',        name: 'Explorer',             description: 'Walked every hall on the World door',              tool: 'global',  rarity: 'common',    icon: '🧭' },
 
+  // ── The six chains ──────────────────────────────────────────────
+  // One per NPC, banked by NpcQuestService when the last step of that
+  // character's chain is claimed. Registered here rather than kept private to
+  // the NPC feature so they inherit the rarity drop, the XP payout, the
+  // discovery date and the Codex card like every other achievement — a wall
+  // that showed twenty-nine of thirty-five discoveries because six lived
+  // somewhere else would be the wrong kind of secret.
+  { id: 'npc-aureth-chain',    name: 'Champion of Light',    description: "Finished Aureth's chain, to the end of the Eclipse", tool: 'global', rarity: 'legendary', icon: '\u2600\ufe0f' },
+  { id: 'npc-verrin-chain',    name: 'The Hollow',           description: "Finished Verrin's chain, to the last silence",      tool: 'global', rarity: 'legendary', icon: '\ud83c\udf11' },
+  { id: 'npc-kael-chain',      name: 'Forgeborn',            description: "Finished Kael's chain, and heard about the eye",    tool: 'global', rarity: 'legendary', icon: '\ud83d\udd25' },
+  { id: 'npc-archivist-chain', name: 'Keeper of Fragments',  description: "Finished the Archivist's chain",                    tool: 'global', rarity: 'legendary', icon: '\ud83d\udcdc' },
+  { id: 'npc-merchant-chain',  name: 'Technically Family',   description: "Finished the Merchant's chain",                     tool: 'global', rarity: 'legendary', icon: '\ud83d\udcb0' },
+  { id: 'npc-nameless-chain',  name: 'It Remembers',         description: 'Answered the Nameless three times',                 tool: 'global', rarity: 'legendary', icon: '\u2049\ufe0f' },
+
   // ── Tool-specific ──────────────────────────────────────────────
   { id: 'json-inception',  name: 'Inception',            description: 'Formatted JSON nested 10+ levels deep',           tool: 'json-formatter',            rarity: 'rare',      icon: '🌀' },
   { id: 'b64-mirror',      name: 'Mirror Mirror',        description: 'Encoded "xsantcastx" in Base64',                  tool: 'base64-encoder',            rarity: 'common',    icon: '🪞' },

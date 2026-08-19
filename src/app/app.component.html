@@ -138,3 +138,11 @@
 @if (!isEmbedMode) {
   <app-keeper-panel></app-keeper-panel>
 }
+
+<!-- The six who speak. A sibling of <main> for the same reason as the flame:
+     routeFadeIn leaves a transform on every routed host, and a position:fixed
+     portrait inside one would be pinned to the page rather than the viewport.
+     Never in embed mode — a goddess is wrong inside an iframed tool. -->
+@if (!isEmbedMode) {
+  <app-npc-dialogue></app-npc-dialogue>
+}
