@@ -82,16 +82,22 @@ async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
 }
 
 test.describe('C5 equipment actions', () => {
-  test('migrates off-hand, retires charms, and equips from an armed tile', async ({ page }) => {
+  test('migrates off-hand, wears a charm, and equips from an armed tile', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
     await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
-    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    // Charms used to be retired, with a note where the row is. They have three
+    // wells of their own now, and the seeded Old Charm sits in the first.
+    const charms = page.locator('.ld').first().locator('.ld__charmrow-slots .ld__charm');
+    await expect(charms).toHaveCount(3);
+    await expect(charms.filter({ hasText: 'Old Charm' })).toHaveCount(1);
 
     await openPanel(page, 'bank');
     // Scoped to the panel: the sheet behind it holds its own copy of every bag
-    // tile, so an unscoped name match is two elements, not a missing one.
-    await expect(page.locator('.kp').getByRole('button', { name: /Old Charm/ })).toBeVisible();
+    // tile, so an unscoped name match is two elements, not a missing one. The
+    // charm is worn now rather than retired to the bank, so the bank is exactly
+    // where it should not be.
+    await expect(page.locator('.kp').getByRole('button', { name: /Old Charm/ })).toHaveCount(0);
     await page.locator('.kp').getByRole('button', { name: /Crown/ }).click();
     await page.locator('.kp').getByRole('tab', { name: 'Loadout' }).click();
     await expect(page.locator('.kp')).toBeVisible();
@@ -118,11 +124,11 @@ test.describe('C5 equipment actions', () => {
     await expect(page.locator('.kp').getByRole('button', { name: /Crown/ })).toBeVisible();
   });
 
-  test('keeps the 375px loadout readable after charm retirement', async ({ page }) => {
+  test('keeps the 375px loadout and its charm row readable', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await open(page);
     await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
-    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    await expect(page.locator('.ld').first().locator('.ld__charmrow-slots .ld__charm')).toHaveCount(3);
     const shotDir = resolve('test-results/c5-equipment');
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.ld').screenshot({ path: resolve(shotDir, 'mobile-375.png') });
