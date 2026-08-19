@@ -146,11 +146,25 @@ export class InventoryService {
   private readonly snapshot$$ = new BehaviorSubject<InventorySnapshot>(this.snapshotOf(emptyInventoryLedger()));
   private readonly acquired$$ = new Subject<GameItem>();
   private readonly sold$$ = new Subject<{ item: GameItem; gold: number }>();
+  private readonly equipped$$ = new Subject<GameItem>();
+  private readonly improved$$ = new Subject<GameItem>();
 
   readonly snapshot$: Observable<InventorySnapshot> = this.snapshot$$.asObservable();
   /** One per item that lands. Drives the drop toast. */
   readonly acquired$: Observable<GameItem> = this.acquired$$.asObservable();
   readonly sold$: Observable<{ item: GameItem; gold: number }> = this.sold$$.asObservable();
+  /**
+   * One per item that moved into a slot — the Keeper's or an explorer's.
+   *
+   * Published rather than derived from `snapshot$`, because a diff of the
+   * snapshot cannot tell an equip apart from a hydrate: the ledger arriving
+   * from storage with six things worn looks identical to six equips, and the
+   * Contract Board would pay for a page load. Not replayed — an equip is a
+   * moment, and a late subscriber missed it.
+   */
+  readonly equipped$: Observable<GameItem> = this.equipped$$.asObservable();
+  /** One per successful upgrade or temper, for the same reason. */
+  readonly improved$: Observable<GameItem> = this.improved$$.asObservable();
 
   get snapshot(): InventorySnapshot { return this.snapshot$$.value; }
 
@@ -609,7 +623,12 @@ export class InventoryService {
     if (!success && preview.policy.shatterOnFail) {
       return { ok: true, item: nextItem, replayed: false, leveled: false };
     }
-    return { ok: true, item: stored ?? nextItem, replayed: false, leveled: success };
+    const settled = stored ?? nextItem;
+    // Every completed temper, win or lose: the Gold and the materials were
+    // spent either way, and a challenge that only counted the successes would
+    // stall on a run of bad rolls the player had no control over.
+    this.improved$$.next(settled);
+    return { ok: true, item: settled, replayed: false, leveled: success };
   }
 
   /** Spec name. Same writer as `upgrade`. */
@@ -919,6 +938,9 @@ export class InventoryService {
       return false;
     }
     this.publish();
+    // After the write and the publish, so a subscriber that reads the snapshot
+    // in response sees the item already worn.
+    this.equipped$$.next({ ...item, equipped: true, slot: target });
     return true;
   }
 
@@ -971,6 +993,7 @@ export class InventoryService {
       return false;
     }
     this.publish();
+    this.equipped$$.next({ ...item, explorerId });
     return true;
   }
 
