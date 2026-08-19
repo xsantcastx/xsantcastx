@@ -1533,6 +1533,8 @@ export class TranslationService {
     'loadout.picker.none': { en: 'Nothing in your bag fits this slot yet.', es: 'Nada en tu bolsa encaja en esta ranura todavia.' },
     'loadout.picker.close': { en: 'Close slot', es: 'Cerrar ranura' },
     'loadout.unequip': { en: 'Unequip', es: 'Desequipar' },
+    'loadout.compare.against': { en: 'Compared against {{name}}', es: 'Comparado con {{name}}' },
+    'loadout.compare.upgrade': { en: 'upgrade', es: 'mejora' },
     'loadout.stat.gold': { en: 'Gold/sec', es: 'Oro/s' },
     'loadout.stat.mf': { en: 'MF', es: 'SM' },
     'loadout.stat.xp': { en: 'XP', es: 'XP' },
