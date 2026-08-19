@@ -489,8 +489,9 @@ export class InventoryService {
     };
   }
 
+  /** Cost and chance of the next temper, with the wearer's worn ward applied. */
   previewUpgrade(item: GameItem): UpgradePreview | null {
-    return previewUpgrade(item);
+    return previewUpgrade(item, this.equippedTotals.ward);
   }
 
   canUpgrade(item: GameItem): boolean {
@@ -524,7 +525,7 @@ export class InventoryService {
     if (!isTemperableKind(item)) return { ok: false, code: 'kind' };
 
     const level = upgradeLevelOf(item);
-    const preview = previewUpgrade(item);
+    const preview = previewUpgrade(item, this.equippedTotals.ward);
     if (!preview || level >= preview.maxLevel) return { ok: false, code: 'max' };
     if (this.economy.snapshot.gold < preview.gold) return { ok: false, code: 'funds' };
     if (preview.materials.some(mat => this.stackOf(mat.id) < mat.quantity)) {
@@ -548,7 +549,10 @@ export class InventoryService {
     }
 
     const def = definitionFor(item);
-    const success = rollUpgradeSuccess(level, rng, def);
+    // Worn ward turns part of the fail chance aside — see item-upgrade.ts.
+    // Read live, same as the preview above, so what the panel printed is what
+    // the roll uses.
+    const success = rollUpgradeSuccess(level, rng, def, this.equippedTotals.ward);
     let nextItem: GameItem = {
       ...item,
       lastUpgradeAt: foundAt,
