@@ -9,6 +9,7 @@
  * Pure data: no Firebase, no network, no DOM. Runs on a clean offline checkout.
  */
 import { ART_ALIAS, ART_PENDING, artFor, hasArt } from './art';
+import { NPCS } from '../npc/npc.model';
 import { ART_ALL } from './art-manifest.generated';
 import {
   ALL_UPGRADES,
@@ -83,10 +84,16 @@ describe('art lookup', () => {
     it('names a real catalogue row for every pending id', () => {
       // Item definitions are in here too: `ART_PENDING` now carries the named
       // uniques, and without them this gate would read every one as an orphan.
+      // NPC portraits are in here for the same reason the uniques are: they are
+      // real catalogue rows in their own catalogue, and without them this gate
+      // would read all six as orphans.
       const known = new Set([
-        ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
-        ...ITEM_DEFINITIONS,
-      ].map(row => row.id));
+        ...[
+          ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
+          ...ITEM_DEFINITIONS,
+        ].map(row => row.id),
+        ...NPCS.map(n => n.artId),
+      ]);
       const orphans = [...ART_PENDING].filter(id => !known.has(id));
       expect(orphans).toEqual([]);
     });
