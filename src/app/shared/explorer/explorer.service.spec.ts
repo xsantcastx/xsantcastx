@@ -52,6 +52,19 @@ function configure(memory: MemoryGateway): ExplorerService {
   return TestBed.inject(ExplorerService);
 }
 
+/**
+ * Put enough Gold in the ledger to pay any dispatch fee.
+ *
+ * The three lengths above the Scout charge one — see `MissionDefinition.cost`.
+ * The fees are trivial against what the missions pay (a Delve costs 500 and
+ * returns 20,000 at the floor), but a test that starts from a genuinely empty
+ * economy cannot afford even that, which is not what any of these tests are
+ * about.
+ */
+function fund(): void {
+  TestBed.inject(EconomyService).earnGold(5_000_000, 'test');
+}
+
 /** Read the persisted blob back, the way a fresh tab would. */
 function stored(memory: MemoryGateway): ExplorerState {
   return JSON.parse(memory.readRaw(EXPLORER_KEY) ?? '{}') as ExplorerState;
@@ -137,6 +150,7 @@ describe('ExplorerService', () => {
   });
 
   it('writes a log line for every settled mission', () => {
+    fund();
     explorers.dispatch('umbral', 'delve');
     expireEverything(memory);
 
@@ -228,5 +242,59 @@ describe('ExplorerService', () => {
     live.reset();
     expect(live.snapshot.history).toEqual([]);
     expect(live.snapshot.active).toEqual([]);
+  });
+
+  // ── The deep ladder's gates ───────────────────────────────────────────────
+
+  it('keeps the first run free so a new visitor can always take it', () => {
+    // The onboarding property the fee ladder must never break: at zero Gold,
+    // the Scout still goes. Everything above it is reachable from what that
+    // Scout pays.
+    expect(TestBed.inject(EconomyService).snapshot.gold).toBe(0);
+    expect(explorers.blockedReason('scout')).toBeNull();
+    expect(explorers.dispatch('luminous', 'scout')).toBe(true);
+  });
+
+  it('refuses a costed run that cannot be paid for, and takes nothing', () => {
+    const economy = TestBed.inject(EconomyService);
+    expect(economy.snapshot.gold).toBeLessThan(500);
+
+    expect(explorers.blockedReason('delve')?.code).toBe('gold');
+    expect(explorers.dispatch('umbral', 'delve')).toBe(false);
+    expect(explorers.snapshot.active.length).toBe(0);
+    expect(economy.snapshot.gold).toBe(0);
+  });
+
+  it('charges the fee exactly once on a dispatch that goes', () => {
+    const economy = TestBed.inject(EconomyService);
+    fund();
+    const before = economy.snapshot.gold;
+
+    expect(explorers.dispatch('umbral', 'delve')).toBe(true);
+    expect(before - economy.snapshot.gold).toBe(500);
+  });
+
+  it('does not charge for a dispatch the roster refuses', () => {
+    const economy = TestBed.inject(EconomyService);
+    fund();
+    // One explorer, one slot: the second dispatch has nobody to send, and it
+    // must not bill for the mission it could not start. The fee is taken after
+    // the roster check for exactly this case.
+    expect(explorers.dispatch('umbral', 'scout')).toBe(true);
+    const before = economy.snapshot.gold;
+    expect(explorers.dispatch('verge', 'delve')).toBe(false);
+    expect(economy.snapshot.gold).toBe(before);
+  });
+
+  it('holds the Abyss behind a rank the fresh Keeper does not have', () => {
+    fund();
+    const block = explorers.blockedReason('abyss');
+    expect(block?.code).toBe('level');
+    expect(block?.need).toBe(5);
+    expect(explorers.dispatch('umbral', 'abyss')).toBe(false);
+  });
+
+  it('reports an unknown mission rather than throwing on it', () => {
+    expect(explorers.blockedReason('not-a-mission' as never)?.code).toBe('unknown');
   });
 });

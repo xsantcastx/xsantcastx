@@ -72,8 +72,9 @@ import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
 import { QuestService, QuestBoard } from '../shared/quests/quest.service';
 import { Quest } from '../shared/quests/quest.model';
-import { ExplorerService } from '../shared/explorer/explorer.service';
+import { ExpeditionBlock, ExplorerService } from '../shared/explorer/explorer.service';
 import { ExplorerRosterPanelComponent } from '../shared/rpg/explorer-roster-panel.component';
+import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
 import {
   EXPLORER_REALMS,
   Expedition,
@@ -81,6 +82,7 @@ import {
   ExplorerReturn,
   ExplorerState,
   MISSIONS,
+  realmMaterials,
   MAX_EXPLORER_SLOTS,
   MissionDefinition,
   MissionId,
@@ -104,11 +106,14 @@ import {
   rarityLabel,
 } from '../shared/rpg/item.model';
 import {
+  RUNE_TIERS,
+  RUNE_TIER_ORDER,
   RuneTier,
   RuneTierDefinition,
   runeById,
   tierOf,
 } from '../shared/rune-forge/rune.model';
+import { materialDisplay } from '../shared/rpg/material-catalog';
 import { scrollById } from '../shared/rune-forge/lore-scroll.model';
 import { RealmDefinition, RealmId, realmById } from '../shared/realms/realm.model';
 import { RARITIES } from '../shared/rarity/rarity.model';
@@ -152,6 +157,33 @@ interface Worn {
   color: string;
   /** Where on the ring it sits, in degrees. */
   angle: number;
+}
+
+/**
+ * One rung of the dispatch ladder, resolved for its button.
+ *
+ * Everything the card needs is computed once per change-detection pass rather
+ * than through six getters called from the template: the picker holds six
+ * cards, each of which wants a Gold band, a cost, a block reason and a drama
+ * level, and thirty-six template calls a tick on a page that already ticks
+ * once a second is a budget this page cannot afford.
+ */
+interface MissionOption {
+  def: MissionDefinition;
+  /** "500K–1.4M Gold", already in the armed realm. */
+  band: string;
+  /** "10,000 Gold" or an empty string when the rung is free. */
+  cost: string;
+  /** Why it cannot be sent, or null. */
+  block: ExpeditionBlock | null;
+  /** The refusal, written for a human. Empty when there is none. */
+  blockLabel: string;
+  /** 1–6. Drives the card's glow, ring count and portal treatment. */
+  drama: number;
+  /** True for the three lengths past the hour. */
+  deep: boolean;
+  /** "guaranteed Epic+", or empty. The one line that sells the rung. */
+  promise: string;
 }
 
 /** A mission out, with everything the card needs already computed. */
@@ -208,6 +240,14 @@ interface Landing {
   scroll: { title: string; subtitle: string; text: string; color: string } | null;
   items: LandingItem[];
   /**
+   * Materials carried home, resolved for display.
+   *
+   * Named and pictured rather than counted, because "14 materials" is a number
+   * and "Umbral Ink ×3" is a reason to have gone to Umbral — which is the whole
+   * point of a realm-specific drop.
+   */
+  materials: { id: string; name: string; art: string; quantity: number }[];
+  /**
    * The best thing in the haul, as a colour and a glow.
    *
    * Drives the card's outer bloom so a Legendary return does not look like a
@@ -234,10 +274,53 @@ interface HistoryRow {
   runes: { key: string; name: string; glyph: string; color: string }[];
   scrollFound: boolean;
   itemCount: number;
+  /** Total materials banked on this return. A count here — the log is a glance. */
+  materialCount: number;
 }
 
 /** How many feed lines are kept. Older ones fall off the bottom. */
 const FEED_CAP = 20;
+
+/**
+ * The one line that sells a rung of the ladder.
+ *
+ * Derived from the mission's own fields rather than authored per mission,
+ * because the fields are what actually happens on return and a hand-written
+ * promise is a sentence that quietly stops being true the first time a floor
+ * is retuned.
+ */
+function missionPromise(def: MissionDefinition): string {
+  const parts: string[] = [];
+  if (def.guaranteedRunes) {
+    const tier = RUNE_TIERS[RUNE_TIER_ORDER[def.runeFloor ?? 0]]?.label ?? 'Common';
+    parts.push(
+      def.guaranteedRunes === 1
+        ? `guaranteed ${tier}+`
+        : `${def.guaranteedRunes} guaranteed ${tier}+`,
+    );
+  } else if (def.runeFloor) {
+    parts.push(`${RUNE_TIERS[RUNE_TIER_ORDER[def.runeFloor]]?.label ?? ''}+ runes only`);
+  }
+  if (def.materialsMax) parts.push(`${def.materialsMin}–${def.materialsMax} materials`);
+  return parts.join(' · ');
+}
+
+/** A refusal, written for a human. Empty string when there is nothing to say. */
+function blockLabel(block: ExpeditionBlock | null): string {
+  if (!block) return '';
+  switch (block.code) {
+    case 'level':
+      return `Keeper rank ${block.need} — you are ${block.have}`;
+    case 'gold':
+      return `${formatCompact(block.need ?? 0)} Gold — you have ${formatCompact(block.have ?? 0)}`;
+    case 'exclusive':
+      return 'One at a time. Something is already down there.';
+    case 'slots':
+      return 'Every explorer is out.';
+    default:
+      return 'Not available.';
+  }
+}
 
 /** The best find in a haul, reduced to what the card needs to look like it. */
 interface Tone {
@@ -308,7 +391,7 @@ const HUM_KEY = 'godforge-forge-hum';
 @Component({
   selector: 'app-forge-view',
   standalone: true,
-  imports: [CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent],
+  imports: [CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent, ChallengePanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './forge-view.component.html',
   styleUrls: ['./forge-view.component.css'],
@@ -647,6 +730,78 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     return `×${mult.toFixed(2).replace(/\.?0+$/, '')}`;
   }
 
+  /**
+   * What the armed realm's seams hand over, named.
+   *
+   * Only the realm's own two, not the three commons — the commons are what
+   * every realm gives and listing them under all five buttons would be the
+   * same sentence five times, which is how the picker read before realm
+   * profiles existed.
+   */
+  get pickedRealmMaterials(): string {
+    const all = realmMaterials(this.pickedRealm);
+    const exclusive = all.slice(3);
+    return exclusive.map(id => materialDisplay(id)?.name ?? id).join(', ');
+  }
+
+  /** The six rungs, resolved for the picker. Recomputed per pass, not per cell. */
+  get missionOptions(): MissionOption[] {
+    return this.missions.map(def => {
+      const block = this.explorers.blockedReason(def.id);
+      return {
+        def,
+        band: this.goldBand(def),
+        cost: def.cost ? `${formatCompact(def.cost)} Gold` : '',
+        block,
+        blockLabel: blockLabel(block),
+        drama: def.drama ?? 1,
+        deep: def.deep === true,
+        promise: missionPromise(def),
+      };
+    });
+  }
+
+  /** The rung currently armed, for the send button's copy. */
+  get pickedMissionOption(): MissionOption | undefined {
+    return this.missionOptions.find(o => o.def.id === this.pickedMission);
+  }
+
+  /** True when the armed rung cannot be sent. Disables the button. */
+  get dispatchBlocked(): boolean {
+    return !!this.pickedMissionOption?.block;
+  }
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+
+  /**
+   * Whether to offer the notification control, and what it should say.
+   *
+   * Offered only once a deep mission is actually armed. A permission prompt
+   * next to the two-minute Scout is a prompt for something the visitor is about
+   * to watch finish, and asking there is how a site earns a permanent "blocked"
+   * from someone who would have said yes to the 72-hour one.
+   */
+  get canOfferNotifications(): boolean {
+    const perm = this.explorers.notificationPermission;
+    return perm === 'default' && (this.pickedMissionOption?.deep ?? false);
+  }
+
+  get notificationsOn(): boolean {
+    return this.explorers.notificationPermission === 'granted';
+  }
+
+  async enableNotifications(): Promise<void> {
+    const result = await this.explorers.requestNotifications();
+    this.push(
+      result === 'granted'
+        ? 'The realms will call when a deep run lands.'
+        : 'No notifications, then. The expedition log still keeps every return.',
+      result === 'granted' ? '#7fd5a3' : '#9fb4ae',
+      result === 'granted' ? '🔔' : '🔕',
+    );
+    this.cdr.markForCheck();
+  }
+
   // ── The dashboard strip ────────────────────────────────────────────────────
 
   /**
@@ -727,16 +882,28 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
         })),
       scrollFound: !!record.scroll,
       itemCount: record.items?.length ?? 0,
+      materialCount: Object.values(record.materials ?? {}).reduce((a, b) => a + b, 0),
     };
   }
 
   dispatch(): void {
+    const mission = missionById(this.pickedMission);
+    const block = this.explorers.blockedReason(this.pickedMission);
+    if (block) {
+      // A refused dispatch says why rather than doing nothing. The button is
+      // already disabled in this state; this covers the keyboard path and the
+      // half-second where the Gold moved between the render and the click.
+      this.push(blockLabel(block), '#ff9a5a', '⛔');
+      this.cdr.markForCheck();
+      return;
+    }
     if (!this.explorers.dispatch(this.pickedRealm, this.pickedMission)) return;
     const realm = this.pickedRealmDef;
-    const mission = missionById(this.pickedMission);
     this.audio.strike();
     this.push(
-      `Explorer sent into ${realm.name} — ${mission?.name ?? 'expedition'}`,
+      mission?.cost
+        ? `Explorer sent into ${realm.name} — ${mission.name} (${formatCompact(mission.cost)} Gold)`
+        : `Explorer sent into ${realm.name} — ${mission?.name ?? 'expedition'}`,
       realm.color,
       '🧭',
     );
@@ -833,6 +1000,10 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
           }
         : null,
       items,
+      materials: Object.entries(r.reward.materials ?? {}).map(([id, quantity]) => {
+        const display = materialDisplay(id);
+        return { id, name: display?.name ?? id, art: display?.art ?? '', quantity };
+      }),
       tone: best?.color ?? realm?.color ?? AETHER_COLOR,
       toneGlow: best?.glow ?? realm?.glow ?? 'rgba(201, 168, 76, .5)',
       rare: !!best && best.rank >= 2,
@@ -850,6 +1021,9 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     for (const extra of extraRunes) this.push(`Found the ${extra.name} rune!`, extra.color, extra.glyph);
     if (scroll) this.push(`Recovered a fragment: ${scroll.subtitle}`, tierOf(scroll.rarity).color, '📜');
     for (const item of items) this.push(`Carried home ${item.name}`, item.color, '⚔');
+    for (const [id, quantity] of Object.entries(r.reward.materials ?? {})) {
+      this.push(`Hauled back ${materialDisplay(id)?.name ?? id} ×${quantity}`, '#C9A84C', '⛏');
+    }
 
     this.cue(rune ? tierOf(rune.tier) : null, best);
     this.cdr.markForCheck();
