@@ -37,6 +37,7 @@ import { Subscription } from 'rxjs';
 import { EconomyService } from '../economy/economy.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { CollectionService } from './collection.service';
+import { qualityOf } from '../rpg/item-quality';
 import { collectionIdForItem } from './collection.model';
 
 @Injectable({ providedIn: 'root' })
@@ -63,7 +64,9 @@ export class CollectionWiringService {
 
     this.subs.push(this.inventory.acquired$.subscribe(item => {
       const id = collectionIdForItem(item);
-      if (id) this.collection.discover(id);
+      // The roll grade rides along with the discovery so the log can keep the
+      // best one ever seen for this definition — see `CollectionRecord.bestRoll`.
+      if (id) this.collection.discover(id, 1, Date.now(), qualityOf(item));
     }));
 
     this.subs.push(this.inventory.stackGranted$.subscribe(({ stackKey, quantity }) => {
