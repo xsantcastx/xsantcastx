@@ -30,6 +30,17 @@ export const EGG_HINTS: Record<string, string> = {
   'forge-self-aware': 'Somewhere in the Godforge there is a sheet with your own name on it.',
   'cloud-eternal-archive': 'Your progress transcends devices. The Godforge remembers across all realms.',
 
+  // ── The six chains ────────────────────────────────────────────────────────
+  // Each gestures at the character rather than at their last step. Naming the
+  // objective would turn a five-part story into a checklist, and the whole
+  // point of a chain is that you meet somebody before you know what they want.
+  'npc-aureth-chain': 'Somebody in the light has been asking for you by a name you have not used yet.',
+  'npc-verrin-chain': 'The one who waits in the Umbral counts to something. Finish the counting.',
+  'npc-kael-chain': 'The Keeper will tell you what happened to the eye. He has conditions.',
+  'npc-archivist-chain': 'There is an entry in the record with your handwriting and the wrong date. Close it.',
+  'npc-merchant-chain': 'Spend enough and the shelf is no longer the interesting part of the shop.',
+  'npc-nameless-chain': 'It asked three times. Nobody has ever answered the third.',
+
   // ── The combo ladder ──────────────────────────────────────────────────────
   // These gesture at rhythm rather than at a number, per rule 1 — naming the
   // count would turn the whole ladder into a checklist with a stopwatch.
