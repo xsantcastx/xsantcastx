@@ -72,7 +72,18 @@ export const BRIDGE_ESSENCE_PER_STRIKE = 1;
  * enough that a Void Fragment stays a story, high enough that a new player sees
  * a Small Charm of Fortune within their first evening.
  */
-export const CHARM_DROP_CHANCE = 0.0008;
+/**
+ * Chance a rune find mints a charm instead of a rune sigil.
+ *
+ * Tripled from 0.0008 when the charm table went from one family to three. The
+ * table's weights are identical across Magic Find, Gold and XP, so a drop is an
+ * even three-way split on family — leaving this at 0.0008 would have cut the
+ * supply of *each* family to a third of what the whole table used to be, which
+ * is a silent Magic Find nerf nobody asked for. At 0.0024 a player sees the
+ * same number of Magic Find charms per strike as before and gets the other two
+ * families on top.
+ */
+export const CHARM_DROP_CHANCE = 0.0024;
 
 interface RuneLedger {
   version: 1;
@@ -362,11 +373,12 @@ export class RuneForgeService {
    *
    * Two rolls, in order:
    *
-   *   • `CHARM_DROP_CHANCE` of the find being a Magic Find charm instead of a
-   *     rune sigil. Charms are the only source of large flat MF and they are
-   *     what makes the stat worth building toward, so they cannot be gated
-   *     behind the rune tier — a player who never sees a Rare would never see a
-   *     charm either, and Luck would have no equipment to pair with.
+   *   • `CHARM_DROP_CHANCE` of the find being a charm instead of a rune sigil.
+   *     Charms are the only source of large flat Magic Find and the only thing
+   *     the three charm wells accept, so they cannot be gated behind the rune
+   *     tier — a player who never sees a Rare would never see a charm either,
+   *     and Luck would have no equipment to pair with. Which of the three
+   *     families it lands in is `rollCharmSeed`'s business, not this one's.
    *   • Otherwise a sigil at the rune's own tier, with rolled stats.
    *
    * Returns null when the bag refused it, which the caller renders as a rune

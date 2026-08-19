@@ -85,9 +85,88 @@
       </div>
 
       <!--
+        The charm row.
+
+        Three wells under the doll rather than a ninth slot on it. Charms are
+        not gear — they occupy no part of the body and the art has nowhere to
+        put them — so they get their own strip, sized down from the gear wells
+        so the row reads as a subordinate group rather than as three more slots
+        the Keeper is failing to fill.
+
+        Each well is the same control as a gear well and opens the same picker,
+        so equipping, comparing, the tooltip and the equip flash all behave
+        identically. Only the layout differs.
+      -->
+      <div class="ld__charmrow">
+        <div class="ld__charmrow-head">
+          <h3 class="ld__charmrow-title">{{ t('loadout.charms.title') }}</h3>
+          <p class="ld__charmrow-count">{{ t('loadout.charms.count', { n: charmsWorn, max: charmSlots.length }) }}</p>
+        </div>
+
+        <ul class="ld__charmrow-slots">
+          <li *ngFor="let slot of charmSlots">
+            <button
+              type="button"
+              class="ld__charm"
+              [class.ld__charm--filled]="!!itemInDoll(slot)"
+              [class.ld__charm--selected]="selectedSlot === slot.slotId"
+              [class.ld__charm--flash]="flashSlot === slot.slotId"
+              [class.ld__charm--target]="isTarget(slot)"
+              (click)="onSlotClick(slot)"
+              [attr.aria-label]="slotAnnounce(slot)"
+              [attr.title]="slotTooltip(slot)"
+              [attr.aria-pressed]="selectedSlot === slot.slotId"
+            >
+              <ng-container *ngIf="itemInDoll(slot) as worn; else charmGlyph">
+                <img *ngIf="tileArt(worn) as art"
+                     class="ld__charm-art"
+                     [src]="art"
+                     [attr.srcset]="tileArtSrcset(worn)"
+                     sizes="40px"
+                     alt=""
+                     width="40" height="40"
+                     loading="lazy" decoding="async">
+                <span *ngIf="!tileArt(worn)"
+                      class="ld__charm-glyph"
+                      [ngStyle]="{
+                        'mask-image': 'url(' + slot.glyph + ')',
+                        '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                      }"
+                      aria-hidden="true"></span>
+              </ng-container>
+              <ng-template #charmGlyph>
+                <span class="ld__charm-glyph"
+                      [ngStyle]="{
+                        'mask-image': 'url(' + slot.glyph + ')',
+                        '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                      }"
+                      aria-hidden="true"></span>
+              </ng-template>
+              <span class="ld__charm-name">{{ itemInDoll(slot)?.name || t('loadout.charms.empty') }}</span>
+            </button>
+          </li>
+        </ul>
+
+        <p class="ld__charmrow-totals" *ngIf="charmTotals.length; else charmHint">
+          <span *ngFor="let mod of charmTotals">{{ mod }}</span>
+        </p>
+        <ng-template #charmHint>
+          <p class="ld__charmrow-hint">
+            {{ charmsHeld
+                ? t('loadout.charms.hint', { n: charmsHeld })
+                : t('loadout.charms.none') }}
+          </p>
+        </ng-template>
+      </div>
+      <!--
         Slot picker. Selecting a well shows what is worn there and every item in
         the bag that fits it, so equipping is one surface instead of a trip to
         the Bank tab to arm something first.
+
+        It sits below *both* slot groups rather than directly under the doll,
+        because one picker serves the gear wells and the charm wells and it has
+        to be in a predictable place — a panel that opens above the row you just
+        clicked pushes that row off the screen on a phone.
       -->
       <div class="ld__picker" *ngIf="selectedSlotManifest as slot">
         <div class="ld__picker-head">
@@ -100,6 +179,12 @@
           <img class="ld__worn-art" *ngIf="tileArt(worn) as art" [src]="art"
                [attr.srcset]="tileArtSrcset(worn)" sizes="44px"
                alt="" width="44" height="44" decoding="async">
+          <!-- The initials orb the pick rows already had. Without it an item
+               with no tile art left the 44px art column empty and the *name*
+               fell into it, wrapping to one word per line — which nothing
+               noticed while charms were unequippable, because every other
+               equippable has art. -->
+          <span class="ld__worn-orb" *ngIf="!tileArt(worn)" aria-hidden="true">{{ initialsOf(worn) }}</span>
           <div class="ld__worn-body" [attr.title]="itemTooltip(worn)">
             <p class="ld__expand-name">{{ worn.name }}
               <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
@@ -158,10 +243,6 @@
         </ng-template>
       </div>
 
-      <div class="ld__charms" *ngIf="retiredCharms.length">
-        <h3 class="ld__charms-title">{{ t('loadout.charms.title') }}</h3>
-        <p class="ld__charms-note">{{ t('loadout.charms.note') }}</p>
-      </div>
     </div>
 
     <div class="ld__bag-col" *ngIf="variant !== 'select'">
@@ -254,8 +335,10 @@
             <button type="button" class="ld__sell" *ngIf="inventory.canSell(item)" (click)="askSell(item)">
               {{ t('loadout.sell', { n: compact(item.sellValue) }) }}
             </button>
-            <span class="ld__bound" *ngIf="item.type === 'charm'">{{ t('loadout.charms.note') }}</span>
-            <span class="ld__bound" *ngIf="item.type !== 'charm' && !inventory.canSell(item) && !inventory.canDrop(item)">{{ t('loadout.soulbound') }}</span>
+            <!-- Charms carried their own "cannot be worn" line here while they
+                 were retired. They have slots again, so the only thing left to
+                 say about a bag item is whether it is soulbound. -->
+            <span class="ld__bound" *ngIf="!inventory.canSell(item) && !inventory.canDrop(item)">{{ t('loadout.soulbound') }}</span>
           </div>
         </li>
       </ul>
