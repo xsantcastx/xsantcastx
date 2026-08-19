@@ -386,16 +386,19 @@
    Per-tier card reveal.
 
    `data-reveal` on .rf-pick is the tier table's `reveal` field
-   (plain → glow → burst → shimmer → edge → flash → void). Each rung keeps the
-   rung below and adds one channel: a tier-coloured border and label for all,
-   a halo from Uncommon, shards from Rare, a light sweep from Epic, and a held
-   1.06 scale with a double ring from Legendary. Every end state below is a
-   plain declaration — the colour, the ring, the scale — so a reduced-motion
-   visitor lands on the same lit card; only the `animation:` lines further
-   down are motion, and the reduce block turns those off. Keyframes and the
-   `animation:` lines both stay top-level: Angular's emulated encapsulation
-   does not rewrite either inside a @media block, and the reference silently
-   dangles (see the note above the animation lines).
+   (plain → glow → burst → shimmer → edge → flash → void). It is never set in
+   Auto ×10: every batch card is `.is-chosen`, so one tier on the pick would
+   light all ten in the last card's colour and outrank the is-best ring below.
+   Each rung keeps the rung below and adds one channel: a tier-coloured border
+   and label for all, a halo from Uncommon, shards from Rare, a light sweep
+   from Epic, and a held 1.06 scale with a double ring from Legendary. Every
+   end state below is a plain declaration — the colour, the ring, the scale —
+   so a reduced-motion visitor lands on the same lit card; only the
+   `animation:` lines further down are motion, and the reduce block turns
+   those off. Keyframes and the `animation:` lines both stay top-level:
+   Angular's emulated encapsulation does not rewrite either inside a @media
+   block, and the reference silently dangles (see the note above the
+   animation lines).
    ───────────────────────────────────────────────────────────────────────── */
 .rf-pick--landed .rf-pick__tier { color: var(--star-color, #8f969f); }
 .rf-pick--landed:not(.rf-pick--batch) .rf-pick__name { color: var(--star-color, #eee9dd); }

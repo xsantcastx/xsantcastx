@@ -237,6 +237,58 @@ describe('RuneForgeComponent reveal', () => {
     expect(audio.runeReveal).toHaveBeenCalledWith(RUNE_TIERS.epic.semitones, true);
   });
 
+  /**
+   * Every batch card is `.is-chosen`, so a `data-reveal` on the pick would
+   * fire the per-tier card rules on all ten in whichever tier came out LAST.
+   * A common card must not hold Legendary's 1.06 scale and double ring, and
+   * the is-best marker must survive an Uncommon last card. Computed styles,
+   * not classes: the leak is a cascade bug, and only the cascade can show it.
+   */
+  it('keeps the batch grid plain when the last find is legendary', () => {
+    const queue = [find('common'), find('common'), find('legendary')];
+    let i = 0;
+    (TestBed.inject(RuneForgeService) as any).strike = () => queue[i++];
+    fixture.componentInstance.strikeMany(3);
+    fixture.detectChanges();
+
+    const pick = root.querySelector('.rf-pick') as HTMLElement;
+    expect(pick.getAttribute('data-reveal')).toBeNull();
+    const cards = Array.from(root.querySelectorAll('.rf-pick--batch .rf-pick__card')) as HTMLElement[];
+    expect(cards.length).toBe(3);
+    for (const card of cards) {
+      const style = getComputedStyle(card);
+      expect(style.animationName).withContext('no rfLandHeld/rfHaloHeld on a batch card').toBe('none');
+      expect(style.transform).withContext('no held scale(1.06) on a batch card').toBe('none');
+      expect(style.boxShadow).withContext('no legendary double ring on a batch card').not.toContain('0px 0px 0px 2px');
+    }
+    expect(cards[2].classList.contains('is-best')).toBeTrue();
+    expect(getComputedStyle(cards[2]).boxShadow).toContain('0px 0px 0px 1px');
+    expect(getComputedStyle(cards[0]).boxShadow).not.toContain('0px 0px 0px 1px');
+  });
+
+  it('keeps the is-best ring when the last find is uncommon and the best is epic', () => {
+    const queue = [find('epic'), find('common'), find('uncommon')];
+    let i = 0;
+    (TestBed.inject(RuneForgeService) as any).strike = () => queue[i++];
+    fixture.componentInstance.strikeMany(3);
+    fixture.detectChanges();
+
+    expect(root.querySelector('.rf-pick')?.getAttribute('data-reveal')).toBeNull();
+    const cards = Array.from(root.querySelectorAll('.rf-pick--batch .rf-pick__card')) as HTMLElement[];
+    expect(cards[0].classList.contains('is-best')).toBeTrue();
+    // The is-best rule paints the ring in the card's own (library) colour and a
+    // 32px halo mixed from it; the leak replaced the halo with uncommon's 36px
+    // glow inherited from the pick. The common card does not animate rfLand+rfHalo.
+    const hex = cards[0].style.getPropertyValue('--star-color').trim();
+    const rgb = `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+    const bestShadow = getComputedStyle(cards[0]).boxShadow;
+    expect(bestShadow).toContain(`${rgb} 0px 0px 0px 1px`);
+    expect(bestShadow).toContain('0px 0px 32px -6px');
+    expect(bestShadow).not.toContain(RUNE_TIERS.uncommon.glow.replace(/,\s*/g, ', '));
+    expect(getComputedStyle(cards[1]).animationName).toBe('none');
+    expect(getComputedStyle(cards[1]).boxShadow).not.toContain('0px 0px 0px 1px');
+  });
+
   it('clears the haul when the reveal is dismissed', () => {
     nextFind = find('uncommon', { item: item() });
     roll();
