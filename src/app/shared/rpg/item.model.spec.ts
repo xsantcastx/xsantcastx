@@ -1,4 +1,5 @@
 import { itemDefinitionById, rollItemStats } from './item-definition';
+import { QUALITY_BAND } from './item-quality';
 import {
   ALL_CHARMS,
   GOLD_CHARMS,
@@ -12,27 +13,43 @@ import {
 } from './item.model';
 
 describe('rollItemStats', () => {
-  it('multiplies the authored midpoint by the rarity band', () => {
+  it('multiplies the tier ceiling by the rolled grade', () => {
+    // Was: sampled between the rarity band's floor and ceiling. Now the ceiling
+    // is the anchor and the *grade* is what varies, so a maxed Uncommon lands on
+    // exactly the number the old band topped out at and a floor roll sits well
+    // below where the old floor was. See item-quality.ts.
     const def = itemDefinitionById('eclipse-longblade')!;
     const low = rollItemStats(def, 'uncommon', () => 0);
     const high = rollItemStats(def, 'uncommon', () => 1);
-    expect(low.goldPerSec).toBeCloseTo(0.4 * 0.85, 1);
-    expect(high.goldPerSec).toBeCloseTo(0.4 * 1.15, 1);
+    // Rolled stats are rounded to one decimal at mint, so the expectations are
+    // rounded the same way rather than compared at full precision.
+    const round = (n: number) => Math.round(n * 10) / 10;
+    const ceiling = 0.4 * 1.15;
+    expect(high.goldPerSec).toBe(round(ceiling * QUALITY_BAND.uncommon.max));
+    expect(low.goldPerSec).toBe(round(ceiling * QUALITY_BAND.uncommon.min));
     expect(high.goldPerSec).toBeGreaterThan(low.goldPerSec ?? 0);
   });
 });
 
 describe('mintCharm', () => {
-  it('freezes the seed stats and does not roll a definition band', () => {
-    const charm = mintCharm({
+  it('reads the seed value as a ceiling and never rolls above it', () => {
+    // Charms used to mint at exactly their authored number. They now roll like
+    // everything else, with the authored number as the *best* case — so a maxed
+    // roll reproduces the old fixed value and nothing exceeds it.
+    const seed = {
       id: 'charm-fortune',
       name: 'Small Charm of Fortune',
-      rarity: 'common',
+      rarity: 'common' as const,
       stats: { magicFind: 5 },
       weight: 1,
       lore: 'fixed',
-    });
+    };
+    const charm = mintCharm(seed, undefined, () => 1);
+    const dud = mintCharm(seed, undefined, () => 0);
     expect(charm.stats).toEqual({ magicFind: 5 });
+    expect(charm.rollQuality).toEqual({ magicFind: 1 });
+    expect(dud.stats.magicFind!).toBeLessThan(5);
+    expect(dud.rollQuality?.magicFind).toBe(0);
     expect(charm.definitionId).toBeUndefined();
     expect(formatItemMod('magicFind', 5)).toBe('Magic Find +5%');
     expect(formatItemMod('goldPerSec', 2.4)).toBe('Gold/sec +2.4');
@@ -47,17 +64,19 @@ describe('mintCharm', () => {
       id: 'charm-copper-knot', name: 'Copper Knot', rarity: 'common' as const,
       stats: { goldPerSec: 2 }, weight: 1, lore: 'fixed',
     };
-    const charm = mintCharm(seed);
+    const charm = mintCharm(seed, undefined, () => 1);
     expect(charm.stats).not.toBe(seed.stats);
     expect(charm.stats).toEqual({ goldPerSec: 2 });
+    expect(seed.stats).toEqual({ goldPerSec: 2 });
   });
 
   it('mints whatever stat the family carries, not just Magic Find', () => {
     const xp = mintCharm({
       id: 'charm-margin-note', name: 'Margin Note', rarity: 'rare' as const,
       stats: { xpBonus: 10 }, weight: 1, lore: 'fixed',
-    });
+    }, undefined, () => 1);
     expect(xp.stats).toEqual({ xpBonus: 10 });
+    expect(xp.stats.magicFind).toBeUndefined();
   });
 });
 

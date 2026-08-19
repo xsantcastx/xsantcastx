@@ -397,7 +397,7 @@ export class RuneForgeService {
    */
   private mintFor(rune: Rune, random: () => number): GameItem | null {
     const item = random() < CHARM_DROP_CHANCE
-      ? mintCharm(rollCharmSeed(random))
+      ? mintCharm(rollCharmSeed(random), undefined, random)
       : mintRuneItem(rune.id, rune.name, rune.tier, rune.lore, random);
     return this.inventory.add(item);
   }

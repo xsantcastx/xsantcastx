@@ -258,6 +258,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeThralls,
   },
   {
+    key: 'godforge-gambler',
+    collection: 'economy',
+    doc: 'gambler',
+    label: 'The Gambler',
+    // Filed under `economy` rather than `progress` because every number in it is
+    // a consequence of spending Gold — lifetime spend, opens per box, and the
+    // bad-luck counter those opens built. The structural merge is right for all
+    // four: they are monotone counters, so the higher of two devices' copies is
+    // the true one, and taking the higher pity count can only ever pay a
+    // guarantee out sooner than one device alone had earned it.
+  },
+  {
     key: 'godforge-pro',
     collection: 'progress',
     doc: 'pro',

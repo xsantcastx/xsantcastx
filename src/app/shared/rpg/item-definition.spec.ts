@@ -57,9 +57,15 @@ describe('item definition rolls', () => {
     const cuirass = itemDefinitionById('infernal-cuirass')!;
     expect(edge.temperGoldBase).toBe(40_000);
     expect(cuirass.base.goldPerSec).toBe(0.45);
+    // The band this samples moved when roll grades landed: `rollItemStats` now
+    // multiplies the tier *ceiling* by a grade drawn from `QUALITY_BAND`, so a
+    // mid-band Uncommon sits lower than it did under the old floor-to-ceiling
+    // sample. The ceiling itself is unchanged — see RARITY_MULT's header.
     const uncommon = rollItemStats(cuirass, 'uncommon', () => 0.5);
-    expect(uncommon.goldPerSec).toBeGreaterThan(0.3);
-    expect(uncommon.goldPerSec).toBeLessThan(0.7);
+    expect(uncommon.goldPerSec).toBeGreaterThan(0.2);
+    expect(uncommon.goldPerSec).toBeLessThan(0.5);
+    const best = rollItemStats(cuirass, 'uncommon', () => 1);
+    expect(best.goldPerSec).toBeGreaterThan(uncommon.goldPerSec!);
   });
 
   it('authors the Keeper kit to the roll/temper spec table', () => {
