@@ -23,6 +23,7 @@
  *    on unlock.
  */
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   AfterViewInit,
@@ -56,6 +57,11 @@ interface TomeSection {
 }
 
 @Component({
+  // OnPush: the scroll listener lives outside the zone and every external
+  // input (language, XP, economy, inventory, keeper, router) already calls
+  // markForCheck on the subscription that carries it. Without this the
+  // once-per-flip ngZone.run() in handleScroll ticked the whole app.
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-header',
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.css'],
@@ -87,6 +93,18 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   private isScrollLocked = false;
   private scrollRafId: number | null = null;
   private lastScrollY = 0;
+
+  /**
+   * Viewport metrics cached off the scroll path.
+   *
+   * `scrollHeight` and `innerHeight` are layout-forcing reads: taking them
+   * inside the scroll rAF made the browser flush layout once per frame, on
+   * every page, for the width of a progress bar. They only change when the
+   * viewport resizes or the route swaps the document height, so they are
+   * measured there instead and the scroll frame does pure arithmetic.
+   */
+  private cachedScrollable = 0;
+  private cachedViewportW = 0;
   private tomeUnreg?: () => void;
   private readonly overlays = inject(OverlayStackService);
 
@@ -185,7 +203,18 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     this.routerSub = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe(() => this.closeMobileMenu());
+      .subscribe(() => {
+        this.closeMobileMenu();
+        // A new page is a new document height, and the compact bar should not
+        // survive a route change that scrolled us back to the top.
+        if (this.isBrowser) {
+          window.requestAnimationFrame(() => {
+            this.measureViewport();
+            this.updateScrollProgress(window.scrollY);
+          });
+        }
+        this.cdr.markForCheck();
+      });
 
     if (this.isBrowser) {
       void this.eggs.init().then(() => {
@@ -211,6 +240,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (!this.isBrowser) return;
 
     this.navbarEl = this.elRef.nativeElement.querySelector('.gfnav');
+    this.measureViewport();
     // Measure synchronously: a page opened in a background tab has rAF
     // suspended, and deferring this left --nav-h unwritten, which the tome
     // positions off.
@@ -267,8 +297,9 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (!this.isBrowser) return;
     this.ngZone.runOutsideAngular(() => {
       this.resizeHandler = () => {
+        this.measureViewport();
         this.updateHeaderOffset();
-        if (this.mobileMenuOpen && window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
+        if (this.mobileMenuOpen && this.cachedViewportW > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
           this.ngZone.run(() => {
             this.closeMobileMenu();
             this.cdr.markForCheck();
@@ -279,6 +310,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Re-measure what the scroll frame is not allowed to read. Call after a
+   * resize or a navigation, never from the scroll handler.
+   */
+  private measureViewport(): void {
+    if (!this.isBrowser) return;
+    this.cachedViewportW = window.innerWidth;
+    this.cachedScrollable = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
+  }
+
   handleScroll(): void {
     if (!this.isBrowser) return;
 
@@ -287,7 +331,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     // Compact on the way down, full again on the way up, with a deadband so a
     // jittery trackpad cannot oscillate the bar.
-    if (window.innerWidth > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
+    if (this.cachedViewportW > HeaderComponent.MOBILE_NAV_BREAKPOINT) {
       if (this.compact) {
         this.compact = false;
         this.ngZone.run(() => this.cdr.markForCheck());
@@ -311,8 +355,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   private updateScrollProgress(scrollY: number): number {
     if (!this.navbarEl || !this.isBrowser) return 0;
-    const scrollable = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    const progress = scrollable > 0 ? (scrollY / scrollable) * 100 : 0;
+    const scrollable = this.cachedScrollable;
+    const progress = scrollable > 0 ? Math.min(100, (scrollY / scrollable) * 100) : 0;
     this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
     return progress;
   }
