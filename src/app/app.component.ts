@@ -14,6 +14,7 @@ import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { ChallengeWiringService } from './shared/challenges/challenge-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
 import { RpgWiringService } from './shared/rpg/rpg-wiring.service';
+import { CollectionWiringService } from './shared/collection/collection-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
 import { InlineFlameService } from './shared/economy/inline-flame.service';
@@ -42,6 +43,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private challengeWiring = inject(ChallengeWiringService);
   private economyWiring = inject(EconomyWiringService);
   private rpgWiring = inject(RpgWiringService);
+  private collectionWiring = inject(CollectionWiringService);
   private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
   private inlineFlame = inject(InlineFlameService);
@@ -139,6 +141,13 @@ export class AppComponent implements OnInit, OnDestroy {
     // does not cost progression its own hydration; XpService.init() is
     // idempotent and the call below is then a no-op.
     this.economyWiring.init();
+
+    // The Collection Log. After both the economy and the RPG layer, and not by
+    // preference: its one-time backfill reads the bag, the material stacks, the
+    // owned artifacts and the crafted Runewords, and a bag that has not hydrated
+    // reports nothing held — the log would credit a two-month-old save with none
+    // of it and then mark itself backfilled, permanently.
+    this.collectionWiring.init();
 
     // Progression: hydrate XP from localStorage, settle the daily streak and
     // subscribe the ledger to route changes, copies and egg discoveries.

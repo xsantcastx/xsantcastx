@@ -25,6 +25,7 @@ import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effec
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
 import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
+import { DiscoveryToastComponent } from './shared/collection/discovery-toast.component';
 import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
@@ -69,6 +70,7 @@ import { PwaService } from './shared/pwa.service';
     // AppComponent templates can use them without the module graph moving.
     XpBarComponent,
     AchievementDropComponent,
+    DiscoveryToastComponent,
     QuestDrawerComponent,
     QuestTriggerComponent,
     QuestToastComponent,

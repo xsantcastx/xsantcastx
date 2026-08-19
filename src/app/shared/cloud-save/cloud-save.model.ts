@@ -40,6 +40,7 @@ import { mergeEconomyLedgers } from '../economy/economy-ops';
 import { mergeInventoryLedgers } from '../rpg/inventory-ops';
 import { mergeActivityLedgers } from '../activity/activity-ops';
 import { mergeChapterLedgers } from '../narrative/chapter-ops';
+import { mergeCollectionLedgers } from '../collection/collection.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -226,6 +227,19 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeScrollLedger,
   },
   {
+    key: 'godforge-collection',
+    collection: 'progress',
+    doc: 'collection',
+    label: 'collection log',
+    // The structural rules are wrong here in both directions at once, which is
+    // why this one is hand-written: `count` wants the higher of the two, and
+    // `firstDiscoveredAt` wants the *lower* — it is the moment a thing was
+    // first ever held, so the later of two devices' answers is the same
+    // discovery made twice, and adopting it would rewrite somebody's history
+    // forward. Same trap as `easter-eggs-dates`, one field down.
+    merge: mergeCollection,
+  },
+  {
     key: 'godforge-thralls',
     collection: 'progress',
     doc: 'thralls',
@@ -295,6 +309,10 @@ export function mergeEconomy(remote: unknown, local: unknown): unknown {
 
 function mergeInventory(remote: unknown, local: unknown): unknown {
   return mergeInventoryLedgers(remote, local);
+}
+
+function mergeCollection(remote: unknown, local: unknown): unknown {
+  return mergeCollectionLedgers(remote, local);
 }
 
 function mergeActivity(remote: unknown, local: unknown): unknown {
