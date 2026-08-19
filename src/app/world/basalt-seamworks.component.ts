@@ -162,7 +162,12 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
       this.title.setTitle(this.t('seamworks.titlePage'));
     }));
     if (this.isBrowser) {
-      if (!this.activity.snapshot.currentWork) {
+      // Re-select whenever Current Work points anywhere else, not only when it
+      // is empty: a Keeper who walked here from the Rootglass Canopy still has
+      // foraging@Canopy selected, and every Mine would be rejected with
+      // 'location' while the page shows the "return here" alert. Mirrors
+      // rootglass-canopy.component.ts — each site claims Current Work on entry.
+      if (this.activity.snapshot.currentWork?.locationId !== BASALT_SEAMWORKS_ID) {
         this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID);
       }
       if (!this.activity.bagCanTakeOre(this.selectedOreId)) this.keeper.show('bank');
@@ -275,7 +280,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
 
   mine(): void {
     if (this.mineDisabled() && this.panelState() !== 'persist') return;
-    if (!this.snap.currentWork) {
+    if (this.snap.currentWork?.locationId !== BASALT_SEAMWORKS_ID) {
       this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, this.now);
     }
     const mutationId = this.pendingId ?? newMutationId();
