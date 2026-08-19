@@ -81,6 +81,8 @@ export interface OwnedItemInstance extends OwnedItemBase {
   type: ItemType;
   lore?: string;
   stats: ItemStats;
+  /** Per-stat roll grade, 0..1. Absent on records written before grading. */
+  rollQuality?: Partial<Record<keyof ItemStats, number>>;
   sellValue: number;
   location: ItemLocation;
   upgradeLevel?: number;

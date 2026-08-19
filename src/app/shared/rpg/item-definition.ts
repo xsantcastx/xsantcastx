@@ -13,6 +13,13 @@ import {
   sellValueFor,
   slotAccepts,
 } from './item.model';
+import { UNIQUE_DEFINITIONS } from './unique-items';
+import {
+  bandFor,
+  qualityAdjustedSellValue,
+  qualityPercent,
+  type RollQuality,
+} from './item-quality';
 
 export type ItemFamily =
   | 'equipment'
@@ -53,7 +60,16 @@ export interface ItemDefinition {
   soulbound?: boolean;
 }
 
-/** Rarity samples uniformly in [lo, hi] against the authored midpoint. */
+/**
+ * The rarity power ladder, as `[floor, ceiling]` against the authored midpoint.
+ *
+ * Only the **ceiling** is live: `rollItemStats` multiplies it by a grade sampled
+ * from `QUALITY_BAND` (item-quality.ts), so the ceiling is what "100% roll"
+ * means at each tier and the floor is now a historical record of the band this
+ * table used to sample directly. It is kept because the numbers still document
+ * the intended power gap between rungs, and because saves minted under the old
+ * scheme were rolled against it.
+ */
 export const RARITY_MULT: Record<ItemRarity, readonly [number, number]> = {
   common: [0.6, 1.0],
   uncommon: [0.85, 1.15],
@@ -97,24 +113,100 @@ function roundStat(key: ItemStatKey, value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+/** The best a stat can be at this rarity: authored midpoint × tier ceiling. */
+/**
+ * What a wearable is worth at the till, before its roll is priced in.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY EQUIPMENT NEEDS ITS OWN LADDER
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `sellValueFor` prices every `type: 'artifact'` at zero, because a true
+ * artifact is soulbound and unsellable. But `eq()` files *every* wearable as
+ * `type: 'artifact'` — that is what makes the paper doll accept it — so the
+ * side effect was that no helm, blade or cuirass in the game had a price, and
+ * `canSell` (which requires `sellValue > 0`) refused all of them. Equipment was
+ * silently unsellable, which nothing surfaced because no sell button was wired.
+ *
+ * The Gambler needs a till, so equipment gets a ladder of its own here rather
+ * than inheriting the rune worths. It has to be its own table because the rune
+ * numbers are an order of magnitude larger — a Common rune is worth 5,000 Gold,
+ * which is the entire price of an Iron Chest. Reusing them would make the
+ * cheapest mystery box strictly profitable to open and scrap on the spot, and a
+ * gambling hub that prints money is not a sink, it is a bug with an animation.
+ *
+ * These numbers are set so every box in `MYSTERY_BOXES` is negative expected
+ * value in scrap alone. What the player buys is the *chance*, and the payout is
+ * the item — never the Gold it melts down into.
+ */
+export const EQUIPMENT_SCRAP: Readonly<Record<ItemRarity, number>> = {
+  common: 600,
+  uncommon: 2_500,
+  rare: 12_000,
+  epic: 60_000,
+  legendary: 300_000,
+  mythic: 1_500_000,
+  singular: 8_000_000,
+};
+
+/** Sticker price for one minted instance, before the roll grade scales it. */
+export function stickerPrice(def: ItemDefinition, rarity: ItemRarity): number {
+  if (def.soulbound) return 0;
+  const byType = sellValueFor(def.type, rarity);
+  if (byType > 0) return byType;
+  if (def.family === 'equipment' || def.family === 'charm') {
+    return EQUIPMENT_SCRAP[rarity] ?? EQUIPMENT_SCRAP.common;
+  }
+  return 0;
+}
+
+export function statCeiling(def: ItemDefinition, rarity: ItemRarity, key: ItemStatKey): number {
+  const mid = def.base[key];
+  if (mid == null) return 0;
+  const ceiling = (RARITY_MULT[rarity] ?? RARITY_MULT.common)[1];
+  return mid * ceiling * styleBias(def.style, key);
+}
+
+export interface RolledStats {
+  stats: ItemStats;
+  /** Displayed grade per key, 0..1. See item-quality.ts for the two numbers. */
+  quality: RollQuality;
+}
+
+/**
+ * Roll a stat block and grade it in the same pass.
+ *
+ * The two outputs come from one sample each and must stay that way: computing
+ * the grade afterwards from the rounded stat would disagree with the sample by
+ * up to half a rounding step, which is enough to show `100%` on an item that is
+ * not maxed and `99%` on one that is.
+ */
+export function rollItemStatsWithQuality(
+  def: ItemDefinition,
+  rarity: ItemRarity,
+  rng: () => number = Math.random,
+): RolledStats {
+  if (!def.rollKeys.length) return { stats: {}, quality: {} };
+  const voidTouched = def.style === 'void' || def.style === 'void-touched';
+  const { min, max } = bandFor(rarity, voidTouched);
+  const stats: ItemStats = {};
+  const quality: RollQuality = {};
+  for (const key of def.rollKeys) {
+    const ceiling = statCeiling(def, rarity, key);
+    if (!ceiling) continue;
+    const q = min + rng() * (max - min);
+    stats[key] = roundStat(key, ceiling * q);
+    quality[key] = qualityPercent(q, rarity, voidTouched);
+  }
+  return { stats, quality };
+}
+
+/** The stat block alone, for the callers that do not keep the grade. */
 export function rollItemStats(
   def: ItemDefinition,
   rarity: ItemRarity,
   rng: () => number = Math.random,
 ): ItemStats {
-  if (!def.rollKeys.length) return {};
-  const [lo, hi] = RARITY_MULT[rarity] ?? RARITY_MULT.common;
-  const voidWiden = def.style === 'void' || def.style === 'void-touched' ? 0.1 : 0;
-  const low = lo * (1 - voidWiden);
-  const high = hi * (1 + voidWiden);
-  const stats: ItemStats = {};
-  for (const key of def.rollKeys) {
-    const mid = def.base[key];
-    if (mid == null) continue;
-    const mult = low + rng() * (high - low);
-    stats[key] = roundStat(key, mid * mult * styleBias(def.style, key));
-  }
-  return stats;
+  return rollItemStatsWithQuality(def, rarity, rng).stats;
 }
 
 export function mintEquipment(
@@ -127,14 +219,19 @@ export function mintEquipment(
   const def = itemDefinitionById(defId);
   if (!def) return null;
   if (def.family === 'material' || def.family === 'quest' || def.family === 'rune') return null;
-  const rolls = def.rollKeys.length ? rollItemStats(def, rarity, rng) : {};
+  const rolled = def.rollKeys.length
+    ? rollItemStatsWithQuality(def, rarity, rng)
+    : { stats: {}, quality: {} };
+  const sticker = stickerPrice(def, rarity);
   return {
     id: id ?? mintInstanceId(def.id),
     name: def.name,
     type: def.type,
     rarity,
-    stats: rolls,
-    sellValue: def.soulbound ? 0 : sellValueFor(def.type, rarity),
+    stats: rolled.stats,
+    rollQuality: rolled.quality,
+    // The till pays for the roll, not the name. See item-quality.ts.
+    sellValue: qualityAdjustedSellValue(sticker, { rollQuality: rolled.quality }),
     equipped: false,
     lore: def.lore,
     foundAt,
@@ -165,7 +262,7 @@ function eq(
   };
 }
 
-export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
+const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
   eq('eclipse-longblade', 'Eclipse Longblade', 'weapon', 'neutral',
     ['goldPerSec', 'strikePower'], { goldPerSec: 0.4, strikePower: 1 },
     'A neutral blade with a violet eclipse seam; it is carried to make a boundary visible before it is crossed.'),
@@ -367,6 +464,18 @@ export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
     temperGoldBase: 0,
     lore: 'Lets a bearer endure heat distortion, leaving a visible line where the strain was absorbed.',
   },
+];
+
+/**
+ * The whole catalogue: the Keeper kit above, plus the named objects.
+ *
+ * The uniques are spread in rather than kept apart so that every consumer —
+ * mint, reforge, temper, the paper doll, the Collection Log — treats a unique as
+ * an ordinary definition and needs no branch for it. See unique-items.ts.
+ */
+export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
+  ...KEEPER_DEFINITIONS,
+  ...UNIQUE_DEFINITIONS,
 ];
 
 const BY_ID = new Map(ITEM_DEFINITIONS.map(def => [def.id, def]));

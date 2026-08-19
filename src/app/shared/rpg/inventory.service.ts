@@ -88,7 +88,7 @@ import {
   canReforgeItem,
   previewReforge,
   reforgeGoldCost,
-  rollReforge,
+  rollReforgeDetailed,
   type ReforgePreview,
 } from './item-reforge';
 import type { ItemStatKey } from './item-definition';
@@ -695,9 +695,14 @@ export class InventoryService {
     if (this.economy.snapshot.gold < cost) return { ok: false, code: 'funds' };
 
     const previous = this.ledger;
+    // A reroll replaces the base roll, so the grade and the till price both
+    // move with it — see `rollReforgeDetailed`.
+    const rerolled = rollReforgeDetailed(item, lock, rng);
     const nextItem: GameItem = {
       ...item,
-      stats: rollReforge(item, lock, rng),
+      stats: rerolled.stats,
+      rollQuality: rerolled.quality,
+      sellValue: rerolled.sellValue,
       lastReforgeAt: new Date(now).toISOString(),
       lastReforgeMutationId: mutationId,
       lastReforgeLock: lock ?? undefined,
