@@ -15,6 +15,15 @@ import { ConsentService } from '../../consent.service';
  *   bottom-centre <app-quest-toast>       z-index 95
  *   bottom, full  <app-cookie-banner>     z-index 9999, spans the viewport
  *   top-right     <app-quest-drawer>
+ *   bottom-LEFT   <app-npc-dialogue>      z-index 935 — shares this corner
+ *
+ * The NPC portrait is the one thing that genuinely shares bottom-left, because
+ * it belongs there (it is a character standing beside the page, not a notice)
+ * and it can be on screen at the same time as this banner. Rather than a fifth
+ * silent overlap, it publishes its own measured height as `--npc-lift` on
+ * <html> and this banner adds it to `bottom`. One-way: the NPC never reads
+ * anything of ours, and it removes the property when no NPC is on screen, so
+ * the `0px` default below is what applies on every page without one.
  *
  * The cookie banner is the awkward one: it is full-width at bottom: 0, so it
  * overlaps bottom-left too regardless of side. Rather than fight it with
@@ -49,19 +58,45 @@ import { ConsentService } from '../../consent.service';
     }
   `,
   styles: [`
+    /* The mobile bottom tab bar (.gftabs) exists only below 961px. */
+    @media (max-width: 960px) {
+      .ip { --ip-tabs-clear: var(--gftabs-h, 58px); }
+    }
+    /* And at the phone breakpoint the forge flame moves to bottom-CENTRE, 80px
+       tall, which is what makes the "opposite sides" claim in the header no
+       longer true on a phone. Clear it the same way the NPC portrait does. */
+    @media (max-width: 768px) {
+      .ip { --ip-tabs-clear: calc(var(--gftabs-h, 58px) + 18px + 80px + 12px); }
+    }
+
     .ip {
       position: fixed;
-      left: clamp(12px, 3vw, 26px);
-      bottom: calc(clamp(12px, 3vw, 26px) + env(safe-area-inset-bottom, 0px));
-      /* Below the forge flame (940) on purpose. They sit on opposite sides so
-         they cannot overlap, and staying under it means that if a future layout
-         change ever does bring them together, the flame — which is a primary
+      /* Past the desktop sidebar, and above the mobile tab bar below 961px —
+         the same two obstructions the NPC portrait clears, and the same
+         breakpoint. This banner had been painting under both since the Eclipse
+         shell landed; it is corrected here rather than left as the one tenant
+         of this corner that still gets it wrong. */
+      left: calc(var(--shell-sidebar-w, 0px) + clamp(12px, 3vw, 26px));
+      /* --npc-lift is the NPC portrait's measured height, or absent. See the
+         positioning note in the header. */
+      bottom: calc(
+        clamp(12px, 3vw, 26px)
+        + env(safe-area-inset-bottom, 0px)
+        + var(--npc-lift, 0px)
+        + var(--ip-tabs-clear, 0px)
+      );
+      transition: bottom 220ms ease;
+      /* Below the forge flame (940) on purpose. Above 768px they sit on
+         opposite sides and cannot overlap; below it the flame moves to
+         bottom-centre and this banner is lifted clear of it by the query above.
+         Staying under it in z-order means that if a future layout change ever
+         does bring them together anyway, the flame — which is a primary
          interaction — wins the click. */
       z-index: 930;
       display: flex;
       align-items: center;
       gap: 0.85rem;
-      max-width: min(360px, calc(100vw - 2 * clamp(12px, 3vw, 26px)));
+      max-width: min(360px, calc(100vw - var(--shell-sidebar-w, 0px) - 2 * clamp(12px, 3vw, 26px)));
       padding: 0.85rem 1rem;
       border-radius: 14px;
       background:

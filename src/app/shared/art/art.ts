@@ -11,6 +11,7 @@
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
+import { NPCS } from '../npc/npc.model';
 
 export type { ArtEntry };
 
@@ -57,6 +58,14 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 render would put a generic blade on the rarest weapon in the
  *                 game and the gate would go green on the lie. They fall back to
  *                 the rarity orb until the library has them.
+ *   npc-*         the six speaking characters, shipped in the NPC dialogue
+ *                 release. `Assets/Characters` holds Keeper avatars and
+ *                 portraits only — nothing there depicts Aureth, Verrin, Kael,
+ *                 the Archivist, the Merchant or the Nameless, and cropping a
+ *                 neutral Keeper portrait onto a goddess would be exactly the
+ *                 green-on-a-lie this list exists to prevent. They render as a
+ *                 monogrammed orb in the character's accent until the six
+ *                 portraits are painted.
  */
 export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-common',
@@ -66,6 +75,7 @@ export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-legendary',
   'thrall-slot',
   ...UNIQUE_ITEMS.map(u => u.id),
+  ...NPCS.map(n => n.artId),
 ]);
 
 /** Painted art for a catalogue id, or null when nothing has been painted. */

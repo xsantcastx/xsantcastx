@@ -251,6 +251,22 @@ export class QuestService {
     this.addToSet('arena', gameId);
   }
 
+  /**
+   * How far a condition has come over this visitor's whole history.
+   *
+   * Public so the NPC chains can be authored in the same condition vocabulary
+   * the board uses instead of growing a second, subtly-different one. It reads
+   * the `life` buckets specifically: a chain step is a standing ask from a
+   * character, not something that expires at midnight, so the daily and weekly
+   * ledgers are the wrong ones to answer it with.
+   *
+   * Read-only. Nothing here rolls a period or writes a bucket, so a caller
+   * polling it cannot move the board.
+   */
+  lifetimeObserved(condition: QuestCondition): number {
+    return this.observe(condition, this.state.life);
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Claiming
   // ───────────────────────────────────────────────────────────────────────────
