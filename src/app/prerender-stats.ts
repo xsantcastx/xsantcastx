@@ -9,4 +9,4 @@
  */
 
 /** Routes Angular prerenders to static HTML. */
-export const PRERENDERED_PATHS = 22;
+export const PRERENDERED_PATHS = 23;

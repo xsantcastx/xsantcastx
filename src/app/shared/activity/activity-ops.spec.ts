@@ -6,6 +6,7 @@ import {
   INFERNAL_HEARTSTONE_ID,
   MINING_TIERS,
   MINING_XP_PER_ACTION,
+  MERIDIAN_ORRERY_ID,
   ROOTGLASS_CANOPY_ID,
   SLAG_FRAGMENT_ID,
   emptyActivityLedger,
@@ -20,8 +21,10 @@ import {
   coerceActivityLedger,
   compareHlc,
   foragingEligibleCount,
+  hasClarityElixir,
   hasRiftKey,
   mergeActivityLedgers,
+  prospectingEligibleCount,
   miningEligibleCount,
   nextHlc,
   progressFromOps,
@@ -29,6 +32,8 @@ import {
 } from './activity-ops';
 import { buildForageOperation } from './foraging-ops';
 import { STARLIGHT_HERB_ID } from './foraging.model';
+import { buildProspectOperation } from './prospecting-ops';
+import { CELESTIAL_ALLOY_ID, CLARITY_ELIXIR_ID } from './prospecting.model';
 
 function hlc(wall: number, logical: number, device: string, sequence: number): HlcRevision {
   return { wallTimeMs: wall, logicalCounter: logical, deviceId: device, sequence };
@@ -58,6 +63,20 @@ function forage(id: string, extra: Partial<ActivityOperation> = {}): ActivityOpe
     } : null,
     now: extra.hlcRevision?.wallTimeMs ?? 1_000,
     locationId: ROOTGLASS_CANOPY_ID,
+    discovery: extra.discovery ?? { rolled: true, result: 'none' },
+  });
+}
+
+function prospect(id: string, extra: Partial<ActivityOperation> = {}): ActivityOperation {
+  return buildProspectOperation({
+    id,
+    deviceId: extra.hlcRevision?.deviceId ?? 'phone',
+    previousHlc: extra.hlcRevision ? {
+      ...extra.hlcRevision,
+      sequence: extra.hlcRevision.sequence - 1,
+    } : null,
+    now: extra.hlcRevision?.wallTimeMs ?? 1_000,
+    locationId: MERIDIAN_ORRERY_ID,
     discovery: extra.discovery ?? { rolled: true, result: 'none' },
   });
 }
@@ -208,6 +227,8 @@ describe('C7 activity ops', () => {
       miningAccepted: 0,
       foragingAccepted: 0,
       riftKeyGranted: false,
+      prospectingAccepted: 0,
+      clarityElixirGranted: false,
     });
     expect(coerceActivityLedger({ version: 2 })).toBeNull();
   });
@@ -301,6 +322,117 @@ describe('C7 activity ops', () => {
     expect(ab.emberGranted).toBe(false);
     expect(ab.miningAccepted).toBe(0);
     expect(ab.progress.xpByDiscipline.mining).toBeUndefined();
+  });
+
+  // ── B1 Prospecting ────────────────────────────────────────────────────────
+
+  it('loads a pre-B1 ledger that has no prospecting fields with sane defaults and its other skills intact', () => {
+    // Exactly the shape a save written before B1 has on disk: version 1, both
+    // earlier skills' pity fields, and nothing about prospecting at all.
+    const old = {
+      version: 1,
+      era: 55,
+      currentWork: null,
+      progress: { version: 1, xpByDiscipline: { mining: 6, foraging: 4 } },
+      operations: [mine('a'), mine('b'), mine('c'), forage('f1'), forage('f2')],
+      craftedBasaltEdge: false,
+      emberGranted: true,
+      miningAccepted: 3,
+      foragingAccepted: 2,
+      riftKeyGranted: true,
+    };
+    const loaded = coerceActivityLedger(JSON.parse(JSON.stringify(old)))!;
+    expect(loaded).not.toBeNull();
+    expect(loaded.prospectingAccepted).toBe(0);
+    expect(loaded.clarityElixirGranted).toBe(false);
+    expect(loaded.progress.xpByDiscipline.prospecting).toBeUndefined();
+    // Everything that was already there survives untouched.
+    expect(loaded.progress.xpByDiscipline.mining).toBe(6);
+    expect(loaded.progress.xpByDiscipline.foraging).toBe(4);
+    expect(loaded.emberGranted).toBe(true);
+    expect(loaded.miningAccepted).toBe(3);
+    expect(loaded.foragingAccepted).toBe(2);
+    expect(loaded.riftKeyGranted).toBe(true);
+    expect(loaded.operations.length).toBe(5);
+  });
+
+  it('parses prospecting ops, clarity-elixir discoveries and a prospecting Current Work', () => {
+    const work = {
+      version: 2 as const,
+      disciplineId: 'prospecting' as const,
+      locationId: MERIDIAN_ORRERY_ID,
+      startedAt: '2026-01-01T00:00:00.000Z',
+      lastResolvedAt: '2026-01-01T00:00:00.000Z',
+      selectionRevision: hlc(1, 0, 'phone', 1),
+    };
+    const ops = [
+      prospect('p1', { discovery: { rolled: true, result: 'clarity-elixir' } }),
+      prospect('p2', { discovery: { rolled: true, result: 'clarity-elixir-guarantee' } }),
+      prospect('p3'),
+    ];
+    const loaded = coerceActivityLedger(JSON.parse(JSON.stringify(ledger({ currentWork: work, operations: ops }))))!;
+    expect(loaded.operations.map(op => op.discovery.result))
+      .toEqual(['clarity-elixir', 'clarity-elixir-guarantee', 'none']);
+    expect(loaded.currentWork?.disciplineId).toBe('prospecting');
+    expect(loaded.currentWork?.locationId).toBe(MERIDIAN_ORRERY_ID);
+    expect(loaded.progress.xpByDiscipline.prospecting).toBe(6);
+    expect(loaded.progress.xpByDiscipline.mining).toBeUndefined();
+    expect(loaded.progress.xpByDiscipline.foraging).toBeUndefined();
+    expect(loaded.prospectingAccepted).toBe(3);
+    expect(loaded.clarityElixirGranted).toBe(true);
+    // Neither earlier skill's pity counters see prospecting ops.
+    expect(loaded.miningAccepted).toBe(0);
+    expect(loaded.emberGranted).toBe(false);
+    expect(loaded.foragingAccepted).toBe(0);
+    expect(loaded.riftKeyGranted).toBe(false);
+    expect(loaded.operations[0].inventoryGrants.map(g => g.definitionId))
+      .toEqual([CELESTIAL_ALLOY_ID, CLARITY_ELIXIR_ID]);
+  });
+
+  it('counts only Orrery prospecting ops for the elixir window, and never another skill\'s', () => {
+    const ops = [prospect('p1'), prospect('p2'), mine('m1'), forage('f1')];
+    expect(prospectingEligibleCount(ops, MERIDIAN_ORRERY_ID)).toBe(2);
+    expect(prospectingEligibleCount(ops, BASALT_SEAMWORKS_ID)).toBe(0);
+    expect(prospectingEligibleCount(ops, ROOTGLASS_CANOPY_ID)).toBe(0);
+    expect(miningEligibleCount(ops, BASALT_SEAMWORKS_ID)).toBe(1);
+    expect(foragingEligibleCount(ops, ROOTGLASS_CANOPY_ID)).toBe(1);
+    expect(hasClarityElixir(ops)).toBe(false);
+    expect(hasClarityElixir([...ops, prospect('p3', { discovery: { rolled: true, result: 'clarity-elixir' } })])).toBe(true);
+    // A rift-key op must not read as an elixir, and vice versa.
+    expect(hasClarityElixir([forage('f9', { discovery: { rolled: true, result: 'rift-key' } })])).toBe(false);
+    expect(hasRiftKey([prospect('p9', { discovery: { rolled: true, result: 'clarity-elixir' } })])).toBe(false);
+  });
+
+  it('keeps Prospecting XP, prospectingAccepted and clarityElixirGranted after the 256-op window drops oldest rows', () => {
+    const early = Array.from({ length: 8 }, (_, i) => prospect(`early-${i}`, {
+      hlcRevision: hlc(i + 1, 0, 'phone', i + 1),
+      discovery: { rolled: true, result: i === 7 ? 'clarity-elixir-guarantee' : 'none' },
+    }));
+    const rest = Array.from({ length: ACTIVITY_OPS_MAX }, (_, i) => prospect(`late-${i}`, {
+      hlcRevision: hlc(100 + i, 0, 'phone', 20 + i),
+      discovery: { rolled: true, result: 'none' },
+    }));
+    const full = ledger({ operations: [...early, ...rest] });
+    expect(full.progress.xpByDiscipline.prospecting).toBe((ACTIVITY_OPS_MAX + 8) * 2);
+    const other = ledger({ operations: rest.slice(-10) });
+    const ab = mergeActivityLedgers(full, other);
+    const ba = mergeActivityLedgers(other, full);
+    expect(ab.operations.length).toBe(ACTIVITY_OPS_MAX);
+    expect(ab.progress.xpByDiscipline.prospecting).toBe((ACTIVITY_OPS_MAX + 8) * 2);
+    expect(ba.progress.xpByDiscipline.prospecting).toBe(ab.progress.xpByDiscipline.prospecting);
+    expect(ab.clarityElixirGranted).toBe(true);
+    expect(ba.clarityElixirGranted).toBe(true);
+    expect(ab.prospectingAccepted).toBe(ACTIVITY_OPS_MAX + 8);
+    expect(ba.prospectingAccepted).toBe(ACTIVITY_OPS_MAX + 8);
+    // The op that earned the guarantee is gone from the window; the flag is not.
+    expect(ab.operations.some(op => op.discovery.result === 'clarity-elixir-guarantee')).toBe(false);
+    // Prospecting pity never bleeds into either earlier skill's.
+    expect(ab.emberGranted).toBe(false);
+    expect(ab.miningAccepted).toBe(0);
+    expect(ab.riftKeyGranted).toBe(false);
+    expect(ab.foragingAccepted).toBe(0);
+    expect(ab.progress.xpByDiscipline.mining).toBeUndefined();
+    expect(ab.progress.xpByDiscipline.foraging).toBeUndefined();
   });
 
   it('drops prior-era mining when the other side is the current generation', () => {

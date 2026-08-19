@@ -4,7 +4,14 @@
  * Data only. No Mine button, no Basalt Seamworks route, no craft.
  * Spec: eclipse-realms-active-progression-spec.md §§5–6.
  */
-export type DisciplineId = 'mining' | 'foraging' | 'exploration' | 'forge' | 'hunting';
+export type DisciplineId =
+  | 'mining'
+  | 'foraging'
+  /** B1 Prospecting: the Meridian Orrery's rings. */
+  | 'prospecting'
+  | 'exploration'
+  | 'forge'
+  | 'hunting';
 
 export type ActivityLocationId = string;
 
@@ -41,7 +48,10 @@ export type DiscoveryResult =
   | 'first-craft-guarantee'
   /** A2 Foraging: the Rift Key rare find, rolled or pity-granted. */
   | 'rift-key'
-  | 'rift-key-guarantee';
+  | 'rift-key-guarantee'
+  /** B1 Prospecting: the Clarity Elixir rare find, rolled or pity-granted. */
+  | 'clarity-elixir'
+  | 'clarity-elixir-guarantee';
 
 export interface ActivityDiscovery {
   rolled: boolean;
@@ -93,6 +103,14 @@ export interface ActivityLedger {
    */
   foragingAccepted: number;
   riftKeyGranted: boolean;
+  /**
+   * B1 Prospecting's pair. Same contract as the two above: optional on the
+   * wire (saves written before B1 lack them and coerce to 0 / false), always
+   * present in memory. Flat fields, not a Record — coerce and merge read them
+   * field by field and the old-ledger test depends on additive-only shape.
+   */
+  prospectingAccepted: number;
+  clarityElixirGranted: boolean;
 }
 
 export const ACTIVITY_KEY = 'godforge-activity';
@@ -114,6 +132,8 @@ export const EMBER_RESIDUE_ID = 'ember-residue';
 export const BASALT_SEAMWORKS_ID = 'infernal/basalt-seamworks';
 /** A2 Foraging's site. Its tiers and drop table live in foraging.model.ts. */
 export const ROOTGLASS_CANOPY_ID = 'verdant/rootglass-canopy';
+/** B1 Prospecting's site. Its tiers and drop table live in prospecting.model.ts. */
+export const MERIDIAN_ORRERY_ID = 'celestial/meridian-orrery';
 export const EMBER_DISCOVERY_CHANCE = 0.0008;
 export const EMBER_GUARANTEE_AT = 800;
 
@@ -160,9 +180,17 @@ export const ROOTGLASS_CANOPY: ActivityLocationDefinition = {
   enabledDisciplines: ['foraging'],
 };
 
+/** Registered here for the same reason ROOTGLASS_CANOPY is — see above. */
+export const MERIDIAN_ORRERY: ActivityLocationDefinition = {
+  id: MERIDIAN_ORRERY_ID,
+  realmId: 'celestial',
+  enabledDisciplines: ['prospecting'],
+};
+
 export const ACTIVITY_LOCATIONS: readonly ActivityLocationDefinition[] = [
   BASALT_SEAMWORKS,
   ROOTGLASS_CANOPY,
+  MERIDIAN_ORRERY,
 ];
 
 export function locationDefinition(id: string): ActivityLocationDefinition | undefined {
@@ -185,5 +213,7 @@ export function emptyActivityLedger(): ActivityLedger {
     miningAccepted: 0,
     foragingAccepted: 0,
     riftKeyGranted: false,
+    prospectingAccepted: 0,
+    clarityElixirGranted: false,
   };
 }

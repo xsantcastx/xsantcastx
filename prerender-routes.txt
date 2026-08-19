@@ -4,6 +4,7 @@
 /world/realms/infernal
 /world/realms/infernal/basalt-seamworks
 /world/realms/verdant/rootglass-canopy
+/world/realms/celestial/meridian-orrery
 /world/realms/umbral
 /world/realms/verdant
 /world/fivefold-lock
