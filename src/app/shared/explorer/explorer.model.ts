@@ -27,7 +27,7 @@
  * `rollReward`, which the service never calls during SSR.
  */
 import { RealmId, REALMS } from '../realms/realm.model';
-import { rollRuneWithMagicFind } from '../rune-forge/rune.model';
+import { RUNES, RUNE_TIER_ORDER, Rune, rollRuneWithMagicFind } from '../rune-forge/rune.model';
 
 /** localStorage key. One blob, owned solely by ExplorerService. */
 export const EXPLORER_KEY = 'godforge-explorers';
@@ -48,7 +48,7 @@ export const MAX_EXPLORER_SLOTS = 5;
 // Missions
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type MissionId = 'scout' | 'delve' | 'expedition';
+export type MissionId = 'scout' | 'delve' | 'expedition' | 'deep-dive' | 'grand' | 'abyss';
 
 export interface MissionDefinition {
   id: MissionId;
@@ -64,13 +64,120 @@ export interface MissionDefinition {
   xp: number;
   /** 0–1 chance of a rune. */
   runeChance: number;
+
+  // ── The deep ladder ──────────────────────────────────────────────────────
+  // Everything below is optional so that the three original missions keep
+  // type-checking as written, and so that a save or a spec holding a mission
+  // literal from before this ladder existed still resolves.
+
+  /**
+   * Gold taken at dispatch. Absent means free.
+   *
+   * The first three lengths stay free on purpose: dispatch used to cost
+   * nothing at all, and the note this replaces was right that charging for the
+   * two-minute Scout puts the mechanic out of reach of exactly the new visitor
+   * it is meant to hook. What changed is that the ladder now runs past the
+   * hour, and a 24-hour run that costs nothing is a run you fire and forget
+   * rather than one you choose. The fee is what makes the length a decision.
+   */
+  cost?: number;
+
+  /**
+   * Keeper rank required to dispatch. Absent means anyone may.
+   *
+   * Only the Abyss has one. A gate on the middle of the ladder would be a wall
+   * across the part of the game a new player is still learning; a gate at the
+   * end is the end being the end.
+   */
+  minLevel?: number;
+
+  /**
+   * Only one of these may be out at a time, across every explorer and every
+   * realm.
+   *
+   * The Abyss is the only mission with this, and it is what stops five slots
+   * turning the endgame into "run five Abysses and read the results on
+   * Thursday". One at a time makes the 72 hours a commitment rather than a
+   * throughput problem.
+   */
+  exclusive?: boolean;
+
+  /**
+   * Counts toward "complete a Deep Dive or longer" on the Contract Board.
+   *
+   * A flag rather than a duration comparison at the call site, so retuning a
+   * length can never quietly change which challenges it satisfies.
+   */
+  deep?: boolean;
+
+  /**
+   * The floor every rune this mission finds is rolled at or above, as a
+   * `RUNE_TIER_ORDER` index.
+   *
+   * This is what "better loot tables per tier" actually means here. The rune
+   * table is shared with the anvil — see the Runes note below, which is still
+   * true and is the reason there is no second registry — so a deep mission
+   * cannot have *different* runes. What it can have is a different slice of the
+   * same table: the Grand Expedition never returns a Common, because the roll
+   * that would have produced one is re-rolled inside the rare-and-better band.
+   */
+  runeFloor?: number;
+
+  /**
+   * Runes this mission returns regardless of `runeChance`.
+   *
+   * `runeChance` still applies *on top* for the explorer's remaining inventory
+   * slots, so a Mythic explorer on a Grand Expedition banks its guaranteed rune
+   * and still rolls the other five.
+   */
+  guaranteedRunes?: number;
+
+  /** Materials the realm hands over, as an inclusive band. */
+  materialsMin?: number;
+  materialsMax?: number;
+
+  /**
+   * How loudly the card presents itself, 1–6.
+   *
+   * Read by the dispatch UI as `--drama`, which scales the glow, the ring count
+   * and the portal treatment. A number rather than a set of class names because
+   * the six cards are one design at six intensities, and six hand-written
+   * treatments would drift apart the first time the palette moved.
+   */
+  drama?: number;
 }
 
 /**
- * Three lengths, priced so that sitting on the short one is never the optimal
+ * Six lengths, priced so that sitting on the short one is never the optimal
  * play: the hour pays roughly 20× the two-minute run for 30× the time. Rune
  * finds on return are a thousandth of the old rates. Someone who checks in
  * twice a day should still out-earn someone who refreshes all afternoon.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE DEEP LADDER
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The three lengths above the hour are a different kind of decision, and the
+ * numbers say so.
+ *
+ * The three lengths above the hour keep the ladder's existing balance rule —
+ * Gold per millisecond never falls as the run gets longer, so a player who
+ * refreshes all afternoon can at best match one who checks in twice a day. That
+ * rule was already pinned by a spec before these rungs existed, and it was
+ * right: the moment a shorter run pays a better rate, the optimal play becomes
+ * "sit on the Scout and click", which is the behaviour the whole mechanic
+ * exists to replace. A first pass at these numbers broke it and the spec caught
+ * it, which is the reason the spec is worth keeping.
+ *
+ * So what makes a deep rung a *decision* rather than a strict upgrade is not
+ * the rate. It is the fee, the rank gate, the slot locked up for three days,
+ * and — the part that actually matters — the rune floor. Past the hour you are
+ * no longer buying Gold with time, you are buying a slice of the drop table
+ * that Gold cannot buy at any price, because reaching the anvil's own rare band
+ * is a twenty-billion-Gold walk.
+ *
+ * Which is also why the fees are steep. 200,000 Gold on an Abyss is a real
+ * decision at the rank that unlocks it, and the fee is what stops the last rung
+ * being a free lottery ticket you fire every three days without thinking.
  */
 export const MISSIONS: MissionDefinition[] = [
   {
@@ -83,6 +190,7 @@ export const MISSIONS: MissionDefinition[] = [
     goldMax: 10_000,
     xp: 5,
     runeChance: 0.00005,
+    drama: 1,
   },
   {
     id: 'delve',
@@ -94,6 +202,8 @@ export const MISSIONS: MissionDefinition[] = [
     goldMax: 50_000,
     xp: 25,
     runeChance: 0.00015,
+    cost: 500,
+    drama: 2,
   },
   {
     id: 'expedition',
@@ -105,6 +215,76 @@ export const MISSIONS: MissionDefinition[] = [
     goldMax: 300_000,
     xp: 120,
     runeChance: 0.0003,
+    cost: 2_000,
+    materialsMin: 1,
+    materialsMax: 2,
+    drama: 3,
+  },
+  {
+    id: 'deep-dive',
+    name: 'Deep Dive',
+    label: '4 hours',
+    flavour: 'Far enough down that the realm stops being scenery and starts being weather.',
+    duration: 4 * 60 * 60_000,
+    goldMin: 500_000,
+    goldMax: 1_400_000,
+    xp: 600,
+    // Three orders of magnitude above the hour's rate, because the floor below
+    // has already taken Commons and Uncommons off the table: this is the chance
+    // of a *Rare or better* turning up in a slot, not the chance of anything at
+    // all. Comparing it to the shorter tiers' numbers is comparing two
+    // different questions.
+    runeChance: 0.6,
+    runeFloor: 2,
+    cost: 10_000,
+    deep: true,
+    materialsMin: 3,
+    materialsMax: 6,
+    drama: 4,
+  },
+  {
+    id: 'grand',
+    name: 'Grand Expedition',
+    label: '24 hours',
+    flavour: 'A day and a night. They come back carrying things the maps do not have names for.',
+    duration: 24 * 60 * 60_000,
+    goldMin: 3_000_000,
+    goldMax: 9_000_000,
+    xp: 3_600,
+    runeChance: 0.75,
+    runeFloor: 2,
+    // The guarantee is what the 50,000 Gold actually buys. Everything else on
+    // this row is a better version of a number the ladder already had; this is
+    // the only line that changes what a return *is*.
+    guaranteedRunes: 1,
+    cost: 50_000,
+    deep: true,
+    materialsMin: 8,
+    materialsMax: 14,
+    drama: 5,
+  },
+  {
+    id: 'abyss',
+    name: 'The Abyss',
+    label: '72 hours',
+    flavour: 'Nobody sends an explorer into the Abyss twice by accident. The first time is enough to learn the difference.',
+    duration: 72 * 60 * 60_000,
+    goldMin: 20_000_000,
+    goldMax: 60_000_000,
+    xp: 15_000,
+    runeChance: 0.9,
+    // Epic. The Abyss is the only place in the game a Legendary or a Mythic is
+    // reachable by *waiting* rather than by twenty billion Gold of strikes, and
+    // that is deliberately the last rung's whole identity.
+    runeFloor: 3,
+    guaranteedRunes: 2,
+    cost: 200_000,
+    minLevel: 5,
+    exclusive: true,
+    deep: true,
+    materialsMin: 20,
+    materialsMax: 35,
+    drama: 6,
   },
 ];
 
@@ -184,6 +364,57 @@ export const REALM_EXPEDITION_PROFILES: Record<RealmId, RealmExpeditionProfile> 
     runeChanceMultiplier: 0.95,
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Realm freight
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What each realm's seams and canopies actually hand over.
+ *
+ * Every id here is a material the game *already* mints, catalogues and has art
+ * for — `material-catalog.ts` names thirteen and the art manifest resolves all
+ * of them. That is not a coincidence, it is the constraint: an expedition that
+ * invented five new materials would need five new names, five new PNGs through
+ * the importer, and five new rows in every bag, refinery and crafting screen
+ * that has to decide what they are for. A material with no recipe is a number
+ * with a picture on it.
+ *
+ * So the deep tiers pay in the existing economy, and what makes a realm worth
+ * choosing is *which* of it you get: Umbral is the only source of Umbral Ink on
+ * an expedition, Verge the only source of Void Shard. The realm picker was
+ * already a real decision for Gold and rune rate; this makes it one for the bag.
+ *
+ * The commons list is what any realm can turn up. The exclusives are the reason
+ * to go to that one.
+ */
+export const REALM_COMMON_MATERIALS: readonly string[] = [
+  'cinder-ore',
+  'slag-fragment',
+  'ember-residue',
+];
+
+/**
+ * Materials only this realm returns, richest last.
+ *
+ * The last entry of each list is drawn least often — see `rollMaterials` — so a
+ * realm's headline material is a thing you hope for rather than a thing you
+ * count on.
+ */
+export const REALM_EXCLUSIVE_MATERIALS: Record<RealmId, readonly string[]> = {
+  luminous: ['sunbloom', 'luminous-prism'],
+  umbral: ['nightbloom', 'umbral-ink'],
+  verge: ['thornroot', 'void-shard'],
+  archivum: ['starlight-herb', 'celestial-alloy'],
+  nexus: ['verdant-sap', 'infernal-heartstone'],
+};
+
+/** Everything a realm can hand over, commons first. For the picker's copy. */
+export function realmMaterials(id: RealmId | string): readonly string[] {
+  const exclusive = REALM_EXCLUSIVE_MATERIALS[id as RealmId]
+    ?? REALM_EXCLUSIVE_MATERIALS.luminous;
+  return [...REALM_COMMON_MATERIALS, ...exclusive];
+}
 
 export function realmProfile(id: RealmId | string): RealmExpeditionProfile {
   return REALM_EXPEDITION_PROFILES[id as RealmId] ?? REALM_EXPEDITION_PROFILES.luminous;
@@ -306,6 +537,13 @@ export interface ExplorerReward {
   scroll?: string;
   /** Item ids minted for this return, filled in after the grants. */
   items?: string[];
+  /**
+   * Materials carried home, as `stackKey → quantity`.
+   *
+   * Only the deep tiers fill this. Rolled here and banked by the service so the
+   * roll stays pure and testable, in the same shape as the runes above.
+   */
+  materials?: Record<string, number>;
 }
 
 /** A settled mission, held until the visitor has seen the loot reveal. */
@@ -353,6 +591,8 @@ export interface ExpeditionRecord {
   scroll?: string;
   /** Item ids minted on this return. */
   items?: string[];
+  /** Materials banked on this return, `stackKey → quantity`. */
+  materials?: Record<string, number>;
   /** Epoch ms the mission ended. */
   returnedAt: number;
 }
@@ -413,6 +653,94 @@ export function emptyExplorerState(): ExplorerState {
 
 
 /**
+ * A rune at `floor` or better, off the same table the anvil uses.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS IS NOT REJECTION SAMPLING
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Re-rolling until the tier clears the floor is the one-line implementation and
+ * it does not work, for a reason that is easy to talk yourself out of and
+ * impossible to argue with once measured: the rare-and-better band is 0.015% of
+ * the drop table. Four hundred attempts clear it about 6% of the time. A
+ * "guaranteed Rare+" that delivers an Uncommon nineteen times out of twenty is
+ * not a tuning problem, it is a promise the card is making and the code is not
+ * keeping — and it was caught here by a spec asserting the promise rather than
+ * asserting the implementation.
+ *
+ * So the band is built and normalised instead. It is 25 rows, filtered and
+ * summed per call, which is nothing next to the settlement it happens inside,
+ * and it is *exact*: relative odds inside the band are untouched, so a Mythic
+ * is still six times a Legendary's chance at every floor.
+ *
+ * `magicFind` is deliberately ignored once a floor is set. Magic Find's whole
+ * mechanic is boosting the share of the rare-and-better group against the
+ * commons — see `rollRuneWithMagicFind` — and inside a band that is already
+ * entirely rare-and-better there is no share left for it to move. Applying it
+ * anyway would either do nothing or, worse, silently reweight the band's
+ * internals in a way no card describes.
+ */
+export function rollRuneAtOrAbove(
+  floor: number,
+  magicFind: number,
+  rng: () => number = Math.random,
+): Rune {
+  if (floor <= 0) return rollRuneWithMagicFind(magicFind, rng);
+
+  const pool = RUNES.filter(r => RUNE_TIER_ORDER.indexOf(r.tier) >= floor);
+  // A floor past the top of the ladder is a retuning mistake, not a runtime
+  // state — fall back to the unfloored roll rather than throwing inside a
+  // settlement that has already banked Gold.
+  if (!pool.length) return rollRuneWithMagicFind(magicFind, rng);
+
+  const total = pool.reduce((sum, r) => sum + r.dropRate, 0);
+  let roll = rng() * total;
+  for (const rune of pool) {
+    roll -= rune.dropRate;
+    if (roll <= 0) return rune;
+  }
+  return pool[pool.length - 1];
+}
+
+/**
+ * How many of what a realm hands over.
+ *
+ * Weighted so the commons carry the bulk and the realm's own two are the
+ * reason to have gone: a draw lands on the exclusives about a third of the
+ * time, and inside that third the headline material is the rarer of the two.
+ * Returned as a map rather than a list because the bag stacks — twelve Cinder
+ * Ore is one row with a twelve on it, and a caller that had to reduce a
+ * thirty-entry array to get there would be doing the service's job.
+ */
+export function rollMaterials(
+  realm: RealmId | string,
+  min: number,
+  max: number,
+  rng: () => number = Math.random,
+): Record<string, number> {
+  const count = Math.round(min + rng() * Math.max(0, max - min));
+  if (count <= 0) return {};
+
+  const exclusive = REALM_EXCLUSIVE_MATERIALS[realm as RealmId]
+    ?? REALM_EXCLUSIVE_MATERIALS.luminous;
+  const out: Record<string, number> = {};
+
+  for (let i = 0; i < count; i++) {
+    const roll = rng();
+    let id: string;
+    if (roll < 0.66) {
+      id = REALM_COMMON_MATERIALS[Math.floor(rng() * REALM_COMMON_MATERIALS.length)]
+        ?? REALM_COMMON_MATERIALS[0];
+    } else if (roll < 0.92) {
+      id = exclusive[0];
+    } else {
+      id = exclusive[exclusive.length - 1];
+    }
+    out[id] = (out[id] ?? 0) + 1;
+  }
+  return out;
+}
+
+/**
  * Roll what an explorer brings home.
  *
  * `held` is what the visitor already owns: a duplicate rune is rerolled out of
@@ -464,10 +792,27 @@ export function rollReward(
   const magicFind = Math.max(0, opts.lootBonus ?? 0);
 
   const runeChance = mission.runeChance * profile.runeChanceMultiplier;
+  const floor = mission.runeFloor ?? 0;
+
+  // The guaranteed runes come off the front of the slot budget rather than
+  // being added to it, so a Grand Expedition on a Common explorer returns its
+  // one promised rune and a Mythic's six slots are still six rolls — not seven.
+  const guaranteed = Math.min(slots, Math.max(0, mission.guaranteedRunes ?? 0));
 
   for (let i = 0; i < slots; i++) {
-    if (rng() >= runeChance) continue;
-    reward.runes.push(rollRuneWithMagicFind(magicFind, rng).id);
+    if (i >= guaranteed && rng() >= runeChance) continue;
+    reward.runes.push(rollRuneAtOrAbove(floor, magicFind, rng).id);
+  }
+
+  // Materials are a flat band per mission, unaffected by the realm's Gold and
+  // rune multipliers: the realm already decides *what* comes back, and letting
+  // it decide the quantity too would make Luminous the only correct answer for
+  // the bag as well as for the Gold.
+  const matMin = mission.materialsMin ?? 0;
+  const matMax = Math.max(matMin, mission.materialsMax ?? matMin);
+  if (matMax > 0) {
+    const materials = rollMaterials(opts.realm ?? 'luminous', matMin, matMax, rng);
+    if (Object.keys(materials).length) reward.materials = materials;
   }
 
   // `rune` is the first of them, kept so every existing reader — the toast, the

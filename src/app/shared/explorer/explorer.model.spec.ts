@@ -8,6 +8,11 @@
 import {
   EXPEDITION_HISTORY_CAP,
   MISSIONS,
+  REALM_COMMON_MATERIALS,
+  REALM_EXCLUSIVE_MATERIALS,
+  realmMaterials,
+  rollMaterials,
+  rollRuneAtOrAbove,
   REALM_EXPEDITION_PROFILES,
   emptyExplorerState,
   expeditionEta,
@@ -222,5 +227,175 @@ describe('missions', () => {
     for (let i = 1; i < chances.length; i++) {
       expect(chances[i]).toBeGreaterThan(chances[i - 1]);
     }
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The deep ladder
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the mission ladder', () => {
+  it('runs from two minutes to seventy-two hours, strictly increasing', () => {
+    for (let i = 1; i < MISSIONS.length; i++) {
+      expect(MISSIONS[i].duration).toBeGreaterThan(MISSIONS[i - 1].duration);
+    }
+  });
+
+  it('pays more Gold the longer it runs', () => {
+    for (let i = 1; i < MISSIONS.length; i++) {
+      expect(MISSIONS[i].goldMin).toBeGreaterThan(MISSIONS[i - 1].goldMin);
+      expect(MISSIONS[i].goldMax).toBeGreaterThan(MISSIONS[i - 1].goldMax);
+    }
+  });
+
+  it('charges more the deeper it goes, and only above the Scout', () => {
+    expect(missionById('scout')!.cost).toBeUndefined();
+    const costed = MISSIONS.filter(m => m.cost);
+    for (let i = 1; i < costed.length; i++) {
+      expect(costed[i].cost!).toBeGreaterThan(costed[i - 1].cost!);
+    }
+  });
+
+  it('charges a fee that is a rounding error against the payout', () => {
+    // The fee prices the rung; it must never *be* the rung. A dispatch that
+    // could plausibly lose money is one no player takes twice, and at that
+    // point the length is decoration.
+    for (const m of MISSIONS) {
+      if (!m.cost) continue;
+      expect(m.cost).toBeLessThan(m.goldMin / 3);
+    }
+  });
+
+  it('raises the rune floor instead', () => {
+    expect(missionById('expedition')!.runeFloor).toBeUndefined();
+    expect(missionById('deep-dive')!.runeFloor).toBe(2);
+    expect(missionById('grand')!.runeFloor).toBe(2);
+    expect(missionById('abyss')!.runeFloor).toBe(3);
+  });
+
+  it('gates and limits only the Abyss', () => {
+    for (const m of MISSIONS) {
+      if (m.id === 'abyss') continue;
+      expect(m.minLevel).toBeUndefined();
+      expect(m.exclusive).toBeUndefined();
+    }
+    expect(missionById('abyss')!.minLevel).toBe(5);
+    expect(missionById('abyss')!.exclusive).toBe(true);
+  });
+
+  it('flags exactly the three lengths above the hour as deep', () => {
+    expect(MISSIONS.filter(m => m.deep).map(m => m.id))
+      .toEqual(['deep-dive', 'grand', 'abyss']);
+  });
+
+  it('keeps every material band the right way round', () => {
+    for (const m of MISSIONS) {
+      if (m.materialsMax === undefined) continue;
+      expect(m.materialsMax).toBeGreaterThanOrEqual(m.materialsMin ?? 0);
+    }
+  });
+});
+
+describe('rollRuneAtOrAbove', () => {
+  it('is the plain roll when there is no floor', () => {
+    const rune = rollRuneAtOrAbove(0, 0, () => 0.999999);
+    expect(rune).toBeTruthy();
+  });
+
+  it('reaches the floor rather than returning a Common', () => {
+    // A real rng, because the point of the function is that it beats a table
+    // where 99.7% of the mass is below the floor.
+    for (let i = 0; i < 40; i++) {
+      const rune = rollRuneAtOrAbove(2, 0, Math.random);
+      expect(['rare', 'epic', 'legendary', 'mythic', 'singular']).toContain(rune.tier);
+    }
+  });
+
+  it('terminates on an rng that can never clear the floor', () => {
+    // `() => 0` always lands on the first row of the table, which is a Common.
+    // Without the attempt cap this is an infinite loop; with it, the honest
+    // answer is the best rune the attempts produced.
+    const rune = rollRuneAtOrAbove(6, 0, () => 0);
+    expect(rune).toBeTruthy();
+  });
+});
+
+describe('realm freight', () => {
+  it('gives every realm its own two materials', () => {
+    const seen = new Map<string, string[]>();
+    for (const realm of REALMS) {
+      const own = REALM_EXCLUSIVE_MATERIALS[realm.id];
+      expect(own.length).toBe(2);
+      for (const id of own) {
+        const holders = seen.get(id) ?? [];
+        holders.push(realm.id);
+        seen.set(id, holders);
+      }
+    }
+    // Exclusive means exclusive: a material two realms both return is a picker
+    // where those two buttons are the same button again.
+    for (const [, holders] of seen) expect(holders.length).toBe(1);
+  });
+
+  it('lists the commons before the exclusives', () => {
+    const all = realmMaterials('umbral');
+    expect(all.slice(0, REALM_COMMON_MATERIALS.length)).toEqual([...REALM_COMMON_MATERIALS]);
+    expect(all.slice(REALM_COMMON_MATERIALS.length)).toEqual([...REALM_EXCLUSIVE_MATERIALS.umbral]);
+  });
+
+  it('falls back to a real realm on an unknown id', () => {
+    expect(realmMaterials('not-a-realm').length).toBe(realmMaterials('luminous').length);
+  });
+
+  it('rolls nothing when the band is zero', () => {
+    expect(rollMaterials('umbral', 0, 0, () => 0.5)).toEqual({});
+  });
+
+  it('stacks a repeated material rather than listing it twice', () => {
+    const haul = rollMaterials('umbral', 6, 6, () => 0.1);
+    expect(Object.keys(haul).length).toBe(1);
+    expect(Object.values(haul)[0]).toBe(6);
+  });
+
+  it('only ever returns materials that realm actually has', () => {
+    for (const realm of REALMS) {
+      const allowed = new Set(realmMaterials(realm.id));
+      for (let i = 0; i < 20; i++) {
+        const haul = rollMaterials(realm.id, 5, 5, Math.random);
+        for (const id of Object.keys(haul)) expect(allowed.has(id)).toBe(true);
+      }
+    }
+  });
+
+  it('reaches the realm\'s headline material at the top of the roll', () => {
+    const haul = rollMaterials('verge', 1, 1, () => 0.97);
+    expect(Object.keys(haul)).toEqual([REALM_EXCLUSIVE_MATERIALS.verge[1]]);
+  });
+});
+
+describe('rollReward on the deep ladder', () => {
+  it('honours a guaranteed rune even when the chance roll fails', () => {
+    const grand = missionById('grand')!;
+    // 0.999 is above every runeChance in the table, so nothing would drop
+    // without the guarantee.
+    const reward = rollReward(grand, () => 0.999, { realm: 'umbral', inventorySlots: 1 });
+    expect(reward.runes.length).toBe(1);
+  });
+
+  it('does not spend a slot budget it does not have', () => {
+    const abyss = missionById('abyss')!;
+    // Two guaranteed runes, one slot: the guarantee is capped by the slots
+    // rather than added on top, so a Common explorer banks one.
+    const reward = rollReward(abyss, () => 0.999, { realm: 'umbral', inventorySlots: 1 });
+    expect(reward.runes.length).toBe(1);
+  });
+
+  it('carries materials home from a deep run and nothing from a Scout', () => {
+    const deep = rollReward(missionById('deep-dive')!, Math.random, { realm: 'archivum' });
+    expect(Object.keys(deep.materials ?? {}).length).toBeGreaterThan(0);
+
+    const scout = rollReward(missionById('scout')!, Math.random, { realm: 'archivum' });
+    expect(scout.materials).toBeUndefined();
   });
 });
