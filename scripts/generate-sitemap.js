@@ -92,6 +92,103 @@ ${urls}
  * that honestly rather than rendering a zero, and the `postbuild` run — which
  * happens after the bundle exists — overwrites this with the real figures.
  */
+/**
+ * Every URL the sitemap advertises must exist as a prerendered file.
+ *
+ * This is the guard that makes `noindex` safe as the default in src/index.html.
+ * Hosting rewrites `**` to index.csr.html, and that shell is deliberately
+ * noindex because the only URLs it answers are retired links and crawler
+ * guesses. A route that is meant to be indexed but never got prerendered would
+ * be served that same shell — advertised in the sitemap, crawled, and quietly
+ * dropped, with nothing in the build output to say so.
+ *
+ * So: fail the build instead. Runs only on the `postbuild` pass, where dist/
+ * exists; the `prebuild` pass has just deleted it and skips this.
+ */
+function verifyPrerendered(routes) {
+  const browserDir = path.join(ROOT, 'dist', 'xsantcastx', 'browser');
+  if (!fs.existsSync(browserDir)) return;
+
+  const missing = routes.filter(
+    route => !fs.existsSync(path.join(browserDir, route.replace(/^\//, ''), 'index.html'))
+  );
+  if (missing.length) {
+    console.error(
+      `[generate-sitemap] ${missing.length} sitemap URL(s) have no prerendered index.html:\n` +
+      missing.map(r => `  ${r}`).join('\n') +
+      '\n\nThese would be served the noindex CSR shell (firebase.json rewrites ** to\n' +
+      'index.csr.html), so they can never be indexed. Add them to\n' +
+      'prerender-routes.txt, or drop them from the sitemap.'
+    );
+    process.exit(1);
+  }
+  console.log(`[generate-sitemap] verified ${routes.length} sitemap URLs are prerendered`);
+}
+
+/**
+ * Every prerendered sitemap page must self-canonicalise and declare no hreflang.
+ *
+ * Both halves of this guard the two Search Console reports that motivated it:
+ *
+ *   "Alternate page with proper canonical tag" came from hreflang tags naming
+ *   `?lang=es` as a separate page. Hosting ignores the query string when it
+ *   matches a static file, so that URL is answered with the same bytes as the
+ *   bare path — including its canonical, which points at the bare path. An
+ *   alternate that canonicalises itself away is crawled and then discarded.
+ *   The rule here is blunt on purpose: no hreflang at all, because there is no
+ *   set of per-language URLs for it to describe.
+ *
+ *   "Duplicate, Google chose different canonical than user" is what happens
+ *   when the canonical tag argues with the content. A canonical pointing
+ *   somewhere other than the page's own URL is the version of that this can
+ *   actually see, so it is checked exactly.
+ *
+ * HTML comments are stripped before matching. The shell's own head carries a
+ * long comment explaining why these tags are shaped the way they are, and a
+ * naive substring search finds the prose long before it finds the tag.
+ */
+function verifyCanonicals(routes) {
+  const browserDir = path.join(ROOT, 'dist', 'xsantcastx', 'browser');
+  if (!fs.existsSync(browserDir)) return;
+
+  const problems = [];
+  for (const route of routes) {
+    const file = path.join(browserDir, route.replace(/^\//, ''), 'index.html');
+    if (!fs.existsSync(file)) continue; // verifyPrerendered already failed on this
+    const head = fs
+      .readFileSync(file, 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .split('</head>')[0];
+
+    const canonicals = [...head.matchAll(/<link rel="canonical" href="([^"]*)"/g)].map(m => m[1]);
+    const expected = `${SITE_URL}${route}`;
+    if (canonicals.length !== 1) {
+      problems.push(`${route}: expected exactly 1 canonical, found ${canonicals.length}`);
+    } else if (canonicals[0] !== expected) {
+      problems.push(`${route}: canonical is ${canonicals[0]}, expected ${expected}`);
+    }
+
+    const alternates = [...head.matchAll(/<link rel="alternate"[^>]*hreflang="([^"]*)"/g)].map(m => m[1]);
+    if (alternates.length) {
+      problems.push(`${route}: has hreflang ${JSON.stringify(alternates)}, expected none`);
+    }
+
+    const robots = [...head.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(m => m[1]);
+    if (!robots.includes('index, follow')) {
+      problems.push(`${route}: robots is ${JSON.stringify(robots)}, expected "index, follow"`);
+    }
+  }
+
+  if (problems.length) {
+    console.error(
+      `[generate-sitemap] ${problems.length} canonical/hreflang problem(s) in the prerendered output:\n` +
+      problems.map(p => `  ${p}`).join('\n')
+    );
+    process.exit(1);
+  }
+  console.log(`[generate-sitemap] verified ${routes.length} pages self-canonicalise with no hreflang`);
+}
+
 function measureBundle() {
   const browserDir = path.join(ROOT, 'dist', 'xsantcastx', 'browser');
   if (!fs.existsSync(browserDir)) return null;
@@ -205,6 +302,9 @@ function main() {
 
   // Count every non-blank line, not just the sitemap-eligible ones — the
   // /embed routes are prerendered too, so this is the real SSR route count.
+  verifyPrerendered(unique);
+  verifyCanonicals(unique);
+
   const totalRoutes = raw.split('\n').map(s => s.trim()).filter(Boolean).length;
   writeBuildStats(totalRoutes, unique.length);
   writePrerenderStats(totalRoutes);

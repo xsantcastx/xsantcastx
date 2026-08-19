@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.60.1',
+  version: '2.60.2',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
   codename: 'Canopy',
@@ -52,6 +52,17 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.60.2',
+    codename: 'Canopy',
+    date: '2026-08-19',
+    highlights: [
+      'Search Console was reporting every page of the site as either an alternate of another page or a duplicate whose canonical Google had overruled. Both came from tags the pages were shipping, and both are gone',
+      'The hreflang annotations advertised a `?lang=es` copy of each page. Nothing could ever render one: production is prerendered files plus a static shell, and Hosting ignores a query string when matching a file, so `/world?lang=es` was answered byte-for-byte with the English `/world` — including its canonical, pointing back at `/world`. Twenty-one URLs were being crawled and discarded as alternates that canonicalised themselves away. The site has one URL per page and now says so; `?lang=es` still switches the copy for anyone who follows a shared link',
+      'The five realm pages shared one meta description and one title pattern between five short, structurally identical pages, which is the shape a search engine clusters before electing its own representative. Each realm now carries its own description, keywords and structured data, generated from the narrative bible so it cannot drift, and an unrecognised realm id is marked as the soft 404 it always was',
+      'Any URL that is neither a real page nor a configured redirect — a retired link, a crawler guess — was answered with an indexable, canonical-less shell. That shell is now `noindex`, and the build fails if a page that belongs in the sitemap ever loses its prerendered file, or ships a canonical pointing anywhere but at itself'
+    ]
+  },
   {
     version: '2.60.1',
     codename: 'Canopy',

@@ -12,7 +12,24 @@
   <meta name="description" content="Eclipse Realms — a persistent world of five realms. Discover artifacts, forge runes, walk the trials, and grow your character. No sign-up.">
   <meta name="keywords" content="eclipse realms, persistent world, five realms, artifacts, rune forge, trials, character, xsantcastx">
   <meta name="author" content="xsantcastx">
-  <meta name="robots" content="index, follow">
+  <!-- The shell is not a page, and this tag only ever reaches a crawler as one.
+       Hosting rewrites `**` to index.csr.html, so these bytes are served for
+       exactly one class of URL: paths that are neither a prerendered route nor
+       a configured 301 — retired links, invented paths, crawler guesses. Those
+       all resolve, once Angular boots, to the `**` route's soft 404. Shipping
+       `index, follow` here meant every one of them answered 200 with an
+       indexable, canonical-less document whose only strong signal was an
+       hreflang pointing at /world — an unbounded supply of near-identical
+       pages for Google to cluster and then canonicalise somewhere of its own
+       choosing.
+
+       Every route that IS meant to be indexed is prerendered, and SeoService
+       overwrites this tag with `index, follow` while prerendering it — the
+       built pages carry the right value, verifiably (only /404 and /admin
+       keep noindex, from their own route data). scripts/generate-sitemap.js
+       fails the build if a sitemap URL ever loses its prerendered file, so a
+       future indexable route cannot quietly inherit this default. -->
+  <meta name="robots" content="noindex, follow">
   <meta name="theme-color" content="#0a0a0f">
 
   <!-- Open Graph -->
@@ -20,7 +37,10 @@
   <meta property="og:site_name"   content="Eclipse Realms">
   <meta property="og:title"       content="Eclipse Realms — A Persistent World">
   <meta property="og:description" content="A persistent world of five Eclipse Realms — artifacts, forges, trials and a character that remembers you.">
-  <meta property="og:url"         content="https://xsantcastx.com">
+  <!-- /world, not the apex: `/` is a 301 to /world, and an og:url that
+       redirects makes a scraper resolve one extra hop to find the page it is
+       already looking at. SeoService overwrites this per route. -->
+  <meta property="og:url"         content="https://xsantcastx.com/world">
   <!-- One raster image, no SVG. The previous pair advertised an SVG first with a
        JPEG fallback, but og:image is not a fallback list — Facebook, LinkedIn,
        Discord and iMessage all reject image/svg+xml outright, and the crawlers
@@ -44,15 +64,21 @@
 
   <!-- Canonical: set dynamically per route by SeoService -->
 
-  <!-- hreflang: these are the homepage's pair, and act as the fallback for the
-       SPA shell (index.csr.html) where no route has resolved yet. SeoService
-       rewrites all three per route on every NavigationEnd, so prerendered pages
-       ship their own self-referential set rather than inheriting the homepage's.
-       Targets are /world, not /, because / is a 301 to /world and an hreflang
-       pointing at a redirect is discarded. -->
-  <link rel="alternate" hreflang="en"        href="https://xsantcastx.com/world">
-  <link rel="alternate" hreflang="es"        href="https://xsantcastx.com/world?lang=es">
-  <link rel="alternate" hreflang="x-default" href="https://xsantcastx.com/world">
+  <!-- hreflang: deliberately absent. It annotates a set of URLs serving the
+       same page in different languages, and there is no such set here — one
+       URL serves both, and the language is a client-side preference read from
+       `?lang=` or localStorage. The trio that used to stand here advertised
+       `?lang=es` as a distinct page. Nothing ever rendered that URL: there is
+       no live SSR, and Hosting ignores the query string when it matches a
+       static file, so `/world?lang=es` was answered with the English
+       `world/index.html`, whose canonical link points at the bare /world — an
+       alternate that canonicalised itself away. Search Console reported the
+       whole set as "Alternate page with proper canonical tag". See the
+       matching note in seo.service.ts.
+
+       No literal tag markup in this comment on purpose: it is the first thing
+       in the file, so a grep for a head tag would match here and report the
+       shell's comment instead of the tag the page actually ships. -->
 
   <!-- Favicons — the Void X sigil. favicon.svg is a redraw of the sigil art for
        browsers that take SVG icons; the PNGs are the same mark rasterised, and
