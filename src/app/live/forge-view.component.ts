@@ -77,6 +77,7 @@ import { ExplorerRosterPanelComponent } from '../shared/rpg/explorer-roster-pane
 import {
   EXPLORER_REALMS,
   Expedition,
+  ExpeditionRecord,
   ExplorerReturn,
   ExplorerState,
   MISSIONS,
@@ -84,12 +85,30 @@ import {
   MissionDefinition,
   MissionId,
   emptyExplorerState,
+  expeditionEta,
   formatCountdown,
+  formatEta,
   missionById,
   missionProgress,
+  realmGoldBand,
+  realmProfile,
   remainingMs,
 } from '../shared/explorer/explorer.model';
-import { runeById, tierOf } from '../shared/rune-forge/rune.model';
+import { ExplorerRosterService } from '../shared/rpg/explorer-roster.service';
+import { InventoryService } from '../shared/rpg/inventory.service';
+import {
+  EQUIPMENT_SLOTS,
+  GameItem,
+  ITEM_STAT_KEYS,
+  formatItemMod,
+  rarityLabel,
+} from '../shared/rpg/item.model';
+import {
+  RuneTier,
+  RuneTierDefinition,
+  runeById,
+  tierOf,
+} from '../shared/rune-forge/rune.model';
 import { scrollById } from '../shared/rune-forge/lore-scroll.model';
 import { RealmDefinition, RealmId, realmById } from '../shared/realms/realm.model';
 import { RARITIES } from '../shared/rarity/rarity.model';
@@ -140,11 +159,39 @@ interface ActiveMission {
   id: string;
   realm: RealmDefinition;
   mission: MissionDefinition;
+  /** Who is out there. Empty when they have since been dismissed. */
+  explorerName: string;
   /** "4:32". */
   countdown: string;
-  /** 0-1, for the ring. */
+  /** 0-1, for the ring and the bar. */
   progress: number;
+  /** 0-100, rounded, for the readout — the ring cannot say a number. */
+  percent: number;
+  /** "14:32" — wall-clock time they are due. */
+  eta: string;
   done: boolean;
+}
+
+/** One item pulled out of a haul, resolved for the reveal card. */
+interface LandingItem {
+  id: string;
+  name: string;
+  /** The tier id, so the haul can be ranked without going through the label. */
+  rarity: RuneTier;
+  rarityLabel: string;
+  color: string;
+  glow: string;
+  /** "Gold/sec +2.4 · Magic Find +7%". */
+  mods: string;
+  /**
+   * True when some loadout slot will actually take it.
+   *
+   * Charms are the case: no slot accepts `type: 'charm'`, so a card that told
+   * every find to go and wear it would be sending the player to a doll that
+   * cannot take it. Runes and artifacts are wearable and get the loadout link;
+   * everything else is told the truth, which is that it went in the bag.
+   */
+  wearable: boolean;
 }
 
 /** The loot reveal card. Held until dismissed or replaced. */
@@ -152,14 +199,103 @@ interface Landing {
   realmName: string;
   realmColor: string;
   missionName: string;
+  explorerName: string;
   gold: string;
   xp: number;
   rune: { name: string; glyph: string; color: string; lore: string; tierLabel: string } | null;
+  /** Every rune past the first, for a multi-slot explorer. */
+  extraRunes: { id: string; name: string; glyph: string; color: string; tierLabel: string }[];
   scroll: { title: string; subtitle: string; text: string; color: string } | null;
+  items: LandingItem[];
+  /**
+   * The best thing in the haul, as a colour and a glow.
+   *
+   * Drives the card's outer bloom so a Legendary return does not look like a
+   * Common one until you have read the words. Falls back to the realm's own
+   * colour on a Gold-only haul, which is the honest signal: nothing rare here.
+   */
+  tone: string;
+  toneGlow: string;
+  /** True once anything above Rare landed. Turns the card's flare on. */
+  rare: boolean;
+}
+
+/** One settled expedition, resolved for the log. */
+interface HistoryRow {
+  id: string;
+  realmName: string;
+  realmColor: string;
+  missionName: string;
+  explorerName: string;
+  gold: string;
+  /** "2h ago", "just now". */
+  when: string;
+  /** Glyph + colour per rune found, so the log reads at a glance. */
+  runes: { key: string; name: string; glyph: string; color: string }[];
+  scrollFound: boolean;
+  itemCount: number;
 }
 
 /** How many feed lines are kept. Older ones fall off the bottom. */
 const FEED_CAP = 20;
+
+/** The best find in a haul, reduced to what the card needs to look like it. */
+interface Tone {
+  color: string;
+  glow: string;
+  semitones: number;
+  /** Position on the rune ladder. 0 is Common, 6 is Singular. */
+  rank: number;
+}
+
+/** Rune ladder positions, for ranking a haul's finds against each other. */
+const TONE_RANK: Record<string, number> = {
+  common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, singular: 6,
+};
+
+/**
+ * The highest-tier thing in a haul.
+ *
+ * Items and runes share `RuneTier`, deliberately — see the note at the top of
+ * `item.model.ts` — so one ladder ranks both and the card does not need to know
+ * which kind of thing won.
+ */
+function bestTone(runeTier: RuneTierDefinition | null, items: readonly LandingItem[]): Tone | null {
+  let best: Tone | null = runeTier ? toneOf(runeTier) : null;
+
+  for (const item of items) {
+    const tone = toneOf(tierOf(item.rarity));
+    if (!best || tone.rank > best.rank) best = tone;
+  }
+
+  return best;
+}
+
+function toneOf(tier: RuneTierDefinition): Tone {
+  return {
+    color: tier.color,
+    glow: tier.glow,
+    semitones: tier.semitones,
+    rank: TONE_RANK[tier.id] ?? 0,
+  };
+}
+
+/**
+ * "just now", "12m ago", "3h ago", "2d ago".
+ *
+ * Not `Intl.RelativeTimeFormat`: the log's whole job is to be scannable down a
+ * narrow column, and "3 hours ago" wraps where "3h ago" does not. It is also
+ * only ever describing the last ten landings, so the ladder stops at days.
+ */
+function relativeTime(at: number, now: number): string {
+  const ago = Math.max(0, now - at);
+  if (ago < 60_000) return 'just now';
+  const minutes = Math.floor(ago / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 /** A trader shows up somewhere in this window, and stays for a while. */
 const TRADER_MIN_MS = 90_000;
@@ -182,6 +318,8 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   private readonly xp = inject(XpService);
   private readonly quests = inject(QuestService);
   private readonly explorers = inject(ExplorerService);
+  private readonly roster = inject(ExplorerRosterService);
+  private readonly inventory = inject(InventoryService);
   private readonly audio = inject(ForgeAudioService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
@@ -274,6 +412,11 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
 
     void this.xp.init();
     this.quests.init();
+    // Before `explorers.init()`, which settles overnight landings and resolves
+    // the minted item ids on the reveal card against this bag. An empty bag at
+    // that moment would show a Legendary haul as "Gold and a story".
+    this.inventory.init();
+    this.subs.add(this.inventory.snapshot$.subscribe(() => this.cdr.markForCheck()));
     this.explorers.init();
 
     this.restoreHum();
@@ -453,12 +596,16 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
 
   private missionCard(e: Expedition, now: number): ActiveMission {
     const left = remainingMs(e, now);
+    const progress = missionProgress(e, now);
     return {
       id: e.id,
       realm: realmById(e.realm)!,
       mission: missionById(e.mission)!,
+      explorerName: this.roster.byId(e.explorerId)?.name ?? '',
       countdown: formatCountdown(left),
-      progress: missionProgress(e, now),
+      progress,
+      percent: Math.round(progress * 100),
+      eta: formatEta(expeditionEta(e)),
       done: left <= 0,
     };
   }
@@ -468,6 +615,119 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
 
   get pickedRealmDef(): RealmDefinition {
     return realmById(this.pickedRealm) ?? this.realms[0];
+  }
+
+  /** What a realm is good for. One line under its button in the picker. */
+  realmSpecialty(id: RealmId): string {
+    return realmProfile(id).specialty;
+  }
+
+  /**
+   * The Gold band a length pays *in the armed realm*.
+   *
+   * Read live off `pickedRealm` rather than off the mission alone, so switching
+   * from Umbral to Luminous visibly moves all three numbers. Before realm
+   * profiles existed this was a static band and the picker could not show that
+   * the destination mattered, because it did not.
+   */
+  goldBand(mission: MissionDefinition): string {
+    const band = realmGoldBand(mission, this.pickedRealm);
+    return `${formatCompact(band.min)}–${formatCompact(band.max)} Gold`;
+  }
+
+  /**
+   * The rune rate of the armed realm, as a plain multiplier.
+   *
+   * Shown as "×1.5 runes" rather than as the raw chance, which is 0.00045 and
+   * reads as zero to everybody. The multiplier is the part the player can act
+   * on: it is the difference between the five buttons.
+   */
+  get pickedRealmRuneMult(): string {
+    const mult = realmProfile(this.pickedRealm).runeChanceMultiplier;
+    return `×${mult.toFixed(2).replace(/\.?0+$/, '')}`;
+  }
+
+  // ── The dashboard strip ────────────────────────────────────────────────────
+
+  /**
+   * The mission due back first, for the strip at the top of the page.
+   *
+   * The strip's job is to answer "is anything happening" without the visitor
+   * having to scroll to the third column, so it reports the *soonest* landing
+   * rather than a count: a count tells you there are three, which you knew, and
+   * not that one of them lands in ninety seconds.
+   */
+  get soonestMission(): ActiveMission | null {
+    const rows = this.activeMissions;
+    if (!rows.length) return null;
+    return rows.reduce((best, row) => (row.progress > best.progress ? row : best));
+  }
+
+  get activeCount(): number { return this.explorerState.active.length; }
+
+  /** How many of the player's own slots are filled. Explorer kit is not counted. */
+  get equippedCount(): number {
+    return Object.values(this.inventory.snapshot.equipped).filter(Boolean).length;
+  }
+
+  /**
+   * The worn totals, already written as mod lines.
+   *
+   * Zeroed stats are dropped rather than rendered as "+0", because a strip that
+   * lists six stats at zero is six pieces of furniture telling the visitor
+   * nothing. An empty result is handled in the template as its own line.
+   */
+  get equippedMods(): string[] {
+    const totals = this.inventory.snapshot.totals;
+    return ITEM_STAT_KEYS
+      .filter(key => (totals[key] ?? 0) !== 0)
+      .map(key => formatItemMod(key, totals[key]));
+  }
+
+  /** Everything in the bag, for the strip's "loot held" figure. */
+  get bagCount(): number { return this.inventory.snapshot.bag.length; }
+
+  // ── The log ────────────────────────────────────────────────────────────────
+
+  /**
+   * The last few settled expeditions.
+   *
+   * Resolved on read rather than stored resolved, because the record holds rune
+   * *ids* and the registry is the only thing that can be right about a rune's
+   * name and colour — a log written with the names baked in would keep showing
+   * the old ones after a registry retune, which is the exact bug the rune ledger
+   * avoids the same way.
+   */
+  get history(): HistoryRow[] {
+    const now = this.now || Date.now();
+    return this.explorerState.history.map(record => this.historyRow(record, now));
+  }
+
+  private historyRow(record: ExpeditionRecord, now: number): HistoryRow {
+    const realm = realmById(record.realm);
+    return {
+      id: record.id,
+      realmName: realm?.name ?? 'the realms',
+      realmColor: realm?.color ?? AETHER_COLOR,
+      missionName: missionById(record.mission)?.name ?? 'Expedition',
+      explorerName: record.explorerName,
+      gold: formatCompact(record.gold),
+      when: relativeTime(record.returnedAt, now),
+      runes: record.runes
+        .map((id, i) => ({ id, rune: runeById(id), i }))
+        .filter((r): r is { id: string; rune: NonNullable<ReturnType<typeof runeById>>; i: number } => !!r.rune)
+        .map(({ id, rune, i }) => ({
+          // The id alone is not unique inside one haul: a Mythic explorer can
+          // bring home two of the same rune, and two identical trackBy keys in
+          // one @for is a render the framework is entitled to get wrong.
+          key: `${id}-${i}`,
+          name: rune.name,
+          glyph: rune.icon ?? '🜂',
+          color: rune.color,
+        })),
+      scrollFound: !!record.scroll,
+      itemCount: record.items?.length ?? 0,
+    };
   }
 
   dispatch(): void {
@@ -513,10 +773,41 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     const rune = r.reward.rune ? runeById(r.reward.rune) : undefined;
     const scroll = r.reward.scroll ? scrollById(r.reward.scroll) : undefined;
 
+    // Runes past the first. A Mythic explorer rolls six times and every one of
+    // them was already banked in the ledger — the card just never said so, which
+    // made a six-slot explorer's return look identical to a Common's.
+    const extraRunes = r.reward.runes
+      .slice(1)
+      .map((id, i) => ({ id, rune: runeById(id), i }))
+      .filter((row): row is { id: string; rune: NonNullable<ReturnType<typeof runeById>>; i: number } => !!row.rune)
+      .map(({ id, rune: extra, i }) => ({
+        id: `${id}-${i}`,
+        name: extra.name,
+        glyph: extra.icon ?? '🜂',
+        color: extra.color,
+        tierLabel: tierOf(extra.tier).label,
+      }));
+
+    // The equippables the grant minted. `ExplorerReward.items` has carried these
+    // ids since explorers got inventory slots and nothing has ever rendered
+    // them: a haul that produced a Legendary charm read as "Gold and a story
+    // nobody has written down", and the only way to find it was to notice the
+    // bag count had moved.
+    const items = (r.reward.items ?? [])
+      .map(id => this.inventory.itemById(id))
+      .filter((item): item is GameItem => !!item)
+      .map(item => this.landingItem(item));
+
+    // The card takes its bloom from the best thing in the haul. Ties go to the
+    // rune, which is the find with lore attached and therefore the one the
+    // player is reading.
+    const best = bestTone(rune ? tierOf(rune.tier) : null, items);
+
     const haul: Landing = {
       realmName: realm?.name ?? 'the realms',
       realmColor: realm?.color ?? AETHER_COLOR,
       missionName: mission?.name ?? 'Expedition',
+      explorerName: r.explorerName ?? '',
       gold: formatCurrency(r.reward.gold),
       xp: r.reward.xp,
       rune: rune
@@ -530,6 +821,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
             tierLabel: tierOf(rune.tier).label,
           }
         : null,
+      extraRunes,
       scroll: scroll
         ? {
             title: scroll.title,
@@ -540,6 +832,10 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
             color: tierOf(scroll.rarity).color,
           }
         : null,
+      items,
+      tone: best?.color ?? realm?.color ?? AETHER_COLOR,
+      toneGlow: best?.glow ?? realm?.glow ?? 'rgba(201, 168, 76, .5)',
+      rare: !!best && best.rank >= 2,
     };
 
     if (this.landing) this.landingQueue.push(haul);
@@ -551,10 +847,52 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       '🧭',
     );
     if (rune) this.push(`Found the ${rune.name} rune!`, rune.color, rune.icon ?? '🜂');
+    for (const extra of extraRunes) this.push(`Found the ${extra.name} rune!`, extra.color, extra.glyph);
     if (scroll) this.push(`Recovered a fragment: ${scroll.subtitle}`, tierOf(scroll.rarity).color, '📜');
+    for (const item of items) this.push(`Carried home ${item.name}`, item.color, '⚔');
 
-    this.audio.century();
+    this.cue(rune ? tierOf(rune.tier) : null, best);
     this.cdr.markForCheck();
+  }
+
+  /** One equippable, resolved for the reveal card. */
+  private landingItem(item: GameItem): LandingItem {
+    const tier = tierOf(item.rarity);
+    return {
+      id: item.id,
+      name: item.upgradeLevel ? `${item.name} +${item.upgradeLevel}` : item.name,
+      rarity: item.rarity,
+      rarityLabel: rarityLabel(item.rarity),
+      wearable: EQUIPMENT_SLOTS.some(slot => slot.accepts.includes(item.type)),
+      color: tier.color,
+      glow: tier.glow,
+      mods: ITEM_STAT_KEYS
+        .filter(key => item.stats[key] != null)
+        .map(key => formatItemMod(key, item.stats[key]!))
+        .join(' · '),
+    };
+  }
+
+  /**
+   * The sound a return makes, scaled to what actually came back.
+   *
+   * Every landing used to play `century()` — the same coin flourish whether the
+   * explorer brought 5,000 Gold or the Void rune. `runeReveal` already takes a
+   * pitch and a weight and is what the anvil plays for exactly this event, so a
+   * rune return borrows it at the rune's own semitones, and anything Epic or
+   * better gets the heavy variant. A Gold-only return keeps `century()`, which
+   * is the right sound for "money arrived".
+   */
+  private cue(runeTier: { semitones: number } | null, best: Tone | null): void {
+    if (runeTier) {
+      this.audio.runeReveal(runeTier.semitones, (best?.rank ?? 0) >= 3);
+      return;
+    }
+    if (best) {
+      this.audio.runeReveal(best.semitones, best.rank >= 3);
+      return;
+    }
+    this.audio.century();
   }
 
   // ───────────────────────────────────────────────────────────────────────────

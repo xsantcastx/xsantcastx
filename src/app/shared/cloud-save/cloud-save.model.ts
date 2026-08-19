@@ -384,7 +384,46 @@ function mergeExpeditions(remote: unknown, local: unknown): unknown {
     scrollsFound: maxOf(remote['scrollsFound'], local['scrollsFound']),
     missionsCompleted: maxOf(remote['missionsCompleted'], local['missionsCompleted']),
     goldRecovered: maxOf(remote['goldRecovered'], local['goldRecovered']),
+    // The log *does* union, unlike `active`, because every line in it is an
+    // expedition that already finished and already paid — replaying it costs
+    // nothing and dropping it loses a real event. Keyed on the expedition id,
+    // which carries its own start timestamp, so the same landing seen from two
+    // devices collapses to one line.
+    history: mergeExpeditionLog(remote['history'], local['history']),
   };
+}
+
+/** Newest-first union of two expedition logs, deduped by id and capped. */
+function mergeExpeditionLog(remote: unknown, local: unknown): unknown[] {
+  const seen = new Set<string>();
+  const rows: Record<string, unknown>[] = [];
+
+  for (const row of [...asArray(local), ...asArray(remote)]) {
+    if (!isPlainObject(row)) continue;
+    const id = row['id'];
+    if (typeof id !== 'string' || seen.has(id)) continue;
+    seen.add(id);
+    rows.push(row);
+  }
+
+  return rows
+    .sort((a, b) => numberOrZero(b['returnedAt']) - numberOrZero(a['returnedAt']))
+    .slice(0, EXPEDITION_LOG_CAP);
+}
+
+/**
+ * Mirrors `EXPEDITION_HISTORY_CAP`, restated rather than imported.
+ *
+ * This file is the merge layer and is deliberately free of imports from the
+ * feature services it merges — it runs against *blobs*, including blobs written
+ * by a build whose constant said something else. A drifted number here caps a
+ * merged log slightly long or short, which is invisible; an import cycle between
+ * the save layer and every feature that persists is not.
+ */
+const EXPEDITION_LOG_CAP = 10;
+
+function numberOrZero(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
 /**
