@@ -251,6 +251,22 @@ describe('ActivityProgressionGateway', () => {
       expect(inventory.stackOf('cinder-ore')).toBe(0);
     });
 
+    it('lets Mine at the Seamworks succeed again once Mining is re-selected there after a Canopy visit', () => {
+      // The round-trip a Keeper actually walks: Canopy (foraging selected) →
+      // Seamworks. The Seamworks page re-selects mining on entry; this pins
+      // that the gateway honours the swap rather than remembering the Canopy.
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+      expect(gateway.resolveMine({ mutationId: 'm0', now: 5_000, roll: 0.9 })).toEqual({ ok: false, code: 'location' });
+      expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 6_000)).toBeTruthy();
+      const mined = gateway.resolveMine({ mutationId: 'm1', now: 7_000, roll: 0.9 });
+      expect(mined.ok).toBe(true);
+      expect(gateway.snapshot.currentWork?.locationId).toBe(BASALT_SEAMWORKS_ID);
+      expect(inventory.stackOf('cinder-ore')).toBe(1);
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(FORAGING_XP_PER_ACTION);
+      expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(MINING_XP_PER_ACTION);
+    });
+
     it('refuses a growth the current foraging level has not reached', () => {
       const refused = gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9, herbId: SUNBLOOM_ID });
       expect(refused).toEqual({ ok: false, code: 'tier-locked' });

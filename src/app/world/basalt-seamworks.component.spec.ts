@@ -5,7 +5,13 @@ import { BehaviorSubject, of } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
-import { MINING_TIERS, emptyActivityLedger } from '../shared/activity/activity.model';
+import {
+  ActivityLedger,
+  BASALT_SEAMWORKS_ID,
+  MINING_TIERS,
+  ROOTGLASS_CANOPY_ID,
+  emptyActivityLedger,
+} from '../shared/activity/activity.model';
 import { xpForLevel } from '../shared/activity/mining-level';
 import { ChapterGateway } from '../shared/narrative/chapter.gateway';
 import { emptyChapterLedger } from '../shared/narrative/chapter.model';
@@ -16,11 +22,15 @@ import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 describe('BasaltSeamworksComponent', () => {
   let fixture: ComponentFixture<BasaltSeamworksComponent>;
   const activity$ = new BehaviorSubject(emptyActivityLedger());
+  const selectCalls: Array<{ discipline: string; locationId: string }> = [];
   const activity = {
     snapshot: emptyActivityLedger(),
     snapshot$: activity$.asObservable(),
     init: () => { /* noop */ },
-    selectCurrentWork: () => ({ locationId: 'infernal/basalt-seamworks' }),
+    selectCurrentWork: (discipline: string, locationId: string) => {
+      selectCalls.push({ discipline, locationId });
+      return { locationId };
+    },
     recoveryRemainingMs: () => 0,
     miningSpeedupPct: () => 0,
     bagCanTakeOre: () => true,
@@ -71,6 +81,8 @@ describe('BasaltSeamworksComponent', () => {
 
   beforeEach(async () => {
     activity$.next(emptyActivityLedger());
+    activity.snapshot = emptyActivityLedger();
+    selectCalls.length = 0;
     held = { 'cinder-ore': 4 };
     refineCalls.length = 0;
     await TestBed.configureTestingModule({
@@ -109,6 +121,50 @@ describe('BasaltSeamworksComponent', () => {
     fixture.detectChanges();
     expect(el.textContent).toContain('Cinder Ore +1 · held ×4');
     expect(el.textContent).not.toContain('Craft');
+  });
+
+  it('selects Mining at the Seamworks on mount when Current Work is empty', () => {
+    expect(selectCalls).toEqual([{ discipline: 'mining', locationId: BASALT_SEAMWORKS_ID }]);
+  });
+
+  it('re-selects Mining at the Seamworks when Current Work is at the Canopy', () => {
+    // A Keeper who visited the Rootglass Canopy walks back here with
+    // foraging@Canopy still selected. Before this rule the page only claimed
+    // Current Work when it was null, so every Mine came back 'location' and
+    // the "return here" alert showed while standing on the Seamworks —
+    // mining was dead until a reload. Mirrors the Canopy's own rule.
+    fixture.destroy();
+    selectCalls.length = 0;
+    const atCanopy: ActivityLedger = {
+      ...emptyActivityLedger(),
+      currentWork: {
+        version: 2,
+        disciplineId: 'foraging',
+        locationId: ROOTGLASS_CANOPY_ID,
+        startedAt: '2026-08-15T00:00:00.000Z',
+        lastResolvedAt: '2026-08-15T00:00:00.000Z',
+        selectionRevision: { wallTimeMs: 1, logicalCounter: 0, deviceId: 't', sequence: 1 },
+      },
+    };
+    activity.snapshot = atCanopy;
+    fixture = TestBed.createComponent(BasaltSeamworksComponent);
+    fixture.detectChanges();
+    expect(selectCalls).toEqual([{ discipline: 'mining', locationId: BASALT_SEAMWORKS_ID }]);
+
+    // The same rule guards the click path: if the live snapshot still points
+    // at the Canopy when Mine is pressed (e.g. another tab re-selected), the
+    // Seamworks re-claims Current Work before resolving instead of letting
+    // the gateway reject with 'location'.
+    selectCalls.length = 0;
+    activity$.next(atCanopy);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const mine = el.querySelector('.sw__mine') as HTMLButtonElement;
+    expect(mine.disabled).toBe(false);
+    mine.click();
+    fixture.detectChanges();
+    expect(selectCalls).toEqual([{ discipline: 'mining', locationId: BASALT_SEAMWORKS_ID }]);
+    expect(el.textContent).toContain('Cinder Ore +1');
   });
 
   it('keeps Mine and its status line unique so class locators never match a Refine row', () => {
