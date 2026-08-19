@@ -226,6 +226,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeScrollLedger,
   },
   {
+    key: 'codex-secrets',
+    collection: 'progress',
+    doc: 'secrets',
+    label: 'codex secrets',
+    // Was device-local on the grounds that a console-entered code is not
+    // progression. It reads as progression to the person who found it: the
+    // Codex counts these alongside the eggs, and a visitor who parted the veil
+    // on a desktop and then opened the site on a phone saw the count reset.
+    merge: mergeSecretLedgers,
+  },
+  {
     key: 'godforge-pro',
     collection: 'progress',
     doc: 'pro',
@@ -653,6 +664,39 @@ function entryKey(item: unknown): string {
 }
 
 /** Keys the first time each id was seen, not the most recent. */
+/**
+ * The codex secrets ledger: `{ [secretId]: { at, how } }`.
+ *
+ * Found on either device means found, so the union of the keys is right. What
+ * the structural rules get wrong is the record itself — comparing two objects
+ * "higher wins" is meaningless, and comparing their `at` strings would keep the
+ * *later* one, which is the same secret found again on a second device rather
+ * than a better record of when it was first found. Earliest `at` wins, and the
+ * `how` that travels with it stays attached to the discovery it describes:
+ * "walked into it" on the phone that got there first is the true story, even if
+ * the desktop later summoned the same secret by keystroke.
+ */
+function mergeSecretLedgers(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(remote)) return local ?? {};
+  if (!isPlainObject(local)) return remote;
+
+  const out: Record<string, unknown> = { ...local };
+  for (const [id, incoming] of Object.entries(remote)) {
+    const held = out[id];
+    if (!isPlainObject(held)) {
+      out[id] = incoming;
+      continue;
+    }
+    if (!isPlainObject(incoming)) continue;
+    const heldAt = held['at'];
+    const incomingAt = incoming['at'];
+    if (typeof heldAt !== 'string' || (typeof incomingAt === 'string' && incomingAt < heldAt)) {
+      out[id] = incoming;
+    }
+  }
+  return out;
+}
+
 function mergeEarliestDates(remote: unknown, local: unknown): unknown {
   if (!isPlainObject(remote)) return local ?? {};
   if (!isPlainObject(local)) return remote;

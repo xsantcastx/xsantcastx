@@ -518,6 +518,7 @@ describe('the registry', () => {
     // `xp`, and wrapping it would silently disable the guard. `STATE_ENTRIES` in
     // game-state.gateway.ts is the list that includes it.
     expect([...SYNCED_BLOBS.map(b => b.key)].sort()).toEqual([
+      'codex-secrets',
       'easter-eggs-dates',
       'easter-eggs-found',
       'eclipse-arena-scores',
@@ -552,7 +553,6 @@ describe('the registry', () => {
    *   cm-recent-chars            a scratch MRU inside one tool
    *   ep-recent-emojis           ditto
    *   live-chat-username         a display name for one page
-   *   codex-secrets              console-entered codes, not progression
    *   donations/recent           a read cache of public data
    *   site-stats/visits          ditto
    */
@@ -561,7 +561,7 @@ describe('the registry', () => {
     for (const key of [
       'cloud-save-uid', 'preferred-language', 'godforge-forge-hum',
       'godforge-install-dismissed', 'cm-recent-chars', 'ep-recent-emojis',
-      'live-chat-username', 'codex-secrets', 'donations/recent', 'site-stats/visits',
+      'live-chat-username', 'donations/recent', 'site-stats/visits',
     ]) {
       expect(synced.has(key)).withContext(`${key} should not sync`).toBe(false);
     }
