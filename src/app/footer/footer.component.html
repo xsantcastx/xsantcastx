@@ -53,6 +53,12 @@
     </p>
 
     <p class="gffoot__mark">{{ translate('gffoot.forgedBy') }}</p>
+
+    <!-- The WebGL forge's off switch. Here rather than behind a settings route
+         because there is no settings route, and because a device that needs it
+         should not have to navigate to find it. Renders nothing where there was
+         never a scene: on the server, inside an embed, or with no WebGL. -->
+    <app-forge-effects-toggle />
   </div>
 
   <!-- Footer Info -->
