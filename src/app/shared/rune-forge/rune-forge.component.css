@@ -777,3 +777,57 @@
   .rf-pick--landed:not(.rf-pick--batch) .rf-pick__card.is-chosen { animation: none; }
   .rf-card:hover:not(.rf-card--locked) { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE CELEBRATION — the parts of it that belong to this component
+   ═══════════════════════════════════════════════════════════════════════
+
+   The screen-level layers live in styles.css, because they are built with
+   createElement and never carry this component's scoping attribute. What is
+   left here is the two things that *are* in this template: the typed rune name
+   and the slow-motion flag the celebration raises on <html>.
+
+   Both keyframes and both `animation:` lines are top-level. Nothing here goes
+   inside an @media block — Angular does not rewrite an `animation:` shorthand
+   that sits in one, and the resulting dangling name fails silently.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.rf-sound-row {
+  margin: 0.35rem 0 0.9rem;
+  text-align: center;
+}
+
+/* The rune's name, one letter at a time. `--i` is the character index; the
+   delay is derived from it so one rule covers a three-letter name and a
+   twelve-letter one. */
+.rf-pick__char {
+  display: inline-block;
+  opacity: 0;
+  animation: rfChar 260ms cubic-bezier(0.16, 0.8, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 52ms);
+}
+
+@keyframes rfChar {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(1.4);
+    filter: blur(4px);
+    text-shadow: 0 0 22px var(--star-color, #fff);
+  }
+  60% { opacity: 1; filter: blur(0); }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+    text-shadow: 0 0 12px var(--star-glow, transparent);
+  }
+}
+
+/* Slow motion is keyed off `data-gf-slowmo` on <html>, so its rules cannot
+   live in this file. Angular's emulated encapsulation appends the component's
+   scoping attribute to *every* compound selector in a rule, ancestors
+   included — `html[data-gf-slowmo='2'] .rf-pick__card` compiles to
+   `html[data-gf-slowmo='2'][_ngcontent-x] .rf-pick__card[_ngcontent-x]`, which
+   requires <html> to carry an attribute it never has. The rule then matches
+   nothing, with no build warning and no console error. Verified in the
+   compiled bundle, not assumed. They are in styles.css instead. */

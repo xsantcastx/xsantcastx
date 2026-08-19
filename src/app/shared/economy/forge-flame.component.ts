@@ -60,6 +60,7 @@ import {
   tierOf,
 } from '../rune-forge/rune.model';
 import type { RuneTier } from '../rune-forge/rune.model';
+import { CelebrationService } from '../celebration/celebration.service';
 import { isHeavyTier } from '../rune-forge/rune-haul';
 
 /** One "+5" rising off the flame. */
@@ -1364,6 +1365,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly runes = inject(RuneForgeService);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly celebration = inject(CelebrationService);
   private readonly forgeScene = inject(ForgeSceneService);
   private readonly subs = new Subscription();
 
@@ -1864,6 +1866,10 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     // Rare and above take the screen. `paint` is already the one place that
     // checks reduced motion, so this needs no guard of its own.
     if (grand) this.paint('flash', 520);
+    // And the full celebration, radiating from the flame itself — the anvil is
+    // in a corner, so an effect centred on the viewport would be celebrating
+    // somewhere the player is not looking.
+    this.celebration.celebrate(best.rune.tier, this.host.nativeElement);
 
     const led = finds.length === 1
       ? `${best.rune.name}.`

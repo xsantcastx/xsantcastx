@@ -68,6 +68,8 @@ import {
 import { loadSeen, markSeen, persistSeen } from './rune-unseen';
 import { batchHaul, haulOf, isHeavyTier, tallyTiers, type BatchHaul, type BatchTier, type HaulLine } from './rune-haul';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
+import { CelebrationService } from '../celebration/celebration.service';
+import { CelebrationSoundToggleComponent } from '../celebration/celebration-sound-toggle.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
 import { ForgeCraftGateway } from '../rpg/forge-craft.gateway';
@@ -111,7 +113,7 @@ interface RecipeRow {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [CommonModule, RouterLink, InspectButtonComponent],
+  imports: [CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
@@ -128,6 +130,8 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly i18n = inject(TranslationService);
   private readonly crafts = inject(ForgeCraftGateway);
   private readonly inventory = inject(InventoryService);
+  private readonly celebration = inject(CelebrationService);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly subs = new Subscription();
   readonly equipmentRecipes = FORGE_EQUIPMENT_RECIPES;
   pendingCraftId: string | null = null;
@@ -143,7 +147,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
-  private flareTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly strikeCost = STRIKE_COST;
   readonly bulkRolls = BULK_ROLLS;
@@ -270,6 +273,30 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
    * to the forge the player is already standing in.
    */
   private static readonly REVEAL_OPEN_CLASS = 'gf-reveal-open';
+
+  /**
+   * The turned card, so the celebration knows where on screen the rune came
+   * from and can throw its rings and bolts at that point rather than at the
+   * middle of the viewport.
+   *
+   * Read through a getter off the host rather than held in a @ViewChild because
+   * the card only exists while `landed` is true, and a ViewChild queried once
+   * would be stale by the second strike.
+   */
+  private get revealCardEl(): Element | null {
+    if (!this.isBrowser) return null;
+    return this.host.nativeElement.querySelector('.rf-pick__card.is-chosen');
+  }
+
+  /**
+   * The rune's name split into characters for the letter-by-letter reveal.
+   *
+   * Precomputed on the find rather than split in the template: the binding runs
+   * on every change-detection pass and the answer only changes when the rune
+   * does. Empty for the tiers that do not earn the treatment, which is what the
+   * template keys off.
+   */
+  revealLetters: string[] = [];
 
   ngOnInit(): void {
     this.forge.init();
@@ -406,10 +433,9 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     // A bulk run or an auto-roll left pending would keep spending Gold on a
     // page the player has already left.
     this.stopRolling();
-    if (this.flareTimer !== null) clearTimeout(this.flareTimer);
-    // Navigating away mid-Mythic would otherwise leave the whole site under a
-    // red wash until the next reload.
-    if (this.isBrowser) delete document.documentElement.dataset['runeFlare'];
+    // Navigating away mid-Mythic would otherwise leave five seconds of
+    // Singular pinned over the page the player navigated to.
+    this.celebration.cancel();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -613,7 +639,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.bulkTimer = setTimeout(() => this.bulkChunk(), 0);
   }
 
-  /** Land the batch: summary, tally, best-find sound and flare. */
+  /** Land the batch: summary, tally, and the best find's sound and celebration. */
   private finishBulk(): void {
     this.bulkTimer = null;
     this.rolling = false;
@@ -638,7 +664,9 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.batchTiers = tallyTiers(finds);
     if (best.rune.tier === 'singular') this.audio.voidRumble();
     else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavyTier(best.rune.tier));
-    this.flare(best.rune.tier, tierOf(best.rune.tier).duration);
+    // The best thing in the run, not the last thing pulled: ten strikes that
+    // ended on an Ash should still celebrate the Epic that was third.
+    this.party(best.rune.tier);
     this.cdr.markForCheck();
   }
 
@@ -743,6 +771,10 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.batch = [];
     this.haul = [];
     this.loreOpen = false;
+    this.revealLetters = [];
+    // Dismissing the card takes its weather with it. A player who taps through
+    // a Legendary to get back to the anvil has said they are done looking.
+    this.celebration.cancel();
     this.cdr.markForCheck();
   }
 
@@ -863,39 +895,30 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.audio.runeReveal(tier.semitones, isHeavyTier(find.rune.tier));
     }
     if (find.scroll) this.audio.scrollUnfurl();
-    this.flare(find.rune.tier, tier.duration);
+    this.party(find.rune.tier);
     this.cdr.markForCheck();
   }
 
   /**
-   * Hand the top three tiers to the screen-level flare in styles.css.
+   * Hand the landed tier to the screen-level celebration.
    *
-   * Written as a data attribute on <html> rather than as a layer inside this
-   * component because a fixed layer authored here would be trapped by the
-   * routed host's transform — see the note in the template and in styles.css.
+   * Deferred one frame: the card element the effects radiate from is written
+   * by the same change-detection pass that sets `landed`, so measuring it now
+   * would measure either nothing or the previous card's box. One frame later
+   * it is on screen and `getBoundingClientRect` has something true to say.
    *
-   * The clear is scheduled off the tier's own `duration`, and the attribute is
-   * removed rather than reset to a falsy value so that two Mythics in a row
-   * restart the animation instead of the second one being swallowed by the
-   * still-running first.
+   * The letters are set here rather than in the template for the same reason
+   * the cells are: a split in a binding runs on every pass to produce a value
+   * that only changes when the rune does.
    */
-  private flare(tier: RuneTier, ms: number): void {
+  private party(tier: RuneTier): void {
     if (!this.isBrowser) return;
-    if (RUNE_TIER_ORDER.indexOf(tier) < RUNE_TIER_ORDER.indexOf('legendary')) return;
-
-    const root = document.documentElement;
-    if (this.flareTimer !== null) clearTimeout(this.flareTimer);
-    delete root.dataset['runeFlare'];
-    // Re-read a layout property so the removal and the re-add are not coalesced
-    // into a no-op by the style system, which would leave a repeat find with no
-    // flare at all.
-    void root.offsetWidth;
-    root.dataset['runeFlare'] = tier;
-
-    this.flareTimer = setTimeout(() => {
-      delete root.dataset['runeFlare'];
-      this.flareTimer = null;
-    }, ms);
+    this.revealLetters = this.celebration.letters(tier) && this.reveal
+      ? [...this.reveal.rune.name]
+      : [];
+    requestAnimationFrame(() => {
+      this.celebration.celebrate(tier, this.revealCardEl);
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
