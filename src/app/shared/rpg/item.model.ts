@@ -144,12 +144,23 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   ward: false,
 };
 
-/** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
-export function formatItemMod(key: keyof ItemStats, value: number): string {
+/**
+ * Just the number: signed, suffixed, compacted — no label.
+ *
+ * Split out of `formatItemMod` for the Reforge panel, whose before/after rows
+ * already carry the stat name in their own column; the composed line would
+ * have printed "Gold/sec  Gold/sec +0.6".
+ */
+export function formatStatValue(key: keyof ItemStats, value: number): string {
   const sign = value >= 0 ? '+' : '';
   const suffix = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
   const shown = key === 'goldPerSec' ? compactStat(value) : String(value);
-  return `${ITEM_STAT_LABELS[key]} ${sign}${shown}${suffix}`;
+  return `${sign}${shown}${suffix}`;
+}
+
+/** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
+export function formatItemMod(key: keyof ItemStats, value: number): string {
+  return `${ITEM_STAT_LABELS[key]} ${formatStatValue(key, value)}`;
 }
 
 function compactStat(n: number): string {
@@ -197,6 +208,18 @@ export interface GameItem {
   lastUpgradeAt?: string;
   lastUpgradeMutationId?: string;
   lastUpgradeOk?: boolean;
+  /**
+   * Reforges resolved (item-reforge.ts). Missing means 0. Kept as a count
+   * rather than a flag because it is the only trace a rerolled item carries —
+   * rarity, definition and upgradeLevel all survive a reforge unchanged, so
+   * without this there is no way to tell a perfect natural roll from one the
+   * Keeper bought six times over.
+   */
+  reforgeCount?: number;
+  lastReforgeAt?: string;
+  lastReforgeMutationId?: string;
+  /** Which stat was held on the last reroll, if the Keeper paid to lock one. */
+  lastReforgeLock?: keyof ItemStats;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

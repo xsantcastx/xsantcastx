@@ -152,6 +152,123 @@
           </div>
         }
 
+        @if (reforgePreview; as rf) {
+          <div class="qi__reforge" [attr.data-stage]="reforgeStage" [attr.data-result]="reforgeStage === 'done' ? reforgeResult : null">
+            @switch (reforgeStage) {
+              @case ('idle') {
+                <p class="qi__reforge-lede">{{ t('inspect.reforge.lede', { gold: reforgeBaseGold() }) }}</p>
+                <button type="button" class="qi__btn qi__btn--reforge" (click)="openReforge()">
+                  {{ t('inspect.reforge.act') }}
+                </button>
+              }
+              @case ('confirm') {
+                <p class="qi__reforge-warn" role="note">{{ t('inspect.reforge.warn') }}</p>
+
+                <ul class="qi__reforge-rows">
+                  @for (row of reforgeRows(); track row.key) {
+                    <li class="qi__reforge-row" [class.is-locked]="reforgeLock === row.key">
+                      <span class="qi__reforge-key">{{ statLabel(row.key) }}</span>
+                      <span class="qi__reforge-now">{{ statValue(row.key, row.value) }}</span>
+                      <button
+                        type="button"
+                        class="qi__lock"
+                        [attr.aria-pressed]="reforgeLock === row.key"
+                        [attr.aria-label]="t('inspect.reforge.lockOne', { stat: statLabel(row.key) })"
+                        (click)="toggleLock(row.key)">
+                        {{ reforgeLock === row.key ? t('inspect.reforge.locked') : t('inspect.reforge.lock') }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+
+                <p class="qi__reforge-cost">
+                  {{ t('inspect.reforge.cost', { gold: reforgeGold() }) }}
+                  @if (reforgeLock) {
+                    <span class="qi__reforge-lockNote">{{ t('inspect.reforge.lockCost', { stat: statLabel(reforgeLock) }) }}</span>
+                  }
+                </p>
+
+                @if (reforgeError) {
+                  <p class="qi__reforge-err" role="alert">{{ t('inspect.reforge.error.' + reforgeError) }}</p>
+                }
+
+                <div class="qi__reforge-actions">
+                  <button
+                    type="button"
+                    class="qi__btn qi__btn--reforge"
+                    [disabled]="!canAffordReforge"
+                    (click)="reforge()">
+                    {{ t('inspect.reforge.confirm') }}
+                  </button>
+                  <button type="button" class="qi__btn qi__btn--ghost" (click)="cancelReforge()">
+                    {{ t('inspect.reforge.cancel') }}
+                  </button>
+                </div>
+                @if (!canAffordReforge) {
+                  <p class="qi__reforge-err" role="status">{{ t('inspect.reforge.error.funds') }}</p>
+                }
+              }
+              @case ('rolling') {
+                <p class="qi__reforge-lede" role="status">{{ t('inspect.reforge.rolling') }}</p>
+                <ul class="qi__reforge-rows qi__reforge-rows--rolling" aria-hidden="true">
+                  @for (d of reforgeDelta; track d.key) {
+                    <li class="qi__reforge-row" [class.is-locked]="d.locked">
+                      <span class="qi__reforge-key">{{ statLabel(d.key) }}</span>
+                      <!-- The locked row does not tumble: a stat the Keeper paid
+                           double to hold must not even appear to be in play. -->
+                      <span class="qi__reforge-now" [class.qi__reforge-now--spin]="!d.locked">
+                        {{ d.locked ? statValue(d.key, d.before) : (shuffleRow[d.key] ?? statValue(d.key, d.before)) }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              }
+              @case ('done') {
+                <!--
+                  One-item loop keyed on the strike counter, same device the
+                  temper block uses: a fresh element per reroll, so the settle
+                  animation runs again on a second reforge in a row.
+                -->
+                @for (n of [reforgeStrikes]; track 'reforge:' + n) {
+                  <div class="qi__reforge-out">
+                    <p class="qi__reforge-note" role="status">{{ t('inspect.reforge.result.' + reforgeResult) }}</p>
+                    <ul class="qi__reforge-deltas">
+                      @for (d of reforgeDelta; track d.key) {
+                        <li
+                          class="qi__rdelta"
+                          [style.--i]="$index"
+                          [attr.data-dir]="d.locked ? 'lock' : (d.delta > 0 ? 'up' : (d.delta < 0 ? 'down' : 'flat'))">
+                          <span class="qi__rdelta-label">
+                            {{ statLabel(d.key) }}
+                            @if (d.locked) {
+                              <span class="qi__rdelta-lock">{{ t('inspect.reforge.heldTag') }}</span>
+                            }
+                          </span>
+                          <span class="qi__rdelta-vals">
+                            {{ statValue(d.key, d.before) }} → <strong>{{ statValue(d.key, d.after) }}</strong>
+                          </span>
+                          <em class="qi__rdelta-move">
+                            @if (d.locked) {
+                              {{ t('inspect.reforge.held') }}
+                            } @else if (d.delta === 0) {
+                              {{ t('inspect.reforge.same') }}
+                            } @else {
+                              {{ d.delta > 0 ? '+' : '' }}{{ d.delta }}
+                            }
+                          </em>
+                        </li>
+                      }
+                    </ul>
+                    <button type="button" class="qi__btn qi__btn--ghost" (click)="cancelReforge()">
+                      {{ t('inspect.reforge.again') }}
+                    </button>
+                  </div>
+                }
+              }
+            }
+          </div>
+        }
+
         @if (view.resolution?.actions?.length) {
           <ul class="qi__actions">
             @for (action of view.resolution?.actions ?? []; track action.id) {
