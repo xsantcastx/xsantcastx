@@ -17,6 +17,20 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.70.0',
+    codename: 'Bellows',
+    date: '2026-08-19',
+    highlights: [
+      'The initial bundle is 1.64 MB, down from 1.92 MB — under its 1.85 MB budget again, with 210 kB of headroom rather than 73 kB of overrun. Nothing was removed that anybody could see: it is the release log, the strings for pages that no longer exist, and code that could not be reached',
+      'VERSION_HISTORY — this list — is 140 kB of prose that only the admin dashboard reads, but the footer imports the version number from the same file and the footer is on every page. A module is the unit of chunking, so all of it shipped to everybody. The number and the log now live in separate files',
+      '1021 of 1742 translation strings were for surfaces the product cutover retired — 777 of them for the old tool pages alone. They are gone, and a build step now fails the build if a template asks for a string that is not there, which is the failure a prune like this can cause and the one nothing used to catch',
+      'The pulsar stopped animating its own position. It drifted by writing top and left sixty times a second, which makes the browser redo layout before it can draw anything; it now moves on the compositor instead. The scroll-progress rule was worse — it set a custom property on the whole navigation bar, and custom properties inherit, so every hall link and status pill had its style recalculated to move a bar one pixel wide',
+      'Measured over sixty scrolled frames, the Codex went from a layout on every single frame to a layout on half of them, and the quest board from every frame to three in four',
+      'The equipment panel carried a bag column, a header and three dialogs for two display modes that nothing in the application mounts — 462 lines of template, TypeScript and CSS that had never rendered. Deleting it is what finally answered where selling lives: nowhere yet, and the reasoning is written down beside the method rather than left for the next reader to rediscover',
+      'The daily tool pipeline has failed every night since the twelfth. The token it checks out with is expired, and the guard that was supposed to fall back to a working one could not tell — it tested the token for being empty, which an expired token is not. It asks GitHub now',
+    ],
+  },
+  {
     version: '2.69.0',
     codename: 'Archivist',
     date: '2026-08-19',
