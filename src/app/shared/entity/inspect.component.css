@@ -432,3 +432,38 @@
 @media (max-width: 768px) {
   .qi { min-width: 0; }
 }
+
+/* ── The 3D handle ──────────────────────────────────────────────────────────
+   Pinned to the hero's art rather than dropped into the action list: it is not
+   an action on the entity, it is a second way of looking at it. Sized to the
+   shell's 44px touch floor even though it reads as a chip. */
+.qi__hero { position: relative; }
+
+.qi__3d {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.3rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--rarity, rgba(255, 255, 255, 0.24));
+  background: rgba(10, 6, 22, 0.55);
+  color: var(--rarity, #e9e4ff);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+.qi__3d:hover,
+.qi__3d:focus-visible {
+  background: rgba(20, 12, 40, 0.8);
+  box-shadow: 0 0 18px -4px var(--rarity-glow, rgba(255, 255, 255, 0.4));
+}
+.qi__3d:focus-visible { outline: 2px solid var(--rarity, #fff); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qi__3d { transition: none; }
+}

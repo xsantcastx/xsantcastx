@@ -17,6 +17,21 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.74.0',
+    codename: 'Ember',
+    date: '2026-08-19',
+    highlights: [
+      'The Godforge burns behind every page. A WebGL scene of drifting embers, far cosmic dust, a handful of large wisps dragging comet trails, and a nebula wash \u2014 the room the whole game stands in, rather than a flat colour behind it',
+      'Walk into a realm chapter and the air changes colour. Umbral turns the field violet, Infernal crimson, Celestial blue, Verdant emerald and Luminous gold, over a second-long cross-fade, using the same colour the realm badge and the page wash already wear',
+      'The embers answer you. They drift away from the cursor, the layers slide past each other at different speeds as you scroll, and every strike on the Forge Flame sends a shockwave out through them',
+      'Any item can now be turned over in three dimensions. A "3D" chip in the inspect panel lifts it off the page as a real card with thickness \u2014 artwork and name on the front, the stat block on the back, rarity light along all four edges \u2014 and you can drag it around and flick it spinning',
+      'The card gets louder as the drop gets rarer, on the same ladder the drop toast climbs: a Mortal has a rim light and nothing else, a Sacred has particles in orbit, an Anomalous adds light rays, and a Singular gets a prismatic storm, energy tendrils climbing it, and a surface that will not stay flat',
+      'None of it is allowed to cost you the game. Nothing moves on the processor \u2014 every particle is a function of the clock evaluated on the graphics card \u2014 the field is capped at 500 pieces on a desktop and 200 on a phone, and a frame governor quietly drops a quality step if two seconds in a row fall below 20fps',
+      'A "Reduce effects" switch in the footer turns the whole thing off and remembers, and reduced-motion visitors get the scene standing perfectly still rather than not at all. No WebGL, an embedded page, or the switch on and the starfield that was always there is still behind you',
+      'The 3D library is never in the first download. It arrives only when a scene actually opens, so the page you land on is the same weight it was yesterday',
+    ],
+  },
+  {
     version: '2.73.0',
     codename: 'Chorus',
     date: '2026-08-19',
