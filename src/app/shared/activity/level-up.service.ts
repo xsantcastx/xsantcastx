@@ -13,11 +13,29 @@
  * did exactly that: `checkForaging` sits beside `checkMining`, both hand the
  * same before/after pair to one private `announce`, and the day a third skill
  * arrives decides whether that private helper deserves to become public.
+ *
+ * B1 Prospecting is that third skill, and the answer is yes: `check` is now
+ * public and reads the label key and the mark from SKILL_BANNER, the same
+ * per-discipline table the Current Work tile and the skill panel read. The two
+ * named methods stay as thin wrappers — every existing call site keeps working
+ * and reads better at the page than `check('mining', …)` would.
  */
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { miningLevelView } from './mining-level';
 import { artFor, type ArtEntry } from '../art/art';
+import type { DisciplineId } from './activity.model';
+
+/**
+ * What a level-up banner shows for each live discipline: the i18n key for the
+ * skill's name, and the manifest id of the thing the skill produces every
+ * action — Mining wears its ore, Foraging its herb, Prospecting its alloy.
+ */
+const SKILL_BANNER: Partial<Record<DisciplineId, { labelKey: string; artId: string }>> = {
+  mining: { labelKey: 'work.discipline.mining', artId: 'cinder-ore' },
+  foraging: { labelKey: 'work.discipline.foraging', artId: 'starlight-herb' },
+  prospecting: { labelKey: 'work.discipline.prospecting', artId: 'celestial-alloy' },
+};
 
 export interface LevelUpEvent {
   /** i18n key for the skill's display name, e.g. 'work.discipline.mining'. */
@@ -43,7 +61,7 @@ export class LevelUpService {
    * earned in the session that is looking at it.
    */
   checkMining(beforeXp: number, afterXp: number): void {
-    this.announce('work.discipline.mining', 'cinder-ore', beforeXp, afterXp);
+    this.check('mining', beforeXp, afterXp);
   }
 
   /**
@@ -52,7 +70,27 @@ export class LevelUpService {
    * never a save's history. Wears the herb every gather produces.
    */
   checkForaging(beforeXp: number, afterXp: number): void {
-    this.announce('work.discipline.foraging', 'starlight-herb', beforeXp, afterXp);
+    this.check('foraging', beforeXp, afterXp);
+  }
+
+  /**
+   * B1 Prospecting's. Same contract again — the prospecting XP total from
+   * immediately before and after one resolved survey
+   * (`MeridianOrreryComponent.prospect()`).
+   */
+  checkProspecting(beforeXp: number, afterXp: number): void {
+    this.check('prospecting', beforeXp, afterXp);
+  }
+
+  /**
+   * The generic entry point the file's own header deferred to the third skill.
+   * A discipline with no banner row (exploration, forge, hunting — not live)
+   * is silently ignored rather than announcing a nameless level.
+   */
+  check(discipline: DisciplineId, beforeXp: number, afterXp: number): void {
+    const row = SKILL_BANNER[discipline];
+    if (!row) return;
+    this.announce(row.labelKey, row.artId, beforeXp, afterXp);
   }
 
   private announce(skillLabelKey: string, artId: string, beforeXp: number, afterXp: number): void {

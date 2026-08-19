@@ -61,6 +61,18 @@ export const APP_ROUTES: Routes = [
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       }
     },
+  {
+      // Registered before 'world/realms/:realmId' for the same reason the
+      // other two site routes are: the param route would otherwise swallow it.
+      path: 'world/realms/celestial/meridian-orrery',
+      loadComponent: () => import('./world/meridian-orrery.component').then(m => m.MeridianOrreryComponent),
+      title: 'Meridian Orrery — Eclipse Realms',
+      data: {
+        description: 'Survey the rings for Celestial Alloy, Luminous Prism, Verdant Sap, Umbral Ink and Void Shard at the Meridian Orrery. Active Prospecting only; no travel reward and no background trickle.',
+        keywords: 'eclipse realms, celestial, meridian orrery, prospecting, celestial alloy',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+      }
+    },
   // The five real realms, each with its own title, description and JSON-LD.
   // They used to share the param route below, which meant they shared one meta
   // description across five thin, structurally identical pages — see the note

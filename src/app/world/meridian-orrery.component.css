@@ -1,0 +1,270 @@
+:host {
+  display: block;
+  position: relative;
+  z-index: 1;
+  /* bg-celestial is a dark brass-and-glass chamber, not the bright glasshouse
+     bg-verdant is, so it keeps the art-scene overlay's default mid-band —
+     no --scene-mid override here. */
+}
+
+.mo {
+  --orrery: #00d4ff;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1rem, 4vw, 1.6rem) 4rem;
+  color: #e8ecf1;
+}
+
+.mo__crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.62);
+  margin-bottom: 1.4rem;
+}
+
+.mo__crumb a, .mo__back {
+  color: inherit;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mo__eyebrow {
+  margin: 0 0 0.45rem;
+  font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--orrery);
+}
+
+.mo h1 {
+  margin: 0;
+  font: 700 clamp(2rem, 6vw, 3rem)/1.05 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mo__lede { margin: 0.7rem 0 0; line-height: 1.5; }
+
+app-current-work-tile { display: block; margin: 1.4rem 0; }
+
+.mo__panel {
+  margin-top: 1.6rem;
+  padding: 1.1rem;
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(10, 10, 15, 0.55);
+}
+
+.mo__panel h2 {
+  margin: 0 0 0.6rem;
+  font: 600 0.78rem/1.2 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--orrery);
+}
+
+.mo__tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+  margin: 0 0 0.9rem;
+}
+.mo__tier {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  min-height: 44px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.mo__tier:hover:not(:disabled) { border-color: rgba(0, 212, 255, 0.5); }
+.mo__tier--active { border-color: var(--orrery); background: rgba(0, 212, 255, 0.14); }
+.mo__tier--locked { cursor: not-allowed; opacity: 0.55; }
+.mo__tier img { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; flex: none; }
+.mo__tier-name {
+  display: block;
+  font: 700 0.72rem/1.2 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mo__tier-xp { display: block; margin-top: 0.15rem; font-size: 0.72rem; color: var(--gf-accent-text, #d6a84f); }
+.mo__tier-lock { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(232, 236, 241, 0.55); }
+.mo__tier:focus-visible { outline: 2px solid color-mix(in srgb, var(--orrery) 55%, white); outline-offset: 2px; }
+
+.mo__expect, .mo__chance, .mo__note { margin: 0 0 0.7rem; line-height: 1.5; }
+.mo__speedup {
+  margin: -0.3rem 0 0.7rem;
+  font-size: 0.78rem;
+  color: var(--gf-accent-text, #d6a84f);
+}
+
+.mo__loot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.mo__loot figure {
+  margin: 0;
+  padding: 0.7rem 0.6rem 0.8rem;
+  text-align: center;
+  font-size: 0.75rem;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.mo__loot figure.is-hit { border-color: var(--gf-accent, #d6a84f); }
+.mo__loot figure.is-rare { border-color: #E4A83A; }
+/*
+ * The art wrapper is the anchor for the floating "+1" — see .mo__float. It
+ * used to be a bare <img>; the wrapper adds nothing visible on its own, it
+ * just gives the floater a positioned parent to rise out of.
+ */
+.mo__art-wrap { position: relative; margin: 0 auto 0.35rem; width: 72px; }
+.mo__loot img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  transition: transform 200ms ease;
+}
+/* A brief scale while a floater is alive — the art itself reacts to the hit,
+   not just the number rising off it. Lifecycle shared with .mo__float via
+   the same floaters array, so nothing here needs its own timer. */
+.mo__loot figure.is-striking img { transform: scale(1.08); }
+
+.mo__float {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translate(-50%, 0);
+  font: 700 0.95rem/1 'Orbitron', system-ui, sans-serif;
+  color: var(--gf-accent-text, #E0A857);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  animation: moFloatUp 900ms ease-out forwards;
+}
+.mo__float--rare { color: #E4A83A; }
+@keyframes moFloatUp {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.85); }
+  18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -36px) scale(1); }
+}
+.mo__loot figcaption { color: rgba(232, 236, 241, 0.78); }
+.mo__held {
+  margin: 0.35rem 0 0;
+  font: 700 1.35rem/1 'Orbitron', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.mo__gain {
+  margin: 0.25rem 0 0;
+  color: var(--gf-accent, #d6a84f);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+.mo__gain--rare, .mo__rare { color: #E4A83A; font-weight: 700; }
+
+.mo__gather, .mo__ghost {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mo__gather {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  background: var(--orrery);
+  color: #0a0a0f;
+  font-weight: 700;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+/* A green-toned herb icon on the button's own emerald risked blending into it —
+   a dark chip plus a hairline ring keeps it legible regardless of the art's
+   own colour, the same defence the loadout's slot wells use. */
+.mo__gather-art {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 6px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+/* Same lifecycle as .mo__float: lit for exactly as long as a floater is
+   alive, so the button visibly answers the click that caused it. */
+.mo__gather--struck {
+  box-shadow: 0 0 0 2px rgba(10, 10, 15, 0.25), 0 0 18px -2px var(--orrery);
+}
+.mo__gather:active:not(:disabled) { transform: scale(0.96); }
+
+.mo__gather:disabled {
+  background: rgba(232, 236, 241, 0.18);
+  color: rgba(232, 236, 241, 0.55);
+  cursor: not-allowed;
+}
+.mo__gather:disabled .mo__gather-art { opacity: 0.5; }
+
+.mo__ghost {
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  background: transparent;
+  color: inherit;
+}
+
+.mo__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.mo__alert, .mo__result p { margin: 0.7rem 0 0; }
+.mo__alert { color: #fecaca; }
+.mo__result {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(214, 168, 79, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+.mo__result--rare { border-color: #E4A83A; }
+
+.mo__sr {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.7);
+}
+
+.mo__back { margin-top: 1.4rem; }
+
+.mo a:focus-visible,
+.mo__gather:focus-visible,
+.mo__ghost:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--orrery) 55%, white);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mo__gather, .mo__gather:active:not(:disabled), .mo__loot img, .mo__float {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
+  /* Still appears and still clears on the same timer as the motion version —
+     only the rise-and-fade is skipped, not the feedback itself. */
+  .mo__float { opacity: 1; top: -6px; }
+}
