@@ -13,6 +13,7 @@
  * generic rules are right for those specific blobs.
  */
 
+import { PRESSURE_HALF_LIFE_MS as EXCHANGE_HALF_LIFE } from '../exchange/exchange.model';
 import {
   SYNCED_BLOBS,
   hasProgress,
@@ -634,6 +635,7 @@ describe('the registry', () => {
       'godforge-chapter',
       'godforge-collection',
       'godforge-economy',
+      'godforge-exchange',
       'godforge-explorers',
       'godforge-gambler',
       'godforge-inventory',
@@ -1020,3 +1022,75 @@ describe('isConflict — only unspent progress counts, never a balance', () => {
   });
 });
 
+/**
+ * The Grand Exchange blob.
+ *
+ * Two of its constants are copied into `cloud-save.model.ts` rather than
+ * imported, for the reason that file gives: cloud save is eager and the
+ * Exchange model is a lazy chunk on one route, so importing it would drag the
+ * catalogue and the noise functions into every page's initial bundle to read
+ * two integers. These assertions are what stops the copies drifting.
+ */
+describe('cloud save — the Grand Exchange', () => {
+  const blob = SYNCED_BLOBS.find(b => b.key === 'godforge-exchange');
+
+  it('is in the registry, filed under economy', () => {
+    expect(blob).toBeTruthy();
+    expect(blob!.collection).toBe('economy');
+    expect(blob!.doc).toBe('exchange');
+    expect(typeof blob!.merge).toBe('function');
+  });
+
+  it('pins the pressure half-life against the model', () => {
+    expect(EXCHANGE_HALF_LIFE).toBe(6 * 3_600_000);
+  });
+
+  it('adds two devices\' footprints rather than taking the larger', () => {
+    // The structural rule would discard every sale made on the other device,
+    // because `net` is signed. This is the assertion that catches a future
+    // change that drops the custom merge.
+    const at = Date.UTC(2026, 7, 19, 12, 0, 0);
+    const merged = blob!.merge!(
+      { version: 1, pressure: { 'mat:cinder-ore': { net: 100, at } }, trades: [], day: '', spent: 0, earned: 0, taxPaid: 0 },
+      { version: 1, pressure: { 'mat:cinder-ore': { net: -40, at } }, trades: [], day: '', spent: 0, earned: 0, taxPaid: 0 },
+    ) as { pressure: Record<string, { net: number }> };
+    expect(merged.pressure['mat:cinder-ore'].net).toBeCloseTo(60, 6);
+  });
+
+  it('is commutative — which device signed in first cannot change the answer', () => {
+    const at = Date.UTC(2026, 7, 19, 12, 0, 0);
+    const a = { version: 1, pressure: { x: { net: 30, at } }, trades: [{ id: 'a', side: 'buy', goodId: 'x', at: 2 }], day: '2026-08-19', spent: 10, earned: 0, taxPaid: 0 };
+    const b = { version: 1, pressure: { x: { net: -12, at: at + 3_600_000 } }, trades: [{ id: 'b', side: 'sell', goodId: 'x', at: 1 }], day: '2026-08-19', spent: 4, earned: 7, taxPaid: 1 };
+    expect(blob!.merge!(a, b)).toEqual(blob!.merge!(b, a));
+  });
+
+  it('sums the daily tally within a day and adopts the later day outright', () => {
+    const same = blob!.merge!(
+      { version: 1, pressure: {}, trades: [], day: '2026-08-19', spent: 10, earned: 5, taxPaid: 1 },
+      { version: 1, pressure: {}, trades: [], day: '2026-08-19', spent: 4, earned: 2, taxPaid: 0 },
+    ) as { spent: number; earned: number; day: string };
+    expect(same.spent).toBe(14);
+    expect(same.earned).toBe(7);
+
+    const different = blob!.merge!(
+      { version: 1, pressure: {}, trades: [], day: '2026-08-18', spent: 999, earned: 999, taxPaid: 9 },
+      { version: 1, pressure: {}, trades: [], day: '2026-08-19', spent: 4, earned: 2, taxPaid: 0 },
+    ) as { spent: number; day: string };
+    // Taking the max of two different days would report the busier day forever.
+    expect(different.day).toBe('2026-08-19');
+    expect(different.spent).toBe(4);
+  });
+
+  it('unions the ticker by id, newest first', () => {
+    const merged = blob!.merge!(
+      { version: 1, pressure: {}, trades: [{ id: 'a', side: 'buy', goodId: 'x', at: 1 }], day: '', spent: 0, earned: 0, taxPaid: 0 },
+      { version: 1, pressure: {}, trades: [{ id: 'b', side: 'sell', goodId: 'x', at: 9 }, { id: 'a', side: 'buy', goodId: 'x', at: 1 }], day: '', spent: 0, earned: 0, taxPaid: 0 },
+    ) as { trades: { id: string }[] };
+    expect(merged.trades.map(t => t.id)).toEqual(['b', 'a']);
+  });
+
+  it('survives two devices with nothing in common', () => {
+    expect(() => blob!.merge!(undefined, null)).not.toThrow();
+    expect(() => blob!.merge!('nonsense', 42)).not.toThrow();
+  });
+});

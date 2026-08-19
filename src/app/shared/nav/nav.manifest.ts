@@ -96,6 +96,14 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     glyph: 'sanctum',
     group: 'more',
   },
+  {
+    id: 'exchange',
+    route: '/exchange',
+    labelKey: 'gfnav.exchange',
+    hintKey: 'gfnav.hint.exchange',
+    glyph: 'exchange',
+    group: 'more',
+  },
 ];
 
 export const PRIMARY_NAV = NAV_MANIFEST.filter(d => d.group === 'primary');

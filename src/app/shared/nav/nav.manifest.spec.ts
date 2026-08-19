@@ -36,11 +36,15 @@ describe('NAV_MANIFEST', () => {
     expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
 
-  it('MORE is quests, trials, and sanctum only', () => {
+  it('MORE is quests, trials, sanctum, and the exchange only', () => {
     expect(MORE_NAV.map(d => d.route)).toEqual([
       CANONICAL.quests,
       CANONICAL.trials,
       '/sanctum',
+      // The Exchange is a hall in its own right, but the header row is already
+      // five wide and does not shrink — see the nav-overflow note. The tome is
+      // where it goes until that row can take a sixth.
+      '/exchange',
     ]);
     const routes = NAV_MANIFEST.map(d => d.route);
     for (const banned of ['/tools', '/mcp', '/blueprint', '/mission-control', '/sponsors', '/donate', '/pro']) {
