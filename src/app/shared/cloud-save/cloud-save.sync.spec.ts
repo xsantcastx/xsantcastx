@@ -23,6 +23,7 @@ import { ECONOMY_KEY, EconomyService } from '../economy/economy.service';
 import { PROGRESS_KEY } from '../gamification/progress-storage.service';
 import { XpService } from '../gamification/xp.service';
 import { GameStateGateway, STATE_ENTRIES } from '../save/game-state.gateway';
+import { InventoryService } from '../rpg/inventory.service';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
 const ALL_KEYS = [...STATE_ENTRIES.map(e => e.key), 'cloud-save-uid'];
@@ -323,6 +324,61 @@ describe('cloud save — Firestore as the record', () => {
   // ───────────────────────────────────────────────────────────────────────────
   // The property the last three releases were spent on
   // ───────────────────────────────────────────────────────────────────────────
+
+  /*
+   * Items had no coverage here at all, which is why "do my items even save?"
+   * was a fair question to have to ask out loud.
+   */
+  it('carries items from one device to the next', async () => {
+    const a = build();
+    a.economy.init();
+    await a.xp.init();
+    const inventoryA = TestBed.inject(InventoryService);
+    inventoryA.init();
+    expect(inventoryA.grantStack('mined:ore', 'cinder-ore', 7)).toBe(true);
+
+    await a.gateway.attach('u1', fake.handle);
+    await a.gateway.flushNow();
+
+    teardownDevice();
+    localStorage.setItem('godforge-realm-era', '55');
+    const b = build();
+    b.economy.init();
+    await b.xp.init();
+    const inventoryB = TestBed.inject(InventoryService);
+    inventoryB.init();
+    await b.gateway.attach('u1', fake.handle);
+
+    expect(inventoryB.stackOf('cinder-ore')).toBe(7);
+  });
+
+  it('keeps both devices\u2019 items when the saves are reconciled', async () => {
+    const a = build();
+    a.economy.init();
+    await a.xp.init();
+    const inventoryA = TestBed.inject(InventoryService);
+    inventoryA.init();
+    inventoryA.grantStack('cloud:ore', 'cinder-ore', 9);
+    await a.gateway.attach('u1', fake.handle);
+    await a.gateway.flushNow();
+    await a.gateway.detach();
+
+    // A second device holding something the cloud has never seen.
+    teardownDevice();
+    localStorage.setItem('godforge-realm-era', '55');
+    const b = build();
+    b.economy.init();
+    await b.xp.init();
+    const inventoryB = TestBed.inject(InventoryService);
+    inventoryB.init();
+    inventoryB.grantStack('local:slag', 'slag-fragment', 4);
+
+    await b.gateway.attach('u1', fake.handle);
+
+    // Neither side's items are the price of signing in.
+    expect(inventoryB.stackOf('cinder-ore')).toBe(9);
+    expect(inventoryB.stackOf('slag-fragment')).toBe(4);
+  });
 
   it('carries Gold from one device to the next', async () => {
     const a = build();
@@ -652,9 +708,14 @@ describe('cloud save — Firestore as the record', () => {
     };
   }
 
-  function seedConflict(): void {
-    // Local is ahead on Gold, cloud is ahead on XP. That is the only case the
-    // dialog opens — each side holds something the other does not.
+  /**
+   * A device holding Gold it has not spent yet, against a cloud save that has
+   * moved on. This used to be the state that opened the merge modal, which is
+   * why the modal opened for practically everybody with two devices: a balance
+   * goes down, so an older one always reads as "ahead". It is not a fork, and
+   * signing in now reconciles it silently.
+   */
+  function seedStaleGold(): void {
     localStorage.setItem(ECONOMY_KEY, JSON.stringify({
       version: 2, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
     }));
@@ -673,55 +734,78 @@ describe('cloud save — Firestore as the record', () => {
     return d?.xp ?? 0;
   }
 
-  it('writes Keep This Device instead of remelting it into a merge', async () => {
-    seedConflict();
+  it('signing in combines the two saves without asking', async () => {
+    // The case that used to open a modal: each side holds an achievement the
+    // other has never seen. Signing in reconciles it on its own now.
+    seedStaleGold();
     const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();
 
-    await gateway.attach('u1', fake.handle, async () => 'local');
+    await gateway.attach('u1', fake.handle);
 
+    // Nothing was lost from either side.
+    expect(achievementIdsInCloud()).toEqual(['cloud-only', 'device-only']);
+    const stored = JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
+    expect(stored.achievements.map((a: { id: string }) => a.id).sort())
+      .toEqual(['cloud-only', 'device-only']);
     expect(fake.goldInCloud()).toBeGreaterThanOrEqual(5000);
+  });
+
+  it('keeps this device\u2019s pre-merge save so the reconcile can be walked back', async () => {
+    seedStaleGold();
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+    const before = localStorage.getItem(PROGRESS_KEY)!;
+
+    await gateway.attach('u1', fake.handle);
+    expect(gateway.deviceSnapshot()).not.toBeNull();
+    // The merge really did change this device, or the undo would be moot.
+    expect(localStorage.getItem(PROGRESS_KEY)).not.toBe(before);
+
+    expect(await gateway.restoreDeviceSnapshot()).toBe(true);
+
+    const restored = JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
+    expect(restored.achievements.map((a: { id: string }) => a.id)).toEqual(['device-only']);
+    // The account follows the device back, minus the XP floor the cloud rule
+    // will not let a write lower.
+    expect(achievementIdsInCloud()).toEqual(['device-only']);
+  });
+
+  it('the visitor can still hand the account this device\u2019s save explicitly', async () => {
+    // A genuine fork: this device has the XP, the cloud has achievements this
+    // device never earned. The strategy machinery is what the undo is built
+    // on, so it stays honest here.
+    localStorage.setItem(ECONOMY_KEY, JSON.stringify({
+      version: 2, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
+    }));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressBlob(1000, 'device-only')));
+    fake.seedGold(100);
+    const cloudSide = progressBlob(500, 'cloud-only');
+    cloudSide['achievements'] = [
+      { id: 'cloud-only', unlockedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'cloud-two', unlockedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'cloud-three', unlockedAt: '2026-01-01T00:00:00.000Z' },
+    ];
+    fake.docs.set('users/u1/progress/state', cloudSide);
+
+    const { gateway, economy, xp } = build();
+    economy.init();
+    await xp.init();
+
+    let asked = 0;
+    await gateway.attach('u1', fake.handle, async () => { asked++; return 'local'; });
+
+    expect(asked).toBe(1);
     expect(achievementIdsInCloud()).toEqual(['device-only']);
     const stored = JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
     expect(stored.achievements.map((a: { id: string }) => a.id)).toEqual(['device-only']);
-    // Lifetime XP cannot go down (Firestore rule). The rest of this device's
-    // save still wins; XP is floored so the write is not refused.
     expect(stored.xp).toBeGreaterThanOrEqual(500);
-    expect(stored.aether + stored.nox).toBe(stored.xp);
-    expect(xpInCloud()).toBeGreaterThanOrEqual(500);
-  });
-
-  it('writes Merge Best after the visitor has had to wait on the dialog', async () => {
-    seedConflict();
-    const { gateway, economy, xp } = build();
-    economy.init();
-    await xp.init();
-
-    let release!: (choice: 'merge') => void;
-    const asked = new Promise<'merge'>(resolve => { release = resolve; });
-    let sawAsk = false;
-    const attaching = gateway.attach('u1', fake.handle, () => {
-      sawAsk = true;
-      return asked;
-    });
-
-    for (let i = 0; i < 20 && !sawAsk; i++) await Promise.resolve();
-    expect(sawAsk).toBe(true);
-    // Attached so later play can queue, but automatic flushes are held
-    // until the answer — that is what used to swallow Keep This Device.
-    expect(gateway.attached).toBe(true);
-    expect(fake.counts.setDoc + fake.counts.batch + fake.counts.transaction).toBe(0);
-
-    release('merge');
-    await attaching;
-
-    expect(fake.goldInCloud()).toBeGreaterThanOrEqual(5000);
-    expect(achievementIdsInCloud()).toEqual(['cloud-only', 'device-only']);
   });
 
   it('does not hang or re-attach if sign-out answers the dialog', async () => {
-    seedConflict();
+    seedStaleGold();
     const { gateway, economy, xp } = build();
     economy.init();
     await xp.init();

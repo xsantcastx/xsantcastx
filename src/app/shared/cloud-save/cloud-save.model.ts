@@ -690,6 +690,32 @@ export function hasProgress(summary: SaveSummary): boolean {
 }
 
 /**
+ * Is this side holding progress the other has never seen?
+ *
+ * Only monotone counters answer that. XP, rank and achievements can be earned
+ * and never spent, so one side holding more of them is real evidence of play
+ * the other does not have.
+ *
+ * Gold is deliberately not in here, and that omission is the whole point.
+ * A balance goes *down* — so a device that has not yet spent what it earned
+ * reads as "ahead on Gold" against a cloud save that has moved on and spent it.
+ * That is not divergence, it is just an older balance, and treating it as
+ * evidence made an ordinary two-device visitor fail the test on every sign-in:
+ * their phone was permanently "ahead on Gold" while the cloud was ahead on XP.
+ * It never settled either, because reconciling takes the higher Gold and hands
+ * the stale balance straight back.
+ *
+ * Gold needs no protecting here regardless: `mergeEconomyLedgers` replays both
+ * sides' spend and earn operations by id, so the reconciled balance is correct
+ * whatever this returns.
+ */
+function holdsUnseenProgress(side: SaveSummary, other: SaveSummary): boolean {
+  return side.xp > other.xp
+    || side.achievements > other.achievements
+    || side.level > other.level;
+}
+
+/**
  * Is this a conflict worth stopping for?
  *
  * Only when both sides hold progress *and* neither is a superset of the other.
@@ -701,13 +727,7 @@ export function hasProgress(summary: SaveSummary): boolean {
  */
 export function isConflict(local: SaveSummary, cloud: SaveSummary): boolean {
   if (!hasProgress(local) || !hasProgress(cloud)) return false;
-
-  const localAhead = local.xp > cloud.xp || local.gold > cloud.gold
-    || local.achievements > cloud.achievements || local.level > cloud.level;
-  const cloudAhead = cloud.xp > local.xp || cloud.gold > local.gold
-    || cloud.achievements > local.achievements || cloud.level > local.level;
-
-  return localAhead && cloudAhead;
+  return holdsUnseenProgress(local, cloud) && holdsUnseenProgress(cloud, local);
 }
 
 function numberOf(value: unknown): number {

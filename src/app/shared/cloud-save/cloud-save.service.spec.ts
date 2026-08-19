@@ -30,7 +30,18 @@ describe('CloudSaveService.bind waits for App Check', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
-        { provide: GameStateGateway, useValue: { attach, detach: async () => undefined } },
+        {
+          provide: GameStateGateway,
+          // Every method the service calls has to exist here — this is a
+          // `useValue` stub, so a missing one is a runtime TypeError that tsc
+          // cannot see.
+          useValue: {
+            attach,
+            detach: async () => undefined,
+            deviceSnapshot: () => null,
+            restoreDeviceSnapshot: async () => true,
+          },
+        },
         { provide: LazyFirestoreService, useValue: { get: firestoreGet } },
         { provide: EasterEggService, useValue: { trigger: async () => undefined } },
       ],
