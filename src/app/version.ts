@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.60.0',
+  version: '2.60.1',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
   codename: 'Canopy',
@@ -52,6 +52,16 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.60.1',
+    codename: 'Canopy',
+    date: '2026-08-19',
+    highlights: [
+      'Signing in no longer asks which save to keep. It asked nearly every time for anyone with two devices, because the test behind it counted Gold you had not spent yet as progress the other side had never seen — and a balance goes down, so an older one always looked ahead. Your saves are combined instead, which keeps the further of everything and throws nothing away',
+      'Two of that dialog\'s three buttons deleted whichever items the other side was holding. That is gone; signing in cannot cost you items any more, and if you want this device\'s save back exactly as it was before you signed in, the notice that appears afterwards will put it back',
+      'Items had no test covering whether they reached a second device at all. They do, and now it is pinned — along with both devices\' items surviving a merge'
+    ]
+  },
   {
     version: '2.60.0',
     codename: 'Canopy',
