@@ -51,6 +51,8 @@ import {
   remainingMs,
   rollReward,
 } from './explorer.model';
+import { InventoryService } from '../rpg/inventory.service';
+import { ChallengeService } from '../challenges/challenge.service';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
 import { GameStateGateway } from '../save/game-state.gateway';
@@ -62,6 +64,16 @@ import {
 
 /** The Market id whose levels each buy one more explorer. */
 export const EXPLORER_SLOT_UPGRADE = 'explorer-slot';
+
+/**
+ * Why a mission is refused. Carries the numbers so the UI can say
+ * "200,000 Gold — you have 84,000" without asking the service twice.
+ */
+export interface ExpeditionBlock {
+  code: 'unknown' | 'slots' | 'level' | 'gold' | 'exclusive';
+  need?: number;
+  have?: number;
+}
 
 /** How often the countdown is redrawn while at least one mission is out. */
 const TICK_MS = 1_000;
@@ -77,6 +89,8 @@ export class ExplorerService implements OnDestroy {
   private readonly stats = inject(PlayerStatsService);
   private readonly saves = inject(LocalSaveRegistry);
   private readonly store = inject(GameStateGateway);
+  private readonly inventory = inject(InventoryService);
+  private readonly challenges = inject(ChallengeService);
 
   private state: ExplorerState = emptyExplorerState();
   private initialised = false;
@@ -186,12 +200,42 @@ export class ExplorerService implements OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Send an explorer out. False when every slot is busy, or the realm or
-   * mission is unknown.
+   * Why a mission cannot be dispatched right now, or null when it can.
    *
-   * Dispatch is free — the cost of an expedition is the wait, and charging Gold
-   * on top would make the first one unreachable for exactly the new visitor the
-   * mechanic is meant to hook.
+   * Public and returning a *reason* rather than a boolean, because the dispatch
+   * UI has to explain the refusal: a disabled Abyss button with no copy on it is
+   * indistinguishable from a broken one, and "rank 5" and "200,000 Gold" are two
+   * completely different things for the player to go and do.
+   *
+   * `explorerId` is optional here for the same reason it is on `dispatch`: the
+   * picker asks "can I send *anyone* on this" long before it asks "can I send
+   * this one".
+   */
+  blockedReason(mission: MissionId, explorerId?: string): ExpeditionBlock | null {
+    const def = missionById(mission);
+    if (!def) return { code: 'unknown' };
+    if (this.freeSlots <= 0 && !explorerId) return { code: 'slots' };
+
+    if (def.minLevel && this.xp.snapshot.level.level < def.minLevel) {
+      return { code: 'level', need: def.minLevel, have: this.xp.snapshot.level.level };
+    }
+    if (def.exclusive && this.state.active.some(e => e.mission === mission)) {
+      return { code: 'exclusive' };
+    }
+    if (def.cost && this.economy.snapshot.gold < def.cost) {
+      return { code: 'gold', need: def.cost, have: this.economy.snapshot.gold };
+    }
+    return null;
+  }
+
+  /**
+   * Send an explorer out. False when every slot is busy, the realm or mission
+   * is unknown, or `blockedReason` has something to say.
+   *
+   * The first three lengths are free. The three above the hour are not — see
+   * the note on `MissionDefinition.cost`. The fee is taken *before* the record
+   * is written, and the write cannot fail after it, so there is no ordering in
+   * which a player is charged for a mission that never left.
    */
   dispatch(realm: RealmId, mission: MissionId, explorerId?: string): boolean {
     if (!this.isBrowser) return false;
@@ -199,6 +243,7 @@ export class ExplorerService implements OnDestroy {
 
     const def = missionById(mission);
     if (!def || !realmById(realm)) return false;
+    if (this.blockedReason(mission, explorerId)) return false;
 
     // With no explorer named, the best one standing idle goes. `snapshot`
     // returns the roster rarest-first, so "the best available" is the first one
@@ -210,6 +255,11 @@ export class ExplorerService implements OnDestroy {
     if (!chosen || this.isOut(chosen.id)) return false;
 
     const tier = explorerTier(chosen.rarity);
+
+    // Charged here rather than at the top of the method: everything above this
+    // line can still refuse the dispatch, and a fee taken before the roster
+    // check would bill a player for "no explorer is free".
+    if (def.cost && !this.economy.spendGold(def.cost, `expedition:${mission}`)) return false;
 
     const expedition: Expedition = {
       id: `${realm}-${mission}-${Date.now()}-${this.state.missionsCompleted}`,
@@ -363,8 +413,32 @@ export class ExplorerService implements OnDestroy {
       }
       if (items.length) landing.reward.items = items;
 
+      // Materials go into the bag as stacks, keyed off the expedition id so a
+      // settlement replayed by a cloud merge lands once. `grantStack` refuses a
+      // new row at the 250-tile cap rather than evicting anything, which is the
+      // right call and is why the *actual* banked map is rebuilt from what it
+      // returned: a haul the bag had no room for must not be reported as though
+      // it were sitting in there.
+      if (landing.reward.materials) {
+        const banked: Record<string, number> = {};
+        for (const [stackKey, quantity] of Object.entries(landing.reward.materials)) {
+          if (this.inventory.grantStack(`${landing.explorer.id}:${stackKey}`, stackKey, quantity)) {
+            banked[stackKey] = quantity;
+          }
+        }
+        landing.reward.materials = Object.keys(banked).length ? banked : undefined;
+      }
+
       this.roster.recordMission(landing.explorer.explorerId);
+
+      // Reported from inside the settlement rather than watched from the
+      // Contract Board's wiring layer — see the note at the top of
+      // `challenge-wiring.service.ts` for why the dependency runs this way.
+      this.challenges.record('expedition-done', 1);
+      if (missionById(landing.explorer.mission)?.deep) this.challenges.record('expedition-deep', 1);
+
       this.returned$$.next(landing);
+      this.notifyLanding(landing);
     }
 
     // The log is written here rather than in the loop above for the same reason
@@ -381,6 +455,7 @@ export class ExplorerService implements OnDestroy {
       runes: [...landing.reward.runes],
       scroll: landing.reward.scroll,
       items: landing.reward.items ? [...landing.reward.items] : undefined,
+      materials: landing.reward.materials ? { ...landing.reward.materials } : undefined,
       returnedAt: landing.returnedAt,
     }));
 
@@ -400,6 +475,83 @@ export class ExplorerService implements OnDestroy {
     this.publish();
 
     return true;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Notifications
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Ask for permission to post expedition notifications.
+   *
+   * Called from a button, never on load, and that is not negotiable: an
+   * unprompted `Notification.requestPermission()` on page load is the single
+   * most reliably hated pattern on the web, Chrome demotes sites that do it, and
+   * a permanent "blocked" from a visitor who was never told what they were being
+   * asked for is worse than never asking. So the panel puts a control next to
+   * the Abyss — the one mission long enough that a notification is genuinely
+   * the difference between collecting on time and not — and this runs when it
+   * is pressed.
+   *
+   * Resolves to the resulting permission, or 'denied' where the API does not
+   * exist, so the caller has one thing to branch on.
+   */
+  async requestNotifications(): Promise<NotificationPermission> {
+    if (!this.isBrowser || typeof Notification === 'undefined') return 'denied';
+    if (Notification.permission !== 'default') return Notification.permission;
+    try {
+      return await Notification.requestPermission();
+    } catch {
+      return 'denied';
+    }
+  }
+
+  /** Where the notification control should stand: granted, denied, or ask. */
+  get notificationPermission(): NotificationPermission | 'unsupported' {
+    if (!this.isBrowser || typeof Notification === 'undefined') return 'unsupported';
+    return Notification.permission;
+  }
+
+  /**
+   * Post a notification for a landed mission, when the visitor asked for them.
+   *
+   * Silent on every failure path — no permission, no API, a browser that throws
+   * on construction inside a non-secure context — because this is a courtesy on
+   * top of a settlement that has already happened. The Gold is banked whether
+   * or not the notification appears.
+   *
+   * Only the deep tiers notify. A Scout is two minutes: the visitor who
+   * dispatched it is still on the page, and a system notification for something
+   * they can see the countdown of is noise that trains them to turn the whole
+   * feature off.
+   */
+  private notifyLanding(landing: ExplorerReturn): void {
+    if (!this.isBrowser || typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'granted') return;
+
+    const def = missionById(landing.explorer.mission);
+    if (!def?.deep) return;
+    // A tab the visitor is looking at does not need a notification; the loot
+    // reveal is already on screen.
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') return;
+
+    const realm = realmById(landing.explorer.realm);
+    const who = landing.explorerName || 'Your explorer';
+    const runes = landing.reward.runes.length;
+
+    try {
+      new Notification(`${who} is home from ${realm?.name ?? 'the realms'}`, {
+        body: runes
+          ? `${def.name} · ${landing.reward.gold.toLocaleString('en-US')} Gold and ${runes} ${runes === 1 ? 'rune' : 'runes'}.`
+          : `${def.name} · ${landing.reward.gold.toLocaleString('en-US')} Gold.`,
+        // One tag per mission length, so three Deep Dives landing overnight
+        // collapse into one notification rather than stacking three.
+        tag: `godforge-expedition-${def.id}`,
+        icon: '/assets/brand/icon-192.png',
+      });
+    } catch {
+      /* A notification that will not construct is not worth a console line. */
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────

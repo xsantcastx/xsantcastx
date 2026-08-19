@@ -402,7 +402,7 @@ export class EconomyService implements OnDestroy {
   earnGold(amount: number, source = 'forge'): number {
     if (!this.isBrowser || amount <= 0) return 0;
 
-    const credited = Math.round(amount * globalMultiplier(this.state));
+    const credited = Math.round(amount * globalMultiplier(this.state) * this.eventBoost());
     this.credit(credited);
 
     this.persistSoon();
@@ -939,6 +939,58 @@ export class EconomyService implements OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
   // Prestige
   // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * A transient multiplier on *minted* Gold, owned by whoever lit it.
+   *
+   * Not persisted, and deliberately not a field on `PlayerEconomy`: a
+   * wall-clock deadline inside the blob would have to be honoured by offline
+   * settlement, and settling eight hours of idle Gold across a boost that
+   * expired ninety minutes in is arithmetic with no right answer that anybody
+   * wants to debug. The owner — `ChallengeService` — persists it in its own
+   * blob and pushes it back in on every hydrate, exactly as the rank and the
+   * flat RPG Gold are mirrored in above.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * IT PAYS ON EVENTS, NOT ON THE DRIP
+   * ─────────────────────────────────────────────────────────────────────────
+   * The boost multiplies `earnGold`, which is every *event* payout — a strike,
+   * an expedition landing, a challenge claim, a sold item. It does not touch
+   * `goldPerSecond`, which is the idle rate the offline catch-up replays from.
+   *
+   * That is the honest split rather than a shortcut. "Double Gold for an hour"
+   * as a reward for clearing the board is a reason to go and *do* something in
+   * that hour; the same multiplier applied to the drip would pay out fastest to
+   * a player who closed the tab, which is the opposite of what the reward is
+   * for.
+   */
+  private boostMultiplier = 1;
+  private boostUntil = 0;
+
+  setEventBoost(multiplier: number, until: number): void {
+    const m = Number.isFinite(multiplier) ? Math.max(1, multiplier) : 1;
+    const u = Number.isFinite(until) ? Math.max(0, until) : 0;
+    if (m === this.boostMultiplier && u === this.boostUntil) return;
+    this.boostMultiplier = m;
+    this.boostUntil = u;
+    this.publish();
+  }
+
+  /**
+   * The live boost, or 1.
+   *
+   * Read against the wall clock on every mint rather than cleared by a timer,
+   * so a throttled background tab whose timeout never fired still stops paying
+   * double on the correct second.
+   */
+  eventBoost(): number {
+    return this.boostUntil > Date.now() ? this.boostMultiplier : 1;
+  }
+
+  /** Epoch ms the boost ends, or 0 when none is running. For the panel. */
+  get eventBoostUntil(): number {
+    return this.boostUntil > Date.now() ? this.boostUntil : 0;
+  }
 
   /** The rank the prestige gate is measured against. Fed by the wiring layer. */
   setRankLevel(level: number): void {

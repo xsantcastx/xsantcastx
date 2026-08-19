@@ -19,6 +19,7 @@ import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { QuestBoard, QuestLogEntry, QuestService } from '../shared/quests/quest.service';
 import { QuestCardComponent } from '../shared/quests/quest-card.component';
+import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
 import { countdownTo } from '../shared/quests/quest-drawer.component';
 
 /** History rows are grouped under a day heading. */
@@ -31,7 +32,7 @@ interface LogDay {
 @Component({
   selector: 'app-quests',
   standalone: true,
-  imports: [CommonModule, RouterLink, QuestCardComponent],
+  imports: [CommonModule, RouterLink, QuestCardComponent, ChallengePanelComponent],
   templateUrl: './quests.component.html',
   styleUrls: ['./quests.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

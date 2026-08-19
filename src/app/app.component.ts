@@ -11,6 +11,7 @@ import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
 import { PageAtmosphereService } from './shared/atmosphere/atmosphere.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
+import { ChallengeWiringService } from './shared/challenges/challenge-wiring.service';
 import { EconomyWiringService } from './shared/economy/economy-wiring.service';
 import { RpgWiringService } from './shared/rpg/rpg-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
@@ -38,6 +39,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private realms = inject(RealmService);
   private atmosphere = inject(PageAtmosphereService);
   private questWiring = inject(QuestWiringService);
+  private challengeWiring = inject(ChallengeWiringService);
   private economyWiring = inject(EconomyWiringService);
   private rpgWiring = inject(RpgWiringService);
   private idle = inject(IdleService);
@@ -151,6 +153,12 @@ export class AppComponent implements OnInit, OnDestroy {
     // Mission board: roll the daily and weekly quests over, and start turning
     // interactions into quest progress and lore unlocks.
     this.questWiring.init();
+
+    // Contract Board: the Gold ladder. After questWiring on purpose — both
+    // subscribe to the router, and the quest board's page set is the one that
+    // has to be canonicalised first, since a challenge counting tool routes
+    // reads the same canonicaliser and would otherwise seed it mid-navigation.
+    this.challengeWiring.init();
 
     // Ambient forge: start the visible-time heartbeat. Gated on the Page
     // Visibility API, so a backgrounded tab earns nothing.
