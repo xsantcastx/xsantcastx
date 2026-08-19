@@ -917,6 +917,23 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'journeyman-collector', label: 'Journeyman Collector', color: '#5fb6ff' },
       { id: 'master-collector', label: 'Master Collector', color: '#C9A84C' },
       { id: 'eclipse-archivist', label: 'Eclipse Archivist', color: '#e6dcff' },
+      // NPC chain exclusives — granted by NpcQuestService when a chain step is
+      // claimed, never purchasable. Same precedent as the Collector titles
+      // above: a real variant on the real cosmetic, so the word lands in front
+      // of the rank in the XP bar rather than only on the page that gave it.
+      // Two per chain: one at step three, one at the capstone.
+      { id: 'radiant',              label: 'Radiant',              color: '#E8D44D' },
+      { id: 'champion-of-light',    label: 'Champion of Light',    color: '#F5E28A' },
+      { id: 'hollowed',             label: 'Hollowed',             color: '#A855F7' },
+      { id: 'the-hollow',           label: 'The Hollow',           color: '#7b61ff' },
+      { id: 'flamebound',           label: 'Flamebound',           color: '#E8752A' },
+      { id: 'forgeborn',            label: 'Forgeborn',            color: '#ff9a5a' },
+      { id: 'the-annotated',        label: 'The Annotated',        color: '#5fb6ff' },
+      { id: 'keeper-of-fragments',  label: 'Keeper of Fragments',  color: '#9ad0ff' },
+      { id: 'the-solvent',          label: 'The Solvent',          color: '#C9A84C' },
+      { id: 'goldmouth',            label: 'Goldmouth',            color: '#F5C451' },
+      { id: 'the-counted',          label: 'The Counted',          color: '#c9c4d6' },
+      { id: 'nameless',             label: 'Nameless',             color: '#8f8a9c' },
     ],
   },
   {
@@ -962,6 +979,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'golden', label: 'Golden', color: '#C9A84C' },
       { id: 'obsidian', label: 'Obsidian', color: '#2a2438' },
       { id: 'prismatic', label: 'Prismatic', color: '#ff6dd7' },
+      // NPC chain exclusive — the Archivist's, granted at step four.
+      { id: 'runed', label: 'Runed', color: '#5fb6ff' },
     ],
   },
 ];
