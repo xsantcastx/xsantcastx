@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.61.0',
+  version: '2.62.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Wayline',
+  codename: 'Talisman',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.62.0',
+    codename: 'Talisman',
+    date: '2026-08-19',
+    highlights: [
+      'Charms have slots again — three of them, in their own row under the loadout rather than as a ninth well on the Keeper. C5 took charms off the player entirely: every one was moved to the bag, tagged so it could not be worn, and left carrying a note saying it required a future charm system. This is that system. The wells accept charms and nothing else, and the gear wells still refuse a charm, so neither can squat in the other\'s place',
+      'A save written before C5 gets its charms back where it left them. The three wells reuse the original charm1-charm3 ids rather than new ones, so a loadout that still names one puts the charm straight back on the player instead of leaving it bagged with an explanation. Saves written after C5 keep the charm in the bag and simply lose the tag that said it could never be worn',
+      'Every charm in the game gave Magic Find, which would have made three slots a non-choice — you would wear your three highest and there would be nothing to decide. Two more families now sit on the same rarity ladder: Gold charms paying flat Gold per second, and Insight charms paying a percentage of XP. Fifteen charms, five per family, one stat each',
+      'The charm drop rate is tripled to match. The three families carry identical weights, so a drop is an even three-way split — leaving the old rate would have cut Magic Find supply to a third without anybody asking for it. A player now sees as many Magic Find charms per strike as before, and the other two families on top',
+      'The loadout picker opens on a charm well the same way it opens on a gear well, with the same comparison against what is already there: swapping an XP charm for a Gold one shows the Gold gained and the XP given up, both signed, rather than only the half that improves',
+      'Fixed a squeeze the charm row exposed: the picker\'s worn-item block is a 44px art column beside the text, and an item with no tile art left that column empty and dropped the *name* into it, wrapping it to one word per line. Every other equippable has art, so nothing had shown it. Charms do not, so all three wells did'
+    ]
+  },
   {
     version: '2.61.0',
     codename: 'Wayline',

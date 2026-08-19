@@ -291,18 +291,168 @@
 .ld__slot--filled .ld__slot-state { color: #e8e0ff; }
 .ld__slot--locked .ld__slot-state { color: #b7c7c1; }
 
-.ld__charms { margin-top: 1rem; }
-.ld__charms-title { margin: 0 0 0.25rem; font-size: 0.92rem; }
-.ld__charms-note { margin: 0 0 0.5rem; color: #8b9c97; font-size: 0.8rem; }
-.ld__charms-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-.ld__charms-list li {
+/* ── The charm row ────────────────────────────────────────────────────────
+   Three wells under the doll, deliberately smaller than a gear well and set on
+   their own plinth. Charms are a subordinate group — the size difference is
+   what says so, and it is why they are not a ninth well on the figure. */
+.ld__charmrow {
+  margin-top: 1.15rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  border-radius: var(--gf-radius-sm);
+  border: 1px solid var(--gf-edge);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.ld__charmrow-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.ld__charmrow-title {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9c8f74;
+}
+
+.ld__charmrow-count {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--gf-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ld__charmrow-slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ld__charm {
+  width: 100%;
+  /* 56px well plus the name under it clears the 44px floor comfortably, and
+     three of them fit a 320px column without the labels colliding. */
+  min-height: 76px;
+  display: grid;
+  grid-template-rows: 40px auto;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 12%, rgba(167, 139, 250, 0.07), transparent 70%),
+    rgba(0, 0, 0, 0.3);
+  color: #7b7259;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ld__charm:hover {
+  border-color: rgba(201, 168, 76, 0.75);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 18px -6px rgba(201, 168, 76, 0.7);
+}
+
+.ld__charm:focus-visible { outline: 2px solid #efe7d2; outline-offset: 3px; }
+
+.ld__charm-glyph {
+  width: 26px;
+  height: 26px;
+  align-self: center;
+  background: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.ld__charm-art {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+}
+
+.ld__charm-name {
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #7b7259;
+}
+
+.ld__charm--filled {
+  border-color: rgba(196, 181, 255, 0.7);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 20px -8px rgba(167, 139, 250, 0.9);
+  color: #d9cffb;
+}
+.ld__charm--filled .ld__charm-name { color: #d9cffb; }
+
+.ld__charm--selected {
+  border-color: #efe7d2;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(239, 231, 210, 0.85);
+}
+
+.ld__charm--target {
+  border-color: #ffc669;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ld__charm--target { animation: ldTargetPulse 1.8s ease-in-out infinite; }
+  .ld__charm--flash { animation: ldSlotFlash 0.6s ease-out 1; }
+}
+
+/* Same trade as the gear wells: reduced motion keeps the acknowledgement as a
+   held ring rather than an expanding one. */
+@media (prefers-reduced-motion: reduce) {
+  .ld__charm { transition: none; }
+  .ld__charm--flash {
+    border-color: #ffc669;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
+  }
+}
+
+.ld__charmrow-totals {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  min-height: 44px;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
 }
-.ld__charm-slot { color: #8b9c97; font-size: 0.75rem; }
+
+.ld__charmrow-totals span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.1);
+  color: #d9cffb;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ld__charmrow-hint {
+  margin: 0.6rem 0 0;
+  color: var(--gf-faint);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
 
 .ld__bag-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; }
 .ld__bag-title { margin: 0; font-size: 1.05rem; }
@@ -489,7 +639,21 @@
   border-bottom: 1px solid var(--gf-edge);
 }
 .ld__worn-art { object-fit: contain; }
+.ld__worn-orb {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gf-faint);
+  font-size: 0.78rem;
+}
 .ld__worn-body { min-width: 0; }
+/* Belt and braces alongside the orb: even if a future row renders neither art
+   nor orb, the body starts in column two rather than being crushed into the
+   44px art track. */
+.ld__worn-body { grid-column: 2; }
 .ld__worn .ld__expand-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
 
 .ld__picker-label {
