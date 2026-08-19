@@ -13,6 +13,7 @@ import {
   EMBER_GUARANTEE_AT,
   EMBER_RESIDUE_ID,
   MINING_XP_PER_ACTION,
+  MERIDIAN_ORRERY_ID,
   ROOTGLASS_CANOPY_ID,
   emptyActivityLedger,
   emptyProgress,
@@ -81,6 +82,15 @@ export function foragingEligibleCount(ops: readonly ActivityOperation[], locatio
   return n;
 }
 
+/** B1 Prospecting twin. Here, not in prospecting-ops.ts, for the same reason. */
+export function prospectingEligibleCount(ops: readonly ActivityOperation[], locationId: string): number {
+  let n = 0;
+  for (const op of ops) {
+    if (op.disciplineId === 'prospecting' && op.locationId === locationId) n += 1;
+  }
+  return n;
+}
+
 export function hasEmberBeforeCraft(ops: readonly ActivityOperation[]): boolean {
   return ops.some(op =>
     op.discovery.result === 'ember-residue' || op.discovery.result === 'first-craft-guarantee',
@@ -91,6 +101,13 @@ export function hasEmberBeforeCraft(ops: readonly ActivityOperation[]): boolean 
 export function hasRiftKey(ops: readonly ActivityOperation[]): boolean {
   return ops.some(op =>
     op.discovery.result === 'rift-key' || op.discovery.result === 'rift-key-guarantee',
+  );
+}
+
+/** B1 Prospecting twin of hasRiftKey: has any Clarity Elixir ever landed in these ops? */
+export function hasClarityElixir(ops: readonly ActivityOperation[]): boolean {
+  return ops.some(op =>
+    op.discovery.result === 'clarity-elixir' || op.discovery.result === 'clarity-elixir-guarantee',
   );
 }
 
@@ -205,6 +222,12 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     b.foragingAccepted,
     foragingEligibleCount(operations, ROOTGLASS_CANOPY_ID),
   );
+  const clarityElixirGranted = a.clarityElixirGranted || b.clarityElixirGranted || hasClarityElixir(operations);
+  const prospectingAccepted = Math.max(
+    a.prospectingAccepted,
+    b.prospectingAccepted,
+    prospectingEligibleCount(operations, MERIDIAN_ORRERY_ID),
+  );
   if (operations.length > ACTIVITY_OPS_MAX) operations = operations.slice(-ACTIVITY_OPS_MAX);
   const currentWork = pickCurrentWork(a.currentWork, b.currentWork);
   return {
@@ -218,6 +241,8 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     miningAccepted,
     foragingAccepted,
     riftKeyGranted,
+    prospectingAccepted,
+    clarityElixirGranted,
   };
 }
 
@@ -254,6 +279,9 @@ export function coerceActivityLedger(raw: unknown): ActivityLedger | null {
     // Absent on saves written before A2 — both fall through to their defaults.
     foragingAccepted: Math.max(finiteCount(raw['foragingAccepted']), foragingEligibleCount(operations, ROOTGLASS_CANOPY_ID)),
     riftKeyGranted: raw['riftKeyGranted'] === true || hasRiftKey(operations),
+    // Absent on saves written before B1 — both fall through to their defaults.
+    prospectingAccepted: Math.max(finiteCount(raw['prospectingAccepted']), prospectingEligibleCount(operations, MERIDIAN_ORRERY_ID)),
+    clarityElixirGranted: raw['clarityElixirGranted'] === true || hasClarityElixir(operations),
   };
 }
 
@@ -356,12 +384,13 @@ function parseDiscovery(raw: unknown): ActivityDiscovery | null {
   if (
     result !== 'none' && result !== 'ember-residue' && result !== 'first-craft-guarantee'
     && result !== 'rift-key' && result !== 'rift-key-guarantee'
+    && result !== 'clarity-elixir' && result !== 'clarity-elixir-guarantee'
   ) return null;
   return { rolled: raw['rolled'] === true, result };
 }
 
 function isDiscipline(value: unknown): value is DisciplineId {
-  return value === 'mining' || value === 'foraging'
+  return value === 'mining' || value === 'foraging' || value === 'prospecting'
     || value === 'exploration' || value === 'forge' || value === 'hunting';
 }
 

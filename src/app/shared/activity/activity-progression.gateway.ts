@@ -32,9 +32,11 @@ import {
   coerceActivityLedger,
   compareHlc,
   foragingEligibleCount,
+  hasClarityElixir,
   hasEmberBeforeCraft,
   hasRiftKey,
   isEnabledMine,
+  prospectingEligibleCount,
   miningEligibleCount,
   newestOperation,
   nextHlc,
@@ -50,6 +52,14 @@ import {
   isEnabledForage,
   rollForageDiscovery,
 } from './foraging-ops';
+import { PROSPECTING_TIERS, isProspectingTierUnlocked, prospectingTierFor } from './prospecting.model';
+import {
+  buildProspectOperation,
+  effectiveProspectingRecoveryMs,
+  isEnabledProspect,
+  prospectingSpeedupPct,
+  rollProspectDiscovery,
+} from './prospecting-ops';
 
 export type ActivityRejectCode =
   | 'ssr'
@@ -143,13 +153,28 @@ export class ActivityProgressionGateway {
     return work;
   }
 
-  private currentMiningLevel(): number {
-    return miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
+  /**
+   * One curve for every discipline (mining-level.ts is skill-agnostic; only
+   * its name is historical). The skill authoring spec §11 names this as one of
+   * the generalisations the *third* skill is allowed to make: two private
+   * twins were legible, three would have been a copy-paste tax. The per-verb
+   * `resolve*` methods stay concrete — their check ordering and pity inputs
+   * genuinely differ.
+   */
+  private levelOf(discipline: DisciplineId): number {
+    return miningLevelView(this.ledger.progress.xpByDiscipline[discipline] ?? 0).level;
   }
 
-  /** Same curve as mining (mining-level.ts is skill-agnostic), read off the foraging XP total. */
+  private currentMiningLevel(): number {
+    return this.levelOf('mining');
+  }
+
   private currentForagingLevel(): number {
-    return miningLevelView(this.ledger.progress.xpByDiscipline.foraging ?? 0).level;
+    return this.levelOf('foraging');
+  }
+
+  private currentProspectingLevel(): number {
+    return this.levelOf('prospecting');
   }
 
   /**
@@ -192,15 +217,31 @@ export class ActivityProgressionGateway {
   }
 
   /**
+   * B1 Prospecting's cooldown. Level term only, same as Foraging's and for
+   * the same reason — no prospecting tool stat exists on any item, and
+   * borrowing the weapon's strikePower would let a sword speed up reading a
+   * star chart (see prospecting-ops.ts's header).
+   */
+  currentProspectingRecoveryMs(): number {
+    return effectiveProspectingRecoveryMs(this.currentProspectingLevel());
+  }
+
+  /** Whole-percent readout for the Orrery page. 0 hides the line entirely. */
+  prospectingSpeedupPct(): number {
+    // Same self-name note as miningSpeedupPct above: this resolves to the
+    // imported pure function, not to the method.
+    return prospectingSpeedupPct(this.currentProspectingLevel());
+  }
+
+  /**
    * The cooldown that applies to whatever Current Work is selected. Before A2
    * every caller of recoveryEndsAt silently assumed mining; the current-work
    * tile's "of Ns" readout and the two site pages all go through this so a
    * foraging Current Work never shows the mining number.
    */
   currentRecoveryMs(): number {
-    return this.ledger.currentWork?.disciplineId === 'foraging'
-      ? this.currentForagingRecoveryMs()
-      : this.currentMiningRecoveryMs();
+    const fn = RECOVERY_BY_DISCIPLINE[this.ledger.currentWork?.disciplineId ?? ''];
+    return fn ? fn(this) : this.currentMiningRecoveryMs();
   }
 
   recoveryEndsAt(): number | null {
@@ -220,8 +261,20 @@ export class ActivityProgressionGateway {
   }
 
   /** Live bag check — do not latch a capacity error after the player drops. */
+  bagCanTake(definitionId = 'cinder-ore'): boolean {
+    return this.inventory.canAcceptStackGrant(definitionId);
+  }
+
+  /**
+   * The mining-flavoured name every existing caller uses. The spec's §11 list
+   * renames it at the third skill and keeps the old name as an alias for one
+   * release, because "can the bag take this ore" is what the Canopy and the
+   * Orrery have both been asking about herbs and minerals.
+   *
+   * @deprecated Call `bagCanTake` instead. Removed one release after B1.
+   */
   bagCanTakeOre(oreId = 'cinder-ore'): boolean {
-    return this.inventory.canAcceptStackGrant(oreId);
+    return this.bagCanTake(oreId);
   }
 
   resolveMine(input: {
@@ -396,6 +449,95 @@ export class ActivityProgressionGateway {
     return { ok: true, operation, replayed: false };
   }
 
+  /**
+   * B1 Prospecting — the third line-for-line sibling. Still concrete: the
+   * spec's §11 list keeps `resolve*` per-verb even at skill three, because a
+   * `resolveAction(discipline, …)` would hide the reject ordering and the
+   * per-skill pity inputs (Mining reads craftedBasaltEdge; these two do not).
+   */
+  resolveProspect(input: {
+    mutationId: string;
+    locationId?: string;
+    /** Which cut of the rings to survey. Defaults to Celestial Alloy — always unlocked. */
+    mineralId?: string;
+    now?: number;
+    roll?: number;
+  }): ActivityResolveResult {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const existing = this.ledger.operations.find(op => op.id === input.mutationId);
+    if (existing) return { ok: true, operation: existing, replayed: true };
+
+    const now = input.now ?? Date.now();
+    if (!Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    const work = this.ledger.currentWork;
+    if (!work) return { ok: false, code: 'not-selected' };
+    const locationId = input.locationId ?? work.locationId;
+    if (locationId !== work.locationId || !isEnabledProspect(locationId, work.disciplineId)) {
+      return { ok: false, code: 'location' };
+    }
+
+    // The client picks a cut; the gateway alone decides whether the Keeper's
+    // prospecting level has actually opened it.
+    const tier = (input.mineralId ? prospectingTierFor(input.mineralId) : undefined) ?? PROSPECTING_TIERS[0];
+    if (!isProspectingTierUnlocked(tier, this.currentProspectingLevel())) {
+      return { ok: false, code: 'tier-locked' };
+    }
+
+    const last = newestOperation(this.ledger.operations, work);
+    if (last) {
+      const lastAt = Date.parse(last.resolvedAt);
+      if (!Number.isFinite(lastAt) || now < lastAt) return { ok: false, code: 'clock' };
+      if (now < lastAt + this.currentProspectingRecoveryMs()) return { ok: false, code: 'recovering' };
+    }
+
+    if (!this.inventory.canAcceptStackGrant(tier.mineralId)) {
+      return { ok: false, code: 'capacity' };
+    }
+
+    const discovery = rollProspectDiscovery({
+      eligibleIndex: Math.max(
+        this.ledger.prospectingAccepted,
+        prospectingEligibleCount(this.ledger.operations, locationId),
+      ) + 1,
+      previousClarityElixir: this.ledger.clarityElixirGranted || hasClarityElixir(this.ledger.operations),
+      roll: input.roll ?? Math.random(),
+    });
+    const operation = buildProspectOperation({
+      id: input.mutationId,
+      deviceId: this.deviceId,
+      previousHlc: this.lastHlc,
+      now,
+      locationId,
+      mineralId: tier.mineralId,
+      xpAmount: tier.xpPerAction,
+      discovery,
+    });
+
+    const previous = this.ledger;
+    const operations = [...this.ledger.operations, operation];
+    this.ledger = {
+      ...this.ledger,
+      operations,
+      progress: progressFromOps(operations),
+      currentWork: rebuildCurrentWork(work, operations),
+      clarityElixirGranted: this.ledger.clarityElixirGranted || operation.discovery.result !== 'none',
+      prospectingAccepted: Math.max(
+        this.ledger.prospectingAccepted,
+        prospectingEligibleCount(operations, locationId),
+      ),
+    };
+    this.lastHlc = operation.hlcRevision;
+
+    if (!this.applyGrants(operation) || !this.save()) {
+      this.ledger = previous;
+      this.lastHlc = this.highestHlc(previous);
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return { ok: true, operation, replayed: false };
+  }
+
   private applyGrants(operation: ActivityOperation): boolean {
     for (const grant of operation.inventoryGrants) {
       if (!this.inventory.grantStack(grant.id, grant.definitionId, grant.quantity)) return false;
@@ -443,3 +585,19 @@ export class ActivityProgressionGateway {
     }
   }
 }
+
+/**
+ * Which cooldown applies to which Current Work.
+ *
+ * Was a ternary on `disciplineId` while two skills were live; the skill
+ * authoring spec §11 names this as one of the cuts the third skill makes,
+ * because a third arm would have turned the ternary into a nest. The gateway
+ * is still the sole owner of timing — this only routes to the method that
+ * already computed it. Anything not listed (exploration, forge, hunting: not
+ * live) falls through to Mining's number, exactly as the ternary did.
+ */
+const RECOVERY_BY_DISCIPLINE: Partial<Record<string, (gw: ActivityProgressionGateway) => number>> = {
+  mining: gw => gw.currentMiningRecoveryMs(),
+  foraging: gw => gw.currentForagingRecoveryMs(),
+  prospecting: gw => gw.currentProspectingRecoveryMs(),
+};

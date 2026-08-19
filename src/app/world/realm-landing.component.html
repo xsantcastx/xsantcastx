@@ -21,7 +21,7 @@
       </p>
       <h1 class="rl__title">{{ place.name }}</h1>
       <p class="rl__function">{{ place.function }}</p>
-      <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : place.id === 'verdant' ? t('world.realm.statusVerdant') : t('world.realm.status') }}</p>
+      <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : place.id === 'verdant' ? t('world.realm.statusVerdant') : place.id === 'celestial' ? t('world.realm.statusCelestial') : t('world.realm.status') }}</p>
     </header>
 
     @if (place.id === 'infernal') {
@@ -32,6 +32,13 @@
         <span class="rl__continue-label">{{ t('world.realm.siteLabel') }}</span>
         <span class="rl__continue-name">{{ t('work.location.canopy') }}</span>
         <span class="rl__continue-note">{{ t('world.realm.canopyNote') }}</span>
+      </a>
+    }
+    @if (place.id === 'celestial') {
+      <a class="rl__continue rl__site" [routerLink]="orreryHref">
+        <span class="rl__continue-label">{{ t('world.realm.siteLabel') }}</span>
+        <span class="rl__continue-name">{{ t('work.location.orrery') }}</span>
+        <span class="rl__continue-note">{{ t('world.realm.orreryNote') }}</span>
       </a>
     }
 
