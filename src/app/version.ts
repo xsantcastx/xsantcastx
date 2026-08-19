@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.63.0',
+  version: '2.64.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Candour',
+  codename: 'Lever',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.64.0',
+    codename: 'Lever',
+    date: '2026-08-19',
+    highlights: [
+      'The Forge is a lever now. Roll again sits on the result, so a re-roll is one click instead of dismiss-find-pull, and the card you just turned up stays on screen until the next one replaces it',
+      'Bulk rolls: ×10, ×100, ×1K and ALL. They run in chunks rather than one long loop — a thousand strikes in a single pass is over a second of frozen tab, so the run strikes for eight milliseconds, hands the frame back and resumes, which is what makes the progress bar move and the Stop button work. Stopping banks everything that already landed',
+      'A run reports what it found: "1 Rare, 1 Uncommon, 3 Common", rarest first, each rung in its own colour. Past twelve cards it shows the best find on its own instead of a hundred thumbnails you scroll through to reach the buttons',
+      'Auto-roll pulls by itself and stops on Rare or better, or when the Gold runs out, and says which. Rolling straight past the thing you were rolling for is not a feature',
+      'The first pull of a sitting keeps the full ceremony. From the second the reveal runs about three times faster — the lever should feel like a lever',
+      'On a phone the roll buttons are pinned to the bottom of the reveal and the Forge Flame stands aside while it is open. Both were taking clicks that were meant for the lever'
+    ]
+  },
   {
     version: '2.63.0',
     codename: 'Candour',
