@@ -4,7 +4,7 @@
  * Data only. No Mine button, no Basalt Seamworks route, no craft.
  * Spec: eclipse-realms-active-progression-spec.md §§5–6.
  */
-export type DisciplineId = 'mining' | 'exploration' | 'forge' | 'hunting';
+export type DisciplineId = 'mining' | 'foraging' | 'exploration' | 'forge' | 'hunting';
 
 export type ActivityLocationId = string;
 
@@ -35,7 +35,13 @@ export interface DisciplineProgress {
   xpByDiscipline: Partial<Record<DisciplineId, number>>;
 }
 
-export type DiscoveryResult = 'none' | 'ember-residue' | 'first-craft-guarantee';
+export type DiscoveryResult =
+  | 'none'
+  | 'ember-residue'
+  | 'first-craft-guarantee'
+  /** A2 Foraging: the Rift Key rare find, rolled or pity-granted. */
+  | 'rift-key'
+  | 'rift-key-guarantee';
 
 export interface ActivityDiscovery {
   rolled: boolean;
@@ -80,6 +86,13 @@ export interface ActivityLedger {
    */
   emberGranted: boolean;
   miningAccepted: number;
+  /**
+   * A2 Foraging twins of the two above: accepted Canopy gathers and whether
+   * the pity Rift Key has already landed. Optional on the wire — saves written
+   * before A2 lack them and coerce to 0 / false — but always present in memory.
+   */
+  foragingAccepted: number;
+  riftKeyGranted: boolean;
 }
 
 export const ACTIVITY_KEY = 'godforge-activity';
@@ -99,6 +112,8 @@ export const SLAG_FRAGMENT_ID = 'slag-fragment';
 export const INFERNAL_HEARTSTONE_ID = 'infernal-heartstone';
 export const EMBER_RESIDUE_ID = 'ember-residue';
 export const BASALT_SEAMWORKS_ID = 'infernal/basalt-seamworks';
+/** A2 Foraging's site. Its tiers and drop table live in foraging.model.ts. */
+export const ROOTGLASS_CANOPY_ID = 'verdant/rootglass-canopy';
 export const EMBER_DISCOVERY_CHANCE = 0.0008;
 export const EMBER_GUARANTEE_AT = 800;
 
@@ -134,8 +149,20 @@ export const BASALT_SEAMWORKS: ActivityLocationDefinition = {
   enabledDisciplines: ['mining'],
 };
 
+/**
+ * Registered here beside BASALT_SEAMWORKS rather than in foraging.model.ts:
+ * this file owns the registry locationDefinition() consults, and
+ * foraging.model.ts imports from here — never the reverse.
+ */
+export const ROOTGLASS_CANOPY: ActivityLocationDefinition = {
+  id: ROOTGLASS_CANOPY_ID,
+  realmId: 'verdant',
+  enabledDisciplines: ['foraging'],
+};
+
 export const ACTIVITY_LOCATIONS: readonly ActivityLocationDefinition[] = [
   BASALT_SEAMWORKS,
+  ROOTGLASS_CANOPY,
 ];
 
 export function locationDefinition(id: string): ActivityLocationDefinition | undefined {
@@ -156,5 +183,7 @@ export function emptyActivityLedger(): ActivityLedger {
     craftedBasaltEdge: false,
     emberGranted: false,
     miningAccepted: 0,
+    foragingAccepted: 0,
+    riftKeyGranted: false,
   };
 }

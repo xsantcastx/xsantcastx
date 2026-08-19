@@ -13,6 +13,7 @@ import {
   EMBER_GUARANTEE_AT,
   EMBER_RESIDUE_ID,
   MINING_XP_PER_ACTION,
+  ROOTGLASS_CANOPY_ID,
   emptyActivityLedger,
   emptyProgress,
   locationDefinition,
@@ -67,9 +68,29 @@ export function miningEligibleCount(ops: readonly ActivityOperation[], locationI
   return n;
 }
 
+/**
+ * A2 Foraging twin of miningEligibleCount. Lives here, not in
+ * foraging-ops.ts, because coerce/merge below need it and this file must stay
+ * import-upstream of foraging-ops.ts (which takes nextHlc from here).
+ */
+export function foragingEligibleCount(ops: readonly ActivityOperation[], locationId: string): number {
+  let n = 0;
+  for (const op of ops) {
+    if (op.disciplineId === 'foraging' && op.locationId === locationId) n += 1;
+  }
+  return n;
+}
+
 export function hasEmberBeforeCraft(ops: readonly ActivityOperation[]): boolean {
   return ops.some(op =>
     op.discovery.result === 'ember-residue' || op.discovery.result === 'first-craft-guarantee',
+  );
+}
+
+/** A2 Foraging twin of hasEmberBeforeCraft: has any Rift Key ever landed in these ops? */
+export function hasRiftKey(ops: readonly ActivityOperation[]): boolean {
+  return ops.some(op =>
+    op.discovery.result === 'rift-key' || op.discovery.result === 'rift-key-guarantee',
   );
 }
 
@@ -178,6 +199,12 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     b.miningAccepted,
     miningEligibleCount(operations, BASALT_SEAMWORKS_ID),
   );
+  const riftKeyGranted = a.riftKeyGranted || b.riftKeyGranted || hasRiftKey(operations);
+  const foragingAccepted = Math.max(
+    a.foragingAccepted,
+    b.foragingAccepted,
+    foragingEligibleCount(operations, ROOTGLASS_CANOPY_ID),
+  );
   if (operations.length > ACTIVITY_OPS_MAX) operations = operations.slice(-ACTIVITY_OPS_MAX);
   const currentWork = pickCurrentWork(a.currentWork, b.currentWork);
   return {
@@ -189,6 +216,8 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     craftedBasaltEdge: a.craftedBasaltEdge || b.craftedBasaltEdge,
     emberGranted,
     miningAccepted,
+    foragingAccepted,
+    riftKeyGranted,
   };
 }
 
@@ -222,6 +251,9 @@ export function coerceActivityLedger(raw: unknown): ActivityLedger | null {
     craftedBasaltEdge: raw['craftedBasaltEdge'] === true,
     emberGranted: raw['emberGranted'] === true || hasEmberBeforeCraft(operations),
     miningAccepted: Math.max(finiteCount(raw['miningAccepted']), miningEligibleCount(operations, BASALT_SEAMWORKS_ID)),
+    // Absent on saves written before A2 — both fall through to their defaults.
+    foragingAccepted: Math.max(finiteCount(raw['foragingAccepted']), foragingEligibleCount(operations, ROOTGLASS_CANOPY_ID)),
+    riftKeyGranted: raw['riftKeyGranted'] === true || hasRiftKey(operations),
   };
 }
 
@@ -321,12 +353,16 @@ function parseInvGrant(raw: unknown): ActivityInventoryGrant | null {
 function parseDiscovery(raw: unknown): ActivityDiscovery | null {
   if (!isPlain(raw) || raw['rolled'] !== true && raw['rolled'] !== false) return null;
   const result = raw['result'];
-  if (result !== 'none' && result !== 'ember-residue' && result !== 'first-craft-guarantee') return null;
+  if (
+    result !== 'none' && result !== 'ember-residue' && result !== 'first-craft-guarantee'
+    && result !== 'rift-key' && result !== 'rift-key-guarantee'
+  ) return null;
   return { rolled: raw['rolled'] === true, result };
 }
 
 function isDiscipline(value: unknown): value is DisciplineId {
-  return value === 'mining' || value === 'exploration' || value === 'forge' || value === 'hunting';
+  return value === 'mining' || value === 'foraging'
+    || value === 'exploration' || value === 'forge' || value === 'hunting';
 }
 
 function isPlain(value: unknown): value is Record<string, unknown> {

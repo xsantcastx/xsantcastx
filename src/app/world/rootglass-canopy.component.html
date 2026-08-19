@@ -1,0 +1,131 @@
+<app-art-scene art="bg-verdant" focus="center 55%" />
+
+<article class="rc" [attr.data-state]="panelState()">
+  <nav class="rc__crumb" [attr.aria-label]="t('world.crumb.label')">
+    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
+    <span aria-hidden="true">/</span>
+    <a [routerLink]="verdantHref">{{ t('world.atlas.label.verdant') }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ t('work.location.canopy') }}</span>
+  </nav>
+
+  <header class="rc__hero">
+    <p class="rc__eyebrow">{{ t('canopy.eyebrow') }}</p>
+    <h1>{{ t('work.location.canopy') }}</h1>
+    <p class="rc__lede">{{ t('canopy.lede') }}</p>
+  </header>
+
+  <app-current-work-tile></app-current-work-tile>
+
+  <section class="rc__panel" aria-labelledby="rc-gather-title">
+    <h2 id="rc-gather-title">{{ t('canopy.panel.title') }}</h2>
+
+    <div class="rc__tiers" role="group" [attr.aria-label]="t('canopy.tier.title')">
+      @for (tier of tiers; track tier.herbId) {
+        <button
+          type="button"
+          class="rc__tier"
+          [class.rc__tier--active]="tier.herbId === selectedHerbId"
+          [class.rc__tier--locked]="!tierUnlocked(tier)"
+          [disabled]="!tierUnlocked(tier)"
+          [attr.aria-pressed]="tier.herbId === selectedHerbId"
+          (click)="selectTier(tier)">
+          <img [src]="tierArt(tier).art" [attr.srcset]="tierArt(tier).srcset" sizes="32px" alt="" width="32" height="32" decoding="async">
+          <span class="rc__tier-name">{{ tierArt(tier).name }}</span>
+          @if (tierUnlocked(tier)) {
+            <span class="rc__tier-xp">{{ t('seamworks.tier.xp', { xp: tier.xpPerAction }) }}</span>
+          } @else {
+            <span class="rc__tier-lock">{{ t('seamworks.tier.locked', { level: tier.unlockLevel }) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <p class="rc__expect">{{ t('canopy.expect', { herb: herb.name, xp: selectedTier().xpPerAction }) }}</p>
+    <p class="rc__chance">{{ discoveryLabel() }}</p>
+    @if (speedupPct() > 0) {
+      <p class="rc__speedup">{{ t('canopy.speedup', { pct: speedupPct() }) }}</p>
+    }
+
+    <div class="rc__loot" aria-label="{{ t('canopy.haul') }}">
+      <figure [class.is-hit]="lastHerb > 0" [class.is-striking]="herbFloaters().length > 0">
+        <div class="rc__art-wrap">
+          <img [src]="herb.art" [attr.srcset]="herb.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of herbFloaters(); track f.id) {
+            <span class="rc__float" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
+        <figcaption>{{ herb.name }}</figcaption>
+        <p class="rc__held">{{ t('seamworks.held', { n: herbHeld }) }}</p>
+        @if (lastHerb > 0) {
+          <p class="rc__gain">{{ t('seamworks.gain', { n: lastHerb }) }}</p>
+        }
+      </figure>
+      <figure [class.is-hit]="lastKey > 0" [class.is-rare]="lastKey > 0 || keyHeld > 0" [class.is-striking]="keyFloaters().length > 0">
+        <div class="rc__art-wrap">
+          <img [src]="key.art" [attr.srcset]="key.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of keyFloaters(); track f.id) {
+            <span class="rc__float rc__float--rare" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
+        <figcaption>{{ key.name }}</figcaption>
+        <p class="rc__held">{{ t('seamworks.held', { n: keyHeld }) }}</p>
+        @if (lastKey > 0) {
+          <p class="rc__gain rc__gain--rare">{{ t('seamworks.gain.rare', { n: lastKey }) }}</p>
+        }
+      </figure>
+    </div>
+
+    <div class="rc__actions">
+      <button
+        type="button"
+        class="rc__gather"
+        [class.rc__gather--struck]="herbFloaters().length > 0"
+        [disabled]="gatherDisabled()"
+        [attr.aria-disabled]="gatherDisabled()"
+        (click)="gather()">
+        <img class="rc__gather-art" [src]="herb.art" alt="" width="26" height="26" aria-hidden="true" decoding="async">
+        <span>
+          @if (panelState() === 'recovering') {
+            {{ t('canopy.gather.wait', { seconds: remainLabel() }) }}
+          } @else if (panelState() === 'resolving') {
+            {{ t('canopy.gather.resolving') }}
+          } @else {
+            {{ t('canopy.gather') }}
+          }
+        </span>
+      </button>
+      <button type="button" class="rc__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
+    </div>
+    <p class="rc__sr" aria-live="polite">{{ t('canopy.status.' + panelState(), { seconds: remainLabel(), herb: herb.name }) }}</p>
+
+    @if (panelState() === 'capacity') {
+      <p class="rc__alert" role="alert">{{ t('canopy.full', { herb: herb.name }) }}</p>
+    }
+    @if (panelState() === 'location') {
+      <p class="rc__alert" role="alert">{{ t('canopy.away') }}</p>
+    }
+    @if (panelState() === 'persist') {
+      <p class="rc__alert" role="alert">{{ t('canopy.persist') }}</p>
+      <div class="rc__actions">
+        <button type="button" class="rc__ghost" (click)="retry()">{{ t('seamworks.retry') }}</button>
+        <button type="button" class="rc__ghost" (click)="refresh()">{{ t('seamworks.refresh') }}</button>
+      </div>
+    }
+
+    @if (lastOp; as op) {
+      <div class="rc__result" [class.rc__result--rare]="lastKey > 0">
+        <p>{{ t('canopy.result.herb', { herb: herb.name, gain: lastHerb, held: herbHeld }) }}</p>
+        @if (lastKey > 0) {
+          <p class="rc__rare">{{ t('canopy.result.key', { gain: lastKey, held: keyHeld }) }}</p>
+        } @else if (op.discovery.result !== 'none') {
+          <p>{{ discoveryLabel() }}</p>
+        }
+        <p>{{ t('canopy.result.xp', { amount: op.xpGrant.amount }) }}</p>
+      </div>
+    }
+  </section>
+
+  <p class="rc__note">{{ t('canopy.note') }}</p>
+  <a class="rc__back" [routerLink]="verdantHref">{{ t('canopy.back') }}</a>
+</article>

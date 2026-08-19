@@ -1,8 +1,15 @@
 /**
  * current-work-tile.component.ts — global Current Work summary.
  *
- * Closed: activity · location · level · XP. Expand: recovery, Go to
- * Seamworks, work summary. No Inspect Current Work. No Mine control.
+ * Closed: activity · location · level · XP. Expand: recovery, Go to the
+ * site, work summary. No Inspect Current Work. No Mine / Gather control.
+ *
+ * Discipline-aware since A2: every line used to hard-code Mining and the
+ * Seamworks, so a foraging Current Work would have read "Mining · Basalt
+ * Seamworks · Elsewhere" with the mining cooldown. The tile now derives the
+ * discipline from Current Work and picks copy, level, recovery and the Go
+ * link per discipline. Two disciplines are still a pair of ternaries, not a
+ * table — a third skill earns the table.
  */
 import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -13,10 +20,13 @@ import { TranslationService } from '../../translation.service';
 import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
 import {
-  BASALT_SEAMWORKS_ID,
+  locationDefinition,
   type ActivityLedger,
 } from './activity.model';
+import { ROOTGLASS_CANOPY_HREF } from './foraging.model';
 import { miningLevelView } from './mining-level';
+
+type TileDiscipline = 'mining' | 'foraging';
 
 @Component({
   selector: 'app-current-work-tile',
@@ -39,8 +49,8 @@ import { miningLevelView } from './mining-level';
       <div id="cwt-body" class="cwt__body" [hidden]="!open">
         <p class="cwt__xp">{{ xpLine() }}</p>
         <p class="cwt__recovery">{{ recoveryLine() }}</p>
-        <p class="cwt__summary">{{ t('work.tile.summary') }}</p>
-        <a class="cwt__go" [routerLink]="seamworksHref">{{ t('work.tile.go') }}</a>
+        <p class="cwt__summary">{{ t(discipline() === 'foraging' ? 'work.tile.summaryForaging' : 'work.tile.summary') }}</p>
+        <a class="cwt__go" [routerLink]="goHref()">{{ t(discipline() === 'foraging' ? 'work.tile.goCanopy' : 'work.tile.go') }}</a>
       </div>
     </section>
   `,
@@ -105,7 +115,6 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
   private clock?: ReturnType<typeof setInterval>;
 
-  readonly seamworksHref = BASALT_SEAMWORKS_HREF;
   open = false;
   snap: ActivityLedger = this.activity.snapshot;
   now = Date.now();
@@ -127,14 +136,28 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
+  /** Mining unless Current Work says foraging — the two live disciplines. */
+  discipline(): TileDiscipline {
+    return this.snap.currentWork?.disciplineId === 'foraging' ? 'foraging' : 'mining';
+  }
+
+  goHref(): string {
+    return this.discipline() === 'foraging' ? ROOTGLASS_CANOPY_HREF : BASALT_SEAMWORKS_HREF;
+  }
+
+  private view() {
+    return miningLevelView(this.snap.progress.xpByDiscipline[this.discipline()] ?? 0);
+  }
+
   closedLine(): string {
     const work = this.snap.currentWork;
     if (!work) return this.t('work.tile.empty');
-    const view = miningLevelView(this.snap.progress.xpByDiscipline.mining ?? 0);
+    const foraging = this.discipline() === 'foraging';
+    const view = this.view();
     const next = view.next ?? view.xp;
     return this.t('work.tile.closed', {
-      activity: this.t('work.discipline.mining'),
-      location: this.t('work.location.seamworks'),
+      activity: this.t(foraging ? 'work.discipline.foraging' : 'work.discipline.mining'),
+      location: this.t(foraging ? 'work.location.canopy' : 'work.location.seamworks'),
       level: view.level,
       xp: view.xp,
       next,
@@ -142,27 +165,33 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
   }
 
   xpLine(): string {
-    const view = miningLevelView(this.snap.progress.xpByDiscipline.mining ?? 0);
-    if (view.next == null) return this.t('work.tile.xpMax', { xp: view.xp, level: view.level });
-    return this.t('work.tile.xp', { xp: view.xp, next: view.next, level: view.level });
+    const foraging = this.discipline() === 'foraging';
+    const view = this.view();
+    if (view.next == null) {
+      return this.t(foraging ? 'work.tile.xpMaxForaging' : 'work.tile.xpMax', { xp: view.xp, level: view.level });
+    }
+    return this.t(foraging ? 'work.tile.xpForaging' : 'work.tile.xp', { xp: view.xp, next: view.next, level: view.level });
   }
 
   recoveryLine(): string {
     const remain = this.activity.recoveryRemainingMs(Date.now());
-    if (remain <= 0) return this.t('work.tile.ready');
-    // The player's actual current cooldown, not the flat baseline: once level
-    // or gear has shortened it, showing the old 2.5s constant here would make
+    if (remain <= 0) return this.t(this.discipline() === 'foraging' ? 'work.tile.readyForaging' : 'work.tile.ready');
+    // The player's actual current cooldown for the *current discipline*, not
+    // the flat baseline and not the mining number: once level or gear has
+    // shortened it, or Current Work is foraging, the old constant would make
     // the "of Ns" half of this line simply wrong.
     return this.t('work.tile.recovering', {
       seconds: (remain / 1000).toFixed(1),
-      wait: (this.activity.currentMiningRecoveryMs() / 1000).toFixed(1),
+      wait: (this.activity.currentRecoveryMs() / 1000).toFixed(1),
     });
   }
 
   state(): string {
     if (!this.snap.currentWork) return 'idle';
     if (this.activity.recoveryRemainingMs(this.now) > 0) return 'recovering';
-    if (this.snap.currentWork.locationId !== BASALT_SEAMWORKS_ID) return 'away';
+    // 'away' means Current Work points at a place this build does not know —
+    // any registered site (Seamworks or Canopy) is somewhere the tile can send you.
+    if (!locationDefinition(this.snap.currentWork.locationId)) return 'away';
     return 'ready';
   }
 
