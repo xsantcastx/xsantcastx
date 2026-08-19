@@ -9,7 +9,7 @@ import { EclipseRarity, RARITY_ORDER } from '../rarity/rarity.model';
 export const MARKET_PAGE_SIZE = 8;
 
 export const MARKET_CATEGORIES = [
-  'forge', 'hammer', 'automaton', 'mastery', 'expedition', 'enchant', 'artifact', 'cosmetic',
+  'forge', 'hammer', 'automaton', 'mastery', 'expedition', 'thrall', 'enchant', 'artifact', 'cosmetic',
 ] as const;
 
 export type MarketCategoryId = typeof MARKET_CATEGORIES[number];

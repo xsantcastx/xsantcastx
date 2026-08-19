@@ -626,9 +626,48 @@ export const EXPEDITION_UPGRADES: ExpeditionUpgrade[] = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Thralls — working slots at the anvil
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Raising the Thrall ceiling is a Gold-ladder purchase, for exactly the reason
+ * an explorer slot is: the Market prices every other purchase through `costOf`
+ * and the 15% escalator, and a slot bought through a second spend path would be
+ * the one item on the site whose price nobody could look up. Buying it here
+ * also means the ceiling rides cloud save, the Eclipse reset and the prestige
+ * rules without `ThrallService` knowing any of them exist.
+ *
+ * It contributes nothing to `goldPerSecond` — a Thrall *burns* Gold — so it is
+ * deliberately absent from every rate function in this file.
+ */
+export interface ThrallSlotUpgrade {
+  id: string;
+  name: string;
+  effect: string;
+  flavour: string;
+  icon: string;
+  baseCost: number;
+  /** Working Thralls added per level owned. */
+  thralls: number;
+}
+
+export const THRALL_UPGRADES: ThrallSlotUpgrade[] = [
+  {
+    id: 'thrall-slot',
+    name: 'Lengthen the Shift',
+    effect: '+1 Thrall working at once',
+    flavour: 'There is always room at the anvil. There has never been room in the ledger.',
+    icon: '⛓️',
+    baseCost: 2_000_000,
+    thralls: 1,
+  },
+];
+
 /** Every Gold ladder as one list. Used for the "how many do you own" counts. */
 export type AnyUpgrade =
-  | ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker | ExpeditionUpgrade;
+  | ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker | ExpeditionUpgrade
+  | ThrallSlotUpgrade;
 
 export const ALL_UPGRADES: AnyUpgrade[] = [
   ...FORGE_UPGRADES,
@@ -636,6 +675,7 @@ export const ALL_UPGRADES: AnyUpgrade[] = [
   ...MULTIPLIER_UPGRADES,
   ...AUTO_CLICKERS,
   ...EXPEDITION_UPGRADES,
+  ...THRALL_UPGRADES,
 ];
 
 /**
@@ -660,6 +700,11 @@ export function isSinglePurchase(id: string): boolean {
 const LEVEL_CAPS: Record<string, number> = {
   // MAX_EXPLORER_SLOTS (5) minus the one every visitor starts with.
   'explorer-slot': 4,
+  // MAX_THRALL_SLOTS (10) minus the five BASE_THRALL_SLOTS every visitor has.
+  // Both constants live in `thralls/thrall.model.ts`; this file is eager and
+  // that one is a lazy chunk, so the number is written here and asserted
+  // against the model in `thrall.model.spec.ts` rather than imported.
+  'thrall-slot': 5,
 };
 
 /** The most levels of an upgrade anyone may hold, or Infinity. */

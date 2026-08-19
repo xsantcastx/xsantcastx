@@ -8,7 +8,7 @@
  *
  * Pure data: no Firebase, no network, no DOM. Runs on a clean offline checkout.
  */
-import { ART_ALIAS, artFor, hasArt } from './art';
+import { ART_ALIAS, ART_PENDING, artFor, hasArt } from './art';
 import { ART_ALL } from './art-manifest.generated';
 import {
   ALL_UPGRADES,
@@ -17,6 +17,7 @@ import {
   ENCHANTMENTS,
 } from '../economy/economy.model';
 import { ITEM_DEFINITIONS } from '../rpg/item-definition';
+import { THRALL_OFFERS } from '../thralls/thrall.model';
 
 describe('art lookup', () => {
   it('resolves nothing for a missing or empty id', () => {
@@ -54,10 +55,37 @@ describe('art lookup', () => {
      * scripts/import-assets.py, or alias it in ART_ALIAS.
      */
     it('has painted art for every purchasable row', () => {
-      // ALL_UPGRADES folds forge, hammers, mastery, automatons and expeditions.
-      const rows = [...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS];
-      const missing = rows.filter(row => !hasArt(row.id)).map(row => row.id);
+      // ALL_UPGRADES folds forge, hammers, mastery, automatons, expeditions and
+      // the Thrall shift. THRALL_OFFERS is listed separately because recruiting
+      // is not a Gold-ladder purchase and so is not in ALL_UPGRADES — a row that
+      // reaches the shop through its own path would otherwise escape this gate
+      // entirely, which is the failure mode this whole file exists for.
+      const rows = [
+        ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
+      ];
+      const missing = rows
+        .filter(row => !hasArt(row.id) && !ART_PENDING.has(row.id))
+        .map(row => row.id);
       expect(missing).toEqual([]);
+    });
+
+    /*
+     * The other half of the gate. Without this, `ART_PENDING` is a place where
+     * ids go to be forgotten: an entry left behind after its art is painted
+     * would silently exempt a row that no longer needs exempting, and the next
+     * unpainted row added beside it would look like it belonged there.
+     */
+    it('holds nothing in ART_PENDING that has since been painted', () => {
+      const painted = [...ART_PENDING].filter(id => hasArt(id));
+      expect(painted).toEqual([]);
+    });
+
+    it('names a real catalogue row for every pending id', () => {
+      const known = new Set([
+        ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
+      ].map(row => row.id));
+      const orphans = [...ART_PENDING].filter(id => !known.has(id));
+      expect(orphans).toEqual([]);
     });
   });
 
