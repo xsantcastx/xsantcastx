@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.59.0',
-  buildDate: '2026-08-13',
+  version: '2.60.0',
+  buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Wayfinding',
+  codename: 'Canopy',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,20 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.60.0',
+    codename: 'Canopy',
+    date: '2026-08-19',
+    highlights: [
+      'Foraging is the second skill. The Rootglass Canopy opens in the Verdant realm with four herbs gated by level — Starlight Herb, Sunbloom, Nightbloom, Thornroot — a Rift Key at one in a thousand with a guarantee at the six-hundredth gather, and its own bar on the Skills tab next to Mining. A Keeper now chooses what to grind',
+      'Mining has three ore tiers — Cinder Ore, Slag Fragment at level 8, Infernal Heartstone at level 20 — each paying more XP a strike, and seams recover faster as you level and as your weapon\'s strikePower climbs. The old three-step XP table is a real curve to level 50, and every level-up is a ceremony, not a number that quietly changed',
+      'Refining: three of one ore become one of the next, at the Seamworks, with a two-step confirm. Surplus Cinder Ore finally has somewhere to go',
+      'strikePower and ward do something. At the anvil, worn strikePower gives each strike a chance to shear a second copy of the rune; worn ward turns part of a temper\'s failure chance aside — and a successful temper now always changes a number you can see. The Basalt Edge actually rolls strikePower, which it never had',
+      'The Forge pull is a reveal, graded by rarity, that you can skip with one click; the landed card prints the whole haul, and temper tells you the exact stat that moved. Nothing costs more, and the odds read exactly as before',
+      'The Market reads rarity from the edge of the card, not only the word, and the wallet stays pinned while you scroll. Fixing that uncovered a one-token CSS bug that had silently disabled every sticky element on the site',
+      'The bank drops the quantity you asked for instead of the whole stack; clicking a loadout slot lists what fits it from your bag; every tool, material and piece of equipment renders its painted art through one pipeline instead of text orbs and forty-megabyte PNGs'
+    ]
+  },
   {
     version: '2.59.0',
     codename: 'Vault',
