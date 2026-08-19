@@ -13,6 +13,7 @@
  * stack history without a retain/ack window like commerce receipts.
  */
 import {
+  ITEM_STAT_KEYS,
   PARSE_SLOT_IDS,
   RETIRED_CHARM_TAG,
   canonicalizeSlot,
@@ -123,6 +124,10 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     lastUpgradeAt: item.lastUpgradeAt,
     lastUpgradeMutationId: item.lastUpgradeMutationId,
     lastUpgradeOk: item.lastUpgradeOk,
+    reforgeCount: item.reforgeCount,
+    lastReforgeAt: item.lastReforgeAt,
+    lastReforgeMutationId: item.lastReforgeMutationId,
+    lastReforgeLock: item.lastReforgeLock,
   };
 }
 
@@ -145,6 +150,10 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lastUpgradeAt: record.lastUpgradeAt,
     lastUpgradeMutationId: record.lastUpgradeMutationId,
     lastUpgradeOk: record.lastUpgradeOk,
+    reforgeCount: record.reforgeCount,
+    lastReforgeAt: record.lastReforgeAt,
+    lastReforgeMutationId: record.lastReforgeMutationId,
+    lastReforgeLock: record.lastReforgeLock,
   };
 }
 
@@ -198,13 +207,22 @@ export function parseInventoryV1(raw: unknown): InventoryBlobV1 | null {
 function parseUpgradeFields(raw: Record<string, unknown>): Pick<
   GameItem,
   'upgradeLevel' | 'lastUpgradeAt' | 'lastUpgradeMutationId' | 'lastUpgradeOk'
+  | 'reforgeCount' | 'lastReforgeAt' | 'lastReforgeMutationId' | 'lastReforgeLock'
 > {
   const level = raw['upgradeLevel'];
+  const reforged = raw['reforgeCount'];
+  const lock = raw['lastReforgeLock'];
   return {
     upgradeLevel: typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.floor(level)) : undefined,
     lastUpgradeAt: typeof raw['lastUpgradeAt'] === 'string' ? raw['lastUpgradeAt'] : undefined,
     lastUpgradeMutationId: typeof raw['lastUpgradeMutationId'] === 'string' ? raw['lastUpgradeMutationId'] : undefined,
     lastUpgradeOk: typeof raw['lastUpgradeOk'] === 'boolean' ? raw['lastUpgradeOk'] : undefined,
+    // Absent on every save written before the reforge sink shipped — all four
+    // fall through to undefined, which reads as "never rerolled".
+    reforgeCount: typeof reforged === 'number' && Number.isFinite(reforged) ? Math.max(0, Math.floor(reforged)) : undefined,
+    lastReforgeAt: typeof raw['lastReforgeAt'] === 'string' ? raw['lastReforgeAt'] : undefined,
+    lastReforgeMutationId: typeof raw['lastReforgeMutationId'] === 'string' ? raw['lastReforgeMutationId'] : undefined,
+    lastReforgeLock: ITEM_STAT_KEYS.includes(lock as never) ? lock as GameItem['lastReforgeLock'] : undefined,
   };
 }
 
