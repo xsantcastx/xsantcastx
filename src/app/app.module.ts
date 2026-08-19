@@ -37,8 +37,11 @@ import { CloudSaveChipComponent } from './shared/cloud-save/cloud-save-chip.comp
 import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.component';
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
+import { ForgeSceneComponent } from './shared/forge-scene/forge-scene.component';
+import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-toggle.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
 import { InspectComponent } from './shared/entity/inspect.component';
+import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
@@ -82,8 +85,11 @@ import { PwaService } from './shared/pwa.service';
     CloudSaveButtonComponent,
     GoldTickerComponent,
     GodforgeLoaderComponent,
+    ForgeSceneComponent,
+    ForgeEffectsToggleComponent,
     InstallPromptComponent,
     InspectComponent,
+    Inspect3dOutletComponent,
     CurrentWorkTileComponent
 ],
   providers: [
