@@ -155,10 +155,8 @@ function verifyCanonicals(routes) {
   for (const route of routes) {
     const file = path.join(browserDir, route.replace(/^\//, ''), 'index.html');
     if (!fs.existsSync(file)) continue; // verifyPrerendered already failed on this
-    const head = fs
-      .readFileSync(file, 'utf8')
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .split('</head>')[0];
+    const full = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    const head = full.split('</head>')[0];
 
     const canonicals = [...head.matchAll(/<link rel="canonical" href="([^"]*)"/g)].map(m => m[1]);
     const expected = `${SITE_URL}${route}`;
@@ -177,6 +175,26 @@ function verifyCanonicals(routes) {
     if (!robots.includes('index, follow')) {
       problems.push(`${route}: robots is ${JSON.stringify(robots)}, expected "index, follow"`);
     }
+
+    // The head can be perfect while the body rendered a not-found state.
+    //
+    // This check exists because that happened: giving each realm its own
+    // literal route fixed their descriptions and broke their content, because
+    // a literal path declares no `:realmId` and the component was reading the
+    // id from paramMap alone. Every canonical, description and robots value
+    // was correct — they come from route data — while all five pages
+    // prerendered "This place is not on the map". A metadata-only guard is
+    // blind to exactly the failure that a metadata change is most likely to
+    // cause, so it looks at the heading too.
+    const body = full.split('</head>')[1] || '';
+    const h1 = [...body.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)]
+      .map(m => m[1].replace(/<[^>]*>/g, '').trim())
+      .filter(Boolean);
+    if (!h1.length) {
+      problems.push(`${route}: prerendered with no <h1> — did the page render?`);
+    } else if (/not on the map|lost star|not found|page you are looking for/i.test(h1.join(' '))) {
+      problems.push(`${route}: prerendered a not-found heading (${JSON.stringify(h1[0])})`);
+    }
   }
 
   if (problems.length) {
@@ -186,7 +204,7 @@ function verifyCanonicals(routes) {
     );
     process.exit(1);
   }
-  console.log(`[generate-sitemap] verified ${routes.length} pages self-canonicalise with no hreflang`);
+  console.log(`[generate-sitemap] verified ${routes.length} pages self-canonicalise, carry no hreflang, and rendered a real heading`);
 }
 
 function measureBundle() {
