@@ -7,27 +7,29 @@
  * rather than inside the service.
  */
 import {
-  ALL_CHALLENGES,
   CHALLENGE_TIER_SCALE,
-  DAILY_CHALLENGES,
   DAILY_CHALLENGE_SLOTS,
   DERIVED_METRICS,
   PEAK_METRICS,
   SET_METRICS,
   STREAK_BOOST_MULTIPLIER,
   STREAK_CHEST_AT,
-  WEEKLY_CHALLENGES,
   WEEKLY_CHALLENGE_SLOTS,
-  challengeById,
   challengeCountdown,
   challengeProgressLabel,
   formatChallengeNumber,
-  pickDistinctMetrics,
   streakFlameTier,
   tierAtRank,
   tierRank,
   type Challenge,
 } from './challenge.model';
+import {
+  ALL_CHALLENGES,
+  DAILY_CHALLENGES,
+  WEEKLY_CHALLENGES,
+  challengeById,
+  pickDistinctMetrics,
+} from './challenge-pools';
 import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import { dayKey, orderDeterministic, weekKey } from '../quests/quest.model';
 
