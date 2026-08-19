@@ -54,6 +54,20 @@
             <span class="qi__glyph" aria-hidden="true">{{ place.glyphFallback }}</span>
           }
           <p class="qi__sr">{{ place.accessibleName }}</p>
+
+          <!-- Turn it over. Placed in the hero rather than in the action list
+               because it is not an action on the entity — nothing changes — it
+               is a second way of looking at the same card, and it belongs next
+               to the art it is about to lift off the page. -->
+          @if (can3d) {
+            <button
+              type="button"
+              class="qi__3d"
+              [attr.aria-label]="t('inspect.3d.open')"
+              (click)="open3d($event, place)">
+              {{ t('inspect.3d.label') }}
+            </button>
+          }
         </div>
 
         @if (place.rarity) {
