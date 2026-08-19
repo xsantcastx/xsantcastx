@@ -40,6 +40,7 @@ import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCompact, formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { InlineFlameService } from './inline-flame.service';
+import { ForgeMode, ForgeModeService } from './forge-mode.service';
 import { IdleService } from '../idle/idle.service';
 import { ComboEvent, ComboService, ComboSnapshot } from './combo.service';
 import {
@@ -49,6 +50,15 @@ import {
   NAMELESS_LABEL,
   pitchFor,
 } from './combo.model';
+import { RuneForgeService } from '../rune-forge/rune-forge.service';
+import type { RuneFind } from '../rune-forge/rune-forge.service';
+import {
+  RUNE_TIER_ORDER,
+  STRIKE_COST,
+  tierOf,
+} from '../rune-forge/rune.model';
+import type { RuneTier } from '../rune-forge/rune.model';
+import { isHeavyTier } from '../rune-forge/rune-haul';
 
 /** One "+5" rising off the flame. */
 interface Floater {
@@ -80,6 +90,66 @@ interface Shout {
   text: string;
   tone: ComboTone;
   grand: boolean;
+}
+
+/**
+ * How many runes the corner's bulk button strikes.
+ *
+ * Ten, and only ten. The Rune Forge page offers x10 / x100 / x1000 because it
+ * has a reveal to land them in, a progress bar and a Stop button; a corner
+ * widget has none of those, and x100 from a 64px control is a seven-figure
+ * spend behind one tap with nothing to read afterwards. The page is one hold
+ * away and is where a run that size belongs.
+ */
+export const FORGE_BULK = 10;
+
+/**
+ * The rarity at which a find stops being a drop and becomes an event.
+ *
+ * Rare is where the Rune Forge's own auto-roll stops, and it is the same line
+ * here: at and above it the name comes in bigger, wearing its glow, and the
+ * screen takes a flash. Below it the haul is a quiet list.
+ */
+export const FORGE_FLASH_TIER: RuneTier = 'rare';
+
+/**
+ * One rune, named in its own rarity colour, rising off the anvil.
+ *
+ * The Gold face's floater says a number, because a number is the whole payout.
+ * The anvil's payout is a *thing*, and the only part of it worth putting on a
+ * corner widget is which thing — so this carries the name and the tier's colour
+ * and nothing else. The rest of the find (the sigil, the scroll, the explorer)
+ * has already been banked and is on the Rune Forge page, which is one hold
+ * away.
+ */
+interface LootDrop {
+  key: number;
+  name: string;
+  /** The tier's colour, straight off `RUNE_TIERS`. Never invented here. */
+  color: string;
+  glow: string;
+  /** Rare and above: bigger, haloed, and worth a flash of the screen. */
+  grand: boolean;
+  /** First of its kind — the drop wears a NEW flag. */
+  isNew: boolean;
+  /** 2 when worn strikePower sheared a second copy off the blow. */
+  copies: number;
+  /** Horizontal scatter, as the Gold floater does. */
+  dx: number;
+  /**
+   * Vertical stagger, in px, so a bulk run stacks instead of overprinting.
+   *
+   * A x10 lands ten drops inside one frame. Without this they are ten labels
+   * on the same 14px line, which reads as one flickering label — the offset is
+   * what makes it a haul.
+   *
+   * Negative: the stack builds *upward*, away from the ember. Staggering
+   * downward put the tenth drop of a x10 135px below the top of a button that
+   * sits 26px off the bottom of the viewport, so the back half of every bulk
+   * run was drawn off the bottom of the screen. Up is also the direction the
+   * drops travel, so the stack reads as a column already in flight.
+   */
+  dy: number;
 }
 
 @Component({
@@ -114,11 +184,61 @@ interface Shout {
       [attr.data-tier]="snap.flameTier"
       [attr.data-hammer]="snap.hammerVisual"
       [attr.data-combo]="comboLevel"
+      [attr.data-mode]="mode"
       [class.ff--quake]="quaking"
       [class.ff--shake]="shaking"
       [class.ff--swell]="swelling"
       [class.ff--auto]="autoBeat"
+      [class.ff--broke]="broke"
       [class.ff--still]="reducedMotion">
+
+      <!-- The switch.
+           A real <button role="switch">, not a checkbox dressed as one: there is
+           no form here and nothing to submit, and role="switch" is the one
+           pattern that announces both the name and the on/off state in a single
+           read. aria-checked tracks the anvil, so "Anvil mode, switch, on" is
+           what a screen reader says.
+
+           Above the ember rather than beside it. Beside is where the combo
+           counter lives on the left and the viewport edge is on the right, and
+           on a phone the flame is centred at the bottom with a tab bar under it
+           — above is the only side with room on both layouts. Everything that
+           used to sit at "just above the button" (the HUD, the banner, the
+           shout) is offset past it in the CSS. -->
+      <div class="ff__controls">
+        <!-- Bulk, from the corner. The Rune Forge page grew x10 / x100 / x1000
+             in v2.64.0 and the ember is the same anvil; ten is the one worth
+             putting on a widget. x100 from a 64px corner control is a five-
+             figure spend behind a single tap with no reveal to read, and the
+             page — one hold away — is where a run that size belongs.
+
+             Only in anvil mode, and disabled when the purse cannot pay for a
+             single strike. Ten strikes is ~12ms even on the eviction path, so
+             this runs straight through rather than chunking the way the page
+             does for its thousand. -->
+        @if (anvil) {
+          <button
+            type="button"
+            class="ff__bulk"
+            [disabled]="!canForge"
+            [attr.aria-label]="bulkLabel"
+            (click)="onBulk()">x10</button>
+        }
+
+        <button
+          type="button"
+          class="ff__mode"
+          role="switch"
+          [attr.aria-checked]="anvil"
+          [attr.aria-label]="modeLabel"
+          (click)="toggleMode()">
+          <span class="ff__mode-track" aria-hidden="true">
+            <span class="ff__mode-icon ff__mode-icon--gold">✦</span>
+            <span class="ff__mode-icon ff__mode-icon--anvil">⚒</span>
+            <span class="ff__mode-knob"></span>
+          </span>
+        </button>
+      </div>
 
       @for (s of shouts; track s.key) {
         <span class="ff__shout" [attr.data-tone]="s.tone" [class.ff__shout--grand]="s.grand" aria-hidden="true">
@@ -131,7 +251,9 @@ interface Shout {
            the punch animation replays — a CSS animation on an element that
            never leaves the DOM cannot be restarted by setting the same class. -->
       @for (c of comboBadge; track c) {
-        <span class="ff__combo" [attr.data-tone]="comboTone" aria-hidden="true">x{{ c }}</span>
+        <span class="ff__combo" [attr.data-tone]="comboTone" aria-hidden="true">
+          @if (anvil) { <b class="ff__combo-word">FORGE</b> }x{{ c }}
+        </span>
       }
 
       @if (banner) {
@@ -150,7 +272,14 @@ interface Shout {
         @if (snap.autoPerSecond > 0) {
           <span class="ff__hud-auto">⚙ Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'click' : 'clicks' }}/sec</span>
         }
-        <span class="ff__hud-hint">Click to forge · hold for runes</span>
+        @if (anvil) {
+          <span class="ff__hud-cost" [class.ff__hud-cost--broke]="!canForge">
+            ⚒ {{ strikeCost }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> a strike
+          </span>
+          <span class="ff__hud-hint">Click to strike a rune · hold for the anvil</span>
+        } @else {
+          <span class="ff__hud-hint">Click to forge · hold for runes</span>
+        }
         @if (snap.essence > 0) {
           <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
@@ -193,12 +322,71 @@ interface Shout {
         (focus)="hudOpen = true"
         (blur)="hudOpen = false"
         [attr.aria-label]="label">
-        <span class="ff__core" aria-hidden="true"></span>
-        <span class="ff__ring" aria-hidden="true"></span>
-        <span class="ff__ring ff__ring--outer" aria-hidden="true"></span>
-        <img class="ff__glyph forge-flame" src="assets/icons/forge-flame-128.png"
-             alt="" aria-hidden="true" width="34" height="34"
-             decoding="async" draggable="false">
+
+        <!-- The flip.
+             Two faces on one card: the ember on the front, the anvil half a
+             turn behind it. .ff__face carries preserve-3d and the rotation;
+             each side is flat and backface-hidden, which is what makes the
+             turn read as one object rather than two crossfading ones.
+
+             The sides hold their own core, rings and glyph rather than sharing
+             one set, because sharing would mean recolouring the ember mid-turn
+             — the colour would change at the halfway point, in view, instead of
+             arriving with the face that owns it. Every tier, hammer and combo
+             rule below is written against .ff__core / .ff__ring / .ff__glyph as
+             descendants, so both faces grow with the forge without a single
+             extra rule.
+
+             The sparks stay OUTSIDE the face. They fly out past the button's
+             edge on random vectors, and a spark inside a preserve-3d subtree
+             that is mid-rotation flies out along the rotated plane — a burst
+             that visibly leans. Out here they are flat against the screen,
+             which is what a spark is. -->
+        <span class="ff__face" aria-hidden="true">
+          <span class="ff__side ff__side--gold">
+            <span class="ff__core"></span>
+            <span class="ff__ring"></span>
+            <span class="ff__ring ff__ring--outer"></span>
+            <img class="ff__glyph forge-flame" src="assets/icons/forge-flame-128.png"
+                 alt="" aria-hidden="true" width="34" height="34"
+                 decoding="async" draggable="false">
+          </span>
+
+          <!-- The anvil is drawn, not fetched. It is a UI glyph rather than a
+               piece of world art, and the asset library reserves SVG for
+               exactly that — a raster anvil would have to go through the import
+               pipeline, ship a 128px PNG, and still not take the tier colour.
+               Inline, it inherits currentColor and turns violet with the rest
+               of the face. -->
+          <span class="ff__side ff__side--anvil">
+            <span class="ff__core"></span>
+            <span class="ff__ring"></span>
+            <span class="ff__ring ff__ring--outer"></span>
+            <svg class="ff__glyph ff__anvil" viewBox="0 0 32 32" width="34" height="34"
+                 fill="none" aria-hidden="true" focusable="false">
+              <!-- Four shapes, not one path. An anvil is only legible at 34px if
+                   the three masses read separately: a wide face with the horn
+                   tapering to a point on the left, a narrow column under it, and
+                   a base wider than the column but narrower than the face. Drawn
+                   as one outline the waist closes up and the whole thing reads
+                   as an hourglass. -->
+              <!-- Face and horn. The taper is symmetric about y=10, which is
+                   what makes the left end a point rather than a blunt end. -->
+              <path d="M27.4 7.2v5.6H11.5C7.6 12.8 4.2 11.9 1.4 10c2.8-1.9 6.2-2.8 10.1-2.8Z"
+                    fill="currentColor"/>
+              <!-- The column. Straight sided and narrow — the gap either side of
+                   it is what separates the face from the base. -->
+              <path d="M13.2 12.8h5.6V20h-5.6Z" fill="currentColor" opacity=".88"/>
+              <!-- Base, flaring. -->
+              <path d="M7 20h18l1.6 5H5.4Z" fill="currentColor" opacity=".76"/>
+              <!-- The lit edge along the top of the face, so the plate reads as
+                   a surface. White at a third, over whatever colour the side is
+                   wearing. -->
+              <path d="M27.4 7.2v1.4H11.5c-1.9 0-3.7-.2-5.5-.7 1.8-.5 3.6-.7 5.5-.7Z"
+                    fill="#fff" opacity=".34"/>
+            </svg>
+          </span>
+        </span>
 
         @for (s of sparks; track s.key) {
           <span class="ff__spark"
@@ -216,6 +404,23 @@ interface Shout {
       @for (f of floaters; track f.key) {
         <span class="ff__float" [class.ff__float--big]="f.big" [style.--dx.px]="f.dx" aria-hidden="true">
           {{ f.text }}
+        </span>
+      }
+
+      <!-- The haul. One label per rune, in the rune's own rarity colour, rising
+           off the anvil and gone in a second and a half. --dy staggers a bulk
+           run so ten drops read as ten things rather than as one flickering
+           line. -->
+      @for (d of loot; track d.key) {
+        <span class="ff__loot"
+              [class.ff__loot--grand]="d.grand"
+              [style.--dx.px]="d.dx"
+              [style.--dy.px]="d.dy"
+              [style.--loot-color]="d.color"
+              [style.--loot-glow]="d.glow"
+              aria-hidden="true">
+          @if (d.isNew) { <b class="ff__loot-new">NEW</b> }
+          {{ d.name }}@if (d.copies > 1) { <i class="ff__loot-copies">×{{ d.copies }}</i> }
         </span>
       }
     </div>
@@ -261,6 +466,7 @@ interface Shout {
        class and keeps winning. Same combinator, same weight plus the class. */
     .ff > .ff__float,
     .ff > .ff__shout,
+    .ff > .ff__loot,
     .ff > .ff__combo { pointer-events: none; }
 
     /* ── The button ─────────────────────────────────────────────────────── */
@@ -394,6 +600,225 @@ interface Shout {
     }
     @keyframes ffSpin { to { transform: rotate(360deg); } }
 
+    /* ═══ THE SECOND FACE ═══════════════════════════════════════════════════
+       Everything from here to the tier block is the anvil: the flip, the
+       switch that drives it, the violet the ember turns, and the haul that
+       comes off it.
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ── The flip ───────────────────────────────────────────────────────────
+       preserve-3d on the card, backface-visibility on each side. The rotation
+       is on the card so both sides turn together; the anvil is pre-rotated a
+       half turn so it faces the viewer at the end of the move.
+
+       The perspective lives on the button rather than on .ff. A perspective is
+       a containing block for fixed descendants, and .ff has one child that is
+       genuinely fixed — no it does not, the screen layer is a sibling — but it
+       also carries the translateX(-50%) that centres the flame on a phone, and
+       stacking a perspective on top of that is one more thing to reason about
+       every time this corner moves. On the button it covers exactly the card
+       it is there for. */
+    .ff__btn { perspective: 520px; }
+
+    .ff__face {
+      position: absolute; inset: 0;
+      transform-style: preserve-3d;
+      transition: transform .6s cubic-bezier(.22, 1, .36, 1);
+    }
+    .ff[data-mode="anvil"] .ff__face { transform: rotateY(180deg); }
+
+    .ff__side {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .ff__side--anvil { transform: rotateY(180deg); }
+
+    /* The anvil glyph is an SVG and takes currentColor, so the whole silhouette
+       moves with the side's tint instead of needing a second file per state. */
+    .ff__anvil { color: #ddd2ff; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .7)); }
+
+    /* ── The anvil ember ────────────────────────────────────────────────────
+       Violet where the Gold face is orange, and it has to be written once per
+       tier rather than once overall: the tier rules below are
+       .ff[data-tier="N"] .ff__core, which outranks a bare .ff__side--anvil
+       .ff__core, so a tier-4 forge would have shown an orange anvil. Each rule
+       here carries the tier attribute for the same weight plus the side class.
+
+       Not done with a hue-rotate on the side, which would have been one rule:
+       a filter forces its own element into a flattened group, and a flattened
+       group is exactly where backface-visibility has historically stopped
+       working. The face would have shown both sides at once on the browsers
+       that get it wrong, and only on the anvil. */
+    .ff__side--anvil .ff__core {
+      background:
+        radial-gradient(circle at 36% 30%, #f3edff 0%, #A78BFA 22%, #7b61ff 58%, #2a1257 92%);
+      box-shadow:
+        0 0 18px rgba(139, 92, 246, .6),
+        0 0 44px -8px rgba(167, 139, 250, .55),
+        inset 0 -4px 10px rgba(0, 0, 0, .45);
+    }
+    .ff[data-tier="3"] .ff__side--anvil .ff__core {
+      box-shadow: 0 0 26px rgba(139, 92, 246, .75), 0 0 64px -8px rgba(167, 139, 250, .7), inset 0 -4px 10px rgba(0, 0, 0, .45);
+    }
+    .ff[data-tier="4"] .ff__side--anvil .ff__core {
+      background: radial-gradient(circle at 36% 30%, #fbf7ff 0%, #cbb8ff 20%, #7b61ff 55%, #3d1a6b 94%);
+      box-shadow: 0 0 32px rgba(139, 92, 246, .85), 0 0 80px -10px rgba(255, 109, 215, .45), inset 0 -4px 12px rgba(0, 0, 0, .5);
+    }
+    .ff[data-tier="5"] .ff__side--anvil .ff__core {
+      background: radial-gradient(circle at 36% 30%, #ffffff 0%, #e6dcff 16%, #7b61ff 50%, #ff6dd7 96%);
+      box-shadow: 0 0 40px rgba(167, 139, 250, .95), 0 0 110px -12px rgba(255, 109, 215, .55), inset 0 -5px 14px rgba(0, 0, 0, .5);
+    }
+    .ff__side--anvil .ff__ring { border-color: rgba(139, 92, 246, .5); }
+    .ff__side--anvil .ff__ring--outer { border-color: rgba(167, 139, 250, .32); }
+    .ff[data-tier="5"] .ff__side--anvil .ff__ring { border-color: rgba(214, 200, 255, .85); }
+
+    /* The held-glow, which is on the button and therefore shared by both
+       faces — so it has to be re-tinted for the mode rather than for the side. */
+    .ff[data-mode="anvil"] .ff__btn:active,
+    .ff[data-mode="anvil"] .ff__btn:hover {
+      filter: brightness(1.18) drop-shadow(0 0 16px rgba(139, 92, 246, .8));
+    }
+
+    /* ── The controls row ───────────────────────────────────────────────────
+       The switch, and the x10 beside it in anvil mode. Right-aligned with the
+       button on a pointer device, where the space is to the left; centred on a
+       phone, where the flame itself is centred.
+
+       --ff-controls-h is what everything that used to sit "just above the
+       button" now clears. Changing the row's height in one place moves the
+       HUD, the banner and the shout with it. */
+    .ff { --ff-controls-h: 40px; }
+
+    .ff__controls {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: var(--ff-controls-h);
+    }
+
+    /* Padding, not size: the track is a 28px pill and the button around it is
+       the 44px target the touch rules ask for. A 28px switch is legible and
+       unhittable; a 44px switch is hittable and looks like a second button. */
+    .ff__mode {
+      display: grid; place-items: center;
+      padding: 6px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .ff__mode:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; border-radius: 999px; }
+
+    .ff__mode-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      place-items: center;
+      width: 58px; height: 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(201, 168, 76, .38);
+      background: rgba(8, 5, 18, .92);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6), 0 0 14px -6px rgba(232, 117, 42, .7);
+      transition: border-color .35s ease, box-shadow .35s ease;
+    }
+    .ff[data-mode="anvil"] .ff__mode-track {
+      border-color: rgba(139, 92, 246, .55);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6), 0 0 16px -5px rgba(139, 92, 246, .85);
+    }
+
+    .ff__mode-icon {
+      position: relative; z-index: 1;
+      font-size: 12px; line-height: 1;
+      transition: color .35s ease, opacity .35s ease;
+    }
+    .ff__mode-icon--gold  { color: #ffd97a; opacity: 1;   }
+    .ff__mode-icon--anvil { color: #7d918c; opacity: .55; }
+    .ff[data-mode="anvil"] .ff__mode-icon--gold  { color: #7d918c; opacity: .55; }
+    .ff[data-mode="anvil"] .ff__mode-icon--anvil { color: #ddd2ff; opacity: 1;   }
+
+    /* The knob travels; the icons stay put and change weight underneath it.
+       Half the track minus the border, so it lands centred over either icon. */
+    .ff__mode-knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 26px; height: 22px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 40% 32%, rgba(255, 243, 214, .55), rgba(232, 117, 42, .32) 70%, transparent);
+      box-shadow: 0 0 10px -2px rgba(232, 117, 42, .8);
+      transition: transform .38s cubic-bezier(.22, 1, .36, 1), background .35s ease, box-shadow .35s ease;
+    }
+    .ff[data-mode="anvil"] .ff__mode-knob {
+      transform: translateX(28px);
+      background: radial-gradient(circle at 40% 32%, rgba(243, 237, 255, .6), rgba(123, 97, 255, .38) 70%, transparent);
+      box-shadow: 0 0 12px -2px rgba(139, 92, 246, .9);
+    }
+
+    /* ── x10 ────────────────────────────────────────────────────────────── */
+    .ff__bulk {
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(139, 92, 246, .5);
+      background: rgba(10, 6, 26, .92);
+      color: #ddd2ff;
+      font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+      letter-spacing: .06em;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+    .ff__bulk:hover:not(:disabled) {
+      border-color: rgba(167, 139, 250, .9);
+      color: #fff;
+      box-shadow: 0 0 16px -6px rgba(139, 92, 246, .95);
+    }
+    .ff__bulk:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
+    /* Not hidden when it cannot pay: a control that disappears takes the
+       explanation with it. Dimmed and inert says "this is here, and you cannot
+       afford it yet", which is the actual state — and the HUD's cost line
+       right above turns red at the same moment to say why. */
+    .ff__bulk:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── The haul ───────────────────────────────────────────────────────────
+       The Gold face's floater is a number in one colour. This is a name in the
+       tier's own colour, taken straight off RUNE_TIERS and handed in as a
+       custom property — the rarity ladder has one definition and this is not a
+       second one. */
+    .ff__loot {
+      position: absolute; left: 50%; top: 2px;
+      font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      color: var(--loot-color, #ddd2ff);
+      text-shadow: 0 0 10px var(--loot-glow, rgba(139, 92, 246, .8)), 0 1px 3px rgba(0, 0, 0, .9);
+      pointer-events: none;
+      animation: ffLoot 1.5s cubic-bezier(.2, .8, .3, 1) forwards;
+    }
+    /* Rare and above. Bigger, and wearing the halo the tier earns. */
+    .ff__loot--grand {
+      font-size: 15px;
+      filter: drop-shadow(0 0 8px var(--loot-glow, rgba(139, 92, 246, .8)));
+    }
+    .ff__loot-new {
+      margin-right: 4px;
+      font-size: 9px; letter-spacing: .12em;
+      color: #7fd5a3;
+      text-shadow: 0 0 8px rgba(127, 213, 163, .8);
+    }
+    .ff__loot-copies { font-style: normal; opacity: .8; }
+    @keyframes ffLoot {
+      from { transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(.82); opacity: 0; }
+      18%  { opacity: 1; }
+      70%  { opacity: 1; }
+      to   { transform: translate(calc(-50% + var(--dx)), calc(var(--dy) - 62px)) scale(1.06); opacity: 0; }
+    }
+
     /* ── Growth. Each tier is one more thing the forge is doing. ─────────── */
     .ff[data-tier="1"] .ff__btn { width: 68px; height: 68px; }
     .ff[data-tier="1"] .ff__ring { opacity: .5; }
@@ -468,7 +893,7 @@ interface Shout {
 
     /* ── Milestone banner ───────────────────────────────────────────────── */
     .ff__banner {
-      position: absolute; bottom: calc(100% + 14px); right: 0;
+      position: absolute; bottom: calc(100% + var(--ff-controls-h) + 18px); right: 0;
       display: grid; gap: 2px;
       padding: 10px 14px;
       min-width: 178px;
@@ -488,7 +913,7 @@ interface Shout {
 
     /* ── HUD ────────────────────────────────────────────────────────────── */
     .ff__hud {
-      position: absolute; bottom: calc(100% + 10px); right: 0;
+      position: absolute; bottom: calc(100% + var(--ff-controls-h) + 14px); right: 0;
       display: grid; gap: 3px;
       padding: 10px 12px;
       min-width: 172px;
@@ -507,6 +932,11 @@ interface Shout {
     .ff__hud-auto { font-size: 11px; color: #7fd5a3; }
     .ff__hud-essence { font-size: 11px; color: #c48bff; }
     .ff__hud-hint { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7d918c; }
+    /* What the anvil charges, in the same row style as the rate above it.
+       Turns red the moment the purse cannot cover one strike — the x10 button
+       goes inert at the same instant, and this is the line that says why. */
+    .ff__hud-cost { font-size: 11px; color: #ddd2ff; }
+    .ff__hud-cost--broke { color: #ff8fa3; }
     /* The Rune Forge takes the rule above it and the Market follows, so the two
        destinations read as one group rather than as a link and an afterthought.
        Gold on the forge, violet on the Market — the colours each page opens
@@ -553,6 +983,16 @@ interface Shout {
       color: #ff8fa3;
       text-shadow: 0 0 12px rgba(255, 45, 77, .9), 0 1px 3px rgba(0, 0, 0, .8);
     }
+    /* "FORGE x5" rather than "x5" while the anvil is up: the number means a
+       different thing on each face, and the counter is the only place it is
+       said. Set a size down and spaced out so the digits still read as the
+       loud half. */
+    .ff__combo-word {
+      margin-right: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      opacity: .85;
+    }
+
     /* Re-triggered per strike from the component, so the number punches on each
        hit rather than sitting still while it climbs. */
     @keyframes ffComboBeat {
@@ -562,7 +1002,7 @@ interface Shout {
 
     /* ── Combo: the shout ───────────────────────────────────────────────────── */
     .ff__shout {
-      position: absolute; bottom: calc(100% + 8px); right: 0;
+      position: absolute; bottom: calc(100% + var(--ff-controls-h) + 12px); right: 0;
       font: 800 15px/1.15 'Orbitron', system-ui, sans-serif;
       letter-spacing: .04em; white-space: nowrap;
       color: #A78BFA;
@@ -724,6 +1164,43 @@ interface Shout {
       80% { transform: translate(2px, 2px); }
     }
 
+    /* ── Refused ────────────────────────────────────────────────────────────
+       Not enough Gold for a strike. A shake and a red wash on the ember, for
+       four tenths of a second: the anvil is the only thing on this button that
+       can be told no, and silence would read as a dropped click.
+
+       Placed last of the five button animations on purpose. .ff--auto,
+       .ff--quake, .ff--shake and .ff--swell all animate transform on the same
+       element at the same weight, so the winner is whichever rule is written
+       last — and .ff--auto fires once a second for anybody who owns an
+       automaton, which is exactly the visitor most likely to be striking an
+       anvil they cannot afford. Written above them, the refusal would have
+       been swallowed by a decoration.
+
+       The wash goes on .ff__side, not on .ff__face: .ff__face carries
+       preserve-3d, and a filter on an element forces it into a flattened
+       group — for those four tenths of a second the card would have shown both
+       of its faces at once. Not on .ff__core either, which runs ffBreathe and
+       animates filter itself; an animation outranks a plain declaration for the
+       property it animates, and a second animation on the same property would
+       have replaced the breathing rather than tinting it. The sides animate
+       nothing, so they are the one layer in the stack that is free. */
+    .ff--broke .ff__btn { animation: ffBrokeShake .42s cubic-bezier(.36, .07, .19, .97); }
+    @keyframes ffBrokeShake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-6px); }
+      32% { transform: translateX(6px); }
+      50% { transform: translateX(-4px); }
+      68% { transform: translateX(4px); }
+      85% { transform: translateX(-2px); }
+    }
+    .ff--broke .ff__side { animation: ffBrokeFlash .42s ease-out; }
+    @keyframes ffBrokeFlash {
+      0%   { filter: none; }
+      22%  { filter: brightness(1.1) sepia(1) saturate(7) hue-rotate(-38deg); }
+      100% { filter: none; }
+    }
+
     /* ── The still versions ─────────────────────────────────────────────────
        Driven by a class off the component's own prefers-reduced-motion read,
        NOT by the media query below, and that is not a style preference.
@@ -750,6 +1227,11 @@ interface Shout {
     .ff--still .ff__float { animation: ffFadeOnly 1s linear forwards; }
     /* The shout still names the tier; it stops rising. */
     .ff--still .ff__shout { animation: ffShoutStill 2s linear forwards; }
+    /* The haul still names the rune, in its colour; it stops travelling.
+       Held longer than the Gold floater's second, because a rune name is
+       something to read rather than a number to glance at. */
+    .ff--still .ff__loot { animation: ffShoutStill 1.6s linear forwards; }
+
 
     /* ── Mobile: bigger, and under the thumb rather than beside it ─────────
          Every rule in both queries is written against .ff:not(.ff--inline).
@@ -800,6 +1282,25 @@ interface Shout {
       .ff--inline .ff__glyph { width: 30px !important; height: 30px !important; }
 
       .ff__hud, .ff__banner { min-width: 154px; font-size: 11px; }
+
+      /* The controls row gets its 44px targets here rather than everywhere:
+         a pointer can hit a 28px pill and a thumb cannot, and padding the
+         switch to 44px on a desktop would leave a visible dead zone around a
+         control that already reads as the right size. */
+      .ff { --ff-controls-h: 48px; }
+      /* Centred rather than right-aligned, because the flame itself is centred
+         from this breakpoint down — right: 0 would hang the row off the left
+         of a button that is no longer in the corner. */
+      .ff:not(.ff--inline) .ff__controls {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .ff__mode { padding: 10px 8px; }
+      .ff__bulk { min-height: 44px; padding: 5px 14px; font-size: 12px; }
+      /* A name at 12px beside an 80px ember is unreadable at arm's length. */
+      .ff__loot { font-size: 13px; }
+      .ff__loot--grand { font-size: 16px; }
       /* The counter shares the row with the ember on a 375px viewport. */
       .ff__combo { font-size: 13px; right: calc(100% + 7px); }
       .ff__shout { font-size: 13px; }
@@ -827,6 +1328,24 @@ interface Shout {
       .ff--shake .ff__btn, .ff--swell .ff__btn, .ff--auto .ff__btn { animation: none; }
       .ff__combo { animation: none; }
       .ff[data-combo] .ff__core { animation: none !important; }
+
+      /* ── The anvil under reduced motion ─────────────────────────────────
+         The switch still switches and the anvil still strikes; what goes is
+         the half-second of rotation, the travel on the haul, and the shake on
+         a refusal. Each one keeps its meaning in a static form: the face
+         swaps, the rune name appears and fades where it lands, and the red
+         wash still says the purse is empty.
+
+         The two rules that name a keyframes — the haul's fade and the
+         refusal's wash — live outside this block, with ffFadeOnly. A media
+         query is the one place Angular does not rewrite an animation
+         shorthand to match its scoped @keyframes, and a bare name in here
+         resolves to nothing at all, silently. */
+      .ff__face { transition: none; }
+      /* Only the shake is cancelled. The red wash stays: it is the whole
+         message, it is 420ms, and it does not move. Its rule lives outside
+         this block already, so nothing here has to name it. */
+      .ff--broke .ff__btn { animation: none; }
     }
   `],
 })
@@ -839,6 +1358,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly inlineFlame = inject(InlineFlameService);
+  private readonly modes = inject(ForgeModeService);
+  private readonly runes = inject(RuneForgeService);
   private readonly router = inject(Router);
   private readonly subs = new Subscription();
 
@@ -874,6 +1395,35 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   /** Mounts the site-wide confetti hook for one beat at the top of the ladder. */
   shattered = false;
 
+  // ── The second face ────────────────────────────────────────────────────────
+
+  /** Which face is up. Mirrored off the service so the template can read it. */
+  mode: ForgeMode = 'gold';
+  /** Runes rising off the anvil, newest last. */
+  loot: LootDrop[] = [];
+  /** Held for the length of the refusal shake after a strike nobody could pay for. */
+  broke = false;
+  private brokeSeq = 0;
+
+  /**
+   * Consecutive anvil strikes, and when the last one landed.
+   *
+   * Counted here rather than through `ComboService`, and that is deliberate.
+   * The combo ladder counts *paid Gold strikes*, which the economy's 500ms
+   * cooldown caps at two a second — every tier threshold, every achievement
+   * and the persisted high-water mark are shaped by that ceiling. The anvil
+   * has no cooldown and has a x10 button, so feeding it into that service
+   * would let one tap add ten to a lifetime record the whole ladder assumes
+   * was earned two strikes a second. The counter on screen is the same
+   * counter; the record behind it is not this one's to write.
+   */
+  private forgeStreak = 0;
+  private forgeStreakAt = 0;
+  private forgeDecay: ReturnType<typeof setTimeout> | null = null;
+
+  /** How long a gap ends an anvil run. Matches the Gold combo's own fuse. */
+  private static readonly FORGE_STREAK_MS = 2_000;
+
   private seq = 0;
   /** Read once from the platform query; drives the .ff--still class in the template. */
   reducedMotion = false;
@@ -898,6 +1448,16 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
 
     this.subs.add(this.comboSvc.event$.subscribe(e => this.onComboEvent(e)));
 
+    // The face, and the ledger behind it. `init()` on both is idempotent and
+    // browser-only; the rune ledger is hydrated here rather than on the first
+    // anvil strike so that the first strike is not the one paying for the read.
+    this.modes.init();
+    this.runes.init();
+    this.subs.add(this.modes.mode$.subscribe(m => {
+      this.mode = m;
+      this.cdr.markForCheck();
+    }));
+
     // The automatons, made visible. This fires once a second whatever the rate,
     // and only when the tab is in front — the service does not emit at all on a
     // hidden one, so nothing here is animating into a background tab.
@@ -911,6 +1471,7 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.inline) this.inlineFlame.release();
     this.onPressEnd();
+    if (this.forgeDecay !== null) clearTimeout(this.forgeDecay);
     this.subs.unsubscribe();
     this.timers.forEach(t => clearTimeout(t));
     this.timers.clear();
@@ -922,6 +1483,15 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   get autoRate(): string { return formatRate(this.snap.autoPerSecond); }
 
   get label(): string {
+    if (this.anvil) {
+      // The one number that decides whether a press does anything, said first.
+      const afford = this.canForge
+        ? `Strike for ${formatCurrency(STRIKE_COST)} Gold to forge a rune.`
+        : `Not enough Gold to strike — one strike costs ${formatCurrency(STRIKE_COST)}.`;
+      return `The Forge Flame, anvil mode. ${formatCurrency(this.snap.gold)} Gold. `
+        + `${afford} Press and hold to open the Rune Forge.`;
+    }
+
     const auto = this.snap.autoPerSecond > 0
       ? ` ${this.autoRate} automatic strikes a second.`
       : '';
@@ -930,6 +1500,51 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     // a visitor cannot otherwise discover from this control.
     return `The Forge Flame. ${formatCurrency(this.snap.gold)} Gold, earning ${this.rate} a second. `
       + `Strike for ${this.snap.perClick} Gold.${auto} Press and hold to open the Rune Forge.`;
+  }
+
+  // ── The switch ─────────────────────────────────────────────────────────────
+
+  /** True while the anvil is up. Read by half the template. */
+  get anvil(): boolean { return this.mode === 'anvil'; }
+
+  /** What one anvil strike costs, formatted. Flat — the anvil does not scale. */
+  get strikeCost(): string { return formatCurrency(STRIKE_COST); }
+
+  /** Whether the purse covers a single strike. Drives the x10 and the HUD line. */
+  get canForge(): boolean { return this.snap.gold >= STRIKE_COST; }
+
+  get modeLabel(): string {
+    return this.anvil
+      ? 'Anvil mode. Switch back to Gold, where a click earns Gold.'
+      : 'Gold mode. Switch to Anvil, where a click spends Gold to forge a rune.';
+  }
+
+  get bulkLabel(): string {
+    return this.canForge
+      ? `Forge ten runes for ${formatCurrency(STRIKE_COST * FORGE_BULK)} Gold.`
+      : 'Not enough Gold to forge.';
+  }
+
+  /**
+   * Flip the face.
+   *
+   * The run in progress ends with the face that earned it: a Gold combo is a
+   * rhythm of Gold strikes and an anvil streak is a rhythm of rune strikes, and
+   * carrying either across the switch would let somebody bank a x50 on one face
+   * by warming up on the other. The Gold combo is the service's to end, and it
+   * ends the same way it always does — on the next two seconds of silence.
+   */
+  toggleMode(): void {
+    const next = this.modes.toggle();
+    this.endForgeStreak();
+    // The Gold face's coin, both ways. It is the only sound in this component
+    // that means "something changed" rather than "a strike landed".
+    this.audio.coin();
+    this.buzz();
+    this.announcement = next === 'anvil'
+      ? `Anvil mode. A strike now costs ${formatCurrency(STRIKE_COST)} Gold and forges a rune.`
+      : 'Gold mode. A strike now earns Gold.';
+    this.cdr.markForCheck();
   }
 
   /**
@@ -1092,6 +1707,12 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
 
   /** The strike itself, once a gesture has been judged to be one. */
   private strike(): void {
+    // The anvil is a different ledger, a different payout and a different
+    // failure mode, so it forks here rather than inside the Gold path. Nothing
+    // below this line runs for it: no idle XP (the rune ledger awards its own,
+    // and paying both would make the anvil the cheapest XP on the site), no
+    // economy strike, and no ComboService — see the note on `forgeStreak`.
+    if (this.anvil) { this.anvilStrike(1); return; }
 
     // One flame, two ledgers.
     //
@@ -1155,10 +1776,165 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  // ── The anvil ──────────────────────────────────────────────────────────────
+
+  /** The x10 button. */
+  onBulk(): void {
+    this.buzz();
+    this.anvilStrike(FORGE_BULK);
+  }
+
+  /**
+   * Strike the anvil up to `count` times and land whatever came off it.
+   *
+   * Run straight through rather than chunked across frames the way the Rune
+   * Forge page runs its thousand: a strike measures 0.27ms on an empty bag and
+   * 1.18ms once the inventory cap starts evicting, so ten of them is at worst
+   * 12ms — inside a single frame, with nothing to show a progress bar for. The
+   * page chunks because it offers x1000; this offers x10 precisely so it does
+   * not have to.
+   *
+   * The loop breaks on the first refusal rather than pre-checking the purse,
+   * because the ledger is the only thing that knows: `RuneForgeService.strike()`
+   * spends and rolls in one step, and a x10 begun with nine strikes' worth of
+   * Gold should bank nine runes, not none.
+   */
+  private anvilStrike(count: number): void {
+    if (!this.isBrowser) return;
+
+    const finds: RuneFind[] = [];
+    for (let i = 0; i < count; i++) {
+      const find = this.runes.strike();
+      if (!find) break;
+      finds.push(find);
+    }
+
+    if (!finds.length) { this.deny(); return; }
+    this.landHaul(finds);
+  }
+
+  /** Name every rune that landed, sound the best one, and pay the streak. */
+  private landHaul(finds: RuneFind[]): void {
+    const best = finds.reduce((acc, f) =>
+      RUNE_TIER_ORDER.indexOf(f.rune.tier) > RUNE_TIER_ORDER.indexOf(acc.rune.tier) ? f : acc, finds[0]);
+    const bestTier = tierOf(best.rune.tier);
+    const grand = RUNE_TIER_ORDER.indexOf(best.rune.tier) >= RUNE_TIER_ORDER.indexOf(FORGE_FLASH_TIER);
+
+    finds.forEach((find, i) => this.pushLoot(find, i));
+    this.bumpForgeStreak(finds.length);
+
+    // One sound for the run, pitched by the best thing in it. Ten chimes
+    // inside one frame is a click, not a chord.
+    if (best.rune.tier === 'singular') this.audio.voidRumble();
+    else this.audio.runeReveal(bestTier.semitones, isHeavyTier(best.rune.tier));
+
+    this.sparkBurst(grand ? 18 : 6);
+    // Rare and above take the screen. `paint` is already the one place that
+    // checks reduced motion, so this needs no guard of its own.
+    if (grand) this.paint('flash', 520);
+
+    const led = finds.length === 1
+      ? `${best.rune.name}.`
+      : `${finds.length} runes. Best: ${best.rune.name}.`;
+    this.announcement = `${led} ${tierOf(best.rune.tier).label}. `
+      + `${formatCurrency(this.snap.gold)} Gold left.`;
+
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * The anvil said no.
+   *
+   * Every path into this is the same one — the purse could not cover a single
+   * strike — so there is one response: shake, wash red, and say so out loud.
+   * Guarded by a token rather than a boolean so a visitor mashing an anvil they
+   * cannot afford re-triggers the animation on each press instead of holding
+   * one class that never restarts.
+   */
+  private deny(): void {
+    this.endForgeStreak();
+    this.audio.coin();
+    this.buzz();
+    this.announcement = `Not enough Gold. One strike costs ${formatCurrency(STRIKE_COST)}.`;
+
+    const token = ++this.brokeSeq;
+    // Dropped for a frame first: re-adding a class that is already on the
+    // element does not restart its animation, and a second refused press would
+    // have looked like a dropped click — the exact thing this is here to deny.
+    this.broke = false;
+    this.cdr.markForCheck();
+    this.after(() => {
+      if (this.brokeSeq !== token) return;
+      this.broke = true;
+      this.cdr.markForCheck();
+      this.after(() => {
+        if (this.brokeSeq !== token) return;
+        this.broke = false;
+        this.cdr.markForCheck();
+      }, 440);
+    }, 20);
+  }
+
+  /** One rune name, staggered up the stack so a x10 reads as ten things. */
+  private pushLoot(find: RuneFind, index: number): void {
+    const tier = tierOf(find.rune.tier);
+    const key = this.seq++;
+    this.loot = [...this.loot, {
+      key,
+      name: find.rune.name,
+      color: tier.color,
+      glow: tier.glow,
+      grand: RUNE_TIER_ORDER.indexOf(find.rune.tier) >= RUNE_TIER_ORDER.indexOf(FORGE_FLASH_TIER),
+      isNew: find.isNew,
+      copies: find.copies ?? 1,
+      // Half the Gold floater's scatter: these are words, not glyphs, and a
+      // wide spread on a 375px viewport walks them off the edge.
+      dx: Math.round((Math.random() - 0.5) * 18),
+      // Upward, so the whole haul is on screen and reads as one rising column.
+      // 14px against a 12px face: tight enough that ten drops clear the top of
+      // a phone's flame by 126px rather than 190, loose enough to read as ten.
+      dy: index * -14,
+    }];
+    this.after(() => {
+      this.loot = this.loot.filter(l => l.key !== key);
+      this.cdr.markForCheck();
+    }, 1_560);
+  }
+
+  // ── The anvil streak ───────────────────────────────────────────────────────
+
+  private bumpForgeStreak(by: number): void {
+    const now = Date.now();
+    if (now - this.forgeStreakAt > ForgeFlameComponent.FORGE_STREAK_MS) this.forgeStreak = 0;
+    this.forgeStreak += by;
+    this.forgeStreakAt = now;
+
+    if (this.forgeDecay !== null) clearTimeout(this.forgeDecay);
+    this.zone.runOutsideAngular(() => {
+      this.forgeDecay = setTimeout(() => {
+        this.zone.run(() => {
+          this.forgeDecay = null;
+          this.forgeStreak = 0;
+          this.cdr.markForCheck();
+        });
+      }, ForgeFlameComponent.FORGE_STREAK_MS);
+    });
+  }
+
+  /** End the run now: the face changed, or the anvil refused. */
+  private endForgeStreak(): void {
+    if (this.forgeDecay !== null) clearTimeout(this.forgeDecay);
+    this.forgeDecay = null;
+    this.forgeStreak = 0;
+    this.forgeStreakAt = 0;
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
 
-  /** The colour the counter is wearing: the held tier's, or purple before one. */
+  /** The colour the counter is wearing: the held tier's, or purple before one.
+   *  The anvil's streak has no tier ladder behind it, so it stays violet. */
   get comboTone(): ComboTone {
+    if (this.anvil) return 'purple';
     return this.combo.tier?.tone ?? 'purple';
   }
 
@@ -1167,7 +1943,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
    * animation restart for us. Empty below x2, which hides it entirely.
    */
   get comboBadge(): number[] {
-    return this.combo.count > 1 ? [this.combo.count] : [];
+    const count = this.anvil ? this.forgeStreak : this.combo.count;
+    return count > 1 ? [count] : [];
   }
 
   /**
