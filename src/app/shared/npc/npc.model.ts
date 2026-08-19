@@ -164,7 +164,10 @@ export const NPCS: readonly NpcDefinition[] = [
     glow: 'rgba(201, 168, 76, 0.55)',
     monogram: 'ME',
     artId: 'npc-merchant',
-    paths: ['/market', '/gambler'],
+    // The Grand Exchange too — it opened after this cast was written, and a
+    // hall where Gold changes hands with nobody in it is the exact gap this
+    // feature exists to fill.
+    paths: ['/market', '/gambler', '/exchange'],
     priority: 20,
   },
   {

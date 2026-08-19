@@ -119,6 +119,7 @@ describe('who stands where', () => {
     expect(on('/codex')).toBe('archivist');
     expect(on('/market')).toBe('merchant');
     expect(on('/gambler')).toBe('merchant');
+    expect(on('/exchange')).toBe('merchant');
     expect(on('/forge/runes')).toBe('kael');
     expect(on('/character')).toBe('kael');
     expect(on('/world')).toBe('kael');
