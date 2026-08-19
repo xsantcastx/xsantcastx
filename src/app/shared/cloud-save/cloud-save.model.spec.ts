@@ -490,6 +490,109 @@ describe('the RPG layer', () => {
   });
 });
 
+/**
+ * The Thrall shift.
+ *
+ * Three of these are cases where the generous structural default is not merely
+ * wrong but *exploitable*: a Thrall merged field by field is rested on the
+ * device that has been working it and wearing both devices' gear at once.
+ */
+describe('Forge Thralls', () => {
+  const merge = (r: unknown, l: unknown) => {
+    const found = SYNCED_BLOBS.find(b => b.key === 'godforge-thralls');
+    expect(found).withContext('godforge-thralls is not registered for sync').toBeDefined();
+    return found!.merge!(r, l) as {
+      thralls: { id: string; stamina: number; status: string; equipment: Record<string, string> }[];
+      log: { id: string; at: number }[];
+      rolls: number;
+      goldSpent: number;
+      finds: Record<string, number>;
+      dayKey: string;
+      foundToday: number;
+    };
+  };
+
+  const thrall = (id: string, extra: Record<string, unknown> = {}) => ({
+    id, name: id, rarity: 'common', level: 1, xp: 0,
+    stamina: 100, maxStamina: 100, magicFind: 50, rollInterval: 30_000,
+    equipment: {}, status: 'working', totalRolls: 0, totalFinds: {},
+    hiredAt: '2026-08-01T00:00:00.000Z', lastRollAt: 0, lastRestAt: 0, ...extra,
+  });
+
+  const blob = (extra: Record<string, unknown> = {}) => ({
+    version: 1, thralls: [], log: [], goldSpent: 0, rolls: 0,
+    finds: {}, dayKey: '2026-08-19', foundToday: 0, ...extra,
+  });
+
+  it('adopts a Thrall bought on the other device', () => {
+    const merged = merge(
+      blob({ thralls: [thrall('a'), thrall('b')] }),
+      blob({ thralls: [thrall('b')] }),
+    );
+    expect(merged.thralls.map(t => t.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('keeps the local copy of a Thrall both devices hold, whole', () => {
+    // The exploit this stops: taking the higher stamina *and* the union of both
+    // equipment wells hands back a fully rested worker wearing four items.
+    const merged = merge(
+      blob({ thralls: [thrall('a', { stamina: 100, equipment: { charm: 'remote-charm' } })] }),
+      blob({ thralls: [thrall('a', { stamina: 4, status: 'resting', equipment: { charm: 'local-charm' } })] }),
+    );
+    expect(merged.thralls.length).toBe(1);
+    expect(merged.thralls[0].stamina).toBe(4);
+    expect(merged.thralls[0].status).toBe('resting');
+    expect(merged.thralls[0].equipment).toEqual({ charm: 'local-charm' });
+  });
+
+  it('takes the larger lifetime tallies', () => {
+    const merged = merge(
+      blob({ rolls: 900, goldSpent: 9_000, finds: { common: 800, rare: 2 } }),
+      blob({ rolls: 40, goldSpent: 400, finds: { common: 12, epic: 1 } }),
+    );
+    expect(merged.rolls).toBe(900);
+    expect(merged.goldSpent).toBe(9_000);
+    expect(merged.finds).toEqual({ common: 800, rare: 2, epic: 1 });
+  });
+
+  it('unions the log newest-first and dedupes it', () => {
+    const merged = merge(
+      blob({ log: [{ id: 'l2', at: 200 }, { id: 'l1', at: 100 }] }),
+      blob({ log: [{ id: 'l3', at: 300 }, { id: 'l2', at: 200 }] }),
+    );
+    expect(merged.log.map(l => l.id)).toEqual(['l3', 'l2', 'l1']);
+  });
+
+  it('caps the log so the synced document cannot grow without bound', () => {
+    const many = (prefix: string) =>
+      Array.from({ length: 40 }, (_, i) => ({ id: `${prefix}-${i}`, at: i }));
+    const merged = merge(blob({ log: many('r') }), blob({ log: many('l') }));
+    expect(merged.log.length).toBe(40);
+  });
+
+  it('only merges today count when both devices agree what today is', () => {
+    // Two timezones, or a device that has been shut since yesterday. Taking the
+    // larger count against the local day credits yesterday's haul to today.
+    const sameDay = merge(
+      blob({ dayKey: '2026-08-19', foundToday: 12 }),
+      blob({ dayKey: '2026-08-19', foundToday: 3 }),
+    );
+    expect(sameDay.foundToday).toBe(12);
+
+    const otherDay = merge(
+      blob({ dayKey: '2026-08-18', foundToday: 400 }),
+      blob({ dayKey: '2026-08-19', foundToday: 3 }),
+    );
+    expect(otherDay.dayKey).toBe('2026-08-19');
+    expect(otherDay.foundToday).toBe(3);
+  });
+
+  it('survives a missing or malformed side', () => {
+    expect(merge(null, blob({ rolls: 5 })).rolls).toBe(5);
+    expect((merge(blob({ rolls: 7 }), null) as { rolls: number }).rolls).toBe(7);
+  });
+});
+
 describe('the registry', () => {
   it('files every blob under a unique document path', () => {
     const paths = SYNCED_BLOBS.map(b => `${b.collection}/${b.doc}`);
@@ -529,6 +632,7 @@ describe('the registry', () => {
       'eclipse-realm-rush-board',
       'godforge-activity',
       'godforge-chapter',
+      'godforge-collection',
       'godforge-economy',
       'godforge-explorers',
       'godforge-inventory',
@@ -538,6 +642,7 @@ describe('the registry', () => {
       'godforge-runes',
       'godforge-scrolls',
       'godforge-stats',
+      'godforge-thralls',
       'tool-usage-counts',
     ]);
   });

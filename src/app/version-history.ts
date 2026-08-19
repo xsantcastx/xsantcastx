@@ -17,6 +17,32 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.69.0',
+    codename: 'Archivist',
+    date: '2026-08-19',
+    highlights: [
+      'The Collection Log: a sixth Codex panel holding every thing the Godforge can put in a Keeper\u2019s hands \u2014 twenty-five runes, six Runewords, five artifacts, fifteen charms, thirteen materials, three consumables and thirteen worn things. Found entries show their painted art, their lore and the day they first landed; unfound ones show a dark silhouette, a ??? and a clue about where to look',
+      'A discovery is written down once and never recomputed. A rune spent on a Runeword, a charm sold at the till and an ore struck into a blade are all gone from the ledgers that used to hold them \u2014 and none of them leaves the log. The count only ever rises',
+      'Finding something for the first time brings up a card in the middle of the screen: it arrives face-down, flips over, and throws a short sparkle. It never blocks a click, it queues at four, and reduced motion gets the same card standing still',
+      'Completion pays. A quarter of the log makes you Apprentice Collector, half sends the Sealed Codex Page, three quarters the Keeper\u2019s Signet, and all of it the title Eclipse Archivist and a cursor trail nothing else in the game grants. The titles are real \u2014 they show in front of your rank, everywhere it is shown',
+      'Filter and sort by category, rarity, realm, and found or still missing, with a completion dial that climbs the rarity ladder as the log fills and a bar for every category and every rarity band',
+      'Twelve pieces of equipment are drawn, named and not yet forged. They are shown and they are not counted \u2014 a completion bar that cannot reach the end is a bar that lies'
+    ]
+  },
+  {
+    version: '2.68.0',
+    codename: 'Thrall',
+    date: '2026-08-19',
+    highlights: [
+      'Forge Thralls: bound workers, bought from the Market in five tiers from 50K to 25M Gold, who pull the lever at the anvil on their own — every 30 seconds at the bottom of the ladder and every 5 at the top. The runes land in the same ledger yours do, so they craft Runewords like any other find',
+      'Automation is a Gold sink and never a Gold engine. A Thrall pull costs a hundred times what yours does, and it rolls at a fraction of your Magic Find — half at Common, nine tenths at Legendary — so standing at the anvil yourself is always cheaper and always luckier',
+      'They tire. Stamina runs from 100 to 500 by tier, a pull costs one to three of it, and a spent Thrall rests at a point a minute until it is back to a fifth of its pool. That rest cycle, not the price, is what bounds the burn',
+      'Two wells each — a weapon and a charm. Worn Magic Find and loot quality pay at face value on their rolls; worn Ward turns aside up to half the stamina a pull costs. Levels to 20 add stamina and luck, and are tuned so a capped Thrall never overtakes a fresh one of the tier above',
+      'Managed from the Inner Sanctum: stamina bars, live Magic Find, assign and stand down, hand over gear and take it back, a squad overview with the nominal Gold-per-hour burn, and an activity log of what each of them found',
+      'Five work at once, and Lengthen the Shift raises that to ten. The whole shift pauses the moment the tab goes behind another — a background tab settles nothing, so nobody comes back to an emptied ledger',
+    ],
+  },
+  {
     version: '2.67.0',
     codename: 'Contract',
     date: '2026-08-19',

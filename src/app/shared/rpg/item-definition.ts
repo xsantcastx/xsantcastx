@@ -318,6 +318,42 @@ export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
     temperGoldBase: 0,
     lore: 'What the strike leaves when the ore has already given its heat.',
   },
+  // ── The two Collector rewards ───────────────────────────────────────────
+  // Granted by `CollectionService` when the Collection Log crosses 50% and 75%.
+  // Both are painted: the asset library filed them under `items/quest/`, where
+  // they had names, lore-shaped art and no game behind them. Nothing else mints
+  // either one, which is what makes them exclusive — soulbound, so the till will
+  // not take them back, and outside the log's own denominator, because you
+  // cannot be asked to collect the prize for collecting.
+  {
+    id: 'sealed-codex-page',
+    name: 'Sealed Codex Page',
+    family: 'charm',
+    type: 'charm',
+    style: 'celestial',
+    rollKeys: ['xpBonus', 'magicFind'],
+    base: { xpBonus: 6, magicFind: 6 },
+    temperable: false,
+    maxTemper: 0,
+    temperGoldBase: 0,
+    lore: 'A page the Archivum sealed rather than burned, which is the Archivum admitting it might be wrong.',
+    soulbound: true,
+  },
+  {
+    id: 'keeper-signet',
+    name: "Keeper's Signet",
+    family: 'equipment',
+    type: 'artifact',
+    slot: 'trinket',
+    style: 'neutral',
+    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'],
+    base: { magicFind: 8, xpBonus: 6, goldPerSec: 1.5 },
+    temperable: true,
+    maxTemper: 5,
+    temperGoldBase: 90_000,
+    lore: 'A Keeper is issued one signet in a life. This is the second, and the Archivum has no record of who authorised it.',
+    soulbound: true,
+  },
   {
     id: 'ember-elixir',
     name: 'Ember Elixir',

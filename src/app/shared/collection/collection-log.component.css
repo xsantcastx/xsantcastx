@@ -1,0 +1,439 @@
+/**
+ * collection-log.component.css — dark glass, rarity borders, one grid.
+ *
+ * Every surface here follows the site's glass formula: a deep-indigo base at
+ * ~55-94% alpha, a hairline light border, and a rarity-coloured halo that only
+ * appears once the thing has been found. Unfound cards get the same geometry in
+ * grey with a slow breathe, so the grid reads as one wall with holes in it
+ * rather than two different lists.
+ *
+ * `backdrop-filter` is deliberately absent: the site turns it off below 768px
+ * for compositor cost, and a panel that only frosts on desktop is a panel that
+ * looks broken on a phone. The layered gradients do the same job for free.
+ */
+
+.cl { display: flex; flex-direction: column; gap: 1.75rem; }
+
+/* ── The dial ─────────────────────────────────────────────────────────────── */
+
+.cl-head {
+  display: flex; align-items: center; gap: 1.75rem;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(ellipse 60% 80% at 12% 0%, rgba(0, 255, 204, 0.05), transparent 65%),
+    radial-gradient(ellipse 55% 70% at 90% 100%, rgba(123, 97, 255, 0.06), transparent 65%),
+    rgba(10, 6, 26, 0.55);
+}
+
+.cl-dial { position: relative; width: 140px; height: 140px; flex: none; }
+.cl-dial__svg { width: 140px; height: 140px; transform: rotate(-90deg); }
+.cl-dial__track {
+  fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 8;
+}
+.cl-dial__arc {
+  fill: none;
+  stroke: var(--tier, #4dffe0);
+  stroke-width: 8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px var(--tier, #4dffe0));
+  transition: stroke-dashoffset 900ms cubic-bezier(0.22, 1, 0.36, 1), stroke 400ms ease;
+}
+.cl-dial__inner {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.15rem;
+}
+.cl-dial__pct {
+  font-size: 2.1rem; font-weight: 800; line-height: 1;
+  color: #f4f1ff;
+}
+.cl-dial__pct small { font-size: 0.95rem; opacity: 0.65; margin-left: 1px; }
+.cl-dial__count {
+  font-size: 0.7rem; letter-spacing: 0.08em;
+  color: rgba(226, 222, 245, 0.55);
+}
+
+.cl-head__body { flex: 1 1 18rem; min-width: 0; }
+
+.cl-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.66rem; letter-spacing: 0.2em; text-transform: uppercase;
+  font-weight: 700; color: #4dffe0;
+}
+.cl-eyebrow__pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4dffe0; box-shadow: 0 0 10px rgba(0, 255, 204, 0.8);
+  animation: clPulse 3s ease-in-out infinite;
+}
+@keyframes clPulse { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+
+.cl-title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.35rem, 3vw, 1.85rem); font-weight: 800; line-height: 1.15;
+  color: #f4f1ff;
+}
+.cl-sub {
+  margin: 0; max-width: 46ch;
+  font-size: 0.85rem; line-height: 1.6;
+  color: rgba(226, 222, 245, 0.68);
+}
+
+.cl-next {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  margin: 0.9rem 0 0; padding: 0.4rem 0.85rem 0.4rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  background: rgba(201, 168, 76, 0.07);
+  font-size: 0.78rem; color: rgba(240, 230, 205, 0.9);
+}
+.cl-next__badge {
+  display: grid; place-items: center;
+  min-width: 2.4rem; padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.18);
+  font-size: 0.68rem; font-weight: 800; color: #C9A84C;
+}
+.cl-next--done { border-color: rgba(230, 220, 255, 0.35); background: rgba(230, 220, 255, 0.08); }
+.cl-next--done .cl-next__badge { background: rgba(230, 220, 255, 0.2); color: #e6dcff; }
+
+/* ── Reward ladder ────────────────────────────────────────────────────────── */
+
+.cl-rewards {
+  display: grid; gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+.cl-reward {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+  opacity: 0.62;
+  transition: opacity 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+.cl-reward.is-reached { opacity: 1; }
+.cl-reward.is-earned {
+  opacity: 1;
+  border-color: rgba(201, 168, 76, 0.45);
+  box-shadow: 0 0 26px -10px rgba(201, 168, 76, 0.75);
+}
+.cl-reward__at {
+  margin: 0 0 0.15rem;
+  font-size: 1.35rem; font-weight: 800; line-height: 1;
+  color: #C9A84C;
+}
+.cl-reward__title { margin: 0 0 0.2rem; font-size: 0.88rem; font-weight: 700; color: #f4f1ff; }
+.cl-reward__gold { margin: 0 0 0.4rem; font-size: 0.74rem; color: rgba(240, 220, 160, 0.8); }
+.cl-reward__blurb { margin: 0 0 0.5rem; font-size: 0.72rem; line-height: 1.5; color: rgba(226, 222, 245, 0.58); }
+.cl-reward__state {
+  margin: 0; font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(226, 222, 245, 0.42);
+}
+.cl-reward.is-earned .cl-reward__state { color: #C9A84C; }
+
+/* ── Recent ───────────────────────────────────────────────────────────────── */
+
+.cl-recent__title,
+.cl-bars__title,
+.cl-rarity__title {
+  margin: 0 0 0.7rem;
+  font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+  font-weight: 700; color: rgba(226, 222, 245, 0.55);
+}
+
+.cl-recent__row {
+  display: flex; gap: 0.65rem;
+  overflow-x: auto; padding-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+.cl-recent__item {
+  flex: none; width: 8.5rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--tier, #a48bff);
+  background: rgba(10, 6, 26, 0.6);
+  box-shadow: 0 0 20px -10px var(--tier-glow);
+}
+.cl-recent__item img { width: 48px; height: 48px; object-fit: contain; }
+.cl-recent__glyph { font-size: 1.75rem; line-height: 48px; color: var(--tier); }
+.cl-recent__name {
+  font-size: 0.72rem; font-weight: 700; text-align: center; line-height: 1.25;
+  color: #f4f1ff;
+}
+.cl-recent__date { font-size: 0.6rem; color: rgba(226, 222, 245, 0.45); text-align: center; }
+
+/* ── Category bars ────────────────────────────────────────────────────────── */
+
+.cl-bars__grid {
+  display: grid; gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.cl-bar {
+  display: flex; flex-direction: column; gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+  color: inherit; text-align: left; cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+.cl-bar:hover,
+.cl-bar:focus-visible { border-color: var(--tier); box-shadow: 0 0 24px -10px var(--tier-glow); }
+.cl-bar.is-on {
+  border-color: var(--tier);
+  background: color-mix(in srgb, var(--tier) 8%, rgba(10, 6, 26, 0.5));
+  box-shadow: 0 0 26px -10px var(--tier-glow);
+}
+.cl-bar__head { display: flex; align-items: center; gap: 0.5rem; }
+.cl-bar__icon { color: var(--tier); font-size: 0.95rem; }
+.cl-bar__label { font-size: 0.8rem; font-weight: 700; color: #f4f1ff; }
+.cl-bar__count {
+  margin-left: auto;
+  font-size: 0.72rem; color: rgba(226, 222, 245, 0.62); white-space: nowrap;
+}
+.cl-bar__count small { opacity: 0.7; }
+.cl-bar__track {
+  display: block; height: 5px; border-radius: 999px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+.cl-bar__fill {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--tier), color-mix(in srgb, var(--tier) 45%, #ffffff));
+  box-shadow: 0 0 10px var(--tier-glow);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Rarity breakdown ─────────────────────────────────────────────────────── */
+
+.cl-rarity__row {
+  display: grid; gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+.cl-rarity__cell {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  min-height: 44px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.5);
+  color: inherit; text-align: left; cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.cl-rarity__cell:hover,
+.cl-rarity__cell:focus-visible { border-color: var(--tier); }
+.cl-rarity__cell.is-on { border-color: var(--tier); box-shadow: 0 0 22px -10px var(--tier-glow); }
+.cl-rarity__cell.is-full { background: color-mix(in srgb, var(--tier) 10%, rgba(10, 6, 26, 0.5)); }
+.cl-rarity__label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--tier);
+}
+.cl-rarity__count { font-size: 0.74rem; color: rgba(226, 222, 245, 0.7); }
+.cl-rarity__track {
+  display: block; height: 4px; border-radius: 999px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+.cl-rarity__fill {
+  display: block; height: 100%; background: var(--tier);
+  box-shadow: 0 0 8px var(--tier-glow);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Filters ──────────────────────────────────────────────────────────────── */
+
+.cl-filters { display: flex; flex-direction: column; gap: 0.75rem; }
+.cl-filter-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.cl-filter-row__label {
+  font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase;
+  font-weight: 700; color: rgba(226, 222, 245, 0.45);
+}
+.cl-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.cl-chip {
+  min-height: 32px; padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(10, 6, 26, 0.55);
+  font-size: 0.74rem; color: rgba(226, 222, 245, 0.75);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.cl-chip:hover, .cl-chip:focus-visible { border-color: var(--chip, #4dffe0); color: #f4f1ff; }
+.cl-chip.is-on {
+  border-color: var(--chip, #4dffe0);
+  color: #f4f1ff;
+  box-shadow: 0 0 18px -8px var(--chip-glow, rgba(0, 255, 204, 0.6));
+}
+
+.cl-filter-group { display: flex; align-items: center; gap: 0.45rem; }
+.cl-filter-group--grow { flex: 1 1 12rem; min-width: 0; }
+.cl-filter-label {
+  font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase;
+  font-weight: 700; color: rgba(226, 222, 245, 0.45);
+}
+.cl-select, .cl-search {
+  min-height: 36px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(8, 5, 20, 0.75);
+  color: #f4f1ff; font-size: 0.78rem;
+}
+.cl-search { width: 100%; }
+.cl-select:focus-visible, .cl-search:focus-visible { outline: 2px solid #4dffe0; outline-offset: 1px; }
+.cl-clear {
+  min-height: 36px; padding: 0.35rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 109, 215, 0.3);
+  background: rgba(255, 109, 215, 0.07);
+  color: #ffb8ec; font-size: 0.74rem; cursor: pointer;
+}
+
+.cl-visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ── Sections and the grid ────────────────────────────────────────────────── */
+
+.cl-section { display: flex; flex-direction: column; gap: 0.5rem; }
+.cl-section__hd { display: flex; align-items: baseline; gap: 0.7rem; }
+.cl-section__title {
+  margin: 0; display: flex; align-items: center; gap: 0.45rem;
+  font-size: 1rem; font-weight: 800; color: var(--tier);
+}
+.cl-section__count {
+  margin-left: auto;
+  font-size: 0.76rem; color: rgba(226, 222, 245, 0.55);
+}
+.cl-section__blurb {
+  margin: 0 0 0.35rem;
+  font-size: 0.76rem; line-height: 1.5; color: rgba(226, 222, 245, 0.5);
+}
+
+.cl-grid {
+  display: grid; gap: 0.7rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+}
+
+.cl-card {
+  display: flex; gap: 0.7rem;
+  padding: 0.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--tier, #8f98a8);
+  background:
+    radial-gradient(ellipse 80% 60% at 12% 0%, color-mix(in srgb, var(--tier) 12%, transparent), transparent 70%),
+    rgba(10, 6, 26, 0.62);
+  box-shadow: 0 0 22px -12px var(--tier-glow);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.cl-card:hover { box-shadow: 0 0 30px -10px var(--tier-glow); }
+
+/* Undiscovered: same geometry, no colour, and a slow breathe so the wall reads
+   as alive rather than as a set of broken images. */
+.cl-card--locked {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(8, 5, 20, 0.5);
+  box-shadow: none;
+}
+.cl-card--locked .cl-card__glyph--silhouette {
+  color: rgba(226, 222, 245, 0.2);
+  animation: clBreathe 4.5s ease-in-out infinite;
+}
+@keyframes clBreathe {
+  0%, 100% { opacity: 0.35; transform: scale(0.94); text-shadow: none; }
+  50%      { opacity: 0.8;  transform: scale(1);    text-shadow: 0 0 14px rgba(226, 222, 245, 0.22); }
+}
+
+.cl-card--absent { opacity: 0.55; }
+.cl-card--reward { border-style: dashed; }
+
+.cl-card__art {
+  position: relative;
+  flex: none; width: 80px; height: 80px;
+  display: grid; place-items: center;
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.cl-card__art img { width: 80px; height: 80px; object-fit: contain; }
+.cl-card__glyph { font-size: 2rem; line-height: 1; color: var(--tier); }
+.cl-card__count {
+  position: absolute; right: -4px; bottom: -4px;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--tier);
+  background: rgba(8, 5, 20, 0.95);
+  font-size: 0.62rem; font-weight: 700; color: var(--tier);
+}
+
+.cl-card__body { min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.cl-card__meta { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0; }
+.cl-card__badge {
+  font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800;
+  color: var(--tier);
+}
+.cl-card--locked .cl-card__badge { color: rgba(226, 222, 245, 0.35); }
+.cl-card__realm { font-size: 0.58rem; letter-spacing: 0.08em; color: rgba(226, 222, 245, 0.38); }
+.cl-card__name {
+  margin: 0; font-size: 0.85rem; font-weight: 700; line-height: 1.25;
+  color: #f4f1ff;
+}
+.cl-card--locked .cl-card__name { color: rgba(226, 222, 245, 0.35); letter-spacing: 0.14em; }
+.cl-card__lore, .cl-card__hint {
+  margin: 0; font-size: 0.7rem; line-height: 1.45;
+  color: rgba(226, 222, 245, 0.6);
+}
+.cl-card__hint { font-style: italic; color: rgba(226, 222, 245, 0.42); }
+.cl-card__foot {
+  margin: auto 0 0; display: flex; gap: 0.45rem; align-items: center;
+  font-size: 0.62rem; color: rgba(226, 222, 245, 0.4);
+}
+.cl-card__tag {
+  padding: 0.05rem 0.4rem; border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  color: #C9A84C;
+}
+.cl-card__absent {
+  margin: 0.15rem 0 0;
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255, 154, 90, 0.6);
+}
+
+.cl-empty { margin: 0; font-size: 0.85rem; color: rgba(226, 222, 245, 0.6); }
+.cl-foot {
+  margin: 0; padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.7rem; line-height: 1.6; color: rgba(226, 222, 245, 0.4);
+}
+
+/* The site holds a 44px floor for standalone controls on touch (see the v2.1.0
+   mobile pass, and the identical block in codex.component.css). Chips and
+   inputs sit at 32/36px on desktop, where a pointer makes that fine. */
+@media (max-width: 768px) {
+  .cl-chip,
+  .cl-select,
+  .cl-search,
+  .cl-clear { min-height: 44px; }
+  .cl-chip { padding-inline: 0.9rem; }
+  .cl-filter-group--grow { flex-basis: 100%; }
+  .cl-clear { width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .cl-head { gap: 1.1rem; padding: 1.1rem; }
+  .cl-dial, .cl-dial__svg { width: 108px; height: 108px; }
+  .cl-dial__pct { font-size: 1.65rem; }
+  .cl-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-eyebrow__pulse,
+  .cl-card--locked .cl-card__glyph--silhouette { animation: none; }
+  .cl-card--locked .cl-card__glyph--silhouette { opacity: 0.55; }
+  .cl-dial__arc,
+  .cl-bar__fill,
+  .cl-rarity__fill { transition: none; }
+}

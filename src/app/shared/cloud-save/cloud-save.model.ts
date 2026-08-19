@@ -40,6 +40,7 @@ import { mergeEconomyLedgers } from '../economy/economy-ops';
 import { mergeInventoryLedgers } from '../rpg/inventory-ops';
 import { mergeActivityLedgers } from '../activity/activity-ops';
 import { mergeChapterLedgers } from '../narrative/chapter-ops';
+import { mergeCollectionLedgers } from '../collection/collection.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -237,6 +238,26 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeSecretLedgers,
   },
   {
+    key: 'godforge-collection',
+    collection: 'progress',
+    doc: 'collection',
+    label: 'collection log',
+    // The structural rules are wrong here in both directions at once, which is
+    // why this one is hand-written: `count` wants the higher of the two, and
+    // `firstDiscoveredAt` wants the *lower* — it is the moment a thing was
+    // first ever held, so the later of two devices' answers is the same
+    // discovery made twice, and adopting it would rewrite somebody's history
+    // forward. Same trap as `easter-eggs-dates`, one field down.
+    merge: mergeCollection,
+  },
+  {
+    key: 'godforge-thralls',
+    collection: 'progress',
+    doc: 'thralls',
+    label: 'Forge Thralls',
+    merge: mergeThralls,
+  },
+  {
     key: 'godforge-pro',
     collection: 'progress',
     doc: 'pro',
@@ -252,6 +273,19 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
 
 /** Roster ceiling. Mirrors MAX_ROSTER in explorer-roster.service.ts. */
 const MAX_ROSTER = 20;
+
+/**
+ * Thrall ceilings. Mirror `MAX_THRALLS` and `THRALL_LOG_MAX` in
+ * `thralls/thrall.model.ts`.
+ *
+ * Copied rather than imported for the reason the whole file is import-light:
+ * cloud save is eager and the Thrall model is a lazy chunk on two routes, so an
+ * import here would pull the tier table, the name stems and the shop catalogue
+ * into the initial bundle of all 126 pages to read two integers. The copies are
+ * asserted against the originals in `thrall.model.spec.ts`.
+ */
+const MAX_THRALLS = 16;
+const THRALL_LOG_MAX = 40;
 
 /**
  * Two bags into one, keyed by item id.
@@ -286,6 +320,10 @@ export function mergeEconomy(remote: unknown, local: unknown): unknown {
 
 function mergeInventory(remote: unknown, local: unknown): unknown {
   return mergeInventoryLedgers(remote, local);
+}
+
+function mergeCollection(remote: unknown, local: unknown): unknown {
+  return mergeCollectionLedgers(remote, local);
 }
 
 function mergeActivity(remote: unknown, local: unknown): unknown {
@@ -402,6 +440,82 @@ function mergeExpeditions(remote: unknown, local: unknown): unknown {
     // devices collapses to one line.
     history: mergeExpeditionLog(remote['history'], local['history']),
   };
+}
+
+/**
+ * Two Thrall shifts into one.
+ *
+ * A Thrall is minted, not levelled into existence, so identity is the unit for
+ * the same reason it is for an explorer: field-wise merging two copies of the
+ * same worker takes the higher stamina *and* the higher level *and* the union
+ * of both equipment wells, which is a Thrall wearing four items and rested on a
+ * device where they have been pulling all afternoon.
+ *
+ * The device in the visitor's hands keeps its own roster whole. `status`,
+ * `stamina` and the two `lastAt` clocks are all *live* state with a wall-clock
+ * meaning on the device that wrote them, and adopting a remote copy of those
+ * is how a Thrall arrives from a phone that has been shut for a week and either
+ * pays out a week of rest in one beat or never rests again. The remote roster
+ * contributes only the Thralls this device has never seen — which is the real
+ * case worth merging: one bought in the Market on another device.
+ *
+ * The lifetime tallies underneath genuinely are counters and take the larger.
+ * The log unions and is capped, like the expedition log, because every line in
+ * it is a find that already landed and already paid.
+ */
+function mergeThralls(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(local)) return remote ?? local;
+  if (!isPlainObject(remote)) return local;
+
+  const thralls = unionById(asArray(remote['thralls']), asArray(local['thralls']))
+    .slice(0, MAX_THRALLS);
+
+  return {
+    ...local,
+    version: 1,
+    thralls,
+    log: mergeThrallLog(remote['log'], local['log']),
+    goldSpent: maxOf(remote['goldSpent'], local['goldSpent']),
+    rolls: maxOf(remote['rolls'], local['rolls']),
+    finds: mergeCounts(remote['finds'], local['finds']),
+    // `foundToday` belongs to `dayKey`, so the two move together or not at all.
+    // Taking the larger count against the local day would credit yesterday's
+    // haul from another timezone to today.
+    dayKey: local['dayKey'],
+    foundToday: local['dayKey'] === remote['dayKey']
+      ? maxOf(remote['foundToday'], local['foundToday'])
+      : numberOf(local['foundToday']),
+  };
+}
+
+/** Newest-first union of two Thrall logs, deduped by id and capped. */
+function mergeThrallLog(remote: unknown, local: unknown): unknown[] {
+  const seen = new Set<string>();
+  const rows: Record<string, unknown>[] = [];
+  for (const list of [asArray(local), asArray(remote)]) {
+    for (const entry of list) {
+      if (!isPlainObject(entry)) continue;
+      const id = typeof entry['id'] === 'string' ? entry['id'] : null;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      rows.push(entry);
+    }
+  }
+  rows.sort((a, b) => numberOf(b['at']) - numberOf(a['at']));
+  return rows.slice(0, THRALL_LOG_MAX);
+}
+
+/** Field-wise max of two `{ id: count }` maps. Used for the Thrall tallies. */
+function mergeCounts(remote: unknown, local: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const side of [remote, local]) {
+    if (!isPlainObject(side)) continue;
+    for (const [key, value] of Object.entries(side)) {
+      const n = numberOf(value);
+      if (n > (out[key] ?? 0)) out[key] = n;
+    }
+  }
+  return out;
 }
 
 /** Newest-first union of two expedition logs, deduped by id and capped. */
