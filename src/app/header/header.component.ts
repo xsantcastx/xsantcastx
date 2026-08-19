@@ -79,6 +79,14 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   readonly keeper = inject(KeeperPanelService);
 
   private navbarEl: HTMLElement | null = null;
+  /**
+   * The 1px progress rule, held separately from `navbarEl`. The scroll frame
+   * writes --scroll-progress onto *this* element rather than the nav root:
+   * custom properties inherit, so writing it on `.gfnav` invalidated style for
+   * the whole nav subtree once a frame to move one bar.
+   */
+  private progressEl: HTMLElement | null = null;
+  private lastProgress = -1;
   private scrollHandler?: () => void;
   private resizeHandler?: () => void;
   private routerSub?: Subscription;
@@ -240,6 +248,7 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (!this.isBrowser) return;
 
     this.navbarEl = this.elRef.nativeElement.querySelector('.gfnav');
+    this.progressEl = this.elRef.nativeElement.querySelector('.gfnav__progress');
     this.measureViewport();
     // Measure synchronously: a page opened in a background tab has rAF
     // suspended, and deferring this left --nav-h unwritten, which the tome
@@ -354,11 +363,19 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private updateScrollProgress(scrollY: number): number {
-    if (!this.navbarEl || !this.isBrowser) return 0;
+    if (!this.progressEl || !this.isBrowser) return 0;
     const scrollable = this.cachedScrollable;
-    const progress = scrollable > 0 ? Math.min(100, (scrollY / scrollable) * 100) : 0;
-    this.navbarEl.style.setProperty('--scroll-progress', `${progress}%`);
-    return progress;
+    // Unitless 0..1: the bar is full width and scaled, not sized. See the
+    // comment on .gfnav__progress in the stylesheet.
+    const ratio = scrollable > 0 ? Math.min(1, scrollY / scrollable) : 0;
+    // Three decimals is under a pixel on any viewport, and skipping the write
+    // keeps a stationary bar from dirtying style at all.
+    const rounded = Math.round(ratio * 1000) / 1000;
+    if (rounded !== this.lastProgress) {
+      this.lastProgress = rounded;
+      this.progressEl.style.setProperty('--scroll-progress', `${rounded}`);
+    }
+    return rounded * 100;
   }
 
   private updateHeaderOffset(): void {
