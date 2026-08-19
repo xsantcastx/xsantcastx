@@ -702,13 +702,14 @@ export function mintCharm(
   const stats: ItemStats = {};
   const rollQuality: NonNullable<GameItem['rollQuality']> = {};
   for (const key of ITEM_STAT_KEYS) {
-    const ceiling = seed.stats[key];
-    if (ceiling == null) continue;
+    const best = seed.stats[key];
+    if (best == null) continue;
     const q = band.min + rng() * span;
-    // Charms are authored as the tier ceiling, so `q` is already the fraction
-    // of the best possible — but the *displayed* grade still normalises inside
-    // the band, so "100%" means the same thing on a charm as on a helm.
-    stats[key] = Math.round(ceiling * Math.min(1, q) * 10) / 10;
+    // `q / band.max` rather than `q`: the seed carries the *best* this charm can
+    // roll, so the top of the band has to land exactly on it. Multiplying by the
+    // raw `q` would top a Common charm out at 70% of its own authored number and
+    // silently nerf every charm in the table by the width of its band.
+    stats[key] = Math.round(best * (q / band.max) * 10) / 10;
     rollQuality[key] = span > 0 ? Math.min(1, Math.max(0, (q - band.min) / span)) : 1;
   }
   return {

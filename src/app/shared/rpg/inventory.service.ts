@@ -1097,6 +1097,54 @@ export class InventoryService {
   }
 
   /**
+   * Sell a chosen set of items in one write. Returns the Gold taken.
+   *
+   * The bulk-sell selection the Gambler's till offers, and the reason it is not
+   * a loop over `sell()`: each call flushes the ledger and mints Gold
+   * separately, so a forty-item selection would be forty localStorage writes,
+   * forty economy publishes and forty change-detection passes — long enough to
+   * look like the tab has hung. One tombstone pass, one save, one credit.
+   *
+   * Anything in the list that is equipped, soulbound, worn by an explorer or
+   * simply not there is skipped rather than failing the batch: the selection
+   * comes from a grid the player may have been clicking while an expedition
+   * settled, and losing the whole sale to one stale row is the wrong trade.
+   */
+  sellMany(itemIds: readonly string[]): number {
+    if (!this.isBrowser || !itemIds.length) return 0;
+
+    const wanted = new Set(itemIds);
+    const doomed = this.items.filter(i =>
+      wanted.has(i.id) && !i.equipped && !i.explorerId && this.canSell(i),
+    );
+    if (!doomed.length) return 0;
+
+    const gold = doomed.reduce((sum, i) => sum + i.sellValue, 0);
+    let next = this.ledger;
+    for (const item of doomed) {
+      const row = next.records.find(entry => entry.id === item.id);
+      const gone = this.advanceRevision(row?.revision);
+      next = tombstoneRecord(next, item.id, gone.revision, Date.now());
+    }
+    const previous = this.ledger;
+    this.ledger = {
+      ...next,
+      goldFromSales: this.ledger.goldFromSales + gold,
+      sold: this.ledger.sold + doomed.length,
+    };
+    // Same ordering as `sell()`: the tombstones are on disk before the Gold is
+    // minted, so a failed write cannot pair paid Gold with a still-sellable bag.
+    if (!this.save()) {
+      this.ledger = previous;
+      return 0;
+    }
+    this.economy.earnGold(gold, 'sale');
+    this.publish();
+    for (const item of doomed) this.sold$$.next({ item, gold: item.sellValue });
+    return gold;
+  }
+
+  /**
    * Sell every unequipped item at or below a rarity. Returns the Gold taken.
    *
    * One economy call and one write rather than N of each — a bag of 200 commons

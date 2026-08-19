@@ -500,6 +500,16 @@ export interface CollectionRecord {
   firstDiscoveredAt: number;
   /** How many have been obtained across the save's whole life. */
   count: number;
+  /**
+   * Best average roll grade ever seen for this entry, 0..1.
+   *
+   * A high-water mark, so it survives selling the item that set it — which is
+   * the point: the log is a record of what you have *found*, and a player who
+   * scrapped a 97% Cuirass for Gold still found a 97% Cuirass. Absent on
+   * entries whose kind does not roll, and on every record written before roll
+   * grades existed.
+   */
+  bestRoll?: number;
 }
 
 export interface CollectionLedger {
@@ -550,9 +560,13 @@ export function coerceCollectionLedger(raw: unknown): CollectionLedger {
     if (!isRecord(value)) continue;
     const at = Number(value['firstDiscoveredAt']);
     const count = Number(value['count']);
+    const best = Number(value['bestRoll']);
     entries[id] = {
       firstDiscoveredAt: Number.isFinite(at) && at > 0 ? Math.floor(at) : 0,
       count: Number.isFinite(count) && count > 0 ? Math.floor(count) : 1,
+      ...(Number.isFinite(best) && best > 0
+        ? { bestRoll: Math.min(1, Math.max(0, best)) }
+        : {}),
     };
   }
 
@@ -598,9 +612,13 @@ export function mergeCollectionLedgers(remote: unknown, local: unknown): Collect
       entries[id] = { ...mine };
       continue;
     }
+    // `bestRoll` is a high-water mark, so the merge is the same `max` the count
+    // takes — the better roll happened, whichever device saw it.
+    const best = Math.max(theirs.bestRoll ?? 0, mine.bestRoll ?? 0);
     entries[id] = {
       firstDiscoveredAt: earliest(theirs.firstDiscoveredAt, mine.firstDiscoveredAt),
       count: Math.max(theirs.count, mine.count),
+      ...(best > 0 ? { bestRoll: best } : {}),
     };
   }
 

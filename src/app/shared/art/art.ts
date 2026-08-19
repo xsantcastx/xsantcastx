@@ -10,6 +10,7 @@
  * Pure data — no browser APIs — so it is safe to import from an SSR path.
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
+import { UNIQUE_ITEMS } from '../rpg/unique-items';
 
 export type { ArtEntry };
 
@@ -50,6 +51,12 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 shipped in v2.68.0. Nothing in `Assets/Characters` depicts a
  *                 bound worker at the anvil; this needs a new painting rather
  *                 than a crop of an existing one.
+ *   unique-*      the twenty-four named objects in unique-items.ts. Each one is
+ *                 a specific thing with a history, so each needs its own
+ *                 painting — aliasing "Goldmouth" onto the Eclipse Longblade's
+ *                 render would put a generic blade on the rarest weapon in the
+ *                 game and the gate would go green on the lie. They fall back to
+ *                 the rarity orb until the library has them.
  */
 export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-common',
@@ -58,6 +65,7 @@ export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-epic',
   'thrall-legendary',
   'thrall-slot',
+  ...UNIQUE_ITEMS.map(u => u.id),
 ]);
 
 /** Painted art for a catalogue id, or null when nothing has been painted. */
