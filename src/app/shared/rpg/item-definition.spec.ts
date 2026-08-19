@@ -33,6 +33,25 @@ describe('item definition rolls', () => {
     expect(again.goldPerSec).not.toBe(rolled);
   });
 
+  it('mints the Basalt Edge with strikePower — the one craftable weapon has to feed the Seamworks and the Forge', () => {
+    // B2 scope deviation, accepted: `mintEquipment` is only ever called from
+    // forge-recipes.ts (Basalt Edge). Without strikePower on this def neither
+    // strikePower consumer — mining recovery, forge yield — could fire in real
+    // play. goldPerSec stays the primary key; the strikePower base is the
+    // Eclipse Longblade anchor. Only *newly* crafted Edges carry it: an
+    // instance's rolled block is frozen at mint (see the spec above), so an
+    // Edge minted before this change never gains the stat.
+    const edge = itemDefinitionById('basalt-edge')!;
+    expect(edge.rollKeys[0]).toBe('goldPerSec');
+    expect(edge.rollKeys).toContain('strikePower');
+    expect(edge.base.strikePower).toBe(itemDefinitionById('eclipse-longblade')!.base.strikePower);
+    for (const roll of [0, 0.5, 1]) {
+      const minted = mintEquipment('basalt-edge', 'uncommon', () => roll, '2026-08-01T00:00:00.000Z', `edge-${roll}`)!;
+      expect(minted.stats.strikePower).toBeGreaterThan(0);
+      expect(minted.stats.goldPerSec).toBeGreaterThan(0);
+    }
+  });
+
   it('prices the first Basalt temper at four 10k strikes', () => {
     const edge = itemDefinitionById('basalt-edge')!;
     const cuirass = itemDefinitionById('infernal-cuirass')!;

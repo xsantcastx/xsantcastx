@@ -219,6 +219,7 @@
   @if (tab === 'equipment') {
     <section class="rf-words-wrap" aria-labelledby="rf-equip-title">
       <h2 id="rf-equip-title" class="rf-lib__title">{{ t('forge.recipe.title') }}</h2>
+      <p class="rf-lib__sub">{{ t('forge.recipe.sub') }}</p>
       <div class="rf-words">
         @for (recipe of equipmentRecipes; track recipe.id) {
           <article class="rf-word" [class.rf-word--ready]="inputReady(recipe)">
@@ -228,11 +229,54 @@
             </header>
             <p class="rf-word__meta">{{ recipe.summary }}</p>
             @for (input of recipe.inputs; track input.id) {
-              <p class="rf-word__meta">{{ input.name }} {{ heldOf(input.id) }} / {{ input.quantity }}</p>
+              <p class="rf-word__meta" [class.rf-word__meta--short]="heldOf(input.id) < input.quantity">
+                {{ input.name }} {{ heldOf(input.id) }} / {{ input.quantity }}
+              </p>
             }
-            <button type="button" class="rf-forge-btn" [disabled]="!inputReady(recipe)" (click)="craftEquipment(recipe)">
+
+            <button
+              type="button"
+              class="rf-forge-btn"
+              [disabled]="!recipe.craftable || !inputReady(recipe)"
+              (click)="craftEquipment(recipe)">
               {{ t('forge.recipe.craft') }}
             </button>
+
+            <!--
+              Craft feedback. PR #57 dropped this block when it rewrote the
+              template; the handler kept setting the state and nothing read it,
+              so a craft — success or failure — produced no visible change.
+              One polite live region per recipe so a screen reader announces the
+              outcome without the button losing focus.
+            -->
+            <div class="rf-word__status" aria-live="polite">
+              @if (!inputReady(recipe)) {
+                <p class="rf-word__note">{{ t('forge.recipe.missing') }} {{ missingLine(recipe) }}</p>
+              }
+              @if (craftRecipeId === recipe.id) {
+                @if (craftError === 'capacity') {
+                  <p class="rf-word__note rf-word__note--warn" role="alert">{{ t('forge.recipe.full') }}</p>
+                }
+                @if (craftError === 'persist') {
+                  <p class="rf-word__note rf-word__note--warn" role="alert">{{ t('forge.recipe.persist') }}</p>
+                  <button type="button" class="rf-forge-btn rf-forge-btn--ghost" (click)="retryCraft(recipe)">
+                    {{ t('forge.recipe.retry') }}
+                  </button>
+                }
+                @if (lastCraft; as made) {
+                  <div class="rf-word__result">
+                    <p class="rf-word__made">{{ t('forge.recipe.made', { name: made.name }) }}</p>
+                    <div class="rf-word__result-actions">
+                      <app-inspect-button type="item" [id]="made.id" />
+                      <a class="rf-word__bag" [routerLink]="'/character'" [queryParams]="{ item: made.id }">
+                        {{ t('forge.recipe.openBag') }}
+                      </a>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+
             <app-inspect-button type="recipe" [id]="recipe.id" />
           </article>
         }
@@ -242,10 +286,18 @@
 
   @if ((striking || landed) && reveal) {
     <div class="rf-focus" (click)="dismissFocus()">
+      <!--
+        `data-reveal` is the per-tier treatment for the one turned card. In
+        Auto ×10 every card is `.is-chosen`, so a tier on the pick would light
+        all ten in whichever tier came out last and outrank the is-best ring;
+        the batch keys its sound and flare on the best find and leaves the
+        card grid plain.
+      -->
       <div
         class="rf-pick"
         [class.rf-pick--landed]="landed"
         [class.rf-pick--batch]="batch.length > 0"
+        [attr.data-reveal]="landed && !batch.length ? revealKind : null"
         [style.--star-color]="revealTier?.color"
         [style.--star-glow]="revealTier?.glow"
         role="dialog"
@@ -254,9 +306,10 @@
         (click)="$event.stopPropagation()">
         @if (batch.length) {
           <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
+          <p class="rf-pick__haul-sum">{{ t('forge.reveal.batchHaul', batchSummary) }}</p>
           <div class="rf-pick__grid">
             @for (find of batch; track $index) {
-              <div class="rf-pick__card is-chosen" [style.--star-color]="libColor(find.rune.tier)">
+              <div class="rf-pick__card is-chosen" [class.is-best]="$index === bestBatchIndex" [style.--star-color]="libColor(find.rune.tier)">
                 @if (runeCardOf(find.rune.id); as art) {
                   <img [src]="art.src" width="200" height="200" [alt]="find.rune.name" decoding="async">
                 } @else {
@@ -271,6 +324,14 @@
           <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
         } @else {
           <p class="rf-pick__prompt">{{ landed ? (reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup')) : t('forge.pick.title') }}</p>
+          <!--
+            Above the hand, not under it: on a phone the ten cards run past the
+            fold, and the way out of the wait should not be a scroll away. The
+            backdrop, Escape and Enter do the same thing.
+          -->
+          @if (!landed && chosen === null) {
+            <button type="button" class="rf-pick__skip" (click)="skipPick()">{{ t('forge.pick.skip') }}</button>
+          }
           <div class="rf-pick__grid">
             @for (slot of picks; track slot.index) {
               <button
@@ -288,6 +349,20 @@
                   <span class="rf-pick__back" aria-hidden="true">{{ slot.mark }}</span>
                   <span class="rf-sr">{{ t('forge.pick.card', { n: slot.index + 1 }) }}</span>
                 }
+                @if (chosen === slot.index && landed) {
+                  <!--
+                    Per-tier card reveal. Which of these paints is decided by
+                    data-reveal on .rf-pick (the tier table's `reveal` field):
+                    the shards from Rare up, the sweep from Epic up. Both are
+                    decorative, hidden from AT, and cost transform/opacity only.
+                  -->
+                  <span class="rf-sparks rf-sparks--reveal" aria-hidden="true">
+                    @for (n of [1,2,3,4,5,6,7,8,9,10,11,12]; track n) {
+                      <span class="rf-spark" [style.--i]="n"></span>
+                    }
+                  </span>
+                  <span class="rf-pick__sweep" aria-hidden="true"></span>
+                }
               </button>
             }
           </div>
@@ -296,6 +371,31 @@
             <p class="rf-pick__tier">{{ revealTier.label }}</p>
             @if (!reveal.isNew) {
               <p class="rf-pick__dup">{{ t('forge.reveal.owned') }}</p>
+            }
+            @if (haul.length) {
+              <ul class="rf-pick__haul" [attr.aria-label]="t('forge.reveal.haul')">
+                @for (line of haul; track line.kind + line.name) {
+                  <li class="rf-pick__haul-line" [style.--star]="line.color">
+                    <span class="rf-pick__haul-kind">{{ t('forge.reveal.' + line.kind) }}</span>
+                    <strong class="rf-pick__haul-name">{{ line.name }}</strong>
+                    @if (line.detail) {
+                      <em class="rf-pick__haul-detail">{{ line.detail }}</em>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+            @if (reveal.scroll) {
+              <button type="button" class="rf-pick__lore-btn" (click)="toggleLore()" [attr.aria-expanded]="loreOpen">
+                {{ t(loreOpen ? 'forge.reveal.hideScroll' : 'forge.reveal.readScroll') }}
+              </button>
+              @if (loreOpen) {
+                <div class="rf-pick__lore">
+                  @for (p of scrollParagraphs; track $index) {
+                    <p>{{ p }}</p>
+                  }
+                </div>
+              }
             }
             <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
           }

@@ -12,12 +12,12 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
-import { isBasaltEdge, materialDisplay, BASALT_EDGE_PORTRAIT } from '../rpg/material-catalog';
+import { materialDisplay, itemArt } from '../rpg/material-catalog';
 import { InventoryService, type InventorySnapshot, type InventoryStackView } from '../rpg/inventory.service';
 import { GameItem } from '../rpg/item.model';
 import { RuneForgeService, type RuneSnapshot } from '../rune-forge/rune-forge.service';
 import { RUNES, RUNEWORDS } from '../rune-forge/rune.model';
-import { runeCard } from '../rune-forge/rune-cards';
+import { runeCard, runewordCard } from '../rune-forge/rune-cards';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { CharacterHubService } from './character-hub.service';
 import {
@@ -156,6 +156,27 @@ export class HubBankComponent implements OnInit, OnDestroy {
     return this.droppableRows.filter(row => this.isJunk(row)).length;
   }
 
+  /**
+   * Placeholder wells drawn behind an empty or part-filled shelf.
+   *
+   * An inventory that renders as one sentence of prose reads as a settings
+   * page. The grid is what makes it read as a bag. This is a display shape
+   * only — the real cap is INVENTORY_BAG_CAP and is not implied here.
+   */
+  padsFor(count: number): readonly number[] {
+    const target = count === 0 ? 12 : Math.max(0, 4 - (count % 4)) % 4;
+    return Array.from({ length: target }, (_, i) => i);
+  }
+
+  /** Hover/assistive summary for a row: what it is, how many, and its state. */
+  tooltipFor(row: BankRow): string {
+    const bits = [row.name, `x${row.qty}`, row.meta];
+    if (row.dropItem?.upgradeLevel) bits.push(`+${row.dropItem.upgradeLevel}`);
+    if (row.isRare) bits.push(this.t('hub.bank.rare'));
+    if (row.isNew) bits.push(this.t('hub.bank.new'));
+    return bits.filter(Boolean).join(' · ');
+  }
+
   canDropRow(row: BankRow): boolean {
     if (row.dropStack) return true;
     return !!row.dropItem && this.inventory.canDrop(row.dropItem);
@@ -218,9 +239,26 @@ export class HubBankComponent implements OnInit, OnDestroy {
     this.inventory.dropStack(stack.stackKey);
   }
 
-  confirmDropStack(): void {
+  /**
+   * The amounts the confirm dialog offers, smallest first, never above what is
+   * held. Dropping a stack used to be all-or-nothing — this is the fix for it.
+   */
+  dropChoices(stack: InventoryStackView): readonly number[] {
+    const held = stack.quantity;
+    const steps = [1, 10, 100].filter(n => n < held);
+    return [...steps, held];
+  }
+
+  /** Label for a choice: an amount, or "all N" for the one that empties it. */
+  dropChoiceLabel(stack: InventoryStackView, n: number): string {
+    return n >= stack.quantity
+      ? this.t('loadout.drop.choiceAll', { n })
+      : this.t('loadout.drop.choiceSome', { n });
+  }
+
+  confirmDropStack(quantity?: number): void {
     if (!this.droppingStack) return;
-    this.inventory.dropStack(this.droppingStack.stackKey);
+    this.inventory.dropStack(this.droppingStack.stackKey, quantity);
     this.droppingStack = null;
   }
 
@@ -383,7 +421,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
         name: item.name,
         qty: 1,
         meta: item.type,
-        art: isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : undefined,
+        art: itemArt(item)?.src,
         inspectType: 'item',
         inspectId: item.id,
         dropItem: item,
@@ -426,6 +464,7 @@ export class HubBankComponent implements OnInit, OnDestroy {
         name: word.name,
         qty: 1,
         meta: this.t('hub.bank.runeword'),
+        art: runewordCard(id)?.src,
         inspectType: 'runeword',
         inspectId: id,
       });

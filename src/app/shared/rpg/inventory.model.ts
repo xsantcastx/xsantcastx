@@ -122,11 +122,35 @@ export interface InventoryBlobV1 {
   sold: number;
 }
 
+/**
+ * A compacted summary of every stack op at or below `upToHlc` for one stack.
+ *
+ * Stack quantities are *derived* by summing the op log, and the log is capped
+ * at {@link INVENTORY_STACK_OPS_MAX}. Truncating it therefore used to subtract
+ * the oldest grants from the player's total — mined ore silently vanished once
+ * a save crossed the cap. A checkpoint is the retain window this file's header
+ * always called for: the overflow is folded into `quantity` instead of dropped.
+ *
+ * Merge keeps the checkpoint with the highest `upToHlc` per stack and discards
+ * ops already covered by it, which makes the fold idempotent. The known limit
+ * is inherent to log compaction: an op that no device saw before compaction
+ * raised the watermark past it cannot be recovered. That is strictly better
+ * than the previous behaviour, which dropped ops unconditionally.
+ */
+export interface InventoryStackCheckpoint {
+  stackKey: string;
+  /** Net of every grant minus consume at or below `upToHlc`. Never negative. */
+  quantity: number;
+  upToHlc: number;
+}
+
 export interface InventoryLedger {
   version: 2;
   records: OwnedItemRecord[];
   tombstones: InventoryTombstone[];
   stackOps: InventoryStackOp[];
+  /** Compacted stack history. Absent on saves written before this existed. */
+  stackCheckpoints?: InventoryStackCheckpoint[];
   goldFromSales: number;
   sold: number;
   hlc: number;

@@ -49,6 +49,18 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      // Registered before 'world/realms/:realmId' for the same reason the
+      // Seamworks route is: the param route would otherwise swallow it.
+      path: 'world/realms/verdant/rootglass-canopy',
+      loadComponent: () => import('./world/rootglass-canopy.component').then(m => m.RootglassCanopyComponent),
+      title: 'Rootglass Canopy — Eclipse Realms',
+      data: {
+        description: 'Gather Starlight Herb, Sunbloom, Nightbloom and Thornroot at the Rootglass Canopy. Active Foraging only; no travel reward and no background trickle.',
+        keywords: 'eclipse realms, verdant, rootglass canopy, foraging, starlight herb',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+      }
+    },
+  {
       path: 'world/realms/:realmId',
       loadComponent: () => import('./world/realm-landing.component').then(m => m.RealmLandingComponent),
       title: 'Realm — Eclipse Realms',

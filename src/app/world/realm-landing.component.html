@@ -21,11 +21,18 @@
       </p>
       <h1 class="rl__title">{{ place.name }}</h1>
       <p class="rl__function">{{ place.function }}</p>
-      <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : t('world.realm.status') }}</p>
+      <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : place.id === 'verdant' ? t('world.realm.statusVerdant') : t('world.realm.status') }}</p>
     </header>
 
     @if (place.id === 'infernal') {
       <app-infernal-chapter></app-infernal-chapter>
+    }
+    @if (place.id === 'verdant') {
+      <a class="rl__continue rl__site" [routerLink]="canopyHref">
+        <span class="rl__continue-label">{{ t('world.realm.siteLabel') }}</span>
+        <span class="rl__continue-name">{{ t('work.location.canopy') }}</span>
+        <span class="rl__continue-note">{{ t('world.realm.canopyNote') }}</span>
+      </a>
     }
 
     <section class="rl__faction" aria-labelledby="rl-faction">

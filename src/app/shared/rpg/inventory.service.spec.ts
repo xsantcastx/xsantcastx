@@ -344,6 +344,36 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.canAcceptStackGrant('cinder-ore')).toBe(true);
   });
 
+  /*
+   * dropStack took no quantity at all, so every "Drop" on a stack emptied it —
+   * the confirm copy said "Drop all N" because that was the literal truth, and
+   * a player asking to drop one ore lost the lot.
+   */
+  it('drops only the amount asked for and keeps the row', () => {
+    expect(inventory.grantStack('g-part', 'cinder-ore', 20)).toBe(true);
+    expect(inventory.dropStack('cinder-ore', 1)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(19);
+    expect(inventory.snapshot.stacks.some(row => row.stackKey === 'cinder-ore')).toBe(true);
+
+    expect(inventory.dropStack('cinder-ore', 9)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(10);
+  });
+
+  it('clamps an over-large drop to what is held and then clears the row', () => {
+    expect(inventory.grantStack('g-clamp', 'cinder-ore', 3)).toBe(true);
+    expect(inventory.dropStack('cinder-ore', 999)).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+    expect(inventory.snapshot.stacks.length).toBe(0);
+  });
+
+  it('refuses a non-positive or junk amount rather than emptying the stack', () => {
+    expect(inventory.grantStack('g-junk', 'cinder-ore', 5)).toBe(true);
+    for (const bad of [0, -3, NaN]) {
+      expect(inventory.dropStack('cinder-ore', bad as number)).toBe(false);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(5);
+  });
+
   it('keeps the v1 backup while signed out and drops it only after an attached rehydrate', () => {
     const registry = TestBed.inject(LocalSaveRegistry);
     memory.attached = false;
@@ -420,5 +450,156 @@ describe('InventoryService C9 Basalt Edge craft', () => {
     expect(inventory.stackOf('cinder-ore')).toBe(6);
     expect(inventory.stackOf('ember-residue')).toBe(1);
     expect(inventory.hasBasaltEdge()).toBe(false);
+  });
+});
+
+describe('InventoryService C1 refine', () => {
+  let memory: MemoryGateway;
+  let inventory: InventoryService;
+
+  function storedOps(): Array<{ id: string; stackKey: string; kind: string; quantity: number }> {
+    const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
+    return (stored?.stackOps ?? []).map(op => ({ id: op.id, stackKey: op.stackKey, kind: op.kind, quantity: op.quantity }));
+  }
+
+  beforeEach(() => {
+    memory = new MemoryGateway();
+    // The realm-era stamp the app writes at boot; a seeded ledger without it
+    // is treated as prior-era and wiped on the next load.
+    memory.writeRaw('godforge-realm-era', '55');
+    inventory = configure(memory);
+  });
+
+  it('consumes 3 and grants 1 as exactly one consume op and one grant op', () => {
+    expect(inventory.grantStack('ore:1', 'cinder-ore', 4)).toBe(true);
+    const opsBefore = storedOps().length;
+
+    const result = inventory.refineStack('r1', 'cinder-ore');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.replayed).toBe(false);
+      expect(result.from).toBe('cinder-ore');
+      expect(result.to).toBe('slag-fragment');
+      expect(result.consumed).toBe(3);
+      expect(result.produced).toBe(1);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(1);
+    expect(inventory.stackOf('slag-fragment')).toBe(1);
+
+    const ops = storedOps();
+    expect(ops.length).toBe(opsBefore + 2);
+    const refineOps = ops.filter(op => op.id.startsWith('r1:'));
+    expect(refineOps).toEqual([
+      { id: 'r1:refine-consume', stackKey: 'cinder-ore', kind: 'consume', quantity: 3 },
+      { id: 'r1:refine-grant', stackKey: 'slag-fragment', kind: 'grant', quantity: 1 },
+    ]);
+    expect(inventory.snapshot.stacks.find(s => s.stackKey === 'slag-fragment')?.quantity).toBe(1);
+  });
+
+  it('replays the same mutation id without applying twice', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 6);
+    const first = inventory.refineStack('r2', 'cinder-ore');
+    const again = inventory.refineStack('r2', 'cinder-ore');
+    expect(first.ok && !first.replayed).toBe(true);
+    expect(again.ok && again.replayed).toBe(true);
+    if (again.ok) {
+      expect(again.consumed).toBe(3);
+      expect(again.produced).toBe(1);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(3);
+    expect(inventory.stackOf('slag-fragment')).toBe(1);
+    expect(storedOps().filter(op => op.id.startsWith('r2:')).length).toBe(2);
+  });
+
+  it('scales batches: 2 batches consume 6 and produce 2 in a single op pair', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 7);
+    const result = inventory.refineStack('r3', 'cinder-ore', 2);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.consumed).toBe(6);
+      expect(result.produced).toBe(2);
+    }
+    expect(inventory.stackOf('cinder-ore')).toBe(1);
+    expect(inventory.stackOf('slag-fragment')).toBe(2);
+    expect(storedOps().filter(op => op.id.startsWith('r3:')).length).toBe(2);
+  });
+
+  it('climbs the ladder: slag refines into heartstone', () => {
+    inventory.grantStack('slag:1', 'slag-fragment', 3);
+    const result = inventory.refineStack('r4', 'slag-fragment');
+    expect(result.ok).toBe(true);
+    expect(inventory.stackOf('slag-fragment')).toBe(0);
+    expect(inventory.stackOf('infernal-heartstone')).toBe(1);
+  });
+
+  it('refuses insufficient ore, the top tier, and bad batches without changing anything', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 2);
+    inventory.grantStack('heart:1', 'infernal-heartstone', 9);
+    const before = storedOps().length;
+
+    const short = inventory.refineStack('r5', 'cinder-ore');
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.code).toBe('insufficient');
+
+    const top = inventory.refineStack('r6', 'infernal-heartstone');
+    expect(top.ok).toBe(false);
+    if (!top.ok) expect(top.code).toBe('no-recipe');
+
+    const zero = inventory.refineStack('r7', 'cinder-ore', 0);
+    expect(zero.ok).toBe(false);
+    if (!zero.ok) expect(zero.code).toBe('bad-batches');
+
+    expect(inventory.stackOf('cinder-ore')).toBe(2);
+    expect(inventory.stackOf('slag-fragment')).toBe(0);
+    expect(inventory.stackOf('infernal-heartstone')).toBe(9);
+    expect(storedOps().length).toBe(before);
+  });
+
+  it('refuses a full bag with no target row BEFORE consuming', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 6);
+    // Fill every remaining row with a distinct material stack; cinder-ore
+    // already holds one, so MAX_INVENTORY - 1 more brings the bag to the cap.
+    for (let i = 0; i < MAX_INVENTORY - 1; i++) {
+      expect(inventory.grantStack(`fill:${i}`, `filler-${i}`, 1)).toBe(true);
+    }
+    expect(inventory.snapshot.full).toBe(true);
+    expect(inventory.canAcceptStackGrant('slag-fragment')).toBe(false);
+    const before = storedOps().length;
+
+    const result = inventory.refineStack('r8', 'cinder-ore');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('capacity');
+    expect(inventory.stackOf('cinder-ore')).toBe(6);
+    expect(inventory.stackOf('slag-fragment')).toBe(0);
+    expect(storedOps().length).toBe(before);
+    expect(inventory.snapshot.stacks.some(s => s.stackKey === 'slag-fragment')).toBe(false);
+  });
+
+  it('rolls back both ops when persist fails', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 4);
+    spyOn(memory, 'write').and.callFake(() => { /* swallow */ });
+    const result = inventory.refineStack('r9', 'cinder-ore');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('persist');
+    expect(inventory.stackOf('cinder-ore')).toBe(4);
+    expect(inventory.stackOf('slag-fragment')).toBe(0);
+    expect(inventory.snapshot.stacks.some(s => s.stackKey === 'slag-fragment')).toBe(false);
+  });
+
+  it('keeps both counts across a reload', () => {
+    inventory.grantStack('ore:1', 'cinder-ore', 5);
+    expect(inventory.refineStack('r10', 'cinder-ore').ok).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(2);
+    expect(inventory.stackOf('slag-fragment')).toBe(1);
+
+    TestBed.resetTestingModule();
+    const reloaded = configure(memory);
+    expect(reloaded.stackOf('cinder-ore')).toBe(2);
+    expect(reloaded.stackOf('slag-fragment')).toBe(1);
+    expect(reloaded.snapshot.stacks.find(s => s.stackKey === 'slag-fragment')?.quantity).toBe(1);
+    // And the replay guard survives the reload too.
+    const again = reloaded.refineStack('r10', 'cinder-ore');
+    expect(again.ok && again.replayed).toBe(true);
+    expect(reloaded.stackOf('cinder-ore')).toBe(2);
   });
 });

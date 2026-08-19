@@ -238,3 +238,7 @@
   .rl__char-hd,
   .rl__sigil { transition: none; }
 }
+
+/* A2: the Verdant landing's link to the Rootglass Canopy. Reuses .rl__continue's
+   realm-coloured card; only the spacing under the header is its own. */
+.rl__site { margin-top: 1.4rem; }

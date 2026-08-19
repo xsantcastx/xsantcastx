@@ -20,10 +20,14 @@ export interface ForgeEquipmentRecipe {
   lore: string;
   inputs: readonly ForgeRecipeInput[];
   portrait?: string;
-  overlay?: string;
+  /* No `overlay`: the paper doll carries no body-aligned layers yet, and the
+     asset this used to name was a full-canvas item render. See
+     paper-doll.manifest.ts. */
   /** True only after a later checkpoint authorizes the craft action. */
   craftable: boolean;
 }
+
+import { ART_ITEMS_PORTRAITS } from '../art/art-manifest.generated';
 
 export const BASALT_EDGE_RECIPE_ID = 'basalt-edge';
 
@@ -34,8 +38,7 @@ export const FORGE_EQUIPMENT_RECIPES: readonly ForgeEquipmentRecipe[] = [
     slotId: 'weapon',
     summary: 'A basic weapon. Six Cinder Ore and one Ember Residue.',
     lore: 'The first edge the Seamworks will admit. Six Cinder Ore and one Ember Residue, struck once into a unique weapon.',
-    portrait: 'assets/items/portraits/04-basalt-edge-portrait.png',
-    overlay: 'assets/characters/overlays/09-basalt-edge-overlay.png',
+    portrait: ART_ITEMS_PORTRAITS['basalt-edge-portrait']?.src,
     inputs: [
       { id: 'cinder-ore', name: 'Cinder Ore', quantity: 6 },
       { id: 'ember-residue', name: 'Ember Residue', quantity: 1 },

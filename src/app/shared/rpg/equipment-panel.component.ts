@@ -29,7 +29,10 @@ import {
   PAPER_DOLL_SRC,
   type PaperDollSlotManifest,
 } from './paper-doll.manifest';
-import { BASALT_EDGE_OVERLAY, BASALT_EDGE_PORTRAIT, isBasaltEdge } from './material-catalog';
+import { itemArt } from './material-catalog';
+import { itemFitsSlot } from './item-definition';
+import { wardFailReductionPct } from './item-upgrade';
+import { strikeValuePct } from '../rune-forge/strike-value';
 
 const CATS = ['all', 'charms', 'runes', 'artifacts'] as const;
 const RARS = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'] as const;
@@ -138,6 +141,12 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return !!(t.goldPerSec || t.magicFind || t.xpBonus || t.lootBonus || t.strikePower || t.ward);
   }
 
+  /** Worn strikePower as the Forge yield bonus it buys, whole percent, capped. 0 hides it. */
+  get strikePct(): number { return strikeValuePct(this.snap.totals.strikePower); }
+
+  /** Worn ward as the share of temper failures it turns aside, whole percent, capped. */
+  get wardPct(): number { return wardFailReductionPct(this.snap.totals.ward); }
+
   itemInDoll(slot: PaperDollSlotManifest): GameItem | null {
     if (!slot.liveSlot) return null;
     return this.snap.equipped[slot.liveSlot] ?? null;
@@ -152,30 +161,38 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.snap.bag.find(item => item.id === id) ?? null;
   }
 
+  /** The manifest entry for the open slot, so the template can read its label. */
+  get selectedSlotManifest(): PaperDollSlotManifest | null {
+    return this.dollSlots.find(row => row.slotId === this.selectedSlot) ?? null;
+  }
+
   get expandedItem(): GameItem | null {
     const slot = this.dollSlots.find(row => row.slotId === this.selectedSlot);
     return slot ? this.itemInDoll(slot) : null;
   }
 
+  /**
+   * No slot carries a body-aligned overlay yet — see paper-doll.manifest.ts for
+   * why the previous ones were item masters, not doll layers. Kept so the
+   * template's loop and the manifest's optional `overlay` stay honest the day
+   * authored overlays exist.
+   */
   get filledOverlays(): PaperDollSlotManifest[] {
-    return this.dollSlots
-      .filter(slot => slot.overlay && this.itemInDoll(slot))
-      .map(slot => {
-        const item = this.itemInDoll(slot);
-        if (item && isBasaltEdge(item) && slot.slotId === 'weapon' && slot.overlay) {
-          return { ...slot, overlay: { ...slot.overlay, asset: BASALT_EDGE_OVERLAY } };
-        }
-        return slot;
-      });
+    return this.dollSlots.filter(slot => slot.overlay && this.itemInDoll(slot));
   }
 
+  /** Art for a slot or a bag tile. Resolves every catalogued id, not just one. */
   tileArt(item: GameItem): string | null {
-    return isBasaltEdge(item) ? BASALT_EDGE_PORTRAIT : null;
+    return itemArt(item)?.src ?? null;
+  }
+
+  tileArtSrcset(item: GameItem): string | null {
+    return itemArt(item)?.srcset ?? null;
   }
 
   isTarget(slot: PaperDollSlotManifest): boolean {
     const item = this.armed;
-    return !!item && !!slot.liveSlot && slotAccepts(slot.liveSlot, item);
+    return !!item && !!slot.liveSlot && itemFitsSlot(slot.liveSlot, item);
   }
 
   get visible(): GameItem[] {
@@ -203,16 +220,59 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.t('loadout.slot.announce.filled', { name, item: item.name });
   }
 
+  /**
+   * Hover summary for a well. The loadout had no tooltips at all — the only way
+   * to see what a worn item does was to open the full Inspect dialog, which is
+   * a heavy gesture for "what am I wearing".
+   */
+  slotTooltip(slot: PaperDollSlotManifest): string {
+    const item = this.itemInDoll(slot);
+    if (!item) return this.slotAnnounce(slot);
+    const mods = this.modsOf(item).join(' · ');
+    const level = item.upgradeLevel ? ` +${item.upgradeLevel}` : '';
+    return mods ? `${item.name}${level} — ${mods}` : `${item.name}${level}`;
+  }
+
   onSlotClick(slot: PaperDollSlotManifest): void {
     const armed = this.armed;
-    if (armed && slot.liveSlot && slotAccepts(slot.liveSlot, armed)) {
+    // Keep the arm-then-place path working for anyone mid-gesture.
+    if (armed && slot.liveSlot && itemFitsSlot(slot.liveSlot, armed)) {
       this.inventory.equip(armed.id, slot.liveSlot);
       this.selectedId = null;
       this.hub.arm(null);
       this.selectedSlot = slot.slotId;
       return;
     }
-    this.selectedSlot = slot.slotId;
+    this.selectedSlot = this.selectedSlot === slot.slotId ? null : slot.slotId;
+  }
+
+  /**
+   * Everything in the bag that fits this slot.
+   *
+   * Equipping used to be a two-surface gesture: find the item in the Bank tab,
+   * arm it, come back to the Loadout, click the well. You had to already know
+   * which of your items was a helm. Clicking the slot now answers that — the
+   * slot asks the bag, instead of the player being asked to.
+   */
+  candidatesFor(slot: PaperDollSlotManifest): GameItem[] {
+    if (!slot.liveSlot) return [];
+    const live = slot.liveSlot;
+    return this.snap.bag
+      .filter(item => itemFitsSlot(live, item))
+      .sort((a, b) => this.sortValue(b) - this.sortValue(a));
+  }
+
+  /** Best-first: what the player most likely wants is what gives the most. */
+  private sortValue(item: GameItem): number {
+    return ITEM_STAT_KEYS.reduce((sum, key) => sum + (item.stats[key] ?? 0), 0)
+      + (item.upgradeLevel ?? 0) * 0.5;
+  }
+
+  equipFromPicker(slot: PaperDollSlotManifest, item: GameItem): void {
+    if (!slot.liveSlot) return;
+    this.inventory.equip(item.id, slot.liveSlot);
+    this.hub.arm(null);
+    this.selectedId = null;
   }
 
   unequipExpanded(): void {

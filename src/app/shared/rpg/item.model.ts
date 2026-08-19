@@ -73,9 +73,18 @@ export interface ItemStats {
   xpBonus?: number;
   /** Percentage bonus to expedition loot quality. Only reads on an explorer. */
   lootBonus?: number;
-  /** Anvil / forge flavor. Displayed; the anvil does not read it yet. */
+  /**
+   * Anvil / forge power. Two consumers, both off the worn total or the weapon:
+   * the Forge's yield (`rune-forge/strike-value.ts`, 2.5%/pt chance of a
+   * second rune per strike, capped 25%) and the Seamworks' recovery
+   * (`activity/mining-recovery.ts`, 2%/pt shorter cooldown, weapon slot only).
+   */
   strikePower?: number;
-  /** Mitigation flavor. Displayed; combat does not read it yet. */
+  /**
+   * Mitigation. The worn total turns a share of the temper fail chance aside
+   * (`rpg/item-upgrade.ts`, 10%/pt of the fail chance, capped 30%). Combat,
+   * when it exists, is the second consumer.
+   */
   ward?: number;
 }
 

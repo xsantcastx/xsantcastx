@@ -11,6 +11,7 @@ import {
   type ItemType,
   type SlotId,
   sellValueFor,
+  slotAccepts,
 } from './item.model';
 
 export type ItemFamily =
@@ -208,8 +209,12 @@ export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
     type: 'artifact',
     slot: 'weapon',
     style: 'infernal',
-    rollKeys: ['goldPerSec'],
-    base: { goldPerSec: 2 },
+    // strikePower is what the Seamworks' recovery and the Forge's yield read
+    // off the weapon slot, and this is the only weapon a Keeper can craft —
+    // without it both consumers stayed dead for everyone. Same base as the
+    // spec's Eclipse Longblade anchor; goldPerSec stays the primary key.
+    rollKeys: ['goldPerSec', 'strikePower'],
+    base: { goldPerSec: 2, strikePower: 1 },
     temperable: true,
     maxTemper: 10,
     temperGoldBase: 40_000,
@@ -333,6 +338,20 @@ const BY_NAME = new Map(ITEM_DEFINITIONS.map(def => [def.name, def]));
 
 export function itemDefinitionById(id: string): ItemDefinition | undefined {
   return BY_ID.get(id);
+}
+
+/**
+ * Whether `item` belongs in `slot`, honouring the definition's intended slot.
+ *
+ * `slotAccepts` in item.model only checks the item *type*, and every authored
+ * equipment piece is `type: 'artifact'` — so by that test a helm "fits" the
+ * weapon slot. Legacy/definition-less items keep the type-only rule so nothing
+ * that used to equip stops equipping.
+ */
+export function itemFitsSlot(slot: SlotId, item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): boolean {
+  if (!slotAccepts(slot, item as GameItem)) return false;
+  const def = definitionFor(item);
+  return !def?.slot || def.slot === slot;
 }
 
 export function definitionFor(item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): ItemDefinition | undefined {

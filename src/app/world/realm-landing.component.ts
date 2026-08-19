@@ -19,6 +19,7 @@ import {
   type ContinueJourney,
   continueFromRealm,
 } from '../shared/narrative/continue-journey';
+import { ROOTGLASS_CANOPY_HREF } from '../shared/activity/foraging.model';
 import { InfernalChapterComponent } from './infernal-chapter.component';
 
 @Component({
@@ -33,6 +34,9 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
   private readonly title = inject(Title);
   private readonly i18n = inject(TranslationService);
   private sub?: Subscription;
+
+  /** A2: Verdant's foraging site. Linked from the landing with no chapter gate — Verdant has no chapter yet. */
+  readonly canopyHref = ROOTGLASS_CANOPY_HREF;
 
   realm: NarrativeRealm | null = null;
   journey: ContinueJourney | null = null;
