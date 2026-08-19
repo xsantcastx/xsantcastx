@@ -103,59 +103,32 @@ describe('RuneForgeComponent reveal', () => {
     fixture.detectChanges();
   }
 
-  it('deals a face-down hand and offers to reveal now', () => {
+  it('lands one face-up card on the strike, with no hand to pick from', () => {
     roll();
     expect(root.querySelector('.rf-focus')).toBeTruthy();
-    expect(root.querySelector('.rf-pick')?.getAttribute('data-reveal')).toBeNull();
-    expect(root.querySelector('.rf-pick__skip')?.textContent?.trim()).toBe('Reveal now');
-    expect(root.querySelector('.rf-pick__done')).toBeNull();
-  });
-
-  it('turns the hand on a backdrop click instead of ignoring it', () => {
-    roll();
-    (root.querySelector('.rf-focus') as HTMLElement).click();
-    fixture.detectChanges();
     expect(fixture.componentInstance.landed).toBeTrue();
-    expect(fixture.componentInstance.chosen).toBe(0);
+    // One card, not ten, and nothing to click before the rune is legible.
+    expect(root.querySelectorAll('.rf-pick__card').length).toBe(1);
+    expect(root.querySelector('.rf-pick__skip')).toBeNull();
     expect(root.querySelector('.rf-pick__done')).toBeTruthy();
-    // The reveal is still up — the click ended the wait, not the reveal.
-    expect(root.querySelector('.rf-focus')).toBeTruthy();
     expect(audio.runeReveal).toHaveBeenCalledTimes(1);
   });
 
-  it('turns the hand on Escape and on Enter while face-down', () => {
+  it('dismisses on a backdrop click and on Escape', () => {
     roll();
-    fixture.componentInstance.onEscape();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.landed).toBeTrue();
-    // A second Escape now dismisses, as before.
-    fixture.componentInstance.onEscape();
+    (root.querySelector('.rf-focus') as HTMLElement).click();
     fixture.detectChanges();
     expect(root.querySelector('.rf-focus')).toBeNull();
 
     roll();
-    fixture.componentInstance.onEnter(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.componentInstance.onEscape();
     fixture.detectChanges();
-    expect(fixture.componentInstance.landed).toBeTrue();
-  });
-
-  it('leaves Enter to the focused card so the keyboard user turns the one they chose', () => {
-    roll();
-    const card = root.querySelectorAll('.rf-pick__card')[4] as HTMLButtonElement;
-    const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-    Object.defineProperty(ev, 'target', { value: card });
-    fixture.componentInstance.onEnter(ev);
-    expect(fixture.componentInstance.landed).toBeFalse();
-    card.click();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.chosen).toBe(4);
+    expect(root.querySelector('.rf-focus')).toBeNull();
   });
 
   it('binds data-reveal from the tier table once landed and colours the tier label', () => {
     nextFind = find('rare');
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
     const pick = root.querySelector('.rf-pick') as HTMLElement;
     expect(pick.getAttribute('data-reveal')).toBe(RUNE_TIERS.rare.reveal);
     expect(pick.style.getPropertyValue('--star-color')).toBe(RUNE_TIERS.rare.color);
@@ -166,16 +139,12 @@ describe('RuneForgeComponent reveal', () => {
 
   it('runs the ladder: common is plain, mythic is flash', () => {
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
     expect(root.querySelector('.rf-pick')?.getAttribute('data-reveal')).toBe('plain');
     fixture.componentInstance.dismissFocus();
     fixture.detectChanges();
 
     nextFind = find('mythic');
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
     expect(root.querySelector('.rf-pick')?.getAttribute('data-reveal')).toBe('flash');
     expect(audio.runeReveal).toHaveBeenCalledWith(RUNE_TIERS.mythic.semitones, true);
     // Cleanup: the flare wrote to <html>; dismiss and let ngOnDestroy clear it.
@@ -186,8 +155,6 @@ describe('RuneForgeComponent reveal', () => {
   it('prints the whole haul under the card and can read the scroll', () => {
     nextFind = find('uncommon', { item: item(), scroll: scroll(), essence: 2 });
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
 
     const lines = root.querySelectorAll('.rf-pick__haul-line');
     expect(lines.length).toBe(3);
@@ -212,8 +179,6 @@ describe('RuneForgeComponent reveal', () => {
 
   it('shows no haul panel for a bare rune', () => {
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
     expect(root.querySelector('.rf-pick__haul')).toBeNull();
     expect(root.querySelector('.rf-pick__lore-btn')).toBeNull();
   });
@@ -292,8 +257,6 @@ describe('RuneForgeComponent reveal', () => {
   it('clears the haul when the reveal is dismissed', () => {
     nextFind = find('uncommon', { item: item() });
     roll();
-    fixture.componentInstance.skipPick();
-    fixture.detectChanges();
     expect(fixture.componentInstance.haul.length).toBe(1);
     fixture.componentInstance.dismissFocus();
     fixture.detectChanges();

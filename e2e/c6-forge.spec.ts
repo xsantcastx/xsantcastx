@@ -30,9 +30,13 @@ test.describe('C6 Forge normalization', () => {
     await expect(page.getByRole('heading', { name: 'Basalt Edge' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeDisabled();
-    await expect(page.getByText(/Need/)).toBeVisible();
+    await expect(page.locator('.rf-word__note').filter({ hasText: /Need/ }).first()).toBeVisible();
     await page.getByRole('button', { name: /Runewords/ }).click();
-    await expect(page.getByRole('button', { name: 'Set the word' }).or(page.getByRole('button', { name: 'Runes missing' }))).toHaveCount(6);
+    // Six words, all still '???' on a save that has never struck the anvil.
+    // The Set the word / Runes missing button only appears once a word is no
+    // longer hidden, so counting buttons here counted zero.
+    await expect(page.locator('.rf-word')).toHaveCount(6);
+    await expect(page.locator('.rf-word--hidden')).toHaveCount(6);
     await page.getByRole('button', { name: 'Equipment' }).click();
     await page.locator('#rf-equip-title').locator('..').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();

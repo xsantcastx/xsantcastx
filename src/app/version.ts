@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.62.1',
+  version: '2.63.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Talisman',
+  codename: 'Candour',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,17 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.63.0',
+    codename: 'Candour',
+    date: '2026-08-19',
+    highlights: [
+      'The Forge stops pretending you chose. Striking the anvil dealt ten face-down cards and asked you to pick one, but the rune was written before a card left the deck and the index you clicked was thrown away — same rune, same odds, same Gold, whichever one you turned. The hand is gone; the card lands face up on the click that pays it, and the reveal it lands with is untouched',
+      'Twelve end-to-end tests that had drifted off the UI now describe it: the Market as the flat card it became, the character sheet as the five-tab hub it became, the charm row as three real wells rather than a note apologising for their absence, and a seeded bag that carries the era stamp that stops it being wiped on load. One of them was a genuine flake — a full-viewport visit milestone the spec raced and lost — and no longer races anything',
+      'The realm dossier unit tests come back with the fix that landed in 2.62.1: the route stub now supplies the data the component reads, and there is a test for the no-param path the fix exists for',
+      'The production build stops printing a budget warning nobody could clear'
+    ]
+  },
   {
     version: '2.62.1',
     codename: 'Canopy',
