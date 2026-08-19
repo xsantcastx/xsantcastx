@@ -40,6 +40,7 @@ import { InventoryService } from '../rpg/inventory.service';
 import { MagicFindService } from '../rpg/magic-find.service';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { GameStateGateway } from '../save/game-state.gateway';
+import { CollectionService } from '../collection/collection.service';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { RosterExplorer } from '../rpg/explorer-roster.model';
 import {
@@ -173,6 +174,7 @@ export class RuneForgeService {
   private readonly roster = inject(ExplorerRosterService);
   private readonly saves = inject(LocalSaveRegistry);
   private readonly store = inject(GameStateGateway);
+  private readonly collection = inject(CollectionService);
 
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
@@ -360,6 +362,14 @@ export class RuneForgeService {
     }
 
     const item = this.mintFor(rune, random);
+
+    // The Collection Log. Recorded here rather than watched from a wiring layer
+    // so the whole rune graph stays out of the initial bundle — see the note at
+    // the top of `collection-wiring.service.ts`. `discover` is idempotent on an
+    // id it already holds, and the reveal it raises is the log's own, separate
+    // from `find$`: one is "a rune landed", the other is "you have never held
+    // this before in the life of this save".
+    this.collection.discover(rune.id, landed);
 
     this.checkAchievements();
 
