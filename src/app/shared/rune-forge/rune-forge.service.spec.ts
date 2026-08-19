@@ -7,7 +7,7 @@ import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { RuneForgeService } from './rune-forge.service';
+import { RuneForgeService, RuneFind } from './rune-forge.service';
 import { STRIKE_COST, runeById } from './rune.model';
 
 class MemoryGateway {
@@ -162,5 +162,26 @@ describe('RuneForgeService — strikePower at the anvil', () => {
     expect(inventory.unequip(worn.id)).toBe(true);
     expect(forge.strikeValuePct).toBe(0);
     expect(forge.strike(strikeRolls(0))!.copies).toBe(1);
+  });
+
+  it('keeps RuneFind additive — a find written to the pre-strikePower shape still compiles and reads as one copy', () => {
+    // This literal is the contract a sibling branch (or a spec that fakes a
+    // find on `find$`) may still be writing against. If `copies` ever goes
+    // back to required, this line is the tsc error that says so.
+    const legacy: RuneFind = {
+      rune: runeById('ash')!,
+      held: 1,
+      isNew: true,
+      essence: 0,
+      scroll: null,
+      item: null,
+      explorer: null,
+    };
+    expect(legacy.copies).toBeUndefined();
+    expect(legacy.copies ?? 1).toBe(1);
+
+    // The service itself never leaves it unset.
+    const find = forge.strike(strikeRolls(0));
+    expect(find!.copies).toBe(1);
   });
 });
