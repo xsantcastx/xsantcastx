@@ -1686,6 +1686,18 @@ summary:focus-visible {
 
 }
 
+/* ── 10a-bis. The Forge reveal owns the screen while it is up ──
+   The flame is fixed at z-index 940 with clickable children, and .rf-focus
+   cannot out-rank it: the routed host carries a transform from the route
+   fade, which traps every fixed descendant inside that stacking context
+   whatever its z-index. On a 375px screen that puts the flame squarely on
+   top of the reveal's roll buttons and lets it take their clicks. It is a
+   shortcut to the forge the player is already standing in, so it stands
+   down until the reveal closes. */
+.gf-reveal-open .ff:not(.ff--inline) {
+  display: none;
+}
+
 /* ── 10b. The mobile tab bar is fixed, so the document needs a floor ──
    Without this the last section and the footer's final row sit underneath
    the five tabs and cannot be scrolled into view — the page simply ends

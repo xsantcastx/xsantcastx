@@ -45,7 +45,14 @@ import {
   tierOf,
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
-import { AUTO_ROLLS } from './rune-reel';
+import {
+  AUTO_ROLLS,
+  AUTO_STEP_MS,
+  AUTO_STOP_TIER,
+  BULK_CAP,
+  BULK_FRAME_MS,
+  BULK_ROLLS,
+} from './rune-reel';
 import {
   LIBRARY_FILTERS,
   LIBRARY_SORTS,
@@ -59,7 +66,7 @@ import {
   type LibraryTab,
 } from './rune-library';
 import { loadSeen, markSeen, persistSeen } from './rune-unseen';
-import { batchHaul, haulOf, isHeavyTier, type BatchHaul, type HaulLine } from './rune-haul';
+import { batchHaul, haulOf, isHeavyTier, tallyTiers, type BatchHaul, type BatchTier, type HaulLine } from './rune-haul';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
@@ -139,6 +146,13 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private flareTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly strikeCost = STRIKE_COST;
+  readonly bulkRolls = BULK_ROLLS;
+  readonly bulkCap = BULK_CAP;
+  /**
+   * Auto-roll stops here and above. Rare is the first rung a player would be
+   * annoyed to have rolled straight past.
+   */
+  readonly autoStopTier: RuneTier = AUTO_STOP_TIER;
   readonly tierOrder = RUNE_TIER_ORDER;
   readonly tiers = RUNE_TIERS;
   readonly totalRunes = RUNES.length;
@@ -198,6 +212,27 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   batchSummary: BatchHaul = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
   /** True while a reveal is open. */
   striking = false;
+  /**
+   * Rolls made without leaving the reveal.
+   *
+   * The first pull of a sitting is the dramatic one; after that the player is
+   * working a lever and the ceremony is in the way. The template turns this
+   * into `.rf-pick--rapid`, which shortens the land and drops the sweep.
+   */
+  rollStreak = 0;
+  /** True while a chunked bulk roll is still striking. */
+  rolling = false;
+  /** Strikes asked for and strikes made, for the progress line. */
+  bulkTotal = 0;
+  bulkDone = 0;
+  /** True while auto-roll is pulling. */
+  autoOn = false;
+  /** Why auto-roll stopped, for the line under the buttons. Cleared on the next roll. */
+  autoStopped: 'gold' | 'find' | null = null;
+  /** Tier tally for a batch — "7 Common, 2 Uncommon, 1 Rare", best first. */
+  batchTiers: BatchTier[] = [];
+  private autoTimer: ReturnType<typeof setTimeout> | null = null;
+  private bulkTimer: ReturnType<typeof setTimeout> | null = null;
   /** The rune whose lore is open in the inventory, if any. */
   inspecting: Rune | null = null;
   /** Set when a strike is refused for want of Gold. Cleared on the next strike. */
@@ -222,6 +257,19 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
 
   private static readonly ART_ROUTE_CLASS = 'gf-art-route';
+
+  /**
+   * On <body> while a reveal is up, so the Forge Flame can stand down.
+   *
+   * The flame is `position: fixed; z-index: 940` with `.ff > * {
+   * pointer-events: auto }`, and .rf-focus cannot simply out-rank it: the
+   * routed host carries a transform from the route fade, which traps every
+   * fixed descendant in that stacking context however high its z-index. So on
+   * a 375px screen the flame paints over the roll buttons and takes their
+   * clicks. Standing it down for the duration costs nothing — it is a shortcut
+   * to the forge the player is already standing in.
+   */
+  private static readonly REVEAL_OPEN_CLASS = 'gf-reveal-open';
 
   ngOnInit(): void {
     this.forge.init();
@@ -342,11 +390,22 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     else body.classList.remove(RuneForgeComponent.ART_ROUTE_CLASS);
   }
 
+  private markRevealOpen(open: boolean): void {
+    const body = this.doc.body;
+    if (!body) return;
+    if (open) body.classList.add(RuneForgeComponent.REVEAL_OPEN_CLASS);
+    else body.classList.remove(RuneForgeComponent.REVEAL_OPEN_CLASS);
+  }
+
   ngOnDestroy(): void {
     this.removeHeroPreloads();
     this.markArtRoute(false);
+    this.markRevealOpen(false);
     this.subs.unsubscribe();
     this.dockWatch?.disconnect();
+    // A bulk run or an auto-roll left pending would keep spending Gold on a
+    // page the player has already left.
+    this.stopRolling();
     if (this.flareTimer !== null) clearTimeout(this.flareTimer);
     // Navigating away mid-Mythic would otherwise leave the whole site under a
     // red wash until the next reload.
@@ -394,6 +453,21 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.revealTier?.reveal ?? 'plain';
   }
 
+  /**
+   * How many batch cards are worth drawing.
+   *
+   * Past this the grid becomes a wall of decoded thumbnails the player scrolls
+   * through to reach the buttons, so a bigger run prints its tally and its
+   * best find instead. Twelve covers ×10 with room to spare.
+   */
+  readonly gridCap = 12;
+
+  /** The best find itself, for the big-run summary card. */
+  get bestBatchFind(): RuneFind | null {
+    const index = this.bestBatchIndex;
+    return index === null ? null : this.batch[index] ?? null;
+  }
+
   /** The best find in the batch, so the grid can mark it. Null outside a batch. */
   get bestBatchIndex(): number | null {
     if (!this.batch.length) return null;
@@ -429,10 +503,20 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.isBrowser && window.matchMedia('(max-width: 768px)').matches;
   }
 
+  /**
+   * One strike.
+   *
+   * Deliberately not guarded on `striking`. That guard is what made a re-roll
+   * a three-step gesture — dismiss the reveal, find the button, pull — and the
+   * reveal has nothing left to protect: the rune is already banked by the time
+   * it paints. Pulling again simply replaces what is on screen. `rolling` is
+   * still a guard, because a bulk run owns the anvil until it finishes.
+   */
   strike(): void {
-    if (!this.isBrowser || this.striking) return;
+    if (!this.isBrowser || this.rolling) return;
 
     this.broke = false;
+    this.autoStopped = null;
     if (this.gold < STRIKE_COST) {
       this.broke = true;
       return;
@@ -446,10 +530,13 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const tier = tierOf(find.rune.tier);
     this.audio.strike(tier.semitones);
+    this.rollStreak += 1;
     this.striking = true;
+    this.markRevealOpen(true);
     this.landed = false;
     this.loreOpen = false;
     this.batch = [];
+    this.batchTiers = [];
     this.reveal = find;
     this.revealTier = tier;
     this.revealCard = runeCard(find.rune.id);
@@ -464,43 +551,175 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.finishSpin();
   }
 
+  /**
+   * Roll `count` times without letting go of the frame.
+   *
+   * A strike costs 0.27ms on an empty bag and 1.18ms once the 250-row cap
+   * starts evicting on every mint, measured in the built app — so a thousand
+   * of them in one synchronous loop is well over a second of frozen tab on a
+   * desktop, and several on a phone. The loop therefore runs on a time budget:
+   * strike until BULK_FRAME_MS is spent, hand the frame back, resume. The
+   * progress line and the Stop button are the point of doing it that way.
+   */
   strikeMany(count = AUTO_ROLLS): void {
-    if (!this.isBrowser || this.striking) return;
+    if (!this.isBrowser || this.rolling) return;
     this.broke = false;
-    if (this.gold < STRIKE_COST * count) {
+    this.autoStopped = null;
+    this.stopAuto();
+
+    const n = this.affordableRolls(count);
+    if (n <= 0) {
       this.broke = true;
+      this.cdr.markForCheck();
       return;
     }
 
+    this.rolling = true;
+    this.striking = true;
+    this.markRevealOpen(true);
+    this.landed = false;
+    this.loreOpen = false;
+    this.haul = [];
+    this.scrollParagraphs = [];
+    this.batch = [];
+    this.batchTiers = [];
+    this.bulkTotal = n;
+    this.bulkDone = 0;
+    this.rollStreak += 1;
+    this.cdr.markForCheck();
+    this.bulkChunk();
+  }
+
+  /** Strike until this frame's budget is spent, then either finish or yield. */
+  private bulkChunk(): void {
     const finds: RuneFind[] = [];
-    for (let i = 0; i < count; i++) {
+    const started = this.now();
+    while (this.bulkDone + finds.length < this.bulkTotal
+        && this.now() - started < BULK_FRAME_MS) {
       const find = this.forge.strike();
+      // Out of Gold mid-run, or the ledger refused. Bank what landed.
       if (!find) break;
       finds.push(find);
     }
+
+    this.batch = this.batch.concat(finds);
+    this.bulkDone = this.batch.length;
+    const ranDry = finds.length === 0 || this.bulkDone >= this.bulkTotal;
+    if (ranDry) {
+      this.finishBulk();
+      return;
+    }
+    this.cdr.markForCheck();
+    this.bulkTimer = setTimeout(() => this.bulkChunk(), 0);
+  }
+
+  /** Land the batch: summary, tally, best-find sound and flare. */
+  private finishBulk(): void {
+    this.bulkTimer = null;
+    this.rolling = false;
+    const finds = this.batch;
     if (!finds.length) {
       this.broke = true;
+      this.striking = false;
+      this.markRevealOpen(false);
+      this.bulkTotal = 0;
+      this.cdr.markForCheck();
       return;
     }
 
     const last = finds[finds.length - 1];
     const best = finds.reduce((acc, find) =>
       RUNE_TIER_ORDER.indexOf(find.rune.tier) > RUNE_TIER_ORDER.indexOf(acc.rune.tier) ? find : acc, last);
-    this.audio.strike(tierOf(best.rune.tier).semitones);
-    this.striking = true;
     this.landed = true;
-    this.loreOpen = false;
-    this.batch = finds;
     this.reveal = last;
     this.revealTier = tierOf(last.rune.tier);
     this.revealCard = runeCard(last.rune.id);
-    this.scrollParagraphs = [];
-    this.haul = [];
     this.batchSummary = batchHaul(finds);
+    this.batchTiers = tallyTiers(finds);
     if (best.rune.tier === 'singular') this.audio.voidRumble();
     else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavyTier(best.rune.tier));
     this.flare(best.rune.tier, tierOf(best.rune.tier).duration);
     this.cdr.markForCheck();
+  }
+
+  /** Stop a bulk run where it stands. What already landed is already banked. */
+  stopBulk(): void {
+    if (!this.rolling) return;
+    if (this.bulkTimer !== null) clearTimeout(this.bulkTimer);
+    this.bulkTotal = this.bulkDone;
+    this.finishBulk();
+  }
+
+  /**
+   * Everything the purse can pay for, up to `count` and never more than
+   * BULK_CAP. "ALL" on a deep purse would otherwise be a five-figure run that
+   * no progress bar makes reasonable.
+   */
+  affordableRolls(count: number): number {
+    const affordable = Math.floor(this.gold / STRIKE_COST);
+    return Math.max(0, Math.min(count, affordable, BULK_CAP));
+  }
+
+  /** What the ALL button will actually roll, for its own label. */
+  get allRolls(): number {
+    return this.affordableRolls(BULK_CAP);
+  }
+
+  /**
+   * Auto-roll: keep pulling until the Gold runs out or something worth
+   * stopping for lands.
+   *
+   * Stopping on Rare is the whole point — an auto-roll that walked past the
+   * find it was looking for would be a way to miss it, not a way to reach it.
+   */
+  toggleAuto(): void {
+    if (this.autoOn) {
+      this.stopAuto();
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.rolling) return;
+    this.autoStopped = null;
+    this.autoOn = true;
+    this.autoStep();
+  }
+
+  private autoStep(): void {
+    if (!this.autoOn) return;
+    if (this.gold < STRIKE_COST) {
+      this.autoOn = false;
+      this.autoStopped = 'gold';
+      this.broke = true;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.strike();
+    const tier = this.reveal?.rune.tier;
+    if (tier && RUNE_TIER_ORDER.indexOf(tier) >= RUNE_TIER_ORDER.indexOf(AUTO_STOP_TIER)) {
+      this.autoOn = false;
+      this.autoStopped = 'find';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.autoTimer = setTimeout(() => this.autoStep(), AUTO_STEP_MS);
+  }
+
+  private stopAuto(): void {
+    this.autoOn = false;
+    if (this.autoTimer !== null) clearTimeout(this.autoTimer);
+    this.autoTimer = null;
+  }
+
+  private stopRolling(): void {
+    this.stopAuto();
+    if (this.bulkTimer !== null) clearTimeout(this.bulkTimer);
+    this.bulkTimer = null;
+    this.rolling = false;
+  }
+
+  private now(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   toggleLore(): void {
@@ -512,8 +731,15 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Close the reveal and hand the anvil back. */
   dismissFocus(): void {
+    this.stopRolling();
     this.landed = false;
     this.striking = false;
+    this.markRevealOpen(false);
+    this.rollStreak = 0;
+    this.bulkTotal = 0;
+    this.bulkDone = 0;
+    this.autoStopped = null;
+    this.batchTiers = [];
     this.batch = [];
     this.haul = [];
     this.loreOpen = false;

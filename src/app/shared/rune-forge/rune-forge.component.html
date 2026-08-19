@@ -288,6 +288,8 @@
         class="rf-pick"
         [class.rf-pick--landed]="landed"
         [class.rf-pick--batch]="batch.length > 0"
+        [class.rf-pick--rapid]="rollStreak > 1"
+        [class.rf-pick--rolling]="rolling"
         [attr.data-reveal]="landed && !batch.length ? revealKind : null"
         [style.--star-color]="revealTier?.color"
         [style.--star-glow]="revealTier?.glow"
@@ -295,24 +297,67 @@
         aria-modal="true"
         [attr.aria-label]="batch.length ? t('forge.roll.auto') : t('forge.reveal.title')"
         (click)="$event.stopPropagation()">
-        @if (batch.length) {
-          <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
+        @if (batch.length || rolling) {
+          @if (rolling) {
+            <p class="rf-pick__prompt" role="status">{{ t('forge.roll.progress', { done: bulkDone, total: bulkTotal }) }}</p>
+            <div class="rf-pick__progress" aria-hidden="true">
+              <span class="rf-pick__progress-fill" [style.width.%]="bulkTotal ? (bulkDone / bulkTotal) * 100 : 0"></span>
+            </div>
+          } @else {
+            <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
+          }
+
+          <!--
+            The tally, rarest first. On a run of a hundred the grid below is a
+            wall of thumbnails nobody reads; this line is the result.
+          -->
+          @if (batchTiers.length) {
+            <p class="rf-pick__tally">
+              @for (row of batchTiers; track row.tier) {
+                <span class="rf-pick__tally-row" [style.--star]="row.color">
+                  <b>{{ row.count }}</b> {{ row.label }}
+                </span>
+              }
+            </p>
+          }
           <p class="rf-pick__haul-sum">{{ t('forge.reveal.batchHaul', batchSummary) }}</p>
-          <div class="rf-pick__grid">
-            @for (find of batch; track $index) {
-              <div class="rf-pick__card is-chosen" [class.is-best]="$index === bestBatchIndex" [style.--star-color]="libColor(find.rune.tier)">
-                @if (runeCardOf(find.rune.id); as art) {
-                  <img [src]="art.src" width="200" height="200" [alt]="find.rune.name" decoding="async">
-                } @else {
-                  <span class="rf-pick__name">{{ find.rune.name }}</span>
-                }
-                @if (find.isNew) {
-                  <span class="rf-pick__new">✦ {{ t('forge.card.new') }}</span>
-                }
-              </div>
-            }
-          </div>
-          <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+
+          <!--
+            Every card up to a point, and past it the best one on its own. A
+            thousand thumbnails is a thousand decoded images for a screen the
+            player scrolls past to reach the buttons.
+          -->
+          @if (batch.length > gridCap) {
+            <div class="rf-pick__grid rf-pick__grid--single">
+              @if (bestBatchFind; as best) {
+                <div class="rf-pick__card is-chosen is-best" [style.--star-color]="libColor(best.rune.tier)">
+                  @if (runeCardOf(best.rune.id); as art) {
+                    <img [src]="art.src" width="200" height="200" [alt]="best.rune.name" decoding="async">
+                  } @else {
+                    <span class="rf-pick__name">{{ best.rune.name }}</span>
+                  }
+                  <span class="rf-pick__new">✦ {{ t('forge.roll.best') }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="rf-pick__grid">
+              @for (find of batch; track $index) {
+                <div class="rf-pick__card is-chosen" [class.is-best]="$index === bestBatchIndex" [style.--star-color]="libColor(find.rune.tier)">
+                  @if (runeCardOf(find.rune.id); as art) {
+                    <img [src]="art.src" width="200" height="200" [alt]="find.rune.name" decoding="async">
+                  } @else {
+                    <span class="rf-pick__name">{{ find.rune.name }}</span>
+                  }
+                  @if (find.isNew) {
+                    <span class="rf-pick__new">✦ {{ t('forge.card.new') }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <ng-container *ngTemplateOutlet="rollActions"></ng-container>
         } @else {
           <p class="rf-pick__prompt">{{ reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup') }}</p>
           <!--
@@ -373,9 +418,79 @@
                 </div>
               }
             }
-            <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+            <ng-container *ngTemplateOutlet="rollActions"></ng-container>
           }
         }
+
+        <!--
+          The lever, and it lives on the result.
+          =====================================
+          Re-rolling used to mean dismissing the reveal, finding the anvil
+          again and pulling: three gestures for the one thing a player at the
+          forge does over and over. These sit under whatever just landed and
+          replace it in place, so the loop is pull, read, pull.
+        -->
+        <ng-template #rollActions>
+          <div class="rf-acts" role="group" [attr.aria-label]="t('forge.roll.actions')">
+            @if (rolling) {
+              <button type="button" class="rf-acts__btn rf-acts__btn--stop" (click)="stopBulk()">
+                {{ t('forge.roll.stop') }}
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="rf-acts__btn rf-acts__btn--again"
+                [disabled]="!canAfford"
+                (click)="strike()">
+                {{ t('forge.roll.again') }}
+                <span class="rf-acts__cost">{{ money(strikeCost) }}</span>
+              </button>
+
+              @for (n of bulkRolls; track n) {
+                <button
+                  type="button"
+                  class="rf-acts__btn"
+                  [disabled]="affordableRolls(n) < n"
+                  (click)="strikeMany(n)">
+                  ×{{ n >= 1000 ? (n / 1000) + 'K' : n }}
+                  <span class="rf-acts__cost">{{ money(strikeCost * n) }}</span>
+                </button>
+              }
+
+              <!--
+                ALL is capped — see BULK_CAP. The label prints the number it
+                will actually roll so it never promises a purse it will not
+                spend.
+              -->
+              <button
+                type="button"
+                class="rf-acts__btn"
+                [disabled]="allRolls < 2"
+                (click)="strikeMany(allRolls)">
+                {{ t('forge.roll.all') }}
+                <span class="rf-acts__cost">×{{ allRolls }}</span>
+              </button>
+
+              <button
+                type="button"
+                class="rf-acts__btn rf-acts__btn--auto"
+                [class.is-on]="autoOn"
+                [attr.aria-pressed]="autoOn"
+                [disabled]="!canAfford && !autoOn"
+                (click)="toggleAuto()">
+                {{ autoOn ? t('forge.roll.auto.stop') : t('forge.roll.auto.start') }}
+              </button>
+            }
+
+            <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
+          </div>
+
+          @if (autoStopped === 'find') {
+            <p class="rf-acts__note" role="status">{{ t('forge.roll.auto.stoppedFind', { tier: tiers[autoStopTier].label }) }}</p>
+          } @else if (autoStopped === 'gold' || broke) {
+            <p class="rf-acts__note rf-acts__note--broke" role="status">{{ t('forge.roll.auto.stoppedGold') }}</p>
+          }
+        </ng-template>
       </div>
     </div>
   }
