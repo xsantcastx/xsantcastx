@@ -99,8 +99,13 @@ export interface RuneFind {
    * How many copies of the rune this one event landed — 1, or 2 when worn
    * strikePower sheared a second off the anvil (see `strike-value.ts`).
    * Expedition grants are always 1: the yield bonus is the strike's alone.
+   *
+   * Optional so the shape stays additive: a find written against the
+   * pre-strikePower contract (a fake pushed on `find$` by a spec, a literal in
+   * a branch that has not seen this one) still type-checks. The service always
+   * sets it; readers take `find.copies ?? 1`.
    */
-  copies: number;
+  copies?: number;
   /** First of its kind. Drives the "NEW" flag and the unique-count achievements. */
   isNew: boolean;
   /** Essence minted alongside, when Realm Bridge is held. Zero otherwise. */
