@@ -74,6 +74,22 @@ export class TranslationService {
     'cloud.syncing':     { en: 'Syncing',     es: 'Sincronizando' },
     'cloud.syncFailed':  { en: 'Sync failed', es: 'Fallo la sincronizacion' },
 
+    // ── Device lease ────────────────────────────────────────────────────────
+    // Written to be read at a glance and then ignored. A passive device is
+    // still fully playable, so this is a status line rather than a warning, and
+    // nothing in it should read as an error the visitor has to resolve.
+    'cloud.lease.passive':  {
+      en: 'Another device is active. Your progress will sync when you switch.',
+      es: 'Otro dispositivo esta activo. Tu progreso se sincronizara cuando cambies.',
+    },
+    'cloud.lease.activeOn': { en: 'Active on: {{device}}', es: 'Activo en: {{device}}' },
+    'cloud.lease.playHere': { en: 'Play Here',             es: 'Jugar aqui' },
+    'cloud.lease.claiming': { en: 'Taking over...',        es: 'Tomando el control...' },
+    'cloud.lease.label':    {
+      en: 'Make this the active device for your saved progress',
+      es: 'Haz que este sea el dispositivo activo para tu progreso guardado',
+    },
+
     'gfnav.hint.world':     { en: 'The world entrance',              es: 'La entrada al mundo' },
     'gfnav.hint.arena':     { en: 'Games forged in the eclipse',     es: 'Juegos forjados en el eclipse' },
     'gfnav.hint.codex':     { en: 'Fragments of a broken sun',       es: 'Fragmentos de un sol roto' },
