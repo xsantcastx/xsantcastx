@@ -38,8 +38,10 @@ import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { runeById } from '../rune-forge/rune.model';
 import {
   BASE_EXPLORER_SLOTS,
+  EXPEDITION_HISTORY_CAP,
   EXPLORER_KEY,
   Expedition,
+  ExpeditionRecord,
   ExplorerReturn,
   ExplorerState,
   MAX_EXPLORER_SLOTS,
@@ -297,6 +299,10 @@ export class ExplorerService implements OnDestroy {
       const tier = explorerTier(who?.rarity ?? 'common');
 
       const reward = rollReward(def, Math.random, {
+        // The realm is read off the record rather than off the picker: a player
+        // can re-arm the picker to somewhere else while a mission is out, and
+        // the payout has to be for where the explorer actually went.
+        realm: explorer.realm,
         inventorySlots: tier.inventorySlots,
         // Both were frozen at dispatch. See the notes on the two fields.
         lootBonus: explorer.lootBonus,
@@ -361,18 +367,37 @@ export class ExplorerService implements OnDestroy {
       this.returned$$.next(landing);
     }
 
+    // The log is written here rather than in the loop above for the same reason
+    // the counts are: `reward.scroll` and `reward.items` do not exist until the
+    // Rune Forge has granted, so a record written earlier would show every haul
+    // as runes-only. Newest first, capped — see `EXPEDITION_HISTORY_CAP`.
+    const logged: ExpeditionRecord[] = returns.map(landing => ({
+      id: landing.explorer.id,
+      realm: landing.explorer.realm,
+      mission: landing.explorer.mission,
+      explorerName: landing.explorerName ?? '',
+      gold: landing.reward.gold,
+      xp: landing.reward.xp,
+      runes: [...landing.reward.runes],
+      scroll: landing.reward.scroll,
+      items: landing.reward.items ? [...landing.reward.items] : undefined,
+      returnedAt: landing.returnedAt,
+    }));
+
     // The scroll and item counts are only knowable after the grants, so they
     // land in a second write. Cheap — this runs once per settlement, not per
     // tick.
-    if (scrollsFound > 0 || itemsFound > 0) {
-      this.state = {
-        ...this.state,
-        scrollsFound: this.state.scrollsFound + scrollsFound,
-        itemsFound: this.state.itemsFound + itemsFound,
-      };
-      this.persist();
-      this.publish();
-    }
+    this.state = {
+      ...this.state,
+      scrollsFound: this.state.scrollsFound + scrollsFound,
+      itemsFound: this.state.itemsFound + itemsFound,
+      // Reversed so that within a single settlement pass — three explorers home
+      // overnight — the *last* to land sits at the top, matching the order the
+      // reveal cards queue in.
+      history: [...logged].reverse().concat(this.state.history).slice(0, EXPEDITION_HISTORY_CAP),
+    };
+    this.persist();
+    this.publish();
 
     return true;
   }
@@ -443,6 +468,9 @@ export class ExplorerService implements OnDestroy {
         scrollsFound: numberOr(parsed.scrollsFound, 0),
         missionsCompleted: numberOr(parsed.missionsCompleted, 0),
         goldRecovered: numberOr(parsed.goldRecovered, 0),
+        history: Array.isArray(parsed.history)
+          ? parsed.history.filter(isExpeditionRecord).slice(0, EXPEDITION_HISTORY_CAP)
+          : empty.history,
       };
     } catch {
       return emptyExplorerState();
@@ -485,6 +513,31 @@ export class ExplorerService implements OnDestroy {
 
 function isString(v: unknown): v is string {
   return typeof v === 'string';
+}
+
+/**
+ * A log line worth keeping.
+ *
+ * Rebuilt-and-validated like everything else read out of the blob, because the
+ * log is rendered straight into the panel: a hand-edited `runes` array holding
+ * an object where a string belongs would reach `runeById` and put `[object
+ * Object]` on the page. Unknown rune and scroll ids are *not* rejected here —
+ * the display resolves them and skips what it cannot find, which is the right
+ * behaviour for a save carried across a registry change.
+ */
+function isExpeditionRecord(v: unknown): v is ExpeditionRecord {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Partial<ExpeditionRecord>;
+  return typeof r.id === 'string'
+    && typeof r.realm === 'string'
+    && typeof r.mission === 'string'
+    && typeof r.explorerName === 'string'
+    && typeof r.gold === 'number' && Number.isFinite(r.gold)
+    && typeof r.xp === 'number' && Number.isFinite(r.xp)
+    && typeof r.returnedAt === 'number' && Number.isFinite(r.returnedAt)
+    && Array.isArray(r.runes) && r.runes.every(isString)
+    && (r.items === undefined || (Array.isArray(r.items) && r.items.every(isString)))
+    && (r.scroll === undefined || typeof r.scroll === 'string');
 }
 
 function numberOr(v: unknown, fallback: number): number {

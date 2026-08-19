@@ -44,6 +44,63 @@
     </button>
   </header>
 
+  <!--
+    The at-a-glance strip.
+
+    /sanctum is the command centre and, until this existed, answering "is
+    anything happening" meant reading three columns: the rate was top-left, the
+    expeditions were bottom-right under the quest board, and what the Keeper was
+    wearing was only knowable by counting the glyphs orbiting them. The strip is
+    four numbers that make the page answerable in one look, each one a link to
+    the surface that owns it — it is a dashboard, not a second source of truth.
+  -->
+  <div class="fv__glance" role="list">
+    <a class="fv__glance-cell" routerLink="/market" role="listitem">
+      <span class="fv__glance-label">Income</span>
+      <b class="fv__glance-value">{{ perSecond }}<span>/sec</span></b>
+      <span class="fv__glance-note">{{ gold }} Gold held</span>
+    </a>
+
+    <div class="fv__glance-cell" role="listitem"
+         [style.--realm]="soonestMission?.realm?.color || 'var(--keeper)'">
+      <span class="fv__glance-label">Expeditions</span>
+      @if (soonestMission; as next) {
+        <b class="fv__glance-value fv__glance-value--realm">
+          @if (next.done) { Arriving } @else { {{ next.countdown }} }
+        </b>
+        <span class="fv__glance-note">
+          {{ activeCount }} out · next home from {{ next.realm.name }}
+        </span>
+      } @else {
+        <b class="fv__glance-value fv__glance-value--idle">—</b>
+        <span class="fv__glance-note">
+          {{ freeSlots }} {{ freeSlots === 1 ? 'explorer' : 'explorers' }} idle
+        </span>
+      }
+    </div>
+
+    <a class="fv__glance-cell" routerLink="/character" role="listitem">
+      <span class="fv__glance-label">Equipped</span>
+      <b class="fv__glance-value">{{ equippedCount }}<span>/8</span></b>
+      <span class="fv__glance-note">
+        @if (equippedMods.length) {
+          {{ equippedMods.join(' · ') }}
+        } @else {
+          nothing worn yet
+        }
+      </span>
+    </a>
+
+    <a class="fv__glance-cell" routerLink="/character" role="listitem">
+      <span class="fv__glance-label">Bag</span>
+      <b class="fv__glance-value">{{ bagCount }}</b>
+      <span class="fv__glance-note">
+        {{ runeCount }} {{ runeCount === 1 ? 'rune' : 'runes' }} ·
+        {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }} recovered
+      </span>
+    </a>
+  </div>
+
   <div class="fv__stage">
 
     <!-- ─── LEFT: forge activity ──────────────────────────────────────────── -->
@@ -227,15 +284,34 @@
            whatever its z-index. This is also the better place for it: the
            expedition panel is where the eye already is. -->
       @if (landing) {
-        <div class="fv__landing" role="status" [style.--realm]="landing.realmColor">
+        <!-- The card takes --tone from the *best find in the haul*, not from the
+             realm, so a Legendary return is visibly a Legendary return before a
+             word of it has been read. --realm still colours the eyebrow, because
+             where they went is a separate fact from what they brought. -->
+        <div class="fv__landing"
+             role="status"
+             [class.fv__landing--rare]="landing.rare"
+             [style.--realm]="landing.realmColor"
+             [style.--tone]="landing.tone"
+             [style.--tone-glow]="landing.toneGlow">
+          <span class="fv__landing-flare" aria-hidden="true"></span>
           <button type="button" class="fv__landing-close" (click)="dismissLanding()" aria-label="Dismiss">×</button>
 
-          <p class="fv__landing-eyebrow">Explorer returned</p>
+          <p class="fv__landing-eyebrow">
+            @if (landing.explorerName) {
+              {{ landing.explorerName }} returned
+            } @else {
+              Explorer returned
+            }
+          </p>
           <p class="fv__landing-realm">{{ landing.missionName }} — {{ landing.realmName }}</p>
           <p class="fv__landing-gold">+{{ landing.gold }} Gold <span>+{{ landing.xp }} XP</span></p>
 
+          <!-- Each find fades up a beat after the one above it. The stagger is a
+               CSS custom property rather than a per-element delay so the order
+               survives any of the four blocks being absent. -->
           @if (landing.rune) {
-            <div class="fv__loot" [style.--tone]="landing.rune.color">
+            <div class="fv__loot fv__loot--step" [style.--step]="0" [style.--tone]="landing.rune.color">
               <span class="fv__loot-glyph" aria-hidden="true">{{ landing.rune.glyph }}</span>
               <div>
                 <p class="fv__loot-name">{{ landing.rune.name }} <span class="fv__loot-tier">{{ landing.rune.tierLabel }} rune</span></p>
@@ -245,8 +321,37 @@
             </div>
           }
 
+          @if (landing.extraRunes.length) {
+            <ul class="fv__loot-extra">
+              @for (extra of landing.extraRunes; track extra.id) {
+                <li class="fv__loot-chip" [style.--tone]="extra.color">
+                  <span aria-hidden="true">{{ extra.glyph }}</span>
+                  {{ extra.name }}
+                  <b>{{ extra.tierLabel }}</b>
+                </li>
+              }
+            </ul>
+          }
+
+          @for (item of landing.items; track item.id) {
+            <div class="fv__loot fv__loot--step" [style.--step]="1" [style.--tone]="item.color">
+              <span class="fv__loot-glyph" aria-hidden="true">⚔</span>
+              <div>
+                <p class="fv__loot-name">{{ item.name }} <span class="fv__loot-tier">{{ item.rarityLabel }}</span></p>
+                @if (item.mods) {
+                  <p class="fv__loot-mods">{{ item.mods }}</p>
+                }
+                @if (item.wearable) {
+                  <a class="fv__loot-link" routerLink="/character">Wear it in the loadout →</a>
+                } @else {
+                  <a class="fv__loot-link" routerLink="/character">It is in your bag →</a>
+                }
+              </div>
+            </div>
+          }
+
           @if (landing.scroll) {
-            <div class="fv__loot" [style.--tone]="landing.scroll.color">
+            <div class="fv__loot fv__loot--step" [style.--step]="2" [style.--tone]="landing.scroll.color">
               <span class="fv__loot-glyph" aria-hidden="true">📜</span>
               <div>
                 <p class="fv__loot-name">{{ landing.scroll.subtitle }} <span class="fv__loot-tier">{{ landing.scroll.title }}</span></p>
@@ -256,7 +361,7 @@
             </div>
           }
 
-          @if (!landing.rune && !landing.scroll) {
+          @if (!landing.rune && !landing.scroll && !landing.items.length) {
             <p class="fv__landing-none">They came back with the Gold and a story nobody has written down.</p>
           }
 
@@ -271,22 +376,43 @@
       @if (activeMissions.length) {
         <ul class="fv__missions">
           @for (m of activeMissions; track m.id) {
-            <li class="fv__mission" [style.--realm]="m.realm.color">
+            <!-- The ring carried the whole progress story and could not say a
+                 number, so an hour-long run looked identical at 4% and at 9%.
+                 The bar underneath is the same value read a second way, with the
+                 percentage and the wall-clock ETA written out beside it. -->
+            <li class="fv__mission"
+                [class.fv__mission--done]="m.done"
+                [style.--realm]="m.realm.color"
+                [style.--progress]="m.progress">
               <svg class="fv__ring" viewBox="0 0 52 52" aria-hidden="true" focusable="false">
                 <circle class="fv__ring-track" cx="26" cy="26" r="22"></circle>
                 <circle class="fv__ring-fill" cx="26" cy="26" r="22"
                         [attr.stroke-dashoffset]="ringOffset(m.progress)"></circle>
+                <text class="fv__ring-pct" x="26" y="26">{{ m.percent }}</text>
               </svg>
+
               <span class="fv__mission-copy">
                 <b>{{ m.realm.name }}</b>
-                <span>
+                <span class="fv__mission-who">
+                  {{ m.mission.name }}@if (m.explorerName) { · {{ m.explorerName }} }
+                </span>
+                <span class="fv__mission-bar"
+                      role="progressbar"
+                      [attr.aria-valuenow]="m.percent"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      [attr.aria-label]="m.mission.name + ' in ' + m.realm.name">
+                  <span class="fv__mission-fill"></span>
+                </span>
+                <span class="fv__mission-time">
                   @if (m.done) {
                     Arriving now…
                   } @else {
-                    Returning in {{ m.countdown }}
+                    {{ m.countdown }} left@if (m.eta) { · home {{ m.eta }} }
                   }
                 </span>
               </span>
+
               <button type="button" class="fv__recall" (click)="recall(m.id)"
                       [attr.aria-label]="'Recall the explorer in ' + m.realm.name">
                 Recall
@@ -308,12 +434,21 @@
                         [attr.aria-checked]="pickedRealm === r.id"
                         [class.fv__realm--on]="pickedRealm === r.id"
                         [style.--realm]="r.color"
-                        (click)="pickRealm(r.id)">
+                        (click)="pickRealm(r.id)"
+                        [attr.title]="r.name + ' — ' + realmSpecialty(r.id)">
                   {{ r.name }}
                 </button>
               </li>
             }
           </ul>
+
+          <!-- Five buttons that all did the same thing is what this was before
+               realm profiles existed. The specialty line is the one sentence
+               that makes the choice a choice. -->
+          <p class="fv__realm-note" [style.--realm]="pickedRealmDef.color">
+            <b>{{ pickedRealmDef.name }}</b> — {{ realmSpecialty(pickedRealm) }}
+            <span class="fv__realm-mult">{{ pickedRealmRuneMult }} rune rate</span>
+          </p>
 
           <p class="fv__dispatch-label" id="fv-mission-label">For</p>
           <ul class="fv__lengths" role="radiogroup" aria-labelledby="fv-mission-label">
@@ -326,7 +461,7 @@
                         [class.fv__length--on]="pickedMission === m.id"
                         (click)="pickMission(m.id)">
                   <b>{{ m.label }}</b>
-                  <span>{{ m.goldMin }}–{{ m.goldMax }} Gold</span>
+                  <span>{{ goldBand(m) }}</span>
                 </button>
               </li>
             }
@@ -357,6 +492,54 @@
         <span>◈ {{ goldRecovered }} recovered</span>
       </p>
 
+      <!--
+        The log.
+
+        Distinct from the feed along the bottom, which is a view of *this
+        session* and is deliberately not persisted. This is the last ten
+        landings, kept in the save, and it exists because an expedition's whole
+        pitch is that it resolves while the tab is shut — a reveal card that has
+        been dismissed used to be the only record that anything happened.
+      -->
+      @if (history.length) {
+        <h3 class="fv__sub">Last returns</h3>
+        <ul class="fv__log">
+          @for (row of history; track row.id) {
+            <li class="fv__log-row" [style.--realm]="row.realmColor">
+              <span class="fv__log-realm">{{ row.realmName }}</span>
+              <span class="fv__log-body">
+                <span class="fv__log-line">
+                  <b>+{{ row.gold }}</b> Gold
+                  @if (row.explorerName) { · {{ row.explorerName }} }
+                </span>
+                @if (row.runes.length || row.scrollFound || row.itemCount) {
+                  <span class="fv__log-finds">
+                    @for (rune of row.runes; track rune.key) {
+                      <span class="fv__log-find" [style.--tone]="rune.color"
+                            [attr.title]="rune.name + ' rune'">
+                        <span aria-hidden="true">{{ rune.glyph }}</span>{{ rune.name }}
+                      </span>
+                    }
+                    @if (row.scrollFound) {
+                      <span class="fv__log-find" style="--tone: #C9A84C" title="A Codex fragment">
+                        <span aria-hidden="true">📜</span>fragment
+                      </span>
+                    }
+                    @if (row.itemCount) {
+                      <span class="fv__log-find" style="--tone: #7FD5A3"
+                            [attr.title]="row.itemCount + ' item(s) carried home'">
+                        <span aria-hidden="true">⚔</span>{{ row.itemCount }}
+                      </span>
+                    }
+                  </span>
+                }
+              </span>
+              <span class="fv__log-when">{{ row.when }}</span>
+            </li>
+          }
+        </ul>
+      }
+
       <!-- The roster sits under the dispatch picker rather than beside it: this
            is the column about explorers, and who they *are* belongs next to
            where they are sent. It owns its own state through its own service. -->
@@ -385,6 +568,7 @@
   </section>
 
   <nav class="fv__links" aria-label="Elsewhere in the Godforge">
+    <span class="fv__links-label">Quick actions</span>
     <a routerLink="/market" class="fv__link">The Market</a>
     <a routerLink="/character" class="fv__link">Your Character</a>
     <a routerLink="/world/quests" class="fv__link">Quest board</a>
