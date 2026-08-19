@@ -115,6 +115,93 @@ export function missionById(id: MissionId | string): MissionDefinition | undefin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Realm profiles
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What a realm is *worth walking into*.
+ *
+ * Until this existed, the realm picker was five buttons that did the same thing
+ * in five colours: the destination was recorded on the record, coloured the
+ * card, and then had no effect whatsoever on what came back. A player who
+ * noticed that — and they do, it takes about four dispatches — is a player who
+ * stops reading the picker and clicks whichever button the cursor is nearest.
+ *
+ * So each realm now pays to its own domain. Umbral is the vault the light
+ * discarded things into, so it turns up runes at half again the rate and pays
+ * less Gold for it. Luminous is a hall still full of gold and short on secrets.
+ * Verge and Archivum trade Gold for XP because they are, respectively, the place
+ * things are translated and the place they are written down.
+ *
+ * The multipliers are deliberately narrow — nothing here is more than ±25%
+ * except Umbral's rune rate — because the mission length is still the decision
+ * that matters most, and a realm that paid double would collapse the picker back
+ * into one button in the other direction.
+ */
+export interface RealmExpeditionProfile {
+  realm: RealmId;
+  /** One line under the realm button: what this realm is good for. */
+  specialty: string;
+  goldMultiplier: number;
+  xpMultiplier: number;
+  runeChanceMultiplier: number;
+}
+
+export const REALM_EXPEDITION_PROFILES: Record<RealmId, RealmExpeditionProfile> = {
+  luminous: {
+    realm: 'luminous',
+    specialty: 'Gold — the halls are still full of it',
+    goldMultiplier: 1.15,
+    xpMultiplier: 0.95,
+    runeChanceMultiplier: 0.9,
+  },
+  umbral: {
+    realm: 'umbral',
+    specialty: 'Runes — the vault keeps what the light threw out',
+    goldMultiplier: 0.9,
+    xpMultiplier: 1.0,
+    runeChanceMultiplier: 1.5,
+  },
+  verge: {
+    realm: 'verge',
+    specialty: 'Knowledge — nothing crosses without being understood',
+    goldMultiplier: 0.95,
+    xpMultiplier: 1.25,
+    runeChanceMultiplier: 1.05,
+  },
+  archivum: {
+    realm: 'archivum',
+    specialty: 'Records — everything found is written down twice',
+    goldMultiplier: 0.95,
+    xpMultiplier: 1.2,
+    runeChanceMultiplier: 1.15,
+  },
+  nexus: {
+    realm: 'nexus',
+    specialty: 'Freight — whatever the threads were carrying',
+    goldMultiplier: 1.1,
+    xpMultiplier: 0.95,
+    runeChanceMultiplier: 0.95,
+  },
+};
+
+export function realmProfile(id: RealmId | string): RealmExpeditionProfile {
+  return REALM_EXPEDITION_PROFILES[id as RealmId] ?? REALM_EXPEDITION_PROFILES.luminous;
+}
+
+/** The Gold band a mission pays in a given realm, after the realm's cut. */
+export function realmGoldBand(
+  mission: MissionDefinition,
+  realm: RealmId | string,
+): { min: number; max: number } {
+  const mult = realmProfile(realm).goldMultiplier;
+  return {
+    min: Math.round(mission.goldMin * mult),
+    max: Math.round(mission.goldMax * mult),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Runes
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -231,6 +318,45 @@ export interface ExplorerReturn {
   returnedAt: number;
 }
 
+/**
+ * How many settled expeditions the log keeps.
+ *
+ * Ten, because the log is a *memory of the session you were away for*, not a
+ * ledger: the ledger is the Codex and the rune shelf, both of which already hold
+ * every find permanently. Ten covers "what did I miss overnight" for anyone
+ * running five explorers, and stops the blob growing without a ceiling on a save
+ * that a player might carry for a year.
+ */
+export const EXPEDITION_HISTORY_CAP = 10;
+
+/**
+ * A settled expedition, kept so the panel can show what the last ones brought.
+ *
+ * Deliberately flattened to ids and numbers rather than holding the `Expedition`
+ * and `ExplorerReward` objects: this is the one part of the explorer blob that
+ * is written on *every* settlement and read on every load, and the fields the
+ * log actually renders are these nine. Storing the reward whole would persist
+ * the frozen `lootBonus` and `yieldMultiplier` of a mission that is over, which
+ * nothing will ever read again.
+ */
+export interface ExpeditionRecord {
+  id: string;
+  realm: RealmId;
+  mission: MissionId;
+  /** Who went. Empty when they have since been dismissed. */
+  explorerName: string;
+  gold: number;
+  xp: number;
+  /** Rune ids found. Resolved against the Rune Forge registry for display. */
+  runes: string[];
+  /** Lore scroll id, when the runes turned one up. */
+  scroll?: string;
+  /** Item ids minted on this return. */
+  items?: string[];
+  /** Epoch ms the mission ended. */
+  returnedAt: number;
+}
+
 export interface ExplorerState {
   version: 1;
   /** Missions currently out. */
@@ -257,6 +383,15 @@ export interface ExplorerState {
   missionsCompleted: number;
   /** Lifetime Gold brought home, so the panel can justify itself. */
   goldRecovered: number;
+  /**
+   * The last few settled expeditions, newest first, capped at
+   * `EXPEDITION_HISTORY_CAP`.
+   *
+   * Persisted rather than session-local because the whole point of an
+   * expedition is that it resolves while the tab is shut — a log that emptied on
+   * reload would be blank at exactly the moment the player wants to read it.
+   */
+  history: ExpeditionRecord[];
 }
 
 export function emptyExplorerState(): ExplorerState {
@@ -268,6 +403,7 @@ export function emptyExplorerState(): ExplorerState {
     scrollsFound: 0,
     missionsCompleted: 0,
     goldRecovered: 0,
+    history: [],
   };
 }
 
@@ -297,6 +433,11 @@ export function rollReward(
     ? Math.max(1, opts.yieldMultiplier ?? 1)
     : 1;
 
+  // Where they went now decides what they come back with. See the note on
+  // `REALM_EXPEDITION_PROFILES` — the realm is a *bias*, not a second economy,
+  // so it multiplies the same three numbers the mission already set.
+  const profile = realmProfile(opts.realm ?? 'luminous');
+
   const reward: ExplorerReward = {
     // Endurance pays out here rather than by lengthening the clock. The stat is
     // published as "+10% max mission duration", and the honest reading of that
@@ -305,8 +446,8 @@ export function rollReward(
     // dressed as an upgrade, and nobody would spend a point on it. So the
     // duration the player picked is the duration they get, and the extra
     // distance covered is paid as extra loot.
-    gold: Math.round((mission.goldMin + rng() * span) * yieldMult),
-    xp: Math.round(mission.xp * yieldMult),
+    gold: Math.round((mission.goldMin + rng() * span) * yieldMult * profile.goldMultiplier),
+    xp: Math.round(mission.xp * yieldMult * profile.xpMultiplier),
     runes: [],
   };
 
@@ -322,8 +463,10 @@ export function rollReward(
   const slots = Math.max(1, opts.inventorySlots ?? 1);
   const magicFind = Math.max(0, opts.lootBonus ?? 0);
 
+  const runeChance = mission.runeChance * profile.runeChanceMultiplier;
+
   for (let i = 0; i < slots; i++) {
-    if (rng() >= mission.runeChance) continue;
+    if (rng() >= runeChance) continue;
     reward.runes.push(rollRuneWithMagicFind(magicFind, rng).id);
   }
 
@@ -337,6 +480,14 @@ export function rollReward(
 
 /** What the roll needs to know about who went. */
 export interface RewardOptions {
+  /**
+   * Where they were sent.
+   *
+   * Defaults to Luminous rather than to a neutral 1.0 profile so that a caller
+   * which forgets to pass it produces a *realm's* payout rather than a fourth
+   * set of numbers that exists nowhere in the picker.
+   */
+  realm?: RealmId;
   /** How many table rolls this explorer gets. Their tier's inventory slots. */
   inventorySlots?: number;
   /** Magic Find applied to each roll — tier bonus plus what they wear. */
@@ -352,6 +503,31 @@ export interface RewardOptions {
 /** Milliseconds left on a mission, floored at zero. */
 export function remainingMs(explorer: Expedition, now: number): number {
   return Math.max(0, explorer.startedAt + explorer.duration - now);
+}
+
+/** Epoch ms this mission is due home. */
+export function expeditionEta(explorer: Expedition): number {
+  return explorer.startedAt + explorer.duration;
+}
+
+/**
+ * "home 14:32" — the wall-clock time an expedition lands.
+ *
+ * Shown *alongside* the countdown rather than instead of it. A countdown answers
+ * "how long do I wait", which is the question during a Scout; a clock time
+ * answers "should I close the tab", which is the question during the hour-long
+ * one, and it is the only one of the two that survives being read and then
+ * forgotten about for ten minutes.
+ *
+ * Falls back to an empty string off the browser and on any locale that throws,
+ * because this is decoration on a line that already carries the countdown.
+ */
+export function formatEta(at: number): string {
+  try {
+    return new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
 }
 
 /** 0–1 through the mission, for the progress ring. */

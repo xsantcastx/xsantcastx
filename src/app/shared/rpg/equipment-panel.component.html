@@ -43,6 +43,7 @@
           [class.ld__slot--empty]="!itemInDoll(slot) && !!slot.liveSlot"
           [class.ld__slot--locked]="!slot.liveSlot"
           [class.ld__slot--selected]="selectedSlot === slot.slotId"
+          [class.ld__slot--flash]="flashSlot === slot.slotId"
           [class.ld__slot--target]="isTarget(slot)"
           [style.left.%]="slot.control.x"
           [style.top.%]="slot.control.y"
@@ -99,7 +100,7 @@
           <img class="ld__worn-art" *ngIf="tileArt(worn) as art" [src]="art"
                [attr.srcset]="tileArtSrcset(worn)" sizes="44px"
                alt="" width="44" height="44" decoding="async">
-          <div class="ld__worn-body">
+          <div class="ld__worn-body" [attr.title]="itemTooltip(worn)">
             <p class="ld__expand-name">{{ worn.name }}
               <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
             </p>
@@ -115,18 +116,36 @@
 
         <ng-container *ngIf="slot.liveSlot; else slotLocked">
           <p class="ld__picker-label">{{ t('loadout.picker.choose') }}</p>
+          <p class="ld__compare-head" *ngIf="wornIn(slot) as worn">
+            {{ t('loadout.compare.against', { name: worn.name }) }}
+          </p>
+          <!--
+            Each candidate carries its difference from what is worn, not just
+            its own stats. Two Rares whose mod lines both read "Magic Find +1x%"
+            are the case this exists for — the picker sorts best-first, and
+            without the deltas the player has to do the subtraction to see why.
+          -->
           <ul class="ld__picker-list" *ngIf="candidatesFor(slot).length; else nothingFits">
             <li *ngFor="let item of candidatesFor(slot); trackBy: trackItem">
-              <button type="button" class="ld__pick" (click)="equipFromPicker(slot, item)"
-                      [attr.title]="item.name">
+              <button type="button" class="ld__pick"
+                      [class.ld__pick--upgrade]="isUpgrade(slot, item)"
+                      (click)="equipFromPicker(slot, item)"
+                      [attr.title]="itemTooltip(item)">
                 <img class="ld__pick-art" *ngIf="tileArt(item) as art" [src]="art"
                      [attr.srcset]="tileArtSrcset(item)" sizes="36px"
                      alt="" width="36" height="36" loading="lazy" decoding="async">
                 <span class="ld__pick-orb" *ngIf="!tileArt(item)" aria-hidden="true">{{ initialsOf(item) }}</span>
                 <span class="ld__pick-name">{{ item.name }}
                   <span class="ld__lvl" *ngIf="item.upgradeLevel">+{{ item.upgradeLevel }}</span>
+                  <span class="ld__pick-flag" *ngIf="isUpgrade(slot, item)">{{ t('loadout.compare.upgrade') }}</span>
                 </span>
                 <span class="ld__pick-mods">{{ modsOf(item).join(' · ') || label(item) }}</span>
+                <span class="ld__deltas" *ngIf="comparison(slot, item).length">
+                  <span class="ld__delta"
+                        *ngFor="let row of comparison(slot, item)"
+                        [class.ld__delta--up]="row.better"
+                        [class.ld__delta--down]="!row.better">{{ row.text }}</span>
+                </span>
               </button>
             </li>
           </ul>
@@ -217,7 +236,9 @@
         <li *ngFor="let item of visible; trackBy: trackItem"
             class="ld__tile"
             [class.ld__tile--selected]="selectedId === item.id">
-          <button type="button" class="ld__tile-face" (click)="onTileActivate($event, item)" [attr.aria-pressed]="selectedId === item.id">
+          <button type="button" class="ld__tile-face" (click)="onTileActivate($event, item)"
+                  [attr.title]="itemTooltip(item)"
+                  [attr.aria-pressed]="selectedId === item.id">
             <img *ngIf="tileArt(item) as art" class="ld__tile-art" [src]="art" alt="" width="40" height="40" decoding="async">
             <span *ngIf="!tileArt(item)" class="ld__tile-orb" aria-hidden="true">{{ initialsOf(item) }}</span>
             <span class="ld__tile-name">{{ item.name }}
