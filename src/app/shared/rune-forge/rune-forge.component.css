@@ -382,6 +382,180 @@
   cursor: pointer;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Per-tier card reveal.
+
+   `data-reveal` on .rf-pick is the tier table's `reveal` field
+   (plain → glow → burst → shimmer → edge → flash → void). Each rung keeps the
+   rung below and adds one channel: a tier-coloured border and label for all,
+   a halo from Uncommon, shards from Rare, a light sweep from Epic, and a held
+   1.06 scale with a double ring from Legendary. Every end state below is a
+   plain declaration — the colour, the ring, the scale — so a reduced-motion
+   visitor lands on the same lit card; only the `animation:` lines further
+   down are motion, and the reduce block turns those off. Keyframes and the
+   `animation:` lines both stay top-level: Angular's emulated encapsulation
+   does not rewrite either inside a @media block, and the reference silently
+   dangles (see the note above the animation lines).
+   ───────────────────────────────────────────────────────────────────────── */
+.rf-pick--landed .rf-pick__tier { color: var(--star-color, #8f969f); }
+.rf-pick--landed:not(.rf-pick--batch) .rf-pick__name { color: var(--star-color, #eee9dd); }
+
+/* Uncommon and up: a wider halo and a hairline ring in the tier colour. */
+.rf-pick[data-reveal='glow'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='burst'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='shimmer'] .rf-pick__card.is-chosen {
+  box-shadow:
+    0 0 0 1px var(--star-color, #d6a84f),
+    0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8));
+}
+
+/* Rare and up: shards, and the prompt takes the tier colour. */
+.rf-sparks--reveal { display: none; }
+.rf-sparks--reveal .rf-spark { left: 50%; top: 50%; width: 4px; height: 4px; background: var(--star-color, #d6a84f); }
+.rf-sparks--reveal .rf-spark:nth-child(1)  { --dx: -70px; --dy: -46px; }
+.rf-sparks--reveal .rf-spark:nth-child(2)  { --dx: -34px; --dy: -78px; }
+.rf-sparks--reveal .rf-spark:nth-child(3)  { --dx: 12px;  --dy: -84px; }
+.rf-sparks--reveal .rf-spark:nth-child(4)  { --dx: 52px;  --dy: -66px; }
+.rf-sparks--reveal .rf-spark:nth-child(5)  { --dx: 78px;  --dy: -22px; }
+.rf-sparks--reveal .rf-spark:nth-child(6)  { --dx: 74px;  --dy: 30px; }
+.rf-sparks--reveal .rf-spark:nth-child(7)  { --dx: 44px;  --dy: 70px; }
+.rf-sparks--reveal .rf-spark:nth-child(8)  { --dx: -6px;  --dy: 82px; }
+.rf-sparks--reveal .rf-spark:nth-child(9)  { --dx: -50px; --dy: 66px; }
+.rf-sparks--reveal .rf-spark:nth-child(10) { --dx: -80px; --dy: 24px; }
+.rf-sparks--reveal .rf-spark:nth-child(11) { --dx: -84px; --dy: -14px; }
+.rf-sparks--reveal .rf-spark:nth-child(12) { --dx: 40px;  --dy: -40px; }
+.rf-pick[data-reveal='burst'] .rf-sparks--reveal,
+.rf-pick[data-reveal='shimmer'] .rf-sparks--reveal,
+.rf-pick[data-reveal='edge'] .rf-sparks--reveal,
+.rf-pick[data-reveal='flash'] .rf-sparks--reveal,
+.rf-pick[data-reveal='void'] .rf-sparks--reveal { display: block; }
+.rf-pick[data-reveal='burst'] .rf-pick__prompt,
+.rf-pick[data-reveal='shimmer'] .rf-pick__prompt,
+.rf-pick[data-reveal='edge'] .rf-pick__prompt,
+.rf-pick[data-reveal='flash'] .rf-pick__prompt,
+.rf-pick[data-reveal='void'] .rf-pick__prompt { color: var(--star-color, #d6a84f); }
+
+/* Epic and up: a diagonal light sweep across the card face. Clips itself so
+   the shards, which are siblings, are free to leave the card. */
+.rf-pick__sweep {
+  display: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rf-pick__sweep::before {
+  content: '';
+  position: absolute;
+  inset: -20% -60%;
+  background: linear-gradient(100deg, transparent 40%, rgba(255, 255, 255, 0.32) 50%, transparent 60%);
+  transform: translateX(-120%);
+  opacity: 0;
+}
+.rf-pick[data-reveal='shimmer'] .rf-pick__sweep,
+.rf-pick[data-reveal='edge'] .rf-pick__sweep,
+.rf-pick[data-reveal='flash'] .rf-pick__sweep,
+.rf-pick[data-reveal='void'] .rf-pick__sweep { display: block; }
+
+/* Legendary, Mythic, Singular: the card holds a little larger under a double
+   ring. The screen-level flare in styles.css (html[data-rune-flare]) carries
+   the rest and is untouched here. */
+.rf-pick[data-reveal='edge'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='flash'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='void'] .rf-pick__card.is-chosen {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 0 2px var(--star-color, #d6a84f),
+    0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent),
+    0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8));
+}
+
+/* The haul: what else the strike produced. Glass panel under the card. */
+.rf-pick__haul {
+  list-style: none;
+  width: min(100%, 34rem);
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--gf-radius-sm, 8px);
+  background: rgba(10, 6, 26, 0.55);
+  text-align: left;
+}
+.rf-pick__haul-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.55rem;
+  padding-left: 0.9rem;
+  position: relative;
+  line-height: 1.4;
+}
+.rf-pick__haul-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--star, #d6a84f);
+  box-shadow: 0 0 8px var(--star, #d6a84f);
+}
+.rf-pick__haul-kind {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8f969f;
+}
+.rf-pick__haul-name { color: var(--star, #eee9dd); font-weight: 600; }
+.rf-pick__haul-detail { font-style: normal; color: #c6c1b4; font-size: 0.88rem; }
+.rf-pick__haul-sum { margin: -0.6rem 0 0; font-size: 0.78rem; letter-spacing: 0.06em; color: #8f969f; }
+
+/* Batch: the best card of the ten gets the ring so the eye finds it first. */
+.rf-pick--batch .rf-pick__card.is-best {
+  box-shadow:
+    0 0 0 1px var(--star-color, #d6a84f),
+    0 0 32px -6px color-mix(in srgb, var(--star-color, #d6a84f) 60%, transparent);
+}
+
+/* Read the scroll in place. */
+.rf-pick__skip { margin-top: -0.5rem; }
+.rf-pick__lore-btn,
+.rf-pick__skip {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: transparent;
+  color: #c6c1b4;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.rf-pick__lore-btn:hover, .rf-pick__lore-btn:focus-visible,
+.rf-pick__skip:hover, .rf-pick__skip:focus-visible {
+  border-color: #d6a84f;
+  color: #eee9dd;
+}
+.rf-pick__lore-btn:focus-visible, .rf-pick__skip:focus-visible, .rf-pick__done:focus-visible {
+  outline: 2px solid #d6a84f;
+  outline-offset: 2px;
+}
+.rf-pick__lore {
+  width: min(100%, 60ch);
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.2rem 0.4rem;
+  text-align: left;
+  color: #c6c1b4;
+  line-height: 1.55;
+}
+.rf-pick__lore p { margin: 0 0 0.7rem; }
+
 .rf-detail-root { position: fixed; inset: 0; z-index: var(--z-modal); }
 .rf-detail__back { position: absolute; inset: 0; background: rgba(9, 11, 15, 0.45); }
 .rf-detail {
@@ -439,6 +613,34 @@
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)); }
 }
 
+/* Reveal motion. Top-level keyframes; the `animation:` lines that use them
+   live under (prefers-reduced-motion: no-preference) at the bottom. */
+@keyframes rfLand {
+  0% { transform: scale(1); }
+  55% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes rfLandHeld {
+  0% { transform: scale(1); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1.06); }
+}
+@keyframes rfHalo {
+  0% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  45% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 54px 2px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  100% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+}
+@keyframes rfHaloHeld {
+  0% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  45% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 10px color-mix(in srgb, var(--star-color, #d6a84f) 22%, transparent), 0 0 72px 4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  100% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent), 0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+}
+@keyframes rfSweep {
+  0% { opacity: 0; transform: translateX(-120%); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(120%); }
+}
+
 @media (max-width: 768px) {
   .rf-head { flex-direction: column; align-items: flex-start; }
   .rf-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -449,8 +651,31 @@
   .rf-pick__card { min-height: 168px; }
 }
 
+/* Reveal motion — the `animation:` lines. Top-level on purpose, and switched
+   off (not merely shortened) in the reduce block below: Angular's emulated
+   encapsulation rewrites @keyframes names to _ngcontent-*_name but does not
+   rewrite an `animation:` shorthand that sits inside a @media block, so a
+   media-nested `animation: rfLand` would reference a name that no longer
+   exists and silently never run. Verified in the built chunk. */
+.rf-pick--landed:not(.rf-pick--batch) .rf-pick__card.is-chosen { animation: rfLand 240ms ease-out; }
+.rf-pick[data-reveal='glow'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='burst'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='shimmer'] .rf-pick__card.is-chosen { animation: rfLand 240ms ease-out, rfHalo 900ms ease-out; }
+.rf-pick[data-reveal='edge'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='flash'] .rf-pick__card.is-chosen,
+.rf-pick[data-reveal='void'] .rf-pick__card.is-chosen { animation: rfLandHeld 320ms ease-out, rfHaloHeld 1100ms ease-out; }
+.rf-sparks--reveal .rf-spark { animation: rfSpark 700ms ease-out forwards; animation-delay: calc(var(--i) * 12ms); }
+.rf-pick__sweep::before { animation: rfSweep 900ms ease-in-out 120ms both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .rf-spark, .rf-strike--spinning .rf-spark { animation: none; display: none; }
+  .rf-spark, .rf-strike--spinning .rf-spark, .rf-sparks--reveal .rf-spark { animation: none; display: none; }
+  .rf-pick__sweep { display: none; }
+  .rf-pick__sweep::before { animation: none; }
+  /* The card lands lit — tier border, ring, scale, label, haul — with no
+     motion. `[data-reveal]` matches the specificity of the per-tier rules
+     above so this later declaration wins for every rung. */
+  .rf-pick[data-reveal] .rf-pick__card.is-chosen,
+  .rf-pick--landed:not(.rf-pick--batch) .rf-pick__card.is-chosen { animation: none; }
   .rf-card:hover:not(.rf-card--locked),
   .rf-pick__card:hover:not(:disabled) { transform: none; }
 }

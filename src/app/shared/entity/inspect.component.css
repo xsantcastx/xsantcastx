@@ -182,6 +182,49 @@
 .qi__temper-note { color: #c9a84c; }
 .qi__btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Temper feedback. The lit ring, the delta rows and the ceiling line are all
+   plain declarations — the end state a reduced-motion visitor lands on. The
+   ring flare and the row light-up are motion, declared at the foot of the
+   file and switched off under prefers-reduced-motion: reduce. */
+.qi__temper--ok {
+  border-color: var(--rarity, #c9a84c);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--rarity, #c9a84c) 40%, transparent),
+    0 0 24px -8px var(--rarity-glow, rgba(201, 168, 76, 0.6));
+}
+.qi__temper-note--ok { color: var(--rarity, #c9a84c); }
+.qi__temper-outcome:empty { display: none; }
+.qi__temper-outcome--ok { margin: 0.6rem -0.35rem 0; padding: 0.15rem 0.35rem; border-radius: 6px; }
+.qi__temper-note[role='status'] { margin-top: 0.6rem; }
+.qi__temper-outcome--ok .qi__temper-note[role='status'] { margin-top: 0; }
+.qi__temper-deltas {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.qi__delta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: baseline;
+  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  border-left: 2px solid var(--rarity, #c9a84c);
+  font: 600 0.92rem/1.35 var(--font-lore);
+}
+.qi__delta-label { color: rgba(214, 221, 235, 0.86); }
+.qi__delta-vals { color: rgba(214, 221, 235, 0.7); font-weight: 400; }
+.qi__delta-vals strong { color: var(--text-color, #f4f1ea); }
+.qi__delta-plus { margin-left: auto; color: var(--rarity, #c9a84c); font-style: normal; font-weight: 600; }
+.qi__temper-max {
+  margin: 0.2rem 0 0;
+  color: var(--rarity, #c9a84c);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .qi__facts dd { margin: 0.15rem 0 0; }
 
 .qi__actions {
@@ -208,9 +251,47 @@
   border: 0;
 }
 
+@keyframes qiTemperRing {
+  0% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--rarity, #c9a84c) 40%, transparent),
+      0 0 0 0 var(--rarity-glow, rgba(201, 168, 76, 0.6));
+  }
+  40% {
+    box-shadow:
+      0 0 0 2px var(--rarity, #c9a84c),
+      0 0 40px 2px var(--rarity-glow, rgba(201, 168, 76, 0.6));
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--rarity, #c9a84c) 40%, transparent),
+      0 0 24px -8px var(--rarity-glow, rgba(201, 168, 76, 0.6));
+  }
+}
+@keyframes qiDeltaLit {
+  0% { opacity: 0; background-color: color-mix(in srgb, var(--rarity, #c9a84c) 22%, transparent); }
+  35% { opacity: 1; }
+  100% { opacity: 1; background-color: transparent; }
+}
+@keyframes qiOutcomeLit {
+  0% { background-color: color-mix(in srgb, var(--rarity, #c9a84c) 18%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* Top-level on purpose: Angular's emulated encapsulation does not rewrite an
+   `animation:` shorthand nested in a @media block to the scoped keyframe name,
+   so it would silently reference nothing. The reduce block below switches
+   these off and the static declarations above remain as the end state. */
+.qi__temper--ok { animation: qiTemperRing 700ms ease-out; }
+.qi__temper-outcome--ok { animation: qiOutcomeLit 700ms ease-out; }
+.qi__delta { animation: qiDeltaLit 600ms ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+
 @media (prefers-reduced-motion: reduce) {
   .qi,
   .qi__backdrop { transition: none; animation: none; }
+  .qi__temper--ok,
+  .qi__temper-outcome--ok,
+  .qi__delta { animation: none; }
 }
 
 @media (max-width: 768px) {
