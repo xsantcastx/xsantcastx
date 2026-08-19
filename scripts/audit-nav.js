@@ -121,6 +121,12 @@ const PLAYER_FACING = files.filter(f => {
   if (rel.startsWith('admin/')) return false;
   if (rel === 'tools/tools-registry.ts') return false;
   if (rel === 'version.ts') return false;
+  // The release log moved out of version.ts in v2.70.0 so its ~140 kB of prose
+  // would stop riding the initial bundle. It is the same historical changelog
+  // this audit has always skipped — it describes features as they shipped,
+  // including the tool product that has since been retired, and rewriting
+  // history to please a copy audit would be the wrong fix.
+  if (rel === 'version-history.ts') return false;
   if (rel === 'translation.service.ts') return false;
   if (rel === 'shared/easter-eggs/easter-egg.service.ts') return false;
   if (rel === 'codex/codex-hints.ts') return false;
