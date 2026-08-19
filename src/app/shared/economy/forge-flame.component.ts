@@ -26,6 +26,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   Input,
   NgZone,
   OnDestroy,
@@ -50,6 +51,7 @@ import {
   NAMELESS_LABEL,
   pitchFor,
 } from './combo.model';
+import { ForgeSceneService } from '../forge-scene/forge-scene.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import type { RuneFind } from '../rune-forge/rune-forge.service';
 import {
@@ -1361,6 +1363,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   private readonly modes = inject(ForgeModeService);
   private readonly runes = inject(RuneForgeService);
   private readonly router = inject(Router);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly forgeScene = inject(ForgeSceneService);
   private readonly subs = new Subscription();
 
   /**
@@ -1705,8 +1709,36 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
     this.strike();
   }
 
+  /**
+   * Send a shockwave through the WebGL forge from wherever the flame is.
+   *
+   * The strike handlers do not all carry an event — `strike()` is reached from
+   * a click, a touch, the x10 bulk button and the combo path — so the origin is
+   * taken from the button's own rect rather than from a pointer. That is also
+   * the more honest answer: the energy comes off the flame, not off the finger.
+   *
+   * A no-op when WebGL never happened, which is what lets this be called
+   * unconditionally without the flame knowing anything about the scene.
+   */
+  private lastRippleAt = 0;
+
+  private rippleTheForge(strength = 1): void {
+    if (!this.isBrowser || !this.forgeScene.active) return;
+    // Throttled, because the combo ladder rewards 9,999 uninterrupted strikes
+    // and a ripple per strike at that rate is a strobe, not a shockwave. The
+    // shader only tracks three at once anyway.
+    const now = Date.now();
+    if (now - this.lastRippleAt < 140) return;
+    this.lastRippleAt = now;
+    const btn = this.host.nativeElement.querySelector('.ff__btn');
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    this.forgeScene.ripple(r.left + r.width / 2, r.top + r.height / 2, strength);
+  }
+
   /** The strike itself, once a gesture has been judged to be one. */
   private strike(): void {
+    this.rippleTheForge();
     // The anvil is a different ledger, a different payout and a different
     // failure mode, so it forks here rather than inside the Gold path. Nothing
     // below this line runs for it: no idle XP (the rune ledger awards its own,
