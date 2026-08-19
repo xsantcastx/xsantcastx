@@ -109,6 +109,21 @@ describe('GamblerService', () => {
     expect(gambler.guaranteed(iron.id)).toBeFalse();
   });
 
+  it('publishes the persisted record on init, not only after an open', () => {
+    // The reload bug: `snapshot$` is seeded with zeros and only `open()` used to
+    // publish, so a page load showed "0 spent" over a record that said 100k.
+    const first = configure(memory, 100_000);
+    first.gambler.init();
+    first.gambler.open(iron.id, scripted([0, 0.99, 0]));
+    expect(first.gambler.snapshot.spent).toBe(iron.cost);
+
+    TestBed.resetTestingModule();
+    const second = configure(memory, 100_000);
+    second.gambler.init();
+    expect(second.gambler.snapshot.spent).toBe(iron.cost);
+    expect(second.gambler.snapshot.opened[iron.id]).toBe(1);
+  });
+
   it('survives a reload with its counters intact', () => {
     const first = configure(memory, 100_000);
     first.gambler.open(iron.id, scripted([0, 0.99, 0]));
