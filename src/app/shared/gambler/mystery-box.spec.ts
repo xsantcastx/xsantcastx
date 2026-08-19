@@ -15,7 +15,7 @@ import {
   type PityState,
 } from './mystery-box';
 import { itemDefinitionById } from '../rpg/item-definition';
-import { uniqueById } from '../rpg/unique-items';
+import { UNIQUE_ITEMS, uniqueById } from '../rpg/unique-items';
 
 /** Deterministic rng: replays a fixed list, then holds the last value. */
 function scripted(values: number[]): () => number {
@@ -50,6 +50,30 @@ describe('the box shelf', () => {
     // The property the whole economy rests on. See the header of mystery-box.ts.
     for (const box of MYSTERY_BOXES) {
       expect(boxScrapExpectation(box)).toBeLessThan(box.cost);
+    }
+  });
+
+  it('keeps every named object out of the ordinary pool, at every rarity', () => {
+    // The leak: `boxPool` used to exclude only the uniques authored *at* the
+    // rolled rarity, so the other twenty-odd could be handed out as ordinary
+    // items at whatever rarity came up — a named object at a rarity it does not
+    // exist at, with `unique: false` on the result so nothing announced it.
+    const named = new Set(UNIQUE_ITEMS.map(u => u.id));
+    for (const rarity of RARITY_LADDER) {
+      for (const def of boxPool(rarity)) {
+        expect(named.has(def.id)).withContext(`${def.id} leaked at ${rarity}`).toBeFalse();
+      }
+    }
+  });
+
+  it('only ever mints a unique at its own authored rarity', () => {
+    for (const box of MYSTERY_BOXES) {
+      for (const roll of [0, 0.25, 0.5, 0.75, 0.999]) {
+        // Second sample under UNIQUE_CHANCE forces the named branch when one exists.
+        const result = rollBox(box, {}, scripted([roll, 0.001, roll]));
+        if (!result?.unique) continue;
+        expect(uniqueById(result.definitionId)!.rarity).toBe(result.rarity);
+      }
     }
   });
 

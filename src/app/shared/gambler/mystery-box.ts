@@ -39,7 +39,7 @@ import {
   EQUIPMENT_SCRAP,
   type ItemDefinition,
 } from '../rpg/item-definition';
-import { uniquesAtRarity } from '../rpg/unique-items';
+import { UNIQUE_ITEMS, uniquesAtRarity } from '../rpg/unique-items';
 import { SELL_QUALITY_FLOOR, SELL_QUALITY_SPAN } from '../rpg/item-quality';
 import type { ItemRarity } from '../rpg/item.model';
 
@@ -189,9 +189,23 @@ export interface BoxResult {
   pityApplied: boolean;
 }
 
-/** Definitions a box will hand out: rollable, wearable, and not a Keeper reward. */
+/**
+ * Definitions a box will hand out as an *ordinary* item.
+ *
+ * Every unique is excluded, at every rarity — not just the ones authored at the
+ * rarity being rolled. Filtering only same-rarity uniques left the other
+ * twenty-odd sitting in the ordinary pool, so a Legendary roll could hand out
+ * an "Ashfall Wrap" (authored Uncommon) as a Legendary: the named object
+ * appeared at a rarity it does not exist at, `BoxResult.unique` came back false
+ * because it had not gone through the named branch, and so the discovery
+ * animation, the passive line and the lifetime counter all stayed silent for it.
+ * Twelve Void Cache opens produced eight of them.
+ *
+ * Uniques reach a player through exactly one path — the `UNIQUE_CHANCE` branch
+ * in `rollBox` — which is what keeps their authored rarity meaningful.
+ */
 export function boxPool(rarity: ItemRarity): ItemDefinition[] {
-  const uniqueIds = new Set(uniquesAtRarity(rarity).map(u => u.id));
+  const uniqueIds = new Set(UNIQUE_ITEMS.map(u => u.id));
   return ITEM_DEFINITIONS.filter(def => {
     if (uniqueIds.has(def.id)) return false;
     if (def.family !== 'equipment' && def.family !== 'charm') return false;

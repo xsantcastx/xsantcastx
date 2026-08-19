@@ -277,8 +277,17 @@
   cursor: pointer;
 }
 
+/* The link is the only standalone control on the page that is not a button, so
+   it has to be padded up to the 44px floor by hand — a 16px text link is the
+   exact tap target the mobile pass went through the whole site to delete. */
 .gb__back { margin: 1.5rem 0 0; text-align: center; font-size: 0.8rem; }
-.gb__back a { color: rgba(232, 236, 241, 0.55); }
+.gb__back a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  color: rgba(232, 236, 241, 0.55);
+}
 
 /* ── The reveal ───────────────────────────────────────────────────────────── */
 
@@ -528,3 +537,8 @@
   .gb__sell-label { grid-template-columns: auto minmax(0, 1fr) 3rem 4rem; }
   .gb__sell-mods { display: none; }
 }
+
+/* The routed host has no display of its own, and an inline host cannot be a
+   containing block for the section's max-width. Every other routed hall gets
+   this from its own wrapper; this one states it. */
+:host { display: block; }

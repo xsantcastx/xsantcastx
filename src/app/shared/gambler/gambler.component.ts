@@ -123,6 +123,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     if (!this.isBrowser) return;
     this.economy.init();
     this.inventory.init();
+    this.gambler.init();
 
     this.subs.add(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;

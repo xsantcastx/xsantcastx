@@ -129,6 +129,24 @@ export class GamblerService {
 
   readonly boxes = MYSTERY_BOXES;
 
+  /**
+   * Read the record and publish it once.
+   *
+   * `load()` is lazy and every *reader* calls it, so `pityLeft` and
+   * `openedCount` were always right. `snapshot$` was not: it is a
+   * `BehaviorSubject` seeded with zeros, and nothing published into it until the
+   * first `open()` — so a player who reloaded the page saw "0 spent here" over a
+   * record that said a hundred thousand, until they bought another box.
+   *
+   * Idempotent, and called from the component's `ngOnInit` the same way
+   * `EconomyService.init` and `InventoryService.init` are.
+   */
+  init(): void {
+    if (!this.isBrowser) return;
+    this.load();
+    this.publish();
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Reads
   // ───────────────────────────────────────────────────────────────────────────
