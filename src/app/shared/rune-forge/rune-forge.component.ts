@@ -63,6 +63,7 @@ import {
   type LibraryTab,
 } from './rune-library';
 import { loadSeen, markSeen, persistSeen } from './rune-unseen';
+import { batchHaul, haulOf, isHeavyTier, type BatchHaul, type HaulLine } from './rune-haul';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
@@ -102,13 +103,6 @@ interface RecipeRow {
   hidden: boolean;
   /** All six words are painted, but the card is withheld while `hidden`. */
   card: CardArt | null;
-}
-
-
-
-/** Epic and above earn the sub-bass voice on the reveal cue. */
-function isHeavy(tier: RuneTier): boolean {
-  return RUNE_TIER_ORDER.indexOf(tier) >= RUNE_TIER_ORDER.indexOf('epic');
 }
 
 @Component({
@@ -200,6 +194,14 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   loreOpen = false;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
   scrollParagraphs: string[] = [];
+  /**
+   * Everything the last strike produced besides the rune — the minted
+   * equippable, a scroll, an explorer, essence — as printable lines. The
+   * service has always written these onto the find; the reveal now reads them.
+   */
+  haul: HaulLine[] = [];
+  /** Counts across an Auto ×10 batch, for the one-line summary under the grid. */
+  batchSummary: BatchHaul = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
   /** True while a pick is open. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
@@ -389,6 +391,27 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.batch.filter(find => find.isNew).length;
   }
 
+  /**
+   * Which card reveal the landed rune earns — the tier table's `reveal` field,
+   * which was authored with the ladder and consumed nowhere until now. Bound
+   * as `data-reveal` on the pick so the CSS keys one treatment per rung.
+   */
+  get revealKind(): RuneTierDefinition['reveal'] {
+    return this.revealTier?.reveal ?? 'plain';
+  }
+
+  /** The best find in the batch, so the grid can mark it. Null outside a batch. */
+  get bestBatchIndex(): number | null {
+    if (!this.batch.length) return null;
+    let best = 0;
+    for (let i = 1; i < this.batch.length; i++) {
+      if (RUNE_TIER_ORDER.indexOf(this.batch[i].rune.tier) > RUNE_TIER_ORDER.indexOf(this.batch[best].rune.tier)) {
+        best = i;
+      }
+    }
+    return best;
+  }
+
   get completePct(): number {
     return Math.round((this.unique / this.totalRunes) * 100);
   }
@@ -441,6 +464,8 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scrollParagraphs = find.scroll
       ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
       : [];
+    this.haul = haulOf(find);
+    this.batchSummary = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
     this.cdr.markForCheck();
 
     if (this.prefersReducedMotion()) this.choosePick(0);
@@ -479,8 +504,10 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.revealTier = tierOf(last.rune.tier);
     this.revealCard = runeCard(last.rune.id);
     this.scrollParagraphs = [];
+    this.haul = [];
+    this.batchSummary = batchHaul(finds);
     if (best.rune.tier === 'singular') this.audio.voidRumble();
-    else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavy(best.rune.tier));
+    else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavyTier(best.rune.tier));
     this.flare(best.rune.tier, tierOf(best.rune.tier).duration);
     this.cdr.markForCheck();
   }
@@ -499,14 +526,33 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  /**
+   * Close the reveal — or, while the hand is still face-down, resolve it.
+   *
+   * The pick is theatrical: the ledger wrote the winner before the cards were
+   * dealt (see rune-reel.ts). A backdrop click that did nothing while the hand
+   * was open was a delay the player could not escape, so it now turns the
+   * first card instead. Same rune, same odds, same Gold — only the wait goes.
+   */
   dismissFocus(): void {
-    if (this.striking && !this.landed) return;
+    if (this.striking && !this.landed) {
+      if (this.picks.length) this.skipPick();
+      return;
+    }
     this.landed = false;
     this.striking = false;
     this.chosen = null;
     this.picks = [];
     this.batch = [];
+    this.haul = [];
+    this.loreOpen = false;
     this.cdr.markForCheck();
+  }
+
+  /** Turn the hand over now. The result was already written; this only ends the wait. */
+  skipPick(): void {
+    if (!this.striking || this.landed || this.chosen !== null) return;
+    this.choosePick(0);
   }
 
   setTab(tab: LibraryTab): void {
@@ -577,6 +623,21 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   onEscape(): void {
     if (this.detail) this.closeCard();
     else if (this.landed) this.dismissFocus();
+    else if (this.striking && this.chosen === null && this.picks.length) this.skipPick();
+  }
+
+  /**
+   * Enter turns the hand while it is face-down. Guarded to that exact state so
+   * it never intercepts Enter on the library, the detail sheet or a form — and
+   * it stands aside when the key lands on a card button, whose own click turns
+   * the card the keyboard user actually chose.
+   */
+  @HostListener('document:keydown.enter', ['$event'])
+  onEnter(event: Event): void {
+    if (this.detail || this.landed || !this.striking || this.chosen !== null) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest?.('.rf-pick__card')) return;
+    if (this.picks.length) this.skipPick();
   }
 
   onDetailKey(event: KeyboardEvent): void {
@@ -623,7 +684,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (find.rune.tier === 'singular') {
       this.audio.voidRumble();
     } else {
-      this.audio.runeReveal(tier.semitones, isHeavy(find.rune.tier));
+      this.audio.runeReveal(tier.semitones, isHeavyTier(find.rune.tier));
     }
     if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);

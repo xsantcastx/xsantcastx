@@ -88,22 +88,66 @@
           </dl>
         }
 
-        @if (temperPreview) {
-          <div class="qi__temper">
-            <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: temperPreview.maxLevel }) }}</p>
-            <p class="qi__temper-cost">{{ t('inspect.temper.cost', { gold: temperGold(), mats: temperMats(), chance: temperChance() }) }}</p>
-            @if (wardPct > 0) {
-              <p class="qi__temper-ward">{{ t('inspect.temper.ward', { pct: wardPct }) }}</p>
+        @if (showTemperBlock) {
+          <div class="qi__temper" [class.qi__temper--ok]="temperOutcome === 'ok' || temperOutcome === 'max'">
+            @if (temperPreview; as preview) {
+              <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: preview.maxLevel }) }}</p>
+              <p class="qi__temper-cost">{{ t('inspect.temper.cost', { gold: temperGold(), mats: temperMats(), chance: temperChance() }) }}</p>
+              @if (wardPct > 0) {
+                <p class="qi__temper-ward">{{ t('inspect.temper.ward', { pct: wardPct }) }}</p>
+              }
+              <button
+                type="button"
+                class="qi__btn"
+                [disabled]="!canTemper"
+                (click)="temper()">
+                {{ t('inspect.temper.act') }}
+              </button>
             }
-            <button
-              type="button"
-              class="qi__btn"
-              [disabled]="!canTemper"
-              (click)="temper()">
-              {{ t('inspect.temper.act') }}
-            </button>
-            @if (temperNote) {
-              <p class="qi__temper-note" role="status">{{ temperNote }}</p>
+            <!--
+              One-item loop keyed on the strike counter: a fresh element per
+              temper, so the light-up re-runs on the second success in a row.
+              A plain @switch would keep the same nodes and animate only once.
+              The track expression is deliberately not bare identity: the
+              re-creation is the point, and Angular's NG0956 dev warning keys
+              on identity tracking only.
+            -->
+            @for (n of [temperStrikes]; track 'strike:' + n) {
+              <div class="qi__temper-outcome" [class.qi__temper-outcome--ok]="temperOutcome === 'ok' || temperOutcome === 'max'">
+                @switch (temperOutcome) {
+                  @case ('ok') {
+                    <p class="qi__temper-note qi__temper-note--ok" role="status">{{ t('inspect.temper.okDelta', { n: temperLevelAfter }) }}</p>
+                    <ul class="qi__temper-deltas">
+                      @for (d of temperDelta; track d.key) {
+                        <li class="qi__delta" [style.--i]="$index">
+                          <span class="qi__delta-label">{{ d.label }}</span>
+                          <span class="qi__delta-vals">{{ d.before }} → <strong>{{ d.after }}</strong></span>
+                          <em class="qi__delta-plus">+{{ d.delta }}</em>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @case ('max') {
+                    <p class="qi__temper-note qi__temper-note--ok" role="status">{{ t('inspect.temper.okDelta', { n: temperLevelAfter }) }}</p>
+                    <ul class="qi__temper-deltas">
+                      @for (d of temperDelta; track d.key) {
+                        <li class="qi__delta" [style.--i]="$index">
+                          <span class="qi__delta-label">{{ d.label }}</span>
+                          <span class="qi__delta-vals">{{ d.before }} → <strong>{{ d.after }}</strong></span>
+                          <em class="qi__delta-plus">+{{ d.delta }}</em>
+                        </li>
+                      }
+                    </ul>
+                    <p class="qi__temper-max">{{ t('inspect.temper.max', { n: temperLevelAfter, max: temperMax }) }}</p>
+                  }
+                  @case ('fail') {
+                    <p class="qi__temper-note" role="status">{{ t('inspect.temper.fail') }}</p>
+                  }
+                  @case ('blocked') {
+                    <p class="qi__temper-note" role="status">{{ t('inspect.temper.blocked') }}</p>
+                  }
+                }
+              </div>
             }
           </div>
         }
