@@ -72,6 +72,29 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ── Cloud save: device coordination ──────────────────────────────────────
+    // Two documents, both owner-only, both about *which device* rather than
+    // what the save contains:
+    //
+    //   meta/device-lease — who currently holds write authority. Acquired in a
+    //     Firestore transaction so two devices racing for it cannot both win.
+    //     Deletable, because releasing on tab close is what saves the next
+    //     device from waiting out the two-minute expiry.
+    //
+    //   meta/reset — the wipe tombstone. `at` is a millisecond stamp and the
+    //     client keeps the later of the two sides, so this must be updatable
+    //     downward-in-principle: a monotonic rule here would be wrong, since a
+    //     device whose clock is behind still has to be able to record a wipe
+    //     the visitor genuinely took. The document is worthless to an attacker
+    //     with the owner's credentials — they could delete the save directly.
+    //
+    // Deliberately not merged into the /progress rule above: that one carries
+    // the monotonic-XP condition, and neither of these has an `xp` field, so
+    // they would sit in it only to be exempted from its single reason to exist.
+    match /users/{uid}/meta/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // ── Live Activity Feed ────────────────────────────────────────────────────
     // Written by the Claude Code PostToolUse hook; read by the /live page.
     match /claude-activity/{docId} {

@@ -256,6 +256,29 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      path: 'exchange',
+      loadComponent: () => import('./shared/exchange/exchange.component').then(m => m.ExchangeComponent),
+      title: 'The Grand Exchange — Trade Materials and Equipment | Eclipse Realms',
+      data: {
+        description: 'A trading board of ninety-odd lines, priced by the clock rather than by a shopkeeper. Ore, reagents, essence and equipment all move on their own; market events swing whole categories for an hour at a time; and your own buying and selling moves the line you traded. Five per cent to the house on every sale. Simulated merchant houses, not other players.',
+        keywords: 'grand exchange, trading, market, prices, price chart, supply and demand, gold, eclipse realms, godforge, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/exchange`,
+          url: `${SITE_URL}/exchange`,
+          name: 'The Grand Exchange',
+          description: 'A player-facing trading board whose prices move on a clock, with charts, market events and a five per cent sale tax.'
+        }
+      }
+    },
+  {
+      path: 'grand-exchange',
+      redirectTo: 'exchange',
+      pathMatch: 'full',
+    },
+  {
       path: 'forge/runes',
       loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
       title: 'The Forge — Strike the Anvil | Eclipse Realms',

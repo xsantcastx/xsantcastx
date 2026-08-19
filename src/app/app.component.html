@@ -106,6 +106,14 @@
   <app-cloud-save-merge-dialog></app-cloud-save-merge-dialog>
 }
 
+<!-- "Another device is active" — the write lease. Mounted out here for the same
+     reason as the dialog above: it is position:fixed, and every routed host
+     carries a transform during the route fade that would pin it to the page.
+     Renders nothing unless this device is passive. -->
+@if (!isEmbedMode) {
+  <app-device-lease-banner></app-device-lease-banner>
+}
+
 @if (!isEmbedMode) {
   <app-keeper-panel></app-keeper-panel>
 }

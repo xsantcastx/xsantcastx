@@ -17,6 +17,36 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.72.0',
+    codename: 'Ledger',
+    date: '2026-08-19',
+    highlights: [
+      'The Grand Exchange, a new hall at /exchange: seventy-five tradable lines \u2014 fifteen materials and fifteen equipment definitions across four rarities \u2014 each with its own price, its own history and its own chart',
+      'Prices are a function of the clock rather than a timer. Close the tab on Friday and the market has moved by Monday, because nothing had to be running for it to move \u2014 the price of a thing at any instant is computed from that instant, which is also why the thirty-day chart can be drawn for a market you were not present for',
+      'Three overlapping rhythms drive it: a four-day swing you notice between sessions, an intraday shape, and a three-hour churn that makes checking back worth doing. Nothing may fall below a tenth of its anchor price or climb past five times it',
+      'Market events sweep whole categories \u2014 Forge Shortage lifts ore a quarter, Umbral Drought takes a fifth off essence, and the Eclipse Market Crash takes a tenth off everything for half an hour, which is the best half hour to be buying. They can overlap, and when they do their effects compound',
+      'Your own trading moves the board. Buying takes stock off the shelf and lifts the price; selling floods it and drops it. How far depends on how thin the line is \u2014 dumping four hundred Cinder Ore is an event, selling one helm is not \u2014 and the market forgets half of what you did every six hours',
+      'Every sale pays the house five per cent. It is the only Gold that leaves the realm here, and it means a round trip is always a small loss \u2014 buying something back costs more than you got for it, which is what stops the board being a machine for printing Gold',
+      'Charts show 24 hours, 7 days, 30 days or all of it, with a price line, a trailing mean and volume bars underneath. Every row on the board carries its own sparkline, coloured green when it is climbing and red when it is not',
+      'A quote that moved against you between reading it and clicking is refused rather than charged \u2014 and a quote that moved in your favour settles at the better price, because refusing that would be the worse surprise',
+      'The counterparties are merchant houses, not other Keepers, and the page says so plainly. Nothing you list is seen by another player; the prices are simulated, and a simulated market presented as a real one would be the one version of this worth refusing to build',
+      'Named objects are not for sale at any price. A unique exists at exactly one authored rarity, so a shelf price for one would mint something the rest of the game says cannot exist \u2014 and putting a price on it at all deletes the reason to go looking',
+    ],
+  },
+  {
+    version: '2.71.1',
+    codename: 'Wager',
+    date: '2026-08-19',
+    highlights: [
+      'Resetting your progress on a phone used to undo itself. The save cleared, and a minute later \u2014 or on the next visit \u2014 it was back. The local half of the wipe was landing and the cloud half silently was not: the Firestore SDK is loaded on demand rather than shipped in the initial bundle, so for the first few seconds of a cold mobile load there is no connection to delete anything through, and the delete simply returned. The next pull then read a device holding nothing against an account holding a save, which is indistinguishable from signing in on a new browser, and helpfully restored it',
+      'A wipe is now stamped before anything is destroyed, and the stamp is what the next sync reconciles. If the cloud never heard about the reset the stamp re-sends it; if another device wiped the account later, this one wipes too rather than pushing its survivors back up. It survives being taken offline, taken before the SDK has arrived, and taken on a tab that is closed halfway through',
+      'Deleting a single blob got the same treatment. Any deletion whose cloud half fails is written down and re-issued on the next sync, and writing that key again cancels it \u2014 starting something again is not the same as never having deleted it',
+      'A device lease, so two devices stop quietly writing over each other. The one being played on holds it and syncs exactly as before; a second device left open on a desk reads normally, keeps playing locally, and holds its uploads instead of interleaving them. A small strip at the top says which device is active, with a Play Here button that moves the lease and sends everything the passive device queued',
+      'The lease is taken in a transaction, so two devices racing for it cannot both win, and it expires two minutes after the holder stops \u2014 a crashed tab or a phone that went into a pocket frees the save on its own',
+      'Nothing about the merge rules changed, and a device that cannot read the lease at all keeps writing. A network failure must not be able to lock somebody out of their own cloud save, and the reconciliation underneath still converges the way it always did',
+    ],
+  },
+  {
     version: '2.71.0',
     codename: 'Wager',
     date: '2026-08-19',
