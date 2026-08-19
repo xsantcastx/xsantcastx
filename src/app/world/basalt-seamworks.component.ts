@@ -3,6 +3,11 @@
  *
  * The only public Mine control. Templates call the gateway; they do not
  * roll discovery, grant XP, or write inventory.
+ *
+ * C1 Refining lives here too: three of one ore tier become one of the next.
+ * That is a pure inventory transform — no XP, no activity-ledger op, no level
+ * gate — so it goes straight to InventoryService.refineStack (the sole stack
+ * writer), never through the gateway. The mining flow is untouched by it.
  */
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -35,6 +40,13 @@ import { CINDER_ORE_DISPLAY, EMBER_RESIDUE_DISPLAY, materialDisplay, type Materi
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { InventoryService } from '../shared/rpg/inventory.service';
+import {
+  REFINE_RECIPES,
+  maxRefineBatches,
+  refinePreview,
+  type RefinePreview,
+  type RefineRecipe,
+} from '../shared/rpg/refine-ops';
 
 type MinePanelState =
   | 'available'
@@ -45,13 +57,30 @@ type MinePanelState =
   | 'persist'
   | 'unavailable';
 
-type FloaterKind = 'ore' | 'ember';
+type FloaterKind = 'ore' | 'ember' | 'refine';
+
+/** Which figure of a refine row a 'refine' floater rises off. */
+type RefineFloaterRole = 'source' | 'target';
 
 interface Floater {
   id: number;
   kind: FloaterKind;
   text: string;
+  /**
+   * Which refine row owns a 'refine' floater (its recipe.from) and which of
+   * that row's two figures it rises off. Keyed by row + role rather than by
+   * ore id on purpose: slag-fragment is the target of one recipe and the
+   * source of the next, so a stack-keyed floater would render on both rows.
+   * Unset for ore/ember.
+   */
+  refine?: { row: string; role: RefineFloaterRole };
 }
+
+/** ×1, ×5, or everything the source stack can fund. */
+type RefineChoice = 1 | 5 | 'max';
+
+/** How long a first click stays armed before it quietly disarms itself. */
+const REFINE_ARM_MS = 6000;
 
 @Component({
   selector: 'app-basalt-seamworks',
@@ -106,6 +135,20 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   private floaterSeq = 0;
   private floaterTimers: Array<ReturnType<typeof setTimeout>> = [];
 
+  // ── C1 Refining ──────────────────────────────────────────────────────────
+  readonly recipes = REFINE_RECIPES;
+  /** Held count per ore id, refreshed off every inventory snapshot. */
+  heldByOre: Record<string, number> = {};
+  /** Batch choice per recipe source, ×1 unless the player picked otherwise. */
+  refineChoiceBy: Record<string, RefineChoice> = {};
+  /** The first click of the two-step confirm; null when nothing is armed. */
+  refineArmed: { from: string; preview: RefinePreview } | null = null;
+  private refineArmTimer?: ReturnType<typeof setTimeout>;
+  /** Kept only across a persist retry, exactly like pendingId for Mine. */
+  refinePending: { id: string; from: string; batches: number } | null = null;
+  refineError: { from: string; code: 'capacity' | 'persist' | 'stale' } | null = null;
+  lastRefine: { from: string; to: string; consumed: number; produced: number } | null = null;
+
   ngOnInit(): void {
     this.activity.init();
     this.chapters.init();
@@ -147,6 +190,7 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     this.lastOp = null;
     this.lastOre = 0;
     this.lastEmber = 0;
+    this.disarmRefine();
     this.refreshHeld();
   }
 
@@ -165,20 +209,28 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   private refreshHeld(): void {
     this.oreHeld = this.inventory.stackOf(this.selectedOreId);
     this.emberHeld = this.inventory.stackOf(EMBER_RESIDUE_ID);
+    const held: Record<string, number> = {};
+    for (const tier of this.tiers) held[tier.oreId] = this.inventory.stackOf(tier.oreId);
+    this.heldByOre = held;
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     if (this.clock) clearInterval(this.clock);
+    if (this.refineArmTimer) clearTimeout(this.refineArmTimer);
     for (const t of this.floaterTimers) clearTimeout(t);
   }
 
   oreFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'ore'); }
   emberFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'ember'); }
+  /** The '−N' / '+N' floaters for one figure of one refine row — never its neighbour row's. */
+  refineFloaters(recipe: RefineRecipe, role: RefineFloaterRole): Floater[] {
+    return this.floaters.filter(f => f.kind === 'refine' && f.refine?.row === recipe.from && f.refine.role === role);
+  }
 
-  private spawnFloater(kind: FloaterKind, text: string): void {
+  private spawnFloater(kind: FloaterKind, text: string, refine?: Floater['refine']): void {
     const id = ++this.floaterSeq;
-    this.floaters = [...this.floaters, { id, kind, text }];
+    this.floaters = [...this.floaters, { id, kind, text, refine }];
     this.floaterTimers.push(setTimeout(() => {
       this.floaters = this.floaters.filter(f => f.id !== id);
       this.cdr.markForCheck();
@@ -280,6 +332,162 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
     const pick = infernalChoiceById(this.chapters.infernal()?.choiceId ?? null);
     if (!pick) return this.t('seamworks.chapter.missing');
     return this.t('seamworks.chapter.resolved', { choice: this.t(pick.titleKey) });
+  }
+
+  // ── C1 Refining ──────────────────────────────────────────────────────────
+
+  artOf(oreId: string): MaterialDisplay {
+    return materialDisplay(oreId) ?? CINDER_ORE_DISPLAY!;
+  }
+
+  heldOf(oreId: string): number {
+    return this.heldByOre[oreId] ?? 0;
+  }
+
+  /**
+   * The live choice for a recipe. A pick the stack can no longer fund — ×5
+   * after a refine left four ore — quietly falls back to ×1, so the button
+   * always describes something the player could do next.
+   */
+  refineChoice(recipe: RefineRecipe): RefineChoice {
+    const choice = this.refineChoiceBy[recipe.from] ?? 1;
+    const max = maxRefineBatches(this.heldOf(recipe.from), recipe.ratio);
+    if (choice === 5 && max < 5) return 1;
+    if (choice === 'max' && max < 1) return 1;
+    return choice;
+  }
+
+  /**
+   * The amounts on offer for one recipe: ×1, ×5, and "everything". A choice
+   * the stack cannot fund is still listed, disabled, so the player sees what
+   * a bigger stack would unlock — the same shape as hub-bank's dropChoices,
+   * which never offers more than is held.
+   */
+  refineChoices(recipe: RefineRecipe): ReadonlyArray<{ key: RefineChoice; batches: number; label: string; enabled: boolean }> {
+    const max = maxRefineBatches(this.heldOf(recipe.from), recipe.ratio);
+    return [
+      { key: 1, batches: 1, label: this.t('seamworks.refine.choice', { n: 1 }), enabled: true },
+      { key: 5, batches: 5, label: this.t('seamworks.refine.choice', { n: 5 }), enabled: max >= 5 },
+      { key: 'max', batches: max, label: this.t('seamworks.refine.choiceMax', { n: max }), enabled: max >= 1 },
+    ];
+  }
+
+  pickRefineChoice(recipe: RefineRecipe, choice: RefineChoice): void {
+    this.refineChoiceBy = { ...this.refineChoiceBy, [recipe.from]: choice };
+    this.disarmRefine();
+  }
+
+  /** Whole batches the current choice asks for. "Max" of a stack under 3 asks for 1, so the reason reads "needs 3". */
+  refineBatches(recipe: RefineRecipe): number {
+    const choice = this.refineChoice(recipe);
+    if (choice === 'max') return Math.max(1, maxRefineBatches(this.heldOf(recipe.from), recipe.ratio));
+    return choice;
+  }
+
+  refinePreviewFor(recipe: RefineRecipe): RefinePreview {
+    return refinePreview({ fromOreId: recipe.from, have: this.heldOf(recipe.from), batches: this.refineBatches(recipe) });
+  }
+
+  /** Why the Refine button is disabled, or null when it is live. */
+  refineBlocker(recipe: RefineRecipe): 'insufficient' | 'capacity' | null {
+    if (!this.refinePreviewFor(recipe).ok) return 'insufficient';
+    if (!this.inventory.canAcceptStackGrant(recipe.to)) return 'capacity';
+    return null;
+  }
+
+  refineDisabled(recipe: RefineRecipe): boolean {
+    if (!this.isBrowser) return true;
+    if (this.refineError?.from === recipe.from && this.refineError.code === 'persist') return false;
+    return this.refineBlocker(recipe) !== null;
+  }
+
+  isRefineArmed(recipe: RefineRecipe): boolean {
+    return this.refineArmed?.from === recipe.from;
+  }
+
+  /** First click arms, second click within REFINE_ARM_MS confirms. */
+  refineClick(recipe: RefineRecipe): void {
+    if (this.isRefineArmed(recipe)) {
+      this.confirmRefine(recipe);
+      return;
+    }
+    if (this.refineDisabled(recipe)) return;
+    const preview = this.refinePreviewFor(recipe);
+    if (!preview.ok) return;
+    this.disarmRefine();
+    this.refineArmed = { from: recipe.from, preview };
+    this.refineArmTimer = setTimeout(() => {
+      this.refineArmed = null;
+      this.cdr.markForCheck();
+    }, REFINE_ARM_MS);
+  }
+
+  disarmRefine(): void {
+    if (this.refineArmTimer) clearTimeout(this.refineArmTimer);
+    this.refineArmTimer = undefined;
+    this.refineArmed = null;
+  }
+
+  private confirmRefine(recipe: RefineRecipe): void {
+    const armed = this.refineArmed;
+    this.disarmRefine();
+    const batches = armed?.preview.batches ?? this.refineBatches(recipe);
+    const pending = this.refinePending?.from === recipe.from ? this.refinePending : null;
+    const id = pending?.id ?? newMutationId();
+    this.refinePending = { id, from: recipe.from, batches: pending?.batches ?? batches };
+    const result = this.inventory.refineStack(id, recipe.from, this.refinePending.batches);
+    if (result.ok) {
+      this.refinePending = null;
+      this.refineError = null;
+      this.lastRefine = { from: result.from, to: result.to, consumed: result.consumed, produced: result.produced };
+      this.refreshHeld();
+      if (!result.replayed) {
+        this.spawnFloater('refine', `−${result.consumed}`, { row: recipe.from, role: 'source' });
+        this.spawnFloater('refine', `+${result.produced}`, { row: recipe.from, role: 'target' });
+      }
+      this.cdr.markForCheck();
+      return;
+    }
+    if (result.code === 'persist') {
+      this.refineError = { from: recipe.from, code: 'persist' };
+      return;
+    }
+    this.refinePending = null;
+    if (result.code === 'capacity') {
+      this.refineError = { from: recipe.from, code: 'capacity' };
+      this.keeper.show('bank');
+      return;
+    }
+    // 'insufficient' / 'bad-batches' / 'no-recipe' / 'ssr': the button was live
+    // on stale counts (another tab spent the ore); refresh and say so.
+    this.refreshHeld();
+    this.refineError = result.code === 'ssr' ? null : { from: recipe.from, code: 'stale' };
+  }
+
+  retryRefine(recipe: RefineRecipe): void {
+    this.confirmRefine(recipe);
+  }
+
+  refreshRefine(): void {
+    this.refineError = null;
+    this.refinePending = null;
+  }
+
+  lastRefineFor(recipe: RefineRecipe): { from: string; to: string; consumed: number; produced: number } | null {
+    return this.lastRefine?.from === recipe.from ? this.lastRefine : null;
+  }
+
+  refineStatus(recipe: RefineRecipe): string {
+    const from = this.artOf(recipe.from).name;
+    const to = this.artOf(recipe.to).name;
+    if (this.refineArmed?.from === recipe.from) {
+      const p = this.refineArmed.preview;
+      return this.t('seamworks.refine.status.armed', { consume: p.consume, from, produce: p.produce, to });
+    }
+    if (this.lastRefine?.from === recipe.from) {
+      return this.t('seamworks.refine.status.done', { consume: this.lastRefine.consumed, from, produce: this.lastRefine.produced, to });
+    }
+    return this.t('seamworks.refine.status.ready', { n: recipe.ratio, from, to });
   }
 }
 

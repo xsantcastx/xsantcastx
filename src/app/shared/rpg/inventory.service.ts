@@ -73,6 +73,7 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import { refineOpIds, refinePreview, refineRecipeFor } from './refine-ops';
 import { INVENTORY_ERA } from './inventory.model';
 import { eraIsCurrent, ledgerFromPriorEra } from '../save/realm-era';
 import { definitionFor, itemFitsSlot } from './item-definition';
@@ -385,6 +386,107 @@ export class InventoryService {
     this.publish();
     this.acquired$$.next(item);
     return { ok: true, item, replayed: false };
+  }
+
+  /**
+   * C1 Refining: three of one ore tier become one of the next (see
+   * refine-ops.ts for the ladder). Same mutation id returns the stored result
+   * without applying twice. Consume + grant are ONE ledger write; a failed
+   * persist rolls back both, and the target row is never created without the
+   * source being consumed in the same save.
+   *
+   * A pure inventory transform: no XP, no activity-ledger op, no discovery,
+   * no level gate. This is the sole writer path for it — nothing else appends
+   * refine ops.
+   */
+  refineStack(mutationId: string, fromOreId: string, batches = 1):
+    | { ok: true; from: string; to: string; consumed: number; produced: number; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'no-recipe' | 'insufficient' | 'capacity' | 'persist' | 'bad-batches' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    // An empty mutation id would make every refine share the same op ids and
+    // dedupe into one; refuse it as a malformed request rather than apply it.
+    if (!mutationId) return { ok: false, code: 'bad-batches' };
+
+    const recipe = refineRecipeFor(fromOreId);
+    if (!recipe) return { ok: false, code: 'no-recipe' };
+
+    const ids = refineOpIds(mutationId);
+    const stored = this.ledger.stackOps.find(op => op.id === ids.grant);
+    if (stored) {
+      const consumedOp = this.ledger.stackOps.find(op => op.id === ids.consume);
+      return {
+        ok: true,
+        from: recipe.from,
+        to: recipe.to,
+        consumed: consumedOp?.quantity ?? stored.quantity * recipe.ratio,
+        produced: stored.quantity,
+        replayed: true,
+      };
+    }
+
+    // Every check runs before the ledger is touched.
+    const preview = refinePreview({ fromOreId, have: this.stackOf(fromOreId), batches });
+    if (!preview.ok) {
+      return { ok: false, code: preview.reason ?? 'bad-batches' };
+    }
+    if (!this.canAcceptStackGrant(recipe.to)) return { ok: false, code: 'capacity' };
+
+    const previous = this.ledger;
+    let stackOps = this.ledger.stackOps;
+    let records = this.ledger.records;
+
+    const consumed = this.advanceRevision();
+    stackOps = applyStackOp(stackOps, {
+      id: ids.consume,
+      stackKey: recipe.from,
+      kind: 'consume',
+      quantity: preview.consume,
+      hlc: consumed.revision.hlc,
+      deviceId: consumed.revision.deviceId,
+      sequence: consumed.revision.sequence,
+    });
+
+    const granted = this.advanceRevision();
+    if (!records.some(row => row.kind === 'stack' && row.stackKey === recipe.to && row.source === 'inventory')) {
+      const row: OwnedItemStack = {
+        id: `stack:${recipe.to}`,
+        definitionId: recipe.to,
+        kind: 'stack',
+        category: 'materials',
+        tags: ['material', recipe.to],
+        soulbound: false,
+        acquiredAt: new Date().toISOString(),
+        revision: granted.revision,
+        source: 'inventory',
+        stackKey: recipe.to,
+        location: { kind: 'bag' },
+      };
+      records = [...records, row];
+    }
+    stackOps = applyStackOp(stackOps, {
+      id: ids.grant,
+      stackKey: recipe.to,
+      kind: 'grant',
+      quantity: preview.produce,
+      hlc: granted.revision.hlc,
+      deviceId: granted.revision.deviceId,
+      sequence: granted.revision.sequence,
+    });
+
+    this.ledger = { ...this.ledger, records, stackOps };
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return {
+      ok: true,
+      from: recipe.from,
+      to: recipe.to,
+      consumed: preview.consume,
+      produced: preview.produce,
+      replayed: false,
+    };
   }
 
   previewUpgrade(item: GameItem): UpgradePreview | null {
