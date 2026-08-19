@@ -682,6 +682,216 @@ a.fv__glance-cell:hover {
 .fv__length--on { border-color: var(--keeper); background: color-mix(in srgb, var(--keeper) 12%, transparent); }
 .fv__length--on b { color: var(--keeper); }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE DEEP LADDER
+   ─────────────────────────────────────────────────────────────────────────────
+   Six rungs, one design, six intensities. Every rule below reads `--drama`
+   (1–6, set inline from MissionDefinition.drama) rather than keying off the
+   mission id, so retuning which rung is which is a number in the model and not
+   a rewrite here. The Abyss is the single exception — a portal is a different
+   *thing*, not a louder border — and it gets its own block at the bottom.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.fv__lengths { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+
+.fv__length {
+  position: relative;
+  /* Deliberately NOT `overflow: hidden`, which is what the first pass used to
+     keep the Abyss portal inside its card.
+     
+     A grid item whose overflow is not `visible` has its automatic minimum size
+     computed as 0 rather than from its content, so the Abyss stopped
+     contributing its own height to the row it shares with the Grand — and at
+     375px, where its block reason wraps to two lines, the row settled at 107px
+     around 134px of content and the bottom line was cut off. Nothing warns:
+     the text is simply not there.
+     
+     The portal is clipped by its own box instead. See `.fv__void`. */
+  /* Everything below scales off one number. At drama 1 the tint is 1% and the
+     halo is nothing; at 6 the tint is 11% and the halo is a 26px bloom. */
+  --heat: calc(var(--drama, 1) / 6);
+  border-color: rgba(255, 255, 255, calc(.1 + .12 * var(--heat)));
+  background: linear-gradient(
+    180deg,
+    rgba(201, 168, 76, calc(.02 * var(--drama, 1))),
+    transparent 70%
+  );
+  transition: border-color .2s ease, box-shadow .25s ease, transform .2s ease;
+}
+
+.fv__length--deep {
+  box-shadow: 0 0 calc(6px * var(--drama, 1)) calc(-4px * var(--drama, 1)) rgba(255, 154, 90, .85);
+}
+
+.fv__length:hover:not(:disabled) { transform: translateY(-1px); }
+
+.fv__length-label { display: block; }
+.fv__length-name {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(228, 222, 255, .42);
+}
+.fv__length-band { display: block; color: #8f85ad; }
+
+/* The one line that sells the rung. Only the deep tiers have one, which is why
+   it is styled as an accent rather than as body copy. */
+.fv__length-promise {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: #ffc669;
+  text-shadow: 0 0 10px rgba(255, 198, 105, .5);
+}
+
+.fv__length-cost {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: rgba(201, 168, 76, .8);
+  font-variant-numeric: tabular-nums;
+}
+.fv__length-cost--free { color: rgba(127, 213, 163, .7); }
+
+/* A blocked rung stays visible and stays clickable — arming it is how the
+   player reads *why* on the send button. What it loses is the promise's glow,
+   because a rung you cannot take should not be the brightest thing in the
+   picker. */
+.fv__length--blocked { opacity: .55; }
+.fv__length--blocked .fv__length-promise { color: rgba(255, 198, 105, .35); text-shadow: none; }
+.fv__length-block {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: #ff9a5a;
+}
+
+.fv__length-flavour {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(228, 222, 255, .42);
+}
+
+/* ── The Abyss ─────────────────────────────────────────────────────────────
+   Not a card with a stronger border. The mouth is a black radial that eats the
+   card's own background, the two rings are what is falling into it, and the
+   text sits above all three. */
+.fv__length[data-mission="abyss"] {
+  border-color: rgba(230, 220, 255, .22);
+  background: radial-gradient(ellipse 90% 120% at 50% 120%, rgba(70, 30, 110, .5), rgba(4, 2, 10, .9) 70%);
+  color: #cfc4ee;
+}
+.fv__length[data-mission="abyss"]:not(.fv__length--blocked) {
+  box-shadow: 0 0 30px -10px rgba(160, 90, 255, .9), inset 0 -14px 22px -14px rgba(0, 0, 0, .95);
+}
+.fv__length[data-mission="abyss"] .fv__length-promise {
+  color: #e6dcff;
+  text-shadow: 0 0 12px rgba(200, 170, 255, .8);
+}
+
+/* Sized and placed to stay inside the card on its own, so the card does not
+   have to clip it — see the note on `.fv__length`. `overflow: hidden` here is
+   free: this element has no text and is not a grid item. */
+.fv__void {
+  position: absolute;
+  left: 50%; bottom: 0;
+  width: 68px; height: 60px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+}
+.fv__void-mouth,
+.fv__void-ring {
+  position: absolute;
+  left: 0; right: 0; bottom: -20px;
+  height: 68px;
+  border-radius: 50%;
+}
+.fv__void-mouth {
+  background: radial-gradient(circle, #000 0%, rgba(20, 6, 40, .9) 45%, transparent 72%);
+}
+.fv__void-ring {
+  border: 1px solid rgba(200, 170, 255, .35);
+  animation: fvVoidFall 4.5s ease-in infinite;
+}
+.fv__void-ring--b { animation-delay: -2.25s; }
+
+/* The rings shrink and fade *inward*, which is the whole read: the Abyss is the
+   only card on the page where the motion goes toward the middle rather than
+   outward from it. */
+@keyframes fvVoidFall {
+  from { transform: scale(1.25); opacity: .0; }
+  35%  { opacity: .55; }
+  to   { transform: scale(.15); opacity: 0; }
+}
+
+/* ── The freight line ──────────────────────────────────────────────────────── */
+
+.fv__realm-mats {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: rgba(201, 168, 76, .75);
+}
+
+.fv__mats {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.fv__mat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, .28);
+  background: rgba(201, 168, 76, .07);
+  font-size: 10.5px;
+  color: #e0d6b8;
+}
+.fv__mat b { color: #C9A84C; }
+.fv__mat-art { width: 18px; height: 18px; border-radius: 50%; object-fit: contain; }
+
+/* ── Send + notify ─────────────────────────────────────────────────────────── */
+
+.fv__send--blocked,
+.fv__send:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  filter: grayscale(.4);
+}
+
+.fv__notify {
+  margin-top: 6px;
+  min-height: 34px;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px dashed rgba(228, 222, 255, .25);
+  background: transparent;
+  color: rgba(228, 222, 255, .6);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease;
+}
+.fv__notify:hover { border-color: rgba(255, 198, 105, .6); color: #ffc669; }
+
+.fv__notify-on {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: rgba(127, 213, 163, .75);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fv__void-ring { animation: none; opacity: .3; transform: scale(.7); }
+  .fv__length:hover:not(:disabled) { transform: none; }
+}
+
 .fv__send {
   width: 100%;
   min-height: 44px;

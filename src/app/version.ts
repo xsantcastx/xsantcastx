@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.66.0',
+  version: '2.67.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Orrery',
+  codename: 'Contract',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.67.0',
+    codename: 'Contract',
+    date: '2026-08-19',
+    highlights: [
+      'The Contract Board: three daily and two weekly challenges that pay Gold, drawn from eighteen and twelve, on the same midnight the quest board rolls on. It reads the Godforge rather than the tool halls — runes struck, materials hauled, expeditions home, kit worn and tempered, combo peak, Gold minted, halls walked, Keeper rank',
+      'Collect all three dailies and the forge pays double for an hour. Seven days of that opens a chest holding a Rare-or-better rune, banked through the Rune Forge so it counts toward Runewords and rolls its own scroll exactly as a found rune does. The streak flame goes cold if you miss a day',
+      'The board never asks for the same thing twice in one day. The plain draw put "reach a combo of x100" and "x250" on the same three slots, which is a two-goal day wearing three cards',
+      'Three lengths past the hour: Deep Dive at four hours, the Grand Expedition at a day, and the Abyss at three. Each costs Gold to launch, and what climbs is not the Gold-per-minute but the drop table — Rare-or-better only from the Deep Dive up, a guaranteed rune on the Grand, two guaranteed Epic-or-better in the Abyss',
+      'The Abyss wants Keeper rank 5 and runs one at a time, in a card with a portal in it rather than a brighter border. The realm you pick now decides what comes back in the bag as well: Umbral Ink from Umbral, Void Shard from the Verge, and nowhere else',
+      'Deep runs can call you when they land, if you ask them to — the permission prompt sits next to the 72-hour mission and nowhere else'
+    ]
+  },
   {
     version: '2.66.0',
     codename: 'Orrery',

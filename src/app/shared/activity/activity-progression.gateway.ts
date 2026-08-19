@@ -10,6 +10,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { DEVICE_ID_KEY } from '../economy/economy-ops';
 import { InventoryService } from '../rpg/inventory.service';
+import { ChallengeService } from '../challenges/challenge.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
@@ -79,6 +80,7 @@ export type ActivityResolveResult =
 export class ActivityProgressionGateway {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly inventory = inject(InventoryService);
+  private readonly challenges = inject(ChallengeService);
   private readonly store = inject(GameStateGateway);
   private readonly saves = inject(LocalSaveRegistry);
 
@@ -358,6 +360,11 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'persist' };
     }
     this.publish();
+    // Reported from inside the resolved action, not watched from outside. See
+    // the note at the top of `challenge-wiring.service.ts`. One per material
+    // actually banked, so a discovery that turns up Ember Residue alongside the
+    // ore counts two — which is what the bag agrees with.
+    this.challenges.record('material-mined', grantedQuantity(operation));
     return { ok: true, operation, replayed: false };
   }
 
@@ -446,6 +453,11 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'persist' };
     }
     this.publish();
+    // Reported from inside the resolved action, not watched from outside. See
+    // the note at the top of `challenge-wiring.service.ts`. One per material
+    // actually banked, so a discovery that turns up Ember Residue alongside the
+    // ore counts two — which is what the bag agrees with.
+    this.challenges.record('material-mined', grantedQuantity(operation));
     return { ok: true, operation, replayed: false };
   }
 
@@ -535,6 +547,8 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'persist' };
     }
     this.publish();
+    // Prospecting banks materials like the other two, so it counts like them.
+    this.challenges.record('material-mined', grantedQuantity(operation));
     return { ok: true, operation, replayed: false };
   }
 
@@ -601,3 +615,12 @@ const RECOVERY_BY_DISCIPLINE: Partial<Record<string, (gw: ActivityProgressionGat
   foraging: gw => gw.currentForagingRecoveryMs(),
   prospecting: gw => gw.currentProspectingRecoveryMs(),
 };
+
+/** How many things one resolved action actually put in the bag. At least one. */
+function grantedQuantity(operation: ActivityOperation): number {
+  let total = 0;
+  for (const grant of operation.inventoryGrants) {
+    if (Number.isFinite(grant.quantity) && grant.quantity > 0) total += grant.quantity;
+  }
+  return Math.max(1, total);
+}
