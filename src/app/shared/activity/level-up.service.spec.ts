@@ -67,4 +67,32 @@ describe('LevelUpService', () => {
     expect(events.length).toBe(1);
     expect(events[0].level).toBe(8);
   });
+
+  // ── A2 Foraging ──────────────────────────────────────────────────────────
+
+  it('checkForaging fires at the crossing with the foraging label and the herb art', () => {
+    const at = xpForLevel(2);
+    service.checkForaging(at - 1, at);
+    expect(events.length).toBe(1);
+    expect(events[0].level).toBe(2);
+    expect(events[0].skillLabelKey).toBe('work.discipline.foraging');
+    expect(events[0].art?.src).toContain('starlight-herb');
+    expect(events[0].milestone).toBe(false);
+  });
+
+  it('checkForaging is quiet when XP moves without crossing, stays flat, or goes down', () => {
+    const floor = xpForLevel(4);
+    service.checkForaging(floor, floor + 3);
+    service.checkForaging(floor, floor);
+    service.checkForaging(floor, floor - 50);
+    expect(events.length).toBe(0);
+  });
+
+  it('checkForaging flags every tenth foraging level as a milestone', () => {
+    const ten = xpForLevel(10);
+    service.checkForaging(ten - 1, ten);
+    expect(events[0].level).toBe(10);
+    expect(events[0].milestone).toBe(true);
+    expect(events[0].skillLabelKey).toBe('work.discipline.foraging');
+  });
 });

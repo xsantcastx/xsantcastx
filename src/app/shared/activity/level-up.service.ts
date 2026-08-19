@@ -7,12 +7,12 @@
  * numbers, and right now there is no moment at all — just a percentage
  * changing colour under a bar nobody was staring at.
  *
- * Mining-specific rather than a generic "skill" abstraction. Only one skill
- * exists; the progression spec is explicit that a second skill should copy
- * this shape rather than force an abstraction neither skill has earned yet.
- * When Foraging (or anything else) ships, add `checkForaging` beside
- * `checkMining` and let the day a third skill arrives decide what, if
- * anything, the two have enough in common to share.
+ * Per-skill entry points rather than a generic "skill" abstraction. The
+ * progression spec is explicit that a second skill should copy the first's
+ * shape rather than force an abstraction neither has earned yet. A2 Foraging
+ * did exactly that: `checkForaging` sits beside `checkMining`, both hand the
+ * same before/after pair to one private `announce`, and the day a third skill
+ * arrives decides whether that private helper deserves to become public.
  */
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
@@ -43,21 +43,34 @@ export class LevelUpService {
    * earned in the session that is looking at it.
    */
   checkMining(beforeXp: number, afterXp: number): void {
+    this.announce('work.discipline.mining', 'cinder-ore', beforeXp, afterXp);
+  }
+
+  /**
+   * A2 Foraging's twin. Same contract: the foraging XP total immediately
+   * before and after one resolved gather (`RootglassCanopyComponent.gather()`),
+   * never a save's history. Wears the herb every gather produces.
+   */
+  checkForaging(beforeXp: number, afterXp: number): void {
+    this.announce('work.discipline.foraging', 'starlight-herb', beforeXp, afterXp);
+  }
+
+  private announce(skillLabelKey: string, artId: string, beforeXp: number, afterXp: number): void {
     if (!(afterXp > beforeXp)) return;
     const before = miningLevelView(beforeXp).level;
     const after = miningLevelView(afterXp).level;
     if (after <= before) return;
 
-    // A single mine action grants single-digit XP against curve deltas in the
+    // A single action grants single-digit XP against curve deltas in the
     // hundreds or thousands (see mining-level.ts), so crossing more than one
     // level in one action cannot happen today. If a future bulk-grant path
     // ever changes that, this still announces the level actually reached
     // rather than queuing one banner per level skipped.
     this.events$$.next({
-      skillLabelKey: 'work.discipline.mining',
+      skillLabelKey,
       level: after,
       milestone: after % 10 === 0,
-      art: artFor('cinder-ore'),
+      art: artFor(artId),
     });
   }
 }

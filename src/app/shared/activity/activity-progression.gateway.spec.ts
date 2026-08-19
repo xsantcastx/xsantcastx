@@ -12,8 +12,18 @@ import {
   INFERNAL_HEARTSTONE_ID,
   MINING_RECOVERY_MS,
   MINING_XP_PER_ACTION,
+  ROOTGLASS_CANOPY_ID,
   SLAG_FRAGMENT_ID,
 } from './activity.model';
+import {
+  FORAGING_RECOVERY_MS,
+  FORAGING_XP_PER_ACTION,
+  RIFT_KEY_GUARANTEE_AT,
+  RIFT_KEY_ID,
+  STARLIGHT_HERB_ID,
+  SUNBLOOM_ID,
+  THORNROOT_ID,
+} from './foraging.model';
 import { xpForLevel } from './mining-level';
 
 class MemoryGateway {
@@ -186,5 +196,174 @@ describe('ActivityProgressionGateway', () => {
     if (!replay.ok) return;
     expect(replay.replayed).toBe(true);
     expect(TestBed.inject(InventoryService).stackOf('cinder-ore')).toBe(1);
+  });
+
+  // ── A2 Foraging ──────────────────────────────────────────────────────────
+
+  describe('foraging', () => {
+    beforeEach(() => {
+      expect(gateway.selectCurrentWork('foraging', ROOTGLASS_CANOPY_ID, 1_000)).toBeTruthy();
+    });
+
+    it('grants one Starlight Herb and two foraging XP, and a retry of the same id is a no-op', () => {
+      const first = gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 });
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+      expect(first.replayed).toBe(false);
+      expect(first.operation.disciplineId).toBe('foraging');
+      expect(first.operation.xpGrant.amount).toBe(FORAGING_XP_PER_ACTION);
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      expect(inventory.stackOf('cinder-ore')).toBe(0);
+      expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(2);
+      expect(gateway.snapshot.progress.xpByDiscipline.mining).toBeUndefined();
+      expect(gateway.snapshot.foragingAccepted).toBe(1);
+      expect(gateway.snapshot.miningAccepted).toBe(0);
+
+      const again = gateway.resolveForage({ mutationId: 'f1', now: 8_000, roll: 0.0001 });
+      expect(again.ok).toBe(true);
+      if (!again.ok) return;
+      expect(again.replayed).toBe(true);
+      expect(again.operation.discovery.result).toBe('none');
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(2);
+    });
+
+    it('rejects a second gather while regrowing, using the foraging cooldown', () => {
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+      const early = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS - 1, roll: 0.9 });
+      expect(early).toEqual({ ok: false, code: 'recovering' });
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      // recoveryEndsAt follows the *current discipline*: 2,500ms at foraging level 1.
+      expect(gateway.currentRecoveryMs()).toBe(FORAGING_RECOVERY_MS);
+      expect(gateway.recoveryRemainingMs(4_001)).toBe(FORAGING_RECOVERY_MS - 1);
+      expect(gateway.recoveryRemainingMs(4_000 + FORAGING_RECOVERY_MS + 1)).toBe(0);
+      const late = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS, roll: 0.9 });
+      expect(late.ok).toBe(true);
+    });
+
+    it('rejects a Mine at the Canopy and a Gather at the Seamworks', () => {
+      const mineHere = gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9 });
+      expect(mineHere).toEqual({ ok: false, code: 'location' });
+      expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 5_000)).toBeTruthy();
+      const gatherThere = gateway.resolveForage({ mutationId: 'f1', now: 6_000, roll: 0.9 });
+      expect(gatherThere).toEqual({ ok: false, code: 'location' });
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(0);
+      expect(inventory.stackOf('cinder-ore')).toBe(0);
+    });
+
+    it('refuses a growth the current foraging level has not reached', () => {
+      const refused = gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9, herbId: SUNBLOOM_ID });
+      expect(refused).toEqual({ ok: false, code: 'tier-locked' });
+      expect(inventory.stackOf(SUNBLOOM_ID)).toBe(0);
+      expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+    });
+
+    it('grants a higher growth\'s herb and XP once its level is reached, off foraging XP only', () => {
+      // Seed foraging straight to level 6 with one real op (progressFromOps
+      // is the source of truth once any op exists) and give mining a huge
+      // total too — Sunbloom must open on the *foraging* level, not mining's.
+      const seed = {
+        id: 'seed-foraging-6',
+        hlcRevision: { wallTimeMs: 1, logicalCounter: 0, deviceId: 'seed', sequence: 1 },
+        kind: 'active' as const,
+        disciplineId: 'foraging' as const,
+        locationId: ROOTGLASS_CANOPY_ID,
+        resolvedAt: new Date(1_000).toISOString(),
+        xpGrant: { id: 'seed-foraging-6:xp', amount: xpForLevel(6) },
+        inventoryGrants: [],
+        discovery: { rolled: true, result: 'none' as const },
+      };
+      memory.write(ACTIVITY_KEY, {
+        version: 1,
+        era: 55,
+        currentWork: null,
+        progress: { version: 1, xpByDiscipline: { foraging: xpForLevel(6), mining: xpForLevel(40) } },
+        operations: [seed],
+        craftedBasaltEdge: false,
+        emberGranted: false,
+        miningAccepted: 0,
+        foragingAccepted: 1,
+        riftKeyGranted: false,
+      });
+      TestBed.resetTestingModule();
+      const levelled = configure(memory);
+      expect(levelled.selectCurrentWork('foraging', ROOTGLASS_CANOPY_ID, 10_000)).toBeTruthy();
+      const freshInventory = TestBed.inject(InventoryService);
+
+      const result = levelled.resolveForage({ mutationId: 'f2', now: 10_000, roll: 0.9, herbId: SUNBLOOM_ID });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.operation.xpGrant.amount).toBe(4);
+      expect(result.operation.inventoryGrants.map(g => g.definitionId)).toEqual([SUNBLOOM_ID]);
+      expect(freshInventory.stackOf(SUNBLOOM_ID)).toBe(1);
+
+      // Foraging level 6 (mining level 40 is irrelevant) — Thornroot stays shut.
+      const tooDeep = levelled.resolveForage({
+        mutationId: 'f3', now: 10_000 + FORAGING_RECOVERY_MS + 1, roll: 0.9, herbId: THORNROOT_ID,
+      });
+      expect(tooDeep).toEqual({ ok: false, code: 'tier-locked' });
+    });
+
+    it('guarantees the first Rift Key on the 600th accepted gather and keeps rolling after', () => {
+      let t = 4_000;
+      for (let i = 1; i < RIFT_KEY_GUARANTEE_AT; i++) {
+        const result = gateway.resolveForage({ mutationId: `f${i}`, now: t, roll: 0.99 });
+        expect(result.ok).toBe(true);
+        t += FORAGING_RECOVERY_MS + 1;
+      }
+      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(0);
+      expect(gateway.snapshot.riftKeyGranted).toBe(false);
+      const last = gateway.resolveForage({ mutationId: `f${RIFT_KEY_GUARANTEE_AT}`, now: t, roll: 0.99 });
+      expect(last.ok).toBe(true);
+      if (!last.ok) return;
+      expect(last.operation.discovery.result).toBe('rift-key-guarantee');
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(RIFT_KEY_GUARANTEE_AT);
+      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(1);
+      expect(gateway.snapshot.foragingAccepted).toBe(RIFT_KEY_GUARANTEE_AT);
+      expect(gateway.snapshot.riftKeyGranted).toBe(true);
+      expect(gateway.snapshot.emberGranted).toBe(false);
+      expect(gateway.snapshot.miningAccepted).toBe(0);
+      expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(RIFT_KEY_GUARANTEE_AT * FORAGING_XP_PER_ACTION);
+
+      // 601st: no second guarantee, but the 0.1% roll is still live.
+      t += FORAGING_RECOVERY_MS + 1;
+      const after = gateway.resolveForage({ mutationId: 'f-after', now: t, roll: 0.99 });
+      expect(after.ok).toBe(true);
+      if (!after.ok) return;
+      expect(after.operation.discovery.result).toBe('none');
+      t += FORAGING_RECOVERY_MS + 1;
+      const lucky = gateway.resolveForage({ mutationId: 'f-lucky', now: t, roll: 0.0005 });
+      expect(lucky.ok).toBe(true);
+      if (!lucky.ok) return;
+      expect(lucky.operation.discovery.result).toBe('rift-key');
+      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(2);
+    });
+
+    it('refuses to create an operation when the bag cannot take herbs', () => {
+      for (let i = 0; i < MAX_INVENTORY; i++) {
+        expect(inventory.add({
+          id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
+          stats: {}, sellValue: 1, equipped: false,
+          foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+        })).toBeTruthy();
+      }
+      const refused = gateway.resolveForage({ mutationId: 'full', now: 4_000, roll: 0.9 });
+      expect(refused).toEqual({ ok: false, code: 'capacity' });
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(0);
+      expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+    });
+
+    it('rehydrates the merged ledger without awarding again', () => {
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+      TestBed.resetTestingModule();
+      const again = configure(memory);
+      const replay = again.resolveForage({ mutationId: 'f1', now: 20_000, roll: 0.0001 });
+      expect(replay.ok).toBe(true);
+      if (!replay.ok) return;
+      expect(replay.replayed).toBe(true);
+      expect(TestBed.inject(InventoryService).stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      expect(again.snapshot.currentWork?.disciplineId).toBe('foraging');
+      expect(again.snapshot.foragingAccepted).toBe(1);
+    });
   });
 });
