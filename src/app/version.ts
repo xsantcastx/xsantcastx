@@ -22,7 +22,7 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.62.0',
+  version: '2.62.1',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
   codename: 'Talisman',
@@ -52,6 +52,15 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.62.1',
+    codename: 'Canopy',
+    date: '2026-08-19',
+    highlights: [
+      'The five realm dossiers are readable again. Giving each realm its own route in v2.60.2 — so it could carry its own description instead of sharing one with the other four — took away the `:realmId` the page was reading itself from, and all five answered "This place is not on the map". They read the id from the route either way now',
+      'The build check that was supposed to catch this only inspected the head of each page, where everything was correct. It reads the heading too, so a page that prerenders a not-found state can no longer ship with a perfect canonical on top of it'
+    ]
+  },
   {
     version: '2.62.0',
     codename: 'Talisman',
