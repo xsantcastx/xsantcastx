@@ -1,0 +1,85 @@
+/* roll-quality.component.css — grade bars, in the site's own cosmic palette. */
+
+.rq {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(10, 6, 26, 0.55);
+}
+
+.rq__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.rq__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 236, 241, 0.5);
+}
+
+.rq__overall {
+  font-weight: 700;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The badge is the payoff, so it gets the one animated gradient on the card. */
+.rq__tag {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0a0618;
+  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background-size: 300% 100%;
+  animation: rqPrism 4.5s linear infinite;
+}
+
+.rq__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+
+.rq__row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) minmax(3rem, auto) 1fr 2.6rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+
+.rq__stat { color: rgba(232, 236, 241, 0.66); }
+.rq__val { color: #e8ecf1; font-variant-numeric: tabular-nums; }
+
+.rq__track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.rq__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rq__pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+@keyframes rqPrism {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
+/* Hard rule of the house: every animation over 1s needs a static end state. */
+@media (prefers-reduced-motion: reduce) {
+  .rq__tag { animation: none; background-position: 0% 50%; }
+  .rq__fill { transition: none; }
+}

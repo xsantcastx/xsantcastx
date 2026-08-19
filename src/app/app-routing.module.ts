@@ -238,6 +238,24 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      path: 'gambler',
+      loadComponent: () => import('./shared/gambler/gambler.component').then(m => m.GamblerComponent),
+      title: 'The Gambler — Mystery Boxes and the Till | Eclipse Realms',
+      data: {
+        description: 'Five sealed boxes, from the Iron Chest at five thousand Gold to the Void Cache at five million. Each pays out one item, rolled inside its rarity band, and the shelf shows the odds before you buy. Bad luck protection guarantees a step up after ten floor results. Sell what you do not want at the till, priced by how well it rolled.',
+        keywords: 'mystery box, loot box, gambling, item rolls, stat quality, eclipse realms, godforge, idle game, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/gambler`,
+          url: `${SITE_URL}/gambler`,
+          name: 'The Gambler',
+          description: 'Mystery boxes with published odds, bad luck protection, and a till that prices an item by how well its stats rolled.'
+        }
+      }
+    },
+  {
       path: 'forge/runes',
       loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
       title: 'The Forge — Strike the Anvil | Eclipse Realms',

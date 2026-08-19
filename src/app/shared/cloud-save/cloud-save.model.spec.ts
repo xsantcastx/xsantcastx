@@ -635,6 +635,7 @@ describe('the registry', () => {
       'godforge-collection',
       'godforge-economy',
       'godforge-explorers',
+      'godforge-gambler',
       'godforge-inventory',
       'godforge-pinned',
       'godforge-pro',

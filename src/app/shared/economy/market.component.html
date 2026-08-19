@@ -67,6 +67,19 @@
     </div>
   </div>
 
+  <!-- The Gambler sits next door rather than on a shelf here: everything else
+       in the Market has a stated price for a stated thing, and a box does not.
+       Mixing the two on one strip would make the odds look like a product spec
+       instead of the warning they are. -->
+  <a class="mk__gambler" routerLink="/gambler">
+    <span class="mk__gambler-sigil" aria-hidden="true">✦</span>
+    <span class="mk__gambler-body">
+      <strong>The Gambler</strong>
+      <span>Five sealed boxes, odds published, and a till that pays for the roll.</span>
+    </span>
+    <span class="mk__gambler-go" aria-hidden="true">→</span>
+  </a>
+
   @if (snap.enchantment) {
     <p class="mk__running" role="status">
       <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>

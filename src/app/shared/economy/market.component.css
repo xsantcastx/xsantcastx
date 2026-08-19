@@ -1485,3 +1485,39 @@
   font-variant-numeric: tabular-nums;
 }
 .mk__card-buy .mk__buy { margin-left: auto; }
+
+
+/* ── The Gambler doorway ──────────────────────────────────────────────────── */
+
+.mk__gambler {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 110, 255, 0.28);
+  background:
+    radial-gradient(ellipse 70% 120% at 10% 50%, rgba(140, 110, 255, 0.16), transparent 70%),
+    rgba(10, 6, 26, 0.55);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.mk__gambler:hover {
+  border-color: rgba(140, 110, 255, 0.6);
+  box-shadow: 0 0 26px -8px rgba(140, 110, 255, 0.7);
+}
+
+.mk__gambler-sigil {
+  font-size: 1.2rem;
+  color: #a48bff;
+  text-shadow: 0 0 14px rgba(140, 110, 255, 0.8);
+}
+
+.mk__gambler-body { display: grid; gap: 0.15rem; }
+.mk__gambler-body strong { font-size: 0.9rem; color: #c9b6ff; }
+.mk__gambler-body span { font-size: 0.74rem; color: rgba(232, 236, 241, 0.55); }
+.mk__gambler-go { margin-left: auto; color: #a48bff; font-size: 1.1rem; }
