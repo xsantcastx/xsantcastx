@@ -456,6 +456,27 @@ export class CloudSaveService {
   }
 
   /**
+   * Wipe this visitor's save — this device and the account — as one operation.
+   *
+   * The single entry point for a full reset, and the reason it is here rather
+   * than left to the nineteen per-service `reset()` methods: those wipe their
+   * own blob and nothing else, so calling them in a loop is nineteen unordered
+   * deletions racing the pull loop, which is how a reset used to come back a
+   * minute after it was taken. `GameStateGateway.resetAll()` stamps the wipe
+   * before it destroys anything and reconciles that stamp on every subsequent
+   * attach, so the wipe survives being taken offline, on a cold mobile load
+   * before the Firestore SDK has finished arriving, or on a tab that is closed
+   * halfway through.
+   *
+   * Irreversible on purpose: the sign-in "before picture" is an undo for a
+   * *merge*, and `resetAll` drops it rather than leaving a one-click path back
+   * to the save that was just deleted.
+   */
+  async resetProgress(): Promise<void> {
+    await this.gateway.resetAll();
+  }
+
+  /**
    * Put this device back the way it was before signing in, and make that the
    * account's save. The undo behind the notice.
    */

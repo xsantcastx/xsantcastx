@@ -97,6 +97,14 @@ import {
   coerceLedger,
 } from '../economy/economy-ops';
 import { LocalSaveRegistry } from './local-save-registry.service';
+import { DeviceLeaseService } from './device-lease.service';
+import {
+  RESET_COLLECTION,
+  RESET_DOC,
+  RESET_STAMP_KEY,
+  coerceResetStamp,
+  resetVerdict,
+} from './save-reset';
 
 /**
  * The ledger's key, for the two-number summary the merge dialog shows.
@@ -165,6 +173,12 @@ export interface StateEntry {
  * Never synced: it is a local before picture, not part of the account.
  */
 export const SAVE_BACKUP_KEY = 'godforge-save-backup';
+
+/**
+ * localStorage key holding deletions that have not reached the cloud yet.
+ * See `remove()` for why this is on disk rather than in memory.
+ */
+const PENDING_DELETE_KEY = 'godforge-pending-deletes';
 
 export const STATE_ENTRIES: readonly StateEntry[] = [
   ...SYNCED_BLOBS.map((b: SyncedBlob): StateEntry => ({
@@ -257,7 +271,9 @@ export type CloudLink =
   /** Attached, and everything on this device is up. */
   | 'synced'
   /** Attached but unreachable. Playing offline; the queue is holding. */
-  | 'offline';
+  | 'offline'
+  /** Signed in and current, but another device holds the write lease. */
+  | 'waiting';
 
 export interface AttachResult {
   /** Keys whose local copy the cloud moved. Already pushed into their owners. */
@@ -270,6 +286,7 @@ export interface AttachResult {
 export class GameStateGateway {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly owners = inject(LocalSaveRegistry);
+  private readonly leases = inject(DeviceLeaseService);
   private readonly zone = inject(NgZone);
 
   /** Set while attached to an account. Null when signed out. */
@@ -380,6 +397,9 @@ export class GameStateGateway {
       // only copy that will survive, which makes queueing it more important
       // rather than less.
     }
+    // Writing a key the visitor deleted is them starting it again. The queued
+    // deletion has to go, or the next attach would delete what was just written.
+    this.clearPendingDelete(key);
     this.markDirty(key);
   }
 
@@ -400,21 +420,264 @@ export class GameStateGateway {
     this.lastRemote.delete(key);
 
     const entry = BY_KEY.get(key);
+    if (!entry) return;
+
+    // Recorded *before* the network is touched, and persisted, because the two
+    // ways the cloud half fails are both silent and both leave this device in
+    // the state `attach` reads as "fresh browser, adopt the cloud":
+    //
+    //   - not attached yet. The Firestore SDK is lazy (~450 kB kept out of the
+    //     initial bundle), so on a cold mobile load `fs` is null for the first
+    //     few seconds and the old code simply returned here.
+    //   - offline. The `deleteDoc` rejects and the document lives on.
+    //
+    // Either way the wipe was real and the cloud has not heard about it, so the
+    // intent is written down and `drainPendingDeletes` finishes it on the next
+    // attach. Without this the deleted blob comes back on the next pull, which
+    // is the bug this whole change exists to close.
+    this.markPendingDelete(key);
+
     const uid = this.uid;
     const fs = this.fs;
-    if (!entry || !uid || !fs) return;
+    if (!uid || !fs) return;
 
     this.zone.runOutsideAngular(() => {
       void fs.api
         .deleteDoc(fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc))
+        .then(() => this.clearPendingDelete(key))
         .catch(() => {
-          // Offline. The local copy is gone, which is what the visitor asked
-          // for; the next attach will re-seed from the cloud copy that outlived
-          // it. Surfacing that honestly is better than pretending, so the link
-          // drops to offline and the retry path picks it up.
+          // The record stands and the next attach retries it.
           this.setLink('offline');
         });
     });
+  }
+
+  /**
+   * Keys whose local copy has been deleted but whose cloud copy may not have.
+   *
+   * Persisted rather than held in memory: the case this is built for is a
+   * visitor wiping a blob and closing the tab, which is exactly when an
+   * in-memory set would be lost and the deletion forgotten.
+   */
+  private pendingDeletes(): Set<string> {
+    const raw = this.readRaw(PENDING_DELETE_KEY);
+    if (raw === null) return new Set();
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return new Set(
+        Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === 'string') : [],
+      );
+    } catch {
+      return new Set();
+    }
+  }
+
+  private writePendingDeletes(keys: Set<string>): void {
+    try {
+      if (keys.size === 0) localStorage.removeItem(PENDING_DELETE_KEY);
+      else localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify([...keys]));
+    } catch { /* private mode */ }
+  }
+
+  private markPendingDelete(key: string): void {
+    const keys = this.pendingDeletes();
+    if (keys.has(key)) return;
+    keys.add(key);
+    this.writePendingDeletes(keys);
+  }
+
+  private clearPendingDelete(key: string): void {
+    const keys = this.pendingDeletes();
+    if (!keys.delete(key)) return;
+    this.writePendingDeletes(keys);
+  }
+
+  /**
+   * Re-issue any deletion whose cloud half never landed, before the merge runs.
+   *
+   * The entry is dropped from `remote` as well as deleted, so this attach
+   * reconciles against the absence the visitor asked for rather than against
+   * the document that is on its way out. A key the visitor has since written
+   * again is no longer pending — `writeRaw` clears it — so this cannot delete
+   * live state.
+   */
+  private async drainPendingDeletes(
+    uid: string,
+    fs: FirestoreHandle,
+    remote: Map<string, unknown>,
+  ): Promise<void> {
+    const keys = this.pendingDeletes();
+    if (keys.size === 0) return;
+
+    for (const key of keys) {
+      const entry = BY_KEY.get(key);
+      if (!entry) {
+        this.clearPendingDelete(key);
+        continue;
+      }
+      remote.delete(key);
+      this.lastRemote.delete(key);
+      try {
+        await fs.api.deleteDoc(fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc));
+        this.clearPendingDelete(key);
+      } catch {
+        // Still unreachable. The record stands for the next attach.
+      }
+    }
+  }
+
+  /**
+   * Wipe every blob in the save, here and in the cloud, as one operation.
+   *
+   * This replaces nineteen independent `remove()` calls, and the difference is
+   * not tidiness — it is the ordering, which is the whole fix. See
+   * `save-reset.ts` for the failure this is shaped around.
+   *
+   *   1. Stamp the wipe locally. First, and before anything is destroyed, so a
+   *      tab closed at any point after this still carries the intent and the
+   *      next `attach()` finishes the job.
+   *   2. Delete the cloud documents and publish the stamp. If this cannot be
+   *      reached the local stamp survives step 1 and `reconcileReset` re-pushes
+   *      it on the next attach — which is exactly the mobile case where the
+   *      lazy Firestore SDK had not loaded yet and the old code silently gave up.
+   *   3. Only then clear local, and rehydrate the owning services so the screen
+   *      matches the disk in the same tick.
+   *
+   * `keepDeviceSnapshot` exists because the sign-in "before picture" is this
+   * browser's undo for a *merge*, not for a wipe; a reset that left it behind
+   * would leave a one-click path to restoring the save that was just deleted.
+   */
+  async resetAll(): Promise<void> {
+    if (!this.isBrowser) return;
+
+    const at = Date.now();
+    this.writeResetStamp(at);
+
+    // Nothing queued from before the wipe may be allowed to land after it.
+    this.cancelFlush();
+    this.dirty.clear();
+    this.lastRemote.clear();
+    this.overrideStrategy = null;
+    // Every blob is going anyway, so per-key deletion records are now noise —
+    // and leaving them would have the next attach re-issue deletes for keys the
+    // visitor may have legitimately started again since.
+    this.writePendingDeletes(new Set());
+
+    await this.publishReset(at);
+
+    for (const entry of STATE_ENTRIES) {
+      try {
+        localStorage.removeItem(entry.key);
+      } catch { /* private mode */ }
+    }
+    try {
+      localStorage.removeItem(SAVE_BACKUP_KEY);
+    } catch { /* private mode */ }
+
+    // Same tick as the removal, for the reason LocalSaveRegistry exists: the
+    // owning services are holding the pre-wipe copy in memory and would flush
+    // it straight back over the empty store within the second.
+    this.zone.run(() => {
+      for (const entry of STATE_ENTRIES) this.owners.rehydrate(entry.key);
+    });
+  }
+
+  /**
+   * Push a wipe to the cloud: delete every state document, then stamp.
+   *
+   * The stamp is written last on purpose. It is the marker that says "the cloud
+   * is wiped", and writing it before the deletes would let a second device read
+   * a settled stamp while the documents it describes were still up there — which
+   * would make that device skip its own wipe and adopt the survivors.
+   *
+   * Resolves either way. A failure here is expected and handled: the local stamp
+   * outlives it and the next attach retries.
+   */
+  private async publishReset(at: number): Promise<void> {
+    const uid = this.uid;
+    const fs = this.fs;
+    if (!uid || !fs) return;
+
+    try {
+      await this.zone.runOutsideAngular(async () => {
+        for (const entry of STATE_ENTRIES) {
+          await fs.api.deleteDoc(
+            fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+          );
+        }
+        await fs.api.setDoc(
+          fs.api.doc(fs.db, 'users', uid, RESET_COLLECTION, RESET_DOC),
+          { at, deviceId: this.leases.deviceId() },
+        );
+      });
+    } catch {
+      // Offline, or the SDK is not up. The local stamp is the durable record.
+      this.setLink('offline');
+      this.scheduleRetry();
+    }
+  }
+
+  /** This device's last wipe, or 0. */
+  private readResetStamp(): number {
+    const raw = this.readRaw(RESET_STAMP_KEY);
+    if (raw === null) return 0;
+    const at = Number(raw);
+    return Number.isFinite(at) && at > 0 ? at : 0;
+  }
+
+  private writeResetStamp(at: number): void {
+    try {
+      localStorage.setItem(RESET_STAMP_KEY, String(at));
+    } catch { /* private mode */ }
+  }
+
+  /**
+   * Settle the two wipe stamps before a single blob is merged.
+   *
+   * Returns true when the caller should treat the cloud as empty for the rest of
+   * this attach — either because this device's wipe has not landed yet and is
+   * being re-pushed, or because another device's wipe just took effect here and
+   * there is nothing left on either side to merge.
+   */
+  private async reconcileReset(
+    uid: string,
+    fs: FirestoreHandle,
+    remote: Map<string, unknown>,
+    cloudAt: number,
+  ): Promise<boolean> {
+    const localAt = this.readResetStamp();
+
+    switch (resetVerdict(localAt, cloudAt)) {
+      case 'none':
+        return false;
+
+      case 'push-local':
+        // The wipe happened here and the cloud still holds the old save. Finish
+        // what `resetAll` started; everything `readAll` just returned is stale
+        // by definition, so it is dropped rather than merged.
+        await this.publishReset(localAt);
+        remote.clear();
+        return true;
+
+      case 'adopt-remote': {
+        // Another device wiped the account, later than anything this one did. A
+        // reset is account-wide, so this device's survivors are not "state the
+        // cloud is missing" — they are the save that was deleted.
+        this.writeResetStamp(cloudAt);
+        this.dirty.clear();
+        this.lastRemote.clear();
+        for (const entry of STATE_ENTRIES) {
+          try {
+            localStorage.removeItem(entry.key);
+          } catch { /* private mode */ }
+        }
+        this.zone.run(() => {
+          for (const entry of STATE_ENTRIES) this.owners.rehydrate(entry.key);
+        });
+        remote.clear();
+        return true;
+      }
+    }
   }
 
   private markDirty(key: string): void {
@@ -469,8 +732,20 @@ export class GameStateGateway {
     let remote: Map<string, unknown>;
     let strategy: MergeStrategy;
     try {
-      remote = await this.readAll(uid, fs);
-      strategy = await this.decideStrategy(remote, ask);
+      const pulled = await this.readAll(uid, fs);
+      remote = pulled.blobs;
+
+      // Single-key deletions that never reached the cloud, re-issued before
+      // anything is merged — the same failure as a full wipe, one blob at a time.
+      await this.drainPendingDeletes(uid, fs, remote);
+
+      // Then the account-wide wipe, still before a single blob is merged. A
+      // wipe is not a conflict to be reconciled key-by-key — it decides whether
+      // there is anything to reconcile at all, and asking the merge dialog
+      // about a save the visitor has already deleted would be the old bug
+      // wearing a dialog.
+      const wiped = await this.reconcileReset(uid, fs, remote, pulled.resetAt);
+      strategy = wiped ? 'merge' : await this.decideStrategy(remote, ask);
       // Idle ticks during the dialog can move memory after the first flush.
       this.flushOwners();
     } catch (err) {
@@ -489,6 +764,12 @@ export class GameStateGateway {
     // on a null Firestore handle.
     if (this.fs !== fs) return { adopted: [], seeded: false };
     if (strategy !== 'merge') this.overrideStrategy = strategy;
+
+    // After the pull and before the push. Adopting the cloud copy is something
+    // every device does — it is reading — and the lease only ever gates the
+    // write half, so resolving it here keeps a passive device fully up to date
+    // while still holding its own queue.
+    await this.leases.begin(uid, fs);
 
     // Before anything of the cloud's lands on this device, keep the before
     // picture — see snapshotBeforeMerge.
@@ -643,6 +924,8 @@ export class GameStateGateway {
     }
     this.cancelFlush();
     this.unbindLifecycle();
+    // Before the uid is cleared: releasing needs to know whose lease it is.
+    this.leases.end();
     this.decisionPending = false;
     this.uid = null;
     this.fs = null;
@@ -716,8 +999,15 @@ export class GameStateGateway {
   // ───────────────────────────────────────────────────────────────────────────
 
   /** Every stored document for this account, keyed by localStorage key. */
-  private async readAll(uid: string, fs: FirestoreHandle): Promise<Map<string, unknown>> {
+  private async readAll(
+    uid: string,
+    fs: FirestoreHandle,
+  ): Promise<{ blobs: Map<string, unknown>; resetAt: number }> {
     const out = new Map<string, unknown>();
+    // Picked out of the sweep below rather than fetched separately. The reason
+    // that matters is in `save-reset.ts`: a dedicated read here would be a third
+    // billed round trip on every page load of every signed-in visitor.
+    let resetAt = 0;
     const collections = [...new Set(STATE_ENTRIES.map(e => e.collection))];
 
     const byPath = new Map<string, StateEntry>(
@@ -729,6 +1019,10 @@ export class GameStateGateway {
         fs.api.collection(fs.db, 'users', uid, collection),
       );
       snap.forEach(doc => {
+        if (collection === RESET_COLLECTION && doc.id === RESET_DOC) {
+          resetAt = coerceResetStamp(doc.data()).at;
+          return;
+        }
         const entry = byPath.get(`${collection}/${doc.id}`);
         // A document this build does not know about is left alone rather than
         // dropped: it is either a key an older client wrote or one a newer
@@ -739,7 +1033,7 @@ export class GameStateGateway {
         out.set(entry.key, entry.enveloped ? unwrapBlob(data) : data);
       });
     }
-    return out;
+    return { blobs: out, resetAt };
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -827,6 +1121,17 @@ export class GameStateGateway {
     const uid = this.uid;
     const fs = this.fs;
     if (!uid || !fs || this.dirty.size === 0) return;
+
+    // The one gate the device lease imposes, and it is deliberately the only
+    // one: a passive device reads, merges and adopts exactly as before, and
+    // only the upload waits. The queue is *kept*, not dropped — the keys stay
+    // dirty, `onLeaseHandover` flushes them the moment this device becomes
+    // active, and until then the local cache holds everything. Nothing here can
+    // lose a write; it can only postpone one.
+    if (!this.leases.mayWrite) {
+      this.setLink('waiting');
+      return;
+    }
 
     // Claimed up front. A write that lands while this is in flight re-dirties
     // its key and books another flush, rather than being folded into this one
@@ -1064,6 +1369,34 @@ export class GameStateGateway {
     this.zone.run(() => this.owners.rehydrate(key));
   }
 
+  /**
+   * Called when the lease may have moved. Drains the queue if it moved to us.
+   *
+   * A device that spent ten minutes passive has ten minutes of play sitting in
+   * `dirty`, and the merge rules on the far side are what make sending it late
+   * safe rather than destructive — this is the same reconciliation any two
+   * devices would have gone through, just serialised.
+   */
+  private onLeaseSettled(): Promise<void> | void {
+    if (!this.attached || !this.leases.mayWrite) return;
+    if (this.link === 'waiting') this.setLink(this.dirty.size > 0 ? 'syncing' : 'synced');
+    if (this.dirty.size === 0) return;
+    return this.pushDirty({ batched: true }).catch(() => { /* retried on the timer */ });
+  }
+
+  /**
+   * The banner's "Play Here": take the lease, then send what is waiting.
+   *
+   * Awaits the drain rather than firing it off. The visitor pressed a button
+   * meaning "sync this device", and a promise that resolves before the upload
+   * has happened would let the banner report success while the queue was still
+   * on disk — which is the shape of the bug this whole change is about.
+   */
+  async claimLease(): Promise<void> {
+    await this.leases.claim();
+    await this.onLeaseSettled();
+  }
+
   private flushOwners(): void {
     for (const entry of STATE_ENTRIES) this.owners.flush(entry.key);
   }
@@ -1072,12 +1405,26 @@ export class GameStateGateway {
 
   private readonly onHide = (): void => {
     if (document.visibilityState === 'hidden') this.onLeave();
-    else void this.resync().catch(() => { /* offline; the queue holds */ });
+    else {
+      // Renew before re-pulling. A device coming back into view is the case the
+      // lease is built around — somebody has put one device down and picked
+      // this one up — and discovering the handover first means the resync that
+      // follows can already push.
+      void this.leases.refresh()
+        .then(() => this.onLeaseSettled())
+        .catch(() => { /* handled in the service */ });
+      void this.resync().catch(() => { /* offline; the queue holds */ });
+    }
   };
 
   private readonly onLeave = (): void => {
     this.flushOwners();
     this.cancelFlush();
+    // Hand the save on rather than making the next device wait out the TTL.
+    // Ordered after `flushOwners` so the push below still carries this
+    // session's last writes — releasing does not cancel the flush, it only
+    // stops this device claiming the lease again.
+    this.leases.release();
     // Unawaitable by definition. The SDK's offline queue lands it more often
     // than not, and when it does not the cache still holds everything and the
     // next load pushes it.
