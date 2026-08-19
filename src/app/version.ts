@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.67.0',
+  version: '2.68.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Contract',
+  codename: 'Thrall',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.68.0',
+    codename: 'Thrall',
+    date: '2026-08-19',
+    highlights: [
+      'Forge Thralls: bound workers, bought from the Market in five tiers from 50K to 25M Gold, who pull the lever at the anvil on their own — every 30 seconds at the bottom of the ladder and every 5 at the top. The runes land in the same ledger yours do, so they craft Runewords like any other find',
+      'Automation is a Gold sink and never a Gold engine. A Thrall pull costs a hundred times what yours does, and it rolls at a fraction of your Magic Find — half at Common, nine tenths at Legendary — so standing at the anvil yourself is always cheaper and always luckier',
+      'They tire. Stamina runs from 100 to 500 by tier, a pull costs one to three of it, and a spent Thrall rests at a point a minute until it is back to a fifth of its pool. That rest cycle, not the price, is what bounds the burn',
+      'Two wells each — a weapon and a charm. Worn Magic Find and loot quality pay at face value on their rolls; worn Ward turns aside up to half the stamina a pull costs. Levels to 20 add stamina and luck, and are tuned so a capped Thrall never overtakes a fresh one of the tier above',
+      'Managed from the Inner Sanctum: stamina bars, live Magic Find, assign and stand down, hand over gear and take it back, a squad overview with the nominal Gold-per-hour burn, and an activity log of what each of them found',
+      'Five work at once, and Lengthen the Shift raises that to ten. The whole shift pauses the moment the tab goes behind another — a background tab settles nothing, so nobody comes back to an emptied ledger',
+    ],
+  },
   {
     version: '2.67.0',
     codename: 'Contract',

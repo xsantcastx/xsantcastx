@@ -75,6 +75,7 @@ import {
   FORGE_UPGRADES,
   MULTIPLIER_UPGRADES,
   HAMMER_UPGRADES,
+  THRALL_UPGRADES,
   PRESTIGE_GOLD_THRESHOLD,
   PRESTIGE_LEVEL_THRESHOLD,
   SHARD_BONUS,
@@ -89,6 +90,16 @@ import { EclipseRarity, RARITY_ORDER, rarityOf } from '../rarity/rarity.model';
 import { CardArt } from '../rune-forge/rune-cards';
 import { artFor } from '../art/art';
 import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
+import {
+  BASE_THRALL_SLOTS,
+  MAX_THRALLS,
+  MAX_THRALL_SLOTS,
+  THRALL_OFFERS,
+  THRALL_ROLL_COST,
+  ThrallOffer,
+  ThrallRarity,
+} from '../thralls/thrall.model';
+import { ThrallService } from '../thralls/thrall.service';
 import { ArtSceneComponent } from '../art-scene/art-scene.component';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { InspectService } from '../entity/inspect.service';
@@ -120,7 +131,7 @@ import {
 
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
-  | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition'
+  | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition' | 'thrall'
   | 'enchant' | 'artifact' | 'cosmetic' | 'eclipse';
 
 interface CategoryDef {
@@ -162,6 +173,10 @@ const CATEGORIES: CategoryDef[] = [
     // The sentence naming the Forge View is in the template instead, because it
     // carries a routerLink and a note is a plain string.
     note: 'Explorers walk into a realm and come back with Gold, and sometimes with a rune or a scroll nobody has filed yet. They keep walking while the tab is shut.',
+  },
+  {
+    id: 'thrall', label: 'Forge Thralls', short: 'Thralls', mark: 'automaton-shop', currency: 'gold',
+    note: 'Bound hands that pull the lever for you. Every Thrall roll costs a hundred times what yours does and finds worse runes than you would, so this is a way to spend a Gold surplus, never a way to make one. They work only while this tab is open and in front of you.',
   },
   {
     id: 'enchant', label: 'Enchantments', short: 'Enchants', icon: 'essence-shop', currency: 'essence',
@@ -275,12 +290,26 @@ interface RateFloater {
   text: string;
 }
 
+/**
+ * The five Thrall tiers, written onto the shop's own six-rung Eclipse ladder.
+ *
+ * Authored rather than derived because a Thrall's tier *is* its rarity and the
+ * two vocabularies do not have the same length: `tierFor` would spread five
+ * rows across six rungs and print Sacred on the Rare Thrall. Singular is
+ * deliberately unreachable — that rung belongs to the Void, and no shop row
+ * stands on it.
+ */
+const THRALL_RARITIES: EclipseRarity[] = [
+  'mortal', 'eclipsed', 'sacred', 'anomalous', 'mythic',
+];
+
 const CATEGORY_SEARCH: Partial<Record<CategoryId, string>> = {
   forge: 'forge upgrades mejoras de forja',
   hammer: 'hammers martillos',
   automaton: 'automatons automatas',
   mastery: 'mastery maestria',
   expedition: 'expeditions expediciones',
+  thrall: 'thralls siervos esclavos forge thralls automation autoroll',
   enchant: 'enchantments encantamientos encantos',
   artifact: 'artifacts artefactos',
   cosmetic: 'cosmetics cosmeticos',
@@ -305,6 +334,7 @@ const CATALOGUE_PICKS = [
 })
 export class MarketComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
+  private readonly thralls = inject(ThrallService);
   private readonly audio = inject(ForgeAudioService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -401,6 +431,12 @@ export class MarketComponent implements OnInit, OnDestroy {
     }));
 
     if (!this.isBrowser) return;
+    // The roster has to be hydrated before the first row is priced, or every
+    // Thrall row would render "own 0" against a roster that already has five in
+    // it. Idempotent, and it also starts the shift — which is right: a player
+    // standing in the Market with Thralls bound is a player with the tab open.
+    this.thralls.init();
+    this.subs.add(this.thralls.snapshot$.subscribe(() => this.cdr.markForCheck()));
     this.hydrated = true;
     const debug = window as unknown as { __MK_FORCE_ERROR?: boolean };
     if (debug.__MK_FORCE_ERROR) this.catalogueError = true;
@@ -519,6 +555,10 @@ export class MarketComponent implements OnInit, OnDestroy {
       s.gold, s.essence, s.upgradeLevels,
       s.artifacts.length, s.cosmetics.length,
       s.enchantment?.def.id ?? '',
+      // A recruit changes no economy field except Gold, and a roster that has
+      // just filled has to re-render its five rows as 'held'. Without this the
+      // cache would hand back the pre-purchase rows until the next Gold tick.
+      this.thralls.count,
     ].join('|');
     if (key === this.itemCacheKey) return this.itemCache;
 
@@ -538,6 +578,10 @@ export class MarketComponent implements OnInit, OnDestroy {
       ...EXPEDITION_UPGRADES.map((u, i) =>
         this.fromLadder(u, i, EXPEDITION_UPGRADES.length, 'expedition', 'Hire',
           `${u.explorers} out`)),
+      ...THRALL_OFFERS.map((o, i) => this.fromThrallOffer(o, i)),
+      ...THRALL_UPGRADES.map((u, i) =>
+        this.fromLadder(u, i, THRALL_UPGRADES.length, 'thrall', 'Extend',
+          `+${u.thralls} shift`)),
       ...ENCHANTMENTS.map((e, i) => this.fromEnchantment(e, i)),
       ...ARTIFACTS.map(a => this.fromArtifact(a)),
       ...COSMETICS.map((c, i) => this.fromCosmetic(c, i)),
@@ -590,6 +634,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   private labelOf(id: CategoryId): string {
     return CATEGORIES.find(c => c.id === id)?.label ?? id;
   }
+
 
   private fromLadder(
     u: AnyUpgrade, index: number, total: number, category: CategoryId,
@@ -681,6 +726,40 @@ export class MarketComponent implements OnInit, OnDestroy {
       verb: 'Acquire',
       art: shopArt(c.id),
       cosmetic: c,
+    });
+  }
+
+  /**
+   * One recruitment row.
+   *
+   * Rarity is authored rather than derived from the rung, unlike every other
+   * ladder in the shop: a Thrall's tier *is* its rarity, and mapping five rows
+   * across the six Eclipse tiers would print "Sacred" on the Rare one. The
+   * mapping below is the one place the two vocabularies meet.
+   *
+   * `owned` counts Thralls of that exact tier, so the row reads "×3" the way a
+   * ladder rung does, and the state goes to 'held' only when the *roster* is
+   * full — a tier is never sold out on its own.
+   */
+  private fromThrallOffer(offer: ThrallOffer, index: number): MarketItem {
+    const owned = this.thralls.thralls.filter(t => t.rarity === offer.rarity).length;
+    const rosterFull = this.thralls.count >= MAX_THRALLS;
+    return this.paint({
+      id: offer.id,
+      name: offer.name,
+      lore: offer.flavour,
+      icon: offer.icon,
+      category: 'thrall',
+      categoryLabel: this.labelOf('thrall'),
+      rarity: THRALL_RARITIES[index] ?? RARITY_ORDER[0],
+      cost: offer.price,
+      currency: 'gold',
+      yield: `${formatCompact(THRALL_ROLL_COST)}/roll`,
+      effect: offer.effect,
+      owned,
+      state: rosterFull ? 'held' : (this.snap.gold >= offer.price ? 'buy' : 'locked'),
+      verb: 'Bind',
+      art: shopArt(offer.id),
     });
   }
 
@@ -910,12 +989,33 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   readonly maxExplorerSlots = MAX_EXPLORER_SLOTS;
 
+  /** Working Thrall slots held, base plus the `thrall-slot` ladder. */
+  get thrallSlots(): number {
+    return Math.min(
+      MAX_THRALL_SLOTS,
+      BASE_THRALL_SLOTS + this.economy.levelOf('thrall-slot'),
+    );
+  }
+
+  readonly maxThrallSlots = MAX_THRALL_SLOTS;
+  readonly maxThralls = MAX_THRALLS;
+
   /**
    * The one shelf whose note carries a live number. Kept apart from the static
    * `note` strings rather than templating them all, so eight constants stay
    * constants.
    */
   get activeTally(): string {
+    if (this.queryState.category === 'thrall') {
+      // Two numbers, because a Thrall shelf has two ceilings and confusing them
+      // is the obvious mistake: you may *own* sixteen and *work* five of them.
+      return this.t('market.thrall.tally', {
+        owned: this.thralls.count,
+        max: this.maxThralls,
+        working: this.thralls.working,
+        slots: this.thrallSlots,
+      });
+    }
     if (this.queryState.category !== 'expedition') return '';
     return this.explorerSlots >= this.maxExplorerSlots
       ? this.t('market.expedition.all', { count: this.maxExplorerSlots })
@@ -1042,6 +1142,21 @@ export class MarketComponent implements OnInit, OnDestroy {
   buy(item: MarketItem): void {
     if (item.state === 'held' || item.state === 'owned') return;
     if (this.economy.isBuying(item.id)) return;
+
+    // Recruiting is not a catalogue purchase: it mints a record with a rolled
+    // name into a roster this component does not own, and it sets its own
+    // price the way the anvil does. `ThrallService` spends through
+    // `EconomyService.spendGold`, which records the op the cloud merge replays,
+    // so the Gold is as durable as any other spend — it simply does not carry a
+    // mutation-key receipt, because a receipt is per intentional click and the
+    // 256-key cap is not a place to put an entity mint.
+    if (item.category === 'thrall' && item.id.startsWith('thrall-') && item.id !== 'thrall-slot') {
+      const rarity = item.id.slice('thrall-'.length) as ThrallRarity;
+      const code = this.thralls.recruit(rarity);
+      this.announcePurchase(code === 'ok' ? 'ok' : code === 'roster-full' ? 'maxed' : 'insufficient-funds');
+      this.settle(item.id, code === 'ok');
+      return;
+    }
 
     const kind = this.commerceKind(item);
     if (!kind) return;
