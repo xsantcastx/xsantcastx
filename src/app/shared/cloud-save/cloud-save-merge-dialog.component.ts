@@ -1,16 +1,16 @@
 /**
- * cloud-save-merge-dialog.component.ts — which save wins.
+ * cloud-save-merge-dialog.component.ts — what signing in just brought down.
  *
- * Opens only when signing in finds two saves that each hold something the other
- * does not. That is a narrow case on purpose: a cloud save simply ahead of this
- * browser needs no dialog, because all three buttons would do the same thing.
+ * This used to be a modal that parked the sign-in until the visitor chose
+ * between three saves. It asked far too often — the test behind it counted a
+ * device holding Gold it had not spent yet as "progress the cloud has never
+ * seen", which is true of any second device, permanently — and two of its three
+ * answers deleted whichever items the other side was holding.
  *
- * The bind is genuinely parked while this is open — `CloudSaveService` is
- * awaiting the answer — so there is deliberately no way to dismiss it without
- * choosing. An X in the corner would have to mean something, and every meaning
- * available ("merge anyway", "stay signed out") is worse than asking the
- * question properly. Escape picks Merge Best, which is the option that cannot
- * cost anybody anything.
+ * Signing in reconciles on its own now. This is what is left: a notice, after
+ * the fact, that says what arrived, with an undo behind it. It never blocks
+ * play, Escape dismisses it, and the undo is real — the gateway keeps this
+ * device's save exactly as it stood before the merge.
  */
 import {
   ChangeDetectionStrategy,
@@ -23,7 +23,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { CloudSaveService } from './cloud-save.service';
-import { MergeConflict, MergeStrategy, SaveSummary } from './cloud-save.model';
+import { MergeConflict } from './cloud-save.model';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
 
 @Component({
@@ -32,50 +32,24 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (conflict) {
-      <div class="csm" role="dialog" aria-modal="true" aria-labelledby="csm-title">
+    @if (merged) {
+      <div class="csm" role="status" aria-live="polite">
         <div class="csm__panel">
-          <p class="csm__eyebrow"><span class="csm__pulse"></span> Two Forges</p>
-          <h2 class="csm__title" id="csm-title">This device and the cloud disagree</h2>
+          <p class="csm__eyebrow"><span class="csm__pulse"></span> Cloud save</p>
+          <h2 class="csm__title" id="csm-title">Your saves were combined</h2>
           <p class="csm__lede">
-            Both saves hold something the other does not. Choose which one the
-            Forge carries forward.
+            This device and your cloud save were reconciled — the further of
+            each was kept, and nothing was thrown away.
           </p>
 
-          <div class="csm__cols">
-            <div class="csm__col">
-              <h3 class="csm__col-head">This Device</h3>
-              <dl class="csm__stats">
-                <div><dt>Level</dt><dd [class.csm__win]="wins(local.level, cloudStats.level)">{{ local.level }}</dd></div>
-                <div><dt>XP</dt><dd [class.csm__win]="wins(local.xp, cloudStats.xp)">{{ local.xp | number }}</dd></div>
-                <div><dt>Gold</dt><dd [class.csm__win]="wins(local.gold, cloudStats.gold)">{{ local.gold | number }}</dd></div>
-                <div><dt>Achievements</dt><dd [class.csm__win]="wins(local.achievements, cloudStats.achievements)">{{ local.achievements }}</dd></div>
-              </dl>
-            </div>
-
-            <div class="csm__col">
-              <h3 class="csm__col-head">Cloud</h3>
-              <dl class="csm__stats">
-                <div><dt>Level</dt><dd [class.csm__win]="wins(cloudStats.level, local.level)">{{ cloudStats.level }}</dd></div>
-                <div><dt>XP</dt><dd [class.csm__win]="wins(cloudStats.xp, local.xp)">{{ cloudStats.xp | number }}</dd></div>
-                <div><dt>Gold</dt><dd [class.csm__win]="wins(cloudStats.gold, local.gold)">{{ cloudStats.gold | number }}</dd></div>
-                <div><dt>Achievements</dt><dd [class.csm__win]="wins(cloudStats.achievements, local.achievements)">{{ cloudStats.achievements }}</dd></div>
-              </dl>
-            </div>
-          </div>
-
           <div class="csm__acts">
-            <button type="button" class="csm__btn csm__btn--primary" (click)="choose('merge')">
-              Merge Best
-              <span class="csm__hint">keeps the higher of each, loses nothing</span>
+            <button type="button" class="csm__btn csm__btn--primary" (click)="dismiss()">
+              Good
+              <span class="csm__hint">carry on playing</span>
             </button>
-            <button type="button" class="csm__btn" (click)="choose('local')">
-              Keep This Device
-              <span class="csm__hint">overwrites the cloud save</span>
-            </button>
-            <button type="button" class="csm__btn" (click)="choose('cloud')">
-              Load Cloud
-              <span class="csm__hint">replaces what is on this device</span>
+            <button type="button" class="csm__btn" (click)="undo()" [disabled]="undoing">
+              Use only this device's save
+              <span class="csm__hint">puts it back the way it was before signing in</span>
             </button>
           </div>
         </div>
@@ -86,23 +60,27 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
     /* Fixed to the viewport, and rendered from the header — which is outside the
        routed host, so no route transform can trap it. See the note in
        cloud-save-button.component.ts about where this is mounted. */
+    /* A notice, not a veil. It must never sit over the game or eat a click:
+       the layer is inert and only the panel itself is interactive.
+
+       Bottom-LEFT on purpose. The achievement toast, the Forge Flame and the
+       cookie banner all pin bottom-right, and that corner has already had one
+       widget silently eating another's clicks for two releases. */
     .csm {
       position: fixed;
-      inset: 0;
-      z-index: 10000;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-      background:
-        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0, 255, 204, 0.08), transparent 70%),
-        radial-gradient(ellipse 70% 50% at 50% 100%, rgba(139, 92, 246, 0.1), transparent 70%),
-        rgba(4, 2, 12, 0.86);
+      left: 0;
+      bottom: 0;
+      z-index: var(--z-toast, 60);
+      padding: 16px;
+      max-width: min(420px, 100vw);
+      pointer-events: none;
       animation: csmFade .25s ease both;
     }
+    .csm > * { pointer-events: auto; }
 
     .csm__panel {
-      width: min(560px, 100%);
-      max-height: 88dvh;
+      width: 100%;
+      max-height: 70dvh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 24px;
@@ -226,21 +204,17 @@ export class CloudSaveMergeDialogComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
   private overlayUnreg?: () => void;
 
-  conflict: MergeConflict | null = null;
-
-  get local(): SaveSummary { return this.conflict!.local; }
-  /** Named `cloudStats`, not `cloud`: that name is the service on this class. */
-  get cloudStats(): SaveSummary { return this.conflict!.cloud; }
+  merged: MergeConflict | null = null;
+  undoing = false;
 
   ngOnInit(): void {
-    this.sub = this.cloud.conflict$.subscribe(c => {
-      this.conflict = c;
-      if (c) {
-        if (!this.overlayUnreg) {
-          this.overlayUnreg = this.overlays.push('cloud-save-merge', () => {
-            if (this.conflict) this.choose('merge');
-          });
-        }
+    this.sub = this.cloud.merged$.subscribe(m => {
+      this.merged = m;
+      if (m) {
+        // Registered with the overlay stack so Escape dismisses it like every
+        // other layer — but dismissing is all Escape does, because there is
+        // nothing waiting on an answer.
+        this.overlayUnreg ??= this.overlays.push('cloud-save-merged', () => this.dismiss());
       } else {
         this.overlayUnreg?.();
         this.overlayUnreg = undefined;
@@ -255,12 +229,18 @@ export class CloudSaveMergeDialogComponent implements OnInit, OnDestroy {
     this.overlayUnreg = undefined;
   }
 
-  choose(strategy: MergeStrategy): void {
-    this.cloud.resolveConflict(strategy);
+  dismiss(): void {
+    this.cloud.dismissMerged();
   }
 
-  /** True when `a` is the larger of the pair, for the highlight. */
-  wins(a: number, b: number): boolean {
-    return a > b;
+  async undo(): Promise<void> {
+    this.undoing = true;
+    this.cdr.markForCheck();
+    try {
+      await this.cloud.undoMerge();
+    } finally {
+      this.undoing = false;
+      this.cdr.markForCheck();
+    }
   }
 }

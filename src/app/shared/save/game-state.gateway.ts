@@ -105,7 +105,7 @@ import { LocalSaveRegistry } from './local-save-registry.service';
  * this gateway, so importing it back would be a cycle — and the constant is
  * pinned by the model spec, which fails if the registry ever stops carrying it.
  */
-const ECONOMY_STATE_KEY = 'godforge-economy';
+export const ECONOMY_STATE_KEY = 'godforge-economy';
 
 /**
  * One unit of saved state: a localStorage key and the document it belongs in.
@@ -159,6 +159,13 @@ export interface StateEntry {
  * as a blob that had been forgotten and then added rather than as the one that
  * always had its own path.
  */
+/**
+ * This device's save as it stood just before the last sign-in merge.
+ *
+ * Never synced: it is a local before picture, not part of the account.
+ */
+export const SAVE_BACKUP_KEY = 'godforge-save-backup';
+
 export const STATE_ENTRIES: readonly StateEntry[] = [
   ...SYNCED_BLOBS.map((b: SyncedBlob): StateEntry => ({
     key: b.key,
@@ -483,6 +490,10 @@ export class GameStateGateway {
     if (this.fs !== fs) return { adopted: [], seeded: false };
     if (strategy !== 'merge') this.overrideStrategy = strategy;
 
+    // Before anything of the cloud's lands on this device, keep the before
+    // picture — see snapshotBeforeMerge.
+    this.snapshotBeforeMerge(uid);
+
     const adopted: string[] = [];
     const toWrite: StateEntry[] = [];
 
@@ -535,6 +546,82 @@ export class GameStateGateway {
       this.setLink('synced');
     }
     return { adopted, seeded };
+  }
+
+  /**
+   * Everything this device held immediately before the last sign-in merge.
+   *
+   * Reconciling is lossless by construction — it keeps the higher of every
+   * monotone counter and replays both sides' ledger operations — so this is not
+   * here to undo a mistake the merge made. It is here because "combine them" is
+   * a decision the game now takes on the visitor's behalf, and a decision taken
+   * for somebody should be one they can walk back. It is what makes signing in
+   * safe to do without asking anything first.
+   *
+   * Device-local and deliberately not synced: it is this browser's before
+   * picture, and pushing it would make it the account's.
+   */
+  private snapshotBeforeMerge(uid: string): void {
+    try {
+      const blobs: Record<string, string> = {};
+      for (const entry of STATE_ENTRIES) {
+        const raw = this.readRaw(entry.key);
+        if (raw !== null) blobs[entry.key] = raw;
+      }
+      if (Object.keys(blobs).length === 0) return;
+      localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
+        at: new Date().toISOString(),
+        uid,
+        blobs,
+      }));
+    } catch {
+      // Out of quota, or private mode. A backup is a courtesy; failing to take
+      // one must never stop somebody signing in.
+    }
+  }
+
+  /** The before picture, if this browser still holds one for this account. */
+  deviceSnapshot(): { at: string; uid: string } | null {
+    try {
+      const raw = localStorage.getItem(SAVE_BACKUP_KEY);
+      if (!raw) return null;
+      const held = safeParse(raw);
+      if (!isRecord(held) || typeof held['at'] !== 'string' || typeof held['uid'] !== 'string') return null;
+      return { at: held['at'], uid: held['uid'] };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Put this device back the way it was before the last merge, and make that
+   * the account's save.
+   *
+   * Pushed with the 'local' strategy for the same reason the visitor picked it:
+   * this is the one moment a write is allowed to lower a number. Lifetime XP is
+   * still floored by `preserveMonotonicXp`, because the cloud rule refuses a
+   * write that lowers it and taking the rest of the save back should not fail
+   * on that one field.
+   */
+  async restoreDeviceSnapshot(): Promise<boolean> {
+    const snap = this.deviceSnapshot();
+    if (!snap) return false;
+    const raw = localStorage.getItem(SAVE_BACKUP_KEY);
+    const held = raw === null ? null : safeParse(raw);
+    if (!isRecord(held) || !isRecord(held['blobs'])) return false;
+
+    const blobs = held['blobs'] as Record<string, unknown>;
+    for (const entry of STATE_ENTRIES) {
+      const value = blobs[entry.key];
+      if (typeof value !== 'string') continue;
+      this.adopt(entry.key, value);
+      this.dirty.add(entry.key);
+    }
+    if (this.dirty.size === 0) return true;
+    this.oldestDirtyAt = Date.now();
+    if (!this.attached) return true;
+    await this.pushDirty({ batched: false, strategy: 'local' });
+    return true;
   }
 
   /**

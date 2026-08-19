@@ -60,8 +60,9 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { FirestoreHandle, LazyFirestoreService } from '../lazy-firestore.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
-import { GameStateGateway } from '../save/game-state.gateway';
-import { MergeConflict, MergeStrategy } from './cloud-save.model';
+import { ECONOMY_STATE_KEY, GameStateGateway } from '../save/game-state.gateway';
+import { PROGRESS_KEY } from '../gamification/progress-storage.service';
+import { MergeConflict, SaveSummary, summarise } from './cloud-save.model';
 import { whenAppCheckReady } from '../../app-check.bootstrap';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
@@ -157,30 +158,17 @@ export class CloudSaveService {
   readonly status$: Observable<SyncStatus> = this.status$$.asObservable();
 
   /**
-   * Set when signing in found two saves that each hold something the other does
-   * not, and the visitor has to say which one wins. Null the rest of the time.
-   * The bind is genuinely parked on this — see {@link ask}.
+   * Set just after a sign-in that actually brought cloud progress down onto
+   * this device. Nothing is parked on it — it is a notice with an undo behind
+   * it, not a question, and the visitor is already playing by the time they
+   * see it.
    */
-  private readonly conflict$$ = new BehaviorSubject<MergeConflict | null>(null);
-  readonly conflict$: Observable<MergeConflict | null> = this.conflict$$.asObservable();
-
-  /** Resolves the parked bind once the dialog answers. */
-  private decide: ((choice: MergeStrategy) => void) | null = null;
+  private readonly merged$$ = new BehaviorSubject<MergeConflict | null>(null);
+  readonly merged$: Observable<MergeConflict | null> = this.merged$$.asObservable();
 
   get status(): SyncStatus { return this.status$$.value; }
   get signedIn(): boolean { return this.status$$.value.uid !== null; }
-  get conflict(): MergeConflict | null { return this.conflict$$.value; }
-
-  /**
-   * Answer the merge dialog. Anything other than a real choice means "merge",
-   * which is the option that cannot lose anybody anything.
-   */
-  resolveConflict(choice: MergeStrategy): void {
-    const decide = this.decide;
-    this.decide = null;
-    this.conflict$$.next(null);
-    decide?.(choice);
-  }
+  get merged(): MergeConflict | null { return this.merged$$.value; }
 
   private booted = false;
 
@@ -372,11 +360,10 @@ export class CloudSaveService {
   async signOut(): Promise<void> {
     if (!this.isBrowser) return;
 
-    // A bind can still be parked on the merge dialog when this is reached —
-    // signing out with it open would leave that promise unresolved and the
-    // dialog on screen with nothing behind it. Answering 'merge' lets the bind
-    // finish and unwind before the detach below takes the gateway's account away.
-    if (this.decide) this.resolveConflict('merge');
+    // Nothing is parked on a dialog any more — signing in reconciles on its
+    // own — but the notice is about an account that is going away, so it goes
+    // with it.
+    this.merged$$.next(null);
 
     // `detach` sends whatever is still inside the debounce window before letting
     // go. This is the one moment the visitor is explicitly thinking about whether
@@ -435,7 +422,25 @@ export class CloudSaveService {
       // a token when enforcement is on.
       await this.awaitAppCheck();
       const fs = await this.firestore();
-      await this.gateway.attach(user.uid, fs, conflict => this.ask(conflict));
+      // Signing in does not ask. Reconciling keeps the higher of every
+      // monotone counter and replays both ledgers, so combining the two saves
+      // is the only answer that cannot cost anybody anything — and a dialog
+      // whose other two buttons can only lose something is not a question
+      // worth stopping a sign-in for. The gateway keeps a before picture of
+      // this device first, and `merged$` offers the way back afterwards.
+      const before = summarise(
+        safeRead(PROGRESS_KEY),
+        safeRead(ECONOMY_STATE_KEY),
+      );
+      await this.gateway.attach(user.uid, fs);
+      const after = summarise(
+        safeRead(PROGRESS_KEY),
+        safeRead(ECONOMY_STATE_KEY),
+      );
+      // Only worth mentioning when the cloud actually brought something down.
+      if (this.gateway.deviceSnapshot() && changed(before, after)) {
+        this.zone.run(() => this.merged$$.next({ local: before, cloud: after }));
+      }
     } catch (err) {
       console.error('[CloudSave] bind failed', err);
       throw err;
@@ -445,18 +450,19 @@ export class CloudSaveService {
     void this.eggs.trigger(CLOUD_SAVE_EGG);
   }
 
+  /** Dismiss the "we combined them" notice without changing anything. */
+  dismissMerged(): void {
+    this.merged$$.next(null);
+  }
+
   /**
-   * Put a conflict on screen and wait for an answer.
-   *
-   * The bind is genuinely parked on this promise — see {@link resolveConflict}.
-   * Anything other than a real choice resolves to 'merge', which is the option
-   * that cannot lose anybody anything.
+   * Put this device back the way it was before signing in, and make that the
+   * account's save. The undo behind the notice.
    */
-  private ask(conflict: MergeConflict): Promise<MergeStrategy> {
-    return new Promise<MergeStrategy>(resolve => {
-      this.decide = resolve;
-      this.zone.run(() => this.conflict$$.next(conflict));
-    });
+  async undoMerge(): Promise<boolean> {
+    const ok = await this.gateway.restoreDeviceSnapshot();
+    this.merged$$.next(null);
+    return ok;
   }
 
   /**
@@ -621,4 +627,28 @@ function isAppCheckFailure(code: string, message: string): boolean {
   return haystack.includes('app-check')
     || haystack.includes('appcheck')
     || haystack.includes('app check');
+}
+
+/** One saved blob, or null if it is absent or unreadable. */
+function safeRead(key: string): unknown {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Did reconciling actually bring anything down onto this device?
+ *
+ * Only the counters that can rise on a pull. Gold is left out for the same
+ * reason it is left out of `isConflict`: idle earnings move it on their own,
+ * and a notice that fired because a second of idle Gold ticked by would be
+ * noise attached to an undo nobody wants.
+ */
+function changed(before: SaveSummary, after: SaveSummary): boolean {
+  return after.xp > before.xp
+    || after.level > before.level
+    || after.achievements > before.achievements;
 }
