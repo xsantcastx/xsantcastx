@@ -255,6 +255,10 @@
             {{ t('market.expedition.lead') }}
             <a routerLink="/sanctum">{{ t('market.expedition.link') }}</a>.
           }
+          @if (queryState.category === 'thrall') {
+            {{ t('market.thrall.lead') }}
+            <a routerLink="/sanctum">{{ t('market.thrall.link') }}</a>.
+          }
           @if (activeTally) { <strong>{{ activeTally }}</strong> }
         </p>
       }

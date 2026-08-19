@@ -28,6 +28,38 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   'basalt-edge': 'basalt-edge-portrait',
 };
 
+/**
+ * Catalogue ids that have shipped ahead of their painting.
+ *
+ * The Market falls back to the row's emoji glyph when `artFor` returns null,
+ * which is a supported state — it is how every shelf looked before the library
+ * was wired. What is *not* supported is that state being invisible, which is
+ * why `art.spec.ts` fails on any unpainted row that is not named here.
+ *
+ * This is deliberately not an alias. Pointing a Thrall at the Apprentice
+ * Striker's painting would make the coverage test pass while putting the
+ * Automaton shelf's artwork on a different shelf's row — a silent lie that
+ * nobody would ever be prompted to correct, because the gate would be green.
+ * An entry here is a debt with a name on it, and the spec asserts that each one
+ * is still genuinely unpainted, so it fails again the day the art lands and the
+ * line is left behind.
+ *
+ * Keep it short, and delete from it rather than adding.
+ *
+ *   thrall-*      the five Forge Thrall tiers and the shift-length upgrade,
+ *                 shipped in v2.68.0. Nothing in `Assets/Characters` depicts a
+ *                 bound worker at the anvil; this needs a new painting rather
+ *                 than a crop of an existing one.
+ */
+export const ART_PENDING: ReadonlySet<string> = new Set([
+  'thrall-common',
+  'thrall-uncommon',
+  'thrall-rare',
+  'thrall-epic',
+  'thrall-legendary',
+  'thrall-slot',
+]);
+
 /** Painted art for a catalogue id, or null when nothing has been painted. */
 export function artFor(id: string | undefined | null): ArtEntry | null {
   if (!id) return null;
