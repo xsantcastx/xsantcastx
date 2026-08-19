@@ -15,7 +15,6 @@ import { provideFirebaseApp, initializeApp, getApp, getApps } from '@angular/fir
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { environment } from '../environments/environment';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
-import { ScrollTrackingDirective } from './scroll-tracking.directive';
 import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
@@ -54,7 +53,6 @@ import { PwaService } from './shared/pwa.service';
     HeaderComponent,
     FooterComponent,
     CookieBannerComponent,
-    ScrollTrackingDirective,
     FocusTrapDirective,
     EmbedBarComponent,
     MilestoneEffectComponent,

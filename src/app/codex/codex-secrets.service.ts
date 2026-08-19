@@ -55,11 +55,12 @@ export class CodexSecretsService {
   private readonly router = inject(Router);
   private readonly zone = inject(NgZone);
   /**
-   * Storage goes through the gateway like every other blob, but this key is
-   * deliberately *not* in `SYNCED_BLOBS` — the registry spec names it as
-   * device-local, and unknown keys are written locally and never queued. Routing
-   * it here anyway keeps one storage API in the app, and means syncing it later
-   * is a one-line decision rather than a rewrite.
+   * Storage goes through the gateway like every other blob. This key is in
+   * `SYNCED_BLOBS` as of the perf/cleanup pass: it was device-local on the
+   * grounds that a console-entered code is not progression, but the Codex
+   * counts secrets alongside the eggs, so a visitor who found one on a desktop
+   * and opened the site on a phone watched the count fall. Its merge rule keeps
+   * the *earliest* discovery — see `mergeSecretLedgers`.
    */
   private readonly store = inject(GameStateGateway);
 

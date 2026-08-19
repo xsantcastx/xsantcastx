@@ -578,7 +578,8 @@ body::before {
       transparent 80%);
   mix-blend-mode: screen;
   animation: pulsarBeat 10s ease-in-out infinite, pulsarHue 90s linear infinite, pulsarWander 48s ease-in-out infinite;
-  will-change: transform, filter, opacity;
+  /* `translate` is animated separately from `transform` — both need hinting. */
+  will-change: translate, transform, filter, opacity;
   z-index: -1;
   opacity: 1;
 }
@@ -641,11 +642,27 @@ body::before {
   100% { filter: hue-rotate(360deg) blur(18px); }
 }
 
+/* The wander drifts the orb around the viewport. It used to animate top/left,
+   which are LAYOUT properties: every frame of a 48s loop invalidated layout for
+   a fixed, blurred, 980px element, on every page, forever. CLAUDE.md §7.4 waved
+   this through as "slow, and only one element" — but the cost is not in how far
+   it moves, it is that the frame cannot go straight to the compositor.
+
+   transform was not available to move it to, because pulsarBeat already owns
+   transform (it composes the cursor-shift vars with the beat's scale, and two
+   animations cannot interpolate the same property). `translate` is the way out:
+   it is an independent transform property, so it composes with `transform`
+   instead of competing with it, and it is compositor-only.
+
+   The offsets are vw/vh rather than percentages because these used to be
+   percentages of the VIEWPORT (top/left on a fixed element), whereas a
+   percentage in `translate` would resolve against the element's own box. Same
+   path as before: +8/-8, -4/+6, +4/-6. */
 @keyframes pulsarWander {
-  0%, 100% { top: 50%; left: 50%; }
-  25%       { top: 42%; left: 58%; }
-  50%       { top: 56%; left: 46%; }
-  75%       { top: 44%; left: 54%; }
+  0%, 100% { translate: 0 0; }
+  25%       { translate: 8vw -8vh; }
+  50%       { translate: -4vw 6vh; }
+  75%       { translate: 4vw -6vh; }
 }
 
 @keyframes coronaSpin {
@@ -667,10 +684,10 @@ body::before {
 
 /* Narrowed wander: ±20px offset instead of the desktop ±8%/±6% viewport shift */
 @keyframes pulsarWanderMobile {
-  0%, 100% { top: 50%;        left: 50%;        }
-  25%       { top: calc(50% - 20px); left: calc(50% + 20px); }
-  50%       { top: calc(50% + 20px); left: calc(50% - 10px); }
-  75%       { top: calc(50% - 10px); left: calc(50% + 15px); }
+  0%, 100% { translate: 0 0; }
+  25%       { translate: 20px -20px; }
+  50%       { translate: -10px 20px; }
+  75%       { translate: 15px -10px; }
 }
 
 
