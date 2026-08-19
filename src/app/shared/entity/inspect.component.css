@@ -177,7 +177,8 @@
   border: 1px solid rgba(201, 168, 76, 0.35);
   background: rgba(18, 14, 8, 0.45);
 }
-.qi__temper-lvl, .qi__temper-cost, .qi__temper-note { margin: 0 0 0.5rem; }
+.qi__temper-lvl, .qi__temper-cost, .qi__temper-ward, .qi__temper-note { margin: 0 0 0.5rem; }
+.qi__temper-ward { font-size: 0.85em; color: var(--gf-dim); }
 .qi__temper-note { color: #c9a84c; }
 .qi__btn:disabled { opacity: 0.45; cursor: not-allowed; }
 

@@ -31,6 +31,8 @@ import {
 } from './paper-doll.manifest';
 import { itemArt } from './material-catalog';
 import { itemFitsSlot } from './item-definition';
+import { wardFailReductionPct } from './item-upgrade';
+import { strikeValuePct } from '../rune-forge/strike-value';
 
 const CATS = ['all', 'charms', 'runes', 'artifacts'] as const;
 const RARS = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'] as const;
@@ -138,6 +140,12 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     const t = this.snap.totals;
     return !!(t.goldPerSec || t.magicFind || t.xpBonus || t.lootBonus || t.strikePower || t.ward);
   }
+
+  /** Worn strikePower as the Forge yield bonus it buys, whole percent, capped. 0 hides it. */
+  get strikePct(): number { return strikeValuePct(this.snap.totals.strikePower); }
+
+  /** Worn ward as the share of temper failures it turns aside, whole percent, capped. */
+  get wardPct(): number { return wardFailReductionPct(this.snap.totals.ward); }
 
   itemInDoll(slot: PaperDollSlotManifest): GameItem | null {
     if (!slot.liveSlot) return null;

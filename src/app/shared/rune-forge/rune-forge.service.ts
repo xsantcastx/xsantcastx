@@ -20,6 +20,7 @@ import { XpService } from '../gamification/xp.service';
 import { LoreScrollService } from './lore-scroll.service';
 import { LoreScroll, rollScroll } from './lore-scroll.model';
 import { RUNE_ACHIEVEMENTS } from './rune-achievements';
+import { strikeCopies, strikeValueMultiplier, strikeValuePct } from './strike-value';
 import {
   RUNES,
   RUNEWORDS,
@@ -94,6 +95,12 @@ export interface RuneFind {
   rune: Rune;
   /** How many are held after this one landed. */
   held: number;
+  /**
+   * How many copies of the rune this one event landed — 1, or 2 when worn
+   * strikePower sheared a second off the anvil (see `strike-value.ts`).
+   * Expedition grants are always 1: the yield bonus is the strike's alone.
+   */
+  copies: number;
   /** First of its kind. Drives the "NEW" flag and the unique-count achievements. */
   isNew: boolean;
   /** Essence minted alongside, when Realm Bridge is held. Zero otherwise. */
@@ -238,7 +245,28 @@ export class RuneForgeService {
     // would have shown the rune and silently dropped the explorer.
     const explorer = this.roster.rollDrop(random);
 
-    return this.grant(rune, random, explorer);
+    // Worn strikePower is read at the moment of the strike for the same reason
+    // Magic Find is: a Basalt Edge equipped between two strikes should pay on
+    // the second one. Read from the bag's live totals, never stored in this
+    // ledger — gear is the inventory's to own. Like the explorer roll, this is
+    // the strike's alone: an expedition banks one rune through `grant`.
+    const copies = strikeCopies(this.inventory.equippedTotals.strikePower, random());
+
+    return this.grant(rune, random, explorer, copies);
+  }
+
+  /**
+   * Expected runes per strike right now, from worn strikePower — 1.0 for a
+   * fresh Keeper, 1.25 at the cap. Live, so the page can print it next to the
+   * strike button and have it move the moment the loadout changes.
+   */
+  get strikeValueMultiplier(): number {
+    return strikeValueMultiplier(this.inventory.equippedTotals.strikePower);
+  }
+
+  /** Whole-percent yield bonus for the page. 0 means hide the line. */
+  get strikeValuePct(): number {
+    return strikeValuePct(this.inventory.equippedTotals.strikePower);
   }
 
   /**
@@ -253,18 +281,27 @@ export class RuneForgeService {
    *
    * Everything downstream of a strike happens here and is therefore shared:
    * the first-found date, the tier XP with its duplicate discount, the Codex
-   * achievements and the `find$` reveal. The only thing left outside is the
-   * Gold, which is the part an expedition does not pay.
+   * achievements and the `find$` reveal. The only things left outside are the
+   * Gold, which is the part an expedition does not pay, and the strikePower
+   * yield roll, which is the part an expedition does not get — `copies` is
+   * handed in already rolled and defaults to the single rune a field find is.
    */
   grant(
     rune: Rune,
     random: () => number = Math.random,
     explorer: RosterExplorer | null = null,
+    copies = 1,
   ): RuneFind | null {
     if (!this.isBrowser) return null;
 
-    const held = (this.ledger.runes[rune.id] ?? 0) + 1;
-    const isNew = held === 1;
+    // `copies` is only ever 1 or 2 today (`strikeCopies`), but the ledger
+    // arithmetic below is written for any positive count so a future source
+    // does not have to touch it. Anything below one is treated as one: a grant
+    // must always land at least the rune it was handed.
+    const landed = Number.isFinite(copies) ? Math.max(1, Math.floor(copies)) : 1;
+    const before = this.ledger.runes[rune.id] ?? 0;
+    const held = before + landed;
+    const isNew = before === 0;
 
     this.ledger.runes = { ...this.ledger.runes, [rune.id]: held };
     if (isNew) {
@@ -287,8 +324,13 @@ export class RuneForgeService {
     // A duplicate pays a fraction: the tier XP is for the *discovery*, and a
     // table with a 60% head would otherwise turn the forge into the fastest XP
     // source in the app by an order of magnitude.
+    //
+    // A second copy off the same strike is a duplicate by definition, so it
+    // pays the duplicate rate on top — the discovery XP is paid once, for the
+    // discovery, however many copies the blow sheared.
     const tier = tierOf(rune.tier);
-    this.xp.award('craft', { amount: isNew ? tier.xp : Math.max(1, Math.round(tier.xp / 10)) });
+    const dupXp = Math.max(1, Math.round(tier.xp / 10));
+    this.xp.award('craft', { amount: (isNew ? tier.xp : dupXp) + (landed - 1) * dupXp });
 
     // The scroll is rolled against what is already held, so it can only ever be
     // something new — see `rollScroll`. Granting is what makes it new, so the
@@ -305,7 +347,7 @@ export class RuneForgeService {
 
     this.checkAchievements();
 
-    const find: RuneFind = { rune, held, isNew, essence, scroll, item, explorer };
+    const find: RuneFind = { rune, held, copies: landed, isNew, essence, scroll, item, explorer };
     this.find$$.next(find);
     return find;
   }

@@ -92,6 +92,9 @@
           <div class="qi__temper">
             <p class="qi__temper-lvl">{{ t('inspect.temper.level', { n: temperLevel, max: temperPreview.maxLevel }) }}</p>
             <p class="qi__temper-cost">{{ t('inspect.temper.cost', { gold: temperGold(), mats: temperMats(), chance: temperChance() }) }}</p>
+            @if (wardPct > 0) {
+              <p class="qi__temper-ward">{{ t('inspect.temper.ward', { pct: wardPct }) }}</p>
+            }
             <button
               type="button"
               class="qi__btn"

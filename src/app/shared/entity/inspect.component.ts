@@ -22,7 +22,7 @@ import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
 import { type EntityAction, type EntityFact } from './entity.model';
 import { InventoryService } from '../rpg/inventory.service';
-import { previewUpgrade, upgradeLevelOf } from '../rpg/item-upgrade';
+import { previewUpgrade, upgradeLevelOf, wardFailReductionPct } from '../rpg/item-upgrade';
 import { formatCurrency } from '../economy/economy.model';
 import type { GameItem } from '../rpg/item.model';
 
@@ -108,9 +108,23 @@ export class InspectComponent implements OnInit, OnDestroy {
     return this.inventory.itemById(ref.id) ?? null;
   }
 
+  /**
+   * Worn ward, so the chance printed here is the chance the roll will use —
+   * `InventoryService.upgrade` reads the same total. Zero when nothing warded
+   * is worn, which hands back the authored table exactly.
+   */
+  get wornWard(): number {
+    return this.inventory.equippedTotals.ward;
+  }
+
+  /** Whole percent of the fail chance the worn ward turns aside. 0 hides the line. */
+  get wardPct(): number {
+    return wardFailReductionPct(this.wornWard);
+  }
+
   get temperPreview() {
     const item = this.inspectedItem;
-    return item ? previewUpgrade(item) : null;
+    return item ? previewUpgrade(item, this.wornWard) : null;
   }
 
   get temperLevel(): number {
