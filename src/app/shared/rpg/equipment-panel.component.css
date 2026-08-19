@@ -631,3 +631,55 @@
   .ld__pick { transition: none; }
   .ld__pick:hover { transform: none; }
 }
+
+
+/* ── Perfect and Flawless ──────────────────────────────────────────────────
+   A near-maxed roll is the rarest thing a bag can hold and it used to look
+   exactly like every other item of its rarity, because rarity owns the border
+   colour. So the grade takes the border *animation* instead: the hue stays the
+   rarity's, and the prismatic sweep is the second channel. Two badges rather
+   than one shade of the same badge, which is the rule the rarity ladder already
+   follows — colour, then sound, then the viewport.
+
+   `background-clip` paints the gradient into a 1px inset ring so the tile's own
+   background is untouched and nothing has to be restacked to make room. */
+.ld__pick[data-quality-tag],
+.ld__slot[data-quality-tag] {
+  position: relative;
+}
+
+.ld__pick[data-quality-tag]::after,
+.ld__slot[data-quality-tag]::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(115deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background-size: 300% 100%;
+  animation: ldPrism 5s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Flawless is the one in a million, so it earns the halo as well as the ring. */
+.ld__pick[data-quality-tag='flawless'],
+.ld__slot[data-quality-tag='flawless'] {
+  box-shadow: 0 0 18px -4px rgba(255, 198, 105, 0.75);
+}
+
+@keyframes ldPrism {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld__pick[data-quality-tag]::after,
+  .ld__slot[data-quality-tag]::after {
+    animation: none;
+    background-position: 0% 50%;
+  }
+}

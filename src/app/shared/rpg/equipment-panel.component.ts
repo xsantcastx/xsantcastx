@@ -33,6 +33,13 @@ import {
 } from './paper-doll.manifest';
 import { itemArt } from './material-catalog';
 import { itemFitsSlot } from './item-definition';
+import {
+  QUALITY_TAG_LABELS,
+  formatQuality,
+  qualityOf,
+  qualityTagOf,
+  type QualityTag,
+} from './item-quality';
 import { wardFailReductionPct } from './item-upgrade';
 import { strikeValuePct } from '../rune-forge/strike-value';
 
@@ -242,6 +249,11 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return mods ? `${item.name}${level} — ${mods}` : `${item.name}${level}`;
   }
 
+  /** `perfect` / `flawless` / null. Drives the prismatic border in CSS. */
+  qualityTag(item: GameItem | null | undefined): QualityTag {
+    return item ? qualityTagOf(item) : null;
+  }
+
   onSlotClick(slot: PaperDollSlotManifest): void {
     const armed = this.armed;
     // Keep the arm-then-place path working for anyone mid-gesture.
@@ -294,12 +306,23 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     this.selectedSlot = null;
   }
 
+  /**
+   * The mod lines, each carrying its roll grade.
+   *
+   * `Gold/sec +4.2 (78%)` rather than `Gold/sec +4.2`, because the number alone
+   * cannot be compared against anything: the bag holds items of six rarities and
+   * `+4.2` is superb on one rung and dire on another. The percentage is the same
+   * scale everywhere. Ungraded legacy items print the bare number — see the
+   * header of item-quality.ts for why nothing is invented for them.
+   */
   modsOf(item: GameItem): string[] {
     const mods: string[] = [];
     for (const key of ITEM_STAT_KEYS) {
       const value = item.stats[key];
       if (value == null) continue;
-      mods.push(formatItemMod(key, value));
+      const pct = item.rollQuality?.[key];
+      const grade = typeof pct === 'number' ? ` (${formatQuality(pct)})` : '';
+      mods.push(`${formatItemMod(key, value)}${grade}`);
     }
     return mods;
   }
@@ -371,6 +394,12 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     const mods = this.modsOf(item).join(' · ');
     const parts = [head];
     if (mods) parts.push(mods);
+    const overall = qualityOf(item);
+    if (overall != null) {
+      const tag = qualityTagOf(item);
+      const badge = tag ? ` — ${QUALITY_TAG_LABELS[tag]}` : '';
+      parts.push(`Roll ${formatQuality(overall)}${badge}`);
+    }
     if (item.sellValue) parts.push(`Sells for ${formatCompact(item.sellValue)}`);
     return parts.join('\n');
   }

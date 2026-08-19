@@ -141,6 +141,12 @@ export class CollectionService {
     return !!this.ledger.entries[id];
   }
 
+  /** Best roll grade ever recorded for this entry, or null if it never rolled. */
+  bestRollOf(id: string): number | null {
+    const best = this.ledger.entries[id]?.bestRoll;
+    return typeof best === 'number' && best > 0 ? best : null;
+  }
+
   countOf(id: string): number {
     this.init();
     return this.ledger.entries[id]?.count ?? 0;
@@ -167,7 +173,12 @@ export class CollectionService {
    * rune ledger's `firstFound`, a bag item's `foundAt`) pass it; everything else
    * lets it default to now.
    */
-  discover(id: string, quantity = 1, at: number = Date.now()): CollectionDiscovery | null {
+  discover(
+    id: string,
+    quantity = 1,
+    at: number = Date.now(),
+    roll: number | null = null,
+  ): CollectionDiscovery | null {
     if (!this.isBrowser) return null;
     // Idempotent, and load-bearing: the Rune Forge calls straight in here, and
     // a strike on a save the log has not read yet would otherwise write an
@@ -179,6 +190,13 @@ export class CollectionService {
     const landed = Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
     const previous = this.ledger.entries[id];
     const stamp = Number.isFinite(at) && at > 0 ? Math.floor(at) : 0;
+    // High-water mark. A worse roll than the one on record changes nothing, so
+    // finding a second, duller Cuirass cannot erase the good one you sold.
+    const graded = typeof roll === 'number' && Number.isFinite(roll)
+      ? Math.min(1, Math.max(0, roll))
+      : null;
+    const best = Math.max(previous?.bestRoll ?? 0, graded ?? 0);
+    const bestField = best > 0 ? { bestRoll: best } : {};
 
     this.ledger = {
       ...this.ledger,
@@ -190,8 +208,9 @@ export class CollectionService {
               // behind it takes the first real one that arrives.
               firstDiscoveredAt: previous.firstDiscoveredAt > 0 ? previous.firstDiscoveredAt : stamp,
               count: previous.count + landed,
+              ...bestField,
             }
-          : { firstDiscoveredAt: stamp, count: landed },
+          : { firstDiscoveredAt: stamp, count: landed, ...bestField },
       },
     };
     this.save();

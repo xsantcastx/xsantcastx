@@ -17,6 +17,24 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.71.0',
+    codename: 'Wager',
+    date: '2026-08-19',
+    highlights: [
+      'Every item now records how well it rolled. A stat line reads Gold/sec +4.2 (78%), where the percentage is how close that stat came to the best it could be at that rarity \u2014 so two Cuirasses with the same name are finally legible as different objects instead of merely being different ones',
+      'The grade is normalised inside each rarity\u2019s own band, which means 100% says the same thing on a Common as on a Singular: this tier cannot do better. The power gap between tiers still lives in the ceiling, so nothing about the ladder moved',
+      'How wide a rarity gambles now climbs with the rarity. A Common rolls in a narrow, mediocre band; a Legendary can come out near-worthless or near-perfect. Mythic and Singular go the other way and trade that width for a high floor \u2014 by the time somebody is seeing a one-in-a-million drop, handing them a dud is not tension',
+      'An item whose every stat averages 95% is tagged Perfect and takes a prismatic border; one where every stat is genuinely maxed is Flawless, which is about one in a thousand per stat. Both show in the bag, on tooltips and in the Collection Log',
+      'The Gambler, a new hall next to the Market: five sealed boxes from the Iron Chest at five thousand Gold to the Void Cache at five million. Each pays out exactly one item, and every box publishes its odds before you buy rather than after',
+      'Bad luck protection is counted per box and stated as a number \u2014 ten results at a box\u2019s worst rarity in a row and the next one cannot land there. It is counted per box so that pity built cheaply on Iron Chests cannot be spent on a Void Cache',
+      'Twenty-four named objects with their own lore and a passive line no rolled item can produce \u2014 Void\u2019s Whisper, Goldmouth, Lastwarden, The Keeper\u2019s Second Name. They still roll their stats like everything else; what is fixed is which stats they carry',
+      'Selling exists again, and it lives at the Gambler because that is the same loop: open boxes until the bag is full of things you did not want, then turn those back into the Gold for the next box. A sale pays sticker scaled by the roll \u2014 half for a dud, three times over for a Perfect',
+      'No wearable in the game had ever had a price. Every equipment definition is filed as type artifact so the paper doll accepts it, and artifacts price at zero because a true artifact is soulbound \u2014 so the sell path had been refusing all of them, silently, for as long as it had existed',
+      'Charms roll now too. Their authored number is read as the ceiling rather than the midpoint, so a maxed roll reproduces exactly the fixed value they always used to have and nothing rolls above it',
+      'The Collection Log keeps the best roll it has ever seen for each thing, and keeps it after the item is sold \u2014 the log records what you found, and scrapping a 97% Cuirass for Gold does not unfind it',
+    ],
+  },
+  {
     version: '2.70.0',
     codename: 'Bellows',
     date: '2026-08-19',
