@@ -93,12 +93,11 @@ describe('InventoryService C3 adapter', () => {
     expect(stored?.tombstones.some(row => row.id === 'old-charm')).toBe(true);
   });
 
-  it('projects Economy ownership without writing it into the bag', () => {
+  it('keeps Economy ownership out of the bag', () => {
     TestBed.resetTestingModule();
     memory.write(ECONOMY_KEY, { version: 2, artifacts: ['obsidian-heart'] });
     inventory = configure(memory);
     expect(inventory.snapshot.items.some(row => row.id.startsWith('econ:'))).toBe(false);
-    expect(inventory.projectedFromEconomy().some(row => row.id === 'econ:artifact:obsidian-heart')).toBe(true);
   });
 
   it('reverts a sell when the cache write does not land', () => {

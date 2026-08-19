@@ -59,7 +59,6 @@ import {
   itemToRecord,
   itemsFromLedger,
   nextRevision,
-  projectEconomy,
   restoreCharms,
   stackQuantity,
   tombstoneRecord,
@@ -243,17 +242,6 @@ export class InventoryService {
   /** Distinct rarities held, for the achievement predicates. */
   hasRarity(rarity: ItemRarity): boolean {
     return this.items.some(i => i.rarity === rarity);
-  }
-
-  /**
-   * Read-only Economy projections for C4. Not mixed into `snapshot.items`.
-   * Character still reads artifacts/cosmetics from EconomyService.
-   */
-  projectedFromEconomy(): ReturnType<typeof projectEconomy> {
-    return projectEconomy({
-      artifacts: this.economy.snapshot.artifacts,
-      cosmetics: this.economy.snapshot.cosmetics,
-    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1051,9 +1039,25 @@ export class InventoryService {
    *
    * An equipped item is *not* sellable — it has to be taken off first. That is a
    * deliberate friction: the sell button sits on a grid of small cards, and
-   * "sold the Legendary I was wearing" is the mis-click this prevents. The panel
-   * only renders a Sell button on bagged items, and this is the enforcement
-   * behind that.
+   * "sold the Legendary I was wearing" is the mis-click this prevents.
+   *
+   * NO PLAYER-FACING SURFACE CALLS THIS. The Sell button lived in
+   * equipment-panel's bag column, which only rendered for `variant` 'full' or
+   * 'bank' — and the only mount site in the app passes 'select'. So it had been
+   * unreachable for as long as that was true, and the dead column has now been
+   * deleted. Brief D3 asks to surface it or delete it; this is the record of the
+   * third answer, which is that neither is a cleanup task's call to make:
+   *
+   *   · Deleting it would throw away tested economy logic — the gold ledger
+   *     write, the soulbound and equipped guards, the sale-revert path — that
+   *     21 assertions in inventory.service.spec.ts still cover, and that
+   *     `canSell` and `sellValue` are still read by live code.
+   *   · Surfacing it is a product decision about where a player sells: the
+   *     Market's `sellers` are NPC vendors, not a player-sell flow, and the
+   *     entity/market spec does not define one yet.
+   *
+   * Leave it here, tested and unwired, until the market spec says where selling
+   * happens. Do not add a Sell button back without that.
    */
   sell(itemId: string): number {
     if (!this.isBrowser) return 0;

@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "prebuild": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && node scripts/generate-sitemap.js",
+    "prebuild": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && node scripts/check-i18n-keys.js && node scripts/generate-sitemap.js",
     "build": "ng build --configuration production",
     "postbuild": "node scripts/generate-sitemap.js",
     "watch": "ng build --watch --configuration development",
@@ -15,6 +15,7 @@
     "analyze": "ng build --configuration production --source-map && npx source-map-explorer dist/xsantcastx/browser/main-*.js",
     "analyze:why": "ng build --configuration production --stats-json && npx webpack-bundle-analyzer dist/xsantcastx/browser/stats.json",
     "sitemap": "node scripts/generate-sitemap.js",
+    "check:i18n": "node scripts/check-i18n-keys.js",
     "prepare": "husky || true",
     "postinstall": "node scripts/patch-domino-ssr.js",
     "test:visual": "playwright test",
