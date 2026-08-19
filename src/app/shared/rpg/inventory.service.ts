@@ -60,7 +60,7 @@ import {
   itemsFromLedger,
   nextRevision,
   projectEconomy,
-  retireCharms,
+  restoreCharms,
   stackQuantity,
   tombstoneRecord,
   upsertRecord,
@@ -157,9 +157,9 @@ export class InventoryService {
     this.economy.init();
     this.deviceId = this.readDeviceId();
     this.ledger = this.load();
-    const retired = retireCharms(this.ledger, this.deviceId, Date.now());
-    this.ledger = retired.ledger;
-    if (this.ledger.legacyBackup || retired.retiredIds.length) this.save();
+    const restored = restoreCharms(this.ledger, this.deviceId, Date.now());
+    this.ledger = restored.ledger;
+    if (this.ledger.legacyBackup || restored.restoredIds.length) this.save();
     this.publish();
 
     // `save()` writes this whole bag from memory, so items merged in from another
@@ -168,9 +168,9 @@ export class InventoryService {
     this.saves.register(INVENTORY_KEY, {
       rehydrate: () => {
         this.ledger = this.load();
-        const retired = retireCharms(this.ledger, this.deviceId, Date.now());
-        this.ledger = retired.ledger;
-        let dirty = retired.retiredIds.length > 0;
+        const restored = restoreCharms(this.ledger, this.deviceId, Date.now());
+        this.ledger = restored.ledger;
+        let dirty = restored.restoredIds.length > 0;
         if (this.store.attached && this.ledger.legacyBackup) {
           this.ledger = dropLegacyBackup(this.ledger);
           dirty = true;
@@ -785,7 +785,6 @@ export class InventoryService {
     const item = this.itemById(itemId);
     if (!item) return false;
     if (item.explorerId) return false;
-    if (item.type === 'charm') return false;
 
     const occupied = new Set<SlotId>(
       this.items

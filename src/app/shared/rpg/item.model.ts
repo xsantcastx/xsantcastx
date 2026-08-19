@@ -39,7 +39,22 @@ export type ItemRarity = RuneTier;
 
 export type ItemType = 'rune' | 'runeword' | 'charm' | 'artifact';
 
-/** Canonical eight-slot loadout (C5). */
+/**
+ * The loadout: eight gear wells, plus three charm wells.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY charm1-3 ARE THE OLD IDS, DELIBERATELY
+ * ─────────────────────────────────────────────────────────────────────────────
+ * These three are not new names. They are the *pre-C5* slot ids, which C5
+ * retired: `parseLocation` mapped them to the bag and `retireCharms` tagged
+ * every charm so it could not be worn. Reviving the same ids rather than
+ * minting `charm-a/b/c` means a save written before C5 — one that still has
+ * `{"kind":"equipped","slotId":"charm2"}` on a Void Fragment — puts that charm
+ * back on the player the moment it loads, instead of leaving it in the bag with
+ * a tag explaining that its slot no longer exists.
+ *
+ * That is the whole reason the ids were never reused for anything else.
+ */
 export type EquipmentSlotId =
   | 'head'
   | 'chest'
@@ -48,10 +63,27 @@ export type EquipmentSlotId =
   | 'feet'
   | 'weapon'
   | 'off-hand'
-  | 'trinket';
+  | 'trinket'
+  | 'charm1'
+  | 'charm2'
+  | 'charm3';
 
-/** Pre-C5 persisted slot ids. Parsed, then migrated. */
-export type LegacySlotId = 'offhand' | 'charm1' | 'charm2' | 'charm3';
+/** The charm wells, in the order they are drawn. */
+export const CHARM_SLOT_IDS = ['charm1', 'charm2', 'charm3'] as const;
+export type CharmSlotId = typeof CHARM_SLOT_IDS[number];
+
+export function isCharmSlot(slot: string): slot is CharmSlotId {
+  return (CHARM_SLOT_IDS as readonly string[]).includes(slot);
+}
+
+/**
+ * Pre-C5 persisted slot ids that still need migrating.
+ *
+ * `charm1`-`charm3` used to be here. They are real slots again, so they are
+ * parsed rather than migrated, and only `offhand` remains — a spelling, not a
+ * retirement.
+ */
+export type LegacySlotId = 'offhand';
 
 export type SlotId = EquipmentSlotId;
 
@@ -194,21 +226,38 @@ export const EQUIPMENT_SLOTS: SlotDefinition[] = [
   { id: 'legs', name: 'Legs', accepts: ['artifact'], x: 50, y: 58 },
   { id: 'feet', name: 'Feet', accepts: [], x: 50, y: 82 },
   { id: 'trinket', name: 'Trinket', accepts: ['artifact'], x: 78, y: 18 },
+  // The charm wells accept charms and *only* charms, which is the point of
+  // giving them their own row: a rune sigil cannot be parked in one to claim a
+  // ninth gear slot, and a charm cannot squat in the head well.
+  { id: 'charm1', name: 'Charm I', accepts: ['charm'], x: 34, y: 96 },
+  { id: 'charm2', name: 'Charm II', accepts: ['charm'], x: 50, y: 96 },
+  { id: 'charm3', name: 'Charm III', accepts: ['charm'], x: 66, y: 96 },
 ];
 
+/** The eight gear wells, without the charm row. What the paper doll draws. */
+export const GEAR_SLOTS: SlotDefinition[] = EQUIPMENT_SLOTS.filter(s => !isCharmSlot(s.id));
+
+/** The three charm wells, in draw order. */
+export const CHARM_SLOTS: SlotDefinition[] = EQUIPMENT_SLOTS.filter(s => isCharmSlot(s.id));
+
 export const SLOT_IDS: SlotId[] = EQUIPMENT_SLOTS.map(s => s.id);
-export const LEGACY_SLOT_IDS: readonly LegacySlotId[] = ['offhand', 'charm1', 'charm2', 'charm3'];
+export const LEGACY_SLOT_IDS: readonly LegacySlotId[] = ['offhand'];
 export const PARSE_SLOT_IDS: readonly string[] = [...SLOT_IDS, ...LEGACY_SLOT_IDS];
+/**
+ * The tag C5 stamped on every charm when it took the slots away.
+ *
+ * Kept, and now only ever *removed* — see `restoreCharms`. Every save written
+ * between C5 and this release carries it on every charm the player owns, and a
+ * tag that says "cannot be worn" sitting on an item the panel will happily
+ * equip is the kind of contradiction that outlives the person who remembers
+ * why. `unretireCharm` strips it on load; nothing writes it any more.
+ */
 export const RETIRED_CHARM_TAG = 'retired-charm';
 
 export function canonicalizeSlot(slot: string): SlotId | null {
   if ((SLOT_IDS as readonly string[]).includes(slot)) return slot as SlotId;
   if (slot === 'offhand') return 'off-hand';
   return null;
-}
-
-export function isRetiredCharmSlot(slot: string): boolean {
-  return slot === 'charm1' || slot === 'charm2' || slot === 'charm3';
 }
 
 export const SLOT_BY_ID = new Map(EQUIPMENT_SLOTS.map(s => [s.id, s]));
@@ -360,11 +409,23 @@ export interface CharmSeed {
   id: string;
   name: string;
   rarity: ItemRarity;
-  magicFind: number;
+  /**
+   * What the charm gives, as a whole stat block.
+   *
+   * This was a bare `magicFind: number` while Magic Find was the only thing a
+   * charm could carry. Three charm wells make that a non-choice — you wear your
+   * three highest and there is nothing to decide — so a charm now names its own
+   * stat, and the three families below let a loadout be built for finding
+   * things, for earning, or for levelling.
+   */
+  stats: ItemStats;
   lore: string;
   /** Chance of this charm on a strike that has already rolled a charm drop. */
   weight: number;
 }
+
+/** Which build a charm serves. Groups the table and nothing else. */
+export type CharmFamily = 'find' | 'fortune' | 'insight';
 
 /**
  * Five charms, and they do not roll.
@@ -383,7 +444,7 @@ export const MF_CHARMS: CharmSeed[] = [
     id: 'charm-fortune',
     name: 'Small Charm of Fortune',
     rarity: 'common',
-    magicFind: 5,
+    stats: { magicFind: 5 },
     weight: 0.9996,
     lore: 'Somebody’s luck, worn smooth and handed on. It did not save them either.',
   },
@@ -391,7 +452,7 @@ export const MF_CHARMS: CharmSeed[] = [
     id: 'charm-seeker',
     name: 'Charm of the Seeker',
     rarity: 'rare',
-    magicFind: 15,
+    stats: { magicFind: 15 },
     weight: 0.00025,
     lore: 'It does not find things. It makes you the sort of person things are found by.',
   },
@@ -399,7 +460,7 @@ export const MF_CHARMS: CharmSeed[] = [
     id: 'charm-eclipse-eye',
     name: 'Eclipse Eye',
     rarity: 'epic',
-    magicFind: 25,
+    stats: { magicFind: 25 },
     weight: 0.00011,
     lore: 'Open at the moment the light went, and never given a reason to close since.',
   },
@@ -407,7 +468,7 @@ export const MF_CHARMS: CharmSeed[] = [
     id: 'charm-rabbits-foot',
     name: 'Lucky Rabbit’s Foot',
     rarity: 'legendary',
-    magicFind: 35,
+    stats: { magicFind: 35 },
     weight: 0.000035,
     lore: 'The Archivum has never established what a rabbit was. The luck is not in dispute.',
   },
@@ -415,22 +476,153 @@ export const MF_CHARMS: CharmSeed[] = [
     id: 'charm-void-fragment',
     name: 'Void Fragment',
     rarity: 'mythic',
-    magicFind: 100,
+    stats: { magicFind: 100 },
     weight: 0.000005,
     lore: 'A piece of the thing the realms were carved out of, small enough to carry. Nothing near it is quite as likely as it was.',
   },
 ];
 
-const CHARM_WEIGHT_TOTAL = MF_CHARMS.reduce((sum, c) => sum + c.weight, 0);
+/**
+ * Gold charms. The same ladder, paying flat Gold per second.
+ *
+ * Flat rather than a percentage, deliberately: `goldPerSec` is the one stat the
+ * economy already mirrors as a flat number (`rpgFlatGold`), and a percentage
+ * charm would compound with every upgrade on the Market ladder — a Void-tier
+ * multiplier late in the game is worth more than every other charm in the
+ * table put together, which is exactly the item that makes the other two
+ * families unwearable.
+ *
+ * The numbers are pitched against the Market's own ladder rather than against
+ * the MF charms, because that is what they compete with: a Mythic here is
+ * roughly a mid-ladder bellows you do not have to buy.
+ */
+export const GOLD_CHARMS: CharmSeed[] = [
+  {
+    id: 'charm-copper-knot',
+    name: 'Copper Knot',
+    rarity: 'common',
+    stats: { goldPerSec: 2 },
+    weight: 0.9996,
+    lore: 'Tied by somebody who was owed money and never collected. It has been earning quietly since.',
+  },
+  {
+    id: 'charm-tollkeepers-mark',
+    name: 'Tollkeeper’s Mark',
+    rarity: 'rare',
+    stats: { goldPerSec: 8 },
+    weight: 0.00025,
+    lore: 'Every road out of the Archivum had one of these at the end of it. The roads are gone.',
+  },
+  {
+    id: 'charm-counting-stone',
+    name: 'Counting Stone',
+    rarity: 'epic',
+    stats: { goldPerSec: 20 },
+    weight: 0.00011,
+    lore: 'It counts. Nobody has established what, only that the number goes up and has never gone down.',
+  },
+  {
+    id: 'charm-first-coin',
+    name: 'The First Coin',
+    rarity: 'legendary',
+    stats: { goldPerSec: 45 },
+    weight: 0.000035,
+    lore: 'Struck before there was anything to buy, by someone who correctly assumed there would be.',
+  },
+  {
+    id: 'charm-unspent-hoard',
+    name: 'The Unspent Hoard',
+    rarity: 'mythic',
+    stats: { goldPerSec: 140 },
+    weight: 0.000005,
+    lore: 'A whole vault, folded small enough to carry. The folding is the valuable part.',
+  },
+];
 
-/** Pick which charm dropped. Weighted; see the note on `MF_CHARMS`. */
+/**
+ * XP charms. Percentage, because XP is the one curve where a flat bonus dies.
+ *
+ * The rank ladder's costs climb steeply, so a flat "+12 XP" charm is decisive
+ * at rank 1 and invisible by rank 8 — which makes it an item you find, wear
+ * once, and never think about again. A percentage keeps its meaning the whole
+ * way up, which is what a slot the player has to *choose* to spend needs.
+ */
+export const XP_CHARMS: CharmSeed[] = [
+  {
+    id: 'charm-students-thread',
+    name: 'Student’s Thread',
+    rarity: 'common',
+    stats: { xpBonus: 3 },
+    weight: 0.9996,
+    lore: 'Knotted once for every lesson that stuck. It is not a long thread.',
+  },
+  {
+    id: 'charm-margin-note',
+    name: 'Margin Note',
+    rarity: 'rare',
+    stats: { xpBonus: 10 },
+    weight: 0.00025,
+    lore: 'Torn from a book nobody has found, in handwriting nobody has matched. It is correct.',
+  },
+  {
+    id: 'charm-copyists-lens',
+    name: 'Copyist’s Lens',
+    rarity: 'epic',
+    stats: { xpBonus: 18 },
+    weight: 0.00011,
+    lore: 'Ground for a scribe who wanted to see what they were transcribing. They regretted it.',
+  },
+  {
+    id: 'charm-verge-compass',
+    name: 'Verge Compass',
+    rarity: 'legendary',
+    stats: { xpBonus: 28 },
+    weight: 0.000035,
+    lore: 'It does not point anywhere. It points at *how far*, which turned out to be the useful question.',
+  },
+  {
+    id: 'charm-whole-account',
+    name: 'The Whole Account',
+    rarity: 'mythic',
+    stats: { xpBonus: 60 },
+    weight: 0.000005,
+    lore: 'Everything that happened, written down once, by the only witness who was there for all of it.',
+  },
+];
+
+/**
+ * The whole table.
+ *
+ * The three families carry identical weights at each rarity, so a charm drop is
+ * an even three-way split on which family and then the same rarity ladder
+ * inside it. That is the property that makes the three wells a *build*: the
+ * player who wants all-Magic-Find can get there, it just costs them three
+ * finds from one third of the table instead of three from all of it.
+ *
+ * `CHARM_DROP_CHANCE` was tripled alongside this so the supply of any one
+ * family per strike is what the whole table used to be — widening the table
+ * without that would have been a silent 3x nerf to Magic Find.
+ */
+export const ALL_CHARMS: CharmSeed[] = [...MF_CHARMS, ...GOLD_CHARMS, ...XP_CHARMS];
+
+/** Which family a charm belongs to, for the Codex and the bag filter. */
+export function charmFamily(id: string): CharmFamily | null {
+  if (MF_CHARMS.some(c => c.id === id)) return 'find';
+  if (GOLD_CHARMS.some(c => c.id === id)) return 'fortune';
+  if (XP_CHARMS.some(c => c.id === id)) return 'insight';
+  return null;
+}
+
+const CHARM_WEIGHT_TOTAL = ALL_CHARMS.reduce((sum, c) => sum + c.weight, 0);
+
+/** Pick which charm dropped. Weighted across all three families. */
 export function rollCharmSeed(rng: () => number = Math.random): CharmSeed {
   let roll = rng() * CHARM_WEIGHT_TOTAL;
-  for (const charm of MF_CHARMS) {
+  for (const charm of ALL_CHARMS) {
     roll -= charm.weight;
     if (roll <= 0) return charm;
   }
-  return MF_CHARMS[0];
+  return ALL_CHARMS[0];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,7 +650,7 @@ export function mintCharm(seed: CharmSeed, foundAt = new Date().toISOString()): 
     name: seed.name,
     type: 'charm',
     rarity: seed.rarity,
-    stats: { magicFind: seed.magicFind },
+    stats: { ...seed.stats },
     sellValue: sellValueFor('charm', seed.rarity),
     equipped: false,
     lore: seed.lore,

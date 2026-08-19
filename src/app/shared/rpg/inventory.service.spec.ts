@@ -73,8 +73,11 @@ describe('InventoryService C3 adapter', () => {
 
   it('migrates a v1 blob on load and still exposes GameItems', () => {
     expect(inventory.snapshot.items.map(row => row.id).sort()).toEqual(['old-charm', 'seed-helm', 'worn']);
-    expect(Object.keys(inventory.snapshot.equipped)).not.toContain('charm1');
-    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+    // `charm1` is a real slot again, so a v1 blob that had a charm in it keeps
+    // the charm on the player. C5 used to bag this one; see the note on
+    // `EquipmentSlotId` for why the id was never reused for anything else.
+    expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
+    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(false);
     const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
     expect(stored?.version).toBe(2);
     expect(stored?.legacyBackup?.version).toBe(1);
@@ -106,11 +109,87 @@ describe('InventoryService C3 adapter', () => {
     expect(TestBed.inject(EconomyService).snapshot.gold).toBe(gold);
   });
 
-  it('retires a worn charm and refuses to equip it again', () => {
-    expect(Object.keys(inventory.snapshot.equipped)).not.toContain('charm1');
-    expect(inventory.snapshot.totals.goldPerSec).toBe(2);
+  it('wears a charm in a charm well and counts its stats', () => {
+    // Helm 2 + charm 1 (the `charm()` fixture rolls goldPerSec: 1).
+    expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
+    expect(inventory.snapshot.totals.goldPerSec).toBe(3);
+  });
+
+  it('keeps charms out of the gear wells and gear out of the charm wells', () => {
+    // The reason the charm row is three slots of its own rather than a ninth
+    // gear slot: neither kind can squat in the other's well.
     expect(inventory.equip('worn', 'head')).toBe(false);
+    expect(inventory.equip('seed-helm', 'charm2')).toBe(false);
+    expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
+    expect(inventory.snapshot.equipped['head']?.id).toBe('seed-helm');
+  });
+
+  it('fills the three charm wells and refuses a fourth', () => {
+    expect(inventory.equip('old-charm', 'charm2')).toBe(true);
+    expect(inventory.snapshot.equipped['charm2']?.id).toBe('old-charm');
+
+    const spare = charm('spare');
+    expect(inventory.add(spare)?.id).toBe('spare');
+    expect(inventory.equip('spare', 'charm3')).toBe(true);
+
+    const fourth = charm('fourth');
+    expect(inventory.add(fourth)?.id).toBe('fourth');
+    // With every well taken and no slot named, `equip` falls back to the first
+    // well the item *fits* and displaces the occupant — the same rule gear has
+    // always followed when the loadout is full. It is not a refusal: three is
+    // the ceiling on charms *worn*, not on charms owned, and a swap is what the
+    // player asking for a fourth actually wants.
+    expect(inventory.equip('fourth')).toBe(true);
+    expect(inventory.snapshot.equipped['charm1']?.id).toBe('fourth');
     expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+    // Still three worn. That is the invariant the row depends on.
+    expect(['charm1', 'charm2', 'charm3']
+      .filter(slot => !!inventory.snapshot.equipped[slot as 'charm1']).length).toBe(3);
+  });
+
+  it('swaps a charm into an occupied well and bags the one it displaced', () => {
+    expect(inventory.equip('old-charm', 'charm1')).toBe(true);
+    expect(inventory.snapshot.equipped['charm1']?.id).toBe('old-charm');
+    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+  });
+
+  it('auto-picks the first free charm well when no slot is named', () => {
+    // charm1 is taken by the fixture, so an unaimed charm lands in charm2.
+    expect(inventory.equip('old-charm')).toBe(true);
+    expect(inventory.snapshot.equipped['charm2']?.id).toBe('old-charm');
+  });
+
+  it('takes a charm back off into the bag', () => {
+    expect(inventory.unequip('worn')).toBe(true);
+    expect(inventory.snapshot.equipped['charm1']).toBeUndefined();
+    expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(true);
+    expect(inventory.snapshot.totals.goldPerSec).toBe(2);
+  });
+
+  it('strips the C5 retirement tag on load', () => {
+    TestBed.resetTestingModule();
+    const aged = new MemoryGateway();
+    aged.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 2,
+      records: [{
+        // `definitionId` is required by `parseOwnedRecord` — a record without
+        // one is dropped silently, which makes the whole fixture invisible.
+        id: 'tagged', definitionId: 'charm:tagged', kind: 'instance', category: 'equipment',
+        tags: ['charm', 'retired-charm'], rarity: 'common', soulbound: false,
+        acquiredAt: '2026-08-01T00:00:00.000Z',
+        revision: { hlc: 1, deviceId: 'seed', sequence: 1 }, source: 'inventory',
+        name: 'Tagged', type: 'charm', stats: { magicFind: 5 }, sellValue: 12,
+        location: { kind: 'bag' }, upgradeLevel: 0,
+      }],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, era: 55,
+    }));
+    const loaded = configure(aged);
+
+    // Bagged, untagged, and equippable — which is the whole point of stripping
+    // it rather than leaving a "cannot be worn" marker on a wearable item.
+    expect(loaded.snapshot.bag.some(row => row.id === 'tagged')).toBe(true);
+    expect(loaded.equip('tagged', 'charm1')).toBe(true);
+    expect(loaded.snapshot.equipped['charm1']?.id).toBe('tagged');
   });
 
   it('refuses explorer-held items and the still-empty feet slot', () => {

@@ -16,7 +16,6 @@ import {
   PARSE_SLOT_IDS,
   RETIRED_CHARM_TAG,
   canonicalizeSlot,
-  isRetiredCharmSlot,
   type GameItem,
   type ItemType,
   type SlotId,
@@ -289,35 +288,54 @@ export function coerceInventoryLedger(raw: unknown): InventoryLedger | null {
 }
 
 /**
- * C5: bag every charm and tag it so it cannot be worn again.
- * offhand → off-hand is handled in parseLocation. Idempotent.
+ * Undo C5's charm retirement: strip the tag that said a charm cannot be worn.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS REPLACES `retireCharms` RATHER THAN SITTING BESIDE IT
+ * ─────────────────────────────────────────────────────────────────────────────
+ * C5 ran the opposite of this on every load: it moved each charm to the bag and
+ * stamped `RETIRED_CHARM_TAG` on it. Charms have slots again, so that pass is
+ * not merely unnecessary — left in place it would fight the player, bagging
+ * whatever they equipped on the next hydrate.
+ *
+ * Keeping both and picking one behind a flag was the other option and it is
+ * worse: the two passes are exact inverses, so a build where both could run
+ * would have an ordering bug waiting in it forever.
+ *
+ * The tag is *removed* rather than ignored because it is persisted, it is
+ * public in the snapshot, and "this item cannot be worn" sitting on an item the
+ * panel will happily equip is a contradiction that outlives whoever remembers
+ * why it is there.
+ *
+ * Idempotent, and returns the ids it touched so the caller knows whether a
+ * write is owed. A save that never saw C5 changes nothing and costs one pass.
  */
-export function retireCharms(
+export function restoreCharms(
   ledger: InventoryLedger,
   deviceId: string,
   now: number,
-): { ledger: InventoryLedger; retiredIds: string[] } {
-  const retiredIds: string[] = [];
+): { ledger: InventoryLedger; restoredIds: string[] } {
+  const restoredIds: string[] = [];
   let next = ledger;
   for (const row of ledger.records) {
     if (row.kind !== 'instance' || row.type !== 'charm') continue;
-    const tagged = row.tags.includes(RETIRED_CHARM_TAG);
-    const bagged = row.location.kind === 'bag';
-    if (tagged && bagged) continue;
+    if (!row.tags.includes(RETIRED_CHARM_TAG)) continue;
     const stepped = nextRevision(next, deviceId, now, row.revision);
     next = {
       ...next,
       hlc: stepped.hlc,
       records: next.records.map(entry => entry.id !== row.id ? entry : {
         ...row,
-        location: { kind: 'bag' },
-        tags: tagged ? row.tags : [...row.tags, RETIRED_CHARM_TAG],
+        // The location is left exactly as found. C5 already moved every charm to
+        // the bag, so there is nothing to put back — and a save that somehow has
+        // one in a slot is a save whose player put it there.
+        tags: row.tags.filter(tag => tag !== RETIRED_CHARM_TAG),
         revision: stepped.revision,
       }),
     };
-    retiredIds.push(row.id);
+    restoredIds.push(row.id);
   }
-  return { ledger: next, retiredIds };
+  return { ledger: next, restoredIds };
 }
 
 export function dropLegacyBackup(ledger: InventoryLedger): InventoryLedger {
@@ -690,9 +708,9 @@ function parseLocation(raw: unknown): ItemLocation | null {
     return { kind: 'explorer', explorerId: raw['explorerId'] };
   }
   if (raw['kind'] === 'equipped' && typeof raw['slotId'] === 'string' && PARSE_SLOT_IDS.includes(raw['slotId'])) {
-    if (isRetiredCharmSlot(raw['slotId'])) {
-      return { kind: 'bag' };
-    }
+    // `charm1`-`charm3` used to be shunted to the bag here. They are real slots
+    // again, so a pre-C5 save that still names one gets its charm back on the
+    // player rather than in the bag — see the note on `EquipmentSlotId`.
     const slot = canonicalizeSlot(raw['slotId']);
     if (slot) return { kind: 'equipped', slotId: slot };
   }
