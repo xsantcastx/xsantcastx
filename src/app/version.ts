@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.64.0',
+  version: '2.65.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Lever',
+  codename: 'Reverse',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.65.0',
+    codename: 'Reverse',
+    date: '2026-08-19',
+    highlights: [
+      'The Forge Flame has two faces. A switch above it turns the ember over: Gold on the front, where a click earns, and the anvil on the back, where a click spends 10K Gold and pulls a rune out of the table. The whole Rune Forge, from any page, without leaving it',
+      'Runes come off the anvil by name, in their own rarity colour, rising off the ember and gone in a second and a half. Rare and above arrive bigger, wearing their glow, and take the screen with them',
+      'x10 sits beside the switch. Ten strikes in one press, stacked into a column you can read — and it banks whatever the purse could pay for rather than refusing the whole run when it runs short',
+      'An anvil you cannot afford says so: the ember shakes, washes red, and the cost line above it turns with it. A click that does nothing and looks like nothing is a click you think was dropped',
+      'The counter reads FORGE x5 on the anvil. It is a run of its own — the Gold combo ladder is built around a two-a-second cooldown the anvil does not have, so the anvil never writes to that record',
+      'The face you left it on is the face you come back to, on that device. Reduced motion keeps the switch, the runes and the refusal; what it drops is the half-second of rotation, the travel, and the shake'
+    ]
+  },
   {
     version: '2.64.0',
     codename: 'Lever',
