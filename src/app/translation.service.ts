@@ -2036,12 +2036,15 @@ export class TranslationService {
   constructor() {
     // Precedence: ?lang= in the URL, then the saved preference, then English.
     //
-    // The query param has to win. It is the only language signal a crawler can
-    // carry: Googlebot has no localStorage and never clicks the EN/ES toggle,
-    // so before this the ?lang=es URL that the hreflang annotations advertise
-    // rendered byte-identical English and Google would drop the alternate as a
-    // duplicate. It also makes the Spanish view linkable and shareable, which
-    // a localStorage-only preference never was.
+    // The query param has to win, so that the Spanish view is linkable and
+    // shareable — a localStorage-only preference never was.
+    //
+    // It is a reader-facing feature only. `?lang=es` used to be advertised to
+    // crawlers as an hreflang alternate; those tags are gone, because nothing
+    // on the serving path can honour the parameter. Production is prerender
+    // plus a static CSR shell, this branch is browser-only, and Hosting hands
+    // `/world?lang=es` the same English `world/index.html` it hands `/world`.
+    // See the note in seo.service.ts.
     const saved = this.isBrowser ? localStorage.getItem('preferred-language') : null;
     const language = this.readLanguageFromUrl() ?? this.normalize(saved) ?? DEFAULT_LANGUAGE;
     this.currentLanguageSubject.next(language);
@@ -2059,9 +2062,9 @@ export class TranslationService {
   }
 
   /**
-   * Keep <html lang> honest. It drives screen-reader pronunciation, and it is
-   * one of the signals Google cross-checks against an hreflang claim — a page
-   * serving Spanish while still declaring lang="en" undermines both.
+   * Keep <html lang> honest. It drives screen-reader pronunciation, and a page
+   * serving Spanish while still declaring lang="en" mispronounces every word
+   * of it.
    */
   private reflectLanguageOnDocument(language: string): void {
     if (!this.isBrowser) return;
