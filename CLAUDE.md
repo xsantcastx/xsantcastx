@@ -20,6 +20,8 @@ The vibe target: **"feel like Anthropic's Earth demo"** — alive, interactive, 
 | **Rune** | mystical glyph easter eggs | `.rune-whisper--tl|tr|bl|br` (corner flickers) |
 | **Arcane seal** | hidden ✧ in bottom-right corner | `.arcane-seal` (toggles `body.ritual-open`) |
 | **Ritual mode** | activated occult mode (Konami code, seal click, console reveal) | `body.ritual-open` |
+| **Convergent** | what every NPC calls the player | NPC dialogue, quest chains |
+| **Chain** | one NPC's ordered run of 3–5 quests | `npc-quest.model.ts`, the `!` / `?` badges |
 | **Warp** | the 3D zoom-into-star animation when clicking a tool star | `.tool-card--warping`, `.cosmic-warp-overlay` |
 | **Godforge** | the home page entrance — the engine of creation | `.gf-hero`, `.gf-core` (the CSS furnace) |
 | **Realm** | one of the five Eclipse Realms a tool category belongs to | `REALMS` in `realm.model.ts`, `--realm-color` |
@@ -302,6 +304,8 @@ A single inline script runs five interactive systems. **All SSR-safe** with `typ
 5. **Don't introduce new colors** without adding them to the palette table in §2.
 6. **One "alive" interaction per scroll-screen** — avoid stacking magnetic + tilt + ripple + parallax on the same element. Pick one primary feel per surface.
 7. **Always test the tools page after engine changes** — it's the most animation-dense page and reveals z-index bugs first.
+8. **The viewport corners are a shared, unmanaged resource** — before pinning anything with `position: fixed`, read the corner registry in the docblock of `shared/pwa/install-prompt.component.ts` and add your widget to it. Bottom-left in particular is **not** empty: above 961px the shell's 236px sidebar sits there, and below 961px the `.gftabs` tab bar and (below 768px) the bottom-centre forge flame do. Offset with `var(--shell-sidebar-w, 0px)` and `var(--gftabs-h, 58px)` rather than measuring by eye — both are published onto `<html>` by `HeaderComponent`.
+9. **Never put a backtick inside a component's `styles: [\`…\`]` block** — not even in a CSS comment. It closes the template literal, and the error Angular reports is `Failed to resolve styles at position 1 to a string`, which names neither the file nor the line. It cost two dev-server restarts in one release.
 
 ---
 
@@ -325,8 +329,28 @@ src/
 │   ├── live/                            # /live — terminal feed
 │   ├── games/                           # /games — easter egg gallery
 │   ├── mcp/                             # /mcp — npm package landing
+│   ├── shared/npc/                      # the six speaking characters — see below
 │   └── shared/gamification/             # the progression ledger — see below
 ```
+
+### NPC dialogue and chains (`src/app/shared/npc/`)
+
+Six named characters stand on the surfaces they belong to and say something contextual — Aureth in the Luminous hall, Verrin in the Umbral hall and the trials, Kael on World / Forge / Character / Sanctum, the Archivist on Codex and Quests, the Merchant on Market and Gambler, and the Nameless anywhere once the combo passes 666 or the Void rune has been found.
+
+Four files, and the split matters:
+
+- `npc.model.ts` — the cast, the flat trigger table, and the pure selection functions. No Angular, no browser APIs, so the whole "who speaks and what do they say" decision is testable without a DOM.
+- `npc-quest.model.ts` — the six chains. An objective is a **reading** of a ledger another service already owns, never a new event count, so a step's bar and the number on the page it came from cannot disagree.
+- `npc-quest.service.ts` — receipts and heard lines. Storage holds *only* claim receipts and line ids; progress is recomputed every time, so retuning a target in the model changes what everyone sees with no migration.
+- `npc-dialogue.component.ts` — the portrait, the bubble, the typewriter, the quest card.
+
+Three rules worth keeping:
+
+1. **Add a line by adding data.** New dialogue is a row in `DIALOGUE`; the spec fails if a character loses their unconditional idle pool, because a silent NPC looks exactly like "the feature is off".
+2. **An objective must name a live surface.** Four steps originally read the quest board's `tool-use` buckets, which nothing has filled since `/tools/*` started redirecting to `/world` — they rendered a bar that could never move. `npc-quest.model.spec.ts` now fails on any step that depends on a retired bucket or a non-canonical path.
+3. **New rewards must exist in a catalogue.** Titles are `title-prefix` cosmetic variants and items are `ITEM_DEFINITIONS` ids; `grantCosmetic` and `mintEquipment` both fail *silently* on an unknown id, so the spec checks every reward against its catalogue.
+
+Portraits are unpainted and registered in `ART_PENDING`; each renders as a monogrammed orb in the character's accent until the art lands.
 
 ### Progression storage (`src/app/shared/gamification/`)
 
