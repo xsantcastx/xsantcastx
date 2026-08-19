@@ -108,6 +108,19 @@ export class TranslationService {
     'gffoot.together':    { en: 'Together',     es: 'Juntos' },
     'gffoot.nextThing':   { en: 'The next thing is yours', es: 'Lo siguiente es tuyo' },
 
+    // The WebGL forge's escape hatch. One key: the switch's own state says
+    // whether it is on, so a second "effects reduced" string would be a label
+    // arguing with the control beside it.
+    'gfx.reduce':         { en: 'Reduce effects',  es: 'Reducir efectos' },
+
+    // The 3D item inspector. `label` is the button face and stays short — it
+    // sits over the artwork in the Quick Inspect hero — while `open` carries
+    // the full sentence for assistive technology.
+    'inspect.3d.label':   { en: '3D',  es: '3D' },
+    'inspect.3d.open':    { en: 'Inspect in 3D',  es: 'Inspeccionar en 3D' },
+    'inspect.3d.stats':   { en: 'Stats',          es: 'Estadisticas' },
+    'inspect.3d.hint':    { en: 'Drag to turn — Esc to close', es: 'Arrastra para girar — Esc para cerrar' },
+
     // ── The entrance ─────────────────────────────────────────────────────
     'godforge.status.name':         { en: 'Eclipse Realms', es: 'Eclipse Realms' },
     'godforge.status.online':       { en: 'Status: Online', es: 'Estado: en linea' },
