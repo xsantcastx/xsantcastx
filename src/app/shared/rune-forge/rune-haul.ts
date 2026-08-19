@@ -134,3 +134,35 @@ export function batchHaul(finds: readonly HaulSource[]): BatchHaul {
   }
   return out;
 }
+
+/** One rung of a bulk run's tally: "7 Common", in the rung's own colour. */
+export interface BatchTier {
+  tier: RuneTier;
+  label: string;
+  color: string;
+  count: number;
+}
+
+/**
+ * What a bulk run turned up, by rung, rarest first.
+ *
+ * Rungs that came up empty are dropped rather than printed as zeroes: on a
+ * run of ten the honest line is "7 Common, 2 Uncommon, 1 Rare", not a table
+ * of nine rungs six of which say nothing. Rarest first because that is the
+ * part the player is reading for.
+ */
+export function tallyTiers(finds: readonly { rune: { tier: RuneTier } }[]): BatchTier[] {
+  const counts = new Map<RuneTier, number>();
+  for (const find of finds) {
+    counts.set(find.rune.tier, (counts.get(find.rune.tier) ?? 0) + 1);
+  }
+  return [...RUNE_TIER_ORDER]
+    .reverse()
+    .filter(tier => counts.has(tier))
+    .map(tier => ({
+      tier,
+      label: RUNE_TIERS[tier].label,
+      color: RUNE_TIERS[tier].color,
+      count: counts.get(tier) ?? 0,
+    }));
+}

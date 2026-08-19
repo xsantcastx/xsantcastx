@@ -1,5 +1,5 @@
 import { RUNE_TIERS } from './rune.model';
-import { batchHaul, haulOf, isHeavyTier, type HaulSource } from './rune-haul';
+import { batchHaul, haulOf, isHeavyTier, tallyTiers, type HaulSource } from './rune-haul';
 
 /** Untyped literals: the shapes the service writes, minus what the haul never reads. */
 const item = (over: Record<string, unknown> = {}) => ({
@@ -90,5 +90,30 @@ describe('batchHaul', () => {
 
   it('is all zeros for an empty batch', () => {
     expect(batchHaul([])).toEqual({ items: 0, scrolls: 0, explorers: 0, essence: 0 });
+  });
+});
+
+describe('tallyTiers', () => {
+  const at = (tier: string) => ({ rune: { tier } as never });
+
+  it('counts each rung and orders them rarest first', () => {
+    const rows = tallyTiers([at('common'), at('rare'), at('common'), at('uncommon'), at('common')]);
+    expect(rows.map(r => `${r.count} ${r.tier}`)).toEqual(['1 rare', '1 uncommon', '3 common']);
+  });
+
+  it('drops the rungs that never came up', () => {
+    const rows = tallyTiers([at('common'), at('common')]);
+    expect(rows.length).toBe(1);
+    expect(rows[0].count).toBe(2);
+  });
+
+  it('carries each rung own label and colour', () => {
+    const [row] = tallyTiers([at('mythic')]);
+    expect(row.label).toBeTruthy();
+    expect(row.color).toMatch(/^#|rgb/);
+  });
+
+  it('is empty for an empty run', () => {
+    expect(tallyTiers([])).toEqual([]);
   });
 });
