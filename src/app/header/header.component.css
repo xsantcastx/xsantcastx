@@ -18,7 +18,6 @@
   --gfnav-dim: rgba(240, 240, 240, 0.6);
   --gfnav-seam: color-mix(in srgb, var(--primary-color) 55%, transparent);
   --gfnav-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --gftabs-h: 58px;
 }
 
 /* ── Bar ───────────────────────────────────────────────────────────────── */
@@ -817,7 +816,14 @@ button.gftome__keeper {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 997;
-  height: calc(var(--gftabs-h) + env(safe-area-inset-bottom, 0px));
+  /* --gftabs-h is published onto <html> by HeaderComponent.updateHeaderOffset
+     from MOBILE_TAB_BAR_H — 0px on desktop, 58px below the nav breakpoint — and
+     the bar reads it rather than owning a private copy, because three other
+     fixed bottom-anchored widgets (the NPC portrait, the install banner and the
+     keeper panel) have to clear this exact height and a second number here is a
+     second number to forget. The literal is the pre-hydration fallback only;
+     .gftabs is display:none above 960px, so a stale 58 there paints nothing. */
+  height: calc(var(--gftabs-h, 58px) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid color-mix(in srgb, var(--primary-color) 32%, transparent);
   background: rgba(var(--gfnav-void), 0.92);
