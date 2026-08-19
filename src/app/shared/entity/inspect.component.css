@@ -278,6 +278,112 @@
   100% { background-color: transparent; }
 }
 
+/* ── Reforge: the stat reroll ─────────────────────────────────────────────────
+   Same two-layer discipline as the temper block above: every *state* a
+   reduced-motion visitor must still land on is a plain declaration here, and
+   the motion is declared at the foot of the file (top level, never nested in a
+   @media — Angular's emulated encapsulation does not rewrite an `animation:`
+   shorthand inside one to the scoped keyframe name, so it would silently
+   reference nothing at all).
+
+   The palette leans violet against temper's gold, because the two blocks sit
+   one above the other and a player mid-grind has to tell "grow what I have"
+   from "gamble what I have" at a glance, not by reading. */
+.qi__reforge {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(123, 97, 255, 0.35);
+  background: rgba(14, 10, 26, 0.5);
+}
+.qi__reforge-lede,
+.qi__reforge-warn,
+.qi__reforge-cost,
+.qi__reforge-note,
+.qi__reforge-err { margin: 0 0 0.5rem; }
+.qi__reforge-lede { color: rgba(214, 221, 235, 0.78); font-size: 0.9em; }
+.qi__reforge-warn { color: #b9a5ff; font-size: 0.9em; }
+.qi__reforge-err { color: #ff9a8a; font-size: 0.88em; }
+.qi__reforge-cost { font-weight: 600; }
+.qi__reforge-lockNote { display: block; font-weight: 400; font-size: 0.85em; color: rgba(214, 221, 235, 0.66); }
+
+.qi__btn--reforge { border-color: rgba(123, 97, 255, 0.55); color: #cfc2ff; }
+.qi__btn--reforge:hover:not(:disabled) { border-color: #7b61ff; }
+.qi__btn--ghost { opacity: 0.82; }
+
+.qi__reforge-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.qi__reforge-rows { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.3rem; }
+.qi__reforge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+  border-left: 2px solid rgba(123, 97, 255, 0.5);
+  font: 600 0.92rem/1.35 var(--font-lore);
+}
+.qi__reforge-row.is-locked { border-left-color: #7b61ff; background: rgba(123, 97, 255, 0.1); }
+.qi__reforge-key { color: rgba(214, 221, 235, 0.86); }
+.qi__reforge-now { color: var(--text-color, #f4f1ea); font-variant-numeric: tabular-nums; }
+
+/* The lock toggle is a standalone control, so it carries the 44px minimum the
+   accessibility rule asks for even though it reads as a small chip. */
+.qi__lock {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 1px solid rgba(123, 97, 255, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(214, 221, 235, 0.8);
+  font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.qi__lock[aria-pressed='true'] { border-color: #7b61ff; background: rgba(123, 97, 255, 0.2); color: #cfc2ff; }
+.qi__lock:focus-visible { outline: 2px solid #7b61ff; outline-offset: 2px; }
+
+.qi__reforge-deltas { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.25rem; }
+.qi__rdelta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: baseline;
+  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  border-left: 2px solid rgba(214, 221, 235, 0.3);
+  font: 600 0.92rem/1.35 var(--font-lore);
+}
+.qi__rdelta-label { color: rgba(214, 221, 235, 0.86); }
+.qi__rdelta-vals { color: rgba(214, 221, 235, 0.7); font-weight: 400; font-variant-numeric: tabular-nums; }
+.qi__rdelta-vals strong { color: var(--text-color, #f4f1ea); }
+.qi__rdelta-move { margin-left: auto; font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+.qi__rdelta-lock {
+  margin-left: 0.4rem;
+  font-size: 0.72em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9f8dff;
+}
+
+/* Direction is carried by the border, the arrow-free sign in the text and the
+   colour together — never colour alone, per the spec's accessibility line. */
+.qi__rdelta[data-dir='up']   { border-left-color: #4ade80; }
+.qi__rdelta[data-dir='up'] .qi__rdelta-move { color: #4ade80; }
+.qi__rdelta[data-dir='down'] { border-left-color: #ff7a6b; }
+.qi__rdelta[data-dir='down'] .qi__rdelta-move { color: #ff7a6b; }
+.qi__rdelta[data-dir='flat'] .qi__rdelta-move,
+.qi__rdelta[data-dir='lock'] .qi__rdelta-move { color: rgba(214, 221, 235, 0.6); font-weight: 400; }
+.qi__rdelta[data-dir='lock'] { border-left-color: #7b61ff; }
+
+/* The frame reacts to the verdict, the way the temper block lights on a hold. */
+.qi__reforge[data-result='better'] {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35), 0 0 24px -8px rgba(74, 222, 128, 0.55);
+}
+.qi__reforge[data-result='worse'] { border-color: rgba(255, 122, 107, 0.55); }
+
+
 /* Top-level on purpose: Angular's emulated encapsulation does not rewrite an
    `animation:` shorthand nested in a @media block to the scoped keyframe name,
    so it would silently reference nothing. The reduce block below switches
@@ -286,12 +392,41 @@
 .qi__temper-outcome--ok { animation: qiOutcomeLit 700ms ease-out; }
 .qi__delta { animation: qiDeltaLit 600ms ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
 
+/* Reforge motion. The strike is one sharp jolt of the whole panel — an anvil
+   hit, not a wobble — and the tumbling values blur just enough to be unreadable
+   without becoming a slot-machine reel: this is a sink, not a fruit machine,
+   and the roll is already decided and saved before the first of these frames
+   paints (see InspectComponent.reforge). Under reduce, the component skips the
+   'rolling' stage entirely rather than relying on these being switched off. */
+.qi__reforge[data-stage='rolling'] { animation: qiAnvilStrike 420ms cubic-bezier(0.36, 0, 0.2, 1); }
+.qi__reforge-now--spin { animation: qiStatTumble 120ms steps(2, end) infinite; }
+.qi__reforge-out { animation: qiOutcomeLit 700ms ease-out; }
+.qi__rdelta { animation: qiDeltaLit 600ms ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+
+@keyframes qiAnvilStrike {
+  0%   { transform: translateY(0) scale(1); }
+  12%  { transform: translateY(3px) scale(0.994); }
+  30%  { transform: translateY(-2px) scale(1.004); }
+  55%  { transform: translateY(1px) scale(0.999); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes qiStatTumble {
+  0%   { opacity: 0.55; filter: blur(0.6px); transform: translateY(-1px); }
+  50%  { opacity: 1;    filter: blur(0.2px); transform: translateY(1px); }
+  100% { opacity: 0.55; filter: blur(0.6px); transform: translateY(-1px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .qi,
   .qi__backdrop { transition: none; animation: none; }
   .qi__temper--ok,
   .qi__temper-outcome--ok,
-  .qi__delta { animation: none; }
+  .qi__delta,
+  .qi__reforge[data-stage='rolling'],
+  .qi__reforge-now--spin,
+  .qi__reforge-out,
+  .qi__rdelta { animation: none; }
 }
 
 @media (max-width: 768px) {

@@ -464,6 +464,169 @@ describe('InventoryService C3 adapter', () => {
   });
 });
 
+describe('InventoryService reforge', () => {
+  let memory: MemoryGateway;
+  let inventory: InventoryService;
+  let economy: EconomyService;
+
+  /** A real catalogue piece, so definitionFor/rollItemStats have something to roll. */
+  function blade(over: Partial<GameItem> = {}): GameItem {
+    return {
+      id: 'reforge-blade',
+      name: 'Eclipse Longblade',
+      type: 'artifact',
+      rarity: 'rare',
+      stats: { goldPerSec: 0.4, strikePower: 1 },
+      sellValue: 10,
+      equipped: false,
+      foundAt: '2026-08-19T00:00:00.000Z',
+      soulbound: false,
+      definitionId: 'eclipse-longblade',
+      upgradeLevel: 0,
+      ...over,
+    };
+  }
+
+  beforeEach(() => {
+    memory = new MemoryGateway();
+    inventory = configure(memory);
+    economy = TestBed.inject(EconomyService);
+    economy.init();
+    economy.earnGold(5_000_000, 'test');
+    expect(inventory.add(blade())).toBeTruthy();
+  });
+
+  it('rerolls the stats and debits exactly the rarity price', () => {
+    const before = { ...inventory.itemById('reforge-blade')!.stats };
+    const gold = economy.snapshot.gold;
+
+    const result = inventory.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.99);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.replayed).toBe(false);
+    expect(result.lockedKey).toBeNull();
+    expect(result.item.stats).not.toEqual(before);
+    // 'rare' — 10,000 Gold, nothing else.
+    expect(economy.snapshot.gold).toBe(gold - 10_000);
+    expect(inventory.itemById('reforge-blade')!.reforgeCount).toBe(1);
+  });
+
+  it('leaves rarity, definition and temper level exactly where they were', () => {
+    const tempered = inventory.itemById('reforge-blade')!;
+    expect(inventory.reforge('reforge-blade', 'seed', null, Date.now(), () => 0.5).ok).toBe(true);
+    const after = inventory.itemById('reforge-blade')!;
+    expect(after.rarity).toBe(tempered.rarity);
+    expect(after.definitionId).toBe(tempered.definitionId);
+    expect(after.upgradeLevel).toBe(tempered.upgradeLevel);
+    expect(after.soulbound).toBe(tempered.soulbound);
+    expect(after.sellValue).toBe(tempered.sellValue);
+  });
+
+  it('charges double for a lock and holds that stat at its old value', () => {
+    const before = { ...inventory.itemById('reforge-blade')!.stats };
+    const gold = economy.snapshot.gold;
+
+    const result = inventory.reforge('reforge-blade', 'r-lock', 'goldPerSec', Date.now(), () => 0.99);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lockedKey).toBe('goldPerSec');
+    expect(result.item.stats.goldPerSec).toBe(before.goldPerSec);
+    expect(result.item.stats.strikePower).not.toBe(before.strikePower);
+    expect(economy.snapshot.gold).toBe(gold - 20_000);
+  });
+
+  it('charges the plain price when the lock names a stat the item does not roll', () => {
+    const gold = economy.snapshot.gold;
+    const result = inventory.reforge('reforge-blade', 'r-badlock', 'lootBonus', Date.now(), () => 0.5);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lockedKey).toBeNull();
+    expect(economy.snapshot.gold).toBe(gold - 10_000);
+  });
+
+  it('replays the same mutation id without rerolling or charging twice', () => {
+    const first = inventory.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.99);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const rolled = { ...first.item.stats };
+    const gold = economy.snapshot.gold;
+
+    const again = inventory.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.01);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.replayed).toBe(true);
+    expect(again.item.stats).toEqual(rolled);
+    expect(economy.snapshot.gold).toBe(gold);
+    expect(inventory.itemById('reforge-blade')!.reforgeCount).toBe(1);
+  });
+
+  it('refuses without the Gold, and takes nothing', () => {
+    TestBed.resetTestingModule();
+    const poor = new MemoryGateway();
+    const lean = configure(poor);
+    const poorEconomy = TestBed.inject(EconomyService);
+    poorEconomy.init();
+    poorEconomy.earnGold(9_999, 'test');
+    expect(lean.add(blade())).toBeTruthy();
+    const before = { ...lean.itemById('reforge-blade')!.stats };
+
+    expect(lean.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.99))
+      .toEqual({ ok: false, code: 'funds' });
+    expect(lean.itemById('reforge-blade')!.stats).toEqual(before);
+    expect(poorEconomy.snapshot.gold).toBe(9_999);
+    expect(lean.itemById('reforge-blade')!.reforgeCount).toBeUndefined();
+  });
+
+  it('refuses a piece with no rolled stats', () => {
+    expect(inventory.add(charm('plain-charm', { definitionId: undefined, stats: {} }))).toBeTruthy();
+    expect(inventory.reforge('plain-charm', 'r1', null, Date.now(), () => 0.5))
+      .toEqual({ ok: false, code: 'kind' });
+  });
+
+  it('refuses an id that is not in the bag', () => {
+    expect(inventory.reforge('no-such-item', 'r1', null, Date.now(), () => 0.5))
+      .toEqual({ ok: false, code: 'missing' });
+  });
+
+  it('survives a reload — the rerolled stats and the counter are on the record', () => {
+    const result = inventory.reforge('reforge-blade', 'r1', 'goldPerSec', Date.now(), () => 0.9);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const rolled = { ...result.item.stats };
+
+    TestBed.resetTestingModule();
+    const reloaded = configure(memory);
+    const stored = reloaded.itemById('reforge-blade')!;
+    expect(stored.stats).toEqual(rolled);
+    expect(stored.reforgeCount).toBe(1);
+    expect(stored.lastReforgeLock).toBe('goldPerSec');
+    expect(stored.lastReforgeMutationId).toBe('r1');
+    // And the replay guard still holds across the reload.
+    const again = reloaded.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.01);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.replayed).toBe(true);
+  });
+
+  it('loads a pre-reforge save with the four new fields absent', () => {
+    // A record written before the sink shipped has none of them; they must
+    // read as "never rerolled" rather than nulling the item.
+    const stored = inventory.itemById('reforge-blade')!;
+    expect(stored.reforgeCount).toBeUndefined();
+    expect(stored.lastReforgeAt).toBeUndefined();
+    expect(stored.lastReforgeMutationId).toBeUndefined();
+    expect(stored.lastReforgeLock).toBeUndefined();
+    expect(stored.stats).toEqual({ goldPerSec: 0.4, strikePower: 1 });
+  });
+
+  it('counts up across repeated rerolls', () => {
+    expect(inventory.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.3).ok).toBe(true);
+    expect(inventory.reforge('reforge-blade', 'r2', null, Date.now(), () => 0.6).ok).toBe(true);
+    expect(inventory.reforge('reforge-blade', 'r3', null, Date.now(), () => 0.9).ok).toBe(true);
+    expect(inventory.itemById('reforge-blade')!.reforgeCount).toBe(3);
+  });
+});
+
 describe('InventoryService era 55 wipe', () => {
   it('empties a prior-era bag when the generation stamp is already current', () => {
     const memory = new MemoryGateway();
