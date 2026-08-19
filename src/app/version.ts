@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.60.2',
+  version: '2.61.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Canopy',
+  codename: 'Wayline',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.61.0',
+    codename: 'Wayline',
+    date: '2026-08-19',
+    highlights: [
+      'The realm picker was five buttons that did the same thing. Where an explorer was sent was recorded, coloured the card, and then had no effect on what came back. Each realm now pays to its own domain — Umbral turns up runes at one and a half times the rate and pays less Gold for it, Luminous is a hall still full of Gold and short on secrets, Verge and Archivum trade Gold for knowledge — and the picker prints the specialty and re-prices the Gold band as you switch, so the choice is visible before it is made',
+      'A haul that produced an equippable said it had produced nothing. The minted item ids have been on the reward since explorers got inventory slots and no surface ever rendered them, so a Legendary charm read as "the Gold and a story nobody has written down". The reveal card now shows every item and its mods, every rune past the first as a chip, takes its glow from the best find rather than from the realm, and plays the rune\'s own reveal cue instead of one coin flourish for everything',
+      'A dismissed reveal card was the only record a mission had happened — on a mechanic whose whole pitch is that it resolves while the tab is shut. The last ten landings are now kept in the save and listed under the dispatch picker with the realm, the Gold, who went, and a chip per rune, fragment and item. They union across devices, unlike missions in flight, which deliberately do not',
+      'The progress ring could not say a number, so an hour-long expedition looked the same at four per cent as at nine. Each card now carries the percentage inside the ring, a bar beside it — three bars line up where three rings do not — who is out, and the wall-clock time they are due back',
+      'The Inner Sanctum opens on an at-a-glance strip: income, the soonest landing, what the Keeper is wearing and what is in the bag, each linking to the surface that owns it. Answering "is anything happening" used to mean reading three columns',
+      'The loadout\'s slot picker listed what each item does and never what it would change. Candidates now carry their difference from the item already worn, with stats the candidate drops shown as losses rather than left out, an upgrade flag on a net gain, and the sign written into the text so the chips do not depend on colour. Bag tiles and picker rows gained full tooltips, and a slot that just changed flashes once — equipping used to be silent, and on a phone the doll is off-screen'
+    ]
+  },
   {
     version: '2.60.2',
     codename: 'Canopy',

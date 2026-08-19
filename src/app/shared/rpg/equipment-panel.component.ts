@@ -19,7 +19,10 @@ import { materialDisplay } from './material-catalog';
 import { MagicFindService } from './magic-find.service';
 import {
   GameItem,
+  ITEM_STAT_IS_PERCENT,
   ITEM_STAT_KEYS,
+  ITEM_STAT_LABELS,
+  ItemStats,
   formatItemMod,
   rarityLabel,
   slotAccepts,
@@ -40,6 +43,32 @@ const SORTS = ['newest', 'name-asc', 'rarity-desc'] as const;
 const RARITY_RANK: Record<string, number> = {
   common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, singular: 6,
 };
+
+/** One stat's difference between a candidate and the worn item. */
+export interface StatDelta {
+  key: keyof ItemStats;
+  label: string;
+  /** Signed. Positive is an improvement for every stat the game has. */
+  delta: number;
+  /** "Magic Find +2%", already signed and suffixed. */
+  text: string;
+  better: boolean;
+}
+
+/**
+ * Two decimal places, then trailing zeros trimmed.
+ *
+ * Gold/sec rolls at fractional values, so a raw subtraction produces
+ * `0.30000000000000004` often enough to matter — and a delta chip reading
+ * "Gold/sec +0.30000000000000004" is worse than no chip at all.
+ */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function formatDelta(key: keyof ItemStats, value: number): string {
+  return `${value}${ITEM_STAT_IS_PERCENT[key] ? '%' : ''}`;
+}
 
 export type BagCategory = typeof CATS[number];
 export type BagRarity = typeof RARS[number];
@@ -125,7 +154,10 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     this.ready = this.isBrowser;
   }
 
-  ngOnDestroy(): void { this.sub?.unsubscribe(); }
+  ngOnDestroy(): void {
+    if (this.flashTimer !== null) { clearTimeout(this.flashTimer); this.flashTimer = null; }
+    this.sub?.unsubscribe();
+  }
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
@@ -237,7 +269,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     const armed = this.armed;
     // Keep the arm-then-place path working for anyone mid-gesture.
     if (armed && slot.liveSlot && itemFitsSlot(slot.liveSlot, armed)) {
-      this.inventory.equip(armed.id, slot.liveSlot);
+      if (this.inventory.equip(armed.id, slot.liveSlot)) this.flash(slot.slotId);
       this.selectedId = null;
       this.hub.arm(null);
       this.selectedSlot = slot.slotId;
@@ -270,7 +302,8 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
 
   equipFromPicker(slot: PaperDollSlotManifest, item: GameItem): void {
     if (!slot.liveSlot) return;
-    this.inventory.equip(item.id, slot.liveSlot);
+    if (!this.inventory.equip(item.id, slot.liveSlot)) return;
+    this.flash(slot.slotId);
     this.hub.arm(null);
     this.selectedId = null;
   }
@@ -278,7 +311,9 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   unequipExpanded(): void {
     const worn = this.expandedItem;
     if (!worn) return;
-    this.inventory.unequip(worn.id);
+    const slotId = this.selectedSlot;
+    if (!this.inventory.unequip(worn.id)) return;
+    this.flash(slotId);
     this.selectedSlot = null;
   }
 
@@ -290,6 +325,99 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
       mods.push(formatItemMod(key, value));
     }
     return mods;
+  }
+
+  // ── Comparison ─────────────────────────────────────────────────────────────
+
+  /**
+   * A candidate's stats, against what is already in the slot.
+   *
+   * The picker listed every item that fits and its mod line, which answers
+   * "what does this do" and not "is this better than the one I am wearing" —
+   * and the second question is the only reason anybody opens the picker. Two
+   * items with `Magic Find +9%` and `Magic Find +11%` are indistinguishable at
+   * a glance in a mod-line list; `+2` next to one of them is not.
+   *
+   * Every stat either item touches appears, so a candidate that *loses* a stat
+   * the worn item had shows it as a negative rather than by omission — losing
+   * `Gold/sec +4` to gain `Magic Find +2` is a real trade and the panel should
+   * not hide half of it.
+   */
+  comparison(slot: PaperDollSlotManifest, item: GameItem): StatDelta[] {
+    const worn = slot.liveSlot ? this.snap.equipped[slot.liveSlot] : undefined;
+    // Nothing worn: every stat is a straight gain, and the mod line beside it
+    // already says so. A column of "+9 (new)" would be the same information
+    // twice, so the picker keeps the mod line and skips the deltas.
+    if (!worn || worn.id === item.id) return [];
+
+    const rows: StatDelta[] = [];
+    for (const key of ITEM_STAT_KEYS) {
+      const next = item.stats[key] ?? 0;
+      const now = worn.stats[key] ?? 0;
+      const delta = round2(next - now);
+      if (delta === 0) continue;
+      rows.push({
+        key,
+        label: ITEM_STAT_LABELS[key],
+        delta,
+        text: `${ITEM_STAT_LABELS[key]} ${delta > 0 ? '+' : '−'}${formatDelta(key, Math.abs(delta))}`,
+        better: delta > 0,
+      });
+    }
+    return rows;
+  }
+
+  /** True when a candidate is, on balance, an upgrade on what is worn. */
+  isUpgrade(slot: PaperDollSlotManifest, item: GameItem): boolean {
+    const rows = this.comparison(slot, item);
+    if (!rows.length) return false;
+    return rows.reduce((sum, row) => sum + row.delta, 0) > 0;
+  }
+
+  /** The item currently in a slot, for the "replacing" line in the picker. */
+  wornIn(slot: PaperDollSlotManifest): GameItem | undefined {
+    return slot.liveSlot ? this.snap.equipped[slot.liveSlot] : undefined;
+  }
+
+  /**
+   * Everything an item is, on one line, for a native `title`.
+   *
+   * A native tooltip rather than a hover card: the bag is a scrolling grid of up
+   * to a hundred tiles, and a hover card per tile is a hundred elements that
+   * have to be positioned, escaped from `overflow: hidden`, and dismissed on
+   * touch — where they would never fire at all. `title` is free, works in the
+   * grid and in the picker unchanged, and is read out by screen readers.
+   */
+  itemTooltip(item: GameItem): string {
+    const level = item.upgradeLevel ? ` +${item.upgradeLevel}` : '';
+    const head = `${item.name}${level} — ${rarityLabel(item.rarity)}`;
+    const mods = this.modsOf(item).join(' · ');
+    const parts = [head];
+    if (mods) parts.push(mods);
+    if (item.sellValue) parts.push(`Sells for ${this.compact(item.sellValue)}`);
+    return parts.join('\n');
+  }
+
+  // ── Equip feedback ─────────────────────────────────────────────────────────
+
+  /**
+   * The slot that just changed, held briefly so the CSS can flash it.
+   *
+   * Equipping used to be silent: the tile vanished from the bag and an overlay
+   * appeared on a doll 400px away, which on a phone is off-screen. The flash is
+   * on the *slot* rather than on the item because the slot is the thing that
+   * changed state and is the thing still on screen afterwards.
+   */
+  flashSlot: string | null = null;
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private flash(slotId: string | null | undefined): void {
+    if (!slotId || !this.isBrowser) return;
+    this.flashSlot = slotId;
+    if (this.flashTimer !== null) clearTimeout(this.flashTimer);
+    // Slightly longer than the 600ms animation so the class is never pulled
+    // mid-keyframe, which reads as a cut rather than a fade.
+    this.flashTimer = setTimeout(() => { this.flashSlot = null; }, 700);
   }
 
   select(item: GameItem): void {

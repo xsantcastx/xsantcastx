@@ -505,7 +505,10 @@
   min-height: 52px;
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  /* Three rows now: name, mods, deltas. The art spans all of them so a
+     candidate that adds a delta row does not leave the thumbnail floating at
+     the top of a taller card. */
+  grid-template-rows: auto auto auto;
   align-items: center;
   gap: 0 10px;
   padding: 0.4rem 0.6rem;
@@ -520,7 +523,7 @@
 }
 .ld__pick:hover { border-color: var(--gf-accent); transform: translateX(2px); }
 .ld__pick:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
-.ld__pick-art, .ld__pick-orb { grid-row: 1 / span 2; width: 36px; height: 36px; object-fit: contain; }
+.ld__pick-art, .ld__pick-orb { grid-row: 1 / -1; width: 36px; height: 36px; object-fit: contain; }
 .ld__pick-orb {
   display: grid; place-items: center;
   border-radius: var(--gf-radius-sm);
@@ -531,6 +534,74 @@
 .ld__pick-mods {
   color: var(--gf-dim); font-size: 0.72rem;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Comparison ───────────────────────────────────────────────────────────
+   The delta row. Colour is the only channel that separates a gain from a loss
+   here, so both also carry their sign in the text — a red chip and a green chip
+   read identically to a deuteranope, and "Magic Find −2%" does not. */
+.ld__deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.ld__delta {
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ld__delta--up { color: #7FD5A3; background: rgba(127, 213, 163, 0.09); }
+.ld__delta--down { color: #ff8f8f; background: rgba(255, 143, 143, 0.09); }
+
+.ld__pick--upgrade { border-color: rgba(127, 213, 163, 0.55); }
+
+.ld__pick-flag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 213, 163, 0.5);
+  color: #7FD5A3;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ld__compare-head {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  color: var(--gf-faint);
+}
+
+/* ── Equip feedback ───────────────────────────────────────────────────────
+   A slot that just changed flashes once. The class is pulled after 700ms by the
+   component; the animation is 600ms, so it always finishes before the class
+   goes rather than being cut mid-keyframe. */
+@media (prefers-reduced-motion: no-preference) {
+  .ld__slot--flash { animation: ldSlotFlash 0.6s ease-out 1; }
+}
+
+@keyframes ldSlotFlash {
+  0%   { box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(255, 198, 105, 0.9); }
+  35%  { box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 198, 105, 0.55); }
+  100% { box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 14px rgba(255, 198, 105, 0); }
+}
+
+/* Reduced motion still gets the acknowledgement, as a held ring rather than an
+   expanding one — the point is "that worked", and a static confirmation carries
+   it without the pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .ld__slot--flash {
+    border-color: #ffc669;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
