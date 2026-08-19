@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.68.0',
+  version: '2.69.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Thrall',
+  codename: 'Archivist',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.69.0',
+    codename: 'Archivist',
+    date: '2026-08-19',
+    highlights: [
+      'The Collection Log: a sixth Codex panel holding every thing the Godforge can put in a Keeper\u2019s hands \u2014 twenty-five runes, six Runewords, five artifacts, fifteen charms, thirteen materials, three consumables and thirteen worn things. Found entries show their painted art, their lore and the day they first landed; unfound ones show a dark silhouette, a ??? and a clue about where to look',
+      'A discovery is written down once and never recomputed. A rune spent on a Runeword, a charm sold at the till and an ore struck into a blade are all gone from the ledgers that used to hold them \u2014 and none of them leaves the log. The count only ever rises',
+      'Finding something for the first time brings up a card in the middle of the screen: it arrives face-down, flips over, and throws a short sparkle. It never blocks a click, it queues at four, and reduced motion gets the same card standing still',
+      'Completion pays. A quarter of the log makes you Apprentice Collector, half sends the Sealed Codex Page, three quarters the Keeper\u2019s Signet, and all of it the title Eclipse Archivist and a cursor trail nothing else in the game grants. The titles are real \u2014 they show in front of your rank, everywhere it is shown',
+      'Filter and sort by category, rarity, realm, and found or still missing, with a completion dial that climbs the rarity ladder as the log fills and a bar for every category and every rarity band',
+      'Twelve pieces of equipment are drawn, named and not yet forged. They are shown and they are not counted \u2014 a completion bar that cannot reach the end is a bar that lies'
+    ]
+  },
   {
     version: '2.68.0',
     codename: 'Thrall',

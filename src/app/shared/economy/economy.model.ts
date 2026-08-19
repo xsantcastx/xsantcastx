@@ -888,6 +888,10 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'aether', label: 'Aether sparkles', color: '#A78BFA' },
       { id: 'nox', label: 'Nox shadows', color: '#7b61ff' },
       { id: 'eclipse', label: 'Eclipse fire', color: '#E8752A' },
+      // Collection Log exclusive — granted by CollectionService at 100%, and
+      // not purchasable with Gold. Same precedent as the Pro Pack variants
+      // below: the catalogue has to know the id or `grantCosmetic` rejects it.
+      { id: 'archivist', label: 'Archivist light', color: '#e6dcff' },
     ],
   },
   {
@@ -905,6 +909,14 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'ashwalker', label: 'Ashwalker', color: '#9fb4ae' },
       // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
       { id: 'pro', label: 'Pro', color: '#F5C451' },
+      // Collection Log exclusive — the four Collector titles, granted by
+      // CollectionService as the log crosses 25/50/75/100%. Real variants on
+      // the real cosmetic rather than a label that only exists on one page:
+      // this is what puts the title in front of the rank in the XP bar.
+      { id: 'apprentice-collector', label: 'Apprentice Collector', color: '#8f98a8' },
+      { id: 'journeyman-collector', label: 'Journeyman Collector', color: '#5fb6ff' },
+      { id: 'master-collector', label: 'Master Collector', color: '#C9A84C' },
+      { id: 'eclipse-archivist', label: 'Eclipse Archivist', color: '#e6dcff' },
     ],
   },
   {
