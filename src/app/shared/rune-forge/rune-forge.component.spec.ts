@@ -1,5 +1,5 @@
 import { PLATFORM_ID } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
 
@@ -13,6 +13,7 @@ import { LoreScrollService } from './lore-scroll.service';
 import { RuneForgeComponent } from './rune-forge.component';
 import { RuneForgeService } from './rune-forge.service';
 import { RUNES, RUNE_TIERS, STRIKE_COST } from './rune.model';
+import { AUTO_STEP_MS, BULK_CAP } from './rune-reel';
 
 /**
  * The reveal, from the component's side of the service boundary.
@@ -26,6 +27,9 @@ describe('RuneForgeComponent reveal', () => {
   let fixture: ComponentFixture<RuneForgeComponent>;
   let root: HTMLElement;
   let nextFind: any;
+  // Hoisted so a test can drain the purse mid-run: auto-roll stopping on Gold
+  // is only observable if the Gold can actually move.
+  let gold$: BehaviorSubject<{ gold: number }>;
   const audio = { strike: jasmine.createSpy('strike'), runeReveal: jasmine.createSpy('runeReveal'), voidRumble: jasmine.createSpy('voidRumble'), scrollUnfurl: jasmine.createSpy('scrollUnfurl') };
   const scrolls = { markRead: jasmine.createSpy('markRead') };
   const store = new Map<string, string>();
@@ -57,7 +61,7 @@ describe('RuneForgeComponent reveal', () => {
     store.clear();
     nextFind = find('common');
     const rune$ = new BehaviorSubject(emptySnap());
-    const gold$ = new BehaviorSubject({ gold: STRIKE_COST * 100 });
+    gold$ = new BehaviorSubject({ gold: STRIKE_COST * 100 });
     const inv$ = new BehaviorSubject({});
 
     await TestBed.configureTestingModule({
@@ -262,5 +266,115 @@ describe('RuneForgeComponent reveal', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.haul.length).toBe(0);
     expect(root.querySelector('.rf-focus')).toBeNull();
+  });
+
+  describe('rapid fire', () => {
+    it('rolls again from the result, without dismissing it first', () => {
+      roll();
+      expect(root.querySelector('.rf-focus')).toBeTruthy();
+      const again = root.querySelector('.rf-acts__btn--again') as HTMLButtonElement;
+      expect(again).toBeTruthy();
+
+      nextFind = find('rare');
+      again.click();
+      fixture.detectChanges();
+
+      // Same panel, new rune. The reveal never closed.
+      expect(root.querySelector('.rf-focus')).toBeTruthy();
+      expect(root.querySelectorAll('.rf-pick__card').length).toBe(1);
+      expect(root.querySelector('.rf-pick__tier')?.textContent?.trim()).toBe('Rare');
+      // Second pull of the sitting, so the ceremony is cut short.
+      expect(root.querySelector('.rf-pick')?.classList.contains('rf-pick--rapid')).toBeTrue();
+    });
+
+    it('leaves the first pull dramatic and only shortens the repeats', () => {
+      roll();
+      expect(root.querySelector('.rf-pick')?.classList.contains('rf-pick--rapid')).toBeFalse();
+      fixture.componentInstance.strike();
+      fixture.detectChanges();
+      expect(root.querySelector('.rf-pick')?.classList.contains('rf-pick--rapid')).toBeTrue();
+      // Dismissing ends the sitting, so the next one is dramatic again.
+      fixture.componentInstance.dismissFocus();
+      roll();
+      expect(root.querySelector('.rf-pick')?.classList.contains('rf-pick--rapid')).toBeFalse();
+    });
+
+    it('auto-roll stops on the first Rare rather than rolling past it', fakeAsync(() => {
+      fixture.componentInstance.toggleAuto();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.autoOn).toBeTrue();
+
+      tick(AUTO_STEP_MS);
+      expect(fixture.componentInstance.autoOn).toBeTrue();
+
+      nextFind = find('rare');
+      tick(AUTO_STEP_MS);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.autoOn).toBeFalse();
+      expect(fixture.componentInstance.autoStopped).toBe('find');
+      expect(root.querySelector('.rf-acts__note')?.textContent).toContain('Rare');
+      // The find it stopped for is the one on screen.
+      expect(root.querySelector('.rf-pick__tier')?.textContent?.trim()).toBe('Rare');
+    }));
+
+    it('auto-roll stops when the purse runs dry', fakeAsync(() => {
+      fixture.componentInstance.toggleAuto();
+      tick(AUTO_STEP_MS);
+      gold$.next({ gold: 0 });
+      fixture.detectChanges();
+      tick(AUTO_STEP_MS);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.autoOn).toBeFalse();
+      expect(fixture.componentInstance.autoStopped).toBe('gold');
+      expect(root.querySelector('.rf-acts__note--broke')).toBeTruthy();
+      // The last find stays up — running out of Gold is not a reason to clear
+      // the screen the player is reading.
+      expect(root.querySelector('.rf-focus')).toBeTruthy();
+    }));
+
+    it('a bulk run tallies by tier, rarest first', fakeAsync(() => {
+      const queue = ['common', 'common', 'uncommon', 'common', 'rare'].map(t => find(t));
+      let i = 0;
+      (TestBed.inject(RuneForgeService) as any).strike = () => queue[i++] ?? null;
+      fixture.componentInstance.strikeMany(5);
+      tick(50);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rolling).toBeFalse();
+      const rows = Array.from(root.querySelectorAll('.rf-pick__tally-row')).map(n => n.textContent?.replace(/\s+/g, ' ').trim());
+      expect(rows).toEqual(['1 Rare', '1 Uncommon', '3 Common']);
+    }));
+
+    it('past the grid cap it draws the best find instead of every card', fakeAsync(() => {
+      let i = 0;
+      (TestBed.inject(RuneForgeService) as any).strike = () => (i++ === 7 ? find('epic') : find('common'));
+      fixture.componentInstance.strikeMany(20);
+      tick(50);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.batch.length).toBe(20);
+      expect(root.querySelectorAll('.rf-pick__card').length).toBe(1);
+      expect(root.querySelector('.rf-pick__card')?.classList.contains('is-best')).toBeTrue();
+    }));
+
+    it('never rolls more than the purse or the cap allows', () => {
+      // 100 strikes' worth of Gold in the stub.
+      expect(fixture.componentInstance.affordableRolls(10)).toBe(10);
+      expect(fixture.componentInstance.affordableRolls(1000)).toBe(100);
+      gold$.next({ gold: STRIKE_COST * 5000 });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.affordableRolls(5000)).toBe(BULK_CAP);
+      expect(fixture.componentInstance.allRolls).toBe(BULK_CAP);
+    });
+
+    it('a bulk run that cannot afford a single strike says so and rolls nothing', () => {
+      gold$.next({ gold: 0 });
+      fixture.detectChanges();
+      fixture.componentInstance.strikeMany(10);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.batch.length).toBe(0);
+      expect(fixture.componentInstance.broke).toBeTrue();
+    });
   });
 });
