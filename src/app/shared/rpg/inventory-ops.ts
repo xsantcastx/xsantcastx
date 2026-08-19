@@ -361,47 +361,6 @@ export function dropLegacyBackup(ledger: InventoryLedger): InventoryLedger {
   return { ...ledger, legacyBackup: null };
 }
 
-export function projectEconomy(
-  input: EconomyProjectionInput,
-): OwnedItemInstance[] {
-  const out: OwnedItemInstance[] = [];
-  for (const id of input.artifacts) {
-    if (typeof id !== 'string' || !id) continue;
-    out.push(projectionRecord(`econ:artifact:${id}`, id, 'artifact', 'artifacts', ['artifact']));
-  }
-  for (const id of input.cosmetics) {
-    if (typeof id !== 'string' || !id) continue;
-    out.push(projectionRecord(`econ:cosmetic:${id}`, id, 'artifact', 'artifacts', ['cosmetic']));
-  }
-  return out;
-}
-
-export function projectRunes(input: RuneProjectionInput): OwnedItemRecord[] {
-  const out: OwnedItemRecord[] = [];
-  for (const [id, qty] of Object.entries(input.runes)) {
-    const n = finiteNumber(qty);
-    if (!id || n <= 0) continue;
-    out.push({
-      id: `rune:${id}`,
-      definitionId: id,
-      kind: 'stack',
-      category: 'runes',
-      tags: ['rune'],
-      soulbound: false,
-      acquiredAt: new Date(0).toISOString(),
-      revision: { hlc: 0, deviceId: 'runes', sequence: 0 },
-      source: 'runes',
-      stackKey: `rune:${id}`,
-      location: { kind: 'bag' },
-    });
-  }
-  for (const id of input.runewords) {
-    if (typeof id !== 'string' || !id) continue;
-    out.push(projectionRecord(`runeword:${id}`, id, 'runeword', 'runes', ['runeword']));
-  }
-  return out;
-}
-
 /**
  * Net quantity held for one stack.
  *

@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 import { Auth, authState, signInWithPopup, GoogleAuthProvider, signOut, User } from '@angular/fire/auth';
 import { Subscription } from 'rxjs';
 
-import { APP_VERSION, VERSION_HISTORY } from '../version';
+import { APP_VERSION } from '../version';
+import { VERSION_HISTORY } from '../version-history';
 import {
   AdminDataService, Panel, ToolUsageRow, EggRow, Suggestion,
   GitCommit, CiRun, BuildStats, loadingPanel, unavailablePanel

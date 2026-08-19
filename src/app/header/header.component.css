@@ -56,11 +56,25 @@
 .gfnav--compact .gfnav__row { height: var(--gfnav-h-compact); }
 .gfnav--compact .gfnav__creed { opacity: 0; }
 
+/* The bar is full width and scaled down, rather than sized to the progress.
+   Two reasons, both measured on the scroll path:
+
+   · `width` is a layout property. Writing it every frame put this element
+     through layout sixty times a second for a 1px rule.
+   · `--scroll-progress` used to be set on `.gfnav`. Custom properties inherit,
+     so writing it on the nav root invalidated style for the entire subtree —
+     every hall link, every status pill — to move one bar. It is now written on
+     this element, which has no children, so the invalidation stops here.
+
+   The value is unitless 0..1 because scaleX takes a ratio, not a length. */
 .gfnav__progress {
   position: absolute;
   left: 0; bottom: -1px;
   height: 1px;
-  width: var(--scroll-progress, 0%);
+  width: 100%;
+  transform: scaleX(var(--scroll-progress, 0));
+  transform-origin: left center;
+  will-change: transform;
   background: linear-gradient(90deg, var(--gfnav-gold), var(--primary-color));
   box-shadow: 0 0 8px color-mix(in srgb, var(--primary-color) 60%, transparent);
   pointer-events: none;
@@ -1190,7 +1204,9 @@ button.gftome__keeper {
     top: 0;
     bottom: auto;
     width: 2px;
-    height: var(--scroll-progress, 0%);
+    height: 100%;
+    transform: scaleY(var(--scroll-progress, 0));
+    transform-origin: center top;
   }
 
   .gftome,
