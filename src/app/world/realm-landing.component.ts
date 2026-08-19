@@ -6,7 +6,7 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { combineLatest, Subscription } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
 import {
@@ -44,8 +44,17 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
   requestedId = '';
 
   ngOnInit(): void {
-    this.sub = this.route.paramMap.subscribe(params => {
-      this.requestedId = params.get('realmId') ?? '';
+    // The id arrives one of two ways, and both have to work.
+    //
+    // Each of the five realms has its own literal route so it can carry its
+    // own title, description and JSON-LD (see realm.routes.ts). A literal path
+    // declares no `:realmId`, so on those routes `paramMap` is empty and the
+    // id comes from the route's `data` instead. `world/realms/:realmId` is
+    // still there as the fallback for an unrecognised id, and there the param
+    // is the only source. Reading just one of the two renders every real realm
+    // as "This place is not on the map".
+    this.sub = combineLatest([this.route.paramMap, this.route.data]).subscribe(([params, data]) => {
+      this.requestedId = params.get('realmId') ?? (data['realmId'] as string | undefined) ?? '';
       this.realm = narrativeRealmById(this.requestedId);
       this.journey = this.realm ? continueFromRealm(this.realm) : null;
       this.openCharacterId = this.realm?.characters[0].id ?? null;
