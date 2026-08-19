@@ -54,13 +54,11 @@ import {
   weekKey,
 } from '../quests/quest.model';
 import {
-  ALL_CHALLENGES,
   Challenge,
   ChallengeDefinition,
   ChallengeMetric,
   ChallengeStatus,
   CHALLENGE_KEY,
-  DAILY_CHALLENGES,
   DAILY_CHALLENGE_SLOTS,
   DERIVED_METRICS,
   PEAK_METRICS,
@@ -69,12 +67,12 @@ import {
   STREAK_BOOST_MULTIPLIER,
   STREAK_CHEST_AT,
   STREAK_CHEST_FLOOR,
-  WEEKLY_CHALLENGES,
   WEEKLY_CHALLENGE_SLOTS,
-  challengeById,
-  pickDistinctMetrics,
   tierRank,
 } from './challenge.model';
+
+/** The pools, once the lazy chunk has landed. See `loadPools`. */
+type ChallengePools = typeof import('./challenge-pools');
 
 /** One line of the claim history. */
 export interface ChallengeLogEntry {
@@ -198,6 +196,16 @@ export class ChallengeService {
 
   private state: ChallengeState = emptyState();
   private initialised = false;
+  /**
+   * The authored challenges, or null until the lazy chunk lands.
+   *
+   * Null is a state that already had to work — the board is empty on the server
+   * and on the first frame before storage is read — so every reader here treats
+   * "no pools yet" the same way it treats "nothing drawn". See the note at the
+   * top of `challenge-pools.ts` for why they are not just imported.
+   */
+  private pools: ChallengePools | null = null;
+  private poolsLoading: Promise<void> | null = null;
   private boostTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly board$$ = new BehaviorSubject<ChallengeBoard>(this.computeBoard());
@@ -231,6 +239,11 @@ export class ChallengeService {
     this.rollPeriods();
     this.pushBoost();
     this.publish();
+    // Same shape: fire-and-forget, and the board republishes when it resolves.
+    // Nothing above this line needs the pools, which is the whole reason they
+    // can be fetched separately — counters are recorded against metric ids, not
+    // against the cards that happen to be asking for them today.
+    void this.loadPools();
 
     this.xp.snapshot$.subscribe(() => this.publish());
 
@@ -238,6 +251,42 @@ export class ChallengeService {
     // longer streak arriving from another device would be dropped by the next
     // claim if it were not re-read here.
     this.saves.register(CHALLENGE_KEY, { rehydrate: () => this.rehydrate() });
+  }
+
+  /**
+   * Resolves once the board has cards on it.
+   *
+   * Exposed for the specs, which would otherwise have to sleep and hope: the
+   * pools arrive over a dynamic import, so `init()` returning does not mean the
+   * board is drawn. Nothing in the app awaits this — the panel is push-based and
+   * redraws when `board$` republishes — but a test that asserts on the board has
+   * to be able to say "after the cards are in" without racing the loader.
+   */
+  get ready(): Promise<void> {
+    return this.poolsLoading ?? Promise.resolve();
+  }
+
+  /**
+   * Pull in the authored challenges and redraw.
+   *
+   * A failed import leaves an empty board rather than throwing into whatever
+   * called `init()`. That is the honest degradation: the counters keep running,
+   * so a player whose chunk failed to load still has today's progress waiting
+   * when the next load succeeds.
+   */
+  private loadPools(): Promise<void> {
+    if (this.pools) return Promise.resolve();
+    if (this.poolsLoading) return this.poolsLoading;
+
+    this.poolsLoading = import('./challenge-pools')
+      .then(pools => {
+        this.pools = pools;
+        this.publish();
+      })
+      .catch(() => {
+        /* An empty board is a board. The counters are what matter. */
+      });
+    return this.poolsLoading;
   }
 
   /** Re-read from storage after a cloud merge. */
@@ -462,8 +511,9 @@ export class ChallengeService {
 
   /** Today's three, as definitions. The sweep check needs them without resolving. */
   private dailyDefinitions(): readonly ChallengeDefinition[] {
-    return pickDistinctMetrics(
-      DAILY_CHALLENGES,
+    if (!this.pools) return [];
+    return this.pools.pickDistinctMetrics(
+      this.pools.DAILY_CHALLENGES,
       DAILY_CHALLENGE_SLOTS,
       this.state.dayKey || dayKey(),
     );
@@ -476,9 +526,13 @@ export class ChallengeService {
     const dailyResetAt = nextMidnight(now);
     const weeklyResetAt = nextMonday(now);
 
-    const daily = pickDistinctMetrics(DAILY_CHALLENGES, DAILY_CHALLENGE_SLOTS, dk)
+    const daily = (this.pools
+      ? this.pools.pickDistinctMetrics(this.pools.DAILY_CHALLENGES, DAILY_CHALLENGE_SLOTS, dk)
+      : [])
       .map(def => this.resolve(def, this.state.day, this.state.daySets, `${def.id}@${dk}`, dailyResetAt));
-    const weekly = pickDistinctMetrics(WEEKLY_CHALLENGES, WEEKLY_CHALLENGE_SLOTS, wk)
+    const weekly = (this.pools
+      ? this.pools.pickDistinctMetrics(this.pools.WEEKLY_CHALLENGES, WEEKLY_CHALLENGE_SLOTS, wk)
+      : [])
       .map(def => this.resolve(def, this.state.week, this.state.weekSets, `${def.id}@${wk}`, weeklyResetAt));
 
     const all = [...daily, ...weekly];
@@ -626,19 +680,29 @@ export class ChallengeService {
       const parsed = JSON.parse(raw) as Partial<ChallengeState>;
       const empty = emptyState();
 
+      const dk = typeof parsed.dayKey === 'string' ? parsed.dayKey : empty.dayKey;
+      const wk = typeof parsed.weekKey === 'string' ? parsed.weekKey : empty.weekKey;
+
       // Every field is rebuilt rather than spread over the default, because the
       // blob is user-writable: a hand-edited `boostUntil` holding a string would
       // otherwise reach `setEventBoost` and multiply every payout by NaN.
       return {
         version: 1,
-        dayKey: typeof parsed.dayKey === 'string' ? parsed.dayKey : empty.dayKey,
-        weekKey: typeof parsed.weekKey === 'string' ? parsed.weekKey : empty.weekKey,
+        dayKey: dk,
+        weekKey: wk,
         day: sanitiseCounters(parsed.day),
         week: sanitiseCounters(parsed.week),
         daySets: sanitiseMembers(parsed.daySets),
         weekSets: sanitiseMembers(parsed.weekSets),
+        // Receipts are kept only for the two periods the blob itself is for.
+        //
+        // `rollPeriods` prunes as well, but only on the pass where a key
+        // actually changes, so a receipt naming a period from last year would
+        // otherwise sit in the array until the next midnight. Pruning here as
+        // well is what makes the array's meaning true at every moment rather
+        // than eventually: it holds exactly the claims that count right now.
         claimed: Array.isArray(parsed.claimed)
-          ? parsed.claimed.filter(r => typeof r === 'string' && isKnownReceipt(r))
+          ? parsed.claimed.filter(r => typeof r === 'string' && isCurrentReceipt(r, dk, wk))
           : empty.claimed,
         streak: clampInt(parsed.streak, 0),
         streakDay: typeof parsed.streakDay === 'string' ? parsed.streakDay : empty.streakDay,
@@ -688,18 +752,12 @@ function sanitiseMembers(v: unknown): Members {
   return out;
 }
 
-/**
- * A receipt for a challenge that still exists.
- *
- * Dropping receipts whose id has left the pool matters more here than on the
- * quest board: a retired challenge's receipt would sit in the array until its
- * period rolled, and on a weekly that is up to seven days of a row that can
- * never match anything.
- */
-function isKnownReceipt(r: string): boolean {
-  const at = r.indexOf('@');
+/** A receipt naming one of the two periods this blob is for. */
+function isCurrentReceipt(receipt: string, dayKey: string, weekKey: string): boolean {
+  const at = receipt.indexOf('@');
   if (at <= 0) return false;
-  return challengeById(r.slice(0, at)) !== undefined;
+  const period = receipt.slice(at + 1);
+  return period === dayKey || period === weekKey;
 }
 
 function isLogEntry(v: unknown): v is ChallengeLogEntry {
@@ -716,5 +774,3 @@ function clampInt(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
 }
 
-/** Re-exported so callers can look a challenge up without importing the model too. */
-export { ALL_CHALLENGES, challengeById };

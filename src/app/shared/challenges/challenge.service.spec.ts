@@ -17,10 +17,10 @@ import { BehaviorSubject } from 'rxjs';
 import { ChallengeService } from './challenge.service';
 import {
   CHALLENGE_KEY,
-  DAILY_CHALLENGES,
   DAILY_CHALLENGE_SLOTS,
   STREAK_BOOST_MULTIPLIER,
 } from './challenge.model';
+import { DAILY_CHALLENGES } from './challenge-pools';
 import { EconomyService } from '../economy/economy.service';
 import { XpService } from '../gamification/xp.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
@@ -34,7 +34,7 @@ describe('ChallengeService', () => {
   let boosts: { multiplier: number; until: number }[];
   let granted: unknown[];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new Map();
     minted = [];
     boosts = [];
@@ -78,6 +78,9 @@ describe('ChallengeService', () => {
     });
     challenges = TestBed.inject(ChallengeService);
     challenges.init();
+    // The pools arrive over a dynamic import, so `init()` returning is not the
+    // board being drawn. See `ChallengeService.ready`.
+    await challenges.ready;
   });
 
   /** Drive a challenge to its target, whatever family its metric is in. */
@@ -209,48 +212,57 @@ describe('ChallengeService', () => {
     expect(challenges.board.streak).toBe(before);
   });
 
-  it('carries the board across a reload', () => {
+  it('carries the board across a reload', async () => {
     const first = challenges.board.daily[0];
     complete(first.id);
     challenges.claim(first.id);
 
-    const reloaded = freshService();
+    const reloaded = await freshService();
     expect(reloaded.board.daily.find(c => c.id === first.id)!.status).toBe('claimed');
   });
 
-  it('ignores a hand-edited boost that runs past its own length', () => {
+  it('ignores a hand-edited boost that runs past its own length', async () => {
     const state = readState();
     state.boostUntil = Date.now() + 400 * 24 * 3600_000;
     store.set(CHALLENGE_KEY, JSON.stringify(state));
 
-    const reloaded = freshService();
+    const reloaded = await freshService();
     // Still boosted — the deadline was clamped, not dropped, because a player
     // whose clock is merely fast has not done anything wrong.
     expect(reloaded.board.boostUntil).toBeLessThanOrEqual(Date.now() + 3600_000 + 5_000);
   });
 
-  it('drops a receipt for a challenge that has left the pool', () => {
+  it('drops a receipt that names no period at all', async () => {
     const state = readState();
-    state.claimed.push(`retired-challenge@${state.dayKey}`);
+    state.claimed.push('a-bare-id-with-no-period');
     store.set(CHALLENGE_KEY, JSON.stringify(state));
 
-    const reloaded = freshService();
-    // `load()` sanitises into memory; the next write is what flushes the clean
-    // blob back. Asserting after a write is the honest test — it is the
-    // invariant that actually matters, which is that the bad row never survives
-    // to be read a second time.
+    const reloaded = await freshService();
+    // `load()` sanitises into memory; the next write flushes the clean blob
+    // back. Asserting after a write is the honest test — the invariant that
+    // matters is that the bad row never survives to be read a second time.
     reloaded.record('rune-forged', 1);
-    expect(readState().claimed).not.toContain(`retired-challenge@${state.dayKey}`);
+    expect(readState().claimed).not.toContain('a-bare-id-with-no-period');
   });
 
-  it('survives a corrupt blob rather than throwing on load', () => {
+  it('drops a receipt whose period has already rolled over', async () => {
+    const state = readState();
+    state.claimed.push('d-forge-50@1999-01-01');
+    store.set(CHALLENGE_KEY, JSON.stringify(state));
+
+    const reloaded = await freshService();
+    reloaded.record('rune-forged', 1);
+    expect(readState().claimed).not.toContain('d-forge-50@1999-01-01');
+  });
+
+  it('survives a corrupt blob rather than throwing on load', async () => {
     store.set(CHALLENGE_KEY, '{ not json');
-    const reloaded = freshService();
+    const reloaded = await freshService();
     expect(reloaded.board.daily.length).toBe(DAILY_CHALLENGE_SLOTS);
     expect(reloaded.board.streak).toBe(0);
   });
 
-  it('drops a counter holding something that is not a number', () => {
+  it('drops a counter holding something that is not a number', async () => {
     const live = readState();
     store.set(CHALLENGE_KEY, JSON.stringify({
       version: 1,
@@ -263,14 +275,14 @@ describe('ChallengeService', () => {
       claimed: [], streak: 0, streakDay: '', boostUntil: 0,
       chests: 0, goldPaid: 0, log: [],
     }));
-    const reloaded = freshService();
+    const reloaded = await freshService();
     reloaded.record('expedition-done', 1);
     const counters = readCounters();
     expect(counters.day['rune-forged']).toBeUndefined();
     expect(counters.day['material-mined']).toBe(4);
   });
 
-  it('clears the boost and everything else on reset', () => {
+  it('clears the boost and everything else on reset', async () => {
     for (const c of challenges.board.daily) {
       complete(c.id);
       challenges.claim(c.id);
@@ -294,12 +306,13 @@ describe('ChallengeService', () => {
   }
 
   /** A second service over the same store — the reload path. */
-  function freshService(): ChallengeService {
+  async function freshService(): Promise<ChallengeService> {
     const next = TestBed.inject(ChallengeService);
     // `providedIn: 'root'` hands back the same instance, so the reload is
     // driven through the private hydrate rather than through a new object.
     (next as unknown as { initialised: boolean }).initialised = false;
     next.init();
+    await next.ready;
     return next;
   }
 });
