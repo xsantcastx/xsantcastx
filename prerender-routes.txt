@@ -11,6 +11,7 @@
 /sanctum
 /world/quests
 /market
+/gambler
 /codex
 /character
 /forge/runes

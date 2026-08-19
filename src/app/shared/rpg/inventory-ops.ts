@@ -118,6 +118,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     type: item.type,
     lore: item.lore,
     stats: { ...item.stats },
+    rollQuality: item.rollQuality ? { ...item.rollQuality } : undefined,
     sellValue: typeof item.sellValue === 'number' && Number.isFinite(item.sellValue) ? item.sellValue : 0,
     location: locationOf(item),
     upgradeLevel: item.upgradeLevel,
@@ -138,6 +139,7 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     type: record.type,
     rarity: (record.rarity ?? 'common') as GameItem['rarity'],
     stats: { ...record.stats },
+    rollQuality: record.rollQuality ? { ...record.rollQuality } : undefined,
     sellValue: record.sellValue,
     equipped: record.location.kind === 'equipped',
     slot: record.location.kind === 'equipped' ? record.location.slotId : undefined,
@@ -204,6 +206,27 @@ export function parseInventoryV1(raw: unknown): InventoryBlobV1 | null {
   };
 }
 
+/**
+ * Read a persisted roll grade, dropping anything that is not a real 0..1.
+ *
+ * Returns undefined rather than `{}` when nothing survives, because an empty
+ * object and a missing field mean different things downstream: `qualityOf`
+ * reports null for both, but an empty object would make an ungraded legacy item
+ * claim to have been graded and found to have no stats.
+ */
+function parseRollQuality(raw: unknown): GameItem['rollQuality'] {
+  if (!isPlainObject(raw)) return undefined;
+  const out: NonNullable<GameItem['rollQuality']> = {};
+  let any = false;
+  for (const key of ITEM_STAT_KEYS) {
+    const value = raw[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    out[key] = Math.min(1, Math.max(0, value));
+    any = true;
+  }
+  return any ? out : undefined;
+}
+
 function parseUpgradeFields(raw: Record<string, unknown>): Pick<
   GameItem,
   'upgradeLevel' | 'lastUpgradeAt' | 'lastUpgradeMutationId' | 'lastUpgradeOk'
@@ -241,12 +264,14 @@ export function parseGameItem(raw: unknown): GameItem | null {
   }
   const slot = raw['slot'];
   const equipped = raw['equipped'] === true;
+  const rollQuality = parseRollQuality(raw['rollQuality']);
   return {
     id: raw['id'],
     name: raw['name'],
     type: raw['type'],
     rarity: raw['rarity'] as GameItem['rarity'],
     stats,
+    rollQuality,
     sellValue: finiteNumber(raw['sellValue']),
     equipped,
     slot: equipped && typeof slot === 'string' && PARSE_SLOT_IDS.includes(slot)
@@ -672,6 +697,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     type: raw['type'],
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     stats,
+    rollQuality: parseRollQuality(raw['rollQuality']),
     sellValue: finiteNumber(raw['sellValue']),
     location,
     ...parseUpgradeFields(raw),

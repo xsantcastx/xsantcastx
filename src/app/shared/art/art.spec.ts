@@ -81,8 +81,11 @@ describe('art lookup', () => {
     });
 
     it('names a real catalogue row for every pending id', () => {
+      // Item definitions are in here too: `ART_PENDING` now carries the named
+      // uniques, and without them this gate would read every one as an orphan.
       const known = new Set([
         ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
+        ...ITEM_DEFINITIONS,
       ].map(row => row.id));
       const orphans = [...ART_PENDING].filter(id => !known.has(id));
       expect(orphans).toEqual([]);
@@ -97,7 +100,7 @@ describe('art lookup', () => {
      */
     it('has painted art for every authored definition', () => {
       const missing = ITEM_DEFINITIONS
-        .filter(def => !hasArt(def.id))
+        .filter(def => !hasArt(def.id) && !ART_PENDING.has(def.id))
         .map(def => def.id);
       expect(missing).toEqual([]);
     });

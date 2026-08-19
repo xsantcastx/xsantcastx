@@ -54,9 +54,10 @@
  */
 import {
   definitionFor,
-  rollItemStats,
+  rollItemStatsWithQuality,
   type ItemStatKey,
 } from './item-definition';
+import { qualityAdjustedSellValue, sellQualityMultiplier, type RollQuality } from './item-quality';
 import { applyTemperBonus, upgradeLevelOf } from './item-upgrade';
 import {
   ITEM_STAT_KEYS,
@@ -157,16 +158,43 @@ export function previewReforge(item: GameItem): ReforgePreview | null {
  * no definition to roll from — the caller must not charge for that, and
  * `canReforgeItem` is how it knows.
  */
-export function rollReforge(
+export interface ReforgeResult {
+  stats: ItemStats;
+  /** The fresh grade. Replaces the old one wholesale — a reroll is a new roll. */
+  quality: RollQuality;
+  /** Re-priced off the fresh grade, so the till agrees with the tooltip. */
+  sellValue: number;
+}
+
+/**
+ * The reroll itself.
+ *
+ * 1. Fresh base roll from the definition at the item's own rarity, graded.
+ * 2. `applyTemperBonus` once per level the item had already won, so a +7 piece
+ *    comes back a +7 piece. Temper moves `stats` and never the grade — the
+ *    grade describes the base roll underneath, which is the thing gambled.
+ * 3. The locked key, if any, written back at exactly its pre-reforge value —
+ *    **and its old grade with it**, because a held stat that reported a new
+ *    percentage would be the panel claiming a number moved when it did not.
+ *
+ * Returns the item's existing stats unchanged when there is nothing to roll or
+ * no definition to roll from — the caller must not charge for that, and
+ * `canReforgeItem` is how it knows.
+ */
+export function rollReforgeDetailed(
   item: GameItem,
   lockedKey: ItemStatKey | null = null,
   rng: () => number = Math.random,
-): ItemStats {
+): ReforgeResult {
   const def = definitionFor(item);
   const keys = reforgeKeys(item);
-  if (!def || !def.rollKeys.length || !keys.length) return { ...item.stats };
+  if (!def || !def.rollKeys.length || !keys.length) {
+    return { stats: { ...item.stats }, quality: { ...(item.rollQuality ?? {}) }, sellValue: item.sellValue };
+  }
 
-  let next = rollItemStats(def, item.rarity, rng);
+  const rolled = rollItemStatsWithQuality(def, item.rarity, rng);
+  let next = rolled.stats;
+  const quality: RollQuality = { ...rolled.quality };
 
   // Re-apply the temper the player already paid for. `applyTemperBonus` reads
   // an item, so it is fed the running stats each pass rather than the original.
@@ -179,8 +207,43 @@ export function rollReforge(
     const held = item.stats[lockedKey];
     if (held != null) next = { ...next, [lockedKey]: held };
     else delete (next as Record<string, unknown>)[lockedKey];
+    const heldGrade = item.rollQuality?.[lockedKey];
+    if (heldGrade != null) quality[lockedKey] = heldGrade;
+    else delete quality[lockedKey];
   }
-  return next;
+
+  // Soulbound items price at zero and stay there; `qualityAdjustedSellValue`
+  // returns 0 for a zero sticker, so the guard is the multiplication itself.
+  const sticker = sellValueUnscaled(item);
+  return { stats: next, quality, sellValue: qualityAdjustedSellValue(sticker, { rollQuality: quality }) };
+}
+
+/**
+ * Just the rerolled stat block. The long-standing signature, kept because most
+ * callers only ever wanted the numbers; `rollReforgeDetailed` is the one that
+ * also hands back the fresh grade and the re-priced sell value.
+ */
+export function rollReforge(
+  item: GameItem,
+  lockedKey: ItemStatKey | null = null,
+  rng: () => number = Math.random,
+): ItemStats {
+  return rollReforgeDetailed(item, lockedKey, rng).stats;
+}
+
+/**
+ * The sticker price behind an already-graded `sellValue`.
+ *
+ * `sellValue` on the record is post-grade, so re-grading it directly would
+ * compound the multiplier every reforge — six rerolls of a good item would walk
+ * its price into the millions without the roll improving. Dividing the stored
+ * value back out by the multiplier that produced it recovers the sticker.
+ * Ungraded legacy items divide by 1, which is the identity, so they are safe.
+ */
+function sellValueUnscaled(item: GameItem): number {
+  if (!(item.sellValue > 0)) return 0;
+  const applied = sellQualityMultiplier(item);
+  return applied > 0 ? item.sellValue / applied : item.sellValue;
 }
 
 export interface ReforgeDelta {
