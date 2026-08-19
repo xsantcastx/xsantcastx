@@ -144,6 +144,7 @@ export class InventoryService {
 
   private readonly snapshot$$ = new BehaviorSubject<InventorySnapshot>(this.snapshotOf(emptyInventoryLedger()));
   private readonly acquired$$ = new Subject<GameItem>();
+  private readonly stackGranted$$ = new Subject<{ stackKey: string; quantity: number }>();
   private readonly sold$$ = new Subject<{ item: GameItem; gold: number }>();
   private readonly equipped$$ = new Subject<GameItem>();
   private readonly improved$$ = new Subject<GameItem>();
@@ -151,6 +152,17 @@ export class InventoryService {
   readonly snapshot$: Observable<InventorySnapshot> = this.snapshot$$.asObservable();
   /** One per item that lands. Drives the drop toast. */
   readonly acquired$: Observable<GameItem> = this.acquired$$.asObservable();
+  /**
+   * One per material stack that lands, with the amount that landed.
+   *
+   * `acquired$` cannot carry these: a stack is not a `GameItem` — it has no
+   * rarity, no roll and no instance — and the row it lives in is created once
+   * and then never again, so a snapshot diff cannot tell the tenth Cinder Ore
+   * from a page reload. Announced from the one place a grant is committed, and
+   * only after the write has been accepted, so a refused grant is silent.
+   */
+  readonly stackGranted$: Observable<{ stackKey: string; quantity: number }> =
+    this.stackGranted$$.asObservable();
   readonly sold$: Observable<{ item: GameItem; gold: number }> = this.sold$$.asObservable();
   /**
    * One per item that moved into a slot — the Keeper's or an explorer's.
@@ -322,6 +334,7 @@ export class InventoryService {
       return false;
     }
     this.publish();
+    this.stackGranted$$.next({ stackKey, quantity });
     return true;
   }
 

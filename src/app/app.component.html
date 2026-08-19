@@ -43,6 +43,14 @@
   <app-achievement-drop></app-achievement-drop>
 }
 
+<!-- Collection Log reveal — centred, and deliberately *below* the achievement
+     drop's z-index band: a Singular egg cinematic must never be covered by a
+     Cinder Ore. It stages over the page rather than veiling it, so nothing
+     behind it stops being clickable. -->
+@if (!isEmbedMode) {
+  <app-discovery-toast></app-discovery-toast>
+}
+
 <!-- Quest board. Deliberately a sibling of <app-header>, not a child of it:
      inside .navbar it would join a z-index:1000 stacking context and paint over
      the logo and the language toggle. -->

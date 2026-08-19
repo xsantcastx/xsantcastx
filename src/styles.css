@@ -2080,6 +2080,8 @@ html[data-realm] .tool-header__eyebrow::after {
 html[data-cos-trail="aether"]  .cosmic-trail-particle { --trail-color: #A78BFA !important; }
 html[data-cos-trail="nox"]     .cosmic-trail-particle { --trail-color: #7b61ff !important; }
 html[data-cos-trail="eclipse"] .cosmic-trail-particle { --trail-color: #E8752A !important; }
+/* Collection Log exclusive — granted at 100% completion. Not purchasable. */
+html[data-cos-trail="archivist"] .cosmic-trail-particle { --trail-color: #e6dcff !important; }
 
 /* ─── Title Prefix ───────────────────────────────────────────────────────────
    Rendered by the XP bar's rank title, from a custom property carrying an

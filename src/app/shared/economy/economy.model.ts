@@ -626,9 +626,48 @@ export const EXPEDITION_UPGRADES: ExpeditionUpgrade[] = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Thralls — working slots at the anvil
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Raising the Thrall ceiling is a Gold-ladder purchase, for exactly the reason
+ * an explorer slot is: the Market prices every other purchase through `costOf`
+ * and the 15% escalator, and a slot bought through a second spend path would be
+ * the one item on the site whose price nobody could look up. Buying it here
+ * also means the ceiling rides cloud save, the Eclipse reset and the prestige
+ * rules without `ThrallService` knowing any of them exist.
+ *
+ * It contributes nothing to `goldPerSecond` — a Thrall *burns* Gold — so it is
+ * deliberately absent from every rate function in this file.
+ */
+export interface ThrallSlotUpgrade {
+  id: string;
+  name: string;
+  effect: string;
+  flavour: string;
+  icon: string;
+  baseCost: number;
+  /** Working Thralls added per level owned. */
+  thralls: number;
+}
+
+export const THRALL_UPGRADES: ThrallSlotUpgrade[] = [
+  {
+    id: 'thrall-slot',
+    name: 'Lengthen the Shift',
+    effect: '+1 Thrall working at once',
+    flavour: 'There is always room at the anvil. There has never been room in the ledger.',
+    icon: '⛓️',
+    baseCost: 2_000_000,
+    thralls: 1,
+  },
+];
+
 /** Every Gold ladder as one list. Used for the "how many do you own" counts. */
 export type AnyUpgrade =
-  | ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker | ExpeditionUpgrade;
+  | ForgeUpgrade | HammerUpgrade | MultiplierUpgrade | AutoClicker | ExpeditionUpgrade
+  | ThrallSlotUpgrade;
 
 export const ALL_UPGRADES: AnyUpgrade[] = [
   ...FORGE_UPGRADES,
@@ -636,6 +675,7 @@ export const ALL_UPGRADES: AnyUpgrade[] = [
   ...MULTIPLIER_UPGRADES,
   ...AUTO_CLICKERS,
   ...EXPEDITION_UPGRADES,
+  ...THRALL_UPGRADES,
 ];
 
 /**
@@ -660,6 +700,11 @@ export function isSinglePurchase(id: string): boolean {
 const LEVEL_CAPS: Record<string, number> = {
   // MAX_EXPLORER_SLOTS (5) minus the one every visitor starts with.
   'explorer-slot': 4,
+  // MAX_THRALL_SLOTS (10) minus the five BASE_THRALL_SLOTS every visitor has.
+  // Both constants live in `thralls/thrall.model.ts`; this file is eager and
+  // that one is a lazy chunk, so the number is written here and asserted
+  // against the model in `thrall.model.spec.ts` rather than imported.
+  'thrall-slot': 5,
 };
 
 /** The most levels of an upgrade anyone may hold, or Infinity. */
@@ -843,6 +888,10 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'aether', label: 'Aether sparkles', color: '#A78BFA' },
       { id: 'nox', label: 'Nox shadows', color: '#7b61ff' },
       { id: 'eclipse', label: 'Eclipse fire', color: '#E8752A' },
+      // Collection Log exclusive — granted by CollectionService at 100%, and
+      // not purchasable with Gold. Same precedent as the Pro Pack variants
+      // below: the catalogue has to know the id or `grantCosmetic` rejects it.
+      { id: 'archivist', label: 'Archivist light', color: '#e6dcff' },
     ],
   },
   {
@@ -860,6 +909,14 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'ashwalker', label: 'Ashwalker', color: '#9fb4ae' },
       // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
       { id: 'pro', label: 'Pro', color: '#F5C451' },
+      // Collection Log exclusive — the four Collector titles, granted by
+      // CollectionService as the log crosses 25/50/75/100%. Real variants on
+      // the real cosmetic rather than a label that only exists on one page:
+      // this is what puts the title in front of the rank in the XP bar.
+      { id: 'apprentice-collector', label: 'Apprentice Collector', color: '#8f98a8' },
+      { id: 'journeyman-collector', label: 'Journeyman Collector', color: '#5fb6ff' },
+      { id: 'master-collector', label: 'Master Collector', color: '#C9A84C' },
+      { id: 'eclipse-archivist', label: 'Eclipse Archivist', color: '#e6dcff' },
     ],
   },
   {
