@@ -49,14 +49,77 @@
 }
 .ld__totals--empty { color: #8b9c97; }
 
+/*
+ * The reliquary. The spec asks for "the Keeper framed by a quiet Godforge
+ * reliquary"; before this the slots were eight unanchored chips floating on the
+ * page background, which read as debris whenever the Keeper art had not painted
+ * yet. The frame gives them something to belong to.
+ *
+ * `--ld-well` is the slot size and it drives the padding too, so the frame
+ * always reserves exactly enough room for a slot centred on its edge. That is
+ * what stopped the weapon (x:18) and off-hand (x:82) wells overhanging at
+ * narrow widths: they used to be a fixed 44px against a shrinking frame.
+ */
 .ld__doll {
+  --ld-well: clamp(52px, 15vw, 64px);
+
   position: relative;
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
   margin: 0 auto;
-  aspect-ratio: 9 / 14;
-  border-radius: 14px;
+  /* Room for a flanking column each side, the head well above and the feet well
+     plus its two label lines below. All derived from --ld-well so the reserve
+     tracks the slot size instead of being a fixed number that stops fitting. */
+  padding:
+    calc(var(--ld-well) * 0.75)
+    calc(var(--ld-well) * 1.15)
+    calc(var(--ld-well) * 0.95);
+  aspect-ratio: 8 / 13;
+  border-radius: 18px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 26%, rgba(167, 139, 250, 0.13), transparent 68%),
+    radial-gradient(ellipse 90% 40% at 50% 104%, rgba(232, 117, 42, 0.1), transparent 70%),
+    rgba(6, 4, 18, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: visible;
+}
+/* Gradient cap line — the same rule every other cosmic section carries. */
+.ld__doll::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.5) 50%, transparent);
+}
+
+/*
+ * Reliquary backlight. The Keeper render is near-black violet, so on a dark
+ * panel the silhouette disappeared — the frame read as empty. This is the light
+ * *behind* the figure that separates it from the panel, and it is why the spec
+ * calls the surround a reliquary rather than a box. Sits under the art
+ * (z-index) and never over it, so nothing paints on the Keeper.
+ */
+.ld__doll::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 78%;
+  height: 62%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(167, 139, 250, 0.3) 0%,
+    rgba(123, 97, 255, 0.14) 42%,
+    transparent 72%
+  );
+  filter: blur(14px);
+  pointer-events: none;
+  z-index: 0;
 }
 .ld__doll-art, .ld__overlay {
   display: block;
@@ -64,55 +127,111 @@
   user-select: none;
 }
 .ld__doll-art {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  /* Lifts the near-black render off the panel without recolouring it. */
+  filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.34)) contrast(1.06) brightness(1.1);
 }
 .ld__overlay {
   position: absolute;
   object-fit: contain;
 }
+/* A well, not a chip: square, recessed, sized off --ld-well so it scales with
+   the frame. The label sits under it rather than inside, which is what stopped
+   long names truncating to nothing in a 76px box. */
 .ld__slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0.25rem 0.4rem;
-  border-radius: 10px;
-  border: 1px solid rgba(207, 230, 223, 0.35);
-  background: rgba(8, 10, 22, 0.92);
-  color: #eafff9;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.05rem;
+  width: var(--ld-well);
+  height: var(--ld-well);
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.05), transparent 62%),
+    rgba(8, 6, 18, 0.9);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55);
+  color: #efe7d2;
+  display: grid;
+  place-items: center;
   cursor: pointer;
   font: inherit;
-  z-index: 10;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  z-index: var(--z-base, 1);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.ld__slot:hover:not(.ld__slot--locked) {
+  border-color: rgba(201, 168, 76, 0.75);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 18px -6px rgba(201, 168, 76, 0.7);
 }
 .ld__slot:focus-visible {
-  outline: 2px solid #eafff9;
+  outline: 2px solid #efe7d2;
   outline-offset: 3px;
 }
-.ld__slot--empty { border-color: rgba(207, 230, 223, 0.35); color: #d7e7e1; }
-.ld__slot--filled {
-  border-color: #c4b5ff;
-  color: #f4efff;
-  background: rgba(28, 18, 52, 0.94);
+
+.ld__slot-art {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
 }
+
+/* Label and state ride *below* the well, centred on it. */
+.ld__slot-name,
+.ld__slot-state {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 11ch;
+  text-align: center;
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld__slot-name {
+  top: calc(100% + 3px);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9c8f74;
+}
+.ld__slot-state {
+  top: calc(100% + 15px);
+  font-size: 10px;
+  color: #cbbb92;
+}
+
+.ld__slot--empty .ld__slot-state { color: #7b7259; }
+.ld__slot--filled {
+  border-color: rgba(196, 181, 255, 0.7);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 20px -8px rgba(167, 139, 250, 0.9);
+}
+.ld__slot--filled .ld__slot-state { color: #d9cffb; }
 .ld__slot--locked {
   border-style: dashed;
-  border-color: rgba(155, 176, 170, 0.55);
-  color: #b7c7c1;
-  background: rgba(8, 10, 22, 0.78);
+  border-color: rgba(155, 176, 170, 0.3);
+  color: #6f7a76;
+  cursor: not-allowed;
 }
 .ld__slot--selected {
-  box-shadow: 0 0 0 2px #eafff9;
+  border-color: #efe7d2;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(239, 231, 210, 0.85);
 }
 .ld__slot--target {
-  box-shadow: 0 0 0 2px #ffc669;
+  border-color: #ffc669;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ld__slot--target { animation: ldTargetPulse 1.8s ease-in-out infinite; }
+}
+@keyframes ldTargetPulse {
+  0%, 100% { box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 0 0 2px rgba(255, 198, 105, 0.9); }
+  50%      { box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 0 0 2px rgba(255, 198, 105, 0.9), 0 0 22px -4px rgba(255, 198, 105, 0.8); }
 }
 .ld__expand {
   margin-top: 0.75rem;
@@ -125,8 +244,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  color: #8f8;
-  font: 600 0.92rem/1.35 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+  color: var(--success-color);
+  font: 600 0.92rem/1.35 var(--font-lore);
 }
 .ld__expand-name { margin: 0; font-weight: 600; }
 .ld__lvl {
@@ -241,11 +360,7 @@
   display: grid; place-items: center;
   background: rgba(164, 139, 255, 0.16);
 }
-.ld__tile-art {
-  width: 36px; height: 36px; border-radius: 8px;
-  object-fit: contain;
-  background: rgba(0, 0, 0, 0.35);
-}
+
 .ld__tile-name { font-weight: 600; }
 .ld__tile-meta { font-size: 0.72rem; color: #8b9c97; }
 .ld__tile-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
@@ -305,11 +420,6 @@
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
 }
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); border: 0;
-}
-
 .ld__confirm {
   margin-top: 1rem;
   padding: 0.8rem;
@@ -339,4 +449,91 @@
   .ld__skel-card {
     background-image: none;
   }
+}
+
+/* ── Slot picker ──────────────────────────────────────────────────────────
+   Selecting a well opens this: what is worn there, then everything in the bag
+   that fits. Equipping used to need the Bank tab to arm an item first, which
+   meant already knowing which of your items was a helm. */
+.ld__picker {
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  border: 1px solid var(--gf-edge-strong);
+  border-radius: var(--gf-radius);
+  background: var(--gf-panel);
+}
+.ld__picker-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 0.6rem;
+}
+.ld__picker-title {
+  margin: 0;
+  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gf-accent-text);
+}
+.ld__picker-close {
+  min-width: 44px; min-height: 44px;
+  border: 0; background: transparent;
+  color: var(--gf-dim); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.ld__picker-close:hover { color: var(--gf-ink); }
+.ld__picker-close:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
+
+.ld__worn {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid var(--gf-edge);
+}
+.ld__worn-art { object-fit: contain; }
+.ld__worn-body { min-width: 0; }
+.ld__worn .ld__expand-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
+
+.ld__picker-label {
+  margin: 0 0 0.45rem;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gf-dim);
+}
+.ld__picker-empty { margin: 0; color: var(--gf-faint); font-size: 0.82rem; }
+
+.ld__picker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ld__pick {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 10px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gf-edge);
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--gf-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+.ld__pick:hover { border-color: var(--gf-accent); transform: translateX(2px); }
+.ld__pick:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
+.ld__pick-art, .ld__pick-orb { grid-row: 1 / span 2; width: 36px; height: 36px; object-fit: contain; }
+.ld__pick-orb {
+  display: grid; place-items: center;
+  border-radius: var(--gf-radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gf-faint); font-size: 0.7rem;
+}
+.ld__pick-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld__pick-mods {
+  color: var(--gf-dim); font-size: 0.72rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld__pick { transition: none; }
+  .ld__pick:hover { transform: none; }
 }

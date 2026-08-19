@@ -22,8 +22,12 @@ import { forgeRecipeById } from '../rpg/forge-recipes';
 import { BASALT_EDGE_PORTRAIT, isBasaltEdge } from '../rpg/material-catalog';
 import { slotAccepts } from '../rpg/item.model';
 import { InventoryService } from '../rpg/inventory.service';
-import { ITEM_STAT_KEYS, formatItemMod, rarityLabel } from '../rpg/item.model';
+import { ITEM_STAT_KEYS, formatItemMod, rarityLabel, type GameItem, type ItemStats } from '../rpg/item.model';
+import { definitionFor } from '../rpg/item-definition';
+import { wardFailReductionPct } from '../rpg/item-upgrade';
+import { miningSpeedupPct } from '../activity/mining-recovery';
 import { RUNES, RUNEWORDS, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
+import { strikeValuePct } from '../rune-forge/strike-value';
 import {
   type EntityAction,
   type EntityFact,
@@ -174,10 +178,14 @@ export class EntityResolver {
     for (const key of ITEM_STAT_KEYS) {
       const raw = item.stats[key];
       if (raw == null) continue;
+      // Strike and Ward carry what they *do* on the line itself, computed for
+      // this item's own roll — a stat that only says "+1.2" teaches nothing.
+      const effects = this.statEffects(item, key, raw);
+      const mod = formatItemMod(key, raw);
       facts.push({
         kind: 'mod',
-        label: formatItemMod(key, raw),
-        value: formatItemMod(key, raw),
+        label: mod,
+        value: effects.length ? `${mod} · ${effects.join(' · ')}` : mod,
         exactValue: String(raw),
       });
     }
@@ -210,6 +218,31 @@ export class EntityResolver {
       enabled: !item.equipped,
       unavailableReason: item.equipped ? this.t('inspect.action.equipped') : undefined,
     }] : []);
+  }
+
+  /**
+   * What one item's roll of a stat does, in words the player can check.
+   *
+   * strikePower: the Forge yield bonus this roll adds (every worn piece counts
+   * there), and — on a weapon only, because the Seamworks reads the weapon
+   * slot — how much faster the seam recovers. ward: the share of temper
+   * failures this roll turns aside while worn. The percentages are the item's
+   * own contribution; the loadout totals row shows the capped sum.
+   */
+  private statEffects(item: GameItem, key: keyof ItemStats, raw: number): string[] {
+    if (!(raw > 0)) return [];
+    if (key === 'strikePower') {
+      const lines = [this.t('inspect.stat.strikePower', { pct: strikeValuePct(raw) })];
+      const isWeapon = item.slot === 'weapon' || definitionFor(item)?.slot === 'weapon';
+      if (isWeapon) {
+        lines.push(this.t('inspect.stat.strikePower.mining', { pct: miningSpeedupPct(1, raw) }));
+      }
+      return lines;
+    }
+    if (key === 'ward') {
+      return [this.t('inspect.stat.ward', { pct: wardFailReductionPct(raw) })];
+    }
+    return [];
   }
 
   private rune(ref: EntityRef): EntityResolution {

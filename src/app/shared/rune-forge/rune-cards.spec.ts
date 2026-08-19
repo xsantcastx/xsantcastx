@@ -88,9 +88,17 @@ describe('rune-cards', () => {
       ...Object.values(ARTIFACT_CARDS),
     ];
 
-    it('points at a PNG under the items asset folders', () => {
+    it('points at a generated WebP under the game asset folders', () => {
       for (const c of all) {
-        expect(c.src).toMatch(/^assets\/items\/(runes|runewords|artifacts)\/[a-z0-9-]+\.png$/);
+        expect(c.src).toMatch(/^assets\/game\/items\/(runes|runewords|artifacts)\/[a-z0-9-]+-\d+\.webp$/);
+      }
+    });
+
+    /* The ladder is what stops a ~90px card fetching the widest variant. */
+    it('carries a width-descriptor srcset', () => {
+      for (const c of all) {
+        expect(c.srcset).toContain('96w');
+        expect(c.srcset.split(',').length).toBeGreaterThan(1);
       }
     });
 

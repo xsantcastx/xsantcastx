@@ -73,9 +73,10 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import { refineOpIds, refinePreview, refineRecipeFor } from './refine-ops';
 import { INVENTORY_ERA } from './inventory.model';
 import { eraIsCurrent, ledgerFromPriorEra } from '../save/realm-era';
-import { definitionFor } from './item-definition';
+import { definitionFor, itemFitsSlot } from './item-definition';
 import {
   applyTemperBonus,
   isTemperableKind,
@@ -255,7 +256,7 @@ export class InventoryService {
 
   /** Count of a material stack derived from grant/consume ops. */
   stackOf(stackKey: string): number {
-    return stackQuantity(this.ledger.stackOps, stackKey);
+    return stackQuantity(this.ledger.stackOps, stackKey, this.ledger.stackCheckpoints ?? []);
   }
 
   /**
@@ -387,8 +388,110 @@ export class InventoryService {
     return { ok: true, item, replayed: false };
   }
 
+  /**
+   * C1 Refining: three of one ore tier become one of the next (see
+   * refine-ops.ts for the ladder). Same mutation id returns the stored result
+   * without applying twice. Consume + grant are ONE ledger write; a failed
+   * persist rolls back both, and the target row is never created without the
+   * source being consumed in the same save.
+   *
+   * A pure inventory transform: no XP, no activity-ledger op, no discovery,
+   * no level gate. This is the sole writer path for it — nothing else appends
+   * refine ops.
+   */
+  refineStack(mutationId: string, fromOreId: string, batches = 1):
+    | { ok: true; from: string; to: string; consumed: number; produced: number; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'no-recipe' | 'insufficient' | 'capacity' | 'persist' | 'bad-batches' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    // An empty mutation id would make every refine share the same op ids and
+    // dedupe into one; refuse it as a malformed request rather than apply it.
+    if (!mutationId) return { ok: false, code: 'bad-batches' };
+
+    const recipe = refineRecipeFor(fromOreId);
+    if (!recipe) return { ok: false, code: 'no-recipe' };
+
+    const ids = refineOpIds(mutationId);
+    const stored = this.ledger.stackOps.find(op => op.id === ids.grant);
+    if (stored) {
+      const consumedOp = this.ledger.stackOps.find(op => op.id === ids.consume);
+      return {
+        ok: true,
+        from: recipe.from,
+        to: recipe.to,
+        consumed: consumedOp?.quantity ?? stored.quantity * recipe.ratio,
+        produced: stored.quantity,
+        replayed: true,
+      };
+    }
+
+    // Every check runs before the ledger is touched.
+    const preview = refinePreview({ fromOreId, have: this.stackOf(fromOreId), batches });
+    if (!preview.ok) {
+      return { ok: false, code: preview.reason ?? 'bad-batches' };
+    }
+    if (!this.canAcceptStackGrant(recipe.to)) return { ok: false, code: 'capacity' };
+
+    const previous = this.ledger;
+    let stackOps = this.ledger.stackOps;
+    let records = this.ledger.records;
+
+    const consumed = this.advanceRevision();
+    stackOps = applyStackOp(stackOps, {
+      id: ids.consume,
+      stackKey: recipe.from,
+      kind: 'consume',
+      quantity: preview.consume,
+      hlc: consumed.revision.hlc,
+      deviceId: consumed.revision.deviceId,
+      sequence: consumed.revision.sequence,
+    });
+
+    const granted = this.advanceRevision();
+    if (!records.some(row => row.kind === 'stack' && row.stackKey === recipe.to && row.source === 'inventory')) {
+      const row: OwnedItemStack = {
+        id: `stack:${recipe.to}`,
+        definitionId: recipe.to,
+        kind: 'stack',
+        category: 'materials',
+        tags: ['material', recipe.to],
+        soulbound: false,
+        acquiredAt: new Date().toISOString(),
+        revision: granted.revision,
+        source: 'inventory',
+        stackKey: recipe.to,
+        location: { kind: 'bag' },
+      };
+      records = [...records, row];
+    }
+    stackOps = applyStackOp(stackOps, {
+      id: ids.grant,
+      stackKey: recipe.to,
+      kind: 'grant',
+      quantity: preview.produce,
+      hlc: granted.revision.hlc,
+      deviceId: granted.revision.deviceId,
+      sequence: granted.revision.sequence,
+    });
+
+    this.ledger = { ...this.ledger, records, stackOps };
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return {
+      ok: true,
+      from: recipe.from,
+      to: recipe.to,
+      consumed: preview.consume,
+      produced: preview.produce,
+      replayed: false,
+    };
+  }
+
+  /** Cost and chance of the next temper, with the wearer's worn ward applied. */
   previewUpgrade(item: GameItem): UpgradePreview | null {
-    return previewUpgrade(item);
+    return previewUpgrade(item, this.equippedTotals.ward);
   }
 
   canUpgrade(item: GameItem): boolean {
@@ -422,7 +525,7 @@ export class InventoryService {
     if (!isTemperableKind(item)) return { ok: false, code: 'kind' };
 
     const level = upgradeLevelOf(item);
-    const preview = previewUpgrade(item);
+    const preview = previewUpgrade(item, this.equippedTotals.ward);
     if (!preview || level >= preview.maxLevel) return { ok: false, code: 'max' };
     if (this.economy.snapshot.gold < preview.gold) return { ok: false, code: 'funds' };
     if (preview.materials.some(mat => this.stackOf(mat.id) < mat.quantity)) {
@@ -446,7 +549,10 @@ export class InventoryService {
     }
 
     const def = definitionFor(item);
-    const success = rollUpgradeSuccess(level, rng, def);
+    // Worn ward turns part of the fail chance aside — see item-upgrade.ts.
+    // Read live, same as the preview above, so what the panel printed is what
+    // the roll uses.
+    const success = rollUpgradeSuccess(level, rng, def, this.equippedTotals.ward);
     let nextItem: GameItem = {
       ...item,
       lastUpgradeAt: foundAt,
@@ -538,10 +644,27 @@ export class InventoryService {
    * Destroy a material stack (all of it). The empty stack row is tombstoned
    * so it stops occupying the 250-row cap.
    */
-  dropStack(stackKey: string): boolean {
+  /**
+   * Destroy part or all of a material stack.
+   *
+   * `quantity` omitted means the whole stack. It used to be the *only*
+   * behaviour — there was no quantity parameter at all, so every "Drop" on a
+   * stack emptied it, and the confirm copy said "Drop all N" because that was
+   * the literal truth. Dropping one ore now drops one ore.
+   *
+   * The stack's record is tombstoned only when the last unit goes; a partial
+   * drop leaves the row in place so the count keeps rendering.
+   */
+  dropStack(stackKey: string, quantity?: number): boolean {
     if (!this.isBrowser || !stackKey) return false;
     const have = this.stackOf(stackKey);
     if (have <= 0) return false;
+
+    const asked = quantity === undefined ? have : Math.floor(quantity);
+    if (!Number.isFinite(asked) || asked <= 0) return false;
+    const take = Math.min(have, asked);
+    const emptiesStack = take >= have;
+
     const row = this.ledger.records.find(
       entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
     );
@@ -553,15 +676,15 @@ export class InventoryService {
       id: `drop:${stackKey}:${stepped.revision.hlc}:${stepped.revision.sequence}`,
       stackKey,
       kind: 'consume',
-      quantity: have,
+      quantity: take,
       hlc: stepped.revision.hlc,
       deviceId: stepped.revision.deviceId,
       sequence: stepped.revision.sequence,
     });
-    this.ledger = {
-      ...tombstoneRecord(this.ledger, row.id, stepped.revision, Date.now()),
-      stackOps: consumed,
-    };
+    this.ledger = emptiesStack
+      ? { ...tombstoneRecord(this.ledger, row.id, stepped.revision, Date.now()), stackOps: consumed }
+      : { ...this.ledger, stackOps: consumed, hlc: Math.max(this.ledger.hlc, stepped.revision.hlc) };
+
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -592,7 +715,7 @@ export class InventoryService {
 
     for (const stackKey of stackKeys) {
       if (!stackKey) continue;
-      const have = stackQuantity(next.stackOps, stackKey);
+      const have = stackQuantity(next.stackOps, stackKey, next.stackCheckpoints ?? []);
       if (have <= 0) continue;
       const row = next.records.find(
         entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
@@ -672,9 +795,9 @@ export class InventoryService {
 
     let target = slot ?? firstSlotFor(item, occupied);
     if (!target) {
-      target = SLOT_IDS.find(s => slotAccepts(s, item)) ?? null;
+      target = SLOT_IDS.find(s => itemFitsSlot(s, item)) ?? null;
     }
-    if (!target || !slotAccepts(target, item)) return false;
+    if (!target || !itemFitsSlot(target, item)) return false;
 
     const occupant = this.items.find(row =>
       row.equipped && row.slot === target && row.id !== itemId,
@@ -933,7 +1056,7 @@ export class InventoryService {
     const stacks: InventoryStackView[] = [];
     for (const row of ledger.records) {
       if (row.kind !== 'stack' || row.source !== 'inventory') continue;
-      const quantity = stackQuantity(ledger.stackOps, row.stackKey);
+      const quantity = stackQuantity(ledger.stackOps, row.stackKey, ledger.stackCheckpoints ?? []);
       if (quantity <= 0) continue;
       stacks.push({ id: row.id, stackKey: row.stackKey, quantity });
     }

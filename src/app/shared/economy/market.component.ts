@@ -86,7 +86,8 @@ import {
 } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { EclipseRarity, RARITY_ORDER, rarityOf } from '../rarity/rarity.model';
-import { CardArt, artifactCard } from '../rune-forge/rune-cards';
+import { CardArt } from '../rune-forge/rune-cards';
+import { artFor } from '../art/art';
 import { BASE_EXPLORER_SLOTS, MAX_EXPLORER_SLOTS } from '../explorer/explorer.model';
 import { ArtSceneComponent } from '../art-scene/art-scene.component';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
@@ -129,7 +130,9 @@ interface CategoryDef {
   short: string;
   /** Path under assets/icons/shops, when a sigil was painted for it. */
   icon?: string;
-  /** Stands in where no sigil exists. */
+  /** Key into the generated art manifest, for marks that came from the library. */
+  mark?: string;
+  /** Stands in where no sigil exists. Four shelves used to need this. */
   glyph?: string;
   /** Which currency this shelf spends. Tints its rows. */
   currency: 'gold' | 'essence' | 'shard';
@@ -147,15 +150,15 @@ const CATEGORIES: CategoryDef[] = [
     note: 'What one strike of the Flame is worth. Every Hammer also makes every Automaton better, because an Automaton is paid at whatever a strike is worth when it lands.',
   },
   {
-    id: 'automaton', label: 'Automatons', short: 'Automatons', glyph: '⚙', currency: 'gold',
+    id: 'automaton', label: 'Automatons', short: 'Automatons', mark: 'automaton-shop', currency: 'gold',
     note: 'Hands that strike the Flame while you are elsewhere, paid at the current Hammer rate. They will not hold a combo for you — the arm has to be yours for that.',
   },
   {
-    id: 'mastery', label: 'Mastery', short: 'Mastery', glyph: '✦', currency: 'gold',
+    id: 'mastery', label: 'Mastery', short: 'Mastery', mark: 'mastery-shop', currency: 'gold',
     note: 'A percentage on everything the forge makes. Sold once each, and they add rather than compound: holding all four is +185%.',
   },
   {
-    id: 'expedition', label: 'Expeditions', short: 'Expeditions', glyph: '🧭', currency: 'gold',
+    id: 'expedition', label: 'Expeditions', short: 'Expeditions', mark: 'expedition-shop', currency: 'gold',
     // The sentence naming the Forge View is in the template instead, because it
     // carries a routerLink and a note is a plain string.
     note: 'Explorers walk into a realm and come back with Gold, and sometimes with a rune or a scroll nobody has filed yet. They keep walking while the tab is shut.',
@@ -173,7 +176,7 @@ const CATEGORIES: CategoryDef[] = [
     note: 'Bought once. Every variant inside comes with it, and switching between them is free — charging twice for a colour you already own is a toll booth, not a shop.',
   },
   {
-    id: 'eclipse', label: 'The Eclipse', short: 'Eclipse', glyph: '🌑', currency: 'shard',
+    id: 'eclipse', label: 'The Eclipse', short: 'Eclipse', mark: 'eclipse-shop', currency: 'shard',
     note: 'Give the whole forge back and keep what it taught you.',
   },
 ];
@@ -188,6 +191,29 @@ type ItemState = 'buy' | 'locked' | 'held' | 'owned' | 'running';
  * affordability, the word on the button — so the template makes no decisions
  * and every category renders through the same twelve lines of markup.
  */
+/** The shelf mark: a library import first, then the older shops sprite. */
+function categoryMark(c: { icon?: string; mark?: string }): string | null {
+  if (c.mark) return artFor(c.mark)?.src ?? null;
+  return c.icon ? `assets/icons/shops/${c.icon}.png` : null;
+}
+
+/**
+ * Painted art for a shop row.
+ *
+ * Every one of the 37 rows carries an `icon` emoji, and until the art library
+ * was wired only the five artifacts had a real card — so a hand-painted rarity
+ * sigil sat next to a system emoji in the same tile. All 37 now resolve
+ * through `artFor`, which handles the four ids whose file is named differently
+ * (the three artifacts, plus explorer-slot -> hire-an-explorer). The emoji
+ * stays as the fallback for anything not yet painted.
+ */
+function shopArt(id: string): CardArt | null {
+  const entry = artFor(id);
+  return entry
+    ? { src: entry.src, srcset: entry.srcset, width: entry.width, height: entry.height }
+    : null;
+}
+
 interface MarketItem {
   id: string;
   name: string;
@@ -312,7 +338,6 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   queryState: MarketQuery = { ...MARKET_QUERY_DEFAULTS };
   searchDraft = '';
-  expandedId: string | null = null;
   eclipseOpen = false;
   catalogueError = false;
   hydrated = false;
@@ -400,7 +425,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-    this.releaseTileStack();
+    this.unstackTile?.();
     this.escapeUnlisten?.();
     this.revealObserver?.disconnect();
   }
@@ -588,7 +613,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       owned,
       state: maxed ? 'held' : (this.snap.gold >= cost ? 'buy' : 'locked'),
       verb,
-      art: null,
+      art: shopArt(u.id),
     });
   }
 
@@ -612,7 +637,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       // it never reaches 'running' unless the Essence is also short.
       state: running && !afford ? 'running' : (afford ? 'buy' : 'locked'),
       verb: running ? 'Renew' : 'Invoke',
-      art: null,
+      art: shopArt(e.id),
     });
   }
 
@@ -633,7 +658,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       owned: owned ? 1 : 0,
       state: owned ? 'held' : (this.snap.essence >= a.cost ? 'buy' : 'locked'),
       verb: 'Claim',
-      art: artifactCard(a.id),
+      art: shopArt(a.id),
     });
   }
 
@@ -654,7 +679,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       owned: owned ? 1 : 0,
       state: owned ? 'owned' : (this.snap.gold >= c.cost ? 'buy' : 'locked'),
       verb: 'Acquire',
-      art: null,
+      art: shopArt(c.id),
       cosmetic: c,
     });
   }
@@ -693,6 +718,9 @@ export class MarketComponent implements OnInit, OnDestroy {
   rarityLabel(r: EclipseRarity): string { return this.t(`market.rarity.${r}`); }
   rarityColor(r: EclipseRarity): string { return rarityOf(r).color; }
   rarityGlow(r: EclipseRarity): string { return rarityOf(r).glow; }
+  /** The shelf mark, or null when only an emoji glyph exists. */
+  markOf(c: CategoryDef): string | null { return categoryMark(c); }
+
   categoryLabel(id: string): string {
     if (id === 'all') return this.t('market.everything');
     if (id === 'eclipse') return this.t('market.eclipse');
@@ -803,48 +831,19 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  isExpanded(id: string): boolean { return this.expandedId === id; }
-
-  toggleTile(id: string): void {
-    if (this.expandedId === id) {
-      this.collapseTile();
-      return;
-    }
-    this.expandTile(id);
-  }
-
-  private expandTile(id: string): void {
-    this.releaseTileStack();
-    this.expandedId = id;
-    this.unstackTile = this.overlays.push('market-tile', () => this.collapseTile());
-    this.cdr.markForCheck();
-  }
-
-  collapseTile(): void {
-    const id = this.expandedId;
-    this.releaseTileStack();
-    this.expandedId = null;
-    if (id) this.focusTile(id);
-    this.cdr.markForCheck();
-  }
-
-  private focusTile(id: string): void {
-    if (!this.isBrowser) return;
-    const el = this.host.nativeElement.querySelector(`#mk-tile-${id}`) as HTMLElement | null;
-    el?.focus();
-  }
-
-  private releaseTileStack(): void {
-    this.unstackTile?.();
-    this.unstackTile = undefined;
-  }
+  /*
+   * Tiles no longer expand — every listing shows its art, rarity, price, effect
+   * and Buy button at once. `collapseTile` survives as a no-op because the
+   * catalogue picks in the sidebar call it before re-running a query, and
+   * keeping the call site honest is cheaper than threading a flag through it.
+   */
+  collapseTile(): void { /* nothing to collapse; kept for call-site clarity */ }
 
   private armEscape(): void {
     if (typeof document === 'undefined') return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' && event.key !== 'Esc') return;
       if (this.inspect.view.open) return;
-      if (this.expandedId) return;
       if (this.eclipseArmed) {
         this.disarm();
         this.cdr.markForCheck();

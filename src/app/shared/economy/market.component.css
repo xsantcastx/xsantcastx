@@ -136,7 +136,25 @@
 
 /* ── Currency bar ─────────────────────────────────────────────────────── */
 
+/* The wallet rides along while the catalogue scrolls. It sticks to the page
+   scroll, so nothing between here and <body> may carry a transform, an
+   overflow or a contain — `.mk` is plain `position: relative`, and the routed
+   host's routeFadeIn ends at `transform: none` (styles.css). The one thing that
+   CAN kill it is <body> being a scroll container: `body { overflow-x: hidden }`
+   computes to `hidden auto`, and a body that is its own scrollport never lets a
+   descendant stick to the viewport. That is a one-token fix in styles.css
+   (`overflow-x: clip`), not something this file can do — if the bar does not
+   pin, look there first, not here.
+
+   `top` is the header offset the HeaderComponent writes onto <html>: 20px on
+   desktop (the nav is a left sidebar, there is no top bar) and nav-h + 12 on
+   mobile (fixed top bar). The CSS fallbacks in :root cover the pre-JS paint.
+   z-index is the in-page sticky rung — above `.mk__aside`/`.mk__main` (both
+   `position: relative`, later in DOM order), well under the header/drawer/modal. */
 .mk__wallet {
+  position: sticky;
+  top: var(--header-offset, 20px);
+  z-index: var(--z-sticky, 20);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -261,7 +279,11 @@
   transition: background .35s ease;
 }
 
-.mk__aside { padding: 16px 14px; position: sticky; top: 90px; }
+/* Not sticky. It used to declare `position: sticky; top: 90px`, which never
+   ran (see the wallet note above) — and it should not: the filter rail is
+   ~1040px tall at 1280×800, taller than the viewport, so pinning it would put
+   its bottom controls out of reach. The wallet is the one thing that follows. */
+.mk__aside { padding: 16px 14px; }
 .mk__main  { padding: 14px clamp(10px, 1.2vw, 16px) 18px; }
 
 /* ── Search ───────────────────────────────────────────────────────────── */
@@ -609,6 +631,7 @@
 
 .mk__row-rarity { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; min-width: 0; }
 .mk__badge {
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 9px;
   border-radius: 5px;
   border: 1px solid color-mix(in srgb, var(--tier) 52%, transparent);
@@ -617,6 +640,16 @@
   font: 700 9.5px/1.3 'Orbitron', system-ui, sans-serif;
   letter-spacing: 0.13em; text-transform: uppercase;
   white-space: nowrap;
+}
+/* The tier dot before the word — the same swatch the rarity facet wears
+   (.mk__facet-dot), so the badge and the filter rail speak one language. */
+.mk__badge::before {
+  content: '';
+  flex: none;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--tier);
+  box-shadow: 0 0 7px var(--tier-glow);
 }
 .mk__row-cat { font-size: 10px; color: var(--mk-faint); }
 
@@ -773,15 +806,67 @@
   gap: 10px;
 }
 
+/* Rarity, readable before a word of it has been read.
+   `--tier` / `--tier-glow` arrive inline on the <li> from the Eclipse ladder
+   (rarity.model.ts, via MarketItem.rarityColor/rarityGlow) — the one canonical
+   palette; no hex here. Because they are inline, a stylesheet cannot re-colour
+   a rung; what it can do is decide how much of the tier shows. These knobs are
+   what each `[data-rarity]` rung turns:
+     --mk-tier-edge    share of --tier in the resting border
+     --mk-tier-rail    width of the rail down the left edge
+     --mk-tier-rail-a  rail opacity
+     --mk-tier-halo    outer glow blur (0 = none)
+   The signal is carried three ways so no single one has to do the job: the
+   rail (position — always the left edge, and it thickens up the ladder), the
+   border/halo weight (the whole card gets heavier as it gets rarer), and the
+   badge with its tier dot (the same dot the rarity facet in the filter rail
+   uses, so "dot colour = tier" is taught once). Solid --tier is ≥ 5:1 on this
+   ground for every rung; the old 45% mix border alone was under 3:1 for five
+   of the six. The word in the badge stays — this is additive. */
 .mk__tile {
   --tier: var(--mk-gold);
   --tier-glow: var(--mk-gold-soft);
+  --mk-tier-edge: 30%;
+  --mk-tier-rail: 3px;
+  --mk-tier-rail-a: 85%;
+  --mk-tier-halo: 0px;
+  position: relative;
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  border: 1px solid var(--mk-line);
+  border: 1px solid color-mix(in srgb, var(--tier) var(--mk-tier-edge), transparent);
   background: rgba(20, 14, 38, 0.94);
+  box-shadow: 0 0 var(--mk-tier-halo) -8px var(--tier-glow);
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+/* The rail. A pseudo rather than an inset shadow because hover/flash/denied
+   all rewrite box-shadow and border-color, and the rail must survive them.
+   Same idiom the old .mk__row used. */
+.mk__tile::before {
+  content: '';
+  position: absolute;
+  left: -1px; top: 14%; bottom: 14%;
+  width: var(--mk-tier-rail);
+  border-radius: 0 3px 3px 0;
+  background: color-mix(in srgb, var(--tier) var(--mk-tier-rail-a), transparent);
+  box-shadow: 0 0 10px var(--tier-glow);
+  pointer-events: none;
+}
+/* The rungs. Weight and light climb the ladder. Mortal is near-white
+   (#e8ecf1, 15.8:1 on this ground) and would out-shout every coloured tier at
+   equal strength, so the bottom rung is deliberately held quiet. */
+.mk__tile[data-rarity='mortal']    { --mk-tier-edge: 10%; --mk-tier-rail: 2px; --mk-tier-rail-a: 45%; }
+.mk__tile[data-rarity='eclipsed']  { --mk-tier-edge: 30%; }
+.mk__tile[data-rarity='sacred']    { --mk-tier-edge: 42%; --mk-tier-halo: 18px; }
+.mk__tile[data-rarity='anomalous'] { --mk-tier-edge: 55%; --mk-tier-halo: 24px; }
+.mk__tile[data-rarity='mythic']    { --mk-tier-edge: 75%; --mk-tier-rail: 4px; --mk-tier-halo: 30px; }
+.mk__tile[data-rarity='singular']  { --mk-tier-edge: 100%; --mk-tier-rail: 4px; --mk-tier-halo: 36px; }
+/* The top two rungs get a second, inner frame — a shape cue, not a hue one. */
+.mk__tile[data-rarity='mythic'],
+.mk__tile[data-rarity='singular'] {
+  box-shadow:
+    0 0 var(--mk-tier-halo) -8px var(--tier-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--tier) 30%, transparent);
 }
 .mk__tile--open {
   grid-column: 1 / -1;
@@ -790,10 +875,22 @@
 }
 .mk__tile--owned { background: rgba(24, 18, 44, 0.8); }
 .mk__tile--held { opacity: .92; }
+/* Hover lifts and brightens but never below the resting rung: the border
+   takes the larger of its rung share and 45%, and the resting halo is kept
+   under the hover glow rather than swapped out for it. */
 .mk__tile:hover, .mk__tile:focus-within {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--tier) 45%, transparent);
-  box-shadow: 0 0 30px -12px var(--tier-glow);
+  border-color: color-mix(in srgb, var(--tier) max(45%, var(--mk-tier-edge)), transparent);
+  box-shadow:
+    0 0 30px -12px var(--tier-glow),
+    0 0 var(--mk-tier-halo) -8px var(--tier-glow);
+}
+.mk__tile[data-rarity='mythic']:hover,    .mk__tile[data-rarity='mythic']:focus-within,
+.mk__tile[data-rarity='singular']:hover,  .mk__tile[data-rarity='singular']:focus-within {
+  box-shadow:
+    0 0 30px -12px var(--tier-glow),
+    0 0 var(--mk-tier-halo) -8px var(--tier-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--tier) 30%, transparent);
 }
 .mk__tile--rare.mk__tile--open {
   box-shadow: 0 0 28px -10px var(--tier-glow), inset 0 0 0 1px color-mix(in srgb, var(--tier) 40%, transparent);
@@ -824,7 +921,8 @@
   display: grid; place-items: center;
   width: 48px; height: 48px;
   border-radius: 11px;
-  border: 1px solid color-mix(in srgb, var(--tier) 30%, transparent);
+  /* The art well borrows the tier too — a second, inner echo of the rail. */
+  border: 1px solid color-mix(in srgb, var(--tier) 45%, transparent);
   background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.14), rgba(8, 3, 24, 0.9) 78%);
   overflow: hidden;
 }
@@ -1241,13 +1339,38 @@
 
   .mk__main { padding: 12px 10px 16px; border-radius: 14px; }
   .mk__hero { padding-top: 22px; }
-  .mk__wallet { gap: 8px; }
-  .mk__coin { min-width: 0; flex: 1 1 154px; padding: 10px 13px; }
-  /* Gold is the one figure with ten digits in it. Half a phone width breaks it
-     across two lines; a full row does not. */
-  .mk__coin--gold { flex-basis: 100%; }
-  .mk__coin-icon, .mk__coin-glyph { width: 28px; height: 28px; }
-  .mk__coin-glyph { font-size: 18px; }
+
+  /* The sticky wallet, compact: one row, no wrap. At full size it is three
+     rows and ~187px on a 375px phone — a quarter of what is left between the
+     fixed top bar and the fixed tab bar — which is too much to pin. Gold,
+     Essence, Shards and the rate stay; the labels and the total go (the icons
+     say which is which, and the header ticker carries gold anyway). The strip
+     gets its own solid ground (the game-surface panel token; the pills keep
+     `--mk-pane` so they read as segments on it) because backdrop-filter is off
+     at this width and the gaps between pills would otherwise show tiles
+     scrolling through. No overflow-x on it: `auto` would clip the +N/s rate
+     floaters. Nothing in the strip is a control, so it may sit under 44px. */
+  .mk__wallet {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 12px;
+    border: 1px solid var(--gf-edge, var(--mk-line));
+    background: var(--gf-panel-solid, var(--mk-pane));
+  }
+  .mk__coin { flex: 1 1 auto; min-width: 0; padding: 6px 9px; gap: 7px; border-radius: 10px; }
+  .mk__coin--total, .mk__coin-label { display: none; }
+  .mk__coin-icon, .mk__coin-glyph { width: 20px; height: 20px; }
+  .mk__coin-glyph { font-size: 14px; }
+  /* A numeral must never split mid-digit in the pinned strip — the desktop
+     rule allows `overflow-wrap: anywhere` so a late-game Gold figure can wrap
+     inside a wide pill, but at this width a wrapped "1,2 / 34" reads as two
+     numbers. Keep every value on one line and make room the honest way: drop
+     the shard multiplier sub-label, and when Shards are held (four pills)
+     hide the rate pill rather than squeeze all four below legibility. */
+  .mk__coin-val { font-size: 13px; white-space: nowrap; overflow-wrap: normal; }
+  .mk__coin-sub { display: none; }
+  .mk__wallet:has(.mk__coin--shard) .mk__coin--rate { display: none; }
 
   .mk__row { padding: 12px 11px; }
   .mk__row-icon { width: 40px; height: 40px; font-size: 18px; }
@@ -1259,6 +1382,10 @@
      way to change shelf — so it has to clear the 44px target, not the 38px
      that was fine while it was a secondary control beside a sidebar. */
   .mk__tab { min-height: 44px; padding: 12px 15px; }
+  /* The filter rail is still rendered at this width (it sits above the
+     catalogue rather than beside it), so its facet buttons are touch targets
+     too — 38px was fine beside a sidebar, not under a thumb. */
+  .mk__facet-btn { min-height: 44px; padding: 10px 12px; }
   .mk__variant { min-height: 44px; padding: 11px 14px; }
   .mk__patron-alt { min-height: 44px; padding: 13px 8px; }
 }
@@ -1280,3 +1407,81 @@
   .mk__eclipse-fill { transition: none; }
   .mk__buy:hover:not(:disabled), .mk__patron-cta:hover, .mk__eclipse-btn:hover { transform: none; }
 }
+
+/* ── Flat listing card ────────────────────────────────────────────────────
+   Replaces the disclosure tile. Everything a buying decision needs — art,
+   rarity, category, what it does, price, Buy — is visible without a click. The
+   old tile hid the effect text behind an expand, so browsing 37 listings meant
+   37 clicks to learn what any of them did.
+
+   Two columns, not three: the page grid is `250px minmax(0,1fr) 288px` inside a
+   988px shell, so this column is ~409px at any desktop width. A price rail
+   beside the body left the name about 170px and wrapped every title. The buy
+   row spans underneath instead, which also gives the button a real target. */
+.mk__card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  width: 100%;
+}
+.mk__card .mk__tile-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+}
+.mk__card .mk__tile-art { width: 100%; height: 100%; object-fit: contain; }
+
+.mk__card-body { min-width: 0; grid-column: 2; }
+.mk__card-body .mk__tile-name {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--mk-ink, #e8ecf1);
+}
+.mk__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gf-dim);
+}
+.mk__card-cat, .mk__card-yield, .mk__card-owned { white-space: nowrap; }
+.mk__card-owned { color: var(--gf-accent-text); }
+.mk__card .mk__row-effect {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mk-dim, #9fb4ae);
+}
+
+/* Price and Buy sit on their own row, full width. */
+.mk__card-buy {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gf-edge);
+}
+.mk__card-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gf-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+.mk__card-buy .mk__buy { margin-left: auto; }

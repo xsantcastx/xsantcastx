@@ -22,9 +22,20 @@ import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
 import { type EntityAction, type EntityFact } from './entity.model';
 import { InventoryService } from '../rpg/inventory.service';
-import { previewUpgrade, upgradeLevelOf } from '../rpg/item-upgrade';
+import { maxTemperOf, previewUpgrade, upgradeLevelOf, wardFailReductionPct } from '../rpg/item-upgrade';
 import { formatCurrency } from '../economy/economy.model';
+import { ForgeAudioService } from '../economy/forge-audio.service';
 import type { GameItem } from '../rpg/item.model';
+import { temperCue, temperDeltas, type TemperDelta } from './temper-feedback';
+
+/**
+ * What the last temper on the open item did. `null` until the player strikes.
+ * 'max' is a success that also reached the definition's ceiling — it shows the
+ * same delta rows plus the "fully tempered" line, and it is the reason the
+ * temper block no longer keys on `temperPreview` alone: the preview goes null
+ * at the ceiling, and until now so did the note announcing the final success.
+ */
+export type TemperOutcome = 'ok' | 'max' | 'fail' | 'blocked';
 
 @Component({
   selector: 'app-inspect',
@@ -37,6 +48,7 @@ import type { GameItem } from '../rpg/item.model';
 export class InspectComponent implements OnInit, OnDestroy {
   private readonly inspect = inject(InspectService);
   private readonly inventory = inject(InventoryService);
+  private readonly audio = inject(ForgeAudioService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -48,7 +60,18 @@ export class InspectComponent implements OnInit, OnDestroy {
 
   view: InspectView = this.inspect.view;
   sheet = false;
-  temperNote: string | null = null;
+  temperOutcome: TemperOutcome | null = null;
+  /** Stat rows that moved on the last successful temper. Empty on fail/blocked. */
+  temperDelta: TemperDelta[] = [];
+  /** The level the piece stands at after the last successful temper. */
+  temperLevelAfter = 0;
+  /**
+   * Bumped on every resolved temper. The template keys the outcome block on it
+   * (`@for (n of [temperStrikes]; track 'strike:' + n)`) so a second success in a row
+   * re-creates the rows and the light-up runs again — CSS animations restart
+   * only on a fresh element, and a player at the anvil tempers ten times.
+   */
+  temperStrikes = 0;
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
@@ -60,7 +83,7 @@ export class InspectComponent implements OnInit, OnDestroy {
     this.sub = this.inspect.view$.subscribe(view => {
       const opened = view.open && !this.view.open;
       this.view = view;
-      if (opened) this.temperNote = null;
+      if (opened) this.resetTemper();
       this.cdr.markForCheck();
       if (opened) {
         const focusTitle = () => this.titleEl?.nativeElement.focus();
@@ -108,9 +131,23 @@ export class InspectComponent implements OnInit, OnDestroy {
     return this.inventory.itemById(ref.id) ?? null;
   }
 
+  /**
+   * Worn ward, so the chance printed here is the chance the roll will use —
+   * `InventoryService.upgrade` reads the same total. Zero when nothing warded
+   * is worn, which hands back the authored table exactly.
+   */
+  get wornWard(): number {
+    return this.inventory.equippedTotals.ward;
+  }
+
+  /** Whole percent of the fail chance the worn ward turns aside. 0 hides the line. */
+  get wardPct(): number {
+    return wardFailReductionPct(this.wornWard);
+  }
+
   get temperPreview() {
     const item = this.inspectedItem;
-    return item ? previewUpgrade(item) : null;
+    return item ? previewUpgrade(item, this.wornWard) : null;
   }
 
   get temperLevel(): number {
@@ -135,21 +172,63 @@ export class InspectComponent implements OnInit, OnDestroy {
       : '';
   }
 
+  /** The definition's temper ceiling for the open item. 0 when nothing is open. */
+  get temperMax(): number {
+    return this.inspectedItem ? maxTemperOf(this.inspectedItem) : 0;
+  }
+
+  /**
+   * The temper block stays up once an outcome exists, even when the preview
+   * has gone null at the ceiling — otherwise the final success vanishes the
+   * instant it lands.
+   */
+  get showTemperBlock(): boolean {
+    return !!this.temperPreview || this.temperOutcome !== null;
+  }
+
+  private resetTemper(): void {
+    this.temperOutcome = null;
+    this.temperDelta = [];
+    this.temperLevelAfter = 0;
+    this.temperStrikes = 0;
+  }
+
+  /**
+   * Strike the anvil. `InventoryService.temper` is the sole writer — Gold,
+   * materials and the roll all happen in there; this reads the result shape
+   * (`item`, `leveled`) and turns it into feedback.
+   *
+   * The anvil rings on every resolved temper, success or not: the strike is
+   * the action sound and it is the same either way. Only a success earns the
+   * reveal cue on top — a win is celebrated, a miss is stated. No fail cue,
+   * no shake, no "so close": the odds line above re-renders exactly as it was.
+   */
   temper(): void {
     const item = this.inspectedItem;
     if (!item) return;
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `temper-${Date.now()}`;
+    const before = { ...item.stats };
     const result = this.inventory.temper(item.id, id);
+    this.temperStrikes++;
     if (!result.ok) {
-      this.temperNote = this.t('inspect.temper.blocked');
+      this.temperOutcome = 'blocked';
+      this.temperDelta = [];
       this.cdr.markForCheck();
       return;
     }
-    this.temperNote = result.leveled
-      ? this.t('inspect.temper.ok', { n: upgradeLevelOf(result.item) })
-      : this.t('inspect.temper.fail');
+    const cue = temperCue(item.rarity);
+    this.audio.strike(cue.semitones);
+    if (result.leveled) {
+      this.temperDelta = temperDeltas(before, result.item.stats);
+      this.temperLevelAfter = upgradeLevelOf(result.item);
+      this.temperOutcome = this.temperLevelAfter >= maxTemperOf(result.item) ? 'max' : 'ok';
+      this.audio.runeReveal(cue.semitones, cue.heavy);
+    } else {
+      this.temperDelta = [];
+      this.temperOutcome = 'fail';
+    }
     this.inspect.retry();
     this.cdr.markForCheck();
   }

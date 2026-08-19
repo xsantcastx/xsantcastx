@@ -28,6 +28,7 @@ import { AchievementDropComponent } from './shared/rarity/achievement-drop.compo
 import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { QuestToastComponent } from './shared/quests/quest-toast.component';
+import { LevelUpBannerComponent } from './shared/activity/level-up-banner.component';
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { KeeperPanelComponent } from './shared/keeper/keeper-panel.component';
@@ -71,6 +72,7 @@ import { PwaService } from './shared/pwa.service';
     QuestDrawerComponent,
     QuestTriggerComponent,
     QuestToastComponent,
+    LevelUpBannerComponent,
     ForgeFlameComponent,
     CloudSaveMergeDialogComponent,
     KeeperPanelComponent,

@@ -20,20 +20,55 @@
 
   <section class="sw__panel" aria-labelledby="sw-mine-title">
     <h2 id="sw-mine-title">{{ t('seamworks.panel.title') }}</h2>
-    <p class="sw__expect">{{ t('seamworks.expect') }}</p>
+
+    <div class="sw__tiers" role="group" [attr.aria-label]="t('seamworks.tier.title')">
+      @for (tier of tiers; track tier.oreId) {
+        <button
+          type="button"
+          class="sw__tier"
+          [class.sw__tier--active]="tier.oreId === selectedOreId"
+          [class.sw__tier--locked]="!tierUnlocked(tier)"
+          [disabled]="!tierUnlocked(tier)"
+          [attr.aria-pressed]="tier.oreId === selectedOreId"
+          (click)="selectTier(tier)">
+          <img [src]="tierArt(tier).art" [attr.srcset]="tierArt(tier).srcset" sizes="32px" alt="" width="32" height="32" decoding="async">
+          <span class="sw__tier-name">{{ tierArt(tier).name }}</span>
+          @if (tierUnlocked(tier)) {
+            <span class="sw__tier-xp">{{ t('seamworks.tier.xp', { xp: tier.xpPerAction }) }}</span>
+          } @else {
+            <span class="sw__tier-lock">{{ t('seamworks.tier.locked', { level: tier.unlockLevel }) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <p class="sw__expect">{{ t('seamworks.expect', { ore: ore.name, xp: selectedTier().xpPerAction }) }}</p>
     <p class="sw__chance">{{ discoveryLabel() }}</p>
+    @if (speedupPct() > 0) {
+      <p class="sw__speedup">{{ t('seamworks.speedup', { pct: speedupPct() }) }}</p>
+    }
 
     <div class="sw__loot" aria-label="{{ t('seamworks.haul') }}">
-      <figure [class.is-hit]="lastOre > 0">
-        <img [src]="ore.art" alt="" width="72" height="72" decoding="async">
+      <figure [class.is-hit]="lastOre > 0" [class.is-striking]="oreFloaters().length > 0">
+        <div class="sw__art-wrap">
+          <img [src]="ore.art" [attr.srcset]="ore.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of oreFloaters(); track f.id) {
+            <span class="sw__float" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
         <figcaption>{{ ore.name }}</figcaption>
         <p class="sw__held">{{ t('seamworks.held', { n: oreHeld }) }}</p>
         @if (lastOre > 0) {
           <p class="sw__gain">{{ t('seamworks.gain', { n: lastOre }) }}</p>
         }
       </figure>
-      <figure [class.is-hit]="lastEmber > 0" [class.is-rare]="lastEmber > 0 || emberHeld > 0">
-        <img [src]="ember.art" alt="" width="72" height="72" decoding="async">
+      <figure [class.is-hit]="lastEmber > 0" [class.is-rare]="lastEmber > 0 || emberHeld > 0" [class.is-striking]="emberFloaters().length > 0">
+        <div class="sw__art-wrap">
+          <img [src]="ember.art" [attr.srcset]="ember.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of emberFloaters(); track f.id) {
+            <span class="sw__float sw__float--rare" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
         <figcaption>{{ ember.name }}</figcaption>
         <p class="sw__held">{{ t('seamworks.held', { n: emberHeld }) }}</p>
         @if (lastEmber > 0) {
@@ -46,23 +81,27 @@
       <button
         type="button"
         class="sw__mine"
+        [class.sw__mine--struck]="oreFloaters().length > 0"
         [disabled]="mineDisabled()"
         [attr.aria-disabled]="mineDisabled()"
         (click)="mine()">
-        @if (panelState() === 'recovering') {
-          {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
-        } @else if (panelState() === 'resolving') {
-          {{ t('seamworks.mine.resolving') }}
-        } @else {
-          {{ t('seamworks.mine') }}
-        }
+        <img class="sw__mine-art" [src]="ore.art" alt="" width="26" height="26" aria-hidden="true" decoding="async">
+        <span>
+          @if (panelState() === 'recovering') {
+            {{ t('seamworks.mine.wait', { seconds: remainLabel() }) }}
+          } @else if (panelState() === 'resolving') {
+            {{ t('seamworks.mine.resolving') }}
+          } @else {
+            {{ t('seamworks.mine') }}
+          }
+        </span>
       </button>
       <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
     </div>
-    <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel() }) }}</p>
+    <p class="sw__sr" aria-live="polite">{{ t('seamworks.status.' + panelState(), { seconds: remainLabel(), ore: ore.name }) }}</p>
 
     @if (panelState() === 'capacity') {
-      <p class="sw__alert" role="alert">{{ t('seamworks.full') }}</p>
+      <p class="sw__alert" role="alert">{{ t('seamworks.full', { ore: ore.name }) }}</p>
     }
     @if (panelState() === 'location') {
       <p class="sw__alert" role="alert">{{ t('seamworks.away') }}</p>
@@ -77,13 +116,108 @@
 
     @if (lastOp; as op) {
       <div class="sw__result" [class.sw__result--rare]="lastEmber > 0">
-        <p>{{ t('seamworks.result.ore', { gain: lastOre, held: oreHeld }) }}</p>
+        <p>{{ t('seamworks.result.ore', { ore: ore.name, gain: lastOre, held: oreHeld }) }}</p>
         @if (lastEmber > 0) {
           <p class="sw__rare">{{ t('seamworks.result.ember', { gain: lastEmber, held: emberHeld }) }}</p>
         } @else if (op.discovery.result !== 'none') {
           <p>{{ discoveryLabel() }}</p>
         }
         <p>{{ t('seamworks.result.xp', { amount: op.xpGrant.amount }) }}</p>
+      </div>
+    }
+  </section>
+
+  <section class="sw__panel sw__refine" aria-labelledby="sw-refine-title">
+    <h2 id="sw-refine-title">{{ t('seamworks.refine.title') }}</h2>
+    <p class="sw__expect">{{ t('seamworks.refine.lede') }}</p>
+
+    @for (recipe of recipes; track recipe.from) {
+      <div class="sw__refine-row" [attr.aria-label]="t('seamworks.refine.rule', { n: recipe.ratio, from: artOf(recipe.from).name, to: artOf(recipe.to).name })">
+        <div class="sw__loot sw__refine-pair">
+          <figure [class.is-striking]="refineFloaters(recipe, 'source').length > 0">
+            <div class="sw__art-wrap">
+              <img [src]="artOf(recipe.from).art" [attr.srcset]="artOf(recipe.from).srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+              @for (f of refineFloaters(recipe, 'source'); track f.id) {
+                <span class="sw__float sw__float--spent" aria-hidden="true">{{ f.text }}</span>
+              }
+            </div>
+            <figcaption>{{ artOf(recipe.from).name }}</figcaption>
+            <p class="sw__held">{{ t('seamworks.held', { n: heldOf(recipe.from) }) }}</p>
+          </figure>
+          <p class="sw__refine-ratio" aria-hidden="true">
+            <span class="sw__refine-n">{{ recipe.ratio }}</span>
+            <span class="sw__refine-arrow">→</span>
+            <span class="sw__refine-n">1</span>
+          </p>
+          <figure [class.is-hit]="lastRefine?.to === recipe.to" [class.is-striking]="refineFloaters(recipe, 'target').length > 0">
+            <div class="sw__art-wrap">
+              <img [src]="artOf(recipe.to).art" [attr.srcset]="artOf(recipe.to).srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+              @for (f of refineFloaters(recipe, 'target'); track f.id) {
+                <span class="sw__float" aria-hidden="true">{{ f.text }}</span>
+              }
+            </div>
+            <figcaption>{{ artOf(recipe.to).name }}</figcaption>
+            <p class="sw__held" data-refine-target>{{ t('seamworks.held', { n: heldOf(recipe.to) }) }}</p>
+          </figure>
+        </div>
+
+        <div class="sw__refine-controls">
+          <div class="sw__refine-choices" role="group" [attr.aria-label]="t('seamworks.refine.amount', { from: artOf(recipe.from).name })">
+            @for (choice of refineChoices(recipe); track choice.key) {
+              <button
+                type="button"
+                class="sw__choice"
+                [class.sw__choice--active]="refineChoice(recipe) === choice.key"
+                [attr.aria-pressed]="refineChoice(recipe) === choice.key"
+                [disabled]="!choice.enabled"
+                (click)="pickRefineChoice(recipe, choice.key)">{{ choice.label }}</button>
+            }
+          </div>
+          <button
+            type="button"
+            class="sw__refine-btn"
+            [class.sw__refine-btn--armed]="isRefineArmed(recipe)"
+            [disabled]="refineDisabled(recipe)"
+            [attr.aria-disabled]="refineDisabled(recipe)"
+            (click)="refineClick(recipe)"
+            (blur)="disarmRefine()"
+            (keydown.escape)="disarmRefine()">
+            <img class="sw__mine-art" [src]="artOf(recipe.to).art" alt="" width="26" height="26" aria-hidden="true" decoding="async">
+            <span>
+              @if (isRefineArmed(recipe) && refineArmed) {
+                {{ t('seamworks.refine.confirm', { consume: refineArmed.preview.consume, from: artOf(recipe.from).name, produce: refineArmed.preview.produce, to: artOf(recipe.to).name }) }}
+              } @else {
+                {{ t('seamworks.refine.action', { n: refineBatches(recipe) }) }}
+              }
+            </span>
+          </button>
+        </div>
+        <p class="sw__refine-sr" aria-live="polite">{{ refineStatus(recipe) }}</p>
+
+        @if (refineBlocker(recipe) === 'insufficient') {
+          <p class="sw__hint">{{ t('seamworks.refine.short', { need: refinePreviewFor(recipe).consume, from: artOf(recipe.from).name, held: heldOf(recipe.from) }) }}</p>
+        }
+        @if (refineBlocker(recipe) === 'capacity' || (refineError?.from === recipe.from && refineError?.code === 'capacity')) {
+          <p class="sw__alert" role="alert">{{ t('seamworks.refine.capacity', { to: artOf(recipe.to).name, from: artOf(recipe.from).name }) }}</p>
+          <div class="sw__actions">
+            <button type="button" class="sw__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
+          </div>
+        }
+        @if (refineError?.from === recipe.from && refineError?.code === 'stale') {
+          <p class="sw__alert" role="alert">{{ t('seamworks.refine.stale', { from: artOf(recipe.from).name }) }}</p>
+        }
+        @if (refineError?.from === recipe.from && refineError?.code === 'persist') {
+          <p class="sw__alert" role="alert">{{ t('seamworks.refine.persist') }}</p>
+          <div class="sw__actions">
+            <button type="button" class="sw__ghost" (click)="retryRefine(recipe)">{{ t('seamworks.retry') }}</button>
+            <button type="button" class="sw__ghost" (click)="refreshRefine()">{{ t('seamworks.refresh') }}</button>
+          </div>
+        }
+        @if (lastRefineFor(recipe); as r) {
+          <div class="sw__result">
+            <p>{{ t('seamworks.refine.result', { from: artOf(r.from).name, consume: r.consumed, to: artOf(r.to).name, produce: r.produced, held: heldOf(r.to) }) }}</p>
+          </div>
+        }
       </div>
     }
   </section>

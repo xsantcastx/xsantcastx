@@ -24,6 +24,11 @@ describe('HeaderComponent', () => {
   let fixture: ComponentFixture<HeaderComponent>;
 
   beforeEach(() => {
+    // CharacterHubService reads its remembered tab ('godforge-hub-tab') from
+    // localStorage AT CONSTRUCTION, and sibling specs that select Skills/Bank
+    // leave it behind for whichever spec Karma runs next. One test here asserts
+    // the 'loadout' default, so clear it before TestBed builds the component.
+    localStorage.removeItem('godforge-hub-tab');
     TestBed.configureTestingModule({
       declarations: [HeaderComponent],
       imports: [RouterTestingModule.withRoutes([

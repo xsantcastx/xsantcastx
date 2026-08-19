@@ -15,19 +15,25 @@ import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   ACTIVITY_KEY,
-  MINING_RECOVERY_MS,
+  MINING_TIERS,
   emptyActivityLedger,
+  isMiningTierUnlocked,
   locationDefinition,
+  miningTierFor,
   type ActivityLedger,
   type ActivityOperation,
   type CurrentWork,
   type DisciplineId,
 } from './activity.model';
+import { effectiveMiningRecoveryMs, miningSpeedupPct } from './mining-recovery';
+import { miningLevelView } from './mining-level';
 import {
   buildMineOperation,
   coerceActivityLedger,
   compareHlc,
+  foragingEligibleCount,
   hasEmberBeforeCraft,
+  hasRiftKey,
   isEnabledMine,
   miningEligibleCount,
   newestOperation,
@@ -36,6 +42,14 @@ import {
   rebuildCurrentWork,
   rollDiscovery,
 } from './activity-ops';
+import { FORAGING_TIERS, foragingTierFor, isForagingTierUnlocked } from './foraging.model';
+import {
+  buildForageOperation,
+  effectiveForagingRecoveryMs,
+  foragingSpeedupPct,
+  isEnabledForage,
+  rollForageDiscovery,
+} from './foraging-ops';
 
 export type ActivityRejectCode =
   | 'ssr'
@@ -44,7 +58,8 @@ export type ActivityRejectCode =
   | 'recovering'
   | 'clock'
   | 'capacity'
-  | 'persist';
+  | 'persist'
+  | 'tier-locked';
 
 export type ActivityResolveResult =
   | { ok: true; operation: ActivityOperation; replayed: boolean }
@@ -128,6 +143,66 @@ export class ActivityProgressionGateway {
     return work;
   }
 
+  private currentMiningLevel(): number {
+    return miningLevelView(this.ledger.progress.xpByDiscipline.mining ?? 0).level;
+  }
+
+  /** Same curve as mining (mining-level.ts is skill-agnostic), read off the foraging XP total. */
+  private currentForagingLevel(): number {
+    return miningLevelView(this.ledger.progress.xpByDiscipline.foraging ?? 0).level;
+  }
+
+  /**
+   * How long the seam takes to recover right now, given the current level
+   * and whatever is in the weapon slot. Recomputed live rather than baked
+   * into the operation at strike time: a Keeper who levels up or re-equips
+   * mid-wait should see the remaining time drop immediately, the same way a
+   * cooldown-reduction buff works in most games — not only affect the next
+   * wait.
+   */
+  currentMiningRecoveryMs(): number {
+    const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
+    return effectiveMiningRecoveryMs(this.currentMiningLevel(), strikePower);
+  }
+
+  /** Whole-percent readout for the Seamworks page. 0 hides the line entirely. */
+  miningSpeedupPct(): number {
+    const strikePower = this.inventory.snapshot.equipped['weapon']?.stats.strikePower ?? 0;
+    // The bare call resolves to the imported pure function above, not to this
+    // method — a class method name isn't in scope inside its own body, only
+    // `this.miningSpeedupPct` would be. Same name is deliberate symmetry with
+    // currentMiningRecoveryMs()/effectiveMiningRecoveryMs() just above.
+    return miningSpeedupPct(this.currentMiningLevel(), strikePower);
+  }
+
+  /**
+   * A2 Foraging's cooldown. Level term only — no gathering stat exists on any
+   * item, so unlike currentMiningRecoveryMs nothing in the weapon slot
+   * shortens it (see foraging-ops.ts's header).
+   */
+  currentForagingRecoveryMs(): number {
+    return effectiveForagingRecoveryMs(this.currentForagingLevel());
+  }
+
+  /** Whole-percent readout for the Canopy page. 0 hides the line entirely. */
+  foragingSpeedupPct(): number {
+    // Same self-name note as miningSpeedupPct above: this resolves to the
+    // imported pure function, not to the method.
+    return foragingSpeedupPct(this.currentForagingLevel());
+  }
+
+  /**
+   * The cooldown that applies to whatever Current Work is selected. Before A2
+   * every caller of recoveryEndsAt silently assumed mining; the current-work
+   * tile's "of Ns" readout and the two site pages all go through this so a
+   * foraging Current Work never shows the mining number.
+   */
+  currentRecoveryMs(): number {
+    return this.ledger.currentWork?.disciplineId === 'foraging'
+      ? this.currentForagingRecoveryMs()
+      : this.currentMiningRecoveryMs();
+  }
+
   recoveryEndsAt(): number | null {
     const work = this.ledger.currentWork;
     if (!work) return null;
@@ -135,7 +210,7 @@ export class ActivityProgressionGateway {
     if (!last) return null;
     const lastAt = Date.parse(last.resolvedAt);
     if (!Number.isFinite(lastAt)) return null;
-    return lastAt + MINING_RECOVERY_MS;
+    return lastAt + this.currentRecoveryMs();
   }
 
   recoveryRemainingMs(now = Date.now()): number {
@@ -145,13 +220,15 @@ export class ActivityProgressionGateway {
   }
 
   /** Live bag check — do not latch a capacity error after the player drops. */
-  bagCanTakeOre(): boolean {
-    return this.inventory.canAcceptStackGrant('cinder-ore');
+  bagCanTakeOre(oreId = 'cinder-ore'): boolean {
+    return this.inventory.canAcceptStackGrant(oreId);
   }
 
   resolveMine(input: {
     mutationId: string;
     locationId?: string;
+    /** Which seam tier to strike. Defaults to Cinder Ore — always unlocked. */
+    oreId?: string;
     now?: number;
     roll?: number;
   }): ActivityResolveResult {
@@ -169,14 +246,21 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'location' };
     }
 
+    // The client picks a seam; the gateway is the only party trusted to
+    // decide whether the Keeper's level has actually opened it.
+    const tier = (input.oreId ? miningTierFor(input.oreId) : undefined) ?? MINING_TIERS[0];
+    if (!isMiningTierUnlocked(tier, this.currentMiningLevel())) {
+      return { ok: false, code: 'tier-locked' };
+    }
+
     const last = newestOperation(this.ledger.operations, work);
     if (last) {
       const lastAt = Date.parse(last.resolvedAt);
       if (!Number.isFinite(lastAt) || now < lastAt) return { ok: false, code: 'clock' };
-      if (now < lastAt + MINING_RECOVERY_MS) return { ok: false, code: 'recovering' };
+      if (now < lastAt + this.currentMiningRecoveryMs()) return { ok: false, code: 'recovering' };
     }
 
-    if (!this.inventory.canAcceptStackGrant('cinder-ore')) {
+    if (!this.inventory.canAcceptStackGrant(tier.oreId)) {
       return { ok: false, code: 'capacity' };
     }
 
@@ -195,6 +279,8 @@ export class ActivityProgressionGateway {
       previousHlc: this.lastHlc,
       now,
       locationId,
+      oreId: tier.oreId,
+      xpAmount: tier.xpPerAction,
       discovery,
     });
 
@@ -209,6 +295,94 @@ export class ActivityProgressionGateway {
       miningAccepted: Math.max(
         this.ledger.miningAccepted,
         miningEligibleCount(operations, locationId),
+      ),
+    };
+    this.lastHlc = operation.hlcRevision;
+
+    if (!this.applyGrants(operation) || !this.save()) {
+      this.ledger = previous;
+      this.lastHlc = this.highestHlc(previous);
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return { ok: true, operation, replayed: false };
+  }
+
+  /**
+   * A2 Foraging — a line-for-line sibling of resolveMine, kept concrete on
+   * purpose (the brief forbids a resolveAction framework until a third skill
+   * shows what the two actually share). Same reject codes, same rollback.
+   */
+  resolveForage(input: {
+    mutationId: string;
+    locationId?: string;
+    /** Which growth to gather. Defaults to Starlight Herb — always unlocked. */
+    herbId?: string;
+    now?: number;
+    roll?: number;
+  }): ActivityResolveResult {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const existing = this.ledger.operations.find(op => op.id === input.mutationId);
+    if (existing) return { ok: true, operation: existing, replayed: true };
+
+    const now = input.now ?? Date.now();
+    if (!Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    const work = this.ledger.currentWork;
+    if (!work) return { ok: false, code: 'not-selected' };
+    const locationId = input.locationId ?? work.locationId;
+    if (locationId !== work.locationId || !isEnabledForage(locationId, work.disciplineId)) {
+      return { ok: false, code: 'location' };
+    }
+
+    // The client picks a growth; the gateway alone decides whether the
+    // Keeper's foraging level has actually opened it.
+    const tier = (input.herbId ? foragingTierFor(input.herbId) : undefined) ?? FORAGING_TIERS[0];
+    if (!isForagingTierUnlocked(tier, this.currentForagingLevel())) {
+      return { ok: false, code: 'tier-locked' };
+    }
+
+    const last = newestOperation(this.ledger.operations, work);
+    if (last) {
+      const lastAt = Date.parse(last.resolvedAt);
+      if (!Number.isFinite(lastAt) || now < lastAt) return { ok: false, code: 'clock' };
+      if (now < lastAt + this.currentForagingRecoveryMs()) return { ok: false, code: 'recovering' };
+    }
+
+    if (!this.inventory.canAcceptStackGrant(tier.herbId)) {
+      return { ok: false, code: 'capacity' };
+    }
+
+    const discovery = rollForageDiscovery({
+      eligibleIndex: Math.max(
+        this.ledger.foragingAccepted,
+        foragingEligibleCount(this.ledger.operations, locationId),
+      ) + 1,
+      previousRiftKey: this.ledger.riftKeyGranted || hasRiftKey(this.ledger.operations),
+      roll: input.roll ?? Math.random(),
+    });
+    const operation = buildForageOperation({
+      id: input.mutationId,
+      deviceId: this.deviceId,
+      previousHlc: this.lastHlc,
+      now,
+      locationId,
+      herbId: tier.herbId,
+      xpAmount: tier.xpPerAction,
+      discovery,
+    });
+
+    const previous = this.ledger;
+    const operations = [...this.ledger.operations, operation];
+    this.ledger = {
+      ...this.ledger,
+      operations,
+      progress: progressFromOps(operations),
+      currentWork: rebuildCurrentWork(work, operations),
+      riftKeyGranted: this.ledger.riftKeyGranted || operation.discovery.result !== 'none',
+      foragingAccepted: Math.max(
+        this.ledger.foragingAccepted,
+        foragingEligibleCount(operations, locationId),
       ),
     };
     this.lastHlc = operation.hlcRevision;

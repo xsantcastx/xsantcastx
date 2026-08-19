@@ -1,77 +1,69 @@
 /**
  * rune-cards.ts — the painted card for a rune, a runeword or an artifact.
  *
- * Masters live under `assets/items/{runes,runewords,artifacts}` and match the
- * Eclipse Realms asset library (1254×1254 transparent PNG). The table is
- * still explicit: filenames carry the painter's 01–33 catalogue numbers,
- * and two model ids do not match the file stem (`mirrorblade-kael`,
- * `relic-third-dawn` / `fragment-first-sun`).
+ * Art now resolves through `art-manifest.generated.ts`, which is written by
+ * `scripts/import-assets.py` from the approved library. This used to be a
+ * hand-written table of 33 paths into `assets/items/**\/*.png` — the 1254x1254
+ * masters, 45 MB of them, downloaded in full to fill a ~90px card. The manifest
+ * carries a 96/256 ladder instead and the same set weighs 8 MB.
  *
- * Twenty-two of the twenty-five runes were painted; Mote, Seam and Ledger
- * are absent. Callers keep a text glyph for null.
+ * Manifest keys are the catalogue filename with the painter's two-digit prefix
+ * stripped, which matches the model id everywhere except the handful aliased in
+ * `art.ts`, where the file name is more verbose than the id.
+ *
+ * Twenty-two of the twenty-five runes were painted; Mote, Seam and Ledger are
+ * absent. Callers keep a text glyph for null.
  *
  * Pure data — no browser APIs — so it is safe to import from an SSR path.
  */
+import {
+  ART_ITEMS_ARTIFACTS,
+  ART_ITEMS_RUNES,
+  ART_ITEMS_RUNEWORDS,
+} from '../art/art-manifest.generated';
+import { ART_ALIAS, type ArtEntry } from '../art/art';
 
 export interface CardArt {
   /** Path from the app root, no leading slash. */
   src: string;
+  /** Width-descriptor set so a card does not fetch the largest variant. */
+  srcset: string;
   width: number;
   height: number;
 }
 
-const MASTER = 1254;
-
-function art(folder: 'runes' | 'runewords' | 'artifacts', stem: string): CardArt {
-  return { src: `assets/items/${folder}/${stem}.png`, width: MASTER, height: MASTER };
+function card(entry: ArtEntry | undefined): CardArt | null {
+  return entry ? { src: entry.src, srcset: entry.srcset, width: entry.width, height: entry.height } : null;
 }
 
-/** The twenty-two painted runes, by `Rune.id`. Mote, Seam and Ledger are absent. */
-export const RUNE_CARDS: Readonly<Record<string, CardArt>> = {
-  ash:         art('runes', '01-ash'),
-  ember:       art('runes', '02-ember'),
-  drift:       art('runes', '03-drift'),
-  shade:       art('runes', '04-shade'),
-  glint:       art('runes', '05-glint'),
-  veil:        art('runes', '06-veil'),
-  pulse:       art('runes', '07-pulse'),
-  thorn:       art('runes', '08-thorn'),
-  scorch:      art('runes', '09-scorch'),
-  nexus:       art('runes', '10-nexus'),
-  sigil:       art('runes', '11-sigil'),
-  rift:        art('runes', '12-rift'),
-  hollow:      art('runes', '13-hollow'),
-  fracture:    art('runes', '14-fracture'),
-  eclipse:     art('runes', '15-eclipse'),
-  forge:       art('runes', '16-forge'),
-  aether:      art('runes', '17-aether'),
-  nox:         art('runes', '18-nox'),
-  codex:       art('runes', '19-codex'),
-  convergence: art('runes', '20-convergence'),
-  godstone:    art('runes', '21-godstone'),
-  void:        art('runes', '22-void'),
-};
+function toCards(source: Readonly<Record<string, ArtEntry>>): Readonly<Record<string, CardArt>> {
+  const out: Record<string, CardArt> = {};
+  for (const [id, entry] of Object.entries(source)) {
+    const value = card(entry);
+    if (value) out[id] = value;
+  }
+  return out;
+}
 
-/** All six runewords, by `Runeword.id`. */
-export const RUNEWORD_CARDS: Readonly<Record<string, CardArt>> = {
-  'first-light':        art('runewords', '23-first-light'),
-  'shadow-step':        art('runewords', '24-shadow-step'),
-  'realm-bridge':       art('runewords', '25-realm-bridge'),
-  'convergents-will':   art('runewords', '26-convergents-will'),
-  'godforge-mastery':   art('runewords', '27-godforge-mastery'),
-  'breath-of-the-void': art('runewords', '28-breath-of-the-void'),
-};
+/*
+ * Keyed by *model* id, not by filename, so the orphan checks in the spec stay
+ * meaningful — the whole point of that suite is catching the day a rune is
+ * renamed and its art silently stops resolving.
+ */
+export const RUNE_CARDS: Readonly<Record<string, CardArt>> = toCards(ART_ITEMS_RUNES);
+export const RUNEWORD_CARDS: Readonly<Record<string, CardArt>> = toCards(ART_ITEMS_RUNEWORDS);
+export const ARTIFACT_CARDS: Readonly<Record<string, CardArt>> = (() => {
+  const byFileStem = toCards(ART_ITEMS_ARTIFACTS);
+  const out: Record<string, CardArt> = { ...byFileStem };
+  for (const [modelId, fileKey] of Object.entries(ART_ALIAS)) {
+    const hit = byFileStem[fileKey];
+    if (!hit) continue;
+    out[modelId] = hit;
+    delete out[fileKey];
+  }
+  return out;
+})();
 
-/** All five artifacts, by `Artifact.id`. */
-export const ARTIFACT_CARDS: Readonly<Record<string, CardArt>> = {
-  'obsidian-heart':     art('artifacts', '29-obsidian-heart'),
-  'mirrorblade-kael':   art('artifacts', '30-mirrorblade-of-kael'),
-  'relic-third-dawn':   art('artifacts', '31-relic-of-the-third-dawn'),
-  'codex-solarii':      art('artifacts', '32-codex-solarii'),
-  'fragment-first-sun': art('artifacts', '33-fragment-of-the-first-sun'),
-};
-
-/** The painted card for a rune, or null for the three that were never painted. */
 export function runeCard(id: string): CardArt | null {
   return RUNE_CARDS[id] ?? null;
 }

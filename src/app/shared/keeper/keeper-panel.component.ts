@@ -49,19 +49,27 @@ import { KeeperPanelService } from './keeper-panel.service';
     }
   `,
   styles: [`
+    /* Re-skinned onto the shared --gf-* surface. This drawer carried the same
+       private brown palette as the character hub and did not match the Market
+       it sits beside. */
     .kp {
-      position: fixed; z-index: 93;
+      position: fixed; z-index: var(--z-drawer);
       top: 0; right: 0; left: auto;
       width: min(400px, 46vw);
       height: 100dvh;
       display: flex; flex-direction: column;
       overflow: hidden;
-      border-left: 3px solid #6a5424;
-      box-shadow: inset 1px 0 0 #c9a84c, -16px 0 40px rgba(0,0,0,.45);
+      border-left: 1px solid var(--gf-edge-strong);
+      box-shadow: -16px 0 48px rgba(0,0,0,.55);
       pointer-events: auto;
       background:
         radial-gradient(ellipse 80% 30% at 50% 0%, rgba(201,168,76,.08), transparent 60%),
-        #120e08;
+        var(--gf-panel-solid);
+      backdrop-filter: blur(12px);
+    }
+    .kp::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5) 50%, transparent);
     }
     .kp__head {
       display: flex; align-items: center; gap: 8px;
@@ -71,20 +79,29 @@ import { KeeperPanelService } from './keeper-panel.service';
     .kp__who {
       margin: 0;
       flex: 1;
-      color: #cbb98a; font-size: 13px;
+      color: var(--gf-dim); font-size: 13px;
     }
     .kp__n {
-      padding: 1px 5px;
-      background: #0c0a06; color: #c9a84c;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,.4); color: var(--gf-accent);
       font-variant-numeric: tabular-nums;
     }
     .kp__x, .kp__hall {
-      min-height: 44px; padding: 0 12px;
-      border: 2px solid #6a5424;
-      background: #1a1208; color: #f4e7c3;
-      font: 700 12px/1 Palatino, 'Palatino Linotype', 'Times New Roman', serif;
-      letter-spacing: .06em; text-transform: uppercase;
+      min-height: 44px; padding: 0 14px;
+      border: 1px solid var(--gf-edge);
+      border-radius: var(--gf-radius-sm);
+      background: var(--gf-panel); color: var(--gf-dim);
+      font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+      letter-spacing: .1em; text-transform: uppercase;
       cursor: pointer;
+      transition: border-color .16s ease, color .16s ease;
+    }
+    .kp__x:hover, .kp__hall:hover {
+      border-color: var(--gf-edge-strong); color: var(--gf-ink);
+    }
+    .kp__x:focus-visible, .kp__hall:focus-visible {
+      outline: 2px solid var(--gf-accent-text); outline-offset: 2px;
     }
     .kp__x { flex: none; }
     .kp__body {
@@ -106,9 +123,12 @@ import { KeeperPanelService } from './keeper-panel.service';
         bottom: var(--gftabs-h, 0px);
         width: min(400px, 92vw);
         height: min(62dvh, 560px);
-        border-left: 3px solid #6a5424;
-        border-top: 3px solid #6a5424;
+        border-left: 1px solid var(--gf-edge-strong);
+        border-top: 1px solid var(--gf-edge-strong);
       }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .kp__x, .kp__hall { transition: none; }
     }
   `],
 })

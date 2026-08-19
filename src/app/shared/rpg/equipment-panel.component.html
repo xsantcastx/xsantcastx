@@ -13,6 +13,8 @@
         <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
         <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
         <span *ngIf="snap.totals.xpBonus">{{ t('loadout.stat.xp') }} <b>+{{ snap.totals.xpBonus }}%</b></span>
+        <span *ngIf="strikePct">{{ t('loadout.stat.strike') }} <b>+{{ strikePct }}%</b></span>
+        <span *ngIf="wardPct">{{ t('loadout.stat.ward') }} <b>−{{ wardPct }}%</b></span>
       </p>
       <ng-template #emptyTotals>
         <p class="ld__totals ld__totals--empty">{{ t('loadout.stat.empty') }}</p>
@@ -46,30 +48,95 @@
           [style.top.%]="slot.control.y"
           (click)="onSlotClick(slot)"
           [attr.aria-label]="slotAnnounce(slot)"
+          [attr.title]="slotTooltip(slot)"
           [attr.aria-pressed]="selectedSlot === slot.slotId"
         >
-          <span class="ld__slot-glyph"
-                [ngStyle]="{
-                  'mask-image': 'url(' + slot.glyph + ')',
-                  '-webkit-mask-image': 'url(' + slot.glyph + ')'
-                }"
-                aria-hidden="true"></span>
+          <!-- Worn gear shows its own art; an empty well keeps the carved slot
+               glyph so the loadout still reads as eight named slots. -->
+          <ng-container *ngIf="itemInDoll(slot) as worn; else slotGlyph">
+            <img *ngIf="tileArt(worn) as art"
+                 class="ld__slot-art"
+                 [src]="art"
+                 [attr.srcset]="tileArtSrcset(worn)"
+                 sizes="56px"
+                 alt=""
+                 width="56" height="56"
+                 loading="lazy" decoding="async">
+            <span *ngIf="!tileArt(worn)"
+                  class="ld__slot-glyph"
+                  [ngStyle]="{
+                    'mask-image': 'url(' + slot.glyph + ')',
+                    '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                  }"
+                  aria-hidden="true"></span>
+          </ng-container>
+          <ng-template #slotGlyph>
+            <span class="ld__slot-glyph"
+                  [ngStyle]="{
+                    'mask-image': 'url(' + slot.glyph + ')',
+                    '-webkit-mask-image': 'url(' + slot.glyph + ')'
+                  }"
+                  aria-hidden="true"></span>
+          </ng-template>
           <span class="ld__slot-name">{{ t(slot.labelKey) }}</span>
           <span class="ld__slot-state">{{ itemInDoll(slot)?.name || t(slot.liveSlot ? 'loadout.slot.empty' : 'loadout.slot.locked') }}</span>
         </button>
       </div>
 
-      <div class="ld__expand" *ngIf="expandedItem as worn">
-        <p class="ld__expand-name">{{ worn.name }}
-          <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
-        </p>
-        <ul class="ld__mods" *ngIf="modsOf(worn).length">
-          <li *ngFor="let mod of modsOf(worn)">{{ mod }}</li>
-        </ul>
-        <div class="ld__expand-actions">
-          <app-inspect-button type="item" [id]="worn.id"></app-inspect-button>
-          <button type="button" class="ld__unequip" (click)="unequipExpanded()">{{ t('loadout.unequip') }}</button>
+      <!--
+        Slot picker. Selecting a well shows what is worn there and every item in
+        the bag that fits it, so equipping is one surface instead of a trip to
+        the Bank tab to arm something first.
+      -->
+      <div class="ld__picker" *ngIf="selectedSlotManifest as slot">
+        <div class="ld__picker-head">
+          <h4 class="ld__picker-title">{{ t(slot.labelKey) }}</h4>
+          <button type="button" class="ld__picker-close" (click)="selectedSlot = null"
+                  [attr.aria-label]="t('loadout.picker.close')">&times;</button>
         </div>
+
+        <div class="ld__worn" *ngIf="expandedItem as worn">
+          <img class="ld__worn-art" *ngIf="tileArt(worn) as art" [src]="art"
+               [attr.srcset]="tileArtSrcset(worn)" sizes="44px"
+               alt="" width="44" height="44" decoding="async">
+          <div class="ld__worn-body">
+            <p class="ld__expand-name">{{ worn.name }}
+              <span class="ld__lvl" *ngIf="worn.upgradeLevel">+{{ worn.upgradeLevel }}</span>
+            </p>
+            <ul class="ld__mods" *ngIf="modsOf(worn).length">
+              <li *ngFor="let mod of modsOf(worn)">{{ mod }}</li>
+            </ul>
+          </div>
+          <div class="ld__expand-actions">
+            <app-inspect-button type="item" [id]="worn.id"></app-inspect-button>
+            <button type="button" class="ld__unequip" (click)="unequipExpanded()">{{ t('loadout.unequip') }}</button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="slot.liveSlot; else slotLocked">
+          <p class="ld__picker-label">{{ t('loadout.picker.choose') }}</p>
+          <ul class="ld__picker-list" *ngIf="candidatesFor(slot).length; else nothingFits">
+            <li *ngFor="let item of candidatesFor(slot); trackBy: trackItem">
+              <button type="button" class="ld__pick" (click)="equipFromPicker(slot, item)"
+                      [attr.title]="item.name">
+                <img class="ld__pick-art" *ngIf="tileArt(item) as art" [src]="art"
+                     [attr.srcset]="tileArtSrcset(item)" sizes="36px"
+                     alt="" width="36" height="36" loading="lazy" decoding="async">
+                <span class="ld__pick-orb" *ngIf="!tileArt(item)" aria-hidden="true">{{ initialsOf(item) }}</span>
+                <span class="ld__pick-name">{{ item.name }}
+                  <span class="ld__lvl" *ngIf="item.upgradeLevel">+{{ item.upgradeLevel }}</span>
+                </span>
+                <span class="ld__pick-mods">{{ modsOf(item).join(' · ') || label(item) }}</span>
+              </button>
+            </li>
+          </ul>
+          <ng-template #nothingFits>
+            <p class="ld__picker-empty">{{ t('loadout.picker.none') }}</p>
+          </ng-template>
+        </ng-container>
+        <ng-template #slotLocked>
+          <p class="ld__picker-empty">{{ t('loadout.slot.locked') }}</p>
+        </ng-template>
       </div>
 
       <div class="ld__charms" *ngIf="retiredCharms.length">

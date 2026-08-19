@@ -48,10 +48,10 @@ import { StatPanelComponent } from '../rpg/stat-panel.component';
   `,
   styles: [`
     :host { display: block; }
-    .ht h2 { margin: 0 0 0.8rem; font: 700 1.15rem/1.2 Palatino, 'Palatino Linotype', 'Times New Roman', serif; color: #f4e7c3; }
+    .ht h2 { margin: 0 0 0.8rem; font: 700 1.15rem/1.2 var(--font-lore); color: var(--gf-ink); }
     .ht__dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; margin: 0 0 1.2rem; }
-    .ht__dl dt { font-size: 0.72rem; letter-spacing: .08em; text-transform: uppercase; color: #8b7a52; }
-    .ht__dl dd { margin: 0.2rem 0 0; font-weight: 600; color: #f4e7c3; }
+    .ht__dl dt { font-size: 0.72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gf-faint); }
+    .ht__dl dd { margin: 0.2rem 0 0; font-weight: 600; color: var(--gf-ink); }
   `],
 })
 export class HubStatsComponent implements OnInit, OnDestroy {
