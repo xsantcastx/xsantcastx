@@ -1,0 +1,158 @@
+<!-- The Gambler. Same three-layer pattern as the Market: art scene, gradient
+     overlay inside the component, everything else above it. -->
+<section class="gb">
+
+  <header class="gb__hero">
+    <span class="gb__sigil" aria-hidden="true">✦</span>
+    <p class="gb__eyebrow"><span class="gb__eyebrow-pulse"></span>SEALED &amp; UNOPENED</p>
+    <h1 class="gb__title">The Gambler</h1>
+    <p class="gb__tagline">every box holds one thing, and the realms will not say which</p>
+  </header>
+
+  <div class="gb__wallet">
+    <span class="gb__coin"><b>{{ compact(gold) }}</b> Gold</span>
+    <span class="gb__coin gb__coin--muted"><b>{{ compact(spent) }}</b> spent here</span>
+    <span class="gb__coin gb__coin--muted" *ngIf="uniquesFound"><b>{{ uniquesFound }}</b> named found</span>
+  </div>
+
+  <p class="gb__error" *ngIf="error" role="alert">{{ error }}</p>
+
+  <!-- ── The shelf ──────────────────────────────────────────────────────── -->
+  <ul class="gb__shelf">
+    <li class="gb__box" *ngFor="let box of boxes; trackBy: trackBox"
+        [style.--box-accent]="box.accent" [style.--box-glow]="box.glow">
+      <div class="gb__lid" aria-hidden="true"></div>
+      <h2 class="gb__box-name">{{ box.name }}</h2>
+      <p class="gb__box-blurb">{{ box.blurb }}</p>
+
+      <!-- The rarity window, before you buy. Never after. -->
+      <ul class="gb__odds">
+        <li class="gb__odd" *ngFor="let row of oddsFor(box); trackBy: trackOdds" [style.color]="row.color">
+          <span class="gb__odd-dot" [style.background]="row.color"></span>
+          {{ row.label }} <b>{{ row.text }}</b>
+        </li>
+      </ul>
+
+      <!-- Bad luck protection, stated as a number rather than a promise. -->
+      <p class="gb__pity" [class.gb__pity--armed]="guaranteed(box)">
+        <ng-container *ngIf="guaranteed(box); else pityCounting">
+          ✦ Next one is guaranteed above {{ rarityLabel(box.minRarity) }}
+        </ng-container>
+        <ng-template #pityCounting>
+          {{ pityLeft(box) }} more {{ rarityLabel(box.minRarity) }} in a row and the next is guaranteed better
+        </ng-template>
+      </p>
+
+      <button type="button" class="gb__buy"
+              [disabled]="!affordable(box) || phase !== 'idle'"
+              (click)="open(box)">
+        Open — {{ compact(box.cost) }} Gold
+      </button>
+      <p class="gb__opened" *ngIf="openedCount(box)">{{ openedCount(box) }} opened</p>
+    </li>
+  </ul>
+
+  <!-- ── The till ───────────────────────────────────────────────────────── -->
+  <section class="gb__till">
+    <button type="button" class="gb__till-toggle" (click)="toggleTill()"
+            [attr.aria-expanded]="sellOpen">
+      <span>The Till</span>
+      <span class="gb__till-count">{{ sellRows.length }} sellable</span>
+      <span class="gb__till-caret" aria-hidden="true">{{ sellOpen ? '▴' : '▾' }}</span>
+    </button>
+
+    <div class="gb__till-body" *ngIf="sellOpen">
+      <p class="gb__till-note">
+        A sale pays the sticker price scaled by the roll — half for a dud, one and
+        a half for a maxed one, and three times over for a Perfect.
+      </p>
+
+      <div class="gb__till-actions">
+        <button type="button" class="gb__mini" (click)="selectPoor()">Select every roll under 50%</button>
+        <button type="button" class="gb__mini" (click)="clearSelection()" [disabled]="!selectedCount">Clear</button>
+      </div>
+
+      <ul class="gb__sell-list" *ngIf="sellRows.length; else nothingToSell">
+        <li class="gb__sell-row" *ngFor="let row of sellRows; trackBy: trackRow"
+            [attr.data-quality-tag]="tagOf(row.item)">
+          <label class="gb__sell-label">
+            <input type="checkbox" [checked]="row.selected" (change)="toggleRow(row)">
+            <span class="gb__sell-name" [style.color]="rarityColor(row.item.rarity)">
+              {{ row.item.name }}
+              <b class="gb__sell-lvl" *ngIf="row.item.upgradeLevel">+{{ row.item.upgradeLevel }}</b>
+            </span>
+            <span class="gb__sell-mods">{{ mods(row.item).join(' · ') }}</span>
+            <span class="gb__sell-q" [style.color]="qualityColor(row.item)">{{ qualityText(row.item) }}</span>
+            <span class="gb__sell-gold">{{ compact(row.item.sellValue) }}</span>
+          </label>
+        </li>
+      </ul>
+      <ng-template #nothingToSell>
+        <p class="gb__till-empty">Nothing in the bag the till will take.</p>
+      </ng-template>
+
+      <div class="gb__sell-bar" *ngIf="selectedCount">
+        <span>{{ selectedCount }} selected — <b>{{ compact(selectedGold) }} Gold</b></span>
+        <button type="button" class="gb__sell-go" (click)="confirmSell()">Sell them</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="gb__back"><a routerLink="/market">← Back to the Market</a></p>
+</section>
+
+<!-- ── The reveal ────────────────────────────────────────────────────────────
+     Full-viewport, above everything, and dismissible from three places: the
+     backdrop, the Escape key and the button. The payload is already banked. -->
+<div class="gb-reveal" *ngIf="phase !== 'idle'"
+     [attr.data-phase]="phase"
+     [style.--reveal-color]="revealColor"
+     [style.--reveal-glow]="revealGlow"
+     role="dialog" aria-modal="true" aria-label="Mystery box"
+     (click)="phase === 'revealed' ? dismiss() : skip()">
+
+  <div class="gb-reveal__stage" (click)="$event.stopPropagation()">
+
+    <!-- Anticipation: the box, shaking, with light leaking out of the seam. -->
+    <div class="gb-reveal__box" *ngIf="phase !== 'revealed'" aria-hidden="true">
+      <span class="gb-reveal__seam"></span>
+      <span class="gb-reveal__beam gb-reveal__beam--a"></span>
+      <span class="gb-reveal__beam gb-reveal__beam--b"></span>
+      <span class="gb-reveal__beam gb-reveal__beam--c"></span>
+    </div>
+    <p class="gb-reveal__waiting" *ngIf="phase !== 'revealed'">
+      {{ active?.name }}<br><button type="button" class="gb-reveal__skip" (click)="skip()">Skip</button>
+    </p>
+
+    <!-- Payoff. -->
+    <ng-container *ngIf="phase === 'revealed' && result as shown">
+      <p class="gb-reveal__pity" *ngIf="shown.pityApplied">✦ Bad luck protection paid out</p>
+
+      <p class="gb-reveal__named" *ngIf="shown.unique">A named object</p>
+
+      <div class="gb-reveal__item" [attr.data-quality-tag]="revealTag">
+        <img class="gb-reveal__art" *ngIf="artSrc(shown.item) as art" [src]="art" alt=""
+             width="96" height="96" decoding="async">
+        <span class="gb-reveal__orb" *ngIf="!artSrc(shown.item)" aria-hidden="true">{{ initials(shown.item) }}</span>
+      </div>
+
+      <p class="gb-reveal__rarity" [style.color]="revealColor">{{ revealRarityLabel }}</p>
+      <h2 class="gb-reveal__name">{{ shown.item.name }}</h2>
+      <p class="gb-reveal__tag" *ngIf="revealTagLabel">{{ revealTagLabel }}</p>
+      <p class="gb-reveal__passive" *ngIf="revealPassive">{{ revealPassive }}</p>
+
+      <app-roll-quality [item]="shown.item" />
+
+      <p class="gb-reveal__lore" *ngIf="shown.item.lore">{{ shown.item.lore }}</p>
+
+      <div class="gb-reveal__actions">
+        <button type="button" class="gb-reveal__again"
+                [disabled]="!active || gold < active.cost"
+                (click)="again()">
+          Open another — {{ compact(active?.cost ?? 0) }}
+        </button>
+        <button type="button" class="gb-reveal__done" (click)="dismiss()">Into the bag</button>
+      </div>
+    </ng-container>
+  </div>
+</div>
