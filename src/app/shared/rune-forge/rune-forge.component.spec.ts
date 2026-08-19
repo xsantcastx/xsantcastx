@@ -151,9 +151,13 @@ describe('RuneForgeComponent reveal', () => {
     roll();
     expect(root.querySelector('.rf-pick')?.getAttribute('data-reveal')).toBe('flash');
     expect(audio.runeReveal).toHaveBeenCalledWith(RUNE_TIERS.mythic.semitones, true);
-    // Cleanup: the flare wrote to <html>; dismiss and let ngOnDestroy clear it.
+    // Cleanup: the celebration writes to <html> and appends a layer to <body>;
+    // ngOnDestroy has to take both back, or a route change mid-Mythic leaves
+    // them on the page the player navigated to.
     fixture.destroy();
-    expect(document.documentElement.dataset['runeFlare']).toBeUndefined();
+    expect(document.documentElement.dataset['gfSlowmo']).toBeUndefined();
+    expect(document.documentElement.classList.contains('gf-distorting')).toBe(false);
+    expect(document.querySelector('.gf-fx')).toBeNull();
   });
 
   it('prints the whole haul under the card and can read the scroll', () => {
