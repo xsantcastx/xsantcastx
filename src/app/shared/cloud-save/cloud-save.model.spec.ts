@@ -876,3 +876,41 @@ describe('stripUndefined', () => {
     expect(envelope.v).not.toBeNull();
   });
 });
+
+/*
+ * The rule that decides whether signing in has anything to say.
+ *
+ * These are here because the old rule counted an unspent Gold balance as
+ * progress the other side had never seen — which is true of every second
+ * device, permanently, and so it fired for practically everybody.
+ */
+describe('isConflict — only unspent progress counts, never a balance', () => {
+  const save = (xp: number, level: number, achievements: number, gold: number) =>
+    summarise(
+      { xp, level, achievements: Array.from({ length: achievements }, (_, i) => `a${i}`) },
+      { gold },
+    );
+
+  it('is silent when a device simply has not spent its Gold yet', () => {
+    // The phone last synced at 3000 Gold; since then the desktop spent it down
+    // and earned XP. Nothing is wrong with either save.
+    expect(isConflict(save(4000, 8, 3, 3000), save(5000, 9, 3, 200))).toBe(false);
+  });
+
+  it('is silent when this device spent Gold the cloud still remembers', () => {
+    expect(isConflict(save(5000, 9, 3, 200), save(5000, 9, 3, 3000))).toBe(false);
+  });
+
+  it('is silent when the cloud is simply further along', () => {
+    expect(isConflict(save(100, 2, 0, 10), save(5000, 9, 3, 8000))).toBe(false);
+  });
+
+  it('still speaks up when each side earned something the other never did', () => {
+    expect(isConflict(save(9000, 12, 3, 100), save(5000, 9, 9, 8000))).toBe(true);
+  });
+
+  it('says nothing about an empty save', () => {
+    expect(isConflict(save(0, 1, 0, 0), save(5000, 9, 3, 8000))).toBe(false);
+  });
+});
+
