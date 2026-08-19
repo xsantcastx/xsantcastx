@@ -1,0 +1,296 @@
+<div class="cl">
+
+  <!-- ═══ The dial ══════════════════════════════════════════════════════════ -->
+  <div class="cl-head">
+    <div class="cl-dial" [style.--tier]="dialColor">
+      <svg viewBox="0 0 120 120" class="cl-dial__svg" aria-hidden="true">
+        <circle class="cl-dial__track" cx="60" cy="60" r="52" />
+        <circle
+          class="cl-dial__arc"
+          cx="60" cy="60" r="52"
+          [attr.stroke-dasharray]="dialCircumference"
+          [attr.stroke-dashoffset]="dialOffset" />
+      </svg>
+      <div class="cl-dial__inner">
+        <span class="cl-dial__pct">{{ overall.percent }}<small>%</small></span>
+        <span class="cl-dial__count">{{ overall.found }} / {{ overall.total }}</span>
+      </div>
+    </div>
+
+    <div class="cl-head__body">
+      <p class="cl-eyebrow">
+        <span class="cl-eyebrow__pulse" aria-hidden="true"></span>
+        The Collection Log
+      </p>
+      <h2 class="cl-title">Everything there is to hold</h2>
+      <p class="cl-sub">
+        Every rune, word, artifact, charm, material and worn thing the Godforge
+        can put in your hands — the ones you have held, and the ones you have not.
+        A thing spent is still a thing found: the log keeps it either way.
+      </p>
+
+      @if (nextReward) {
+        <p class="cl-next">
+          <span class="cl-next__badge">{{ nextReward.at }}%</span>
+          {{ nextReward.away }} more and you are
+          <strong>{{ nextReward.title }}</strong>.
+        </p>
+      } @else if (overall.percent >= 100) {
+        <p class="cl-next cl-next--done">
+          <span class="cl-next__badge">✦</span>
+          Nothing is left. You have held all of it.
+        </p>
+      }
+    </div>
+  </div>
+
+  <!-- ═══ Reward ladder ═════════════════════════════════════════════════════ -->
+  <div class="cl-rewards">
+    @for (reward of rewards; track reward.id) {
+      <div
+        class="cl-reward"
+        [class.is-earned]="rewardEarned(reward.id)"
+        [class.is-reached]="overall.percent >= reward.at">
+        <p class="cl-reward__at">{{ reward.at }}%</p>
+        <p class="cl-reward__title">{{ reward.title }}</p>
+        <p class="cl-reward__gold">{{ reward.gold | number }} Gold</p>
+        <p class="cl-reward__blurb">{{ reward.blurb }}</p>
+        <p class="cl-reward__state">
+          @if (rewardEarned(reward.id)) { ✦ claimed }
+          @else { {{ reward.at }}% of the log }
+        </p>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ Recent discoveries ════════════════════════════════════════════════ -->
+  @if (recent.length) {
+    <section class="cl-recent">
+      <h3 class="cl-recent__title">Recent discoveries</h3>
+      <div class="cl-recent__row">
+        @for (row of recent; track row.card.entry.id) {
+          <div
+            class="cl-recent__item"
+            [style.--tier]="tier(row.card.entry.rarity).color"
+            [style.--tier-glow]="tier(row.card.entry.rarity).glow">
+            @if (art(row.card); as a) {
+              <img [src]="a.src" [attr.srcset]="a.srcset" sizes="48px" alt=""
+                   aria-hidden="true" width="48" height="48"
+                   loading="lazy" decoding="async" draggable="false">
+            } @else {
+              <span class="cl-recent__glyph" aria-hidden="true">{{ categoryOf(row.card.entry.category).icon }}</span>
+            }
+            <span class="cl-recent__name">{{ row.card.entry.name }}</span>
+            <span class="cl-recent__date">{{ formatDate(row.at) }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- ═══ Per-category progress ═════════════════════════════════════════════ -->
+  <section class="cl-bars">
+    <h3 class="cl-bars__title">By category</h3>
+    <div class="cl-bars__grid">
+      @for (cat of categories; track cat.id) {
+        <button
+          type="button"
+          class="cl-bar"
+          [class.is-on]="categoryFilter === cat.id"
+          [style.--tier]="cat.color"
+          [style.--tier-glow]="cat.glow"
+          [attr.aria-pressed]="categoryFilter === cat.id"
+          [attr.title]="cat.blurb"
+          (click)="categoryFilter = categoryFilter === cat.id ? 'all' : cat.id">
+          <span class="cl-bar__head">
+            <span class="cl-bar__icon" aria-hidden="true">{{ cat.icon }}</span>
+            <span class="cl-bar__label">{{ cat.label }}</span>
+            <span class="cl-bar__count">
+              {{ countFor(cat.id).found }}/{{ countFor(cat.id).total }}
+              <small>({{ countFor(cat.id).percent }}%)</small>
+            </span>
+          </span>
+          <span class="cl-bar__track" aria-hidden="true">
+            <span class="cl-bar__fill" [style.width.%]="countFor(cat.id).percent"></span>
+          </span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Rarity breakdown ══════════════════════════════════════════════════ -->
+  <section class="cl-rarity">
+    <h3 class="cl-rarity__title">By rarity</h3>
+    <div class="cl-rarity__row">
+      @for (r of rarityOrder; track r) {
+        <button
+          type="button"
+          class="cl-rarity__cell"
+          [class.is-on]="rarityFilter === r"
+          [class.is-full]="rarityCount(r).total > 0 && rarityCount(r).found >= rarityCount(r).total"
+          [style.--tier]="rarities[r].color"
+          [style.--tier-glow]="rarities[r].glow"
+          [attr.aria-pressed]="rarityFilter === r"
+          (click)="rarityFilter = rarityFilter === r ? 'all' : r">
+          <span class="cl-rarity__label">{{ rarities[r].label }}</span>
+          <span class="cl-rarity__count">{{ rarityCount(r).found }}/{{ rarityCount(r).total }}</span>
+          <span class="cl-rarity__track" aria-hidden="true">
+            <span class="cl-rarity__fill" [style.width.%]="rarityCount(r).percent"></span>
+          </span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Filters ═══════════════════════════════════════════════════════════ -->
+  <div class="cl-filters">
+    <div class="cl-filter-row">
+      <span class="cl-filter-row__label">Realm</span>
+      <div class="cl-chips">
+        <button type="button" class="cl-chip" [class.is-on]="realmFilter === 'all'"
+                (click)="realmFilter = 'all'">All</button>
+        @for (realm of realms; track realm.id) {
+          <button
+            type="button"
+            class="cl-chip"
+            [class.is-on]="realmFilter === realm.id"
+            [style.--chip]="realm.color"
+            [style.--chip-glow]="realm.glow"
+            (click)="realmFilter = realm.id">{{ realm.name }}</button>
+        }
+        <button type="button" class="cl-chip" [class.is-on]="realmFilter === 'unaligned'"
+                title="Things no realm has claimed"
+                (click)="realmFilter = 'unaligned'">Unaligned</button>
+      </div>
+    </div>
+
+    <div class="cl-filter-row">
+      <div class="cl-filter-group">
+        <label class="cl-filter-label" for="cl-status">Show</label>
+        <select id="cl-status" class="cl-select" [(ngModel)]="statusFilter">
+          <option value="all">Everything</option>
+          <option value="found">Found only</option>
+          <option value="unfound">Still missing</option>
+        </select>
+      </div>
+
+      <div class="cl-filter-group">
+        <label class="cl-filter-label" for="cl-sort">Sort</label>
+        <select id="cl-sort" class="cl-select" [(ngModel)]="sort">
+          @for (s of sorts; track s) {
+            <option [value]="s">{{ sortLabels[s] }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="cl-filter-group cl-filter-group--grow">
+        <label class="cl-visually-hidden" for="cl-search">Search the log</label>
+        <input
+          id="cl-search"
+          type="search"
+          class="cl-search"
+          placeholder="Search what you have found…"
+          [(ngModel)]="search" />
+      </div>
+
+      @if (hasActiveFilters) {
+        <button type="button" class="cl-clear" (click)="clearFilters()">Clear</button>
+      }
+    </div>
+  </div>
+
+  <!-- ═══ The grid ══════════════════════════════════════════════════════════ -->
+  @if (sections.length) {
+    @for (section of sections; track section.category.id) {
+      <section class="cl-section"
+               [style.--tier]="section.category.color"
+               [style.--tier-glow]="section.category.glow">
+        <div class="cl-section__hd">
+          <h3 class="cl-section__title">
+            <span aria-hidden="true">{{ section.category.icon }}</span>
+            {{ section.category.label }}
+          </h3>
+          <span class="cl-section__count">
+            {{ section.completion.found }} / {{ section.completion.total }}
+          </span>
+        </div>
+        <p class="cl-section__blurb">{{ section.category.blurb }}</p>
+
+        <div class="cl-grid">
+          <ng-container *ngTemplateOutlet="grid; context: { $implicit: section.cards }"></ng-container>
+        </div>
+      </section>
+    }
+  } @else if (visible.length) {
+    <div class="cl-grid cl-grid--flat">
+      <ng-container *ngTemplateOutlet="grid; context: { $implicit: visible }"></ng-container>
+    </div>
+  } @else {
+    <p class="cl-empty">Nothing in the log matches that. <button type="button" class="cl-clear" (click)="clearFilters()">Clear the filters</button></p>
+  }
+
+  <p class="cl-foot">
+    {{ countedTotal }} entries count toward completion.
+    @if (unobtainable) {
+      {{ unobtainable }} more are drawn, named and not yet forged — they are shown
+      and they are not counted, because a bar that cannot reach the end is a bar
+      that lies.
+    }
+  </p>
+</div>
+
+<!-- ═══ One card, used by both grid shapes ═════════════════════════════════ -->
+<ng-template #grid let-cards>
+  @for (card of cards; track card.entry.id) {
+    <article
+      class="cl-card"
+      [class.cl-card--locked]="!card.found"
+      [class.cl-card--absent]="!card.entry.obtainable"
+      [class.cl-card--reward]="card.entry.reward"
+      [attr.data-tier]="card.entry.rarity"
+      [style.--tier]="tier(card.entry.rarity).color"
+      [style.--tier-glow]="tier(card.entry.rarity).glow">
+
+      <div class="cl-card__art">
+        @if (art(card); as a) {
+          <img [src]="a.src" [attr.srcset]="a.srcset" sizes="80px"
+               [alt]="card.entry.name" width="80" height="80"
+               loading="lazy" decoding="async" draggable="false">
+        } @else if (card.found) {
+          <span class="cl-card__glyph" aria-hidden="true">{{ categoryOf(card.entry.category).icon }}</span>
+        } @else {
+          <span class="cl-card__glyph cl-card__glyph--silhouette" aria-hidden="true">{{ lockedGlyph(card.index) }}</span>
+        }
+        @if (card.found && card.count > 1) {
+          <span class="cl-card__count" [attr.title]="card.count + ' found in all'">×{{ card.count }}</span>
+        }
+      </div>
+
+      <div class="cl-card__body">
+        <p class="cl-card__meta">
+          <span class="cl-card__badge">{{ tier(card.entry.rarity).label }}</span>
+          @if (realmName(card.entry.realm); as realm) {
+            <span class="cl-card__realm">{{ realm }}</span>
+          }
+        </p>
+
+        <h4 class="cl-card__name">{{ card.found ? card.entry.name : '???' }}</h4>
+
+        @if (card.found) {
+          <p class="cl-card__lore">{{ card.entry.lore }}</p>
+          <p class="cl-card__foot">
+            <span class="cl-card__date">{{ formatDate(card.firstDiscoveredAt) }}</span>
+            @if (card.entry.reward) { <span class="cl-card__tag">reward</span> }
+          </p>
+        } @else {
+          <!-- The hint, never the lore: the lore names the thing, and a locked
+               card that names itself is a checklist rather than a log. -->
+          <p class="cl-card__hint">{{ card.entry.hint }}</p>
+          @if (!card.entry.obtainable) {
+            <p class="cl-card__absent">not yet in the world</p>
+          }
+        }
+      </div>
+    </article>
+  }
+</ng-template>
