@@ -411,6 +411,17 @@ button.gftome__keeper {
   background: currentColor; box-shadow: 0 -3px 0 currentColor, 0 3px 0 currentColor;
 }
 
+/* exchange — a balance beam over its post */
+.gfrune--exchange::before {
+  top: 4px; left: 50%; width: 13px; height: 1.5px; translate: -50% 0;
+  background: currentColor;
+  box-shadow: -5px 3px 0 -0.25px currentColor, 5px 3px 0 -0.25px currentColor;
+}
+.gfrune--exchange::after {
+  top: 4px; left: 50%; width: 1.5px; height: 9px; translate: -50% 0;
+  background: currentColor; border-radius: 0 0 1px 1px;
+}
+
 /* tools — a hammer over an anvil */
 .gfrune--tools::before {
   top: 2px; left: 50%; width: 2px; height: 9px; translate: -50% 0;

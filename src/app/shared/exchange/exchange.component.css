@@ -1,0 +1,571 @@
+/**
+ * exchange.component.css — the trading floor.
+ *
+ * A two-column hall: the board on the left, the open line and the ledgers on
+ * the right. The palette is the Market's forge pair (#E8752A → #C9A84C) with
+ * violet for the rail, because this is the same economy seen from the other
+ * side of the counter; rarity colours arrive per row as `--tier` / `--tier-glow`
+ * from the Eclipse ladder. Nothing here introduces a colour that is not already
+ * in the brand palette or that ladder — the two exceptions are the trend pair,
+ * green and red, which have to be the conventional ones because a rising price
+ * drawn in violet is a price nobody can read at a glance.
+ *
+ * Two rules this file is built around, both inherited:
+ *   - Mobile drops to one column and drops the ornament with it. Per the mobile
+ *     rescue pass, `backdrop-filter` is off below 768px site-wide; these panels
+ *     use flat alpha there rather than a blur that will not run.
+ *   - Every animation over 1s has a static end state under reduced motion.
+ */
+
+.ge {
+  --ge-warm: #E8752A;
+  --ge-gold: #C9A84C;
+  --ge-gold-soft: rgba(201, 168, 76, 0.5);
+  --ge-violet: #a48bff;
+  --ge-up: #5fdc9a;
+  --ge-down: #ff6b6b;
+
+  --ge-pane: rgba(15, 10, 30, 0.8);
+  --ge-pane-2: rgba(20, 14, 38, 0.72);
+  --ge-line: rgba(255, 255, 255, 0.07);
+  --ge-ink: #e8ecf1;
+  --ge-dim: rgba(232, 236, 241, 0.58);
+  --ge-faint: rgba(232, 236, 241, 0.4);
+
+  position: relative;
+  z-index: 1;
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: clamp(18px, 3.4vw, 40px) clamp(12px, 3vw, 28px) 80px;
+  color: var(--ge-ink);
+}
+
+.ge__sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+
+/* The hero sits directly on the scene art, which is busy behind the title.
+   The art-scene's own overlay darkens the whole backdrop evenly; this is the
+   local scrim that buys the text its contrast back, the same way the Market's
+   hero does it — two coloured washes for the brand pair and one dark ellipse
+   under the words themselves. */
+.ge__hero {
+  position: relative;
+  text-align: center;
+  padding: clamp(26px, 5vw, 56px) 16px clamp(20px, 3vw, 34px);
+  margin-bottom: clamp(16px, 2.4vw, 26px);
+  background:
+    radial-gradient(ellipse 46% 78% at 6% 0%, rgba(123, 97, 255, 0.2), transparent 62%),
+    radial-gradient(ellipse 46% 78% at 94% 0%, rgba(232, 117, 42, 0.16), transparent 62%),
+    radial-gradient(ellipse 74% 108% at 50% 42%, rgba(10, 6, 26, 0.82), transparent 72%);
+}
+
+/* Gradient cap lines, top and bottom — the site's section signature. */
+.ge__hero::before, .ge__hero::after {
+  content: ''; position: absolute; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.55) 50%, transparent);
+}
+.ge__hero::before { top: 0; }
+.ge__hero::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
+
+.ge__sigil {
+  display: block; font-size: clamp(30px, 5vw, 46px); line-height: 1;
+  color: var(--ge-gold);
+  text-shadow: 0 0 18px rgba(201, 168, 76, 0.55), 0 0 46px rgba(232, 117, 42, 0.3);
+  animation: geSigil 7s ease-in-out infinite;
+}
+
+@keyframes geSigil {
+  0%, 100% { opacity: 0.82; transform: translateY(0) scale(1); }
+  50%      { opacity: 1;    transform: translateY(-3px) scale(1.03); }
+}
+
+.ge__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 12px 0 6px; font-size: 0.7rem; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--ge-dim);
+}
+
+.ge__eyebrow-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ge-gold); box-shadow: 0 0 10px var(--ge-gold-soft);
+  animation: gePulse 3s ease-in-out infinite;
+}
+
+@keyframes gePulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1.25); }
+}
+
+.ge__title {
+  margin: 0; font-size: clamp(1.9rem, 5vw, 3.1rem); line-height: 1.05;
+  background: linear-gradient(100deg, var(--ge-warm), var(--ge-gold) 48%, var(--ge-violet));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.ge__tagline {
+  margin: 10px auto 0; max-width: 60ch;
+  padding: 6px 16px; border-radius: 999px; width: fit-content;
+  /* Opaque enough to read over the scene art, not just over the page. */
+  background: rgba(12, 7, 28, 0.62);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  font-size: 0.86rem; color: var(--ge-ink);
+}
+
+/* ── Event banners ────────────────────────────────────────────────────── */
+
+.ge__events {
+  display: grid; gap: 10px; margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.ge__event {
+  position: relative; overflow: hidden;
+  padding: 12px 16px; border-radius: 12px;
+  background: var(--ge-pane-2);
+  border: 1px solid var(--ge-line);
+  border-left: 3px solid var(--ge-gold);
+}
+
+.ge__event[data-tone='boon']  { border-left-color: var(--ge-up); }
+.ge__event[data-tone='bane']  { border-left-color: var(--ge-down); }
+.ge__event[data-tone='crash'] { border-left-color: var(--ge-violet); }
+
+/* A slow sweep, so an active event reads as live without a spinner. */
+.ge__event::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: geSweep 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes geSweep { to { transform: translateX(100%); } }
+
+.ge__event-name {
+  margin: 0; font-size: 0.95rem; letter-spacing: 0.04em;
+  display: flex; align-items: baseline; gap: 8px;
+}
+
+.ge__event-delta {
+  font-size: 0.78rem; font-variant-numeric: tabular-nums;
+  color: var(--ge-gold);
+}
+.ge__event[data-tone='boon'] .ge__event-delta  { color: var(--ge-up); }
+.ge__event[data-tone='bane'] .ge__event-delta,
+.ge__event[data-tone='crash'] .ge__event-delta { color: var(--ge-down); }
+
+.ge__event-blurb { margin: 5px 0 0; font-size: 0.8rem; color: var(--ge-dim); }
+.ge__event-time  { margin: 5px 0 0; font-size: 0.72rem; color: var(--ge-faint); letter-spacing: 0.08em; }
+
+/* ── Wallet ───────────────────────────────────────────────────────────── */
+
+.ge__wallet {
+  display: grid; gap: 10px; margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.ge__coin {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 12px;
+  background: var(--ge-pane); border: 1px solid var(--ge-line);
+}
+
+.ge__coin--gold { border-color: rgba(201, 168, 76, 0.26); }
+.ge__coin--tax  { border-color: rgba(164, 139, 255, 0.22); }
+
+.ge__coin-icon  { width: 34px; height: 34px; flex: none; }
+.ge__coin-glyph { font-size: 1.1rem; color: var(--ge-faint); flex: none; width: 34px; text-align: center; }
+.ge__coin-body  { display: flex; flex-direction: column; min-width: 0; }
+.ge__coin-val   { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.ge__coin-label { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ge-faint); }
+
+/* ── Floor layout ─────────────────────────────────────────────────────── */
+
+.ge__floor {
+  display: grid; gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  align-items: start;
+}
+
+/* ── Filters ──────────────────────────────────────────────────────────── */
+
+.ge__filters {
+  display: grid; gap: 10px; margin-bottom: 14px;
+  padding: 14px; border-radius: 14px;
+  background: var(--ge-pane); border: 1px solid var(--ge-line);
+}
+
+.ge__search { position: relative; display: block; }
+.ge__search-glyph {
+  position: absolute; left: 12px; top: 50%; translate: 0 -50%;
+  color: var(--ge-faint); font-size: 1rem; pointer-events: none;
+}
+.ge__search-input {
+  width: 100%; min-height: 44px;
+  padding: 10px 12px 10px 34px; border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid var(--ge-line);
+  color: var(--ge-ink); font: inherit; font-size: 0.9rem;
+}
+.ge__search-input:focus-visible { outline: 2px solid var(--ge-gold); outline-offset: 1px; }
+
+.ge__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ge__chip {
+  min-height: 32px; padding: 5px 12px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--ge-line);
+  color: var(--ge-dim); font: inherit; font-size: 0.76rem; cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.ge__chip:hover { color: var(--ge-ink); border-color: rgba(255, 255, 255, 0.18); }
+.ge__chip.is-on {
+  color: #0d0820; background: var(--ge-gold); border-color: var(--ge-gold); font-weight: 600;
+}
+.ge__chip--tier.is-on { background: var(--tier, var(--ge-gold)); border-color: var(--tier, var(--ge-gold)); }
+.ge__chip--up.is-on   { background: var(--ge-up);   border-color: var(--ge-up); }
+.ge__chip--down.is-on { background: var(--ge-down); border-color: var(--ge-down); }
+
+.ge__filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.ge__num { display: flex; align-items: center; gap: 6px; }
+.ge__num-label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ge-faint); }
+.ge__num-input {
+  width: 86px; min-height: 32px; padding: 5px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid var(--ge-line);
+  color: var(--ge-ink); font: inherit; font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ge__toggle {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 32px;
+  font-size: 0.78rem; color: var(--ge-dim); cursor: pointer;
+}
+.ge__toggle input { width: 16px; height: 16px; accent-color: var(--ge-gold); }
+
+.ge__sortbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding-top: 8px; border-top: 1px solid var(--ge-line);
+}
+.ge__sortbar-label {
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ge-faint);
+}
+.ge__sort {
+  min-height: 30px; padding: 4px 10px; border-radius: 8px;
+  background: none; border: 1px solid transparent;
+  color: var(--ge-dim); font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.ge__sort:hover  { color: var(--ge-ink); }
+.ge__sort.is-on  { color: var(--ge-gold); border-color: rgba(201, 168, 76, 0.3); }
+.ge__count { margin-left: auto; font-size: 0.74rem; color: var(--ge-faint); font-variant-numeric: tabular-nums; }
+.ge__clear {
+  min-height: 30px; padding: 4px 10px; border-radius: 8px;
+  background: none; border: 1px solid var(--ge-line);
+  color: var(--ge-dim); font: inherit; font-size: 0.74rem; cursor: pointer;
+}
+.ge__clear:hover { color: var(--ge-ink); border-color: rgba(255, 255, 255, 0.2); }
+
+/* ── Rows ─────────────────────────────────────────────────────────────── */
+
+.ge__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.ge__row {
+  border-radius: 12px;
+  background: var(--ge-pane-2); border: 1px solid var(--ge-line);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.ge__row:hover  { border-color: color-mix(in srgb, var(--tier, #fff) 45%, transparent); }
+.ge__row.is-open {
+  border-color: var(--tier, var(--ge-gold));
+  box-shadow: 0 0 26px -10px var(--tier-glow, var(--ge-gold-soft));
+}
+
+.ge__row-btn {
+  display: grid; width: 100%; min-height: 62px;
+  grid-template-columns: 48px minmax(0, 1fr) 110px 116px 96px;
+  align-items: center; gap: 12px;
+  padding: 9px 14px; border: 0; border-radius: 12px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ge__row-btn:focus-visible { outline: 2px solid var(--tier, var(--ge-gold)); outline-offset: -2px; }
+
+.ge__row-mark { display: grid; place-items: center; }
+.ge__row-art  { width: 40px; height: 40px; object-fit: contain; }
+.ge__row-orb {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, rgba(255,255,255,0.28), transparent 46%),
+              radial-gradient(circle at 50% 50%, var(--tier, var(--ge-gold)), rgba(8,3,24,0.92) 88%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.9rem; font-weight: 600; color: #0d0820;
+}
+
+.ge__row-id   { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ge__row-name {
+  font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ge__row-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.68rem; color: var(--ge-faint); }
+.ge__row-tier { color: var(--tier, var(--ge-gold)); }
+.ge__row-held  { color: var(--ge-violet); }
+.ge__row-moved { color: var(--ge-warm); }
+
+.ge__row-spark { display: block; height: 34px; }
+
+.ge__row-num    { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.ge__row-price  { font-size: 0.98rem; font-variant-numeric: tabular-nums; }
+.ge__row-change {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.74rem; font-variant-numeric: tabular-nums; color: var(--ge-faint);
+}
+.ge__row-change[data-trend='rising']  { color: var(--ge-up); }
+.ge__row-change[data-trend='falling'] { color: var(--ge-down); }
+
+.ge__row-stock { display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+                 font-size: 0.7rem; color: var(--ge-faint); font-variant-numeric: tabular-nums; }
+.ge__row-stock em { font-style: normal; opacity: 0.65; }
+
+/* A rising line gets a whisper of green on its left edge, and a falling one
+   red. The arrow and the percentage already say it; this is so a column of
+   forty rows has a shape you can read without reading. */
+.ge__row[data-trend='rising']  { border-left: 2px solid rgba(95, 220, 154, 0.5); }
+.ge__row[data-trend='falling'] { border-left: 2px solid rgba(255, 107, 107, 0.5); }
+
+.ge__more {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 100%; min-height: 52px; margin-top: 8px;
+  padding: 10px 16px; border-radius: 12px;
+  background: var(--ge-pane-2); border: 1px dashed rgba(201, 168, 76, 0.3);
+  color: var(--ge-gold); font: inherit; font-size: 0.86rem; cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.ge__more:hover { border-color: var(--ge-gold); background: rgba(201, 168, 76, 0.06); }
+.ge__more-rest { font-size: 0.68rem; color: var(--ge-faint); letter-spacing: 0.08em; }
+
+/* ── Empty ────────────────────────────────────────────────────────────── */
+
+.ge__empty {
+  display: grid; place-items: center; gap: 8px; text-align: center;
+  padding: 56px 20px; border-radius: 14px;
+  background: var(--ge-pane); border: 1px solid var(--ge-line);
+}
+.ge__empty-glyph { font-size: 2rem; opacity: 0.5; }
+.ge__empty-title { margin: 0; font-size: 1rem; }
+.ge__empty-body  { margin: 0; font-size: 0.84rem; color: var(--ge-dim); }
+.ge__cta {
+  min-height: 44px; padding: 10px 20px; border-radius: 10px;
+  background: var(--ge-gold); border: 0; color: #0d0820;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+
+/* ── Rail ─────────────────────────────────────────────────────────────── */
+
+.ge__rail { display: grid; gap: 12px; position: sticky; top: var(--header-offset, 84px); }
+
+.ge__panel {
+  padding: 14px 16px; border-radius: 14px;
+  background: var(--ge-pane); border: 1px solid var(--ge-line);
+}
+.ge__panel--line { border-color: color-mix(in srgb, var(--tier, #fff) 34%, transparent); }
+.ge__panel--note { background: rgba(15, 10, 30, 0.55); }
+
+.ge__panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ge__panel-title { margin: 0; font-size: 0.98rem; letter-spacing: 0.03em; }
+.ge__panel-sub  { margin: 3px 0 0; font-size: 0.72rem; color: var(--ge-faint); }
+
+.ge__close {
+  width: 44px; height: 44px; margin: -8px -8px 0 0; flex: none;
+  background: none; border: 0; color: var(--ge-faint);
+  font-size: 0.95rem; cursor: pointer; border-radius: 8px;
+}
+.ge__close:hover { color: var(--ge-ink); }
+
+.ge__panel-price {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 12px 0 10px;
+}
+.ge__panel-now  { font-size: 1.7rem; font-variant-numeric: tabular-nums; color: var(--tier, var(--ge-gold)); }
+.ge__panel-unit { font-size: 0.72rem; color: var(--ge-faint); }
+.ge__panel-change {
+  margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px;
+  font-size: 0.82rem; font-variant-numeric: tabular-nums; color: var(--ge-faint);
+}
+.ge__panel-change[data-trend='rising']  { color: var(--ge-up); }
+.ge__panel-change[data-trend='falling'] { color: var(--ge-down); }
+.ge__panel-change em { font-style: normal; opacity: 0.6; font-size: 0.7rem; }
+
+.ge__ranges { display: flex; gap: 4px; margin-bottom: 8px; }
+.ge__range {
+  flex: 1; min-height: 30px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--ge-line);
+  color: var(--ge-dim); font: inherit; font-size: 0.72rem; letter-spacing: 0.06em; cursor: pointer;
+}
+.ge__range.is-on { color: #0d0820; background: var(--tier, var(--ge-gold)); border-color: transparent; }
+
+.ge__chartbox {
+  height: 150px; border-radius: 10px; padding: 6px;
+  background: rgba(0, 0, 0, 0.26); border: 1px solid var(--ge-line);
+}
+
+.ge__chart-legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 0 0; font-size: 0.66rem; color: var(--ge-faint);
+}
+.ge__legend-line, .ge__legend-avg, .ge__legend-vol {
+  display: inline-block; width: 14px; height: 2px; background: var(--tier, var(--ge-gold));
+}
+.ge__legend-avg { opacity: 0.5; height: 0; border-top: 2px dashed var(--tier, var(--ge-gold)); background: none; }
+.ge__legend-vol { height: 8px; width: 5px; opacity: 0.25; }
+.ge__legend-line:not(:first-child), .ge__legend-avg, .ge__legend-vol { margin-left: 8px; }
+
+.ge__sides { display: flex; gap: 6px; margin: 14px 0 8px; }
+.ge__side {
+  flex: 1; min-height: 40px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--ge-line);
+  color: var(--ge-dim); font: inherit; font-size: 0.86rem; cursor: pointer;
+}
+.ge__side--buy.is-on  { color: #0d0820; background: var(--ge-up);   border-color: transparent; font-weight: 600; }
+.ge__side--sell.is-on { color: #0d0820; background: var(--ge-warm); border-color: transparent; font-weight: 600; }
+
+.ge__holding { margin: 0 0 10px; font-size: 0.76rem; color: var(--ge-dim); }
+.ge__holding span { color: var(--ge-faint); }
+
+.ge__qty { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.ge__qty-step {
+  width: 44px; height: 44px; flex: none; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--ge-line);
+  color: var(--ge-ink); font: inherit; font-size: 1.1rem; cursor: pointer;
+}
+.ge__qty-step:disabled { opacity: 0.35; cursor: not-allowed; }
+.ge__qty-field { flex: 1; min-width: 0; }
+.ge__qty-input {
+  width: 100%; min-height: 44px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid var(--ge-line);
+  color: var(--ge-ink); font: inherit; font-size: 1rem; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ge__qty-max {
+  min-height: 44px; padding: 0 14px; flex: none; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--ge-line);
+  color: var(--ge-dim); font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+
+.ge__receipt {
+  margin: 0 0 10px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22); border: 1px solid var(--ge-line);
+  font-size: 0.8rem;
+}
+.ge__receipt > div { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.ge__receipt dt { margin: 0; color: var(--ge-dim); }
+.ge__receipt dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ge__receipt-tax dd { color: var(--ge-down); }
+.ge__receipt-net {
+  margin-top: 5px; padding-top: 7px !important; border-top: 1px solid var(--ge-line);
+  font-size: 0.95rem;
+}
+.ge__receipt-net dt { color: var(--ge-ink) !important; }
+.ge__receipt-net dd { color: var(--ge-gold); }
+
+.ge__confirm {
+  width: 100%; min-height: 48px; border-radius: 12px; border: 0;
+  background: var(--ge-up); color: #0d0820;
+  font: inherit; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; cursor: pointer;
+  transition: filter 140ms ease;
+}
+.ge__confirm--sell { background: var(--ge-warm); }
+.ge__confirm:hover:not(:disabled) { filter: brightness(1.1); }
+.ge__confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ge__blocker { margin: 7px 0 0; font-size: 0.76rem; color: var(--ge-faint); text-align: center; }
+
+.ge__notice {
+  margin: 9px 0 0; padding: 8px 11px; border-radius: 9px;
+  font-size: 0.78rem; border: 1px solid transparent;
+}
+.ge__notice[data-tone='ok'] {
+  color: var(--ge-up); background: rgba(95, 220, 154, 0.08); border-color: rgba(95, 220, 154, 0.24);
+}
+.ge__notice[data-tone='bad'] {
+  color: var(--ge-down); background: rgba(255, 107, 107, 0.08); border-color: rgba(255, 107, 107, 0.24);
+}
+
+.ge__idle-body { margin: 8px 0 0; font-size: 0.82rem; color: var(--ge-dim); }
+
+/* ── Movers ───────────────────────────────────────────────────────────── */
+
+.ge__movers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.ge__mover-col { display: grid; gap: 3px; align-content: start; }
+.ge__mover-head {
+  margin: 0 0 3px; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.ge__mover-head--up   { color: var(--ge-up); }
+.ge__mover-head--down { color: var(--ge-down); }
+
+.ge__mover {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  min-height: 32px; padding: 4px 7px; border-radius: 7px;
+  background: none; border: 0; color: inherit; font: inherit; font-size: 0.74rem;
+  text-align: left; cursor: pointer; width: 100%;
+}
+.ge__mover:hover { background: rgba(255, 255, 255, 0.04); }
+.ge__mover-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ge-dim); }
+.ge__mover-pct  { flex: none; font-variant-numeric: tabular-nums; }
+.ge__mover-pct[data-trend='rising']  { color: var(--ge-up); }
+.ge__mover-pct[data-trend='falling'] { color: var(--ge-down); }
+.ge__mover-none { margin: 0; font-size: 0.72rem; color: var(--ge-faint); }
+
+/* ── Ledger ───────────────────────────────────────────────────────────── */
+
+.ge__ledger { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px;
+              max-height: 260px; overflow-y: auto; }
+
+.ge__trade {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+  padding: 5px 4px; font-size: 0.76rem;
+}
+.ge__trade-side { text-align: center; font-size: 0.66rem; }
+.ge__trade[data-side='buy']  .ge__trade-side, .ge__trade[data-side='buy']  .ge__trade-net { color: var(--ge-down); }
+.ge__trade[data-side='sell'] .ge__trade-side, .ge__trade[data-side='sell'] .ge__trade-net { color: var(--ge-up); }
+.ge__trade-body { display: flex; flex-direction: column; min-width: 0; }
+.ge__trade-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ge__trade-when { font-size: 0.66rem; color: var(--ge-faint); }
+.ge__trade-net  { font-variant-numeric: tabular-nums; }
+.ge__ledger-none { margin: 8px 0 0; font-size: 0.78rem; color: var(--ge-dim); }
+
+.ge__note { margin: 8px 0 0; font-size: 0.76rem; color: var(--ge-dim); line-height: 1.55; }
+.ge__note-link { color: var(--ge-gold); }
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .ge__floor { grid-template-columns: minmax(0, 1fr); }
+  .ge__rail  { position: static; }
+}
+
+@media (max-width: 768px) {
+  /* backdrop-filter is off site-wide below this width; these panels were
+     already flat alpha, so there is nothing to unwind — but the row grid
+     has to give up its two numeric columns or it overflows a 375px phone. */
+  .ge__row-btn {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-areas: 'mark id num' 'spark spark stock';
+    row-gap: 6px;
+  }
+  .ge__row-mark  { grid-area: mark; }
+  .ge__row-id    { grid-area: id; }
+  .ge__row-num   { grid-area: num; }
+  .ge__row-spark { grid-area: spark; height: 28px; }
+  .ge__row-stock { grid-area: stock; flex-direction: row; gap: 10px; }
+  .ge__movers    { grid-template-columns: 1fr; }
+  .ge__filter-row .ge__num-input { width: 72px; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Static end states, not "no animation" — the sigil keeps its lit look and
+     the pulse keeps its dot. */
+  .ge__sigil { animation: none; opacity: 1; }
+  .ge__eyebrow-pulse { animation: none; opacity: 1; }
+  .ge__event::after { animation: none; display: none; }
+  .ge__chip, .ge__row, .ge__confirm { transition: none; }
+}
