@@ -1016,6 +1016,23 @@ router-outlet + * {
   animation: nebulaDrift 22s ease-in-out infinite;
 }
 
+/* The CSS layer the WebGL forge replaces.
+
+   `.forge-scene-on` is written onto <html> by ForgeSceneService the moment a GL
+   context exists, and removed if it is ever lost. Two particle fields stacked
+   on each other read as noise rather than as depth, and `.particle-layer` is
+   one of the nine fixed full-viewport compositor layers the mobile pass spent a
+   release cutting down — keeping it alive behind a scene that supersedes it is
+   the exact cost that pass was about.
+
+   `.cosmic-canvas` is deliberately NOT hidden here. It looks like the same kind
+   of thing and is not: it carries the click ripple, the cursor trail, the
+   constellation tooltips and the form-success confetti, none of which the forge
+   scene reimplements. Hiding it would silently delete four features. */
+html.forge-scene-on .particle-layer {
+  display: none;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    ATMOSPHERE — the per-route wash
    ════════════════════════════════════════════════════════════════════════════

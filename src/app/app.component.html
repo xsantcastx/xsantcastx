@@ -10,6 +10,19 @@
   <app-godforge-loader></app-godforge-loader>
 }
 
+<!-- The WebGL forge. A sibling of <main> for the same reason the flame and the
+     quest drawer are: routeFadeIn leaves a transform on every routed host,
+     which makes it a containing block, and a position:fixed full-viewport
+     canvas inside one would be pinned to the page rather than the viewport.
+
+     The CSS `.particle-layer` below it is the fallback, not a companion — the
+     scene hides it via `html.forge-scene-on` once a GL context exists, so a
+     visitor with no WebGL, with Reduce Effects on, or reading the prerendered
+     HTML still gets the starfield that was always there. -->
+@if (!isEmbedMode) {
+  <app-forge-scene></app-forge-scene>
+}
+
 @if (!isEmbedMode) {
   <div class="particle-layer"></div>
 }
@@ -75,6 +88,14 @@
 
 @if (!isEmbedMode) {
   <app-inspect></app-inspect>
+}
+
+<!-- The 3D item inspector. An outlet rather than the component itself: it opens
+     over Quick Inspect and pulls three (730 kB) through a dynamic import the
+     first time an item is turned over, so a visitor who never opens it never
+     downloads it. -->
+@if (!isEmbedMode) {
+  <app-inspect-3d-outlet></app-inspect-3d-outlet>
 }
 
 <!-- "Install The Godforge" banner. Bottom-LEFT: every other corner is already
