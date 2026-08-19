@@ -23,7 +23,7 @@ async function openMarket(page: Page, url = '/market'): Promise<void> {
 
 async function assertTilePaints(page: Page, index = 0): Promise<void> {
   const tile = page.locator('.mk__tile').nth(index);
-  await tile.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+  await tile.scrollIntoViewIfNeeded();
   await expect(tile).toBeVisible();
   const box = await tile.boundingBox();
   expect(box, `tile ${index} should have a box`).toBeTruthy();
@@ -31,38 +31,46 @@ async function assertTilePaints(page: Page, index = 0): Promise<void> {
   expect(box!.height).toBeGreaterThan(60);
   const opacity = await tile.evaluate(el => getComputedStyle(el).opacity);
   expect(Number(opacity)).toBe(1);
-  const hit = await page.evaluate(({ x, y }) => {
-    const el = document.elementFromPoint(x, y);
-    return {
-      tag: el?.tagName ?? null,
-      cls: (el as HTMLElement | null)?.className ?? '',
-      tile: !!el?.closest('.mk__tile'),
-      scene: !!el?.closest('.scene'),
-    };
-  }, { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 });
-  expect(hit.scene, `tile ${index} must not be covered by the art scene (${hit.tag}.${hit.cls})`).toBe(false);
-  expect(hit.tile, `tile ${index} must be the topmost paint at its center (${hit.tag}.${hit.cls})`).toBe(true);
+  // Read the rect and hit-test it inside one evaluate, and poll: <html> carries
+  // scroll-behavior: smooth, so a point taken from an earlier boundingBox() can
+  // be stale by the time it is used, and on a 375px viewport a tall flat card
+  // scrolled that way is still off-screen on the first frame — where
+  // elementFromPoint returns null and the failure reads as a paint bug.
+  await expect
+    .poll(async () => tile.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const y = r.y + r.height / 2;
+      if (y < 0 || y > window.innerHeight) return `off-screen at y=${Math.round(y)}`;
+      const hit = document.elementFromPoint(r.x + r.width / 2, y);
+      if (!hit) return 'nothing painted there';
+      if (hit.closest('.scene')) return `covered by the art scene: ${hit.tagName}.${(hit as HTMLElement).className}`;
+      if (hit.closest('.mk__tile')) return 'tile';
+      return `covered by ${hit.tagName}.${(hit as HTMLElement).className}`;
+    }), { message: `tile ${index} must be the topmost paint at its centre` })
+    .toBe('tile');
 }
 
 const shotDir = resolve('test-results/c1-market');
 
 test.describe('C1 Market presentation', () => {
-  test('renders item tiles above the scene and keeps buy off the closed tile', async ({ page }) => {
+  test('renders flat item tiles above the scene, each with its own buy', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openMarket(page);
     await page.locator('.mk__tiles').scrollIntoViewIfNeeded();
-    await expect(page.locator('.mk__tile-trigger')).toHaveCount(8);
-    await expect(page.locator('.mk__buy')).toHaveCount(0);
+    // A page of the catalogue. The tile used to be a disclosure button you
+    // clicked to find out what a listing did and clicked again to buy; it is a
+    // flat card now, so price, effect and Buy are all on it from the start.
+    await expect(page.locator('.mk__tile')).toHaveCount(8);
+    await expect(page.locator('.mk__tile-trigger')).toHaveCount(0);
+    await expect(page.locator('.mk__buy')).toHaveCount(8);
+    await expect(page.locator('.mk__tile').first().locator('.mk__row-effect')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Catalogue picks' })).toBeVisible();
     await expect(page.locator('.mk')).not.toContainText(/Most forged|what the realms are buying/i);
     for (let i = 0; i < 4; i++) await assertTilePaints(page, i);
 
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.mk__tiles').screenshot({ path: resolve(shotDir, 'desktop-tiles.png') });
-    await page.locator('.mk__tile-trigger').first().click();
-    await expect(page.locator('.mk__tile-exp').first()).toBeVisible();
-    await expect(page.locator('.mk__buy')).toHaveCount(1);
-    await page.locator('.mk__tile--open').screenshot({ path: resolve(shotDir, 'desktop-expanded.png') });
+    await page.locator('.mk__tile').first().screenshot({ path: resolve(shotDir, 'desktop-tile.png') });
   });
 
   test('normalizes invalid query values and writes filters to the URL', async ({ page }) => {
@@ -82,7 +90,7 @@ test.describe('C1 Market presentation', () => {
     await expect(page).not.toHaveURL(/page=999/);
     await expect(page.locator('.mk__pager-at')).toContainText(/Page 5 of 5|5 of 5/);
     await expect(page).toHaveURL(/page=5/);
-    await expect(page.locator('.mk__tile-trigger').first()).toBeVisible();
+    await expect(page.locator('.mk__tile').first()).toBeVisible();
   });
 
   test('search empty state and Spanish chrome', async ({ page }) => {
@@ -104,23 +112,24 @@ test.describe('C1 Market presentation', () => {
     await expect(page.getByRole('button', { name: 'Mostrar todo' })).toBeVisible({ timeout: 4000 });
   });
 
-  test('expand then Inspect, Escape collapses the tile', async ({ page }) => {
+  test('Inspect opens from a tile and Escape hands focus back to it', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openMarket(page);
-    const trigger = page.getByRole('button', { name: /Open Forge Bellows/i });
-    await trigger.click();
-    await expect(page.locator('#mk-exp-forge-bellows')).toBeVisible();
-    await expect(page.locator('.mk__buy')).toHaveCount(1);
-    await page.locator('app-inspect-button').first().click();
+    const tile = page.locator('.mk__tile').filter({ hasText: 'Forge Bellows' }).first();
+    await expect(tile).toBeVisible();
+    const inspect = tile.locator('app-inspect-button button');
+    await inspect.click();
     await expect(page).toHaveURL(/inspect=market-listing:forge-bellows/);
+    await expect(page.locator('.qi')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('.qi')).toHaveCount(0);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#mk-exp-forge-bellows')).toHaveCount(0);
-    await expect(trigger).toBeFocused();
+    await expect(page).not.toHaveURL(/inspect=/);
+    // The tile never collapsed, because there is nothing left to collapse.
+    await expect(tile).toBeVisible();
+    await expect(inspect).toBeFocused();
   });
 
-  test('catalogue error shell and reduced-motion tile state', async ({ page }) => {
+  test('catalogue error shell and reduced-motion market chrome', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => {
@@ -132,15 +141,16 @@ test.describe('C1 Market presentation', () => {
 
     await page.getByRole('button', { name: 'Retry' }).click();
     await expect(page.locator('.mk__tiles')).toBeVisible();
-    const trigger = page.locator('.mk__tile-trigger').first();
-    await trigger.scrollIntoViewIfNeeded();
-    await trigger.click();
-    await expect(page.locator('.mk__tile-exp').first()).toBeVisible();
+    const tile = page.locator('.mk__tile').first();
+    await tile.scrollIntoViewIfNeeded();
+    await expect(tile).toBeVisible();
+    // The market sigil is the page's one always-running animation, so it is
+    // what proves the reduce path is live rather than merely unexercised.
     await expect.poll(async () =>
-      page.locator('.mk__tile-exp').first().evaluate(el => getComputedStyle(el).animationName),
+      page.locator('.mk__sigil').first().evaluate(el => getComputedStyle(el).animationName),
     ).toBe('none');
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.mk__tile--open').screenshot({ path: resolve(shotDir, 'mobile-expanded.png') });
+    await tile.screenshot({ path: resolve(shotDir, 'mobile-tile.png') });
   });
 
   test('Eclipse is a dedicated panel, not a category filter or tab', async ({ page }) => {

@@ -2,10 +2,22 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import { resolve } from 'path';
 
+import { INVENTORY_ERA } from '../src/app/shared/rpg/inventory.model';
+import { REALM_ERA_KEY } from '../src/app/shared/save/realm-era';
+
 const INVENTORY_KEY = 'godforge-inventory';
 
+/**
+ * The era stamp is not optional dressing. A ledger without it — or with one
+ * from a prior era — is emptied on load by applyRealmEra, which is exactly
+ * what happened to this seed: every slot came up empty and the failure read
+ * as "the off-hand button is gone" rather than "the save was wiped". Both
+ * constants are imported rather than written as 55 so the next era bump moves
+ * this seed with it.
+ */
 const SEEDED = {
   version: 2,
+  era: INVENTORY_ERA,
   records: [
     {
       id: 'c5-off', definitionId: 'artifact:Off Blade', kind: 'instance',
@@ -37,13 +49,19 @@ const SEEDED = {
 
 async function open(page: Page): Promise<void> {
   await page.addInitScript(
-    ({ key, blob }) => {
+    ({ key, blob, eraKey, eraValue }) => {
       window.localStorage.setItem('xsantcastx_consent', 'denied');
       window.sessionStorage.setItem('visit-counted', '1');
       window.localStorage.setItem('easter-eggs-found', JSON.stringify(['forge-self-aware']));
       window.localStorage.setItem(key, blob);
+      window.localStorage.setItem(eraKey, eraValue);
     },
-    { key: INVENTORY_KEY, blob: JSON.stringify(SEEDED) },
+    {
+      key: INVENTORY_KEY,
+      blob: JSON.stringify(SEEDED),
+      eraKey: REALM_ERA_KEY,
+      eraValue: String(INVENTORY_ERA),
+    },
   );
   await page.goto('/character', { waitUntil: 'load' });
   await page.waitForFunction(() => {
@@ -54,7 +72,7 @@ async function open(page: Page): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await page.locator('.ch, .ld').waitFor();
+  await page.locator('.ch, .ld').first().waitFor();
 }
 
 async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
@@ -64,22 +82,35 @@ async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
 }
 
 test.describe('C5 equipment actions', () => {
-  test('migrates off-hand, retires charms, and equips from an armed tile', async ({ page }) => {
+  test('migrates off-hand, wears a charm, and equips from an armed tile', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
     await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
-    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    // Charms used to be retired, with a note where the row is. They have three
+    // wells of their own now, and the seeded Old Charm sits in the first.
+    const charms = page.locator('.ld').first().locator('.ld__charmrow-slots .ld__charm');
+    await expect(charms).toHaveCount(3);
+    await expect(charms.filter({ hasText: 'Old Charm' })).toHaveCount(1);
 
     await openPanel(page, 'bank');
-    await expect(page.getByRole('button', { name: /Old Charm/ })).toBeVisible();
-    await page.getByRole('button', { name: /Crown/ }).click();
+    // Scoped to the panel: the sheet behind it holds its own copy of every bag
+    // tile, so an unscoped name match is two elements, not a missing one. The
+    // charm is worn now rather than retired to the bank, so the bank is exactly
+    // where it should not be.
+    await expect(page.locator('.kp').getByRole('button', { name: /Old Charm/ })).toHaveCount(0);
+    await page.locator('.kp').getByRole('button', { name: /Crown/ }).click();
     await page.locator('.kp').getByRole('tab', { name: 'Loadout' }).click();
     await expect(page.locator('.kp')).toBeVisible();
-    await expect(page.locator('.kp .ld__slot--target')).toHaveCount(4);
+    // An armed artifact lights every slot but Feet, which accepts nothing at
+    // all. The count was 4 when fewer slots listed 'artifact' in `accepts`.
+    await expect(page.locator('.kp .ld__slot--target')).toHaveCount(7);
+    await expect(page.locator('.kp').getByRole('button', { name: /Feet, locked/ })).toBeVisible();
     await page.locator('.kp').getByRole('button', { name: /Head, empty/ }).click();
     await expect(page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
 
-    await page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ }).click();
+    // Placing an armed item leaves that slot's picker open, so Unequip is
+    // already on screen. Clicking the well a second time — which is what this
+    // used to do — toggles the picker shut and takes Unequip with it.
     await expect(page.locator('.kp').getByRole('button', { name: 'Unequip' })).toBeVisible();
     await expect(page.locator('.kp').getByRole('button', { name: /Head, equipped Crown/ })).toBeVisible();
 
@@ -89,15 +120,15 @@ test.describe('C5 equipment actions', () => {
 
     await page.locator('.kp').getByRole('button', { name: 'Unequip' }).click();
     await expect(page.locator('.kp').getByRole('button', { name: /Head, empty/ })).toBeVisible();
-    await page.locator('.kp__tab', { hasText: 'Bank' }).click();
-    await expect(page.getByRole('button', { name: /Crown/ })).toBeVisible();
+    await page.locator('.kp').getByRole('tab', { name: 'Bank' }).click();
+    await expect(page.locator('.kp').getByRole('button', { name: /Crown/ })).toBeVisible();
   });
 
-  test('keeps the 375px loadout readable after charm retirement', async ({ page }) => {
+  test('keeps the 375px loadout and its charm row readable', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await open(page);
     await expect(page.getByRole('button', { name: /Off-hand, equipped Off Blade/ })).toBeVisible();
-    await expect(page.locator('.ld__charms-note')).toBeVisible();
+    await expect(page.locator('.ld').first().locator('.ld__charmrow-slots .ld__charm')).toHaveCount(3);
     const shotDir = resolve('test-results/c5-equipment');
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.ld').screenshot({ path: resolve(shotDir, 'mobile-375.png') });
