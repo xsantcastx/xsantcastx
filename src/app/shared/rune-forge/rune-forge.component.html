@@ -33,23 +33,14 @@
     <button
       type="button"
       class="rf-strike"
-      [class.rf-strike--spinning]="striking && !landed"
       [disabled]="!canStrike"
       (click)="strike()">
-      <span class="rf-strike__label">{{ striking && !batch.length ? t('forge.roll.forging') : t('forge.roll') }}</span>
+      <span class="rf-strike__label">{{ t('forge.roll') }}</span>
       <span class="rf-strike__cost">
         @if (!canAfford && !striking) {
           {{ t('forge.roll.need', { gold: money(goldShort) }) }}
         } @else {
           {{ money(strikeCost) }} {{ t('forge.stat.gold') }}
-        }
-      </span>
-      @if (striking && !batch.length) {
-        <span class="rf-strike__bar" aria-hidden="true"></span>
-      }
-      <span class="rf-sparks" aria-hidden="true">
-        @for (n of [1,2,3,4,5,6,7,8]; track n) {
-          <span class="rf-spark" [style.--i]="n"></span>
         }
       </span>
     </button>
@@ -302,7 +293,7 @@
         [style.--star-glow]="revealTier?.glow"
         role="dialog"
         aria-modal="true"
-        [attr.aria-label]="batch.length ? t('forge.roll.auto') : t('forge.pick.title')"
+        [attr.aria-label]="batch.length ? t('forge.roll.auto') : t('forge.reveal.title')"
         (click)="$event.stopPropagation()">
         @if (batch.length) {
           <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
@@ -323,50 +314,35 @@
           </div>
           <button type="button" class="rf-pick__done" (click)="dismissFocus()">{{ t('forge.reveal.done') }}</button>
         } @else {
-          <p class="rf-pick__prompt">{{ landed ? (reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup')) : t('forge.pick.title') }}</p>
+          <p class="rf-pick__prompt">{{ reveal.isNew ? t('forge.reveal.new') : t('forge.reveal.dup') }}</p>
           <!--
-            Above the hand, not under it: on a phone the ten cards run past the
-            fold, and the way out of the wait should not be a scroll away. The
-            backdrop, Escape and Enter do the same thing.
+            One card, face up. There used to be a hand of ten to choose from
+            here, but the ledger writes the rune before a card is ever dealt —
+            the choice was theatre and the wait was the only thing it cost.
+            The reveal animation stays; it was the part that was real.
           -->
-          @if (!landed && chosen === null) {
-            <button type="button" class="rf-pick__skip" (click)="skipPick()">{{ t('forge.pick.skip') }}</button>
-          }
-          <div class="rf-pick__grid">
-            @for (slot of picks; track slot.index) {
-              <button
-                type="button"
-                class="rf-pick__card"
-                [class.is-chosen]="chosen === slot.index"
-                [class.is-other]="chosen !== null && chosen !== slot.index"
-                [disabled]="chosen !== null"
-                (click)="choosePick(slot.index)">
-                @if (chosen === slot.index && revealCard) {
-                  <img [src]="revealCard.src" width="200" height="200" [alt]="reveal.rune.name" decoding="async">
-                } @else if (chosen === slot.index) {
-                  <span class="rf-pick__name">{{ reveal.rune.name }}</span>
-                } @else {
-                  <span class="rf-pick__back" aria-hidden="true">{{ slot.mark }}</span>
-                  <span class="rf-sr">{{ t('forge.pick.card', { n: slot.index + 1 }) }}</span>
+          <div class="rf-pick__grid rf-pick__grid--single">
+            <div class="rf-pick__card is-chosen">
+              @if (revealCard) {
+                <img [src]="revealCard.src" width="200" height="200" [alt]="reveal.rune.name" decoding="async">
+              } @else {
+                <span class="rf-pick__name">{{ reveal.rune.name }}</span>
+              }
+              <!--
+                Per-tier card reveal. Which of these paints is decided by
+                data-reveal on .rf-pick (the tier table's `reveal` field):
+                the shards from Rare up, the sweep from Epic up. Both are
+                decorative, hidden from AT, and cost transform/opacity only.
+              -->
+              <span class="rf-sparks rf-sparks--reveal" aria-hidden="true">
+                @for (n of [1,2,3,4,5,6,7,8,9,10,11,12]; track n) {
+                  <span class="rf-spark" [style.--i]="n"></span>
                 }
-                @if (chosen === slot.index && landed) {
-                  <!--
-                    Per-tier card reveal. Which of these paints is decided by
-                    data-reveal on .rf-pick (the tier table's `reveal` field):
-                    the shards from Rare up, the sweep from Epic up. Both are
-                    decorative, hidden from AT, and cost transform/opacity only.
-                  -->
-                  <span class="rf-sparks rf-sparks--reveal" aria-hidden="true">
-                    @for (n of [1,2,3,4,5,6,7,8,9,10,11,12]; track n) {
-                      <span class="rf-spark" [style.--i]="n"></span>
-                    }
-                  </span>
-                  <span class="rf-pick__sweep" aria-hidden="true"></span>
-                }
-              </button>
-            }
+              </span>
+              <span class="rf-pick__sweep" aria-hidden="true"></span>
+            </div>
           </div>
-          @if (landed && revealTier) {
+          @if (revealTier) {
             <p class="rf-pick__name">{{ reveal.rune.name }}</p>
             <p class="rf-pick__tier">{{ revealTier.label }}</p>
             @if (!reveal.isNew) {

@@ -31,7 +31,9 @@ test.describe('game-only cutover', () => {
   test('character sheet shows loadout, not tool mastery', async ({ page }) => {
     await openSettled(page, '/character');
     await page.locator('.fk').waitFor();
-    await page.locator('.fk-stage__records').click();
+    // The sheet is a five-tab hub now; The Path lives behind Records, where the
+    // deleted .fk-stage__records button used to lead.
+    await page.getByRole('tab', { name: 'Records' }).click();
     await expect(page.locator('#fk-path-title')).toHaveText('The Path');
     await expect(page.locator('.fk')).toContainText('Loadout');
     await expect(page.locator('.fk')).not.toContainText(TOOL_COPY);

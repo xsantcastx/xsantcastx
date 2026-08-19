@@ -82,27 +82,11 @@
 .rf-strike:disabled { opacity: 0.55; cursor: not-allowed; }
 .rf-strike__label { display: block; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.82rem; }
 .rf-strike__cost { display: block; font-size: 0.68rem; letter-spacing: 0.1em; color: #d6a84f; }
-.rf-strike__bar {
-  display: block;
-  height: 3px;
-  margin-top: 0.35rem;
-  background: linear-gradient(90deg, #c96a32 55%, rgba(255,255,255,0.12) 55%);
-}
 .rf-sparks { position: absolute; inset: 0; pointer-events: none; }
 .rf-spark {
   position: absolute; left: 50%; top: 0; width: 3px; height: 3px; border-radius: 50%;
   background: #d6a84f; opacity: 0;
 }
-.rf-anvil-bay--striking .rf-spark,
-.rf-strike--spinning .rf-spark { animation: rfSpark 620ms ease-out forwards; animation-delay: calc(var(--i) * 14ms); }
-.rf-spark:nth-child(1) { --dx: -62px; --dy: -34px; }
-.rf-spark:nth-child(2) { --dx: -40px; --dy: -52px; }
-.rf-spark:nth-child(3) { --dx: -16px; --dy: -60px; }
-.rf-spark:nth-child(4) { --dx: 12px; --dy: -58px; }
-.rf-spark:nth-child(5) { --dx: 38px; --dy: -48px; }
-.rf-spark:nth-child(6) { --dx: 60px; --dy: -28px; }
-.rf-spark:nth-child(7) { --dx: -74px; --dy: -12px; }
-.rf-spark:nth-child(8) { --dx: 72px; --dy: -8px; }
 
 .rf-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.45rem; }
 .rf-pill {
@@ -328,6 +312,12 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
 }
+/* A single strike turns up a single card, centred rather than stretched
+   across the five columns the Auto x10 grid needs. */
+.rf-pick__grid--single {
+  grid-template-columns: minmax(0, 17rem);
+  justify-content: center;
+}
 .rf-pick__card {
   aspect-ratio: 0.72;
   min-height: 200px;
@@ -340,21 +330,12 @@
     #171c23;
   color: #eee9dd;
   font: inherit;
-  cursor: pointer;
-}
-.rf-pick__card:hover:not(:disabled),
-.rf-pick__card:focus-visible {
-  transform: translateY(-4px);
-  border-color: #d6a84f;
-  box-shadow: 0 10px 24px -12px rgba(214, 168, 79, 0.7);
 }
 .rf-pick__card.is-chosen {
   border-color: var(--star-color, #d6a84f);
   box-shadow: 0 0 28px -8px var(--star-glow, rgba(214, 168, 79, 0.8));
 }
-.rf-pick__card.is-other { opacity: 0.28; transform: none; }
 .rf-pick__card img { width: 72%; height: auto; object-fit: contain; }
-.rf-pick__back { font-size: 2rem; color: #d6a84f; }
 .rf-pick__new {
   position: absolute;
   bottom: 0.45rem;
@@ -364,11 +345,7 @@
   color: #d6a84f;
 }
 .rf-pick__card { position: relative; }
-.rf-pick--batch .rf-pick__card {
-  min-height: 148px;
-  cursor: default;
-}
-.rf-pick--batch .rf-pick__card:hover { transform: none; }
+.rf-pick--batch .rf-pick__card { min-height: 148px; }
 .rf-pick__name { margin: 0; font-size: 1.7rem; }
 .rf-pick__tier, .rf-pick__dup { margin: 0; color: #8f969f; }
 .rf-pick__done {
@@ -525,9 +502,7 @@
 }
 
 /* Read the scroll in place. */
-.rf-pick__skip { margin-top: -0.5rem; }
-.rf-pick__lore-btn,
-.rf-pick__skip {
+.rf-pick__lore-btn {
   min-height: 44px;
   padding: 0 1rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -539,12 +514,11 @@
   letter-spacing: 0.06em;
   cursor: pointer;
 }
-.rf-pick__lore-btn:hover, .rf-pick__lore-btn:focus-visible,
-.rf-pick__skip:hover, .rf-pick__skip:focus-visible {
+.rf-pick__lore-btn:hover, .rf-pick__lore-btn:focus-visible {
   border-color: #d6a84f;
   color: #eee9dd;
 }
-.rf-pick__lore-btn:focus-visible, .rf-pick__skip:focus-visible, .rf-pick__done:focus-visible {
+.rf-pick__lore-btn:focus-visible, .rf-pick__done:focus-visible {
   outline: 2px solid #d6a84f;
   outline-offset: 2px;
 }
@@ -651,6 +625,7 @@
   .rf-filters { display: none; }
   .rf-filter-m { display: block; }
   .rf-pick__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .rf-pick__grid--single { grid-template-columns: minmax(0, 14rem); }
   .rf-pick__card { min-height: 168px; }
 }
 
@@ -671,7 +646,7 @@
 .rf-pick__sweep::before { animation: rfSweep 900ms ease-in-out 120ms both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rf-spark, .rf-strike--spinning .rf-spark, .rf-sparks--reveal .rf-spark { animation: none; display: none; }
+  .rf-spark, .rf-sparks--reveal .rf-spark { animation: none; display: none; }
   .rf-pick__sweep { display: none; }
   .rf-pick__sweep::before { animation: none; }
   /* The card lands lit — tier border, ring, scale, label, haul — with no
@@ -679,6 +654,5 @@
      above so this later declaration wins for every rung. */
   .rf-pick[data-reveal] .rf-pick__card.is-chosen,
   .rf-pick--landed:not(.rf-pick--batch) .rf-pick__card.is-chosen { animation: none; }
-  .rf-card:hover:not(.rf-card--locked),
-  .rf-pick__card:hover:not(:disabled) { transform: none; }
+  .rf-card:hover:not(.rf-card--locked) { transform: none; }
 }

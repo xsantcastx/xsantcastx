@@ -11,15 +11,23 @@ describe('RealmLandingComponent labels', () => {
   let fixture: ComponentFixture<RealmLandingComponent>;
   let i18n: TranslationService;
   const params$ = new BehaviorSubject(convertToParamMap({ realmId: 'luminous' }));
+  // The five per-realm routes have no :realmId param and name their realm in
+  // `data` instead, so the component reads both. A stub with only paramMap on
+  // it no longer describes either way in.
+  const data$ = new BehaviorSubject<Record<string, unknown>>({});
 
   beforeEach(async () => {
     params$.next(convertToParamMap({ realmId: 'luminous' }));
+    data$.next({});
     await TestBed.configureTestingModule({
       imports: [RealmLandingComponent, RouterTestingModule],
       providers: [
         TranslationService,
         { provide: PLATFORM_ID, useValue: 'server' },
-        { provide: ActivatedRoute, useValue: { paramMap: params$.asObservable() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: params$.asObservable(), data: data$.asObservable() },
+        },
       ],
     }).compileComponents();
 
@@ -57,6 +65,14 @@ describe('RealmLandingComponent labels', () => {
     expect(label('#rl-faction')).toBe('The Dawn Archive');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Heliograph Court');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Ilyra Venn');
+  });
+
+  it('takes the realm from route data when the path carries no param', () => {
+    params$.next(convertToParamMap({}));
+    data$.next({ realmId: 'celestial' });
+    fixture.detectChanges();
+    expect(label('h1')).toBe('Celestial');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('This place is not on the map');
   });
 
   it('translates the unknown-realm fallback', () => {

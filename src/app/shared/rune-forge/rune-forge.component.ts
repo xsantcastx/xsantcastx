@@ -45,11 +45,7 @@ import {
   tierOf,
 } from './rune.model';
 import { CardArt, runeCard, runewordCard } from './rune-cards';
-import {
-  AUTO_ROLLS,
-  buildPickHand,
-  type PickSlot,
-} from './rune-reel';
+import { AUTO_ROLLS } from './rune-reel';
 import {
   LIBRARY_FILTERS,
   LIBRARY_SORTS,
@@ -187,8 +183,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
    * a screen reader announces does not change either way.
    */
   revealCard: CardArt | null = null;
-  picks: PickSlot[] = [];
-  chosen: number | null = null;
   batch: RuneFind[] = [];
   landed = false;
   loreOpen = false;
@@ -202,7 +196,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   haul: HaulLine[] = [];
   /** Counts across an Auto ×10 batch, for the one-line summary under the grid. */
   batchSummary: BatchHaul = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
-  /** True while a pick is open. */
+  /** True while a reveal is open. */
   striking = false;
   /** The rune whose lore is open in the inventory, if any. */
   inspecting: Rune | null = null;
@@ -455,9 +449,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.striking = true;
     this.landed = false;
     this.loreOpen = false;
-    this.chosen = null;
     this.batch = [];
-    this.picks = buildPickHand();
     this.reveal = find;
     this.revealTier = tier;
     this.revealCard = runeCard(find.rune.id);
@@ -467,8 +459,9 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.haul = haulOf(find);
     this.batchSummary = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
     this.cdr.markForCheck();
-
-    if (this.prefersReducedMotion()) this.choosePick(0);
+    // The ledger has already written the rune. There is nothing left to decide,
+    // so the reveal lands on the same tick the strike resolves.
+    this.finishSpin();
   }
 
   strikeMany(count = AUTO_ROLLS): void {
@@ -497,8 +490,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.striking = true;
     this.landed = true;
     this.loreOpen = false;
-    this.chosen = null;
-    this.picks = [];
     this.batch = finds;
     this.reveal = last;
     this.revealTier = tierOf(last.rune.tier);
@@ -512,13 +503,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  choosePick(index: number): void {
-    if (this.chosen !== null || !this.reveal) return;
-    if (index < 0 || index >= this.picks.length) return;
-    this.chosen = index;
-    this.finishSpin();
-  }
-
   toggleLore(): void {
     if (!this.reveal?.scroll) return;
     this.loreOpen = !this.loreOpen;
@@ -526,33 +510,14 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  /**
-   * Close the reveal — or, while the hand is still face-down, resolve it.
-   *
-   * The pick is theatrical: the ledger wrote the winner before the cards were
-   * dealt (see rune-reel.ts). A backdrop click that did nothing while the hand
-   * was open was a delay the player could not escape, so it now turns the
-   * first card instead. Same rune, same odds, same Gold — only the wait goes.
-   */
+  /** Close the reveal and hand the anvil back. */
   dismissFocus(): void {
-    if (this.striking && !this.landed) {
-      if (this.picks.length) this.skipPick();
-      return;
-    }
     this.landed = false;
     this.striking = false;
-    this.chosen = null;
-    this.picks = [];
     this.batch = [];
     this.haul = [];
     this.loreOpen = false;
     this.cdr.markForCheck();
-  }
-
-  /** Turn the hand over now. The result was already written; this only ends the wait. */
-  skipPick(): void {
-    if (!this.striking || this.landed || this.chosen !== null) return;
-    this.choosePick(0);
   }
 
   setTab(tab: LibraryTab): void {
@@ -623,21 +588,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   onEscape(): void {
     if (this.detail) this.closeCard();
     else if (this.landed) this.dismissFocus();
-    else if (this.striking && this.chosen === null && this.picks.length) this.skipPick();
-  }
-
-  /**
-   * Enter turns the hand while it is face-down. Guarded to that exact state so
-   * it never intercepts Enter on the library, the detail sheet or a form — and
-   * it stands aside when the key lands on a card button, whose own click turns
-   * the card the keyboard user actually chose.
-   */
-  @HostListener('document:keydown.enter', ['$event'])
-  onEnter(event: Event): void {
-    if (this.detail || this.landed || !this.striking || this.chosen !== null) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest?.('.rf-pick__card')) return;
-    if (this.picks.length) this.skipPick();
   }
 
   onDetailKey(event: KeyboardEvent): void {
@@ -689,10 +639,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (find.scroll) this.audio.scrollUnfurl();
     this.flare(find.rune.tier, tier.duration);
     this.cdr.markForCheck();
-  }
-
-  private prefersReducedMotion(): boolean {
-    return this.isBrowser && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   /**
