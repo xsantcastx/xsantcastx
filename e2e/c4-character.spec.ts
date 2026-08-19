@@ -93,16 +93,20 @@ test.describe('C4 Character presentation', () => {
     // Dropped: no 'Drift Shard' exists anywhere in src. The assertion outlived
     // the item it named.
 
-    const head = page.getByRole('button', { name: /Head, equipped Ash Circlet/ }).first();
-    const headBox = await head.boundingBox();
-    expect(headBox?.width ?? 0).toBeGreaterThanOrEqual(44);
-    expect(headBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // The hall and the drawer share one tab (CharacterHubService, c643c4b):
+    // opening the Bank drawer takes both to Bank, so the paper doll is only
+    // back once Loadout is re-selected. Measure and drive the drawer's well.
     await page.locator('.kp').getByRole('tab', { name: 'Loadout' }).click();
     const panelHead = page.locator('.kp').getByRole('button', { name: /Head, equipped Ash Circlet/ });
+    const headBox = await panelHead.boundingBox();
+    expect(headBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(headBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     await panelHead.focus();
     await expect(panelHead).toBeFocused();
     await page.keyboard.press('Enter');
-    await page.locator('.kp .ld__expand').getByRole('button', { name: 'Inspect' }).click();
+    // 204ec6d replaced the expanded row with the slot picker; the worn item's
+    // Inspect/Unequip live in .ld__picker (.ld__expand no longer exists).
+    await page.locator('.kp .ld__picker').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
 
@@ -132,7 +136,11 @@ test.describe('C4 Character presentation', () => {
     await page.locator('.kp input[type="search"]').fill('zzzz');
     await expect(page.getByText(/The chest is empty|El cofre esta vacio/).first()).toBeVisible();
     await page.locator('.kp input[type="search"]').fill('');
-    await expect(page).not.toHaveURL(/bag=/);
+    // Filters are drawer-local state (e98969b / c643c4b): the hub writes only
+    // ?tab= (page variant) and reads ?tab= / ?item=. It neither writes
+    // bag/sort/rarity/q nor strips keys it never owned, so the URL is exactly
+    // what we entered with.
+    await expect(page).toHaveURL(/\/character\?bag=eclipse&sort=hot&rarity=none$/);
   });
 
   test('shows empty-bag paths and a 375px layout', async ({ page }) => {
