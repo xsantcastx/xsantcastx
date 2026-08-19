@@ -68,15 +68,14 @@ export const AUTO_ROLLS = 10;
 /** The bulk buttons on the reveal, in the order they are drawn. */
 export const BULK_ROLLS = [10, 100, 1000] as const;
 
-/**
- * The most strikes one bulk run will make, however deep the purse.
- *
- * ALL means "spend what you can afford", and on a purse holding tens of
- * millions that is a five-figure run — minutes of chunked striking, a bag that
- * evicts nearly all of it, and a progress bar nobody watches to the end. A
- * thousand is already the largest number the buttons offer.
+/*
+ * `BULK_CAP` used to live here, at a thousand strikes, as the ceiling on one
+ * bulk run. It is gone: it made the ALL button a lie on any deep purse, which
+ * offered "spend what you can afford" and then spent a fraction of it. ALL is
+ * now exactly `floor(gold / STRIKE_COST)`. What the cap was really protecting
+ * — the reveal holding on to every find of the run — is handled by folding the
+ * run into a `BatchTally` instead of keeping it.
  */
-export const BULK_CAP = 1000;
 
 /**
  * How long one chunk of a bulk run may hold the frame.

@@ -296,24 +296,24 @@
       <div
         class="rf-pick"
         [class.rf-pick--landed]="landed"
-        [class.rf-pick--batch]="batch.length > 0"
+        [class.rf-pick--batch]="batchCount > 0"
         [class.rf-pick--rapid]="rollStreak > 1"
         [class.rf-pick--rolling]="rolling"
-        [attr.data-reveal]="landed && !batch.length ? revealKind : null"
+        [attr.data-reveal]="landed && !batchCount ? revealKind : null"
         [style.--star-color]="revealTier?.color"
         [style.--star-glow]="revealTier?.glow"
         role="dialog"
         aria-modal="true"
-        [attr.aria-label]="batch.length ? t('forge.roll.auto') : t('forge.reveal.title')"
+        [attr.aria-label]="batchCount ? t('forge.roll.auto') : t('forge.reveal.title')"
         (click)="$event.stopPropagation()">
-        @if (batch.length || rolling) {
+        @if (batchCount || rolling) {
           @if (rolling) {
             <p class="rf-pick__prompt" role="status">{{ t('forge.roll.progress', { done: bulkDone, total: bulkTotal }) }}</p>
             <div class="rf-pick__progress" aria-hidden="true">
               <span class="rf-pick__progress-fill" [style.width.%]="bulkTotal ? (bulkDone / bulkTotal) * 100 : 0"></span>
             </div>
           } @else {
-            <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batch.length, new: batchNew }) }}</p>
+            <p class="rf-pick__prompt">{{ t('forge.roll.auto.done', { n: batchCount, new: batchNew }) }}</p>
           }
 
           <!--
@@ -336,7 +336,7 @@
             thousand thumbnails is a thousand decoded images for a screen the
             player scrolls past to reach the buttons.
           -->
-          @if (batch.length > gridCap) {
+          @if (batchCount > gridCap) {
             <div class="rf-pick__grid rf-pick__grid--single">
               @if (bestBatchFind; as best) {
                 <div class="rf-pick__card is-chosen is-best" [style.--star-color]="libColor(best.rune.tier)">
@@ -351,7 +351,7 @@
             </div>
           } @else {
             <div class="rf-pick__grid">
-              @for (find of batch; track $index) {
+              @for (find of batchCards; track $index) {
                 <div class="rf-pick__card is-chosen" [class.is-best]="$index === bestBatchIndex" [style.--star-color]="libColor(find.rune.tier)">
                   @if (runeCardOf(find.rune.id); as art) {
                     <img [src]="art.src" width="200" height="200" [alt]="find.rune.name" decoding="async">
@@ -485,9 +485,10 @@
               }
 
               <!--
-                ALL is capped — see BULK_CAP. The label prints the number it
-                will actually roll so it never promises a purse it will not
-                spend.
+                ALL means every strike the purse covers — no cap. The label
+                prints that number, compacted, so the button never promises a
+                purse it will not spend and never overflows its chip when the
+                honest answer is five figures.
               -->
               <button
                 type="button"
@@ -495,7 +496,7 @@
                 [disabled]="allRolls < 2"
                 (click)="strikeMany(allRolls)">
                 {{ t('forge.roll.all') }}
-                <span class="rf-acts__cost">×{{ allRolls }}</span>
+                <span class="rf-acts__cost">×{{ allRollsLabel }}</span>
               </button>
 
               <button
