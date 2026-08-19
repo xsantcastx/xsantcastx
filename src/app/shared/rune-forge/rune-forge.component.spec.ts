@@ -13,7 +13,7 @@ import { LoreScrollService } from './lore-scroll.service';
 import { RuneForgeComponent } from './rune-forge.component';
 import { RuneForgeService } from './rune-forge.service';
 import { RUNES, RUNE_TIERS, STRIKE_COST } from './rune.model';
-import { AUTO_STEP_MS, BULK_CAP } from './rune-reel';
+import { AUTO_STEP_MS } from './rune-reel';
 
 /**
  * The reveal, from the component's side of the service boundary.
@@ -357,19 +357,37 @@ describe('RuneForgeComponent reveal', () => {
       tick(50);
       fixture.detectChanges();
 
-      expect(fixture.componentInstance.batch.length).toBe(20);
+      expect(fixture.componentInstance.batchCount).toBe(20);
+      // Past the cap the finds are counted, not kept.
+      expect(fixture.componentInstance.batchCards.length).toBe(fixture.componentInstance.gridCap);
       expect(root.querySelectorAll('.rf-pick__card').length).toBe(1);
       expect(root.querySelector('.rf-pick__card')?.classList.contains('is-best')).toBeTrue();
     }));
 
-    it('never rolls more than the purse or the cap allows', () => {
+    it('never rolls more than the purse allows', () => {
       // 100 strikes' worth of Gold in the stub.
       expect(fixture.componentInstance.affordableRolls(10)).toBe(10);
       expect(fixture.componentInstance.affordableRolls(1000)).toBe(100);
-      gold$.next({ gold: STRIKE_COST * 5000 });
+    });
+
+    it('ALL spends the whole purse, however deep it is', () => {
+      // The bug: ALL used to be clamped to BULK_CAP (1000), so a purse holding
+      // forty thousand strikes' worth offered ALL and then spent 2.5% of it.
+      gold$.next({ gold: STRIKE_COST * 40_000 });
       fixture.detectChanges();
-      expect(fixture.componentInstance.affordableRolls(5000)).toBe(BULK_CAP);
-      expect(fixture.componentInstance.allRolls).toBe(BULK_CAP);
+      expect(fixture.componentInstance.allRolls).toBe(40_000);
+      expect(fixture.componentInstance.affordableRolls(40_000)).toBe(40_000);
+      // And the label stays short enough for the chip it is drawn in.
+      expect(fixture.componentInstance.allRollsLabel.length).toBeLessThanOrEqual(5);
+    });
+
+    it('ALL rounds down to whole strikes and never goes negative', () => {
+      gold$.next({ gold: STRIKE_COST * 3 + STRIKE_COST / 2 });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.allRolls).toBe(3);
+      gold$.next({ gold: 0 });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.allRolls).toBe(0);
     });
 
     it('a bulk run that cannot afford a single strike says so and rolls nothing', () => {
@@ -377,7 +395,7 @@ describe('RuneForgeComponent reveal', () => {
       fixture.detectChanges();
       fixture.componentInstance.strikeMany(10);
       fixture.detectChanges();
-      expect(fixture.componentInstance.batch.length).toBe(0);
+      expect(fixture.componentInstance.batchCount).toBe(0);
       expect(fixture.componentInstance.broke).toBeTrue();
     });
   });
