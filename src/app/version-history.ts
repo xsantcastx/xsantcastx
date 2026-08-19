@@ -17,6 +17,19 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.71.1',
+    codename: 'Wager',
+    date: '2026-08-19',
+    highlights: [
+      'Resetting your progress on a phone used to undo itself. The save cleared, and a minute later \u2014 or on the next visit \u2014 it was back. The local half of the wipe was landing and the cloud half silently was not: the Firestore SDK is loaded on demand rather than shipped in the initial bundle, so for the first few seconds of a cold mobile load there is no connection to delete anything through, and the delete simply returned. The next pull then read a device holding nothing against an account holding a save, which is indistinguishable from signing in on a new browser, and helpfully restored it',
+      'A wipe is now stamped before anything is destroyed, and the stamp is what the next sync reconciles. If the cloud never heard about the reset the stamp re-sends it; if another device wiped the account later, this one wipes too rather than pushing its survivors back up. It survives being taken offline, taken before the SDK has arrived, and taken on a tab that is closed halfway through',
+      'Deleting a single blob got the same treatment. Any deletion whose cloud half fails is written down and re-issued on the next sync, and writing that key again cancels it \u2014 starting something again is not the same as never having deleted it',
+      'A device lease, so two devices stop quietly writing over each other. The one being played on holds it and syncs exactly as before; a second device left open on a desk reads normally, keeps playing locally, and holds its uploads instead of interleaving them. A small strip at the top says which device is active, with a Play Here button that moves the lease and sends everything the passive device queued',
+      'The lease is taken in a transaction, so two devices racing for it cannot both win, and it expires two minutes after the holder stops \u2014 a crashed tab or a phone that went into a pocket frees the save on its own',
+      'Nothing about the merge rules changed, and a device that cannot read the lease at all keeps writing. A network failure must not be able to lock somebody out of their own cloud save, and the reconciliation underneath still converges the way it always did',
+    ],
+  },
+  {
     version: '2.71.0',
     codename: 'Wager',
     date: '2026-08-19',
