@@ -1,0 +1,131 @@
+<app-art-scene art="bg-celestial" focus="center 50%" />
+
+<article class="mo" [attr.data-state]="panelState()">
+  <nav class="mo__crumb" [attr.aria-label]="t('world.crumb.label')">
+    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
+    <span aria-hidden="true">/</span>
+    <a [routerLink]="celestialHref">{{ t('world.atlas.label.celestial') }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ t('work.location.orrery') }}</span>
+  </nav>
+
+  <header class="mo__hero">
+    <p class="mo__eyebrow">{{ t('orrery.eyebrow') }}</p>
+    <h1>{{ t('work.location.orrery') }}</h1>
+    <p class="mo__lede">{{ t('orrery.lede') }}</p>
+  </header>
+
+  <app-current-work-tile></app-current-work-tile>
+
+  <section class="mo__panel" aria-labelledby="mo-prospect-title">
+    <h2 id="mo-prospect-title">{{ t('orrery.panel.title') }}</h2>
+
+    <div class="mo__tiers" role="group" [attr.aria-label]="t('orrery.tier.title')">
+      @for (tier of tiers; track tier.mineralId) {
+        <button
+          type="button"
+          class="mo__tier"
+          [class.mo__tier--active]="tier.mineralId === selectedMineralId"
+          [class.mo__tier--locked]="!tierUnlocked(tier)"
+          [disabled]="!tierUnlocked(tier)"
+          [attr.aria-pressed]="tier.mineralId === selectedMineralId"
+          (click)="selectTier(tier)">
+          <img [src]="tierArt(tier).art" [attr.srcset]="tierArt(tier).srcset" sizes="32px" alt="" width="32" height="32" decoding="async">
+          <span class="mo__tier-name">{{ tierArt(tier).name }}</span>
+          @if (tierUnlocked(tier)) {
+            <span class="mo__tier-xp">{{ t('seamworks.tier.xp', { xp: tier.xpPerAction }) }}</span>
+          } @else {
+            <span class="mo__tier-lock">{{ t('seamworks.tier.locked', { level: tier.unlockLevel }) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <p class="mo__expect">{{ t('orrery.expect', { mineral: mineral.name, xp: selectedTier().xpPerAction }) }}</p>
+    <p class="mo__chance">{{ discoveryLabel() }}</p>
+    @if (speedupPct() > 0) {
+      <p class="mo__speedup">{{ t('orrery.speedup', { pct: speedupPct() }) }}</p>
+    }
+
+    <div class="mo__loot" aria-label="{{ t('orrery.haul') }}">
+      <figure [class.is-hit]="lastMineral > 0" [class.is-striking]="mineralFloaters().length > 0">
+        <div class="mo__art-wrap">
+          <img [src]="mineral.art" [attr.srcset]="mineral.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of mineralFloaters(); track f.id) {
+            <span class="mo__float" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
+        <figcaption>{{ mineral.name }}</figcaption>
+        <p class="mo__held">{{ t('seamworks.held', { n: mineralHeld }) }}</p>
+        @if (lastMineral > 0) {
+          <p class="mo__gain">{{ t('seamworks.gain', { n: lastMineral }) }}</p>
+        }
+      </figure>
+      <figure [class.is-hit]="lastElixir > 0" [class.is-rare]="lastElixir > 0 || elixirHeld > 0" [class.is-striking]="elixirFloaters().length > 0">
+        <div class="mo__art-wrap">
+          <img [src]="elixir.art" [attr.srcset]="elixir.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
+          @for (f of elixirFloaters(); track f.id) {
+            <span class="mo__float mo__float--rare" aria-hidden="true">{{ f.text }}</span>
+          }
+        </div>
+        <figcaption>{{ elixir.name }}</figcaption>
+        <p class="mo__held">{{ t('seamworks.held', { n: elixirHeld }) }}</p>
+        @if (lastElixir > 0) {
+          <p class="mo__gain mo__gain--rare">{{ t('seamworks.gain.rare', { n: lastElixir }) }}</p>
+        }
+      </figure>
+    </div>
+
+    <div class="mo__actions">
+      <button
+        type="button"
+        class="mo__prospect"
+        [class.mo__prospect--struck]="mineralFloaters().length > 0"
+        [disabled]="prospectDisabled()"
+        [attr.aria-disabled]="prospectDisabled()"
+        (click)="prospect()">
+        <img class="mo__prospect-art" [src]="mineral.art" alt="" width="26" height="26" aria-hidden="true" decoding="async">
+        <span>
+          @if (panelState() === 'recovering') {
+            {{ t('orrery.prospect.wait', { seconds: remainLabel() }) }}
+          } @else if (panelState() === 'resolving') {
+            {{ t('orrery.prospect.resolving') }}
+          } @else {
+            {{ t('orrery.prospect') }}
+          }
+        </span>
+      </button>
+      <button type="button" class="mo__ghost" (click)="openBag()">{{ t('seamworks.openBag') }}</button>
+    </div>
+    <p class="mo__sr" aria-live="polite">{{ t('orrery.status.' + panelState(), { seconds: remainLabel(), mineral: mineral.name }) }}</p>
+
+    @if (panelState() === 'capacity') {
+      <p class="mo__alert" role="alert">{{ t('orrery.full', { mineral: mineral.name }) }}</p>
+    }
+    @if (panelState() === 'location') {
+      <p class="mo__alert" role="alert">{{ t('orrery.away') }}</p>
+    }
+    @if (panelState() === 'persist') {
+      <p class="mo__alert" role="alert">{{ t('orrery.persist') }}</p>
+      <div class="mo__actions">
+        <button type="button" class="mo__ghost" (click)="retry()">{{ t('seamworks.retry') }}</button>
+        <button type="button" class="mo__ghost" (click)="refresh()">{{ t('seamworks.refresh') }}</button>
+      </div>
+    }
+
+    @if (lastOp; as op) {
+      <div class="mo__result" [class.mo__result--rare]="lastElixir > 0">
+        <p>{{ t('orrery.result.mineral', { mineral: mineral.name, gain: lastMineral, held: mineralHeld }) }}</p>
+        @if (lastElixir > 0) {
+          <p class="mo__rare">{{ t('orrery.result.elixir', { gain: lastElixir, held: elixirHeld }) }}</p>
+        } @else if (op.discovery.result !== 'none') {
+          <p>{{ discoveryLabel() }}</p>
+        }
+        <p>{{ t('orrery.result.xp', { amount: op.xpGrant.amount }) }}</p>
+      </div>
+    }
+  </section>
+
+  <p class="mo__note">{{ t('orrery.note') }}</p>
+  <a class="mo__back" [routerLink]="celestialHref">{{ t('orrery.back') }}</a>
+</article>

@@ -87,6 +87,11 @@ export interface OwnedItemInstance extends OwnedItemBase {
   lastUpgradeAt?: string;
   lastUpgradeMutationId?: string;
   lastUpgradeOk?: boolean;
+  /** Reforge's twins of the three above. See GameItem in item.model.ts. */
+  reforgeCount?: number;
+  lastReforgeAt?: string;
+  lastReforgeMutationId?: string;
+  lastReforgeLock?: keyof ItemStats;
 }
 
 export interface OwnedItemStack extends OwnedItemBase {
