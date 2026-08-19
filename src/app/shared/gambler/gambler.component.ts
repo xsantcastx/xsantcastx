@@ -33,6 +33,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -65,6 +66,7 @@ import {
   type GameItem,
   type ItemRarity,
 } from '../rpg/item.model';
+import { CelebrationService } from '../celebration/celebration.service';
 import { RUNE_TIERS } from '../rune-forge/rune.model';
 
 type RevealPhase = 'idle' | 'shaking' | 'opening' | 'revealed';
@@ -100,6 +102,8 @@ export class GamblerComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly celebration = inject(CelebrationService);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly subs = new Subscription();
   private timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -189,8 +193,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       this.timers.push(setTimeout(() => {
         if (this.phase !== 'opening') return;
-        this.phase = 'revealed';
-        this.cdr.markForCheck();
+        this.land();
       }, OPEN_MS));
     }, SHAKE_MS));
   }
@@ -199,8 +202,29 @@ export class GamblerComponent implements OnInit, OnDestroy {
   skip(): void {
     if (this.phase === 'idle' || !this.result) return;
     this.clearTimers();
+    this.land();
+  }
+
+  /**
+   * Show the item and celebrate it.
+   *
+   * One place rather than two, because the reveal is reached both by waiting
+   * and by skipping and a player who skips has not asked for a quieter drop —
+   * they have asked for a faster one.
+   *
+   * The rarity ladder is the rune ladder (`ItemRarity = RuneTier`), so an
+   * Epic out of a box gets exactly what an Epic off the anvil gets.
+   */
+  private land(): void {
     this.phase = 'revealed';
     this.cdr.markForCheck();
+    const rarity = this.result?.item.rarity;
+    if (!rarity) return;
+    // Next frame: the item card is written by the pass above, so measuring it
+    // now would measure the box that is being replaced.
+    requestAnimationFrame(() => {
+      this.celebration.celebrate(rarity, this.host.nativeElement.querySelector('.gb-reveal__item'));
+    });
   }
 
   dismiss(): void {
@@ -208,6 +232,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.phase = 'idle';
     this.active = null;
     this.result = null;
+    this.celebration.cancel();
     this.cdr.markForCheck();
   }
 
