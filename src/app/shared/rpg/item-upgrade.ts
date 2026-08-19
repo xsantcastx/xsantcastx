@@ -171,7 +171,12 @@ export function successChanceFor(level: number, def?: ItemDefinition, ward = 0):
   const base = def?.family === 'artifact'
     ? (ARTIFACT_SUCCESS_CHANCE[level] ?? 0)
     : (UPGRADE_SUCCESS_CHANCE[level] ?? 0);
-  if (!(ward > 0)) return base;
+  // Ward turns some of an existing failure chance aside; it never conjures a
+  // success chance where the table authored none. Without the base guard a
+  // level past the table (base 0) would come back as 1 - temperFailChance(1,
+  // ward) — 30% at three ward — which no caller can reach today but the
+  // exported pure function must not promise.
+  if (!(ward > 0) || !(base > 0)) return base;
   return Math.round((1 - temperFailChance(1 - base, ward)) * 10_000) / 10_000;
 }
 

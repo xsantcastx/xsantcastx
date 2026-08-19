@@ -166,6 +166,14 @@ describe('temper fail chance and ward', () => {
     expect(successChanceFor(9, undefined, 3)).toBeCloseTo(0.475, 10);
   });
 
+  it('never lifts a zero authored chance — ward mitigates failure, it does not invent success', () => {
+    const pastTable = UPGRADE_SUCCESS_CHANCE.length + 5;
+    expect(successChanceFor(pastTable)).toBe(0);
+    expect(successChanceFor(pastTable, undefined, 3)).toBe(0);
+    const heart = itemDefinitionById('obsidian-heart')!;
+    expect(successChanceFor(ARTIFACT_SUCCESS_CHANCE.length + 5, heart, 3)).toBe(0);
+  });
+
   it('feeds the same ward into the preview and the roll, so they cannot disagree', () => {
     const plain = previewUpgrade(blade(9))!;
     const warded = previewUpgrade(blade(9), 3)!;
