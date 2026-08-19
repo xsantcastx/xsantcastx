@@ -242,6 +242,13 @@
 
     <!-- ─── RIGHT: quests and expeditions ─────────────────────────────────── -->
     <section class="fv__col fv__col--quests" aria-labelledby="fv-quest-title">
+      <!-- The Contract Board, above the quest board it sits beside.
+           Gold first because this column is read from a page whose entire
+           subject is the Gold economy: the XP quests below it are the reason to
+           walk the tool halls, and the reason to stand *here* is the ladder that
+           pays in the currency the Flame mints. -->
+      <app-challenge-panel [compact]="true" heading="Contracts"></app-challenge-panel>
+
       <h2 class="fv__col-title" id="fv-quest-title">Quests</h2>
 
       @if (openQuests.length) {
@@ -361,7 +368,30 @@
             </div>
           }
 
-          @if (!landing.rune && !landing.scroll && !landing.items.length) {
+          <!-- The freight. A row of named chips rather than a "14 materials"
+               line, because which ones came back is the reason the realm was
+               chosen — see REALM_EXCLUSIVE_MATERIALS. -->
+          @if (landing.materials.length) {
+            <div class="fv__loot fv__loot--step fv__loot--mats" [style.--step]="3" [style.--tone]="'#C9A84C'">
+              <span class="fv__loot-glyph" aria-hidden="true">⛏</span>
+              <div>
+                <p class="fv__loot-name">Freight from the seams</p>
+                <ul class="fv__mats">
+                  @for (mat of landing.materials; track mat.id) {
+                    <li class="fv__mat">
+                      @if (mat.art) {
+                        <img class="fv__mat-art" [src]="mat.art" [alt]="" width="24" height="24" loading="lazy" />
+                      }
+                      {{ mat.name }} <b>×{{ mat.quantity }}</b>
+                    </li>
+                  }
+                </ul>
+                <a class="fv__loot-link" routerLink="/character">It is all in your bag →</a>
+              </div>
+            </div>
+          }
+
+          @if (!landing.rune && !landing.scroll && !landing.items.length && !landing.materials.length) {
             <p class="fv__landing-none">They came back with the Gold and a story nobody has written down.</p>
           }
 
@@ -450,26 +480,87 @@
             <span class="fv__realm-mult">{{ pickedRealmRuneMult }} rune rate</span>
           </p>
 
+          <!-- The realm's own freight. Added when the deep tiers started paying
+               in materials: before it, the picker could tell you a realm changed
+               the Gold and the rune rate and had no way to say that Umbral is the
+               only place Umbral Ink comes from. -->
+          <p class="fv__realm-mats">
+            <span aria-hidden="true">⛏</span> {{ pickedRealmMaterials }}
+          </p>
+
           <p class="fv__dispatch-label" id="fv-mission-label">For</p>
+
+          <!-- Six rungs, each louder than the last.
+               `--drama` is the only thing that differs between them in CSS: one
+               design at six intensities rather than six hand-written treatments
+               that drift apart the first time the palette moves. See the note on
+               MissionDefinition.drama. -->
           <ul class="fv__lengths" role="radiogroup" aria-labelledby="fv-mission-label">
-            @for (m of missions; track m.id) {
+            @for (o of missionOptions; track o.def.id) {
               <li>
                 <button type="button"
                         class="fv__length"
                         role="radio"
-                        [attr.aria-checked]="pickedMission === m.id"
-                        [class.fv__length--on]="pickedMission === m.id"
-                        (click)="pickMission(m.id)">
-                  <b>{{ m.label }}</b>
-                  <span>{{ goldBand(m) }}</span>
+                        [attr.aria-checked]="pickedMission === o.def.id"
+                        [attr.data-mission]="o.def.id"
+                        [class.fv__length--on]="pickedMission === o.def.id"
+                        [class.fv__length--deep]="o.deep"
+                        [class.fv__length--blocked]="!!o.block"
+                        [style.--drama]="o.drama"
+                        (click)="pickMission(o.def.id)">
+                  <!-- The Abyss gets a portal rather than a border. It is the
+                       last rung and it should not read as the fifth one with a
+                       brighter outline on it. -->
+                  @if (o.def.id === 'abyss') {
+                    <span class="fv__void" aria-hidden="true">
+                      <span class="fv__void-mouth"></span>
+                      <span class="fv__void-ring"></span>
+                      <span class="fv__void-ring fv__void-ring--b"></span>
+                    </span>
+                  }
+                  <b class="fv__length-label">{{ o.def.label }}</b>
+                  <span class="fv__length-name">{{ o.def.name }}</span>
+                  <span class="fv__length-band">{{ o.band }}</span>
+                  @if (o.promise) {
+                    <span class="fv__length-promise">{{ o.promise }}</span>
+                  }
+                  @if (o.block) {
+                    <span class="fv__length-block">{{ o.blockLabel }}</span>
+                  } @else if (o.cost) {
+                    <span class="fv__length-cost">◆ {{ o.cost }}</span>
+                  } @else {
+                    <span class="fv__length-cost fv__length-cost--free">free</span>
+                  }
                 </button>
               </li>
             }
           </ul>
 
-          <button type="button" class="fv__send" (click)="dispatch()">
-            Send Explorer into {{ pickedRealmDef.name }} →
+          @if (pickedMissionOption; as picked) {
+            <p class="fv__length-flavour">{{ picked.def.flavour }}</p>
+          }
+
+          <button type="button"
+                  class="fv__send"
+                  [class.fv__send--blocked]="dispatchBlocked"
+                  [disabled]="dispatchBlocked"
+                  (click)="dispatch()">
+            @if (dispatchBlocked) {
+              {{ pickedMissionOption?.blockLabel }}
+            } @else {
+              Send Explorer into {{ pickedRealmDef.name }} →
+            }
           </button>
+
+          <!-- The permission ask, and only next to a mission long enough to
+               justify it. See `canOfferNotifications`. -->
+          @if (canOfferNotifications) {
+            <button type="button" class="fv__notify" (click)="enableNotifications()">
+              🔔 Call me when it lands
+            </button>
+          } @else if (notificationsOn && pickedMissionOption?.deep) {
+            <p class="fv__notify-on">🔔 The realms will call when this one lands.</p>
+          }
           <p class="fv__dispatch-foot">
             {{ freeSlots }} of {{ slots }} {{ slots === 1 ? 'explorer' : 'explorers' }} free.
             @if (slots < maxSlots) {
@@ -512,7 +603,7 @@
                   <b>+{{ row.gold }}</b> Gold
                   @if (row.explorerName) { · {{ row.explorerName }} }
                 </span>
-                @if (row.runes.length || row.scrollFound || row.itemCount) {
+                @if (row.runes.length || row.scrollFound || row.itemCount || row.materialCount) {
                   <span class="fv__log-finds">
                     @for (rune of row.runes; track rune.key) {
                       <span class="fv__log-find" [style.--tone]="rune.color"
@@ -529,6 +620,12 @@
                       <span class="fv__log-find" style="--tone: #7FD5A3"
                             [attr.title]="row.itemCount + ' item(s) carried home'">
                         <span aria-hidden="true">⚔</span>{{ row.itemCount }}
+                      </span>
+                    }
+                    @if (row.materialCount) {
+                      <span class="fv__log-find" style="--tone: #C9A84C"
+                            [attr.title]="row.materialCount + ' materials hauled back'">
+                        <span aria-hidden="true">⛏</span>{{ row.materialCount }}
                       </span>
                     }
                   </span>

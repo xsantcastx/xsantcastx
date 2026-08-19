@@ -242,8 +242,24 @@ function hash32(s: string): number {
  * true without a rejection loop.
  */
 export function pickDeterministic<T>(pool: readonly T[], n: number, seed: string): T[] {
-  if (pool.length === 0 || n <= 0) return [];
-  if (n >= pool.length) return [...pool];
+  if (n <= 0) return [];
+  return orderDeterministic(pool, seed).slice(0, n);
+}
+
+/**
+ * The whole pool, permuted by `seed` alone.
+ *
+ * `pickDeterministic` is this plus a `slice`, and the two are one function
+ * because a caller that needs to *skip* entries — the Contract Board rejects a
+ * second card with the same objective — has to be able to keep walking the same
+ * order rather than re-hashing with a nudged seed. A nudged seed is a different
+ * walk, which means it can hand back an entry the first walk already used, and
+ * the loop that works around that is a rejection sampler over a permutation
+ * that was already available.
+ */
+export function orderDeterministic<T>(pool: readonly T[], seed: string): T[] {
+  if (pool.length === 0) return [];
+  if (pool.length === 1) return [...pool];
 
   const h = hash32(seed);
   const start = h % pool.length;
@@ -252,7 +268,7 @@ export function pickDeterministic<T>(pool: readonly T[], n: number, seed: string
   while (gcd(stride, pool.length) !== 1) stride++;
 
   const out: T[] = [];
-  for (let i = 0; i < n; i++) out.push(pool[(start + i * stride) % pool.length]);
+  for (let i = 0; i < pool.length; i++) out.push(pool[(start + i * stride) % pool.length]);
   return out;
 }
 
