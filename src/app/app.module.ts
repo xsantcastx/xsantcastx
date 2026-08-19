@@ -38,6 +38,7 @@ import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
+import { NpcDialogueComponent } from './shared/npc/npc-dialogue.component';
 import { InspectComponent } from './shared/entity/inspect.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
@@ -84,6 +85,7 @@ import { PwaService } from './shared/pwa.service';
     GodforgeLoaderComponent,
     InstallPromptComponent,
     InspectComponent,
+    NpcDialogueComponent,
     CurrentWorkTileComponent
 ],
   providers: [

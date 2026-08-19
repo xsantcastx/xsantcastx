@@ -629,6 +629,7 @@ describe('the registry', () => {
       'eclipse-combo',
       'eclipse-idle',
       'eclipse-lore',
+      'eclipse-npc',
       'eclipse-quests',
       'eclipse-realm-rush-board',
       'godforge-activity',
