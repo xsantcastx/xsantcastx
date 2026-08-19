@@ -276,13 +276,12 @@
   <!-- ═══════════════════════════════════════════════════════════════════════
        Panel 2 — Collection Log
 
-       Rendered only while it is the active tab, unlike the other five, which
-       are `[hidden]`. The log builds ~85 cards with art, a dial and six
-       progress bars, and paying for that on every visit to Achievements is a
-       cost nobody asked for. It is pure-data at construction, so the panel is
-       cheap to build the moment it is asked for — and the prerender still
-       carries a complete locked log, because SSR renders whichever tab the URL
-       names.
+       `[hidden]` rather than `@if`, like the other five panels, and the reason
+       is the prerender rather than a preference. `/codex` is served as a static
+       prerendered file and the query string never reaches it, so a panel gated
+       on `activeTab` is simply absent from the HTML a crawler — or a visitor on
+       a slow first paint — actually receives. The log's whole point is that it
+       is a complete, correct, fully-locked catalogue before any script runs.
   ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"
@@ -290,9 +289,7 @@
     id="cx-panel-collection"
     aria-labelledby="cx-tab-collection"
     [hidden]="activeTab !== 'collection'">
-    @if (activeTab === 'collection') {
-      <app-collection-log></app-collection-log>
-    }
+    <app-collection-log></app-collection-log>
   </section>
 
 
