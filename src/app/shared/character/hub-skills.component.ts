@@ -11,9 +11,11 @@
  *
  * Locked tiles say "reserved", not a fake level. Nothing here invents progress.
  *
- * The two live tiles are written out twice rather than looped: with two rows
- * a @for over a live-skills array is a table nobody asked for yet. The third
- * live skill earns the loop.
+ * The two live tiles used to be written out twice rather than looped: with two
+ * rows a @for over a live-skills array was a table nobody had asked for yet,
+ * and the old note here said the third live skill would earn the loop. B1
+ * Prospecting is that third skill, so LIVE_SKILLS is the loop (skill authoring
+ * spec §11) and the locked list is one shorter.
  */
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -25,14 +27,54 @@ import { levelProgressPct, miningLevelView } from '../activity/mining-level';
 import { CurrentWorkTileComponent } from '../activity/current-work-tile.component';
 import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { ROOTGLASS_CANOPY_HREF } from '../activity/foraging.model';
+import { MERIDIAN_ORRERY_HREF } from '../activity/prospecting.model';
 import { artFor } from '../art/art';
-import type { ActivityLedger } from '../activity/activity.model';
+import type { ActivityLedger, DisciplineId } from '../activity/activity.model';
 
 interface LockedSkill {
   key: string;
   /** Manifest id for the tile mark, where the library has something apt. */
   art: string | null;
 }
+
+interface LiveSkill {
+  /** The ledger's XP key — the bar moves off this discipline's total and no other. */
+  id: DisciplineId;
+  labelKey: string;
+  /** Manifest id for the tile mark: the thing this skill produces every action. */
+  artId: string;
+  href: string;
+  goKey: string;
+  /** Copy for a skill at the level cap. Site-flavoured, hence per-skill. */
+  cappedKey: string;
+}
+
+const LIVE_SKILLS: readonly LiveSkill[] = [
+  {
+    id: 'mining',
+    labelKey: 'work.discipline.mining',
+    artId: 'cinder-ore',
+    href: BASALT_SEAMWORKS_HREF,
+    goKey: 'work.tile.go',
+    cappedKey: 'hub.skills.capped',
+  },
+  {
+    id: 'foraging',
+    labelKey: 'work.discipline.foraging',
+    artId: 'starlight-herb',
+    href: ROOTGLASS_CANOPY_HREF,
+    goKey: 'work.tile.goCanopy',
+    cappedKey: 'hub.skills.cappedForaging',
+  },
+  {
+    id: 'prospecting',
+    labelKey: 'work.discipline.prospecting',
+    artId: 'celestial-alloy',
+    href: MERIDIAN_ORRERY_HREF,
+    goKey: 'work.tile.goOrrery',
+    cappedKey: 'hub.skills.cappedProspecting',
+  },
+];
 
 @Component({
   selector: 'app-hub-skills',
@@ -46,65 +88,37 @@ interface LockedSkill {
       <app-current-work-tile></app-current-work-tile>
 
       <ul class="hs__grid">
-        <li class="hs__skill hs__skill--live">
-          @if (miningArt; as art) {
-            <img class="hs__mark" [src]="art.src" [attr.srcset]="art.srcset" sizes="44px"
-                 alt="" width="44" height="44" loading="lazy" decoding="async">
-          }
-          <div class="hs__body">
-            <h3 class="hs__name">{{ t('work.discipline.mining') }}</h3>
-            <p class="hs__level">
-              <span class="hs__lvl-n">{{ view.level }}</span>
-              <span class="hs__lvl-x">{{ t('hub.skills.xpLine', { xp: view.into, next: view.span || view.into }) }}</span>
-            </p>
-            <div class="hs__bar"
-                 role="progressbar"
-                 [attr.aria-valuenow]="view.into"
-                 aria-valuemin="0"
-                 [attr.aria-valuemax]="view.span || view.into"
-                 [attr.aria-label]="t('hub.skills.barLabel', { name: t('work.discipline.mining') })">
-              <span class="hs__bar-fill" [style.width.%]="pct"></span>
+        @for (skill of live; track skill.id) {
+          <li class="hs__skill hs__skill--live">
+            @if (artOf(skill.artId); as art) {
+              <img class="hs__mark" [src]="art.src" [attr.srcset]="art.srcset" sizes="44px"
+                   alt="" width="44" height="44" loading="lazy" decoding="async">
+            }
+            <div class="hs__body">
+              <h3 class="hs__name">{{ t(skill.labelKey) }}</h3>
+              <p class="hs__level">
+                <span class="hs__lvl-n">{{ viewOf(skill).level }}</span>
+                <span class="hs__lvl-x">{{ t('hub.skills.xpLine', { xp: viewOf(skill).into, next: viewOf(skill).span || viewOf(skill).into }) }}</span>
+              </p>
+              <div class="hs__bar"
+                   role="progressbar"
+                   [attr.aria-valuenow]="viewOf(skill).into"
+                   aria-valuemin="0"
+                   [attr.aria-valuemax]="viewOf(skill).span || viewOf(skill).into"
+                   [attr.aria-label]="t('hub.skills.barLabel', { name: t(skill.labelKey) })">
+                <span class="hs__bar-fill" [style.width.%]="pctOf(skill)"></span>
+              </div>
+              <p class="hs__to-next">
+                @if (viewOf(skill).next; as next) {
+                  {{ t('hub.skills.toNext', { n: next - viewOf(skill).xp, level: viewOf(skill).level + 1 }) }}
+                } @else {
+                  {{ t(skill.cappedKey) }}
+                }
+              </p>
             </div>
-            <p class="hs__to-next">
-              @if (view.next) {
-                {{ t('hub.skills.toNext', { n: view.next - view.xp, level: view.level + 1 }) }}
-              } @else {
-                {{ t('hub.skills.capped') }}
-              }
-            </p>
-          </div>
-          <a class="hs__go" [routerLink]="seamworksHref">{{ t('work.tile.go') }}</a>
-        </li>
-
-        <li class="hs__skill hs__skill--live">
-          @if (foragingArt; as art) {
-            <img class="hs__mark" [src]="art.src" [attr.srcset]="art.srcset" sizes="44px"
-                 alt="" width="44" height="44" loading="lazy" decoding="async">
-          }
-          <div class="hs__body">
-            <h3 class="hs__name">{{ t('work.discipline.foraging') }}</h3>
-            <p class="hs__level">
-              <span class="hs__lvl-n">{{ foragingView.level }}</span>
-              <span class="hs__lvl-x">{{ t('hub.skills.xpLine', { xp: foragingView.into, next: foragingView.span || foragingView.into }) }}</span>
-            </p>
-            <div class="hs__bar"
-                 role="progressbar"
-                 [attr.aria-valuenow]="foragingView.into"
-                 aria-valuemin="0"
-                 [attr.aria-valuemax]="foragingView.span || foragingView.into"
-                 [attr.aria-label]="t('hub.skills.barLabel', { name: t('work.discipline.foraging') })">
-              <span class="hs__bar-fill" [style.width.%]="foragingPct"></span>
-            </div>
-            <p class="hs__to-next">
-              @if (foragingView.next) {
-                {{ t('hub.skills.toNext', { n: foragingView.next - foragingView.xp, level: foragingView.level + 1 }) }}
-              } @else {
-                {{ t('hub.skills.cappedForaging') }}
-              }
-            </p>
-          </div>
-          <a class="hs__go" [routerLink]="canopyHref">{{ t('work.tile.goCanopy') }}</a>
-        </li>
+            <a class="hs__go" [routerLink]="skill.href">{{ t(skill.goKey) }}</a>
+          </li>
+        }
 
         @for (skill of locked; track skill.key) {
           <li class="hs__skill hs__skill--locked">
@@ -207,13 +221,9 @@ export class HubSkillsComponent implements OnInit, OnDestroy {
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly i18n = inject(TranslationService);
   private sub?: Subscription;
-  readonly seamworksHref = BASALT_SEAMWORKS_HREF;
-  readonly canopyHref = ROOTGLASS_CANOPY_HREF;
   snap: ActivityLedger = this.activity.snapshot;
 
-  /** Mining wears the ore it produces; Foraging wears the herb. */
-  readonly miningArt = artFor('cinder-ore');
-  readonly foragingArt = artFor('starlight-herb');
+  readonly live = LIVE_SKILLS;
 
   readonly locked: readonly LockedSkill[] = [
     { key: 'hub.skills.later.exploration', art: 'broken-astral-compass' },
@@ -233,16 +243,14 @@ export class HubSkillsComponent implements OnInit, OnDestroy {
 
   artOf(id: string) { return artFor(id); }
 
-  get view() {
-    return miningLevelView(this.snap.progress.xpByDiscipline.mining ?? 0);
+  /**
+   * One curve for every discipline, read off *that* discipline's XP total —
+   * a tile's bar can only ever move on its own skill's XP.
+   */
+  viewOf(skill: LiveSkill) {
+    return miningLevelView(this.snap.progress.xpByDiscipline[skill.id] ?? 0);
   }
 
   /** Fill for the XP bar — progress *within* the level, not against the total. */
-  get pct(): number { return levelProgressPct(this.view); }
-
-  get foragingView() {
-    return miningLevelView(this.snap.progress.xpByDiscipline.foraging ?? 0);
-  }
-
-  get foragingPct(): number { return levelProgressPct(this.foragingView); }
+  pctOf(skill: LiveSkill): number { return levelProgressPct(this.viewOf(skill)); }
 }

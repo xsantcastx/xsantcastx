@@ -85,6 +85,14 @@ import {
   upgradeLevelOf,
   type UpgradePreview,
 } from './item-upgrade';
+import {
+  canReforgeItem,
+  previewReforge,
+  reforgeGoldCost,
+  rollReforge,
+  type ReforgePreview,
+} from './item-reforge';
+import type { ItemStatKey } from './item-definition';
 
 export const INVENTORY_KEY = 'godforge-inventory';
 
@@ -612,6 +620,84 @@ export class InventoryService {
     rng: () => number = Math.random,
   ): ReturnType<InventoryService['upgrade']> {
     return this.upgrade(itemId, mutationId, now, rng);
+  }
+
+  // ── Reforge: the stat reroll (item-reforge.ts) ─────────────────────────────
+
+  /** What a reroll of this instance would cost, and which stats it would move. */
+  previewReforge(item: GameItem): ReforgePreview | null {
+    return previewReforge(item);
+  }
+
+  /** Can this item be rerolled, and can the Keeper afford it right now? */
+  canReforge(item: GameItem, lockedKey: ItemStatKey | null = null): boolean {
+    if (!canReforgeItem(item)) return false;
+    return this.economy.snapshot.gold >= reforgeGoldCost(item.rarity, !!lockedKey);
+  }
+
+  /**
+   * Reroll every stat on one instance. Same mutation id replays the stored
+   * result — the Inspect panel keeps its id across a persist retry so a failed
+   * save cannot be turned into a second free roll.
+   *
+   * Gold only: unlike temper, no materials are consumed, so there is no stack
+   * ledger to unwind. Inventory writes first and a missed Gold debit rolls the
+   * whole record back, exactly as `upgrade` does — a reroll that the player was
+   * not charged for must not be allowed to stand, or the sink leaks.
+   *
+   * There is no fail roll. A reforge always resolves; the risk is the roll
+   * itself, not a chance of nothing happening.
+   */
+  reforge(
+    itemId: string,
+    mutationId: string,
+    lockedKey: ItemStatKey | null = null,
+    now = Date.now(),
+    rng: () => number = Math.random,
+  ):
+    | { ok: true; item: GameItem; replayed: boolean; lockedKey: ItemStatKey | null }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'kind' | 'funds' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!itemId || !mutationId || !Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    const item = this.itemById(itemId);
+    if (!item) return { ok: false, code: 'missing' };
+    if (item.lastReforgeMutationId === mutationId) {
+      return { ok: true, item, replayed: true, lockedKey: item.lastReforgeLock ?? null };
+    }
+    if (!canReforgeItem(item)) return { ok: false, code: 'kind' };
+
+    // A lock the item does not actually roll is treated as no lock rather than
+    // as an error: the caller still pays the plain price, never the doubled one.
+    const keys = previewReforge(item)?.keys ?? [];
+    const lock = lockedKey && keys.includes(lockedKey) ? lockedKey : null;
+    const cost = reforgeGoldCost(item.rarity, !!lock);
+    if (this.economy.snapshot.gold < cost) return { ok: false, code: 'funds' };
+
+    const previous = this.ledger;
+    const nextItem: GameItem = {
+      ...item,
+      stats: rollReforge(item, lock, rng),
+      lastReforgeAt: new Date(now).toISOString(),
+      lastReforgeMutationId: mutationId,
+      lastReforgeLock: lock ?? undefined,
+      reforgeCount: (item.reforgeCount ?? 0) + 1,
+    };
+
+    this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(nextItem)));
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    if (!this.economy.spendGold(cost, 'reforge')) {
+      this.ledger = previous;
+      this.save();
+      this.publish();
+      return { ok: false, code: 'funds' };
+    }
+    this.publish();
+    const stored = this.itemById(itemId);
+    return { ok: true, item: stored ?? nextItem, replayed: false, lockedKey: lock };
   }
 
   canDrop(item: GameItem): boolean {

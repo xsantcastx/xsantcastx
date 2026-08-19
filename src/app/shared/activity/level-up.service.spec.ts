@@ -95,4 +95,52 @@ describe('LevelUpService', () => {
     expect(events[0].milestone).toBe(true);
     expect(events[0].skillLabelKey).toBe('work.discipline.foraging');
   });
+
+  // ── B1 Prospecting ───────────────────────────────────────────────────────
+
+  it('checkProspecting fires at the crossing with the prospecting label and the alloy art', () => {
+    const at = xpForLevel(2);
+    service.checkProspecting(at - 1, at);
+    expect(events.length).toBe(1);
+    expect(events[0].level).toBe(2);
+    expect(events[0].skillLabelKey).toBe('work.discipline.prospecting');
+    expect(events[0].art?.src).toContain('celestial-alloy');
+    expect(events[0].milestone).toBe(false);
+  });
+
+  it('checkProspecting is quiet when XP moves without crossing, stays flat, or goes down', () => {
+    const floor = xpForLevel(4);
+    service.checkProspecting(floor, floor + 3);
+    service.checkProspecting(floor, floor);
+    service.checkProspecting(floor, floor - 50);
+    expect(events.length).toBe(0);
+  });
+
+  it('checkProspecting flags every tenth prospecting level as a milestone', () => {
+    const ten = xpForLevel(10);
+    service.checkProspecting(ten - 1, ten);
+    expect(events[0].level).toBe(10);
+    expect(events[0].milestone).toBe(true);
+    expect(events[0].skillLabelKey).toBe('work.discipline.prospecting');
+  });
+
+  // ── the generic entry point the third skill made public (spec §11) ────────
+
+  it('check(discipline, …) is what the three named methods delegate to', () => {
+    const at = xpForLevel(3);
+    service.check('mining', at - 1, at);
+    service.check('foraging', at - 1, at);
+    service.check('prospecting', at - 1, at);
+    expect(events.map(e => e.skillLabelKey)).toEqual([
+      'work.discipline.mining', 'work.discipline.foraging', 'work.discipline.prospecting',
+    ]);
+  });
+
+  it('check stays silent for a discipline that is not a live skill', () => {
+    const at = xpForLevel(5);
+    service.check('exploration', at - 1, at);
+    service.check('forge', at - 1, at);
+    service.check('hunting', at - 1, at);
+    expect(events.length).toBe(0);
+  });
 });

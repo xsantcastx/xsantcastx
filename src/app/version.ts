@@ -22,10 +22,10 @@ export interface VersionRelease {
 }
 
 export const APP_VERSION = {
-  version: '2.65.0',
+  version: '2.66.0',
   buildDate: '2026-08-19',
   /** Each major release gets a codename */
-  codename: 'Reverse',
+  codename: 'Orrery',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;
@@ -52,6 +52,19 @@ export const PRO_EARLY_ACCESS_TOOLS: readonly string[] = [];
  * Newest first. The /blueprint Dev Log reads this to show what shipped when.
  */
 export const VERSION_HISTORY: VersionRelease[] = [
+  {
+    version: '2.66.0',
+    codename: 'Orrery',
+    date: '2026-08-19',
+    highlights: [
+      'Prospecting is the third skill. Celestial\u2019s Meridian Orrery is a brass-and-glass chamber whose rings trace the boundaries between realms, and cutting into them is how you get at what the far realms are made of \u2014 Celestial Alloy first, then Luminous Prism, Verdant Sap, Umbral Ink, and Void Shard at the very bottom',
+      'Five cuts against three seams and four growths, which makes it the longest ladder in the game: the top gate is level 34, nine above Thornroot and fourteen above Heartstone, and it pays accordingly. Every step is roughly one to six hours of the cut below it',
+      'A Clarity Elixir turns up on about one survey in fourteen hundred, and the 750th survey guarantees the first if none has. After that it keeps rolling and never guarantees again',
+      'Reforge is a place to put Gold. Temper only ever grows what an item already has, so a Mythic with a floor roll was a dead end \u2014 now every stat can be rerolled inside that item\u2019s own rarity, from 500 Gold on a Common to a million on a Mythic. It can come out worse; that is the trade',
+      'Pay double and one stat is held while the rest are rerolled. The anvil rings, the numbers tumble, and what settles is laid out beside what you had \u2014 including the stats that did not move, because after a gamble you are owed the whole accounting',
+      'Rarity, definition and temper level survive a reforge untouched. A +7 comes back a +7: what you are gambling is the roll underneath it, never the levels you already paid for'
+    ]
+  },
   {
     version: '2.65.0',
     codename: 'Reverse',
