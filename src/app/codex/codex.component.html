@@ -274,7 +274,30 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 2 — Progression
+       Panel 2 — Collection Log
+
+       Rendered only while it is the active tab, unlike the other five, which
+       are `[hidden]`. The log builds ~85 cards with art, a dial and six
+       progress bars, and paying for that on every visit to Achievements is a
+       cost nobody asked for. It is pure-data at construction, so the panel is
+       cheap to build the moment it is asked for — and the prerender still
+       carries a complete locked log, because SSR renders whichever tab the URL
+       names.
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section
+    class="cx-panel"
+    role="tabpanel"
+    id="cx-panel-collection"
+    aria-labelledby="cx-tab-collection"
+    [hidden]="activeTab !== 'collection'">
+    @if (activeTab === 'collection') {
+      <app-collection-log></app-collection-log>
+    }
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Panel 3 — Progression
   ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"
@@ -598,7 +621,7 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 5 — Leaderboard
+       Panel 6 — Leaderboard
   ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"

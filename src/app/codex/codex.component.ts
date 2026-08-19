@@ -1,9 +1,9 @@
 /**
  * codex.component.ts — /codex, the record of everything there is to find.
  *
- * Five panels over one set of state: the achievement wall, the progression path,
- * the lore scrolls, the secrets guide, and a leaderboard that does not exist
- * yet and says so.
+ * Six panels over one set of state: the achievement wall, the Collection Log,
+ * the progression path, the lore scrolls, the secrets guide, and a leaderboard
+ * that does not exist yet and says so.
  *
  * SSR: every list is built at construction from pure registries, so the
  * prerendered HTML is a complete, correct, fully-locked Codex — 140 real cards
@@ -13,8 +13,9 @@
  *
  * The tab is mirrored into `?tab=` so a deep link lands on the right panel,
  * using replaceState rather than a router navigation — a tab is not a page,
- * and it should not cost a back-button press to undo. Retired `?tab=bestiary`
- * links fall back to Achievements.
+ * and it should not cost a back-button press to undo. `?tab=bestiary` is kept
+ * alive as an alias for the Collection Log: it used to 404 into Achievements,
+ * and a bestiary is what the log turned out to be.
  */
 import {
   Component,
@@ -68,8 +69,9 @@ import {
   SECRET_SOURCE_LABEL,
   SecretRecord,
 } from './codex-secrets.service';
+import { CollectionLogComponent } from '../shared/collection/collection-log.component';
 
-export type CodexTab = 'achievements' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
+export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
   key: CodexTab;
@@ -180,7 +182,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, CollectionLogComponent],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })
@@ -206,6 +208,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   // ── Tabs ──────────────────────────────────────────────────────────────────
   readonly tabs: TabDefinition[] = [
     { key: 'achievements', label: 'Achievements', icon: '✦', hint: 'every fragment, found and unfound' },
+    { key: 'collection',   label: 'Collection',   icon: '⬡', hint: 'every thing there is to hold' },
     { key: 'progression',  label: 'Progression',  icon: '◆', hint: 'rank, energy and the streak' },
     { key: 'scrolls',      label: 'Lore',         icon: '📜', hint: 'the codex, one fragment at a time' },
     { key: 'secrets',      label: 'Secrets',      icon: '✧', hint: 'the hidden content, clued not spoiled' },
@@ -315,8 +318,13 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   private readTabFromUrl(): void {
     const requested = this.route.snapshot.queryParamMap.get('tab');
-    if (requested && this.tabs.some(t => t.key === requested)) {
-      this.activeTab = requested as CodexTab;
+    if (!requested) return;
+    // `?tab=bestiary` was a real link before the tab it named was withdrawn.
+    // The Collection Log is what that tab became, so the alias resolves rather
+    // than silently landing on Achievements.
+    const key = requested === 'bestiary' ? 'collection' : requested;
+    if (this.tabs.some(t => t.key === key)) {
+      this.activeTab = key as CodexTab;
     }
   }
 
