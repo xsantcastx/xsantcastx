@@ -1,0 +1,398 @@
+<!-- The trading floor, painted. Layer 1 of the three-layer pattern; the
+     gradient overlay is layer 2, inside the component. See art-scene for why
+     this is a <picture>. -->
+<app-art-scene art="bg-war-table" focus="center 45%" />
+
+<section class="ge" [class.ge--hydrated]="hydrated">
+
+  <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+  <header class="ge__hero">
+    <span class="ge__sigil" aria-hidden="true">⚖</span>
+    <p class="ge__eyebrow"><span class="ge__eyebrow-pulse"></span>THE MERCHANT HOUSES</p>
+    <h1 class="ge__title">The Grand Exchange</h1>
+    <p class="ge__tagline">every price on this board is set by the clock, the houses, and what you did to it</p>
+  </header>
+
+  <!-- ── Active market events ─────────────────────────────────────────────
+       Only rendered when something is actually happening. An empty banner
+       that says "no events" is a banner teaching people to ignore banners. -->
+  @if (events.length) {
+    <div class="ge__events" role="status">
+      @for (e of events; track trackEvent($index, e)) {
+        <article class="ge__event" [attr.data-tone]="e.tone">
+          <h2 class="ge__event-name">
+            {{ e.name }}
+            <span class="ge__event-delta">{{ eventDelta(e) }}</span>
+          </h2>
+          <p class="ge__event-blurb">{{ e.blurb }}</p>
+          <p class="ge__event-time">{{ remaining(e) }}</p>
+        </article>
+      }
+    </div>
+  }
+
+  <!-- ── Wallet ──────────────────────────────────────────────────────────── -->
+  <div class="ge__wallet">
+    <div class="ge__coin ge__coin--gold">
+      <img class="ge__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+           alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
+      <span class="ge__coin-body">
+        <span class="ge__coin-val">{{ gold_(gold) }}</span>
+        <span class="ge__coin-label">Gold</span>
+      </span>
+    </div>
+    <div class="ge__coin">
+      <span class="ge__coin-glyph" aria-hidden="true">▼</span>
+      <span class="ge__coin-body">
+        <span class="ge__coin-val">{{ gold_(snap.spentToday) }}</span>
+        <span class="ge__coin-label">Spent today</span>
+      </span>
+    </div>
+    <div class="ge__coin">
+      <span class="ge__coin-glyph" aria-hidden="true">▲</span>
+      <span class="ge__coin-body">
+        <span class="ge__coin-val">{{ gold_(snap.earnedToday) }}</span>
+        <span class="ge__coin-label">Earned today</span>
+      </span>
+    </div>
+    <div class="ge__coin ge__coin--tax">
+      <span class="ge__coin-glyph" aria-hidden="true">◈</span>
+      <span class="ge__coin-body">
+        <span class="ge__coin-val">{{ gold_(snap.taxPaidToday) }}</span>
+        <span class="ge__coin-label">To the house</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="ge__floor">
+
+    <!-- ══ Board ════════════════════════════════════════════════════════ -->
+    <div class="ge__board">
+
+      <!-- ── Search and filters ──────────────────────────────────────── -->
+      <div class="ge__filters">
+        <label class="ge__search">
+          <span class="ge__sr">Search the board</span>
+          <span class="ge__search-glyph" aria-hidden="true">⌕</span>
+          <input
+            type="search" class="ge__search-input" placeholder="Search the board…"
+            [(ngModel)]="search" (ngModelChange)="onFilterChange()"
+            autocomplete="off" spellcheck="false">
+        </label>
+
+        <div class="ge__chips" role="group" aria-label="Category">
+          <button type="button" class="ge__chip" [class.is-on]="category === 'all'"
+                  (click)="category = 'all'; onFilterChange()">All</button>
+          @for (c of categories; track c) {
+            <button type="button" class="ge__chip" [class.is-on]="category === c"
+                    (click)="category = c; onFilterChange()">{{ categoryLabels[c] }}</button>
+          }
+        </div>
+
+        <div class="ge__chips" role="group" aria-label="Rarity">
+          <button type="button" class="ge__chip" [class.is-on]="rarity === 'all'"
+                  (click)="rarity = 'all'; onFilterChange()">Any rarity</button>
+          @for (r of rarities; track r) {
+            <button type="button" class="ge__chip ge__chip--tier"
+                    [class.is-on]="rarity === r"
+                    [style.--tier]="rarityColor(r)"
+                    (click)="rarity = r; onFilterChange()">{{ rarityLabel(r) }}</button>
+          }
+        </div>
+
+        <div class="ge__filter-row">
+          <div class="ge__chips" role="group" aria-label="Trend">
+            <button type="button" class="ge__chip" [class.is-on]="trendFilter === 'all'"
+                    (click)="trendFilter = 'all'; onFilterChange()">Any trend</button>
+            <button type="button" class="ge__chip ge__chip--up" [class.is-on]="trendFilter === 'rising'"
+                    (click)="trendFilter = 'rising'; onFilterChange()">▲ Rising</button>
+            <button type="button" class="ge__chip ge__chip--down" [class.is-on]="trendFilter === 'falling'"
+                    (click)="trendFilter = 'falling'; onFilterChange()">▼ Falling</button>
+          </div>
+
+          <label class="ge__num">
+            <span class="ge__num-label">Min</span>
+            <input type="number" min="0" inputmode="numeric" class="ge__num-input"
+                   [(ngModel)]="minPrice" (ngModelChange)="onFilterChange()" placeholder="—">
+          </label>
+          <label class="ge__num">
+            <span class="ge__num-label">Max</span>
+            <input type="number" min="0" inputmode="numeric" class="ge__num-input"
+                   [(ngModel)]="maxPrice" (ngModelChange)="onFilterChange()" placeholder="—">
+          </label>
+
+          <label class="ge__toggle">
+            <input type="checkbox" [(ngModel)]="ownedOnly" (ngModelChange)="onFilterChange()">
+            <span>Only what I hold</span>
+          </label>
+        </div>
+
+        <div class="ge__sortbar">
+          <span class="ge__sortbar-label">Sort</span>
+          @for (s of [{k:'change',l:'Change'},{k:'price',l:'Price'},{k:'volume',l:'Demand'},{k:'name',l:'Name'}]; track s.k) {
+            <button type="button" class="ge__sort" [class.is-on]="sort === s.k"
+                    (click)="setSort($any(s.k))">
+              {{ s.l }}
+              @if (sort === s.k) { <span aria-hidden="true">{{ sortDesc ? '▾' : '▴' }}</span> }
+            </button>
+          }
+          <span class="ge__count">{{ matched.length }} of {{ listings.length }}</span>
+          @if (filtersActive) {
+            <button type="button" class="ge__clear" (click)="clearFilters()">Clear filters</button>
+          }
+        </div>
+      </div>
+
+      <!-- ── Listings ─────────────────────────────────────────────────── -->
+      @if (visible.length) {
+        <ul class="ge__rows">
+          @for (row of visible; track trackListing($index, row)) {
+            <li class="ge__row"
+                [class.is-open]="selected?.itemId === row.itemId"
+                [attr.data-trend]="row.trend"
+                [style.--tier]="rarityColor(row.rarity)"
+                [style.--tier-glow]="rarityGlow(row.rarity)">
+              <button type="button" class="ge__row-btn" (click)="select(row)"
+                      [attr.aria-expanded]="selected?.itemId === row.itemId">
+                <span class="ge__row-mark" aria-hidden="true">
+                  @if (row.good.art) {
+                    <img class="ge__row-art" [src]="row.good.art" alt="" width="40" height="40"
+                         loading="lazy" decoding="async" draggable="false">
+                  } @else {
+                    <span class="ge__row-orb">{{ row.itemName.charAt(0) }}</span>
+                  }
+                </span>
+
+                <span class="ge__row-id">
+                  <span class="ge__row-name">{{ row.itemName }}</span>
+                  <span class="ge__row-meta">
+                    <span class="ge__row-tier">{{ rarityLabel(row.rarity) }}</span>
+                    <span class="ge__row-cat">{{ categoryLabels[row.good.category] }}</span>
+                    @if (holdings(row.good) > 0) {
+                      <span class="ge__row-held">you hold {{ holdings(row.good) }}</span>
+                    }
+                    @if (row.playerMoved) {
+                      <span class="ge__row-moved" title="Your own trading is moving this line">your trades</span>
+                    }
+                  </span>
+                </span>
+
+                <span class="ge__row-spark" aria-hidden="true">
+                  <app-price-chart [points]="row.spark" [compact]="true" [color]="trendColor(row)" />
+                </span>
+
+                <span class="ge__row-num">
+                  <span class="ge__row-price">{{ gold_(row.currentPrice) }}</span>
+                  <span class="ge__row-change" [attr.data-trend]="row.trend">
+                    <span aria-hidden="true">{{ row.trend === 'rising' ? '▲' : row.trend === 'falling' ? '▼' : '—' }}</span>
+                    {{ percent(row.change24h) }}
+                  </span>
+                </span>
+
+                <span class="ge__row-stock">
+                  <span class="ge__row-supply">{{ gold_(row.supply) }} <em>supply</em></span>
+                  <span class="ge__row-demand">{{ gold_(row.demand) }} <em>demand</em></span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (hidden > 0) {
+          <button type="button" class="ge__more" (click)="revealMore()">
+            Reveal {{ hidden > 40 ? 40 : hidden }} more
+            <span class="ge__more-rest">{{ hidden }} still hidden</span>
+          </button>
+        }
+      } @else {
+        <div class="ge__empty">
+          <span class="ge__empty-glyph" aria-hidden="true">🜃</span>
+          <p class="ge__empty-title">Nothing on the board matches that.</p>
+          <p class="ge__empty-body">The houses trade {{ listings.length }} lines. Widen the search.</p>
+          @if (filtersActive) {
+            <button type="button" class="ge__cta" (click)="clearFilters()">Clear filters</button>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ══ Right rail ═══════════════════════════════════════════════════ -->
+    <aside class="ge__rail">
+
+      <!-- ── The open line ────────────────────────────────────────────── -->
+      @if (selected; as sel) {
+        <section class="ge__panel ge__panel--line"
+                 [style.--tier]="rarityColor(sel.rarity)"
+                 [style.--tier-glow]="rarityGlow(sel.rarity)">
+          <header class="ge__panel-head">
+            <div>
+              <h2 class="ge__panel-title">{{ sel.itemName }}</h2>
+              <p class="ge__panel-sub">
+                {{ rarityLabel(sel.rarity) }} · {{ categoryLabels[sel.good.category] }} ·
+                base {{ gold_(sel.basePrice) }}
+              </p>
+            </div>
+            <button type="button" class="ge__close" (click)="close()" aria-label="Close this line">✕</button>
+          </header>
+
+          <p class="ge__panel-price">
+            <span class="ge__panel-now">{{ gold_(sel.currentPrice) }}</span>
+            <span class="ge__panel-unit">Gold each</span>
+            <span class="ge__panel-change" [attr.data-trend]="sel.trend">
+              <span aria-hidden="true">{{ sel.trend === 'rising' ? '▲' : sel.trend === 'falling' ? '▼' : '—' }}</span>
+              {{ percent(sel.change24h) }} <em>24h</em>
+            </span>
+          </p>
+
+          <!-- Chart -->
+          <div class="ge__ranges" role="group" aria-label="Chart range">
+            @for (r of ranges; track r.id) {
+              <button type="button" class="ge__range" [class.is-on]="range === r.id"
+                      (click)="setRange(r.id)">{{ r.label }}</button>
+            }
+          </div>
+          <div class="ge__chartbox">
+            <app-price-chart
+              [points]="chart"
+              [color]="trendColor(sel)"
+              [ariaLabel]="sel.itemName + ' price over the last ' + range" />
+          </div>
+          <p class="ge__chart-legend">
+            <span class="ge__legend-line" [style.--tier]="trendColor(sel)"></span> price
+            <span class="ge__legend-avg" [style.--tier]="trendColor(sel)"></span> mean
+            <span class="ge__legend-vol" [style.--tier]="trendColor(sel)"></span> volume
+          </p>
+
+          <!-- Buy / sell -->
+          <div class="ge__sides" role="group" aria-label="Buy or sell">
+            <button type="button" class="ge__side ge__side--buy" [class.is-on]="side === 'buy'"
+                    (click)="setSide('buy')">Buy</button>
+            <button type="button" class="ge__side ge__side--sell" [class.is-on]="side === 'sell'"
+                    (click)="setSide('sell')">Sell</button>
+          </div>
+
+          <p class="ge__holding">
+            You hold <strong>{{ gold_(holdings(sel.good)) }}</strong>
+            @if (sel.good.kind === 'equipment') { <span>· only unequipped pieces can be sold</span> }
+          </p>
+
+          <div class="ge__qty">
+            <button type="button" class="ge__qty-step" (click)="setQuantity(quantity - 1)"
+                    [disabled]="quantity <= 1" aria-label="One fewer">−</button>
+            <label class="ge__qty-field">
+              <span class="ge__sr">Quantity</span>
+              <input type="number" min="1" max="999" inputmode="numeric"
+                     class="ge__qty-input" [ngModel]="quantity"
+                     (ngModelChange)="setQuantity($event)">
+            </label>
+            <button type="button" class="ge__qty-step" (click)="setQuantity(quantity + 1)"
+                    aria-label="One more">+</button>
+            <button type="button" class="ge__qty-max" (click)="fillMax()">Max</button>
+          </div>
+
+          @if (quote; as q) {
+            <dl class="ge__receipt">
+              <div><dt>{{ q.quantity }} × {{ gold_(q.unitPrice) }}</dt><dd>{{ gold_(q.gross) }}</dd></div>
+              @if (side === 'sell') {
+                <div class="ge__receipt-tax">
+                  <dt>House cut ({{ taxPercent }}%)</dt><dd>−{{ gold_(q.tax) }}</dd>
+                </div>
+              }
+              <div class="ge__receipt-net">
+                <dt>{{ side === 'buy' ? 'You pay' : 'You receive' }}</dt>
+                <dd>{{ gold_(q.net) }}</dd>
+              </div>
+            </dl>
+          }
+
+          <button type="button" class="ge__confirm"
+                  [class.ge__confirm--sell]="side === 'sell'"
+                  [disabled]="!!blocker" (click)="confirm()">
+            {{ side === 'buy' ? 'Buy now' : 'Sell now' }}
+          </button>
+          @if (blocker) { <p class="ge__blocker">{{ blocker }}</p> }
+          @if (notice) {
+            <p class="ge__notice" [attr.data-tone]="notice.tone" role="status">{{ notice.text }}</p>
+          }
+        </section>
+      } @else {
+        <section class="ge__panel ge__panel--idle">
+          <h2 class="ge__panel-title">Pick a line</h2>
+          <p class="ge__idle-body">
+            Choose anything on the board to see its history and trade it.
+            Sales pay the house {{ taxPercent }}% — the only Gold that leaves the realm here.
+          </p>
+        </section>
+      }
+
+      <!-- ── Movers ───────────────────────────────────────────────────── -->
+      <section class="ge__panel">
+        <h2 class="ge__panel-title">Market movers</h2>
+        <div class="ge__movers">
+          <div class="ge__mover-col">
+            <h3 class="ge__mover-head ge__mover-head--up">Rising</h3>
+            @for (m of risers; track trackListing($index, m)) {
+              <button type="button" class="ge__mover" (click)="select(m)">
+                <span class="ge__mover-name">{{ m.itemName }}</span>
+                <span class="ge__mover-pct" data-trend="rising">{{ percent(m.change24h) }}</span>
+              </button>
+            } @empty {
+              <p class="ge__mover-none">The board is flat.</p>
+            }
+          </div>
+          <div class="ge__mover-col">
+            <h3 class="ge__mover-head ge__mover-head--down">Falling</h3>
+            @for (m of fallers; track trackListing($index, m)) {
+              <button type="button" class="ge__mover" (click)="select(m)">
+                <span class="ge__mover-name">{{ m.itemName }}</span>
+                <span class="ge__mover-pct" data-trend="falling">{{ percent(m.change24h) }}</span>
+              </button>
+            } @empty {
+              <p class="ge__mover-none">Nothing is sliding.</p>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Your ledger ──────────────────────────────────────────────── -->
+      <section class="ge__panel">
+        <h2 class="ge__panel-title">Your ledger</h2>
+        @if (snap.trades.length) {
+          <ul class="ge__ledger">
+            @for (t of snap.trades; track trackTrade($index, t)) {
+              <li class="ge__trade" [attr.data-side]="t.side">
+                <span class="ge__trade-side" aria-hidden="true">{{ t.side === 'buy' ? '▼' : '▲' }}</span>
+                <span class="ge__trade-body">
+                  <span class="ge__trade-name">{{ t.quantity }} × {{ t.name }}</span>
+                  <span class="ge__trade-when">{{ ago(t.at) }}</span>
+                </span>
+                <span class="ge__trade-net">
+                  {{ t.side === 'buy' ? '−' : '+' }}{{ gold_(t.net) }}
+                </span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="ge__ledger-none">
+            You have not traded here yet. Every order you place moves its own price —
+            dump four hundred ore and watch what the houses do about it.
+          </p>
+        }
+      </section>
+
+      <!-- ── The honest footnote ──────────────────────────────────────── -->
+      <section class="ge__panel ge__panel--note">
+        <h2 class="ge__panel-title">Who is on the other side</h2>
+        <p class="ge__note">
+          The merchant houses, not other Keepers. Prices here are simulated —
+          driven by the clock, by market events, and by your own trading — and
+          nothing you list is seen by another player. Nobody is quoting you a
+          stranger's price and calling it a market.
+        </p>
+        <p class="ge__note">
+          <a routerLink="/market" class="ge__note-link">The Godforge Market</a> is where
+          upgrades are bought. This board trades what you carry.
+        </p>
+      </section>
+    </aside>
+  </div>
+</section>

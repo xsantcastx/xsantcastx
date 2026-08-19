@@ -270,6 +270,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // guarantee out sooner than one device alone had earned it.
   },
   {
+    key: 'godforge-exchange',
+    collection: 'economy',
+    doc: 'exchange',
+    label: 'Grand Exchange',
+    // Filed under `economy` for the same reason as the Gambler: every number in
+    // it is a consequence of moving Gold. It is the one blob where the
+    // structural rule is wrong in *both* directions rather than one, which is
+    // why it has a hand-written merge — see mergeExchange.
+    merge: mergeExchange,
+  },
+  {
     key: 'godforge-pro',
     collection: 'progress',
     doc: 'pro',
@@ -515,6 +526,113 @@ function mergeThrallLog(remote: unknown, local: unknown): unknown[] {
   }
   rows.sort((a, b) => numberOf(b['at']) - numberOf(a['at']));
   return rows.slice(0, THRALL_LOG_MAX);
+}
+
+/** Ticker ceiling. Mirrors TRADE_LOG_LIMIT in exchange/exchange.service.ts. */
+const EXCHANGE_LOG_MAX = 40;
+
+/**
+ * Half-life of a market footprint. Mirrors PRESSURE_HALF_LIFE_MS in
+ * exchange/exchange.model.ts.
+ *
+ * Copied rather than imported for the reason the whole file is import-light:
+ * cloud save is eager and the Exchange model is a lazy chunk on one route, so
+ * an import here would pull the catalogue, the noise functions and the event
+ * table into the initial bundle of every page to read one integer. The copy is
+ * asserted against the original in `cloud-save.model.spec.ts`.
+ */
+const EXCHANGE_PRESSURE_HALF_LIFE_MS = 6 * 3_600_000;
+
+/**
+ * Reconcile two devices' Grand Exchange records.
+ *
+ * The structural rule is wrong here in both directions at once, which is rare
+ * enough to be worth writing down:
+ *
+ *   · `pressure.net` is **signed**. It is how far the player's own trading has
+ *     pushed a line off its base — positive for buying, negative for selling.
+ *     Taking the larger of two copies would silently discard every sale made on
+ *     the other device, so a player who dumped four hundred ore on a phone would
+ *     find the price un-dented on their desktop.
+ *   · `spent` and `earned` are a *daily* tally, not a high-water mark. Taking
+ *     the max of two different days reports the busier day forever.
+ *
+ * So pressure is decayed to a common instant and **added**, because both
+ * devices really did make those trades and the market really did absorb both.
+ * That is also commutative, which the merge contract requires: which device
+ * signed in first must not change the answer.
+ *
+ * Nothing here is spendable — Gold itself is reconciled by the economy ledger's
+ * operation log — so a generous merge cannot mint anything. The worst a wrong
+ * answer costs is a price that is off for a few hours until the decay eats it.
+ */
+function mergeExchange(remote: unknown, local: unknown): unknown {
+  const r = isPlainObject(remote) ? remote : {};
+  const l = isPlainObject(local) ? local : {};
+
+  // ── pressure: decay both sides to the later stamp, then sum ───────────────
+  const pressure: Record<string, { net: number; at: number }> = {};
+  const ids = new Set<string>();
+  for (const side of [r['pressure'], l['pressure']]) {
+    if (isPlainObject(side)) for (const key of Object.keys(side)) ids.add(key);
+  }
+  for (const id of ids) {
+    const a = readFootprint(r['pressure'], id);
+    const b = readFootprint(l['pressure'], id);
+    if (!a && !b) continue;
+    if (!a) { pressure[id] = b!; continue; }
+    if (!b) { pressure[id] = a; continue; }
+    const at = Math.max(a.at, b.at);
+    pressure[id] = { net: decayTo(a, at) + decayTo(b, at), at };
+  }
+
+  // ── the ticker: newest-first union, deduped by id ─────────────────────────
+  const seen = new Set<string>();
+  const trades: Record<string, unknown>[] = [];
+  for (const row of [...asArray(l['trades']), ...asArray(r['trades'])]) {
+    if (!isPlainObject(row)) continue;
+    const id = typeof row['id'] === 'string' ? row['id'] : null;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    trades.push(row);
+  }
+  trades.sort((a, b) => numberOf(b['at']) - numberOf(a['at']));
+
+  // ── the daily tally: sum within a day, adopt the later day outright ───────
+  const rDay = typeof r['day'] === 'string' ? r['day'] : '';
+  const lDay = typeof l['day'] === 'string' ? l['day'] : '';
+  const day = rDay > lDay ? rDay : lDay;
+  const sameDay = rDay === lDay && rDay !== '';
+  const tally = (field: string) =>
+    sameDay
+      ? numberOf(r[field]) + numberOf(l[field])
+      : numberOf((rDay === day ? r : l)[field]);
+
+  return {
+    version: 1,
+    pressure,
+    trades: trades.slice(0, EXCHANGE_LOG_MAX),
+    day,
+    spent: tally('spent'),
+    earned: tally('earned'),
+    taxPaid: tally('taxPaid'),
+  };
+}
+
+function readFootprint(side: unknown, id: string): { net: number; at: number } | null {
+  if (!isPlainObject(side)) return null;
+  const row = side[id];
+  if (!isPlainObject(row)) return null;
+  const net = row['net'];
+  const at = row['at'];
+  if (typeof net !== 'number' || !Number.isFinite(net)) return null;
+  if (typeof at !== 'number' || !Number.isFinite(at)) return null;
+  return { net, at };
+}
+
+function decayTo(footprint: { net: number; at: number }, at: number): number {
+  const elapsed = Math.max(0, at - footprint.at);
+  return footprint.net * Math.pow(0.5, elapsed / EXCHANGE_PRESSURE_HALF_LIFE_MS);
 }
 
 /** Field-wise max of two `{ id: count }` maps. Used for the Thrall tallies. */
