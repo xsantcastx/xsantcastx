@@ -61,6 +61,7 @@ import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/cor
 import { isPlatformBrowser } from '@angular/common';
 
 import { ForgeEffectsService } from './forge-effects.service';
+import type { SceneReaction } from '../celebration/celebration.model';
 import {
   GOVERNOR,
   PALETTES,
@@ -107,6 +108,7 @@ const VERTEX_SHADER = `
   uniform float uTrailGap;
   uniform float uRippleDur;
   uniform vec4  uRipples[RIPPLE_SLOTS];
+  uniform float uFlash;
 
   attribute vec3  aSeed;
   attribute float aSize;
@@ -149,13 +151,18 @@ const VERTEX_SHADER = `
     float flare = 0.0;
     for (int i = 0; i < RIPPLE_SLOTS; i++) {
       vec4 r = uRipples[i];
-      if (r.w <= 0.0) continue;
+      // Strength is signed: positive shoves the field away from the point,
+      // negative drags it in. The celebration's spiral is the same ring run
+      // backwards, which is one sign flip rather than a second code path.
+      if (abs(r.w) < 0.001) continue;
       float age = (uTime - r.z) / uRippleDur;
       if (age < 0.0 || age > 1.0) continue;
       float band = length(p - r.xy) - age * 1.9;
       float hit = exp(-band * band * 90.0) * (1.0 - age) * r.w;
       p += normalize(p - r.xy + vec2(0.0001)) * hit * 0.22;
-      flare += hit;
+      // Magnitude, not signed value: a ripple that pulls should still light
+      // what it passes, and a negative term here would darken it instead.
+      flare += abs(hit);
     }
 
     // Normalised field -> world. Recomputed per vertex so a resize is a uniform
@@ -174,6 +181,20 @@ const VERTEX_SHADER = `
     float twinkle = 0.72 + 0.28 * sin(clock * (0.8 + aSeed.y * 1.6) + aSeed.z * 6.2831);
     vAlpha = uOpacity * edge * twinkle * (1.0 - aTrail * 0.16) * (1.15 - depth * 0.6);
     vColor = mix(uColorCool, uColorHot, clamp(aSeed.y * 0.8 + flare * 2.0, 0.0, 1.0));
+
+    // The celebration whiteout, driven from 0 to 1 and back by celebrate().
+    // At rest it is exactly 0 and both lines below are identities, so the
+    // scene pays a multiply-add per vertex for it and nothing else.
+    //
+    // The colour goes to white; the alpha barely moves. That split is the
+    // whole tuning. The material is additive, so an alpha boost does not
+    // brighten particles — it accumulates across every particle the eye
+    // integrates over and turns the entire field into an opaque white sheet
+    // that bleaches the page behind it. Measured, at a boost of 2.2 the Void's
+    // reveal card was unreadable for two full seconds. 0.35 gives the flare
+    // without the sheet.
+    vColor = mix(vColor, vec3(1.0), uFlash);
+    vAlpha = min(1.0, vAlpha * (1.0 + uFlash * 0.35));
   }
 `;
 
@@ -274,6 +295,15 @@ export class ForgeSceneService implements OnDestroy {
   /** Ripples as flat vec4s: x, y, startTime, strength. */
   private ripples = new Float32Array(RIPPLE_SLOTS * 4);
   private rippleSlot = 0;
+  /** Whiteout amount, 0..1, uploaded to `uFlash` every frame. */
+  private flash = 0;
+  /** Camera shake: peak offset in world units, and when it started. */
+  private shakeAmp = 0;
+  private shakeUntil = 0;
+  private shakeFor = 0;
+  /** Timers owned by `celebrate()`. Cleared on the next celebration and on unmount. */
+  private fxTimers: ReturnType<typeof setTimeout>[] = [];
+  private fxFade = 0;
 
   /** Palette cross-fade state. */
   private palette: ScenePalette = 'forge';
@@ -326,6 +356,7 @@ export class ForgeSceneService implements OnDestroy {
   /** Tear the whole thing down and give the GPU its memory back. */
   unmount(): void {
     this.stop();
+    this.clearFx();
     if (this.isBrowser) document.documentElement.classList.remove('forge-scene-on');
     for (const off of this.listeners) off();
     this.listeners = [];
@@ -365,6 +396,131 @@ export class ForgeSceneService implements OnDestroy {
     this.rippleSlot = (this.rippleSlot + 1) % RIPPLE_SLOTS;
     // A ripple raised while the tab was hidden must still be seen.
     if (!this.running) this.start();
+  }
+
+  /**
+   * React to a drop. Called by `CelebrationService`; a no-op when the scene is
+   * not running, which is what lets it be called unconditionally.
+   *
+   * `delayMs` is how long the celebration's blackout holds the screen — the
+   * field should not be doing anything visible behind a black curtain, so the
+   * reaction is scheduled to land with the light rather than with the click.
+   *
+   * Ripple strength is signed here: `ripple()` takes the shove, and a negative
+   * value drags the field in instead. The spiral is that pull followed by a
+   * hard shove, which is the whole of the Singular's particle behaviour and
+   * needs no new uniform.
+   */
+  celebrate(reaction: SceneReaction, clientX: number, clientY: number, delayMs = 0): void {
+    if (!this.renderer || this.effects.motionless || reaction === 'none') return;
+    this.clearFx();
+
+    const at = (fn: () => void, ms: number) => {
+      this.fxTimers.push(setTimeout(fn, delayMs + ms));
+    };
+
+    switch (reaction) {
+      case 'burst':
+        at(() => this.ripple(clientX, clientY, 2.2), 0);
+        break;
+
+      case 'burst-return':
+        at(() => this.ripple(clientX, clientY, 2.8), 0);
+        // Back in behind it. RIPPLE_SECONDS is 1.5, so 620ms overlaps the
+        // outbound ring's tail and the two read as one breath.
+        at(() => this.ripple(clientX, clientY, -1.8), 620);
+        break;
+
+      case 'burst-flash':
+        at(() => { this.ripple(clientX, clientY, 3.2); this.flashTo(0.3, 420); }, 0);
+        at(() => this.ripple(clientX, clientY, -1.6), 700);
+        break;
+
+      case 'whiteout':
+        at(() => { this.flashTo(0.8, 90); this.ripple(clientX, clientY, 3.6); }, 0);
+        at(() => this.flashTo(0, 620), 140);
+        at(() => this.ripple(clientX, clientY, -2.2), 760);
+        break;
+
+      case 'spiral':
+        // In, hold, then out — the field falls into the rune before the screen
+        // breaks and is thrown off it when it does.
+        at(() => this.ripple(clientX, clientY, -3.4), 0);
+        at(() => this.ripple(clientX, clientY, -2.6), 520);
+        at(() => { this.flashTo(0.85, 70); this.ripple(clientX, clientY, 4.2); }, 1_150);
+        at(() => this.flashTo(0, 760), 1_260);
+        at(() => this.ripple(clientX, clientY, 2.4), 1_600);
+        break;
+    }
+  }
+
+  /**
+   * Shake the camera.
+   *
+   * The background moves, the page does not. That distinction is the whole
+   * reason this lives here instead of as a CSS transform on <html>: a
+   * transformed ancestor becomes the containing block for every
+   * `position: fixed` descendant, so shaking the document would re-anchor the
+   * Rune Forge's own reveal dialog — `position: fixed; inset: 0` — against a
+   * six-thousand-pixel-tall box and throw the card the player is reading off
+   * the screen for the duration. Measured, not assumed: the same layer goes
+   * from viewport height to scrollHeight the moment <html> carries a transform.
+   *
+   * Moving the camera reads as the same impact, costs one vector write per
+   * frame, and cannot trap anything.
+   *
+   * `amplitude` arrives in CSS pixels and is converted to world units against
+   * the visible height at the field's mid-depth, so a 6px shake is 6px of
+   * apparent movement whatever the viewport is.
+   */
+  shake(amplitudePx: number, ms: number): void {
+    if (!this.renderer || !this.camera || this.effects.motionless) return;
+    const halfH = Math.tan((FOV * Math.PI) / 360) * (CAM_Z - (Z_NEAR + Z_FAR) / 2);
+    this.shakeAmp = (amplitudePx / Math.max(1, window.innerHeight)) * halfH * 2;
+    this.shakeFor = ms;
+    this.shakeUntil = performance.now() + ms;
+    if (!this.running) this.start();
+  }
+
+  /**
+   * Ramp `uFlash` to a target over `ms`.
+   *
+   * Its own rAF rather than a term in the render loop: the loop is shared with
+   * the governor and threading a per-effect clock through it would put a branch
+   * in the hot path for something that runs for two seconds a month.
+   */
+  private flashTo(target: number, ms: number): void {
+    if (this.fxFade) cancelAnimationFrame(this.fxFade);
+    const from = this.flash;
+    const t0 = performance.now();
+    // A stopped scene cannot animate the ramp, so give it the end state and
+    // one frame. Reduced-effects visitors never reach here at all.
+    if (!this.running) { this.flash = target; this.renderOnce(); return; }
+    this.zone.runOutsideAngular(() => {
+      const step = (): void => {
+        const k = Math.min(1, (performance.now() - t0) / Math.max(1, ms));
+        // Ease-out: a linear whiteout reads as a fade, not as a flash.
+        this.flash = from + (target - from) * (1 - Math.pow(1 - k, 3));
+        if (k < 1) this.fxFade = requestAnimationFrame(step);
+      };
+      this.fxFade = requestAnimationFrame(step);
+    });
+  }
+
+  /** Drop any celebration still in flight. Called before the next one and on
+   *  unmount, so a route change mid-Singular cannot leave the field white. */
+  private clearFx(): void {
+    for (const t of this.fxTimers) clearTimeout(t);
+    this.fxTimers = [];
+    // `unmount()` runs on the server too — Angular destroys the component tree
+    // at the end of every prerendered route — and there is no
+    // cancelAnimationFrame there. Guarding here rather than at each call site
+    // because this is the only place the id is cleared.
+    if (this.isBrowser && this.fxFade) cancelAnimationFrame(this.fxFade);
+    this.fxFade = 0;
+    this.flash = 0;
+    this.shakeAmp = 0;
+    if (this.camera) { this.camera.position.x = 0; this.camera.position.y = 0; }
   }
 
   /** Cross-fade the field into a realm's colours. Idempotent per palette. */
@@ -547,6 +703,7 @@ export class ForgeSceneService implements OnDestroy {
         uTrailGap: { value: spec.trail > 1 ? 0.42 : 0 },
         uRippleDur: { value: RIPPLE_SECONDS },
         uRipples: { value: Array.from({ length: RIPPLE_SLOTS }, () => new THREE.Vector4()) },
+        uFlash: { value: 0 },
       },
       transparent: true,
       depthTest: false,
@@ -608,6 +765,7 @@ export class ForgeSceneService implements OnDestroy {
       u['uTime'].value = t;
       (u['uMouse'].value as { set: (x: number, y: number) => void }).set(this.mouse[0], this.mouse[1]);
       u['uScroll'].value = this.scroll;
+      u['uFlash'].value = this.flash;
       const slots = u['uRipples'].value as Array<{ set: (x: number, y: number, z: number, w: number) => void }>;
       for (let i = 0; i < RIPPLE_SLOTS; i++) {
         slots[i].set(
@@ -617,6 +775,23 @@ export class ForgeSceneService implements OnDestroy {
       }
     }
     if (this.nebula) this.nebula.material.uniforms['uTime'].value = t;
+
+    // The shake, decaying to nothing over its own window. Random per frame
+    // rather than a sine, because a periodic shake reads as a wobble; an
+    // impact is broadband. Written straight onto the camera and reset to the
+    // rest position the frame it expires, so nothing can leave it off-centre.
+    if (this.shakeAmp > 0) {
+      const left = this.shakeUntil - performance.now();
+      if (left <= 0) {
+        this.shakeAmp = 0;
+        camera.position.x = 0;
+        camera.position.y = 0;
+      } else {
+        const k = (left / Math.max(1, this.shakeFor)) ** 2;
+        camera.position.x = (Math.random() * 2 - 1) * this.shakeAmp * k;
+        camera.position.y = (Math.random() * 2 - 1) * this.shakeAmp * k;
+      }
+    }
 
     renderer.render(scene, camera);
   }

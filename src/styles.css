@@ -2468,86 +2468,484 @@ body.gf-art-route .particle-layer {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   THE RUNE FORGE — screen-level flare
+   THE RUNE FORGE — screen-level flare (REMOVED in the celebration pass)
    ═══════════════════════════════════════════════════════════════════════
 
-   The top three rungs of the rune ladder take over the viewport. That has to
-   happen out here rather than inside the component, for the same reason the
-   Flame and the quest drawer are siblings of <main>: `router-outlet + *` keeps
-   a transform from routeFadeIn, which makes every routed page a containing
-   block, so a `position: fixed` layer authored inside the Rune Forge would be
-   laid out against the page's box and not against the screen.
+   `html[data-rune-flare]` used to give the top three rungs of the rune ladder
+   a full-viewport wash: an orange vignette for Legendary, a red flash for
+   Mythic, and `backdrop-filter: invert(1) hue-rotate(180deg)` for Singular.
 
-   <html> is above the outlet, so its ::after is free to be fixed. The
-   component writes `data-rune-flare` for the duration of the reveal and clears
-   it afterwards.
+   It is gone because CelebrationService now owns every screen-level effect,
+   for every rung from Uncommon up, out of one table. Two systems painting the
+   same viewport was not a stylistic objection: the Singular's `invert(1)`
+   turned the whole dark page white and then the new layer's own light was
+   composited on top of the inverted result, which measured at a mean
+   luminance of 249 out of 255 across the left nav — a bleached page with dark
+   text on it, for three seconds, on the rarest drop in the game.
 
-   `pointer-events: none` throughout: the flare is weather, never a target.
+   The Void's identity now lives in the celebration table instead, and it is a
+   better fit for what the tier is: the screen goes black and silent, then
+   cracks, and the rune is inside the break.
    ═══════════════════════════════════════════════════════════════════════ */
 
-html[data-rune-flare]::after {
-  content: '';
+/* ═══════════════════════════════════════════════════════════════════════
+   THE CELEBRATION LAYER — what a good drop does to the screen
+   ═══════════════════════════════════════════════════════════════════════
+
+   Built by CelebrationService with document.createElement and appended to
+   <body>. Two consequences drive everything below:
+
+   1. These nodes never get an `_ngcontent-*` attribute, so none of this can
+      live in a component stylesheet — an emulated-encapsulation rewrite would
+      make every rule here require an attribute the nodes do not have, and it
+      would fail silently. Top-level in styles.css is the only place it works.
+
+   2. No `animation:` shorthand may sit inside an @media block. Angular does
+      not rewrite those, and a media-nested animation name is a dangling
+      reference that never instantiates — the bug that ate the hero carousel
+      for a release. The reduced-motion block at the bottom therefore only
+      *removes* the layer; it never redefines an animation.
+
+   The whole layer is `pointer-events: none` at every level. A celebration is
+   weather. It must never eat the click that dismisses the card underneath it.
+
+   z-index is 100001, far above `--z-modal` (1200): the reveal dialog is what
+   the effects are celebrating, so they belong over it, not behind it. It sits
+   one above the band the removed `data-rune-flare` wash used, so nothing that
+   still remembers 100000 can land on top of a celebration.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gf-fx {
   position: fixed;
   inset: 0;
-  z-index: 100000;
+  z-index: 100001;
   pointer-events: none;
+  overflow: hidden;
+  /* Its own stacking and containing context, so the hundred absolutely
+     positioned children below never escape it and never affect page layout. */
+  isolation: isolate;
+  contain: strict;
 }
 
-/* Legendary — the edges of the screen catch light. The centre stays clear so
-   the rune card, which is what you are actually reading, is not washed out. */
-html[data-rune-flare='legendary']::after {
+.gf-fx > * { position: absolute; pointer-events: none; }
+
+/* ── The dark ──────────────────────────────────────────────────────────────
+   First child, so every light effect paints over it rather than under it. */
+.gf-fx__dark {
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  /* Two animations rather than one four-stop keyframe, because a keyframe
+     selector must be a literal percentage — `var()` is legal in a declaration
+     and not in a selector, and a `var(--fx-in) { }` stop is silently dropped
+     along with the rule it sits in. Splitting the fade in and the fade out
+     into their own animations puts the timing back into declarations, where
+     custom properties work, and lets the hold be a plain animation-delay.
+
+     Both fill forwards. While the second is still in its delay it is not
+     filling, so the first one's held `opacity: 1` is what paints; once the
+     second starts it is later in the list and wins. */
+  animation:
+    gfFxDarkIn var(--fx-in, 100ms) ease-out forwards,
+    gfFxDarkOut var(--fx-out, 100ms) ease-in var(--fx-hold, 200ms) forwards;
+}
+
+@keyframes gfFxDarkIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gfFxDarkOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* ── The vignette ──────────────────────────────────────────────────────────
+   Bright at the edges, clear through the middle: the card is the thing being
+   read, and washing it out is the one way this effect could make the moment
+   worse rather than better. */
+.gf-fx__flash {
+  inset: 0;
+  opacity: 0;
+  /* The clear middle runs to 58%, not 34%.
+     At 34% the "vignette" covered most of the viewport and washed the card,
+     the rune's name and the whole left nav to near-white — the one thing this
+     effect must never do, since the card is what the celebration is *for*.
+     58% is the stop the retired `data-rune-flare` wash used, arrived at the
+     same way, and it leaves the centre of the screen genuinely untouched so
+     the light reads as coming from the edges inward. */
   background: radial-gradient(
-    ellipse 120% 90% at 50% 50%,
-    transparent 55%,
-    rgba(255, 154, 90, 0.28) 100%
+    ellipse 115% 90% at var(--fx-x, 50%) var(--fx-y, 50%),
+    transparent 58%,
+    var(--fx-glow, rgba(255, 255, 255, 0.5)) 100%
   );
-  animation: runeFlareEdge 4.2s ease-out forwards;
+  animation: gfFxFlash var(--fx-dur, 900ms) ease-out var(--fx-delay, 0ms) forwards;
 }
 
-/* Mythic — a full flash that decays into a red wash. */
-html[data-rune-flare='mythic']::after {
-  background:
-    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 40%, rgba(255, 45, 77, 0.45) 100%),
-    rgba(255, 45, 77, 0.16);
-  animation: runeFlareFlash 5.6s ease-out forwards;
-}
-
-/* Singular — the Void. The screen inverts, holds, and comes back. Three
-   seconds is a long time to take a page away from someone, which is the point:
-   it happens roughly once in two thousand strikes. */
-html[data-rune-flare='singular']::after {
-  background: rgba(230, 220, 255, 0.1);
-  backdrop-filter: invert(1) hue-rotate(180deg);
-  -webkit-backdrop-filter: invert(1) hue-rotate(180deg);
-  animation: runeFlareVoid 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes runeFlareEdge {
+@keyframes gfFxFlash {
   0%   { opacity: 0; }
-  12%  { opacity: 1; }
+  9%   { opacity: var(--fx-peak, 0.4); }
+  38%  { opacity: calc(var(--fx-peak, 0.4) * 0.42); }
   100% { opacity: 0; }
 }
 
-@keyframes runeFlareFlash {
-  0%   { opacity: 0; }
-  4%   { opacity: 1; }
-  14%  { opacity: 0.45; }
-  100% { opacity: 0; }
+/* ── The rings ─────────────────────────────────────────────────────────────
+   Anchored at the origin the service measured off the card. Sized in vmax so
+   one ring covers the viewport on any aspect ratio. */
+.gf-fx__waves {
+  left: var(--fx-x, 50%);
+  top: var(--fx-y, 50%);
+  width: 0;
+  height: 0;
 }
 
-@keyframes runeFlareVoid {
-  0%   { opacity: 0; }
+.gf-fx__ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 2px solid var(--fx-color, #fff);
+  box-shadow: 0 0 24px var(--fx-glow, rgba(255, 255, 255, 0.6));
+  opacity: 0;
+  transform: scale(0);
+  animation: gfFxRing var(--fx-dur, 1100ms) cubic-bezier(0.16, 0.8, 0.36, 1) var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxRing {
+  0%   { opacity: 0.9; transform: scale(0); border-width: 3px; }
+  70%  { opacity: 0.35; }
+  100% { opacity: 0; transform: scale(24); border-width: 1px; }
+}
+
+/* ── The beams ─────────────────────────────────────────────────────────────
+   A rotated bar per beam, scaled out from the origin. `transform-origin: left`
+   is what makes the scale read as a beam growing rather than as a bar
+   stretching in both directions. */
+.gf-fx__beams {
+  left: var(--fx-x, 50%);
+  top: var(--fx-y, 50%);
+  width: 0;
+  height: 0;
+}
+
+.gf-fx__beam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 62vmax;
+  height: 3px;
+  margin-top: -1.5px;
+  transform-origin: 0 50%;
+  transform: rotate(var(--fx-rot, 0deg)) scaleX(0);
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    var(--fx-color, #fff) 0%,
+    var(--fx-glow, rgba(255, 255, 255, 0.5)) 30%,
+    transparent 100%
+  );
+  filter: blur(1px);
+  animation: gfFxBeam var(--fx-dur, 1600ms) cubic-bezier(0.16, 0.8, 0.36, 1) var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxBeam {
+  0%   { opacity: 0; transform: rotate(var(--fx-rot, 0deg)) scaleX(0); }
+  16%  { opacity: 0.6; }
+  55%  { opacity: 0.26; }
+  100% { opacity: 0; transform: rotate(var(--fx-rot, 0deg)) scaleX(1); }
+}
+
+/* Prismatic — the beams cycle hue instead of holding the tier colour. Each
+   beam is offset in the cycle by its index, so the fan reads as a spectrum
+   turning rather than as one colour changing. */
+.gf-fx__beams--prism .gf-fx__beam {
+  background: linear-gradient(90deg, #fff 0%, currentColor 26%, transparent 100%);
+  color: var(--fx-color, #fff);
+  animation:
+    gfFxBeam var(--fx-dur, 1600ms) cubic-bezier(0.16, 0.8, 0.36, 1) var(--fx-delay, 0ms) forwards,
+    gfFxPrism 1.5s linear var(--fx-delay, 0ms) infinite;
+  animation-delay: var(--fx-delay, 0ms), calc(var(--fx-delay, 0ms) - var(--fx-i, 0) * 120ms);
+}
+
+@keyframes gfFxPrism {
+  0%   { color: #4dffe0; }
+  20%  { color: #5fb6ff; }
+  40%  { color: #a48bff; }
+  60%  { color: #ff6dd7; }
+  80%  { color: #ffc669; }
+  100% { color: #4dffe0; }
+}
+
+/* ── The burst ─────────────────────────────────────────────────────────────
+   Direction and distance are baked into custom properties by the service, so
+   each speck is one composited translate and no layout at all. */
+.gf-fx__burst {
+  left: var(--fx-x, 50%);
+  top: var(--fx-y, 50%);
+  width: 0;
+  height: 0;
+}
+
+.gf-fx__speck {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--fx-size, 4px);
+  height: var(--fx-size, 4px);
+  margin: calc(var(--fx-size, 4px) / -2) 0 0 calc(var(--fx-size, 4px) / -2);
+  border-radius: 50%;
+  background: var(--fx-color, #fff);
+  box-shadow: 0 0 8px var(--fx-glow, rgba(255, 255, 255, 0.7));
+  opacity: 0;
+  animation: gfFxSpeck var(--fx-dur, 1200ms) cubic-bezier(0.12, 0.7, 0.3, 1) var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxSpeck {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.3); }
+  10%  { opacity: 1; transform: translate(calc(var(--fx-dx) * 0.1), calc(var(--fx-dy) * 0.1)) scale(1.25); }
+  /* Past the halfway mark the speck keeps travelling but starts falling —
+     a burst that only travels outward reads as a diagram of a burst. */
+  100% { opacity: 0; transform: translate(var(--fx-dx, 0), calc(var(--fx-dy, 0px) + 60px)) scale(0.2); }
+}
+
+/* ── The shower ────────────────────────────────────────────────────────────
+   Motes falling past, from above the fold to below it. */
+.gf-fx__shower { inset: 0; }
+
+.gf-fx__mote {
+  position: absolute;
+  left: var(--fx-left, 50%);
+  top: 0;
+  width: var(--fx-size, 4px);
+  height: calc(var(--fx-size, 4px) * 2.2);
+  border-radius: 40%;
+  background: linear-gradient(180deg, var(--fx-color, #fff), transparent);
+  box-shadow: 0 0 10px var(--fx-glow, rgba(255, 255, 255, 0.7));
+  opacity: 0;
+  animation: gfFxMote var(--fx-dur, 2600ms) linear var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxMote {
+  0%   { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(0deg); }
   8%   { opacity: 1; }
-  78%  { opacity: 1; }
-  100% { opacity: 0; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--fx-drift, 0), 108vh, 0) rotate(220deg); }
 }
 
-/* The flare is decoration on top of an event the page already states in text —
-   the rune card names the tier, the rune and the odds. Removing it costs a
-   reduced-motion visitor nothing they cannot read. */
+/* ── The bolts ─────────────────────────────────────────────────────────────
+   One <svg> for every bolt: a single element under a single blur filter is one
+   offscreen buffer, where a filter per bolt would be one each. Drawn on by
+   running stroke-dashoffset to zero, which is the only way to draw a line on
+   rather than fade it in.
+
+   `vector-effect: non-scaling-stroke` keeps the bolt 2px wide even though the
+   viewBox is stretched to the viewport with preserveAspectRatio="none". */
+.gf-fx__bolts,
+.gf-fx__crack {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gf-fx__bolt {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px var(--fx-color, #fff)) drop-shadow(0 0 16px var(--fx-glow, #fff));
+  stroke-dasharray: var(--fx-len, 2000);
+  stroke-dashoffset: var(--fx-len, 2000);
+  opacity: 0;
+  animation: gfFxBolt var(--fx-dur, 900ms) cubic-bezier(0.2, 0.9, 0.3, 1) var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxBolt {
+  0%   { opacity: 0; stroke-dashoffset: var(--fx-len, 2000); }
+  6%   { opacity: 1; }
+  /* Two dips rather than a clean fade: real lightning flickers, and the flicker
+     is most of what separates a bolt from a stroke animation. */
+  34%  { opacity: 0.35; stroke-dashoffset: 0; }
+  46%  { opacity: 1; stroke-dashoffset: 0; }
+  66%  { opacity: 0.5; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+/* ── The break ─────────────────────────────────────────────────────────────
+   Singular only. Held to the end of the run rather than faded: the conceit is
+   that the screen is broken, and a crack that heals in a second was never one. */
+.gf-fx__fissure {
+  fill: none;
+  stroke: var(--fx-color, #e6dcff);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 8px #a48bff) drop-shadow(0 0 22px #7b61ff);
+  stroke-dasharray: var(--fx-len, 4000);
+  stroke-dashoffset: var(--fx-len, 4000);
+  opacity: 0;
+  animation: gfFxFissure var(--fx-dur, 1100ms) cubic-bezier(0.1, 0.9, 0.2, 1) var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxFissure {
+  0%   { opacity: 0; stroke-dashoffset: var(--fx-len, 4000); }
+  4%   { opacity: 1; }
+  60%  { opacity: 1; stroke-dashoffset: 0; }
+  100% { opacity: 0.75; stroke-dashoffset: 0; }
+}
+
+/* Void energy pouring out of the break. */
+.gf-fx__pour {
+  inset: 0;
+  opacity: 0;
+  background:
+    /* Clear through the middle, like the vignette and for the same reason:
+       the rune's name and tier sit at the origin, and the one way this effect
+       could make the moment worse is by covering the thing it is celebrating.
+       The energy therefore blooms from a ring around the break, not from its
+       centre. */
+    radial-gradient(circle at var(--fx-x, 50%) var(--fx-y, 50%),
+      transparent 0%,
+      transparent 14%,
+      rgba(230, 220, 255, 0.18) 22%,
+      rgba(123, 97, 255, 0.16) 34%,
+      rgba(60, 20, 120, 0.09) 48%,
+      transparent 68%);
+  animation: gfFxPour var(--fx-dur, 3000ms) ease-out var(--fx-delay, 0ms) forwards;
+}
+
+@keyframes gfFxPour {
+  0%   { opacity: 0; transform: scale(0.2); }
+  22%  { opacity: 1; transform: scale(1); }
+  70%  { opacity: 0.7; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+
+/* ── The shake ─────────────────────────────────────────────────────────────
+   NOT on <html>, and not on <body> either. A transformed element becomes the
+   containing block for every `position: fixed` descendant, so a transform up
+   there re-anchors the Rune Forge's own reveal dialog — `position: fixed;
+   inset: 0` — against the document instead of the viewport. Measured: the
+   layer's height goes from the viewport's to `scrollHeight` the frame the
+   transform lands, which throws the card the player is reading thousands of
+   pixels up the page. It is the same trap the routed hosts set, and the reason
+   every full-viewport overlay on this site is a sibling of <main>.
+
+   `.gf-jolt` is therefore applied only to elements that have no fixed
+   descendants to trap: the effect layer itself, and the card the drop came out
+   of. The background's share of the shake is a camera offset inside the WebGL
+   scene, which touches no DOM at all. See CelebrationService.shake().
+
+   Amplitude comes in as a custom property so one keyframe serves every tier.
+   `will-change` is deliberately absent — this runs for at most 700ms and
+   pinning a layer to save 700ms of raster is the trade that cost the site
+   380MB of GPU texture on phones once already. */
+.gf-jolt {
+  animation: gfShake var(--gf-shake-dur, 300ms) cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes gfShake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  10% { transform: translate3d(calc(var(--gf-shake, 3px) * -1), calc(var(--gf-shake, 3px) * 0.4), 0); }
+  20% { transform: translate3d(var(--gf-shake, 3px), calc(var(--gf-shake, 3px) * -0.7), 0); }
+  30% { transform: translate3d(calc(var(--gf-shake, 3px) * -0.7), var(--gf-shake, 3px), 0); }
+  40% { transform: translate3d(calc(var(--gf-shake, 3px) * 0.8), calc(var(--gf-shake, 3px) * 0.5), 0); }
+  50% { transform: translate3d(calc(var(--gf-shake, 3px) * -0.5), calc(var(--gf-shake, 3px) * -0.8), 0); }
+  60% { transform: translate3d(calc(var(--gf-shake, 3px) * 0.6), calc(var(--gf-shake, 3px) * -0.3), 0); }
+  70% { transform: translate3d(calc(var(--gf-shake, 3px) * -0.4), calc(var(--gf-shake, 3px) * 0.6), 0); }
+  80% { transform: translate3d(calc(var(--gf-shake, 3px) * 0.3), calc(var(--gf-shake, 3px) * 0.3), 0); }
+  90% { transform: translate3d(calc(var(--gf-shake, 3px) * -0.2), calc(var(--gf-shake, 3px) * -0.2), 0); }
+}
+
+/* ── The distortion ────────────────────────────────────────────────────────
+   One filter on one element. Mythic and Singular only, and short.
+
+   This one *may* stay on <html>, where the shake may not: the root element's
+   filter is propagated to the canvas rather than applied to a box, so it does
+   not establish a containing block and does not trap the fixed layers the way
+   a transform does. Checked rather than assumed — a fixed `inset: 0` layer
+   keeps its viewport size under `html { filter: hue-rotate(24deg) }` and loses
+   it under `html { transform: translate3d(...) }`. */
+html.gf-distorting {
+  animation: gfDistort var(--gf-distort-dur, 4000ms) ease-in-out both;
+}
+
+@keyframes gfDistort {
+  0%   { filter: none; }
+  18%  { filter: hue-rotate(24deg) saturate(1.25); }
+  50%  { filter: hue-rotate(-32deg) saturate(1.4); }
+  78%  { filter: hue-rotate(14deg) saturate(1.15); }
+  100% { filter: none; }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────
+   `scaleFx()` has already stripped the layer down to a short, dim vignette
+   before any of this is built, so this block is the belt to that braces: it
+   removes what is left and stops the two <html> animations dead.
+
+   The visitor keeps the card, the rune's name, its tier and its colour — every
+   part of the event that is information rather than theatre. That is the house
+   rule: a static end state, not an absent one. */
 @media (prefers-reduced-motion: reduce) {
-  html[data-rune-flare]::after {
+  .gf-fx__waves,
+  .gf-fx__beams,
+  .gf-fx__burst,
+  .gf-fx__shower,
+  .gf-fx__bolts,
+  .gf-fx__crack,
+  .gf-fx__pour,
+  .gf-fx__dark {
     display: none;
   }
 
+  .gf-jolt,
+  html.gf-distorting {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SLOW MOTION — the Rune Forge's card reveal, at half speed
+   ═══════════════════════════════════════════════════════════════════════
+
+   `CelebrationService` raises `data-gf-slowmo` on <html> for the two tiers
+   whose model entry asks for it (Mythic and Singular), carrying the multiplier
+   as its value. These are the rules that read it.
+
+   Out here rather than in rune-forge.component.css, where they were first
+   written and where they silently did nothing: Angular's emulated
+   encapsulation appends the component's scoping attribute to every compound
+   selector in a rule, ancestors included, so `html[data-gf-slowmo='2']` became
+   `html[data-gf-slowmo='2'][_ngcontent-xyz]` — a selector that requires <html>
+   to carry a component attribute. No warning, no error, no slow motion.
+
+   `animation-duration` longhands rather than a second set of shorthands, so
+   the animation names stay declared exactly once and cannot drift apart from
+   their keyframes. The two values on the card match the two animations its
+   own rule sets, in order.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* The `.rf-pick.rf-pick--landed[data-reveal]` prefix is padding, and it is
+   load-bearing. Angular gives every selector in a component stylesheet an
+   extra `[_ngcontent-*]` attribute per compound, which raises the base rule
+   `.rf-pick[data-reveal='flash'] .rf-pick__card.is-chosen` to six
+   class/attribute terms. A global override needs at least six of its own or it
+   loses the cascade and does nothing — measured, after the first attempt read
+   `0.32s, 1.1s` instead of the doubled values.
+
+   The prefix is also honest rather than arbitrary: `data-reveal` is only
+   written on a landed single-card reveal, which is exactly when a slow motion
+   pass means anything. */
+html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-pick__card.is-chosen {
+  animation-duration: 640ms, 2200ms;
+}
+
+html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-sparks--reveal .rf-spark {
+  animation-duration: 1400ms;
+}
+
+html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-pick__sweep::before {
+  animation-duration: 1800ms;
+}
+
+html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-pick__char {
+  animation-duration: 520ms;
+  animation-delay: calc(var(--i, 0) * 104ms);
 }
