@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ARENA_GAME_ROUTES } from './arena/games/arena-game.routes';
+import { REALM_ROUTES } from './world/realm.routes';
 import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
 // Every page below is loaded with loadComponent(). Importing a routed
 // component here instead would pull it — and its whole transitive graph —
@@ -60,11 +61,22 @@ export const APP_ROUTES: Routes = [
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
       }
     },
+  // The five real realms, each with its own title, description and JSON-LD.
+  // They used to share the param route below, which meant they shared one meta
+  // description across five thin, structurally identical pages — see the note
+  // at the top of realm.routes.ts for why Google was picking its own canonical
+  // for that cluster.
+  ...REALM_ROUTES,
   {
+      // Fallback for an id that is not one of the five. It renders the same
+      // shell with no realm in it, and an id can be spelled unlimited ways, so
+      // it is a soft 404: indexing it would hand Google an endless supply of
+      // near-identical pages under this prefix.
       path: 'world/realms/:realmId',
       loadComponent: () => import('./world/realm-landing.component').then(m => m.RealmLandingComponent),
       title: 'Realm — Eclipse Realms',
       data: {
+        noindex: true,
         description: 'Inspect one of the five Eclipse Realms: faction, landmark, hazard, resource, threat, and unresolved conflict. Infernal\'s opening chapter is playable.',
         keywords: 'eclipse realms, luminous, celestial, infernal, umbral, verdant',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,

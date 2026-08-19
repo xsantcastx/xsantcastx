@@ -29,7 +29,6 @@ export class SeoService {
         while (r.firstChild) r = r.firstChild;
         const data = r.snapshot.data;
         const url  = this.router.url.split('?')[0].split('#')[0];
-        const lang = r.snapshot.queryParamMap.get('lang') === 'es' ? 'es' : 'en';
 
         // Brand the route's own resolved title rather than reading the
         // document's. AppTitleStrategy and this subscriber both run off
@@ -42,25 +41,35 @@ export class SeoService {
         // the wordmark. getTitle() remains the fallback for a route with no
         // title of its own.
         const routeTitle = brandTitle(r.snapshot.title ?? this.title.getTitle());
-        this.apply(routeTitle, data, url, lang);
+        this.apply(routeTitle, data, url);
       });
   }
 
-  private apply(pageTitle: string, data: Record<string, string | object>, url: string, lang: 'en' | 'es'): void {
+  private apply(pageTitle: string, data: Record<string, string | object>, url: string): void {
     const desc      = (data['description'] as string) || 'Eclipse Realms — a persistent world of five realms. Discover artifacts, forge runes, and walk the trials.';
     const keywords  = data['keywords']  as string | undefined;
     const ogImage   = (data['ogImage']  as string | undefined) || DEFAULT_IMG;
 
-    // One URL per language, and the canonical is always self-referential.
-    // Canonicalising ?lang=es back to the bare path would tell Google the
-    // Spanish view is a duplicate of the English one, which cancels out the
-    // hreflang pair below — a URL cannot be an alternate and be canonicalised
-    // away at the same time.
-    const alternates = {
-      en: `${SITE_URL}${url}`,
-      es: `${SITE_URL}${url}?lang=es`
-    };
-    const canonical = alternates[lang];
+    // The canonical is the bare path, always, with no query string on it.
+    //
+    // The previous version canonicalised `?lang=es` to itself so the Spanish
+    // view could stand as an hreflang alternate. That never survived the
+    // build. Production is prerender + a static CSR shell — there is no live
+    // SSR — so nothing ever renders a query-string URL: Hosting matches
+    // `/world?lang=es` to the same `world/index.html` it serves for `/world`,
+    // and that file was prerendered in English with a canonical link pointing
+    // at the bare /world. Every ?lang=es URL Google fetched therefore
+    // declared a canonical pointing somewhere else, which Search Console files
+    // as "Alternate page with proper canonical tag" — the page is crawled,
+    // understood, and dropped. Rewriting the tag after hydration only made it
+    // worse: the raw HTML and the rendered DOM then disagreed about the
+    // canonical, and Google resolves that conflict by trusting neither.
+    //
+    // One URL per page is the honest description of this site. `?lang=es`
+    // still switches the copy for a human who follows a shared link — it is
+    // just no longer advertised to crawlers as a separate page. See the
+    // matching note in index.html for the hreflang tags this replaces.
+    const canonical = `${SITE_URL}${url}`;
 
     // ── Standard ──────────────────────────────────────────────────────────
     this.meta.updateTag({ name: 'description',  content: desc });
@@ -89,8 +98,7 @@ export class SeoService {
     this.meta.updateTag({ property: 'og:image:alt',     content: DEFAULT_IMG_ALT });
     this.meta.updateTag({ property: 'og:site_name',     content: SITE_NAME });
     this.meta.updateTag({ property: 'og:type',          content: 'website' });
-    this.meta.updateTag({ property: 'og:locale',          content: lang === 'es' ? 'es_ES' : 'en_US' });
-    this.meta.updateTag({ property: 'og:locale:alternate', content: lang === 'es' ? 'en_US' : 'es_ES' });
+    this.meta.updateTag({ property: 'og:locale',        content: 'en_US' });
 
     // ── Twitter ───────────────────────────────────────────────────────────
     this.meta.updateTag({ name: 'twitter:card',        content: 'summary_large_image' });
@@ -109,30 +117,29 @@ export class SeoService {
     link.setAttribute('href', canonical);
 
     // ── hreflang ──────────────────────────────────────────────────────────
-    // Rewritten per route rather than hard-coded in index.html, because an
-    // hreflang set has to be self-referential: /tools/json-formatter must
-    // point at its own two language URLs, not at the homepage's. A static
-    // block in the head would make all 137 pages claim the homepage as their
-    // alternate, which Search Console reports as "no return tag" site-wide.
-    this.setAlternate('en', alternates.en);
-    this.setAlternate('es', alternates.es);
-    this.setAlternate('x-default', alternates.en);
+    // Deliberately none. hreflang annotates a set of URLs that serve the same
+    // page in different languages, and this site has no such set: one URL
+    // serves both languages and the language is a client-side preference. The
+    // tags that used to be written here advertised `?lang=es` as a separate
+    // page, and the canonical above — correctly — pointed it back at the bare
+    // path, which is the contradiction Search Console was reporting.
+    //
+    // The sweep is not decoration. Meta/link elements written into <head> on
+    // one navigation survive the next one, and a page prerendered before this
+    // change can still be in a CDN cache with the old trio in it, so anything
+    // left over is cleared rather than left to rot.
+    this.clearAlternates();
 
     // ── JSON-LD ───────────────────────────────────────────────────────────
     const jsonLd = data['jsonLd'] as object | undefined;
     if (jsonLd) this.setJsonLd(jsonLd);
   }
 
-  private setAlternate(hreflang: string, href: string): void {
-    const selector = `link[rel="alternate"][hreflang="${hreflang}"]`;
-    let el = this.doc.querySelector<HTMLLinkElement>(selector);
-    if (!el) {
-      el = this.doc.createElement('link');
-      el.setAttribute('rel', 'alternate');
-      el.setAttribute('hreflang', hreflang);
-      this.doc.head.appendChild(el);
-    }
-    el.setAttribute('href', href);
+  /** Drop every `<link rel="alternate" hreflang>` left in <head>. */
+  private clearAlternates(): void {
+    this.doc
+      .querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]')
+      .forEach(el => el.remove());
   }
 
   private setJsonLd(schema: object): void {
