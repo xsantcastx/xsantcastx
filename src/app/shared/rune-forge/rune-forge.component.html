@@ -286,11 +286,18 @@
 
   @if ((striking || landed) && reveal) {
     <div class="rf-focus" (click)="dismissFocus()">
+      <!--
+        `data-reveal` is the per-tier treatment for the one turned card. In
+        Auto ×10 every card is `.is-chosen`, so a tier on the pick would light
+        all ten in whichever tier came out last and outrank the is-best ring;
+        the batch keys its sound and flare on the best find and leaves the
+        card grid plain.
+      -->
       <div
         class="rf-pick"
         [class.rf-pick--landed]="landed"
         [class.rf-pick--batch]="batch.length > 0"
-        [attr.data-reveal]="landed ? revealKind : null"
+        [attr.data-reveal]="landed && !batch.length ? revealKind : null"
         [style.--star-color]="revealTier?.color"
         [style.--star-glow]="revealTier?.glow"
         role="dialog"
