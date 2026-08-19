@@ -17,6 +17,23 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.73.0',
+    codename: 'Chorus',
+    date: '2026-08-19',
+    highlights: [
+      'The world had places, items and quests before it had anybody standing in them. Six characters now do \u2014 Aureth in the Luminous hall, Verrin in the Umbral hall and the trials, Kael on World, Forge, Character, Sanctum and Infernal, the Archivist on Codex and Quests, the Merchant on Market, Gambler and the Exchange, and the Nameless anywhere at all once you have held a combo of 666 or turned up the Void rune',
+      'Each is an 80px portrait with a speech bubble that types itself in at thirty characters a second. Clicking opens what they want from you; clicking anywhere else closes it. It never covers the page and it never asks to be dismissed twice',
+      'What they say depends on where you are, what level you are, what time it is where you are, what you are wearing, what you have already found, and how long the combo has been running. Lines you have read are drawn last rather than never, so a character who has said everything keeps talking instead of going quiet as a reward for listening',
+      'Each one offers a chain \u2014 five steps, three for the Nameless \u2014 that has to be walked in order, and the steps together tell one story about that character. Aureth starts with the light failing to reach every realm and ends at the Void rune; Kael will tell you what happened to the eye, but he has conditions',
+      'Rewards climb from Gold, through a real object minted into the bag, to a title that shows in front of your rank everywhere it appears, to a cosmetic, and each chain closes with an achievement on the Codex wall and a fragment of lore nothing else says. Twelve new titles: Radiant, Champion of Light, Hollowed, The Hollow, Flamebound, Forgeborn, The Annotated, Keeper of Fragments, The Solvent, Goldmouth, The Counted, and Nameless',
+      'A step\u2019s progress is read live off the ledger that already knows the answer rather than counted a second time, so the bar on a card and the number on the page it came from cannot drift apart. Only the receipts are stored \u2014 which means retuning a target changes what everyone sees on their next load, with no migration and no chance of a second payout',
+      'Four steps were rewritten before shipping because they could not be completed. They asked you to work in a realm, which the quest board measures by tool use, and every tool route has redirected to World since the product cutover \u2014 so they rendered a progress bar that no action on the site could move. The test suite now fails on any step that reads a ledger nothing fills',
+      'Chain progress rides cloud save, so a step finished on a phone is finished on a desktop',
+      'The bottom-left corner of the screen turned out not to be empty. The install banner has been painting underneath the 236px sidebar since the Eclipse shell landed, and underneath the mobile tab bar and the bottom-centre forge flame since those moved. Both it and the new portrait now offset from the measurements the header already publishes, rather than from a number somebody typed',
+      'Portraits are not painted yet. Each character renders as a monogrammed orb in their own colour until the art lands, and the build fails the day it does and the placeholder is left behind',
+    ],
+  },
+  {
     version: '2.72.0',
     codename: 'Ledger',
     date: '2026-08-19',
