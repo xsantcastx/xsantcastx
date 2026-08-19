@@ -241,6 +241,21 @@
   border-radius: var(--gf-radius);
   background: var(--gf-panel-solid);
 }
+
+/*
+ * Sticky offset depends on WHO scrolls. In the keeper drawer, .kp__body is its
+ * own overflow:auto scroll container, so top: 0 pins these to the drawer's own
+ * top edge — correct. On the /forge-keeper page (variant='page') the scroller
+ * is the viewport, and top: 0 would pin them UNDER the fixed header. These two
+ * rules were dead there until body's overflow-x went from hidden to clip (see
+ * src/styles.css, "do not revert to hidden"), which woke every page-level
+ * sticky on the site — so the page variant now uses the header's own height,
+ * the same --header-offset the market's pinned wallet uses.
+ */
+:host-context(.ch[data-variant='page']) .hb__manage,
+:host-context(.ch[data-variant='page']) .hb__confirm {
+  top: var(--header-offset, 96px);
+}
 .hb__confirm-actions { display: flex; gap: 8px; }
 .hb__drop { border-color: rgba(228, 168, 58, 0.4); color: #E4A83A; }
 
