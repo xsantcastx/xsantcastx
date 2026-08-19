@@ -9,7 +9,7 @@ import {
   migrateV1,
   parseInventoryLedger,
   projectEconomy,
-  retireCharms,
+  restoreCharms,
   projectRunes,
   pruneTombstones,
   stackQuantity,
@@ -463,7 +463,11 @@ describe('inventory adapter (C3)', () => {
     expect(twice.goldFromSales).toBe(9);
   });
 
-  it('maps offhand to off-hand and bags retired charms', () => {
+  it('maps offhand to off-hand and keeps a charm in its charm well', () => {
+    // This used to assert the opposite for the charm: C5 bagged anything in
+    // charm1-3. The wells are real slots again, so a pre-C5 save that still
+    // names one puts the charm back on the player. `offhand` is unchanged — it
+    // was a spelling, not a retirement.
     const raw = {
       version: 2,
       records: [
@@ -476,36 +480,74 @@ describe('inventory adapter (C3)', () => {
     const blade = parsed.records.find(row => row.id === 'blade') as OwnedItemInstance;
     const charm = parsed.records.find(row => row.id === 'charm') as OwnedItemInstance;
     expect(blade.location).toEqual({ kind: 'equipped', slotId: 'off-hand' });
-    expect(charm.location).toEqual({ kind: 'bag' });
-    const retired = retireCharms(parsed, 'phone', 1_000);
-    expect(retired.retiredIds).toContain('charm');
-    expect((retired.ledger.records.find(row => row.id === 'charm') as OwnedItemInstance).tags)
-      .toContain('retired-charm');
-    expect(retireCharms(retired.ledger, 'phone', 2_000).retiredIds).toEqual([]);
+    expect(charm.location).toEqual({ kind: 'equipped', slotId: 'charm1' });
   });
 
-  it('two devices retiring the same charm merge to one bagged tagged record', () => {
-    const worn = instance('charm', {
+  it('strips the retired tag C5 stamped on every charm, once', () => {
+    // What every save written between C5 and the charm-slot release looks like:
+    // the charm in the bag, carrying a tag that says it can never be worn.
+    const raw = {
+      version: 2,
+      records: [instance('charm', {
+        type: 'charm',
+        tags: ['charm', 'retired-charm'],
+        location: { kind: 'bag' },
+      })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+
+    const restored = restoreCharms(parsed, 'phone', 1_000);
+    expect(restored.restoredIds).toContain('charm');
+    const row = restored.ledger.records.find(r => r.id === 'charm') as OwnedItemInstance;
+    expect(row.tags).not.toContain('retired-charm');
+    // The tag goes; where the item sits does not. C5 already bagged it, and a
+    // migration that also re-equipped would be guessing which well the player
+    // wanted.
+    expect(row.location).toEqual({ kind: 'bag' });
+
+    // Idempotent: a second pass on the same ledger is a no-op, so a rehydrate
+    // does not churn a revision on every load.
+    expect(restoreCharms(restored.ledger, 'phone', 2_000).restoredIds).toEqual([]);
+  });
+
+  it('leaves a charm that never saw C5 completely alone', () => {
+    const raw = {
+      version: 2,
+      records: [instance('charm', { type: 'charm', tags: ['charm'], location: { kind: 'bag' } })],
+      tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
+    };
+    const parsed = coerceInventoryLedger(raw)!;
+    const restored = restoreCharms(parsed, 'phone', 1_000);
+    expect(restored.restoredIds).toEqual([]);
+    expect(restored.ledger).toBe(parsed);
+  });
+
+  it('two devices restoring the same charm converge, either merge order', () => {
+    // Both devices run the same migration on the same save. The merge must not
+    // resurrect the tag from whichever copy is treated as remote, and must land
+    // on the same record whichever way round it is merged — the retirement
+    // version of this test guarded the same property in the other direction.
+    const bagged = instance('charm', {
       type: 'charm',
-      location: { kind: 'equipped', slotId: 'charm1' as 'head' },
+      tags: ['charm', 'retired-charm'],
+      location: { kind: 'bag' },
       revision: revision(1, 'seed'),
     });
     const raw = {
       version: 2,
-      records: [worn],
+      records: [bagged],
       tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null,
     };
     const parsed = coerceInventoryLedger(raw)!;
-    const phone = retireCharms(parsed, 'phone', 1_000);
-    const tablet = retireCharms(parsed, 'tablet', 1_000);
+    const phone = restoreCharms(parsed, 'phone', 1_000);
+    const tablet = restoreCharms(parsed, 'tablet', 1_000);
     const ab = mergeInventoryLedgers(phone.ledger, tablet.ledger);
     const ba = mergeInventoryLedgers(tablet.ledger, phone.ledger);
-    const loc = (blob: InventoryLedger) =>
-      (blob.records.find(row => row.id === 'charm') as OwnedItemInstance).location;
-    expect(loc(ab)).toEqual({ kind: 'bag' });
-    expect(loc(ba)).toEqual({ kind: 'bag' });
-    expect((ab.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
-    expect((ba.records[0] as OwnedItemInstance).tags).toContain('retired-charm');
+    const tags = (blob: InventoryLedger) =>
+      (blob.records.find(row => row.id === 'charm') as OwnedItemInstance).tags;
+    expect(tags(ab)).not.toContain('retired-charm');
+    expect(tags(ba)).not.toContain('retired-charm');
     expect(ab.records.map(row => row.id)).toEqual(ba.records.map(row => row.id));
   });
 

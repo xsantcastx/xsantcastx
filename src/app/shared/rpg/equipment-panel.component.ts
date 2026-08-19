@@ -26,8 +26,10 @@ import {
   formatItemMod,
   rarityLabel,
   slotAccepts,
+  sumStats,
 } from './item.model';
 import {
+  CHARM_DOLL_SLOTS,
   PAPER_DOLL_SLOTS,
   PAPER_DOLL_SRC,
   type PaperDollSlotManifest,
@@ -95,6 +97,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
 
   readonly dollSrc = PAPER_DOLL_SRC;
   readonly dollSlots = PAPER_DOLL_SLOTS;
+  readonly charmSlots = CHARM_DOLL_SLOTS;
   readonly bagCap = MAX_INVENTORY;
   readonly categories = CATS;
   readonly rarities = RARS;
@@ -184,8 +187,39 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.snap.equipped[slot.liveSlot] ?? null;
   }
 
-  get retiredCharms(): GameItem[] {
-    return this.snap.items.filter(item => item.type === 'charm');
+  // ── The charm row ──────────────────────────────────────────────────────────
+
+  /**
+   * The charms currently worn, summed.
+   *
+   * Reported separately from `snap.totals` even though it is a subset of it —
+   * the row's own header answers "what are my three charms buying me", which is
+   * the question you ask while swapping one, and the loadout total answers "what
+   * am I worth", which is the question you ask afterwards. Reading the second to
+   * get the first means subtracting eight pieces of gear in your head.
+   */
+  get charmTotals(): string[] {
+    const worn = this.charmSlots
+      .map(slot => (slot.liveSlot ? this.snap.equipped[slot.liveSlot] : undefined))
+      .filter((item): item is GameItem => !!item);
+    if (!worn.length) return [];
+
+    const summed = sumStats(worn.map(item => item.stats));
+    return ITEM_STAT_KEYS
+      .filter(key => summed[key] !== 0)
+      .map(key => formatItemMod(key, summed[key]));
+  }
+
+  /** How many charm wells are filled. Drives the row's "2/3" counter. */
+  get charmsWorn(): number {
+    return this.charmSlots.filter(
+      slot => !!slot.liveSlot && !!this.snap.equipped[slot.liveSlot],
+    ).length;
+  }
+
+  /** Every charm in the bag, for the row's empty-state copy. */
+  get charmsHeld(): number {
+    return this.snap.bag.filter(item => item.type === 'charm').length;
   }
 
   get armed(): GameItem | null {
@@ -193,13 +227,25 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     return this.snap.bag.find(item => item.id === id) ?? null;
   }
 
+  /**
+   * Every well the picker can open, gear and charm alike.
+   *
+   * The two arrays are separate because they *lay out* differently — see the
+   * note on `CHARM_DOLL_SLOTS` — but every lookup that answers "which well is
+   * open" has to see both, or clicking a charm well selects a slot the picker
+   * then cannot find and nothing opens.
+   */
+  private get allSlots(): readonly PaperDollSlotManifest[] {
+    return [...this.dollSlots, ...this.charmSlots];
+  }
+
   /** The manifest entry for the open slot, so the template can read its label. */
   get selectedSlotManifest(): PaperDollSlotManifest | null {
-    return this.dollSlots.find(row => row.slotId === this.selectedSlot) ?? null;
+    return this.allSlots.find(row => row.slotId === this.selectedSlot) ?? null;
   }
 
   get expandedItem(): GameItem | null {
-    const slot = this.dollSlots.find(row => row.slotId === this.selectedSlot);
+    const slot = this.allSlots.find(row => row.slotId === this.selectedSlot);
     return slot ? this.itemInDoll(slot) : null;
   }
 

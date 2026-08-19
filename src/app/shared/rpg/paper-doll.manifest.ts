@@ -16,7 +16,10 @@ export type DollSlotId =
   | 'feet'
   | 'weapon'
   | 'off-hand'
-  | 'trinket';
+  | 'trinket'
+  | 'charm1'
+  | 'charm2'
+  | 'charm3';
 
 export interface PaperDollOverlay {
   asset: string;
@@ -58,6 +61,11 @@ export const DOLL_SLOT_GLYPH: Record<DollSlotId, string> = {
   weapon: 'assets/ui/svg/character/weapon.svg',
   'off-hand': 'assets/ui/svg/character/off-hand.svg',
   trinket: 'assets/ui/svg/character/trinket.svg',
+  // All three charm wells share one glyph, on purpose: they are
+  // interchangeable, and three different amulets would imply they are not.
+  charm1: 'assets/ui/svg/character/charm.svg',
+  charm2: 'assets/ui/svg/character/charm.svg',
+  charm3: 'assets/ui/svg/character/charm.svg',
 };
 
 /*
@@ -95,6 +103,28 @@ export const PAPER_DOLL_SLOTS: readonly PaperDollSlotManifest[] = [
   { slotId: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 93 } },
 ];
 
+/**
+ * The three charm wells, as their own row.
+ *
+ * Deliberately *not* in `PAPER_DOLL_SLOTS`. Every entry in that array is
+ * positioned absolutely over the Keeper art by its `control` x/y, and the charm
+ * row is a strip under the figure in normal flow — putting them in the same
+ * array would mean every consumer of the doll had to filter them out before
+ * laying anything out, and the first one to forget would drop three amulets on
+ * the Keeper's shins.
+ *
+ * They keep the `PaperDollSlotManifest` *shape* so the slot picker, the
+ * comparison, the tooltip and the equip flash all work on them unchanged — the
+ * charm row is a different layout, not a different mechanic. `control` is
+ * carried because the shape requires it and is ignored by the row.
+ */
+export const CHARM_DOLL_SLOTS: readonly PaperDollSlotManifest[] = [
+  { slotId: 'charm1', liveSlot: 'charm1', labelKey: 'loadout.slot.charm1', glyph: DOLL_SLOT_GLYPH.charm1, control: { x: 0, y: 0 } },
+  { slotId: 'charm2', liveSlot: 'charm2', labelKey: 'loadout.slot.charm2', glyph: DOLL_SLOT_GLYPH.charm2, control: { x: 0, y: 0 } },
+  { slotId: 'charm3', liveSlot: 'charm3', labelKey: 'loadout.slot.charm3', glyph: DOLL_SLOT_GLYPH.charm3, control: { x: 0, y: 0 } },
+];
+
 export function liveSlotFor(doll: DollSlotId): SlotId | null {
-  return PAPER_DOLL_SLOTS.find(slot => slot.slotId === doll)?.liveSlot ?? null;
+  return [...PAPER_DOLL_SLOTS, ...CHARM_DOLL_SLOTS]
+    .find(slot => slot.slotId === doll)?.liveSlot ?? null;
 }
