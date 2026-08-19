@@ -8,8 +8,11 @@
  * Seamworks, so a foraging Current Work would have read "Mining · Basalt
  * Seamworks · Elsewhere" with the mining cooldown. The tile now derives the
  * discipline from Current Work and picks copy, level, recovery and the Go
- * link per discipline. Two disciplines are still a pair of ternaries, not a
- * table — a third skill earns the table.
+ * link per discipline. Two disciplines were a pair of ternaries; B1
+ * Prospecting is the third skill the old note said would earn the table, so
+ * TILE_BY_DISCIPLINE is it. `work.tile.xp` / `xpMax` / `ready` now take
+ * {{skill}} / {{site}} / {{verb}} vars and the `…Foraging` twins they forced
+ * are gone (skill authoring spec §11).
  */
 import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -24,9 +27,53 @@ import {
   type ActivityLedger,
 } from './activity.model';
 import { ROOTGLASS_CANOPY_HREF } from './foraging.model';
+import { MERIDIAN_ORRERY_HREF } from './prospecting.model';
 import { miningLevelView } from './mining-level';
 
-type TileDiscipline = 'mining' | 'foraging';
+type TileDiscipline = 'mining' | 'foraging' | 'prospecting';
+
+interface TileCopy {
+  /** The skill's display name — also the {{skill}} var in the XP lines. */
+  labelKey: string;
+  /** The site's display name — also the {{site}} var in the ready line. */
+  locationKey: string;
+  /** The player-facing verb — the {{verb}} var in the ready line. */
+  verbKey: string;
+  href: string;
+  summaryKey: string;
+  goKey: string;
+}
+
+/**
+ * One row per live discipline. Anything not listed is not a live skill and
+ * `discipline()` falls back to mining, exactly as the old ternary did.
+ */
+const TILE_BY_DISCIPLINE: Record<TileDiscipline, TileCopy> = {
+  mining: {
+    labelKey: 'work.discipline.mining',
+    locationKey: 'work.location.seamworks',
+    verbKey: 'work.verb.mining',
+    href: BASALT_SEAMWORKS_HREF,
+    summaryKey: 'work.tile.summary',
+    goKey: 'work.tile.go',
+  },
+  foraging: {
+    labelKey: 'work.discipline.foraging',
+    locationKey: 'work.location.canopy',
+    verbKey: 'work.verb.foraging',
+    href: ROOTGLASS_CANOPY_HREF,
+    summaryKey: 'work.tile.summaryForaging',
+    goKey: 'work.tile.goCanopy',
+  },
+  prospecting: {
+    labelKey: 'work.discipline.prospecting',
+    locationKey: 'work.location.orrery',
+    verbKey: 'work.verb.prospecting',
+    href: MERIDIAN_ORRERY_HREF,
+    summaryKey: 'work.tile.summaryProspecting',
+    goKey: 'work.tile.goOrrery',
+  },
+};
 
 @Component({
   selector: 'app-current-work-tile',
@@ -49,8 +96,8 @@ type TileDiscipline = 'mining' | 'foraging';
       <div id="cwt-body" class="cwt__body" [hidden]="!open">
         <p class="cwt__xp">{{ xpLine() }}</p>
         <p class="cwt__recovery">{{ recoveryLine() }}</p>
-        <p class="cwt__summary">{{ t(discipline() === 'foraging' ? 'work.tile.summaryForaging' : 'work.tile.summary') }}</p>
-        <a class="cwt__go" [routerLink]="goHref()">{{ t(discipline() === 'foraging' ? 'work.tile.goCanopy' : 'work.tile.go') }}</a>
+        <p class="cwt__summary">{{ t(copy().summaryKey) }}</p>
+        <a class="cwt__go" [routerLink]="goHref()">{{ t(copy().goKey) }}</a>
       </div>
     </section>
   `,
@@ -136,13 +183,18 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
     return this.i18n.translate(key, vars);
   }
 
-  /** Mining unless Current Work says foraging — the two live disciplines. */
+  /** Mining unless Current Work names another live discipline. */
   discipline(): TileDiscipline {
-    return this.snap.currentWork?.disciplineId === 'foraging' ? 'foraging' : 'mining';
+    const id = this.snap.currentWork?.disciplineId;
+    return id && id in TILE_BY_DISCIPLINE ? id as TileDiscipline : 'mining';
+  }
+
+  copy(): TileCopy {
+    return TILE_BY_DISCIPLINE[this.discipline()];
   }
 
   goHref(): string {
-    return this.discipline() === 'foraging' ? ROOTGLASS_CANOPY_HREF : BASALT_SEAMWORKS_HREF;
+    return this.copy().href;
   }
 
   private view() {
@@ -152,12 +204,12 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
   closedLine(): string {
     const work = this.snap.currentWork;
     if (!work) return this.t('work.tile.empty');
-    const foraging = this.discipline() === 'foraging';
+    const copy = this.copy();
     const view = this.view();
     const next = view.next ?? view.xp;
     return this.t('work.tile.closed', {
-      activity: this.t(foraging ? 'work.discipline.foraging' : 'work.discipline.mining'),
-      location: this.t(foraging ? 'work.location.canopy' : 'work.location.seamworks'),
+      activity: this.t(copy.labelKey),
+      location: this.t(copy.locationKey),
       level: view.level,
       xp: view.xp,
       next,
@@ -165,17 +217,20 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
   }
 
   xpLine(): string {
-    const foraging = this.discipline() === 'foraging';
+    const skill = this.t(this.copy().labelKey);
     const view = this.view();
     if (view.next == null) {
-      return this.t(foraging ? 'work.tile.xpMaxForaging' : 'work.tile.xpMax', { xp: view.xp, level: view.level });
+      return this.t('work.tile.xpMax', { skill, xp: view.xp, level: view.level });
     }
-    return this.t(foraging ? 'work.tile.xpForaging' : 'work.tile.xp', { xp: view.xp, next: view.next, level: view.level });
+    return this.t('work.tile.xp', { skill, xp: view.xp, next: view.next, level: view.level });
   }
 
   recoveryLine(): string {
     const remain = this.activity.recoveryRemainingMs(Date.now());
-    if (remain <= 0) return this.t(this.discipline() === 'foraging' ? 'work.tile.readyForaging' : 'work.tile.ready');
+    if (remain <= 0) {
+      const copy = this.copy();
+      return this.t('work.tile.ready', { verb: this.t(copy.verbKey), site: this.t(copy.locationKey) });
+    }
     // The player's actual current cooldown for the *current discipline*, not
     // the flat baseline and not the mining number: once level or gear has
     // shortened it, or Current Work is foraging, the old constant would make
@@ -190,7 +245,7 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
     if (!this.snap.currentWork) return 'idle';
     if (this.activity.recoveryRemainingMs(this.now) > 0) return 'recovering';
     // 'away' means Current Work points at a place this build does not know —
-    // any registered site (Seamworks or Canopy) is somewhere the tile can send you.
+    // any registered site is somewhere the tile can send you.
     if (!locationDefinition(this.snap.currentWork.locationId)) return 'away';
     return 'ready';
   }

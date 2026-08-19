@@ -127,6 +127,27 @@ describe('BasaltSeamworksComponent', () => {
     expect(selectCalls).toEqual([{ discipline: 'mining', locationId: BASALT_SEAMWORKS_ID }]);
   });
 
+  it('re-selects Mining at the Seamworks when Current Work is at the Orrery', () => {
+    // B1's twin of the Canopy case below: a third site is a third way to
+    // arrive here with Current Work pointing somewhere else.
+    fixture.destroy();
+    selectCalls.length = 0;
+    activity.snapshot = {
+      ...emptyActivityLedger(),
+      currentWork: {
+        version: 2,
+        disciplineId: 'prospecting',
+        locationId: 'celestial/meridian-orrery',
+        startedAt: '2026-08-19T00:00:00.000Z',
+        lastResolvedAt: '2026-08-19T00:00:00.000Z',
+        selectionRevision: { wallTimeMs: 1, logicalCounter: 0, deviceId: 't', sequence: 1 },
+      },
+    };
+    fixture = TestBed.createComponent(BasaltSeamworksComponent);
+    fixture.detectChanges();
+    expect(selectCalls).toEqual([{ discipline: 'mining', locationId: BASALT_SEAMWORKS_ID }]);
+  });
+
   it('re-selects Mining at the Seamworks when Current Work is at the Canopy', () => {
     // A Keeper who visited the Rootglass Canopy walks back here with
     // foraging@Canopy still selected. Before this rule the page only claimed

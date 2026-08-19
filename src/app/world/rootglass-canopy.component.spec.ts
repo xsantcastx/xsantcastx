@@ -127,6 +127,27 @@ describe('RootglassCanopyComponent', () => {
     expect(selectCalls).toEqual([{ discipline: 'foraging', locationId: ROOTGLASS_CANOPY_ID }]);
   });
 
+  it('re-selects Foraging at the Canopy on mount when Current Work points at the Orrery', () => {
+    // B1's twin of the Seamworks case above: a third site means a third way to
+    // arrive with Current Work pointing somewhere else.
+    fixture.destroy();
+    selectCalls.length = 0;
+    activity.snapshot = {
+      ...emptyActivityLedger(),
+      currentWork: {
+        version: 2,
+        disciplineId: 'prospecting',
+        locationId: 'celestial/meridian-orrery',
+        startedAt: '2026-08-19T00:00:00.000Z',
+        lastResolvedAt: '2026-08-19T00:00:00.000Z',
+        selectionRevision: { wallTimeMs: 1, logicalCounter: 0, deviceId: 't', sequence: 1 },
+      },
+    };
+    fixture = TestBed.createComponent(RootglassCanopyComponent);
+    fixture.detectChanges();
+    expect(selectCalls).toEqual([{ discipline: 'foraging', locationId: ROOTGLASS_CANOPY_ID }]);
+  });
+
   it('locks growths the current foraging level has not reached and names where they open', () => {
     const el = fixture.nativeElement as HTMLElement;
     const tierButtons = Array.from(el.querySelectorAll<HTMLButtonElement>('.rc__tier'));

@@ -20,6 +20,7 @@ import {
   continueFromRealm,
 } from '../shared/narrative/continue-journey';
 import { ROOTGLASS_CANOPY_HREF } from '../shared/activity/foraging.model';
+import { MERIDIAN_ORRERY_HREF } from '../shared/activity/prospecting.model';
 import { InfernalChapterComponent } from './infernal-chapter.component';
 
 @Component({
@@ -37,6 +38,8 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
 
   /** A2: Verdant's foraging site. Linked from the landing with no chapter gate — Verdant has no chapter yet. */
   readonly canopyHref = ROOTGLASS_CANOPY_HREF;
+  /** B1: Celestial's prospecting site. Same deal — Celestial has no chapter component either. */
+  readonly orreryHref = MERIDIAN_ORRERY_HREF;
 
   realm: NarrativeRealm | null = null;
   journey: ContinueJourney | null = null;
