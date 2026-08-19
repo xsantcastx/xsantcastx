@@ -64,3 +64,38 @@ export function reelOffset(length: number): number {
  * resolves.
  */
 export const AUTO_ROLLS = 10;
+
+/** The bulk buttons on the reveal, in the order they are drawn. */
+export const BULK_ROLLS = [10, 100, 1000] as const;
+
+/**
+ * The most strikes one bulk run will make, however deep the purse.
+ *
+ * ALL means "spend what you can afford", and on a purse holding tens of
+ * millions that is a five-figure run — minutes of chunked striking, a bag that
+ * evicts nearly all of it, and a progress bar nobody watches to the end. A
+ * thousand is already the largest number the buttons offer.
+ */
+export const BULK_CAP = 1000;
+
+/**
+ * How long one chunk of a bulk run may hold the frame.
+ *
+ * Measured in the built app: a strike costs ~0.27ms on an empty bag and
+ * ~1.18ms once the 250-row inventory cap starts evicting on every mint. Eight
+ * milliseconds is a handful of strikes at the slow end, which keeps the
+ * progress line moving and the Stop button clickable on a phone.
+ */
+export const BULK_FRAME_MS = 8;
+
+/** Delay between auto-roll pulls — a lever's rhythm, not a loop's. */
+export const AUTO_STEP_MS = 260;
+
+/**
+ * The rung auto-roll stops on, and every rung above it.
+ *
+ * Rare is the first find a player would be annoyed to have rolled straight
+ * past. An auto-roll that walked through the thing it was looking for would
+ * be a way to miss it rather than a way to reach it.
+ */
+export const AUTO_STOP_TIER: RuneTier = 'rare';

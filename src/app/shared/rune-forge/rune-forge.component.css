@@ -345,7 +345,17 @@
   color: #d6a84f;
 }
 .rf-pick__card { position: relative; }
-.rf-pick--batch .rf-pick__card { min-height: 148px; }
+/* Batch cards are compact on purpose.
+   `aspect-ratio: 0.72` is right for the one card a single strike lands, but on
+   a grid of ten it makes two rows about 600px tall and pushes the roll buttons
+   toward the fold — which is the friction this whole row exists to remove. */
+.rf-pick--batch .rf-pick__card {
+  aspect-ratio: auto;
+  min-height: 0;
+  height: 132px;
+}
+.rf-pick--batch .rf-pick__card img { width: auto; max-height: 84px; }
+.rf-pick--batch .rf-pick__name { font-size: 1rem; }
 .rf-pick__name { margin: 0; font-size: 1.7rem; }
 .rf-pick__tier, .rf-pick__dup { margin: 0; color: #8f969f; }
 .rf-pick__done {
@@ -501,6 +511,100 @@
     0 0 32px -6px color-mix(in srgb, var(--star-color, #d6a84f) 60%, transparent);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   The lever. Sits on the result, so a re-roll is one gesture, not three.
+   ───────────────────────────────────────────────────────────────────────── */
+.rf-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  /* Pinned to the bottom of the reveal's own scroller.
+     A ten-card grid on a 375px phone runs the buttons to y=951 in an 812px
+     viewport — the player would have to scroll down to roll again, which is
+     the friction this row exists to remove. `.rf-focus` is the scroll
+     container (fixed, overflow:auto), so this sticks inside the dialog and
+     does not depend on body overflow, which is `clip` site-wide and would
+     have made a page-level sticky inert. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  width: 100%;
+  padding: 0.6rem 0 0.2rem;
+  background: linear-gradient(180deg, rgba(9, 11, 15, 0) 0%, rgba(9, 11, 15, 0.92) 28%, rgba(9, 11, 15, 0.98) 100%);
+}
+.rf-acts__btn {
+  display: grid;
+  place-items: center;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgba(214, 168, 79, 0.45);
+  border-radius: 8px;
+  background: #171c23;
+  color: #eee9dd;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.rf-acts__btn:hover:not(:disabled), .rf-acts__btn:focus-visible {
+  border-color: #d6a84f;
+  box-shadow: 0 0 18px -6px rgba(201, 106, 50, 0.8);
+}
+.rf-acts__btn:focus-visible { outline: 2px solid #d6a84f; outline-offset: 2px; }
+.rf-acts__btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.rf-acts__cost { font-size: 0.62rem; letter-spacing: 0.1em; color: #d6a84f; }
+
+/* The one the thumb goes to. */
+.rf-acts__btn--again {
+  border-color: #d6a84f;
+  background: linear-gradient(180deg, #23180e, #171c23);
+}
+.rf-acts__btn--auto.is-on {
+  border-color: #6fd39a;
+  color: #d8ffe9;
+  box-shadow: 0 0 20px -6px rgba(111, 211, 154, 0.8);
+}
+.rf-acts__btn--stop { border-color: #e2634f; color: #ffd9d2; }
+
+.rf-acts__note {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  color: #c6c1b4;
+  text-align: center;
+}
+.rf-acts__note--broke { color: #e2a08f; }
+
+/* Bulk run: the progress the chunked loop is reporting. */
+.rf-pick__progress {
+  width: min(100%, 22rem);
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.rf-pick__progress-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c96a32, #d6a84f);
+}
+
+/* The tally, rarest first. Each rung wears its own colour. */
+.rf-pick__tally {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.7rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #c6c1b4;
+}
+.rf-pick__tally-row { color: var(--star, #c6c1b4); }
+.rf-pick__tally-row b { color: #eee9dd; }
+
 /* Read the scroll in place. */
 .rf-pick__lore-btn {
   min-height: 44px;
@@ -626,6 +730,12 @@
   .rf-filter-m { display: block; }
   .rf-pick__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
   .rf-pick__grid--single { grid-template-columns: minmax(0, 14rem); }
+  .rf-pick--batch .rf-pick__card { height: 104px; }
+  .rf-pick--batch .rf-pick__card img { max-height: 66px; }
+  .rf-acts__btn { padding: 0.3rem 0.6rem; font-size: 0.76rem; }
+  /* Clear the fixed tab bar, or the row's second line sits behind it. Same
+     58px + safe-area the document floor in styles.css uses. */
+  .rf-acts { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 0.4rem); }
   .rf-pick__card { min-height: 168px; }
 }
 
@@ -644,6 +754,17 @@
 .rf-pick[data-reveal='void'] .rf-pick__card.is-chosen { animation: rfLandHeld 320ms ease-out, rfHaloHeld 1100ms ease-out; }
 .rf-sparks--reveal .rf-spark { animation: rfSpark 700ms ease-out forwards; animation-delay: calc(var(--i) * 12ms); }
 .rf-pick__sweep::before { animation: rfSweep 900ms ease-in-out 120ms both; }
+
+/* Repeat pulls.
+   The first strike of a sitting gets the full land, halo and sweep. From the
+   second on the player is working a lever and the ceremony is in the way, so
+   the same animations run about three times faster and the sweep — the
+   slowest of them, and the one that reads as waiting — is dropped entirely.
+   Top-level rather than nested in a media query for the reason in the note
+   above: Angular does not rewrite an `animation:` shorthand inside @media. */
+.rf-pick--rapid .rf-pick__card.is-chosen { animation-duration: 90ms, 260ms; }
+.rf-pick--rapid .rf-sparks--reveal .rf-spark { animation-duration: 260ms; animation-delay: calc(var(--i) * 4ms); }
+.rf-pick--rapid .rf-pick__sweep { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .rf-spark, .rf-sparks--reveal .rf-spark { animation: none; display: none; }
