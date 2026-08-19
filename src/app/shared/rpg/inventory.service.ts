@@ -59,7 +59,6 @@ import {
   itemToRecord,
   itemsFromLedger,
   nextRevision,
-  projectEconomy,
   restoreCharms,
   stackQuantity,
   tombstoneRecord,
@@ -231,17 +230,6 @@ export class InventoryService {
   /** Distinct rarities held, for the achievement predicates. */
   hasRarity(rarity: ItemRarity): boolean {
     return this.items.some(i => i.rarity === rarity);
-  }
-
-  /**
-   * Read-only Economy projections for C4. Not mixed into `snapshot.items`.
-   * Character still reads artifacts/cosmetics from EconomyService.
-   */
-  projectedFromEconomy(): ReturnType<typeof projectEconomy> {
-    return projectEconomy({
-      artifacts: this.economy.snapshot.artifacts,
-      cosmetics: this.economy.snapshot.cosmetics,
-    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────

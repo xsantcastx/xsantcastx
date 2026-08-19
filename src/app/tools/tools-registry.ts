@@ -662,50 +662,8 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
 
 // ── Helper functions ──────────────────────────────────────────────────────────
 
-/** All tools currently marked as live */
-export function getLiveTools(): ToolDefinition[] {
-  return TOOLS_REGISTRY.filter(t => t.status === 'live');
-}
-
 /** Find a tool by its id */
 export function getToolById(id: string): ToolDefinition | undefined {
   return TOOLS_REGISTRY.find(t => t.id === id);
 }
 
-/** Tools marked as featured (for hero carousel, spotlights, etc.) */
-export function getFeaturedTools(): ToolDefinition[] {
-  return TOOLS_REGISTRY.filter(t => t.featured && t.status === 'live');
-}
-
-/** All unique categories across registered tools */
-export function getCategories(): string[] {
-  const cats = new Set(TOOLS_REGISTRY.map(t => t.category));
-  return ['All', ...Array.from(cats).sort()];
-}
-
-/** All unique tags across registered tools */
-export function getAllTags(): string[] {
-  const tagSet = new Set<string>();
-  TOOLS_REGISTRY.forEach(t => t.tags.forEach(tag => tagSet.add(tag)));
-  return Array.from(tagSet).sort();
-}
-
-/**
- * Get tools related to a given tool, ranked by shared tag count.
- * Only returns live tools.
- */
-export function getRelatedTools(currentId: string, count: number = 4): ToolDefinition[] {
-  const current = getToolById(currentId);
-  if (!current) return [];
-  const currentTags = new Set(current.tags.map(t => t.toLowerCase()));
-  return TOOLS_REGISTRY
-    .filter(t => t.id !== currentId && t.status === 'live')
-    .map(t => ({
-      tool: t,
-      score: t.tags.filter(tag => currentTags.has(tag.toLowerCase())).length
-    }))
-    .filter(r => r.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, count)
-    .map(r => r.tool);
-}
