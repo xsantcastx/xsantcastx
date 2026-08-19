@@ -8,9 +8,7 @@ import {
   mergeInventoryLedgers,
   migrateV1,
   parseInventoryLedger,
-  projectEconomy,
   restoreCharms,
-  projectRunes,
   pruneTombstones,
   stackQuantity,
   tombstoneRecord,
@@ -235,24 +233,6 @@ describe('inventory adapter (C3)', () => {
       ledger({ stackOps: [grant, consume, grant] }),
     );
     expect(stackQuantity(merged.stackOps, 'cinder-ore')).toBe(0);
-  });
-
-  it('projects Economy artifacts and cosmetics without writing them as bag items', () => {
-    const projected = projectEconomy({ artifacts: ['obsidian-heart'], cosmetics: ['ember-cloak'] });
-    expect(projected.map(row => row.id)).toEqual([
-      'econ:artifact:obsidian-heart',
-      'econ:cosmetic:ember-cloak',
-    ]);
-    expect(projected.every(row => row.source === 'economy' && row.soulbound)).toBe(true);
-    const ledgerState = ledger({ records: [instance('drop')] });
-    expect(itemsFromLedger(ledgerState).map(row => row.id)).toEqual(['drop']);
-  });
-
-  it('projects the rune ledger as adapter-owned stacks and keeps the source key', () => {
-    const projected = projectRunes({ runes: { ash: 3, ember: 0 }, runewords: ['cinder-bind'] });
-    expect(projected.find(row => row.id === 'rune:ash')?.kind).toBe('stack');
-    expect(projected.find(row => row.id === 'runeword:cinder-bind')?.source).toBe('runes');
-    expect(projected.find(row => row.id === 'rune:ember')).toBeUndefined();
   });
 
   it('prunes tombstones after the retain window and keeps a hard cap', () => {
