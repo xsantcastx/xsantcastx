@@ -17,6 +17,22 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.75.0',
+    codename: 'Fanfare',
+    date: '2026-08-19',
+    highlights: [
+      'A good drop is now an event. Every rung of the rune ladder from Uncommon up earns its own reaction \u2014 and each one gets a channel the rung below it did not have, so you can tell what you hit before you have read a word',
+      'An Uncommon breathes colour at the edges of the screen. A Relic-grade Rare is the first real hit: a ring pulses out of the card, particles scatter from it, a crystalline chime rings, and the rune\u2019s name types itself out one letter at a time',
+      'An Epic moves the world. The forge behind the page lurches, the card jolts, light beams fan out of it, and a resonant low note lands under the chime',
+      'A Legendary takes the screen away before it gives anything back \u2014 a beat of black, then gold: lightning cracking in from the edges, a shower of motes falling past, thunder and a horn section',
+      'A Mythic turns prismatic and drops the reveal itself to half speed, so the card lands with weight instead of speed',
+      'The Void, once in two million strikes, breaks the screen. Black and silent for half a second \u2014 the only deliberate silence in the game \u2014 then the glass cracks across the whole viewport, void energy pours out of the break, and the rune is inside it',
+      'The fanfare is off until you ask for it. One switch under the anvil turns on the synthesised audio and remembers the choice; nothing is downloaded either way, because every sound is built from oscillators at the moment it plays',
+      'Reduced motion keeps the colour and drops everything that moves, and a phone gets the whole event with the lightning cut \u2014 the one effect that is a stall on the hardware least able to absorb one',
+      'The same celebration now fires wherever an item is acquired, not just at the anvil: the Forge Flame\u2019s anvil mode and the Gambler\u2019s mystery boxes run it off the same table',
+    ],
+  },
+  {
     version: '2.74.0',
     codename: 'Ember',
     date: '2026-08-19',

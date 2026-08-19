@@ -60,6 +60,15 @@
     </button>
   </div>
 
+  <!--
+    The fanfare's switch. Sits under the anvil rather than in a settings panel
+    because it is the anvil that makes the noise, and a preference nobody can
+    find is a preference nobody has.
+  -->
+  <p class="rf-sound-row">
+    <app-celebration-sound-toggle></app-celebration-sound-toggle>
+  </p>
+
   <p class="rf-pills" aria-label="{{ t('forge.library.stats') }}">
     <span class="rf-pill">{{ unique }} / {{ totalRunes }} {{ t('forge.pill.found') }}</span>
     <span class="rf-pill">{{ completePct }}% {{ t('forge.pill.complete') }}</span>
@@ -388,7 +397,25 @@
             </div>
           </div>
           @if (revealTier) {
-            <p class="rf-pick__name">{{ reveal.rune.name }}</p>
+            <!--
+              The name, typed rather than printed, from Rare up. The plain <p>
+              is what every other tier gets and what a reduced-motion visitor
+              gets, so the name is always in the DOM as one readable string;
+              the split version is aria-hidden so a screen reader is never read
+              a rune one letter at a time.
+            -->
+            @if (revealLetters.length) {
+              <p class="rf-pick__name rf-pick__name--typed">
+                <span class="rf-sr">{{ reveal.rune.name }}</span>
+                <span aria-hidden="true">
+                  @for (ch of revealLetters; track $index) {
+                    <span class="rf-pick__char" [style.--i]="$index">{{ ch === ' ' ? '\u00A0' : ch }}</span>
+                  }
+                </span>
+              </p>
+            } @else {
+              <p class="rf-pick__name">{{ reveal.rune.name }}</p>
+            }
             <p class="rf-pick__tier">{{ revealTier.label }}</p>
             @if (!reveal.isNew) {
               <p class="rf-pick__dup">{{ t('forge.reveal.owned') }}</p>
