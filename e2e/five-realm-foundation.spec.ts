@@ -1,15 +1,19 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-async function dismissWorldChrome(page: Page): Promise<void> {
-  const overlay = page.locator('.ms-overlay--visible');
-  try {
-    await overlay.waitFor({ state: 'visible', timeout: 4000 });
-    await page.getByRole('button', { name: /^Continue$/i }).click();
-    await overlay.waitFor({ state: 'hidden', timeout: 5000 });
-  } catch {
-    // No visit-milestone this run.
-  }
-}
+/**
+ * The visit milestone is a full-viewport overlay that swallows clicks, and it
+ * arrives whenever the counter's round trip finishes. Racing it — wait four
+ * seconds, click Continue, hope — lost: on a slow run it landed after the
+ * window closed and then intercepted the atlas click for the full thirty-second
+ * timeout. Marking the visit counted before the app boots means it never fires,
+ * which is the same guard every other spec in this suite already uses.
+ */
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('xsantcastx_consent', 'denied');
+    window.sessionStorage.setItem('visit-counted', '1');
+  });
+});
 
 test.describe('five-realm World foundation', () => {
   test('World names the five places and continues in Luminous', async ({ page }) => {
@@ -24,7 +28,6 @@ test.describe('five-realm World foundation', () => {
   test('the atlas opens existing dossiers from hotspots and the mobile list', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/world', { waitUntil: 'load' });
-    await dismissWorldChrome(page);
     const map = page.locator('.atlas__link');
     const list = page.locator('.atlas__item');
     await expect(map).toHaveCount(5);
@@ -42,7 +45,6 @@ test.describe('five-realm World foundation', () => {
     await expect(page.locator('h1')).toHaveText('Luminous');
 
     await page.goto('/world', { waitUntil: 'load' });
-    await dismissWorldChrome(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await expect.poll(async () =>
       page.locator('.atlas__pin').first().evaluate(el => getComputedStyle(el).animationName),
