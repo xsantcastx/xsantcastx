@@ -1732,6 +1732,37 @@ summary:focus-visible {
   display: none;
 }
 
+/* ── 10a-ter. …and the discovery toast stands down with it ──
+   Same failure, different widget. `app-discovery-toast` centres a 20rem card
+   at `top: 46%` with `pointer-events: auto` on it, and its own header says the
+   toast "never blocks a click". It does: the card lands squarely on the
+   reveal's action row and takes the clicks meant for Stop and the roll
+   buttons underneath it.
+
+   That was survivable while a bulk run was capped at a thousand strikes and
+   discoveries were rare inside one. With ALL uncapped a run is tens of
+   thousands of strikes and turns up new runes throughout, so a toast is on
+   screen for much of it — and Stop is the escape hatch that makes an uncapped
+   run reasonable in the first place. A cancel button a toast can swallow is
+   not an escape hatch.
+
+   The card keeps its own click-to-dismiss everywhere else; it only lets go
+   while the reveal owns the screen. Out here rather than in the toast's own
+   stylesheet because Angular's emulated encapsulation appends the component's
+   scoping attribute to every compound selector including ancestors, so
+   `body.gf-reveal-open .dt__card` written there would compile to
+   `body.gf-reveal-open[_ngcontent-x] .dt__card[_ngcontent-x]` and match
+   nothing at all, silently. */
+/* `body` and `.dt` are padding, and they are load-bearing. The toast's own
+   rule compiles to `.dt__card[_ngcontent-x]` — two terms — and Angular injects
+   component styles after this sheet, so a plain `.gf-reveal-open .dt__card`
+   ties on specificity and loses on source order. Measured: the toast went on
+   intercepting the click with the rule in place. */
+body.gf-reveal-open .dt .dt__card,
+body.gf-reveal-open .dt .dt__face {
+  pointer-events: none;
+}
+
 /* ── 10b. The mobile tab bar is fixed, so the document needs a floor ──
    Without this the last section and the footer's final row sit underneath
    the five tabs and cannot be scrolled into view — the page simply ends

@@ -17,6 +17,16 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.75.1',
+    codename: 'Fanfare',
+    date: '2026-08-20',
+    highlights: [
+      'ALL now means all. The button offered every strike your Gold could cover and was then quietly clamped to a thousand of them \u2014 on a deep purse it spent a fraction of what it promised and stopped. It spends the purse',
+      'A long run no longer slows down the longer it gets. The reveal used to hold on to every find and copy the whole pile once per batch, which is fine for ten and quadratic for forty thousand; it now folds each strike into a count, a tally and the best find as it goes',
+      'Stop works during a long run. The Collection Log toast lands in the middle of the screen and was swallowing clicks meant for the buttons underneath it \u2014 including the one that calls the run off',
+    ],
+  },
+  {
     version: '2.75.0',
     codename: 'Fanfare',
     date: '2026-08-19',

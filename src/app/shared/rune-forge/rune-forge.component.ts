@@ -28,7 +28,7 @@ import { Subscription } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { EconomyService } from '../economy/economy.service';
 import { ForgeAudioService } from '../economy/forge-audio.service';
-import { formatCurrency } from '../economy/economy.model';
+import { formatCompact, formatCurrency } from '../economy/economy.model';
 import { RuneForgeService, RuneFind } from './rune-forge.service';
 import { LoreScrollService } from './lore-scroll.service';
 import {
@@ -49,7 +49,6 @@ import {
   AUTO_ROLLS,
   AUTO_STEP_MS,
   AUTO_STOP_TIER,
-  BULK_CAP,
   BULK_FRAME_MS,
   BULK_ROLLS,
 } from './rune-reel';
@@ -66,7 +65,7 @@ import {
   type LibraryTab,
 } from './rune-library';
 import { loadSeen, markSeen, persistSeen } from './rune-unseen';
-import { batchHaul, haulOf, isHeavyTier, tallyTiers, type BatchHaul, type BatchTier, type HaulLine } from './rune-haul';
+import { BatchTally, haulOf, isHeavyTier, type BatchHaul, type BatchTier, type HaulLine } from './rune-haul';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { CelebrationService } from '../celebration/celebration.service';
 import { CelebrationSoundToggleComponent } from '../celebration/celebration-sound-toggle.component';
@@ -150,7 +149,6 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly strikeCost = STRIKE_COST;
   readonly bulkRolls = BULK_ROLLS;
-  readonly bulkCap = BULK_CAP;
   /**
    * Auto-roll stops here and above. Rare is the first rung a player would be
    * annoyed to have rolled straight past.
@@ -200,7 +198,15 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
    * a screen reader announces does not change either way.
    */
   revealCard: CardArt | null = null;
-  batch: RuneFind[] = [];
+  /**
+   * The run, folded as it goes.
+   *
+   * Not an array of every find: ALL is uncapped, so a deep purse is a run of
+   * tens of thousands, and the reveal only ever shows a count, a tally, four
+   * haul totals, the best find, the last find and — while the run is small
+   * enough to draw them — the first `gridCap` cards. See `BatchTally`.
+   */
+  tally = new BatchTally<RuneFind>(RuneForgeComponent.GRID_CAP);
   landed = false;
   loreOpen = false;
   /** The scroll's prose, pre-split. Empty when the strike turned up no scroll. */
@@ -467,7 +473,18 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get batchNew(): number {
-    return this.batch.filter(find => find.isNew).length;
+    return this.tally.newCount;
+  }
+
+  /** How many strikes the run has landed. Every `batch.length` the template
+   *  used to ask for, in constant time. */
+  get batchCount(): number {
+    return this.tally.count;
+  }
+
+  /** The cards the grid may draw. Stops growing at `gridCap`. */
+  get batchCards(): readonly RuneFind[] {
+    return this.tally.cards;
   }
 
   /**
@@ -486,24 +503,18 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
    * through to reach the buttons, so a bigger run prints its tally and its
    * best find instead. Twelve covers ×10 with room to spare.
    */
-  readonly gridCap = 12;
+  static readonly GRID_CAP = 12;
+  readonly gridCap = RuneForgeComponent.GRID_CAP;
 
   /** The best find itself, for the big-run summary card. */
   get bestBatchFind(): RuneFind | null {
-    const index = this.bestBatchIndex;
-    return index === null ? null : this.batch[index] ?? null;
+    return this.tally.best;
   }
 
-  /** The best find in the batch, so the grid can mark it. Null outside a batch. */
+  /** Where the best find sits in the drawn grid. Null outside a batch, and
+   *  null once the run outgrows the grid — there is no card to mark. */
   get bestBatchIndex(): number | null {
-    if (!this.batch.length) return null;
-    let best = 0;
-    for (let i = 1; i < this.batch.length; i++) {
-      if (RUNE_TIER_ORDER.indexOf(this.batch[i].rune.tier) > RUNE_TIER_ORDER.indexOf(this.batch[best].rune.tier)) {
-        best = i;
-      }
-    }
-    return best;
+    return this.tally.bestCardIndex;
   }
 
   get completePct(): number {
@@ -561,7 +572,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.markRevealOpen(true);
     this.landed = false;
     this.loreOpen = false;
-    this.batch = [];
+    this.tally = new BatchTally<RuneFind>(this.gridCap);
     this.batchTiers = [];
     this.reveal = find;
     this.revealTier = tier;
@@ -607,7 +618,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loreOpen = false;
     this.haul = [];
     this.scrollParagraphs = [];
-    this.batch = [];
+    this.tally = new BatchTally<RuneFind>(this.gridCap);
     this.batchTiers = [];
     this.bulkTotal = n;
     this.bulkDone = 0;
@@ -618,19 +629,24 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Strike until this frame's budget is spent, then either finish or yield. */
   private bulkChunk(): void {
-    const finds: RuneFind[] = [];
+    let struck = 0;
     const started = this.now();
-    while (this.bulkDone + finds.length < this.bulkTotal
+    while (this.bulkDone + struck < this.bulkTotal
         && this.now() - started < BULK_FRAME_MS) {
       const find = this.forge.strike();
       // Out of Gold mid-run, or the ledger refused. Bank what landed.
       if (!find) break;
-      finds.push(find);
+      // Folded here rather than collected and concatenated after the loop.
+      // `batch = batch.concat(finds)` copies the whole accumulated array once
+      // per chunk, which is quadratic in the length of the run — invisible at
+      // the old thousand-strike cap, and on the order of a hundred million
+      // element copies once ALL is allowed to drain a deep purse.
+      this.tally.add(find);
+      struck++;
     }
 
-    this.batch = this.batch.concat(finds);
-    this.bulkDone = this.batch.length;
-    const ranDry = finds.length === 0 || this.bulkDone >= this.bulkTotal;
+    this.bulkDone = this.tally.count;
+    const ranDry = struck === 0 || this.bulkDone >= this.bulkTotal;
     if (ranDry) {
       this.finishBulk();
       return;
@@ -643,8 +659,9 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private finishBulk(): void {
     this.bulkTimer = null;
     this.rolling = false;
-    const finds = this.batch;
-    if (!finds.length) {
+    const last = this.tally.last;
+    const best = this.tally.best;
+    if (!last || !best) {
       this.broke = true;
       this.striking = false;
       this.markRevealOpen(false);
@@ -653,15 +670,12 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const last = finds[finds.length - 1];
-    const best = finds.reduce((acc, find) =>
-      RUNE_TIER_ORDER.indexOf(find.rune.tier) > RUNE_TIER_ORDER.indexOf(acc.rune.tier) ? find : acc, last);
     this.landed = true;
     this.reveal = last;
     this.revealTier = tierOf(last.rune.tier);
     this.revealCard = runeCard(last.rune.id);
-    this.batchSummary = batchHaul(finds);
-    this.batchTiers = tallyTiers(finds);
+    this.batchSummary = this.tally.haul();
+    this.batchTiers = this.tally.tiers();
     if (best.rune.tier === 'singular') this.audio.voidRumble();
     else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavyTier(best.rune.tier));
     // The best thing in the run, not the last thing pulled: ten strikes that
@@ -679,18 +693,41 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Everything the purse can pay for, up to `count` and never more than
-   * BULK_CAP. "ALL" on a deep purse would otherwise be a five-figure run that
-   * no progress bar makes reasonable.
+   * Everything the purse can pay for, up to `count`.
+   *
+   * There used to be a third clamp here, `BULK_CAP`, at a thousand strikes.
+   * It made ALL a lie: on a purse holding four hundred million Gold the button
+   * said ALL, and spent two and a half percent of it. "Spend what I can
+   * afford" is the whole contract of that button, so the cap is gone.
+   *
+   * What the cap was really protecting was the reveal keeping every find of
+   * the run — see `BatchTally` for why that is no longer true. What is left is
+   * wall-clock time, and that is handled rather than prevented: the run is
+   * chunked against a frame budget so the tab never freezes, it prints a
+   * progress line, and Stop banks what has landed and ends it. A long run is a
+   * thing the player asked for and can call off; a frozen tab is not.
+   *
+   * The honest cost, measured in the built app: about 2ms per strike, so a
+   * forty-thousand-strike purse is a run of minutes. Storage is only 6% of
+   * that (131ms of 2,052ms across a thousand strikes) — the rest is what a
+   * strike genuinely does: mint an item into a capped bag, roll a scroll,
+   * record the collection, award XP and check achievements.
    */
   affordableRolls(count: number): number {
-    const affordable = Math.floor(this.gold / STRIKE_COST);
-    return Math.max(0, Math.min(count, affordable, BULK_CAP));
+    return Math.max(0, Math.min(count, this.allRolls));
   }
 
-  /** What the ALL button will actually roll, for its own label. */
+  /** What the ALL button will actually roll: every strike the purse covers. */
   get allRolls(): number {
-    return this.affordableRolls(BULK_CAP);
+    return Math.max(0, Math.floor(this.gold / STRIKE_COST));
+  }
+
+  /**
+   * The ALL button's label. Compact, because the honest number is five figures
+   * on a deep purse and "×40000" does not fit the chip "×1000" was sized for.
+   */
+  get allRollsLabel(): string {
+    return formatCompact(this.allRolls);
   }
 
   /**
@@ -768,7 +805,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.bulkDone = 0;
     this.autoStopped = null;
     this.batchTiers = [];
-    this.batch = [];
+    this.tally = new BatchTally<RuneFind>(this.gridCap);
     this.haul = [];
     this.loreOpen = false;
     this.revealLetters = [];
