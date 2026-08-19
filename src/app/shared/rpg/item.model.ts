@@ -25,6 +25,7 @@
  * Pure data and pure functions — no browser APIs, safe on an SSR path.
  */
 import { RuneTier, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
+import { QUALITY_BAND, qualityAdjustedSellValue } from './item-quality';
 
 /**
  * Item rarity is the rune ladder, deliberately.
@@ -183,6 +184,17 @@ export interface GameItem {
   rarity: ItemRarity;
   /** Rolled at mint, frozen thereafter. See the note at the top of the file. */
   stats: ItemStats;
+  /**
+   * Per-stat roll grade, 0..1, where 1 is the best that stat can roll at this
+   * item's rarity. Written once at mint beside `stats`, rewritten by a reforge,
+   * and never touched by temper — see item-quality.ts for why the grade has to
+   * describe the base roll rather than the current numbers.
+   *
+   * Absent on every item minted before the grade existed. Ungraded is a real
+   * state that the UI renders as "—", not a zero: back-filling it would mean
+   * inventing a percentage that cannot be recovered from a tempered instance.
+   */
+  rollQuality?: Partial<Record<keyof ItemStats, number>>;
   /** Gold this pays if sold. Zero for anything soulbound. */
   sellValue: number;
   equipped: boolean;
@@ -666,15 +678,47 @@ function mintId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${mintCounter.toString(36)}`;
 }
 
-/** Mint a charm from its seed. Fixed MF, no roll. */
-export function mintCharm(seed: CharmSeed, foundAt = new Date().toISOString()): GameItem {
+/**
+ * Mint a charm from its seed, rolled inside its rarity's grade band.
+ *
+ * The seed's authored numbers are read as the **ceiling**, not the midpoint:
+ * every charm in the table was balanced as "what a Verge Compass is worth", and
+ * treating that as a midpoint would let half of them roll above a number the
+ * economy was tuned against. So a maxed roll reproduces exactly the fixed value
+ * charms used to always have, and every other roll is below it.
+ *
+ * That makes this a nerf in expectation, and deliberately: the fixed charm was
+ * a guaranteed payout on a drop that is already the rarest thing the Forge
+ * produces, which left nothing to chase once you had one of each. What it buys
+ * is that the second Verge Compass is now worth picking up.
+ */
+export function mintCharm(
+  seed: CharmSeed,
+  foundAt = new Date().toISOString(),
+  rng: () => number = Math.random,
+): GameItem {
+  const band = QUALITY_BAND[seed.rarity] ?? QUALITY_BAND.common;
+  const span = band.max - band.min;
+  const stats: ItemStats = {};
+  const rollQuality: NonNullable<GameItem['rollQuality']> = {};
+  for (const key of ITEM_STAT_KEYS) {
+    const ceiling = seed.stats[key];
+    if (ceiling == null) continue;
+    const q = band.min + rng() * span;
+    // Charms are authored as the tier ceiling, so `q` is already the fraction
+    // of the best possible — but the *displayed* grade still normalises inside
+    // the band, so "100%" means the same thing on a charm as on a helm.
+    stats[key] = Math.round(ceiling * Math.min(1, q) * 10) / 10;
+    rollQuality[key] = span > 0 ? Math.min(1, Math.max(0, (q - band.min) / span)) : 1;
+  }
   return {
     id: mintId(seed.id),
     name: seed.name,
     type: 'charm',
     rarity: seed.rarity,
-    stats: { ...seed.stats },
-    sellValue: sellValueFor('charm', seed.rarity),
+    stats,
+    rollQuality,
+    sellValue: qualityAdjustedSellValue(sellValueFor('charm', seed.rarity), { rollQuality }),
     equipped: false,
     lore: seed.lore,
     foundAt,
