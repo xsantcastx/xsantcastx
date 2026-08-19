@@ -109,6 +109,12 @@ const orphans = [];
 for (const r of declared) {
   if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;
   if (r.startsWith('/world/realms') || r === '/world/fivefold-lock') continue;
+  // The Gambler is entered from the Market, which is the hall it belongs to:
+  // `market.component.html` links it, and "a new hall next to the Market" is
+  // what it shipped as in v2.71.0. Same shape as the /arena and /world/realms
+  // skips above — a room reached through its parent rather than from global
+  // chrome. It is not unreachable, and this check only ever looked at chrome.
+  if (r === '/gambler') continue;
   if (r === '/' || r === '/**') continue;
   if (!chromeLinks.has(r)) orphans.push(r);
 }
