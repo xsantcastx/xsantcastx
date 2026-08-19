@@ -20,7 +20,9 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { InspectService, type InspectView } from './inspect.service';
-import { type EntityAction, type EntityFact } from './entity.model';
+import { Inspect3dService } from '../inspect-3d/inspect-3d.service';
+import { ForgeEffectsService } from '../forge-scene/forge-effects.service';
+import { type EntityAction, type EntityFact, type EntityPresentation } from './entity.model';
 import { InventoryService } from '../rpg/inventory.service';
 import { maxTemperOf, previewUpgrade, upgradeLevelOf, wardFailReductionPct } from '../rpg/item-upgrade';
 import { formatCurrency } from '../economy/economy.model';
@@ -74,6 +76,8 @@ const REFORGE_SHUFFLE_TICK_MS = 60;
 })
 export class InspectComponent implements OnInit, OnDestroy {
   private readonly inspect = inject(InspectService);
+  private readonly inspect3d = inject(Inspect3dService);
+  private readonly gfx = inject(ForgeEffectsService);
   private readonly inventory = inject(InventoryService);
   private readonly audio = inject(ForgeAudioService);
   private readonly i18n = inject(TranslationService);
@@ -482,5 +486,24 @@ export class InspectComponent implements OnInit, OnDestroy {
     const title = this.titleEl?.nativeElement;
     const merged = title && !listed.includes(title) ? [title, ...listed] : listed;
     return merged.filter(el => el.offsetParent !== null || el === document.activeElement);
+  }
+
+  // ── 3D inspect ─────────────────────────────────────────────────────────────
+
+  /**
+   * Whether to offer the 3D view at all.
+   *
+   * Gated on WebGL and on the visitor's Reduce Effects choice, because a button
+   * that opens a dialog which immediately closes itself is worse than no button
+   * — and someone who has asked the site to stop spending GPU is not asking for
+   * a second scene on top of the one they just switched off.
+   */
+  get can3d(): boolean {
+    return this.isBrowser && !this.gfx.reduced && this.gfx.webglSupported();
+  }
+
+  open3d(event: Event, place: EntityPresentation): void {
+    event.stopPropagation();
+    this.inspect3d.open(place, { trigger: event.currentTarget });
   }
 }

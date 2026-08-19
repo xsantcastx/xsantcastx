@@ -306,6 +306,8 @@ A single inline script runs five interactive systems. **All SSR-safe** with `typ
 7. **Always test the tools page after engine changes** — it's the most animation-dense page and reveals z-index bugs first.
 8. **The viewport corners are a shared, unmanaged resource** — before pinning anything with `position: fixed`, read the corner registry in the docblock of `shared/pwa/install-prompt.component.ts` and add your widget to it. Bottom-left in particular is **not** empty: above 961px the shell's 236px sidebar sits there, and below 961px the `.gftabs` tab bar and (below 768px) the bottom-centre forge flame do. Offset with `var(--shell-sidebar-w, 0px)` and `var(--gftabs-h, 58px)` rather than measuring by eye — both are published onto `<html>` by `HeaderComponent`.
 9. **Never put a backtick inside a component's `styles: [\`…\`]` block** — not even in a CSS comment. It closes the template literal, and the error Angular reports is `Failed to resolve styles at position 1 to a string`, which names neither the file nor the line. It cost two dev-server restarts in one release.
+10. **Never put a backdrop layer at a negative z-index** — it will not paint. `body` is positioned with `z-index: auto`, so it opens no stacking context; every negative-z-index descendant escapes into html's context and paints before body's own fully opaque gradient covers it. `.matrix-background`, `body::before` and `body::after` are all already dead paint for exactly this reason. A full-viewport backdrop goes at `z-index: 0` with `mix-blend-mode: screen`, which is what `.cosmic-canvas` and `.forge-scene` both do.
+11. **A transparent three.js layer draws after every opaque one** — `renderOrder` only sorts *within* the transparent pass, so a `depthTest: false` glow "behind" a mesh paints straight through it. If something is meant to be occluded, leave `depthTest` on and let the depth buffer do it.
 
 ---
 
@@ -330,6 +332,8 @@ src/
 │   ├── games/                           # /games — easter egg gallery
 │   ├── mcp/                             # /mcp — npm package landing
 │   ├── shared/npc/                      # the six speaking characters — see below
+│   ├── shared/forge-scene/              # the WebGL forge background — see §11
+│   ├── shared/inspect-3d/               # the 3D item inspector — see §11
 │   └── shared/gamification/             # the progression ledger — see below
 ```
 
@@ -498,3 +502,88 @@ npm test     # ng test
 ```
 
 When verifying cosmic changes: hit `/home`, `/tools` (and click a galaxy), `/skills`, `/footer` (scroll), `/contact`. Move the cursor — pulsar should drift, custom cursor should appear, magnetic buttons should pull. Scroll — sections should fade-up. Click a primary CTA — should spark.
+
+---
+
+## 11. The WebGL forge (Three.js)
+
+Two separate three.js scenes, added in v2.74.0. They share the library and
+nothing else — two renderers, two contexts, two disposal paths, because the
+inspector has to be able to die without taking the background with it.
+
+**three is never in the initial bundle.** Both scenes reach it through
+`await import('three')`, which lands it in its own ~730 kB lazy chunk. A visitor
+with Reduce Effects on, or no WebGL, never downloads it at all.
+
+### 11.1 The background — `shared/forge-scene/`
+
+| File | What it is |
+|---|---|
+| `forge-scene.model.ts` | Pure data: realm palettes, the three quality tiers and their vertex budgets, the frame governor's thresholds, route → palette. No browser APIs, so the spec can hold it to account. |
+| `forge-effects.service.ts` | The four gates that decide whether WebGL runs at all: server, the visitor's Reduce Effects choice, embed mode, and a cached WebGL capability probe. |
+| `forge-scene.service.ts` | The renderer. Owns the canvas, the four layers, the rAF loop, resize, pointer, scroll, ripples, the palette cross-fade and disposal. |
+| `forge-scene.component.ts` | Mounts the canvas in AppComponent and drives the palette off the router. |
+| `forge-effects-toggle.component.ts` | "Reduce effects", in the footer. |
+
+**Nothing moves on the CPU.** Every particle's buffers are written once and hold
+constants; position, drift, twinkle, cursor repulsion, scroll parallax and the
+Forge Flame's ripple are all functions of `uTime` evaluated per-vertex. Per
+frame the CPU writes eight uniforms and issues four draw calls — that is the
+entire cost, and it is why the frame governor almost never fires. The same
+decision is what makes the wisp trails free: a trail vertex is the head with a
+time offset, so the tail is literally where the head was 0.4 s ago.
+
+**The budget is a total, not a per-layer allowance.** 500 vertices on desktop,
+200 on a phone, wisp trail segments included. The spec fails if a tier's layers
+add up past its own `budget`.
+
+**Adding a realm** means one entry in `PALETTES` and nothing else — the wash
+follows `/world/realms/<sigil>`, and `paletteForPath` refuses to invent a
+palette for a segment that is not a realm.
+
+**The Forge Flame drives the ripple.** `ForgeFlameComponent.strike()` calls
+`ForgeSceneService.ripple()` with the button's own rect, throttled to one per
+140 ms — the combo ladder rewards 9,999 uninterrupted strikes and a ripple per
+strike at that rate is a strobe. The call is a no-op when WebGL never happened,
+which is what lets the flame make it unconditionally.
+
+### 11.2 The item inspector — `shared/inspect-3d/`
+
+Opens from the "3D" chip in the Quick Inspect hero, so it reaches every surface
+that already has an inspect button: Market, bank, equipment, Rune Forge, quests
+and the World stations. It takes the resolved `EntityPresentation` rather than
+an `EntityRef` — the panel already resolved it to draw the 2D card.
+
+The card is a real box with 2 mm of thickness: artwork and name on `+z`, the
+stat block on `-z`, rarity light on the four edges. Faces are painted with
+Canvas 2D from the presentation (`card-face.ts`) rather than screenshotted from
+the DOM — there is no browser API that does the latter, and both workarounds
+(a 200 kB layout reimplementation, or an SVG `foreignObject` that taints the
+canvas on Safari) are worse than drawing 400 lines of card.
+
+**The ladder is the point.** `RARITY_EFFECTS` earns exactly one more channel per
+rung — orbiters, then rays, then tendrils and a warping surface at Singular —
+and the spec asserts it never gets quieter as it gets rarer. Tendrils, warp and
+prismatic orbits belong to Singular alone.
+
+**Two rarity ladders meet in `tierOfRarityId`.** Achievements, quests and
+artifacts carry the six-rung Eclipse scale; runes, runewords and every item
+carry the seven-rung forge scale (`ItemRarity` *is* `RuneTier`). Without the map
+every item in the game inspects as Mortal, including a Legendary.
+
+**Loading.** `Inspect3dOutletComponent` is eager and nearly free; it builds the
+scene component through `ViewContainerRef.createComponent` after an `import()`.
+`@defer` cannot do this job: a deferrable view resolves its dependencies from
+the host component's own `imports`, and the host is AppComponent, which is
+NgModule-declared — anything AppModule imports is eager by definition.
+
+### 11.3 Reduced motion, and the fallbacks
+
+`prefers-reduced-motion` does not switch either scene off. Per rule 2 in §7 the
+visitor gets a **static end state**: the scene still builds and renders exactly
+one frame with every clock at zero, and the card holds a three-quarter angle.
+That is a nicer thing to look at than the flat wash, and it is genuinely free.
+
+Reduce Effects, embed mode and absent WebGL are the paths that render nothing —
+and they all fall back to the CSS `.particle-layer`, which the scene hides via
+`html.forge-scene-on` only once a GL context actually exists.
