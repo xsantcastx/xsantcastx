@@ -12,6 +12,11 @@
  * runs its hydration only in the browser and its whole job is flipping `found`
  * and filling in dates. That ordering is what makes the server's HTML and the
  * browser's first frame identical by construction rather than by luck.
+ *
+ * The Codex mounts this unconditionally behind `[hidden]` rather than behind an
+ * `@if` on the active tab, for the same reason: `/codex` is a prerendered static
+ * file and the `?tab=` query never reaches it, so a gated panel would be missing
+ * from the HTML entirely — see the note above the panel in codex.component.html.
  */
 import {
   Component,
