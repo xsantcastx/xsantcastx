@@ -17,6 +17,31 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.77.0',
+    codename: 'Fanfare',
+    date: '2026-08-20',
+    highlights: [
+      'An expedition that came home with something rare was the one place in the game a good drop still landed in silence. The screen-level celebration ladder already existed and every other surface used it — a strike at the anvil, a box at the Gambler, a find off the Forge Flame — but the Sanctum\'s reveal card was wired to none of it. A Void rune, the rarest thing in the game at roughly one strike in two million, arrived as a coloured border on a card and nothing else',
+      'The haul now celebrates at its best find, and runes and equippables are ranked against each other on one ladder rather than the rune being read alone. That second half matters more than it sounds: a Legendary charm carried home beside an Ash rune used to show a grey card, because the code took its cue from the rune and the charm was never in the running',
+      'Fired when the card reaches the screen rather than when the expedition settles. Three explorers finishing overnight settle inside a single pass, so celebrating at settlement would have stacked three Legendaries into one frame behind a page nobody was looking at — and then shown three cards in silence afterwards. One card, one celebration, and the dismiss button walks the queue',
+      'The deferral is a timer and deliberately not a frame, which is the bug this shipped with and lost on the way. Expeditions settle on visibility change, so a haul routinely lands while the tab is in the background — and a background tab never runs requestAnimationFrame at all. Measured in a hidden tab: the card rendered and the frame callback was still pending five seconds later, so the celebration was simply dropped. A timer is throttled there but it fires, and a macrotask is already past the pass that built the card, so the box is there to measure either way',
+      'Everything the layer puts on the page comes back off it. Dismissing a card cancels whatever is still running, and leaving the Sanctum mid-Mythic cancels it too — the effect layer is a child of <body> rather than of the page, so Angular tearing the route down does not take it with it, and four seconds of gold lightning over /tools is not a feature',
+    ],
+  },
+  {
+    version: '2.76.4',
+    codename: 'Purge',
+    date: '2026-08-20',
+    highlights: [
+      'The lockout had a second half, and it was the half that made "I cleared my cache" not help. Firebase Hosting still answered a request for a missing script with the app shell at 200 OK — and the header block for .js files then stamped that reply `public, max-age=31536000, immutable`. One such request writes HTML under a .js address into the browser\'s own HTTP cache for a year, with an explicit instruction never to ask again. Safari keeps that instruction literally, including across reloads; Chrome revalidates on an explicit reload, which is the entire reason this reproduced on one browser and not the other',
+      'Nothing the site could do reached that copy. Clearing Cache Storage does not touch the HTTP cache, unregistering the worker does not touch it, and neither does reloading — so the recovery added last release ran, purged what it could reach, reloaded into the same bad bytes, and reported the visitor as unrecoverable. Verified in WebKit against a server reproducing the header exactly: the poisoned entry survives a reload, a new tab, and a full browser restart',
+      'The fallback no longer answers for paths that name a file, so a missing script comes back as a real 404 with no-cache instead of a page a browser will keep for a year — confirmed on a Hosting preview channel. Nothing is marked `immutable` any more either: these filenames already carry a content hash, so within max-age the cache is still used without a round-trip, and dropping the flag buys back the one thing that mattered, which is that a reload can fix a broken visitor again',
+      'For anyone already holding a poisoned copy, neither of those helps — their browser will not ask the server, so it never learns the answer changed. The recovery now refetches the build with `cache: \'reload\'`, which is the one request that gets past the entry and overwrites it. It reads the addresses off resource timing rather than off the document, because the script that fails is usually a lazily imported one that no tag mentions',
+      'And it can finally run at all when the failure is the main bundle itself. The old recovery was a service inside that bundle, installed by an initializer — if main.js was what failed to link, Angular never booted and the handler that would have fixed the page was sitting inside the file that could not load. A visitor got the prerendered HTML, which looks finished and answers nothing. There is now a small classic script in the head, with no import graph of its own to go down with, that catches the messageless link error WebKit fires at the entry <script> and does the same repair before Angular is ever asked to start',
+      'Two scripts were being cached for a year under names that never change. cosmic-engine.js and easter-eggs.js are edited between releases, and the rule promising a year of immutability was written for filenames carrying a content hash — so returning visitors were pinned to whichever copy they first landed on. They now revalidate hourly',
+    ],
+  },
+  {
     version: '2.76.3',
     codename: 'Purge',
     date: '2026-08-20',
