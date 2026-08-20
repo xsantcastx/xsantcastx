@@ -6,6 +6,21 @@
   earning). Every warm surface below reads one or both, which is why the page
   gets brighter as the rate climbs without a single extra binding.
 -->
+<!-- The Sanctum's own room.
+
+     Every other painted route on the site mounts one of these; /sanctum never
+     did, so the command centre of the game was the only major surface still
+     standing on the generic cosmic wallpaper. `bg-umbral` is the vault interior
+     — arched vaults, a ritual circle cut into the floor, violet veins in the
+     stone — which is the room this page has always described in words.
+
+     `ArtSceneComponent` also adds `body.gf-art-route`, which switches off the
+     site's CSS atmosphere (nebula, starfield, pulsar, corner runes, the
+     constellation canvas) for the duration. That is the correct trade and not an
+     incidental one: all of it was the stand-in for artwork this route now has,
+     and running both is two rooms at once. -->
+<app-art-scene art="bg-umbral" focus="center 52%" />
+
 <section
   class="fv"
   [style.--keeper]="keeperColor"
@@ -311,8 +326,27 @@
               Explorer returned
             }
           </p>
-          <p class="fv__landing-realm">{{ landing.missionName }} — {{ landing.realmName }}</p>
+          <p class="fv__landing-realm">
+            {{ landing.missionName }} —
+            @if (landing.siteName) { {{ landing.siteName }}, {{ landing.realmName }} }
+            @else { {{ landing.realmName }} }
+          </p>
           <p class="fv__landing-gold">+{{ landing.gold }} Gold <span>+{{ landing.xp }} XP</span></p>
+
+          <!-- Their own ladder. Distinct from the Keeper's XP above it, and
+               labelled as such, because a player reading two XP numbers on one
+               card will otherwise assume one of them is a duplicate. -->
+          @if (landing.explorerXp > 0) {
+            <p class="fv__landing-xp" [class.fv__landing-xp--up]="landing.levelledUp">
+              <span aria-hidden="true">◈</span>
+              {{ landing.explorerName || 'They' }} banked +{{ landing.explorerXp }} XP
+              @if (landing.levelledUp) {
+                — <b>Level {{ landing.explorerLevel }}</b>
+              } @else {
+                · level {{ landing.explorerLevel }}
+              }
+            </p>
+          }
 
           <!-- Each find fades up a beat after the one above it. The stagger is a
                CSS custom property rather than a per-element delay so the order
@@ -391,8 +425,49 @@
             </div>
           }
 
-          @if (!landing.rune && !landing.scroll && !landing.items.length && !landing.materials.length) {
+          <!--
+            Somebody came back with somebody.
+
+            The rarest event on this page and the whole roster acquisition loop,
+            so it gets its own treatment rather than a chip in the loot list: a
+            full card, the tier's colour, their passive, and one line of who they
+            are. `--step` 4 puts it last in the stagger, after every rune and
+            item, because it is the thing worth waiting through the rest for.
+          -->
+          @if (landing.found; as hire) {
+            <div class="fv__hire fv__loot--step"
+                 [style.--step]="4"
+                 [style.--tone]="hire.color"
+                 [style.--tone-glow]="hire.glow">
+              <span class="fv__hire-orb" aria-hidden="true"></span>
+              <div class="fv__hire-body">
+                <p class="fv__hire-eyebrow">Somebody came back with them</p>
+                <p class="fv__hire-name">
+                  {{ hire.name }} <span class="fv__hire-tier">{{ hire.rarityLabel }}</span>
+                </p>
+                <p class="fv__hire-bio">{{ hire.bio }}</p>
+                @if (hire.passive) {
+                  <p class="fv__hire-passive"><span aria-hidden="true">◆</span> {{ hire.passive }}</p>
+                }
+              </div>
+            </div>
+          }
+
+          @if (!landing.rune && !landing.scroll && !landing.items.length && !landing.materials.length && !landing.found) {
             <p class="fv__landing-none">They came back with the Gold and a story nobody has written down.</p>
+          }
+
+          <!-- Deploy Again.
+
+               The moment a haul lands is the moment a player most wants to go
+               back, and making them re-arm three pickers to do it is where the
+               loop leaks. Arms the picker and dispatches through the one
+               existing path, so there is a single set of refusal rules. -->
+          @if (freeSlots > 0) {
+            <button type="button" class="fv__again" (click)="deployAgain()">
+              ↻ Send {{ landing.explorerName || 'them' }} back
+              @if (landing.siteName) { to {{ landing.siteName }} }
+            </button>
           }
 
           @if (landingsQueued > 0) {
@@ -422,9 +497,9 @@
               </svg>
 
               <span class="fv__mission-copy">
-                <b>{{ m.realm.name }}</b>
+                <b>@if (m.site) { {{ m.site.name }} } @else { {{ m.realm.name }} }</b>
                 <span class="fv__mission-who">
-                  {{ m.mission.name }}@if (m.explorerName) { · {{ m.explorerName }} }
+                  {{ m.mission.name }}@if (m.site) { · {{ m.realm.name }} }@if (m.explorerName) { · {{ m.explorerName }} }@if (m.explorerLevel > 1) { <span class="fv__mission-level">Lv {{ m.explorerLevel }}</span> }
                 </span>
                 <span class="fv__mission-bar"
                       role="progressbar"
@@ -441,6 +516,31 @@
                     {{ m.countdown }} left@if (m.eta) { · home {{ m.eta }} }
                   }
                 </span>
+
+                <!--
+                  The story. Four beats, pinned to 25/50/75/100, each one derived
+                  from the expedition's id so it is the same line on every reload
+                  and on every device the save reaches — see the note at the top
+                  of `expedition-events.model.ts`.
+
+                  All four are rendered from the moment they leave, with the
+                  uncrossed ones as dim pips. The shape of the journey is visible
+                  up front, so crossing 50% reads as something *arriving* rather
+                  than as a line appearing out of nowhere.
+                -->
+                <span class="fv__beats">
+                  @for (b of m.beats; track b.at) {
+                    <span class="fv__beat"
+                          [class.fv__beat--on]="b.reached"
+                          [attr.title]="b.reached ? b.text : b.at + '%'">
+                      <span class="fv__beat-pip" aria-hidden="true"></span>
+                    </span>
+                  }
+                </span>
+
+                @if (m.latest; as beat) {
+                  <span class="fv__beat-text">{{ beat.text }}</span>
+                }
               </span>
 
               <button type="button" class="fv__recall" (click)="recall(m.id)"
@@ -454,6 +554,51 @@
 
       @if (freeSlots > 0) {
         <div class="fv__dispatch">
+          <!--
+            Who goes.
+
+            Only offered once there is more than one idle body — with a single
+            explorer the control is a radio group of one, which is a question
+            with no answer. "Whoever is best" leads and stays the default, so a
+            player firing off a Scout never has to answer this.
+          -->
+          @if (idleExplorers.length > 1) {
+            <p class="fv__dispatch-label" id="fv-who-label">Send</p>
+            <ul class="fv__whos" role="radiogroup" aria-labelledby="fv-who-label">
+              <li>
+                <button type="button" class="fv__who"
+                        role="radio"
+                        [attr.aria-checked]="!pickedExplorer"
+                        [class.fv__who--on]="!pickedExplorer"
+                        (click)="pickExplorer('')">
+                  <span class="fv__who-name">Whoever is best</span>
+                </button>
+              </li>
+              @for (w of idleExplorers; track w.id) {
+                <li>
+                  <button type="button" class="fv__who"
+                          role="radio"
+                          [attr.aria-checked]="pickedExplorer === w.id"
+                          [class.fv__who--on]="pickedExplorer === w.id"
+                          [class.fv__who--blocked]="!!w.block"
+                          [style.--star-color]="w.color"
+                          [disabled]="!!w.block"
+                          (click)="pickExplorer(w.id)">
+                    <span class="fv__who-orb" aria-hidden="true">{{ w.level }}</span>
+                    <span class="fv__who-name">{{ w.name }}</span>
+                    <!-- The one fact that decides the click. -->
+                    @if (w.athome) {
+                      <span class="fv__who-home" title="This is their realm">at home</span>
+                    }
+                    @if (w.block) {
+                      <span class="fv__who-block">🔒</span>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+
           <p class="fv__dispatch-label" id="fv-realm-label">Send to</p>
           <ul class="fv__realms" role="radiogroup" aria-labelledby="fv-realm-label">
             @for (r of realms; track r.id) {
@@ -487,6 +632,73 @@
           <p class="fv__realm-mats">
             <span aria-hidden="true">⛏</span> {{ pickedRealmMaterials }}
           </p>
+
+          <!--
+            The third question: *where in the realm*.
+
+            Until this existed the picker asked which realm and how long, and
+            neither of those is a place. A player who had run forty expeditions
+            had been to Umbral forty times and could name nothing that was in
+            it. See the note at the top of `expedition-site.model.ts`.
+          -->
+          <p class="fv__dispatch-label" id="fv-site-label">Into</p>
+          <ul class="fv__sites" role="radiogroup" aria-labelledby="fv-site-label">
+            @for (o of siteOptions; track o.site.id) {
+              <li>
+                <button type="button"
+                        class="fv__site"
+                        role="radio"
+                        [attr.aria-checked]="pickedSite === o.site.id"
+                        [attr.data-tier]="o.site.tier"
+                        [class.fv__site--on]="pickedSite === o.site.id"
+                        [class.fv__site--blocked]="!!o.block"
+                        [style.--realm]="pickedRealmDef.color"
+                        [disabled]="!!o.block"
+                        (click)="pickSite(o.site.id)">
+                  <span class="fv__site-head">
+                    <b class="fv__site-name">{{ o.site.name }}</b>
+                    <!-- Difficulty as stars rather than as a number, because
+                         "3" needs a scale beside it and five pips do not. -->
+                    <span class="fv__site-stars"
+                          [attr.aria-label]="'Difficulty ' + o.site.difficulty + ' of 5'">
+                      @for (n of o.stars; track n) {
+                        <span class="fv__site-star"
+                              [class.fv__site-star--on]="n <= o.site.difficulty"
+                              aria-hidden="true">★</span>
+                      }
+                    </span>
+                  </span>
+
+                  <span class="fv__site-flavour">{{ o.site.flavour }}</span>
+
+                  <span class="fv__site-nums">
+                    <span>{{ o.band }}</span>
+                    <span>{{ o.duration }}</span>
+                    <span>{{ o.cost }}</span>
+                  </span>
+
+                  <!-- What the card promises, in the player's words rather than
+                       in multipliers. "Umbral Ink, and something older" is a
+                       reason to go; "×1.35 Gold" is a spreadsheet. -->
+                  <span class="fv__site-finds">
+                    @for (f of o.site.finds; track f) {
+                      <span class="fv__site-find">{{ f }}</span>
+                    }
+                  </span>
+
+                  @if (o.site.exclusive) {
+                    <span class="fv__site-exclusive">
+                      <span aria-hidden="true">✦</span> {{ o.site.exclusive }}
+                    </span>
+                  }
+
+                  @if (o.block) {
+                    <span class="fv__site-block">🔒 {{ o.blockLabel }}</span>
+                  }
+                </button>
+              </li>
+            }
+          </ul>
 
           <p class="fv__dispatch-label" id="fv-mission-label">For</p>
 
@@ -540,6 +752,19 @@
             <p class="fv__length-flavour">{{ picked.def.flavour }}</p>
           }
 
+          <!-- The confirmation, in the button rather than in a dialog.
+
+               A modal here would be a third overlay on a page that already
+               queues loot reveals, and every fact it would carry — who, where,
+               how long — fits on two lines above the control. Naming the actual
+               explorer matters: `dispatch` sends the best idle one, and a player
+               with twelve on the books has no other way to know which. -->
+          <p class="fv__send-confirm">
+            <b>{{ nextExplorerName }}</b>@if (nextExplorerLevel) { <span class="fv__send-level">Lv {{ nextExplorerLevel }}</span> }
+            → <b>{{ pickedSiteDef.name }}</b>
+            @if (pickedSiteOption; as picked) { · {{ picked.duration }} · {{ picked.cost }} }
+          </p>
+
           <button type="button"
                   class="fv__send"
                   [class.fv__send--blocked]="dispatchBlocked"
@@ -548,7 +773,7 @@
             @if (dispatchBlocked) {
               {{ pickedMissionOption?.blockLabel }}
             } @else {
-              Send Explorer into {{ pickedRealmDef.name }} →
+              Deploy to {{ pickedSiteDef.name }} →
             }
           </button>
 
@@ -637,18 +862,33 @@
         </ul>
       }
 
-      <!-- The roster sits under the dispatch picker rather than beside it: this
-           is the column about explorers, and who they *are* belongs next to
-           where they are sent. It owns its own state through its own service. -->
-      <app-explorer-roster-panel />
-
-      <!-- The Thralls sit under the roster because they are the same question
-           asked of a different anvil: who works, and what are they carrying.
-           Keeping them in this column rather than beside the Contract Board is
-           what stops the page from reading as two unrelated staffing systems. -->
+      <!-- The Thralls sit under the dispatch picker because they are the same
+           question asked of a different anvil: who works, and what are they
+           carrying. Keeping them in this column rather than beside the Contract
+           Board is what stops the page from reading as two unrelated staffing
+           systems. -->
       <app-thrall-panel />
     </section>
   </div>
+
+  <!--
+    The roster, full width.
+
+    It lived inside the expedition column, which was right when it was a list of
+    five hires: who they *are* belongs next to where they are sent. It stopped
+    being right when it became a wall of eighteen — a collection with a reward
+    ladder, a sort, a filter and a locked half does not fit in a 238px column,
+    and the four reward rungs wrapped onto four lines of two words each.
+
+    So it is its own band under the three columns, where it can lay the cast out
+    in a real grid. The dispatch picker above still owns *sending* people; this
+    still owns who exists. The split the old comment described is unchanged —
+    only the width is.
+  -->
+  <section class="fv__roster" aria-labelledby="fv-roster-title">
+    <h2 class="fv__col-title fv__col-title--wide" id="fv-roster-title">The Cast</h2>
+    <app-explorer-roster-panel />
+  </section>
 
   <!-- ─── BOTTOM: the feed ────────────────────────────────────────────────── -->
   <section class="fv__feed" aria-labelledby="fv-feed-title">

@@ -45,6 +45,7 @@ import {
   ExplorerReturn,
   ExplorerState,
   MAX_EXPLORER_SLOTS,
+  MissionDefinition,
   MissionId,
   emptyExplorerState,
   missionById,
@@ -55,11 +56,32 @@ import { InventoryService } from '../rpg/inventory.service';
 import { ChallengeService } from '../challenges/challenge.service';
 import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
+import {
+  ExpeditionSite,
+  defaultSiteFor,
+  siteBlock,
+  siteById,
+  siteProfile,
+} from '../expedition/expedition-site.model';
+import {
+  explorerXpFor,
+  levelForXp,
+  neutralBonus,
+  resolveExplorerBonus,
+} from '../rpg/explorer-progression';
+import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import {
+  MASTERY_RUNS,
+  masteryArchetypeFor,
+  sourcesForMission,
+} from '../rpg/explorer-archetypes';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
+  RosterExplorer,
   explorerTier,
   missionDurationFor,
+  rollExplorerRarity,
 } from '../rpg/explorer-roster.model';
 
 /** The Market id whose levels each buy one more explorer. */
@@ -70,10 +92,28 @@ export const EXPLORER_SLOT_UPGRADE = 'explorer-slot';
  * "200,000 Gold — you have 84,000" without asking the service twice.
  */
 export interface ExpeditionBlock {
-  code: 'unknown' | 'slots' | 'level' | 'gold' | 'exclusive';
+  code: 'unknown' | 'slots' | 'level' | 'gold' | 'exclusive'
+      | 'site-keeper-level' | 'site-explorer-level';
   need?: number;
   have?: number;
 }
+
+/**
+ * Chance that a return also brings somebody back with them, per mission depth.
+ *
+ * Tuned against how long each rung takes rather than against the anvil's rates.
+ * A Scout at 1.5% is roughly one hire per three hours of active dispatching; the
+ * Abyss at 35% is one in three seventy-two-hour runs, which for the two
+ * Legendaries that only that rung can reach is about a fortnight of commitment
+ * each. Both of those are the intended feel: the cast should fill over a season,
+ * not over an afternoon and not over a year.
+ */
+export const EXPLORER_FIND_CHANCE = {
+  shallow: 0.015,
+  deep: 0.08,
+  grand: 0.2,
+  abyss: 0.35,
+} as const;
 
 /** How often the countdown is redrawn while at least one mission is out. */
 const TICK_MS = 1_000;
@@ -188,7 +228,12 @@ export class ExplorerService implements OnDestroy {
    */
   get slots(): number {
     const bought = this.economy.levelOf(EXPLORER_SLOT_UPGRADE);
-    return Math.min(MAX_EXPLORER_SLOTS, BASE_EXPLORER_SLOTS + bought);
+    // The sixth slot is earned by collecting, not bought — see `ROSTER_REWARDS`.
+    // Added *outside* the Market clamp rather than inside it, because
+    // `MAX_EXPLORER_SLOTS` is the ceiling on what Gold can buy and the
+    // collection reward is deliberately not for sale.
+    const earned = this.roster.snapshot.bonusSlots;
+    return Math.min(MAX_EXPLORER_SLOTS, BASE_EXPLORER_SLOTS + bought) + earned;
   }
 
   get freeSlots(): number {
@@ -211,7 +256,7 @@ export class ExplorerService implements OnDestroy {
    * picker asks "can I send *anyone* on this" long before it asks "can I send
    * this one".
    */
-  blockedReason(mission: MissionId, explorerId?: string): ExpeditionBlock | null {
+  blockedReason(mission: MissionId, explorerId?: string, siteId?: string): ExpeditionBlock | null {
     const def = missionById(mission);
     if (!def) return { code: 'unknown' };
     if (this.freeSlots <= 0 && !explorerId) return { code: 'slots' };
@@ -222,10 +267,92 @@ export class ExplorerService implements OnDestroy {
     if (def.exclusive && this.state.active.some(e => e.mission === mission)) {
       return { code: 'exclusive' };
     }
-    if (def.cost && this.economy.snapshot.gold < def.cost) {
-      return { code: 'gold', need: def.cost, have: this.economy.snapshot.gold };
+
+    // The site's own walls, checked before the fee for the same reason the rank
+    // gate is: a player who cannot enter the Void Threshold should be told that,
+    // not told they are 190,000 Gold short of a mission they could not take
+    // anyway.
+    const site = siteById(siteId);
+    if (site) {
+      // With nobody named, the wall is measured against whoever would actually
+      // go — `dispatch` sends the best idle explorer — so the picker's answer and
+      // the dispatch's answer are the same answer.
+      const who = explorerId ? this.roster.byId(explorerId) : this.bestIdleExplorer();
+      const level = levelForXp(who?.xp ?? 0);
+      const wall = siteBlock(site, this.xp.snapshot.level.level, level);
+      if (wall) {
+        return {
+          code: wall.code === 'keeper-level' ? 'site-keeper-level' : 'site-explorer-level',
+          need: wall.need,
+          have: wall.have,
+        };
+      }
+    }
+
+    const cost = this.dispatchCost(mission, siteId);
+    if (cost && this.economy.snapshot.gold < cost) {
+      return { code: 'gold', need: cost, have: this.economy.snapshot.gold };
     }
     return null;
+  }
+
+  /**
+   * What this dispatch actually costs, after the site's multiplier.
+   *
+   * Public because the picker prints it: a card that said "10,000" while the
+   * dispatch took 40,000 would be the single worst bug this panel could have.
+   * Rounded here, once, so the number shown and the number spent are produced by
+   * the same expression.
+   */
+  dispatchCost(mission: MissionId, siteId?: string): number {
+    const def = missionById(mission);
+    if (!def?.cost) return 0;
+    return Math.round(def.cost * siteProfile(siteId).costMultiplier);
+  }
+
+  /**
+   * Why this site refuses the explorer who would actually go, or null.
+   *
+   * Separate from `blockedReason` because the site picker asks a narrower
+   * question — "can I go *here*" — and folding it into the mission's refusal
+   * would make a walled site read as a walled *length*, sending the player to
+   * grind Gold for a fee that was never the problem.
+   */
+  blockedSite(siteId: string, explorerId?: string): ExpeditionBlock | null {
+    const site = siteById(siteId);
+    if (!site) return null;
+    const who = explorerId ? this.roster.byId(explorerId) : this.bestIdleExplorer();
+    const wall = siteBlock(site, this.xp.snapshot.level.level, levelForXp(who?.xp ?? 0));
+    if (!wall) return null;
+    return {
+      code: wall.code === 'keeper-level' ? 'site-keeper-level' : 'site-explorer-level',
+      need: wall.need,
+      have: wall.have,
+    };
+  }
+
+  /** How long this dispatch will run, after the explorer's speed and the site. */
+  dispatchDuration(mission: MissionId, explorerId?: string, siteId?: string): number {
+    const def = missionById(mission);
+    if (!def) return 0;
+    const who = explorerId ? this.roster.byId(explorerId) : this.bestIdleExplorer();
+    const base = missionDurationFor(def.duration, who?.rarity ?? 'common');
+    const bonus = who
+      ? resolveExplorerBonus(who, siteById(siteId)?.realm)
+      : null;
+    const speed = bonus ? bonus.speed : 1;
+    return Math.max(1_000, Math.round(base * siteProfile(siteId).durationMultiplier * speed));
+  }
+
+  /**
+   * The explorer a dispatch with no name on it would send: the best one idle.
+   *
+   * `roster.snapshot` returns the roster rarest-first, so "the best available"
+   * is the first one not already out — which is what a player clicking Dispatch
+   * with a roster of twelve expects, and saves them picking every time.
+   */
+  bestIdleExplorer(): RosterExplorer | undefined {
+    return this.roster.snapshot.explorers.find(e => !this.isOut(e.id));
   }
 
   /**
@@ -237,41 +364,60 @@ export class ExplorerService implements OnDestroy {
    * is written, and the write cannot fail after it, so there is no ordering in
    * which a player is charged for a mission that never left.
    */
-  dispatch(realm: RealmId, mission: MissionId, explorerId?: string): boolean {
+  dispatch(realm: RealmId, mission: MissionId, explorerId?: string, siteId?: string): boolean {
     if (!this.isBrowser) return false;
     if (this.freeSlots <= 0) return false;
 
     const def = missionById(mission);
     if (!def || !realmById(realm)) return false;
-    if (this.blockedReason(mission, explorerId)) return false;
 
-    // With no explorer named, the best one standing idle goes. `snapshot`
-    // returns the roster rarest-first, so "the best available" is the first one
-    // that is not already out — which is what a player clicking Dispatch with a
-    // roster of twelve expects, and saves them picking every time.
-    const chosen = explorerId
-      ? this.roster.byId(explorerId)
-      : this.roster.snapshot.explorers.find(e => !this.isOut(e.id));
+    // An unknown site id is refused rather than silently neutralised. A caller
+    // passing one has a bug, and paying out at neutral rates would hide it
+    // behind a mission that merely felt disappointing.
+    const site: ExpeditionSite | undefined = siteId ? siteById(siteId) : undefined;
+    if (siteId && !site) return false;
+    // A site in a different realm than the one being dispatched to is the same
+    // class of caller bug, and would produce a record whose realm and site
+    // disagree about which materials came home.
+    if (site && site.realm !== realm) return false;
+
+    if (this.blockedReason(mission, explorerId, siteId)) return false;
+
+    // With no explorer named, the best one standing idle goes.
+    const chosen = explorerId ? this.roster.byId(explorerId) : this.bestIdleExplorer();
     if (!chosen || this.isOut(chosen.id)) return false;
 
     const tier = explorerTier(chosen.rarity);
 
+    // Everything the person brings, resolved once and frozen onto the record
+    // below. See the note on `Expedition.bonus`.
+    const bonus = resolveExplorerBonus(chosen, realm);
+
+    const cost = this.dispatchCost(mission, siteId);
+
     // Charged here rather than at the top of the method: everything above this
     // line can still refuse the dispatch, and a fee taken before the roster
     // check would bill a player for "no explorer is free".
-    if (def.cost && !this.economy.spendGold(def.cost, `expedition:${mission}`)) return false;
+    if (cost && !this.economy.spendGold(cost, `expedition:${mission}`)) return false;
 
     const expedition: Expedition = {
       id: `${realm}-${mission}-${Date.now()}-${this.state.missionsCompleted}`,
       explorerId: chosen.id,
       realm,
       mission,
-      // Speed is applied once, here, and frozen onto the record. See the note on
-      // `Expedition.duration`.
-      duration: missionDurationFor(def.duration, chosen.rarity),
+      siteId: site?.id,
+      // Speed is applied once, here, and frozen onto the record: the explorer's
+      // tier, then the site's own cost in time, then their trait and passive.
+      // See the note on `Expedition.duration`.
+      duration: Math.max(1_000, Math.round(
+        missionDurationFor(def.duration, chosen.rarity)
+        * siteProfile(site?.id).durationMultiplier
+        * bonus.speed,
+      )),
       startedAt: Date.now(),
       lootBonus: this.roster.lootBonusOf(chosen.id),
       yieldMultiplier: this.stats.missionMultiplier,
+      bonus,
     };
 
     this.state = { ...this.state, active: [...this.state.active, expedition] };
@@ -279,6 +425,29 @@ export class ExplorerService implements OnDestroy {
     this.publish();
     this.syncTimer();
     return true;
+  }
+
+  /** Expeditions completed in one realm, lifetime. Feeds realm mastery. */
+  runsIn(realm: RealmId): number {
+    return this.state.realmRuns?.[realm] ?? 0;
+  }
+
+  /**
+   * Hand over a realm's mastery hire once its fiftieth run lands.
+   *
+   * Called from the settlement rather than watched from a wiring layer, for the
+   * same reason the Contract Board's counters are reported from in here: the
+   * settlement is the only place that knows a run *completed*, and a watcher on
+   * the state stream would have to distinguish a real fiftieth run from a
+   * rehydrate that republished the same number.
+   *
+   * `grantArchetype` refuses a second grant, so a player who is already at fifty
+   * and runs a fifty-first does not mint a second Ashen Sovereign.
+   */
+  private grantRealmMastery(realm: RealmId): RosterExplorer | null {
+    if (this.runsIn(realm) < MASTERY_RUNS) return null;
+    const archetype = masteryArchetypeFor(realm);
+    return archetype ? this.roster.grantArchetype(archetype.id) : null;
   }
 
   /** True while this explorer is already on a mission. One at a time. */
@@ -349,14 +518,23 @@ export class ExplorerService implements OnDestroy {
       const tier = explorerTier(who?.rarity ?? 'common');
 
       const reward = rollReward(def, Math.random, {
-        // The realm is read off the record rather than off the picker: a player
-        // can re-arm the picker to somewhere else while a mission is out, and
-        // the payout has to be for where the explorer actually went.
+        // The realm and the site are read off the record rather than off the
+        // picker: a player can re-arm the picker to somewhere else while a
+        // mission is out, and the payout has to be for where the explorer
+        // actually went.
         realm: explorer.realm,
+        siteId: explorer.siteId,
         inventorySlots: tier.inventorySlots,
-        // Both were frozen at dispatch. See the notes on the two fields.
+        // All three were frozen at dispatch. See the notes on the fields.
         lootBonus: explorer.lootBonus,
         yieldMultiplier: explorer.yieldMultiplier,
+        bonus: explorer.bonus,
+        // The one thing deliberately read *live*: the collection reward is a
+        // property of the save rather than of the mission, and a player who
+        // completes the roster while three expeditions are out should collect
+        // on all three. There is no exploit in the other direction — the
+        // multiplier cannot go down.
+        rosterMultiplier: this.roster.snapshot.payoutMultiplier,
       });
 
       next = {
@@ -364,6 +542,10 @@ export class ExplorerService implements OnDestroy {
         runesFound: next.runesFound + reward.runes.length,
         missionsCompleted: next.missionsCompleted + 1,
         goldRecovered: next.goldRecovered + reward.gold,
+        realmRuns: {
+          ...next.realmRuns,
+          [explorer.realm]: (next.realmRuns?.[explorer.realm] ?? 0) + 1,
+        },
       };
 
       returns.push({
@@ -429,13 +611,40 @@ export class ExplorerService implements OnDestroy {
         landing.reward.materials = Object.keys(banked).length ? banked : undefined;
       }
 
-      this.roster.recordMission(landing.explorer.explorerId);
+      // The explorer's own ledger: their XP, their Gold, their finds, their best
+      // rune ever, and the time they were out. Replaces the old `recordMission`,
+      // which counted the run and nothing else — see `recordExpedition`.
+      const bestTier = landing.reward.runes
+        .map(id => RUNE_TIER_ORDER.indexOf(runeById(id)?.tier ?? 'common'))
+        .reduce((best, t) => Math.max(best, t), -1);
+
+      this.roster.recordExpedition(landing.explorer.explorerId, {
+        xp: explorerXpFor(landing.reward.xp, landing.explorer.bonus ?? neutralBonus()),
+        gold: landing.reward.gold,
+        finds: landing.reward.runes.length + items.length
+          + (landing.reward.scroll ? 1 : 0),
+        bestTier: bestTier >= 0 ? bestTier : undefined,
+        durationMs: landing.explorer.duration,
+      });
 
       // Reported from inside the settlement rather than watched from the
       // Contract Board's wiring layer — see the note at the top of
       // `challenge-wiring.service.ts` for why the dependency runs this way.
       this.challenges.record('expedition-done', 1);
       if (missionById(landing.explorer.mission)?.deep) this.challenges.record('expedition-deep', 1);
+
+      // ── Somebody came back with somebody ────────────────────────────────
+      // The only place in the game the cast is actually found. Rolled per
+      // return, at odds set by how deep the run was — see
+      // `EXPLORER_FIND_CHANCE`. Deliberately after the loot has been banked so
+      // that a roster at its ceiling costs the player nothing but the hire.
+      // Mastery first, then the roll. A fiftieth run into Nexus that also
+      // happened to roll a find would otherwise announce the random hire and
+      // silently bank the Ashen Sovereign with no card at all — the rarest
+      // acquisition in the game, delivered as a number moving in a panel.
+      const found = this.grantRealmMastery(landing.explorer.realm)
+        ?? this.rollExplorerFind(missionById(landing.explorer.mission)!);
+      if (found) landing.found = found;
 
       this.returned$$.next(landing);
       this.notifyLanding(landing);
@@ -449,6 +658,7 @@ export class ExplorerService implements OnDestroy {
       id: landing.explorer.id,
       realm: landing.explorer.realm,
       mission: landing.explorer.mission,
+      siteId: landing.explorer.siteId,
       explorerName: landing.explorerName ?? '',
       gold: landing.reward.gold,
       xp: landing.reward.xp,
@@ -475,6 +685,45 @@ export class ExplorerService implements OnDestroy {
     this.publish();
 
     return true;
+  }
+
+  /**
+   * Roll for one of the cast on a return.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * WHY THE ODDS ARE HERE AND NOT ON THE TIER TABLE
+   * ─────────────────────────────────────────────────────────────────────────
+   * `EXPLORER_TIERS` already carries a `weight` per rarity, and it is the right
+   * place for *how good* a find is. It is the wrong place for *how often*: those
+   * weights are tuned against the anvil, where a strike is a fraction of a
+   * second and a 0.05% drop is a reasonable evening. An expedition is minutes to
+   * days, so the same weights would mean a player runs four hundred Deep Dives
+   * without meeting anyone — which is not a rare find, it is a mechanic that
+   * does not exist.
+   *
+   * So the *gate* is per mission depth and lives here, and the *tier* still
+   * comes off the shared table once the gate is passed. Both halves keep the job
+   * they are good at.
+   *
+   * The source filter is what makes the ladder mean something beyond odds: a
+   * Scout can only ever produce the four `expedition` archetypes, so the four
+   * Rares who are `source: 'deep'` are not merely unlikely from a two-minute run
+   * — they are unreachable. See `sourcesForMission`.
+   */
+  private rollExplorerFind(def: MissionDefinition): RosterExplorer | null {
+    const grand = def.id === 'grand' || def.id === 'abyss';
+    const abyss = def.id === 'abyss';
+    const chance = abyss ? EXPLORER_FIND_CHANCE.abyss
+      : grand ? EXPLORER_FIND_CHANCE.grand
+      : def.deep ? EXPLORER_FIND_CHANCE.deep
+      : EXPLORER_FIND_CHANCE.shallow;
+
+    if (Math.random() >= chance) return null;
+    return this.roster.hire(
+      rollExplorerRarity(),
+      Math.random,
+      sourcesForMission({ deep: !!def.deep, grand, abyss }),
+    );
   }
 
   // ───────────────────────────────────────────────────────────────────────────
