@@ -172,6 +172,45 @@ export interface RosterExplorer {
   equipment: string[];
   /** Lifetime missions completed, shown on their card. */
   missions: number;
+
+  // ── The cast ───────────────────────────────────────────────────────────────
+  // Everything below is optional so that a roster written by the build before
+  // named explorers existed still type-checks and still loads. `ExplorerRosterService`
+  // fills them in on the next hydrate — see `adoptArchetypes` — rather than
+  // leaving them permanently blank, but nothing downstream may assume they are
+  // present.
+
+  /**
+   * Which of the eighteen written people this is.
+   *
+   * Absent on a generated hire, which is what happens when the cast has no
+   * unclaimed member of the rolled tier left. See `pickArchetype`.
+   */
+  archetypeId?: string;
+
+  /**
+   * Lifetime XP, feeding this explorer's own level.
+   *
+   * Their own, not a share of the Keeper's: see the note at the top of
+   * `explorer-progression.ts` for why the roster needs a ladder the account
+   * cannot climb on its behalf.
+   */
+  xp?: number;
+
+  /** Runes, scrolls and items this person has personally carried home. */
+  itemsFound?: number;
+  /** Gold this person has personally recovered. */
+  goldFound?: number;
+  /**
+   * The best rune they ever found, as a `RUNE_TIER_ORDER` index.
+   *
+   * Stored as the index rather than the rune id because the card renders "best
+   * find: Epic" and a rune id would need the forge's registry imported into a
+   * file that is meant to stay pure data.
+   */
+  bestFindTier?: number;
+  /** Milliseconds this person has spent out on missions, lifetime. */
+  timeDeployed?: number;
 }
 
 export function explorerEquipmentStats(
@@ -216,7 +255,15 @@ function explorerId(): string {
   return `exp-${Date.now().toString(36)}-${explorerCounter.toString(36)}`;
 }
 
-/** Mint a new explorer of a given rarity, with a rolled name. */
+/**
+ * Mint a new explorer of a given rarity, with a rolled name.
+ *
+ * The nameless path. Still reached — see `pickArchetype`, which returns null
+ * once the cast has no unclaimed member of the rolled tier — and deliberately
+ * kept rather than made to throw: a player who has collected every Rare and
+ * then rolls another one should be handed *somebody*, at the tier the roll
+ * actually produced.
+ */
 export function mintExplorer(
   rarity: ExplorerRarity,
   rng: () => number = Math.random,
@@ -229,6 +276,36 @@ export function mintExplorer(
     hiredAt,
     equipment: [],
     missions: 0,
+    xp: 0,
+    itemsFound: 0,
+    goldFound: 0,
+    timeDeployed: 0,
+  };
+}
+
+/**
+ * Mint one of the eighteen, as themselves.
+ *
+ * Takes the archetype rather than an id so the caller has already proved it
+ * exists — a mint that silently produced a nameless explorer because an id was
+ * misspelled would be a bug that reads, on the card, as bad luck.
+ */
+export function mintFromArchetype(
+  archetype: { id: string; name: string; rarity: ExplorerRarity },
+  hiredAt = new Date().toISOString(),
+): RosterExplorer {
+  return {
+    id: explorerId(),
+    name: archetype.name,
+    rarity: archetype.rarity,
+    archetypeId: archetype.id,
+    hiredAt,
+    equipment: [],
+    missions: 0,
+    xp: 0,
+    itemsFound: 0,
+    goldFound: 0,
+    timeDeployed: 0,
   };
 }
 
@@ -241,4 +318,9 @@ export function mintExplorer(
  */
 export function starterExplorer(rng: () => number = Math.random): RosterExplorer {
   return mintExplorer('common', rng, new Date().toISOString());
+}
+
+/** How many equipment slots this explorer's tier grants, before their level. */
+export function baseEquipSlots(rarity: ExplorerRarity): number {
+  return explorerTier(rarity).maxEquipSlots;
 }

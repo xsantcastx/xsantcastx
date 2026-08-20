@@ -117,6 +117,22 @@ import {
 import { materialDisplay } from '../shared/rpg/material-catalog';
 import { scrollById } from '../shared/rune-forge/lore-scroll.model';
 import { RealmDefinition, RealmId, realmById } from '../shared/realms/realm.model';
+import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
+import {
+  ExpeditionSite,
+  defaultSiteFor,
+  siteById,
+  siteProfile,
+  sitesInRealm,
+} from '../shared/expedition/expedition-site.model';
+import {
+  ExpeditionBeat,
+  currentBeat,
+  expeditionBeats,
+} from '../shared/expedition/expedition-events.model';
+import { explorerXpFor, levelForXp, neutralBonus } from '../shared/rpg/explorer-progression';
+import { archetypeById } from '../shared/rpg/explorer-archetypes';
+import { RosterExplorer, explorerTier } from '../shared/rpg/explorer-roster.model';
 import { RARITIES } from '../shared/rarity/rarity.model';
 
 /**
@@ -192,8 +208,12 @@ interface ActiveMission {
   id: string;
   realm: RealmDefinition;
   mission: MissionDefinition;
+  /** Where in the realm. Absent on a mission dispatched before sites existed. */
+  site?: ExpeditionSite;
   /** Who is out there. Empty when they have since been dismissed. */
   explorerName: string;
+  /** Their own level, for the badge on the card. */
+  explorerLevel: number;
   /** "4:32". */
   countdown: string;
   /** 0-1, for the ring and the bar. */
@@ -203,6 +223,46 @@ interface ActiveMission {
   /** "14:32" — wall-clock time they are due. */
   eta: string;
   done: boolean;
+  /**
+   * The four milestone beats, each flagged with whether it has been crossed.
+   *
+   * Derived rather than stored — see the note at the top of
+   * `expedition-events.model.ts`. Recomputed on every tick, which is four
+   * string hashes per mission per second and is nothing next to the countdown
+   * formatting already happening beside it.
+   */
+  beats: ExpeditionBeat[];
+  /** The most recent beat crossed, for the one-line summary on the card. */
+  latest: ExpeditionBeat | null;
+}
+
+/** Somebody standing idle, resolved for the who-goes picker. */
+interface IdleExplorer {
+  id: string;
+  name: string;
+  level: number;
+  color: string;
+  rarityLabel: string;
+  /** True when the armed realm is their affinity realm. */
+  athome: boolean;
+  /** Their own wall against the armed site, or null when they may go. */
+  block: ExpeditionBlock | null;
+}
+
+/** One of a realm's three sites, resolved for the picker. */
+interface SiteOption {
+  site: ExpeditionSite;
+  /** Filled stars, as a 1-5 array the template can iterate. */
+  stars: readonly number[];
+  /** Why it is refused right now, or null. */
+  block: ExpeditionBlock | null;
+  blockLabel: string;
+  /** "12K–40K Gold" for the currently armed length, after the site's cut. */
+  band: string;
+  /** How long the armed length runs here, after the site and the explorer. */
+  duration: string;
+  /** What this dispatch costs here, after the site's multiplier. */
+  cost: string;
 }
 
 /** One item pulled out of a haul, resolved for the reveal card. */
@@ -233,6 +293,36 @@ interface Landing {
   realmColor: string;
   missionName: string;
   explorerName: string;
+  /**
+   * The three ids the run was armed with, kept so Deploy Again can re-arm the
+   * picker without the player re-answering three questions they just answered.
+   */
+  realmId: RealmId;
+  siteId?: string;
+  missionId: MissionId;
+  /** Where they went, when the run had a site. */
+  siteName: string;
+  /** XP banked against the explorer themselves, and the level it bought. */
+  explorerXp: number;
+  explorerLevel: number;
+  /** True when this return pushed them over a level boundary. */
+  levelledUp: boolean;
+  /**
+   * Somebody they brought back with them.
+   *
+   * The rarest event on this page — see `EXPLORER_FIND_CHANCE` — and the one the
+   * reveal card exists to make a moment out of. Resolved to what the card
+   * prints rather than held as the record, so the template does not reach into
+   * the archetype registry.
+   */
+  found: {
+    name: string;
+    rarityLabel: string;
+    color: string;
+    glow: string;
+    passive: string;
+    bio: string;
+  } | null;
   gold: string;
   xp: number;
   rune: { name: string; glyph: string; color: string; lore: string; tierLabel: string } | null;
@@ -318,9 +408,45 @@ function blockLabel(block: ExpeditionBlock | null): string {
       return 'One at a time. Something is already down there.';
     case 'slots':
       return 'Every explorer is out.';
+    case 'site-keeper-level':
+      return `Keeper rank ${block.need} — you are ${block.have}`;
+    case 'site-explorer-level':
+      return `Explorer level ${block.need} — they are ${block.have}`;
     default:
       return 'Not available.';
   }
+}
+
+/**
+ * The same refusal, phrased for a site card rather than for a send button.
+ *
+ * Shorter, because it is printed inside a card two thirds the width of the
+ * button and the card already names the place the refusal is about.
+ */
+function siteBlockCopy(block: ExpeditionBlock | null): string {
+  if (!block) return '';
+  switch (block.code) {
+    case 'site-keeper-level': return `Rank ${block.need}`;
+    case 'site-explorer-level': return `Lv ${block.need} explorer`;
+    default: return 'Locked';
+  }
+}
+
+/** Five slots, so a difficulty rating can be drawn without a loop in the class. */
+const STAR_SLOTS: readonly number[] = [1, 2, 3, 4, 5];
+
+/**
+ * "4h", "25m", "3d" — a span, at the coarsest unit that still says something.
+ *
+ * Distinct from `formatCountdown`, which counts *down* and needs seconds. This
+ * is a length, printed on a card that is not ticking.
+ */
+function formatSpan(ms: number): string {
+  const minutes = ms / 60_000;
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
+  return `${Math.round((hours / 24) * 10) / 10}d`;
 }
 
 /** The best find in a haul, reduced to what the card needs to look like it. */
@@ -394,7 +520,7 @@ const HUM_KEY = 'godforge-forge-hum';
   standalone: true,
   imports: [
     CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
-    ChallengePanelComponent, ThrallPanelComponent,
+    ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './forge-view.component.html',
@@ -432,6 +558,14 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   /** The realm and length armed in the dispatch picker. */
   pickedRealm: RealmId = 'luminous';
   pickedMission: MissionId = 'scout';
+  /**
+   * Which of the armed realm's three sites is armed.
+   *
+   * Seeded to Luminous's outer site rather than left empty, so the very first
+   * dispatch a visitor makes goes somewhere named rather than to a neutral
+   * profile — an empty `siteId` is the *migration* path, not a starting state.
+   */
+  pickedSite: string = defaultSiteFor('luminous').id;
 
   /** The wandering trader, when one is on screen. */
   traderGold = 0;
@@ -684,21 +818,154 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   private missionCard(e: Expedition, now: number): ActiveMission {
     const left = remainingMs(e, now);
     const progress = missionProgress(e, now);
+    const site = siteById(e.siteId);
+    const who = this.roster.byId(e.explorerId);
     return {
       id: e.id,
       realm: realmById(e.realm)!,
       mission: missionById(e.mission)!,
-      explorerName: this.roster.byId(e.explorerId)?.name ?? '',
+      site,
+      explorerName: who?.name ?? '',
+      explorerLevel: levelForXp(who?.xp ?? 0),
       countdown: formatCountdown(left),
       progress,
       percent: Math.round(progress * 100),
       eta: formatEta(expeditionEta(e)),
       done: left <= 0,
+      beats: expeditionBeats(e.id, e.realm, site?.tier, progress),
+      latest: currentBeat(e.id, e.realm, site?.tier, progress),
     };
   }
 
-  pickRealm(id: RealmId): void { this.pickedRealm = id; }
+  /**
+   * Arm a realm, and move the site with it.
+   *
+   * The site has to follow because the picker's three site cards are the
+   * *current* realm's three: leaving `pickedSite` pointing at Umbral's Hollow
+   * Depths while the realm button says Luminous would let a player press Deploy
+   * on a combination `dispatch` refuses — and the refusal would be correct and
+   * completely baffling.
+   */
+  pickRealm(id: RealmId): void {
+    this.pickedRealm = id;
+    this.pickedSite = defaultSiteFor(id).id;
+  }
+
   pickMission(id: MissionId): void { this.pickedMission = id; }
+  pickSite(id: string): void { this.pickedSite = id; }
+
+  // ── Sites ──────────────────────────────────────────────────────────────────
+
+  /** The armed realm's three sites, resolved against the armed length. */
+  get siteOptions(): SiteOption[] {
+    const mission = missionById(this.pickedMission);
+    return sitesInRealm(this.pickedRealm).map(site => {
+      const block = this.explorers.blockedSite(site.id, this.armedExplorerId);
+      const band = mission ? realmGoldBand(mission, this.pickedRealm) : { min: 0, max: 0 };
+      const cost = this.explorers.dispatchCost(this.pickedMission, site.id);
+      return {
+        site,
+        stars: STAR_SLOTS,
+        block,
+        blockLabel: siteBlockCopy(block),
+        band: `${formatCompact(Math.round(band.min * site.goldMultiplier))}–${formatCompact(Math.round(band.max * site.goldMultiplier))} Gold`,
+        duration: formatSpan(this.explorers.dispatchDuration(
+          this.pickedMission, this.armedExplorerId, site.id)),
+        cost: cost ? `${formatCompact(cost)} Gold` : 'free',
+      };
+    });
+  }
+
+  get pickedSiteDef(): ExpeditionSite {
+    return siteById(this.pickedSite) ?? defaultSiteFor(this.pickedRealm);
+  }
+
+  get pickedSiteOption(): SiteOption | undefined {
+    return this.siteOptions.find(o => o.site.id === this.pickedSite);
+  }
+
+  // ── Who goes ───────────────────────────────────────────────────────────────
+
+  /**
+   * Everyone standing idle, resolved for the picker.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * WHY THERE IS A PICKER AT ALL
+   * ─────────────────────────────────────────────────────────────────────────
+   * Dispatch used to send whoever was best and idle, and that was the right
+   * call when every explorer of a tier was the same explorer: choosing between
+   * two identical Commons is a click that cannot be got wrong, so not offering
+   * it was a kindness.
+   *
+   * The cast makes it the opposite. Seris doubles the rune rate in Umbral and
+   * nowhere else; Callum doubles Nexus freight; a level-10 explorer can enter a
+   * deep site a level-3 one is refused from. "Best" is now a question about
+   * *where you are going*, and the service cannot answer it — so the player
+   * gets to.
+   *
+   * `auto` stays as the first option and stays the default, because a player
+   * with twelve on the books who just wants to fire off a Scout should not have
+   * to answer a question they do not care about.
+   */
+  get idleExplorers(): IdleExplorer[] {
+    return this.explorers.available.map(e => {
+      const archetype = archetypeById(e.archetypeId);
+      const tier = explorerTier(e.rarity);
+      const level = levelForXp(e.xp ?? 0);
+      const site = siteById(this.pickedSite);
+      return {
+        id: e.id,
+        name: e.name,
+        level,
+        color: tier.color,
+        rarityLabel: tier.label,
+        // The one fact that decides the click: are they from where we are going.
+        athome: !!archetype?.affinity && archetype.affinity === this.pickedRealm,
+        // Their own wall, measured against the armed site — so an explorer who
+        // cannot enter it is greyed out *before* the send button refuses.
+        block: site ? this.explorers.blockedSite(site.id, e.id) : null,
+      };
+    });
+  }
+
+  /**
+   * Who is armed, or empty for "whoever is best".
+   *
+   * Cleared whenever the chosen explorer is no longer idle — dispatched, or
+   * dismissed from the roster panel below — so the picker can never hold a
+   * stale id that `dispatch` would silently refuse.
+   */
+  pickedExplorer = '';
+
+  pickExplorer(id: string): void { this.pickedExplorer = id; }
+
+  /** The armed explorer's id, or undefined when the dispatch should choose. */
+  private get armedExplorerId(): string | undefined {
+    if (!this.pickedExplorer) return undefined;
+    return this.explorers.available.some(e => e.id === this.pickedExplorer)
+      ? this.pickedExplorer
+      : undefined;
+  }
+
+  /**
+   * Who this dispatch would actually send, for the confirmation copy.
+   *
+   * Resolved through the service rather than re-derived here, so the name on
+   * the button is guaranteed to be the person the dispatch picks.
+   */
+  get nextExplorer(): RosterExplorer | undefined {
+    const armed = this.armedExplorerId;
+    return armed ? this.roster.byId(armed) : this.explorers.bestIdleExplorer();
+  }
+
+  get nextExplorerName(): string {
+    return this.nextExplorer?.name ?? 'an explorer';
+  }
+
+  get nextExplorerLevel(): number {
+    const who = this.nextExplorer;
+    return who ? levelForXp(who.xp ?? 0) : 0;
+  }
 
   get pickedRealmDef(): RealmDefinition {
     return realmById(this.pickedRealm) ?? this.realms[0];
@@ -719,7 +986,8 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
    */
   goldBand(mission: MissionDefinition): string {
     const band = realmGoldBand(mission, this.pickedRealm);
-    return `${formatCompact(band.min)}–${formatCompact(band.max)} Gold`;
+    const mult = siteProfile(this.pickedSite).goldMultiplier;
+    return `${formatCompact(Math.round(band.min * mult))}–${formatCompact(Math.round(band.max * mult))} Gold`;
   }
 
   /**
@@ -751,11 +1019,16 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   /** The six rungs, resolved for the picker. Recomputed per pass, not per cell. */
   get missionOptions(): MissionOption[] {
     return this.missions.map(def => {
-      const block = this.explorers.blockedReason(def.id);
+      // Passed the armed site so the rung's own refusal and its printed fee are
+      // both for the dispatch the player would actually make. A card that said
+      // "10,000 Gold" while the Void Threshold took 40,000 would be the single
+      // worst bug this panel could have.
+      const block = this.explorers.blockedReason(def.id, this.armedExplorerId, this.pickedSite);
+      const cost = this.explorers.dispatchCost(def.id, this.pickedSite);
       return {
         def,
         band: this.goldBand(def),
-        cost: def.cost ? `${formatCompact(def.cost)} Gold` : '',
+        cost: cost ? `${formatCompact(cost)} Gold` : '',
         block,
         blockLabel: blockLabel(block),
         drama: def.drama ?? 1,
@@ -892,7 +1165,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
 
   dispatch(): void {
     const mission = missionById(this.pickedMission);
-    const block = this.explorers.blockedReason(this.pickedMission);
+    const block = this.explorers.blockedReason(this.pickedMission, this.armedExplorerId, this.pickedSite);
     if (block) {
       // A refused dispatch says why rather than doing nothing. The button is
       // already disabled in this state; this covers the keyboard path and the
@@ -901,16 +1174,45 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       return;
     }
-    if (!this.explorers.dispatch(this.pickedRealm, this.pickedMission)) return;
+    const who = this.nextExplorerName;
+    const cost = this.explorers.dispatchCost(this.pickedMission, this.pickedSite);
+    if (!this.explorers.dispatch(
+      this.pickedRealm, this.pickedMission, this.armedExplorerId, this.pickedSite)) return;
+
+    // Disarm after a successful send. The person just left, so leaving them
+    // armed would make the next Deploy press refuse for a reason the picker is
+    // still showing as available.
+    this.pickedExplorer = '';
+
     const realm = this.pickedRealmDef;
+    const site = this.pickedSiteDef;
     this.audio.strike();
     this.push(
-      mission?.cost
-        ? `Explorer sent into ${realm.name} — ${mission.name} (${formatCompact(mission.cost)} Gold)`
-        : `Explorer sent into ${realm.name} — ${mission?.name ?? 'expedition'}`,
+      cost
+        ? `${who} deployed to ${site.name} — ${mission?.name ?? 'expedition'} (${formatCompact(cost)} Gold)`
+        : `${who} deployed to ${site.name} — ${mission?.name ?? 'expedition'}`,
       realm.color,
       '🧭',
     );
+  }
+
+  /**
+   * Send the same explorer back to the same place, straight off the reveal card.
+   *
+   * The single highest-value control on this page: the moment a haul lands is
+   * the moment a player most wants to go again, and making them re-arm three
+   * pickers to do it is where the loop leaks. Arms the picker rather than
+   * dispatching directly, so there is exactly one dispatch path and one set of
+   * refusal rules.
+   */
+  deployAgain(): void {
+    const landing = this.landing;
+    if (!landing) return;
+    this.pickedRealm = landing.realmId;
+    this.pickedSite = landing.siteId ?? defaultSiteFor(landing.realmId).id;
+    this.pickedMission = landing.missionId;
+    this.dismissLanding();
+    this.dispatch();
   }
 
   recall(id: string): void {
@@ -974,11 +1276,45 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     // player is reading.
     const best = bestTone(rune ? tierOf(rune.tier) : null, items);
 
+    const site = siteById(r.explorer.siteId);
+
+    // Their own ladder, read *after* the settlement has banked the XP. The
+    // level-up flag is derived by subtracting this return's own award back off
+    // and re-reading the level — cheaper and more honest than having the roster
+    // service push a second event the card would have to correlate.
+    const who = this.roster.byId(r.explorer.explorerId);
+    const explorerXp = who?.xp ?? 0;
+    const explorerLevel = levelForXp(explorerXp);
+    const banked = explorerXpFor(r.reward.xp, r.explorer.bonus ?? neutralBonus());
+    const levelledUp = levelForXp(Math.max(0, explorerXp - banked)) < explorerLevel;
+
+    // Somebody they brought back with them. Resolved to the six strings the
+    // card prints, so the template never reaches into the archetype registry.
+    const foundArchetype = r.found?.archetypeId ? archetypeById(r.found.archetypeId) : undefined;
+    const foundTier = r.found ? explorerTier(r.found.rarity as never) : null;
+
     const haul: Landing = {
       realmName: realm?.name ?? 'the realms',
       realmColor: realm?.color ?? AETHER_COLOR,
       missionName: mission?.name ?? 'Expedition',
       explorerName: r.explorerName ?? '',
+      realmId: r.explorer.realm,
+      siteId: r.explorer.siteId,
+      missionId: r.explorer.mission,
+      siteName: site?.name ?? '',
+      explorerXp: banked,
+      explorerLevel,
+      levelledUp,
+      found: r.found && foundTier
+        ? {
+            name: r.found.name,
+            rarityLabel: foundTier.label,
+            color: foundTier.color,
+            glow: foundTier.glow,
+            passive: foundArchetype?.passive.text ?? '',
+            bio: foundArchetype?.bio ?? 'Nobody has written them down yet.',
+          }
+        : null,
       gold: formatCurrency(r.reward.gold),
       xp: r.reward.xp,
       rune: rune

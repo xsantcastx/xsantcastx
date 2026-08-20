@@ -21,10 +21,10 @@
  */
 
 export const APP_VERSION = {
-  version: '2.75.1',
-  buildDate: '2026-08-19',
+  version: '2.76.0',
+  buildDate: '2026-08-20',
   /** Each major release gets a codename */
-  codename: 'Fanfare',
+  codename: 'Roster',
   /** Where the full story of this release lives */
   changelog: '/world'
 } as const;

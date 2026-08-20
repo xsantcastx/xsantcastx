@@ -1,0 +1,648 @@
+/*
+ * explorer-roster-panel.component.css — the collection wall.
+ *
+ * Two custom properties do the work, set per card by the template:
+ *   --star-color  the rarity's accent
+ *   --star-glow   the same colour at the alpha a halo wants
+ *
+ * NOTE ON `backdrop-filter`: there is none in this file, deliberately. The
+ * mobile pass turned it off site-wide below 768px because a stack of blurred
+ * full-viewport layers is what made the phone build lag, and a wall of eighteen
+ * blurred cards would reintroduce the whole problem inside one panel.
+ */
+
+/*
+ * Declared, not left to the default.
+ *
+ * A custom element with no `display` is `inline`, which shrink-to-fits its
+ * block child — mounted in the full-width roster band the panel collapsed to
+ * 28px and the wall rendered as a single column of slivers. It was invisible in
+ * the old 238px sidebar because the column was already narrow, which is exactly
+ * how this kind of bug survives a move.
+ */
+:host { display: block; }
+
+.rp {
+  position: relative;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 0%, rgba(255, 154, 90, 0.07), transparent 60%),
+    rgba(10, 6, 26, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+/* The gradient cap line every cosmic section carries. */
+.rp::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 154, 90, 0.5) 50%, transparent);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.rp__head { margin-bottom: 0.8rem; }
+
+.rp__eyebrow {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font: 600 0.64rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: #ff9a5a; margin: 0 0 0.3rem;
+}
+
+.rp__pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ff9a5a; box-shadow: 0 0 8px rgba(255, 140, 60, 0.8);
+  animation: rpPulse 3s ease-in-out infinite;
+}
+
+@keyframes rpPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.7); }
+}
+
+.rp__title { margin: 0 0 0.25rem; font-size: 1rem; color: #eafff9; }
+.rp__tagline { margin: 0 0 0.7rem; font-size: 0.72rem; color: #7d8f8a; font-style: italic; }
+
+/* ── The collection meter ─────────────────────────────────────────────────── */
+
+.rp__meter {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.rp__meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #C9A84C, #ff9a5a 60%, #a48bff);
+  box-shadow: 0 0 12px rgba(255, 154, 90, 0.6);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rp__meter-foot {
+  margin: 0.4rem 0 0;
+  font-size: 0.7rem;
+  color: #9aa4b2;
+}
+
+.rp__meter-foot b { color: #eafff9; }
+
+.rp__earned-title {
+  color: #C9A84C;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.rp__next {
+  margin: 0.4rem 0 0;
+  font-size: 0.7rem;
+  color: #b9a4e8;
+  line-height: 1.5;
+}
+
+/* ── The reward ladder ────────────────────────────────────────────────────── */
+
+.rp__rewards {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+}
+
+.rp__reward {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.2rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 5, 20, 0.5);
+  text-align: center;
+  font-size: 0.58rem;
+  color: #6f7a88;
+  line-height: 1.3;
+}
+
+.rp__reward b { font-size: 0.8rem; color: #8d97a5; }
+
+.rp__reward--on {
+  border-color: rgba(201, 168, 76, 0.45);
+  background: rgba(201, 168, 76, 0.08);
+  color: #d9c48a;
+}
+
+.rp__reward--on b { color: #C9A84C; }
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+.rp__controls { display: grid; gap: 0.35rem; margin: 0.8rem 0 0.6rem; }
+
+.rp__chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+.rp__chip {
+  /* 32px rather than the site's 44px floor: these are grouped controls inside a
+     panel, not standalone targets, and the group itself clears 44px with room
+     to spare. Sized so all four sorts fit one row at 320px. */
+  min-height: 32px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 5, 20, 0.6);
+  color: #8d97a5;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.rp__chip:hover { color: #eafff9; border-color: rgba(255, 154, 90, 0.4); }
+
+.rp__chip--on {
+  color: #0a0a0f;
+  background: #ff9a5a;
+  border-color: #ff9a5a;
+  font-weight: 600;
+}
+
+.rp__chip--filter.rp__chip--on { background: #a48bff; border-color: #a48bff; }
+
+/* ── The wall ─────────────────────────────────────────────────────────────── */
+
+.rp__empty { margin: 0.5rem 0; font-size: 0.76rem; color: #7d8f8a; font-style: italic; }
+
+/*
+ * The wall.
+ *
+ * `auto-fill` with a 250px floor rather than a fixed column count, so the panel
+ * is correct at whatever width it is mounted at — one column inside a 238px
+ * sidebar, four across the full-width band it lives in now. Keying the layout
+ * on the *container* rather than on a viewport media query is what makes that
+ * true: a media query would have to guess which of the two mounts it was in.
+ *
+ * `align-items: start` matters more than it looks. An open card grows to several
+ * hundred pixels, and without this every card in its row would stretch to match
+ * it — one expanded explorer would leave three empty boxes the same height
+ * beside it.
+ */
+.rp__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-items: start;
+  gap: 0.45rem;
+}
+
+/*
+ * An open card takes the full row.
+ *
+ * Its body carries a bio, a passive, a level bar, bonus chips, a stat grid and
+ * the kit — which is unreadable in a 250px column and comfortable across the
+ * band. `1 / -1` rather than a span count so it works at every column count the
+ * auto-fill produces.
+ */
+.rp__card--open { grid-column: 1 / -1; }
+
+.rp__card {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(8, 5, 20, 0.6);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rp__card:hover, .rp__card--open {
+  border-color: var(--star-glow);
+  box-shadow: 0 0 22px -8px var(--star-glow);
+}
+
+/* Out on a mission: dimmed, with a slow sweep along the top edge so the card
+   reads as *working* rather than as disabled. */
+.rp__card--out { opacity: 0.78; }
+
+.rp__card--out::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--star-color), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: rpSweep 2.6s linear infinite;
+}
+
+@keyframes rpSweep {
+  0%   { background-position: -40% 0; }
+  100% { background-position: 140% 0; }
+}
+
+/* Locked: no glow, hollow orb, muted everything. The card is present and
+   readable — that is the whole point — but visibly not yours. */
+.rp__card--locked {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(8, 5, 20, 0.35);
+}
+
+.rp__card--locked:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.rp__face {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  min-height: 56px; padding: 0.5rem 0.7rem;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  color: inherit;
+}
+
+/* ── The orb ──────────────────────────────────────────────────────────────── */
+
+.rp__orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  flex: none;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.32) 18%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8, 3, 24, 0.92) 88%);
+  box-shadow: 0 0 10px var(--star-glow), 0 0 24px -6px var(--star-glow);
+}
+
+.rp__card--locked .rp__orb {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.rp__orb-level {
+  font: 700 0.62rem/1 'Orbitron', system-ui, sans-serif;
+  color: #0a0a0f;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+.rp__orb-lock { font-size: 0.8rem; color: rgba(255, 255, 255, 0.28); }
+
+/* Mythic and Legendary orbs get an orbital ring — the two tiers rare enough
+   that the card should announce itself before the label is read. */
+.rp__card[data-rarity='legendary'] .rp__orb::before,
+.rp__card[data-rarity='mythic'] .rp__orb::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed var(--star-glow);
+  opacity: 0.5;
+  animation: rpOrbit 18s linear infinite;
+}
+
+.rp__card--locked .rp__orb::before { display: none; }
+
+@keyframes rpOrbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Identity ─────────────────────────────────────────────────────────────── */
+
+.rp__ident { display: grid; gap: 0.18rem; min-width: 0; flex: 1; }
+
+.rp__name {
+  font-size: 0.84rem; color: #eafff9; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.rp__card--locked .rp__name { color: #5c6673; letter-spacing: 0.14em; }
+
+.rp__meta { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+.rp__tier {
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--star-color);
+}
+
+.rp__card--locked .rp__tier { color: #6f7a88; }
+
+.rp__realm {
+  font-size: 0.58rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  color: var(--realm, #9aa4b2);
+  border: 1px solid color-mix(in srgb, var(--realm, #9aa4b2) 35%, transparent);
+}
+
+/* The XP sliver under the name. Two pixels, because it is a hint on the closed
+   card and there is a full bar inside the open one. */
+.rp__xp {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.rp__xp-fill {
+  display: block; height: 100%;
+  background: var(--star-color);
+  transition: width 0.5s ease;
+}
+
+.rp__state { margin-left: auto; flex: none; }
+
+.rp__status {
+  font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #ffc669;
+}
+
+.rp__missions { font-size: 0.66rem; color: #7d8f8a; }
+
+.rp__locked-tag {
+  font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #4e5866;
+}
+
+/* ── Card body ────────────────────────────────────────────────────────────── */
+
+.rp__body {
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  animation: rpOpen 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rpOpen {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.rp__how {
+  margin: 0 0 0.4rem;
+  font-size: 0.74rem;
+  color: #C9A84C;
+  line-height: 1.5;
+}
+
+.rp__silhouette-note {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #6f7a88;
+  font-style: italic;
+}
+
+/* ── The two paths that are not drops ─────────────────────────────────────── */
+
+.rp__recruit {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 0.5rem;
+  padding: 0.35rem;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  background: rgba(201, 168, 76, 0.1);
+  color: #C9A84C;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rp__recruit:hover:not(:disabled) {
+  background: rgba(201, 168, 76, 0.2);
+  box-shadow: 0 0 22px -10px #C9A84C;
+}
+
+.rp__recruit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rp__recruit--capstone {
+  border-color: rgba(255, 45, 77, 0.5);
+  background: rgba(255, 45, 77, 0.1);
+  color: #ff6b7f;
+}
+
+.rp__recruit--capstone:hover:not(:disabled) {
+  background: rgba(255, 45, 77, 0.2);
+  box-shadow: 0 0 22px -10px #ff2d4d;
+}
+
+.rp__capstone { margin-top: 0.5rem; }
+
+.rp__capstone-bar {
+  display: block;
+  height: 4px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.rp__capstone-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #a48bff, #ff2d4d);
+  transition: width 0.6s ease;
+}
+
+.rp__capstone-foot {
+  margin: 0.25rem 0 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6f7a88;
+}
+
+.rp__bio {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  color: #b8c0cc;
+  line-height: 1.55;
+  font-style: italic;
+}
+
+.rp__trait {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  color: #9aa4b2;
+  line-height: 1.5;
+}
+
+.rp__trait b { color: var(--star-color); }
+
+.rp__passive {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--star-color) 28%, transparent);
+  background: color-mix(in srgb, var(--star-color) 8%, transparent);
+  font-size: 0.72rem;
+  color: #eafff9;
+  line-height: 1.5;
+}
+
+.rp__passive-mark { color: var(--star-color); flex: none; }
+
+.rp__passive-up {
+  display: inline-block;
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #C9A84C;
+  font-style: normal;
+}
+
+/* ── Level block ──────────────────────────────────────────────────────────── */
+
+.rp__level { margin-bottom: 0.6rem; }
+
+.rp__level-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0 0 0.3rem;
+  font-size: 0.68rem;
+  color: #7d8f8a;
+}
+
+.rp__level-head b { font-size: 0.78rem; color: #eafff9; }
+
+.rp__level-bar {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.rp__level-fill {
+  display: block; height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--star-color), color-mix(in srgb, var(--star-color) 50%, #fff));
+  box-shadow: 0 0 10px var(--star-glow);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rp__level-next {
+  margin: 0.3rem 0 0;
+  font-size: 0.66rem;
+  color: #7d8f8a;
+  line-height: 1.45;
+}
+
+/* ── Bonuses and stats ────────────────────────────────────────────────────── */
+
+.rp__bonuses {
+  list-style: none; margin: 0 0 0.6rem; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0.25rem;
+}
+
+.rp__bonuses li {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 213, 163, 0.3);
+  background: rgba(127, 213, 163, 0.08);
+  font-size: 0.62rem;
+  color: #7FD5A3;
+}
+
+.rp__stats {
+  list-style: none; margin: 0 0 0.6rem; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 0.5rem;
+  font-size: 0.66rem; color: #7d8f8a;
+}
+
+.rp__stats b { color: #eafff9; font-weight: 600; }
+
+/* ── Kit ──────────────────────────────────────────────────────────────────── */
+
+.rp__kit-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #6f7a88;
+}
+
+.rp__worn, .rp__offer {
+  list-style: none; margin: 0 0 0.5rem; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0.25rem;
+}
+
+.rp__worn-btn, .rp__offer-btn {
+  min-height: 30px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--star-color) 40%, transparent);
+  background: color-mix(in srgb, var(--star-color) 10%, transparent);
+  color: var(--star-color);
+  font-size: 0.64rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rp__worn-btn:hover, .rp__offer-btn:hover {
+  background: color-mix(in srgb, var(--star-color) 22%, transparent);
+}
+
+.rp__worn-none, .rp__kit-note {
+  font-size: 0.66rem; color: #6f7a88; font-style: italic;
+  margin: 0;
+}
+
+.rp__dismiss {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 0.5rem;
+  padding: 0.3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 90, 90, 0.28);
+  background: rgba(255, 60, 60, 0.06);
+  color: #ff8f8f;
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rp__dismiss:hover { background: rgba(255, 60, 60, 0.14); }
+
+.rp__foot {
+  margin: 0.7rem 0 0;
+  font-size: 0.66rem;
+  color: #6f7a88;
+  text-align: center;
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .rp__pulse,
+  .rp__card--out::after,
+  .rp__card[data-rarity='legendary'] .rp__orb::before,
+  .rp__card[data-rarity='mythic'] .rp__orb::before {
+    animation: none;
+  }
+  .rp__body { animation: none; }
+  .rp__meter-fill, .rp__level-fill, .rp__xp-fill,
+  .rp__capstone-bar span { transition: none; }
+}
+
+/* ── Phone ────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 520px) {
+  .rp { padding: 0.8rem; }
+  .rp__rewards { grid-template-columns: repeat(2, 1fr); }
+  .rp__stats { grid-template-columns: 1fr; }
+  /* The floor the mobile pass set for every standalone control. Inside the
+     panel the chips are grouped, but at this width they wrap into single-item
+     rows and stop being a group. */
+  .rp__chip { min-height: 36px; }
+}

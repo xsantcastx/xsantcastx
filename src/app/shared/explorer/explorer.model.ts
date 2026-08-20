@@ -28,6 +28,8 @@
  */
 import { RealmId, REALMS } from '../realms/realm.model';
 import { RUNES, RUNE_TIER_ORDER, Rune, rollRuneWithMagicFind } from '../rune-forge/rune.model';
+import { siteProfile } from '../expedition/expedition-site.model';
+import { ExplorerBonus, neutralBonus } from '../rpg/explorer-progression';
 
 /** localStorage key. One blob, owned solely by ExplorerService. */
 export const EXPLORER_KEY = 'godforge-explorers';
@@ -517,6 +519,28 @@ export interface Expedition {
   lootBonus: number;
   /** The Endurance multiplier at dispatch, applied to the payout on return. */
   yieldMultiplier: number;
+
+  /**
+   * Which of the realm's three sites they walked into.
+   *
+   * Optional, and its absence has to be free: every expedition written by the
+   * build before sites existed has no site, and settling one has to pay exactly
+   * what it would have paid then. `siteProfile` returns `NEUTRAL_SITE` for an
+   * absent id, whose every multiplier is 1 — that is the contract, and it is why
+   * this field is not defaulted to the easy site on load.
+   */
+  siteId?: string;
+
+  /**
+   * The explorer's resolved trait, passive, affinity and level bonus, frozen at
+   * dispatch.
+   *
+   * Frozen for the same reason `lootBonus` and `yieldMultiplier` are: the reward
+   * is rolled on return, so reading this live would let a player dispatch a
+   * level-1 Common, level somebody else, and collect at the boosted rate. Also
+   * optional, and its absence resolves to `neutralBonus()`.
+   */
+  bonus?: ExplorerBonus;
 }
 
 export interface ExplorerReward {
@@ -554,18 +578,38 @@ export interface ExplorerReturn {
   reward: ExplorerReward;
   /** Epoch ms the mission actually ended, which may be long before it settled. */
   returnedAt: number;
+  /**
+   * Somebody they brought back with them, when the return turned one up.
+   *
+   * The whole roster acquisition loop lands here. Deliberately *not* on
+   * `ExplorerReward`: a reward is rolled by a pure function over pure data, and
+   * a hire is a write to another service's ledger. Keeping it on the return
+   * means the reveal card can announce it while `rollReward` stays testable
+   * without a roster.
+   *
+   * Typed loosely as the fields the card reads, so `explorer.model.ts` does not
+   * have to import the roster model and reintroduce the cycle the two services
+   * were split to avoid.
+   */
+  found?: { id: string; name: string; rarity: string; archetypeId?: string };
 }
 
 /**
  * How many settled expeditions the log keeps.
  *
- * Ten, because the log is a *memory of the session you were away for*, not a
+ * Twenty, because the log is a *memory of the season you were away for*, not a
  * ledger: the ledger is the Codex and the rune shelf, both of which already hold
- * every find permanently. Ten covers "what did I miss overnight" for anyone
- * running five explorers, and stops the blob growing without a ceiling on a save
- * that a player might carry for a year.
+ * every find permanently.
+ *
+ * It was ten, sized against five expedition slots — two full nights. The roster
+ * collection now grants a sixth slot at ten discoveries and there are fifteen
+ * sites rather than five realms, so ten rows is a single evening's dispatching
+ * and the log stopped reaching back far enough to answer "have I ever actually
+ * run the Unspoken Gate". Twenty is still a bounded blob on a save a player
+ * might carry for a year, which is the constraint that set the cap in the first
+ * place.
  */
-export const EXPEDITION_HISTORY_CAP = 10;
+export const EXPEDITION_HISTORY_CAP = 20;
 
 /**
  * A settled expedition, kept so the panel can show what the last ones brought.
@@ -581,6 +625,8 @@ export interface ExpeditionRecord {
   id: string;
   realm: RealmId;
   mission: MissionId;
+  /** Which of the realm's three sites. Absent on a record from before sites. */
+  siteId?: string;
   /** Who went. Empty when they have since been dismissed. */
   explorerName: string;
   gold: number;
@@ -624,6 +670,20 @@ export interface ExplorerState {
   /** Lifetime Gold brought home, so the panel can justify itself. */
   goldRecovered: number;
   /**
+   * Expeditions completed per realm, lifetime.
+   *
+   * Added for realm mastery — see `MASTERY_RUNS` — and kept here rather than
+   * derived from `history`, which is capped at twenty and so can only ever
+   * answer "the last twenty", not "have I run fifty in Nexus".
+   *
+   * Optional, because every save written before this existed has no counts and
+   * back-filling one from a twenty-row log would invent a number. A returning
+   * player starts their fifty from where they are, which is the honest reading:
+   * the ledger did not exist, so it recorded nothing.
+   */
+  realmRuns?: Partial<Record<RealmId, number>>;
+
+  /**
    * The last few settled expeditions, newest first, capped at
    * `EXPEDITION_HISTORY_CAP`.
    *
@@ -643,6 +703,7 @@ export function emptyExplorerState(): ExplorerState {
     scrollsFound: 0,
     missionsCompleted: 0,
     goldRecovered: 0,
+    realmRuns: {},
     history: [],
   };
 }
@@ -679,6 +740,13 @@ export function emptyExplorerState(): ExplorerState {
  * anyway would either do nothing or, worse, silently reweight the band's
  * internals in a way no card describes.
  */
+/**
+ * The highest floor any modifier may promise, as a `RUNE_TIER_ORDER` index.
+ *
+ * 4 is Legendary. See the note in `rollReward` for why this exists at all.
+ */
+export const MAX_RUNE_FLOOR = 4;
+
 export function rollRuneAtOrAbove(
   floor: number,
   magicFind: number,
@@ -766,6 +834,24 @@ export function rollReward(
   // so it multiplies the same three numbers the mission already set.
   const profile = realmProfile(opts.realm ?? 'luminous');
 
+  // The third axis. A site multiplies what the mission and the realm already
+  // decided; an absent site resolves to NEUTRAL_SITE, whose every multiplier is
+  // 1, so a record written before sites existed pays exactly what it did then.
+  const site = siteProfile(opts.siteId);
+
+  // What the person brings: their trait, their passive, their realm affinity and
+  // their level, resolved once at dispatch and frozen onto the record. Absent
+  // on a legacy record, and neutral when absent for the same reason the site is.
+  const who = opts.bonus ?? neutralBonus();
+
+  // What the collection is worth. One number, compounded from every roster
+  // reward earned — see `rosterPayoutMultiplier`. Applied to Gold only: a
+  // collection bonus that also moved the rune gate would stack with the site
+  // floor and the passive floor into a table nobody could reason about.
+  const collection = Number.isFinite(opts.rosterMultiplier ?? 1)
+    ? Math.max(1, opts.rosterMultiplier ?? 1)
+    : 1;
+
   const reward: ExplorerReward = {
     // Endurance pays out here rather than by lengthening the clock. The stat is
     // published as "+10% max mission duration", and the honest reading of that
@@ -774,8 +860,12 @@ export function rollReward(
     // dressed as an upgrade, and nobody would spend a point on it. So the
     // duration the player picked is the duration they get, and the extra
     // distance covered is paid as extra loot.
-    gold: Math.round((mission.goldMin + rng() * span) * yieldMult * profile.goldMultiplier),
-    xp: Math.round(mission.xp * yieldMult * profile.xpMultiplier),
+    gold: Math.round(
+      (mission.goldMin + rng() * span)
+      * yieldMult * profile.goldMultiplier
+      * site.goldMultiplier * who.gold * collection,
+    ),
+    xp: Math.round(mission.xp * yieldMult * profile.xpMultiplier * site.xpMultiplier * who.xp),
     runes: [],
   };
 
@@ -788,16 +878,43 @@ export function rollReward(
   // explorer's loot bonus applied as Magic Find. That is what an explorer tier
   // actually buys: a Mythic makes six attempts at the table with +200% on the
   // rare-and-better weights, where a Common makes one at the base rate.
-  const slots = Math.max(1, opts.inventorySlots ?? 1);
-  const magicFind = Math.max(0, opts.lootBonus ?? 0);
+  // The extra slots a passive or a level-5 milestone grants are *added* to the
+  // tier's, not multiplied: an explorer who files one more find files exactly
+  // one more, whether they are a Common with one slot or a Mythic with six.
+  const slots = Math.max(1, (opts.inventorySlots ?? 1) + Math.max(0, who.extraSlots));
+  const magicFind = Math.max(0, (opts.lootBonus ?? 0) + who.magicFind);
 
-  const runeChance = mission.runeChance * profile.runeChanceMultiplier;
-  const floor = mission.runeFloor ?? 0;
+  const runeChance = mission.runeChance * profile.runeChanceMultiplier
+    * site.runeChanceMultiplier * who.rune;
+
+  // Three sources of floor. The mission's and the site's are two claims about
+  // the same thing — "nothing below Rare comes out of here" — so the *higher*
+  // of them wins rather than the sum; a Deep Dive at the Void Threshold is one
+  // Epic floor, not a Rare floor and an Epic floor added together. What a
+  // passive contributes is genuinely additive on top of that, because its card
+  // says "rolled one tier higher" and one tier higher than the floor is what
+  // that has to mean.
+  //
+  // Then clamped, and the clamp is the important line. `RUNE_TIER_ORDER` runs to
+  // `singular`, which is the Void: one rune, the thing the realms were carved
+  // out of. The Ashen Sovereign at level 10 raises the floor by three, and the
+  // Core of the Forge already floors at Epic — without this clamp that pairing
+  // would floor at `singular` and hand over the Void on every single return.
+  // Legendary is the highest floor anything may promise; the Void stays
+  // reachable only on the band's own odds, which is the entire reason it is
+  // worth anything.
+  const floor = Math.min(
+    MAX_RUNE_FLOOR,
+    Math.max(mission.runeFloor ?? 0, site.runeFloor ?? 0) + Math.max(0, who.runeFloor),
+  );
 
   // The guaranteed runes come off the front of the slot budget rather than
   // being added to it, so a Grand Expedition on a Common explorer returns its
   // one promised rune and a Mythic's six slots are still six rolls — not seven.
-  const guaranteed = Math.min(slots, Math.max(0, mission.guaranteedRunes ?? 0));
+  const guaranteed = Math.min(
+    slots,
+    Math.max(0, mission.guaranteedRunes ?? 0, who.guaranteeRune ? 1 : 0),
+  );
 
   for (let i = 0; i < slots; i++) {
     if (i >= guaranteed && rng() >= runeChance) continue;
@@ -808,8 +925,9 @@ export function rollReward(
   // rune multipliers: the realm already decides *what* comes back, and letting
   // it decide the quantity too would make Luminous the only correct answer for
   // the bag as well as for the Gold.
-  const matMin = mission.materialsMin ?? 0;
-  const matMax = Math.max(matMin, mission.materialsMax ?? matMin);
+  const matScale = site.materialMultiplier * who.materials;
+  const matMin = Math.round((mission.materialsMin ?? 0) * matScale);
+  const matMax = Math.max(matMin, Math.round((mission.materialsMax ?? 0) * matScale));
   if (matMax > 0) {
     const materials = rollMaterials(opts.realm ?? 'luminous', matMin, matMax, rng);
     if (Object.keys(materials).length) reward.materials = materials;
@@ -839,6 +957,12 @@ export interface RewardOptions {
   lootBonus?: number;
   /** Endurance's payout multiplier. See the note in `rollReward`. */
   yieldMultiplier?: number;
+  /** Which of the realm's three sites. Absent is neutral — see `NEUTRAL_SITE`. */
+  siteId?: string;
+  /** The explorer's resolved bonus, frozen at dispatch. Absent is neutral. */
+  bonus?: ExplorerBonus;
+  /** The compounded roster-collection multiplier. Absent is 1. */
+  rosterMultiplier?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
