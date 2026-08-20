@@ -206,8 +206,21 @@ interface MissionOption {
 /** A mission out, with everything the card needs already computed. */
 interface ActiveMission {
   id: string;
-  realm: RealmDefinition;
-  mission: MissionDefinition;
+  /**
+   * Resolved for display rather than held as the definition objects.
+   *
+   * `isExpedition` admits any `realm`/`mission` that is a *string* — it cannot
+   * require the id to resolve, because rejecting unresolvable ones would
+   * silently delete every expedition in flight at upgrade time (see the note on
+   * that guard). So a saved expedition can name a realm or mission this build
+   * no longer has, `realmById` answers null, and the card that reads `.name`
+   * off it takes the whole Sanctum down with it — including the Recall button
+   * that is the only way to free the slot. The landing card below already
+   * resolves the same two ids defensively; this one now does too.
+   */
+  realmName: string;
+  realmColor: string;
+  missionName: string;
   /** Where in the realm. Absent on a mission dispatched before sites existed. */
   site?: ExpeditionSite;
   /** Who is out there. Empty when they have since been dismissed. */
@@ -820,10 +833,13 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     const progress = missionProgress(e, now);
     const site = siteById(e.siteId);
     const who = this.roster.byId(e.explorerId);
+    const realm = realmById(e.realm);
+    const mission = missionById(e.mission);
     return {
       id: e.id,
-      realm: realmById(e.realm)!,
-      mission: missionById(e.mission)!,
+      realmName: realm?.name ?? 'an unrecorded realm',
+      realmColor: realm?.color ?? AETHER_COLOR,
+      missionName: mission?.name ?? 'Expedition',
       site,
       explorerName: who?.name ?? '',
       explorerLevel: levelForXp(who?.xp ?? 0),
