@@ -104,6 +104,21 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     glyph: 'exchange',
     group: 'more',
   },
+  // The Gambler shipped in v2.71.0 reachable only from the Market strip, on the
+  // reasoning that it is a room entered through its parent hall. In practice a
+  // player not already standing in the Market has no way to find it and reads
+  // the route as a dead page — which is exactly how it came back reported. The
+  // Exchange above is the same kind of economy hall and has always been listed
+  // here, so the Gambler joins it. The Market doorway stays: that is the
+  // in-world path, and this is the one that works from anywhere.
+  {
+    id: 'gambler',
+    route: '/gambler',
+    labelKey: 'gfnav.gambler',
+    hintKey: 'gfnav.hint.gambler',
+    glyph: 'gambler',
+    group: 'more',
+  },
 ];
 
 export const PRIMARY_NAV = NAV_MANIFEST.filter(d => d.group === 'primary');
