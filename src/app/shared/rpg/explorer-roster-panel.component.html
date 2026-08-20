@@ -1,0 +1,285 @@
+<!--
+  The collection wall. Eighteen cards, the found ones filled in and the rest
+  silhouettes carrying the one line that says how to reach them.
+-->
+<section class="rp">
+  <header class="rp__head">
+    <p class="rp__eyebrow"><span class="rp__pulse"></span> The Roster</p>
+    <h3 class="rp__title">Who walks for you</h3>
+    <p class="rp__tagline">eighteen of them exist — you have met {{ snap.discoveredCount }}</p>
+
+    <!-- The collection bar. The single most important number on this panel:
+         it is the only thing that tells a player the roster has an end. -->
+    <div class="rp__meter" role="progressbar"
+         [attr.aria-valuenow]="snap.discoveredCount"
+         aria-valuemin="0"
+         [attr.aria-valuemax]="total"
+         aria-label="Explorers discovered">
+      <span class="rp__meter-fill" [style.width.%]="collectionPercent"></span>
+    </div>
+    <p class="rp__meter-foot">
+      <b>{{ snap.discoveredCount }}/{{ total }}</b> found
+      @if (snap.title) { · <span class="rp__earned-title">{{ snap.title }}</span> }
+      @if (snap.payoutMultiplier > 1) {
+        · expeditions pay +{{ ((snap.payoutMultiplier - 1) * 100).toFixed(0) }}%
+      }
+    </p>
+
+    @if (snap.nextReward; as next) {
+      <p class="rp__next">
+        <span aria-hidden="true">◈</span>
+        {{ next.at - snap.discoveredCount }} more to go —
+        {{ next.detail }}
+      </p>
+    }
+  </header>
+
+  <!-- The reward ladder. Four rungs, so the collection has a shape before the
+       player has found anybody. -->
+  <ul class="rp__rewards">
+    @for (r of rewards; track trackReward($index, r)) {
+      <li class="rp__reward" [class.rp__reward--on]="rewardEarned(r)">
+        <b>{{ r.at }}</b>
+        <span>{{ r.title || (r.slots ? '+1 slot' : 'bonus') }}</span>
+      </li>
+    }
+  </ul>
+
+  <!-- Sort and filter. Two rows of chips rather than two <select>s: the whole
+       panel is 320px on desktop and a native select on iOS opens a full-screen
+       wheel for four options. -->
+  <div class="rp__controls">
+    <div class="rp__chips" role="group" aria-label="Sort the roster">
+      @for (s of sorts; track s.key) {
+        <button type="button" class="rp__chip"
+                [class.rp__chip--on]="sort === s.key"
+                [attr.aria-pressed]="sort === s.key"
+                (click)="setSort(s.key)">{{ s.label }}</button>
+      }
+    </div>
+    <div class="rp__chips" role="group" aria-label="Filter the roster">
+      @for (f of filters; track f.key) {
+        <button type="button" class="rp__chip rp__chip--filter"
+                [class.rp__chip--on]="filter === f.key"
+                [attr.aria-pressed]="filter === f.key"
+                (click)="setFilter(f.key)">{{ f.label }}</button>
+      }
+    </div>
+  </div>
+
+  @if (!rows.length) {
+    <p class="rp__empty">nobody matches that — try another filter</p>
+  }
+
+  <ul class="rp__list">
+    @for (row of rows; track trackRow($index, row)) {
+      <li class="rp__card"
+          [class.rp__card--open]="open === row.key"
+          [class.rp__card--out]="row.out"
+          [class.rp__card--locked]="!row.found"
+          [attr.data-rarity]="row.rarity"
+          [style.--star-color]="row.color"
+          [style.--star-glow]="row.glow">
+
+        <button type="button" class="rp__face" (click)="toggle(row)"
+                [attr.aria-expanded]="open === row.key">
+          <!-- The orb is the portrait until the portraits are painted. Locked
+               cards get a hollow ring instead of a lit core, which is the whole
+               visual difference between "somebody" and "somebody you have". -->
+          <span class="rp__orb" aria-hidden="true">
+            @if (row.found) {
+              <span class="rp__orb-level">{{ row.level }}</span>
+            } @else {
+              <span class="rp__orb-lock">?</span>
+            }
+          </span>
+
+          <span class="rp__ident">
+            <span class="rp__name">
+              @if (row.found) { {{ row.name }} } @else { ??? }
+            </span>
+            <span class="rp__meta">
+              <span class="rp__tier">{{ row.rarityLabel }}</span>
+              @if (row.realmName) {
+                <span class="rp__realm" [style.--realm]="row.realmColor">{{ row.realmName }}</span>
+              }
+            </span>
+            @if (row.found && row.progress) {
+              <span class="rp__xp" [attr.aria-label]="'Level ' + row.level + ' of ' + maxLevel">
+                <span class="rp__xp-fill" [style.width.%]="row.progress.percent"></span>
+              </span>
+            }
+          </span>
+
+          <span class="rp__state">
+            @if (row.out) { <span class="rp__status">out</span> }
+            @else if (row.found) { <span class="rp__missions">{{ row.explorer?.missions || 0 }} run</span> }
+            @else { <span class="rp__locked-tag">missing</span> }
+          </span>
+        </button>
+
+        @if (open === row.key) {
+          <div class="rp__body">
+
+            <!-- ── LOCKED ────────────────────────────────────────────────── -->
+            @if (!row.found) {
+              <p class="rp__how">
+                <span aria-hidden="true">✦</span>
+                {{ row.archetype?.sourceNote }}
+              </p>
+              @if (row.archetype; as a) {
+                <p class="rp__silhouette-note">
+                  A {{ row.rarityLabel }}@if (row.realmName) { of {{ row.realmName }} }.
+                  Their name is not yours to know yet.
+                </p>
+
+                <!-- The two paths that are not drops get a control rather than a
+                     hint. A locked card that tells you where somebody is and
+                     gives you no way to act on it is a card you read once. -->
+                @if (canRecruit(row)) {
+                  <button type="button" class="rp__recruit"
+                          [disabled]="!affordable()"
+                          (click)="recruit(row)">
+                    @if (affordable()) {
+                      ◈ Recruit for {{ hireCostLabel }} Gold
+                    } @else {
+                      ◈ {{ hireCostLabel }} Gold — you are short
+                    }
+                  </button>
+                }
+
+                @if (a.source === 'capstone') {
+                  <div class="rp__capstone">
+                    <p class="rp__capstone-bar" role="progressbar"
+                       [attr.aria-valuenow]="collectionLogPercent"
+                       aria-valuemin="0" aria-valuemax="100"
+                       aria-label="Collection Log progress">
+                      <span [style.width.%]="collectionLogPercent"></span>
+                    </p>
+                    <p class="rp__capstone-foot">Collection Log — {{ collectionLogPercent }}%</p>
+                    @if (capstoneReady(row)) {
+                      <button type="button" class="rp__recruit rp__recruit--capstone"
+                              (click)="claimCapstone()">
+                        ✦ The Log is complete — call them in
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            }
+
+            <!-- ── FOUND ─────────────────────────────────────────────────── -->
+            @if (row.found) {
+              @if (row.archetype; as a) {
+                <p class="rp__bio">{{ a.bio }}</p>
+
+                @if (traitOf(row); as t) {
+                  <p class="rp__trait">
+                    <b>{{ t.label }}</b> — {{ t.blurb }}
+                  </p>
+                }
+
+                <p class="rp__passive">
+                  <span class="rp__passive-mark" aria-hidden="true">◆</span>
+                  {{ a.passive.text }}
+                  @if (row.level >= 10) { <em class="rp__passive-up">strengthened</em> }
+                </p>
+              }
+
+              <!-- Level, and what the next rung gives. -->
+              @if (row.progress; as p) {
+                <div class="rp__level">
+                  <p class="rp__level-head">
+                    <b>Level {{ p.level }}</b>
+                    @if (p.capped) { <span>mastered</span> }
+                    @else { <span>{{ p.into }} / {{ p.span }} XP</span> }
+                  </p>
+                  <span class="rp__level-bar">
+                    <span class="rp__level-fill" [style.width.%]="p.percent"></span>
+                  </span>
+                  @if (nextMilestoneFor(row); as m) {
+                    <p class="rp__level-next">
+                      Level {{ m.level }} — {{ m.detail }}
+                    </p>
+                  }
+                </div>
+              }
+
+              <!-- What they are worth right now. -->
+              @if (chipsFor(row); as chips) {
+                @if (chips.length) {
+                  <ul class="rp__bonuses">
+                    @for (c of chips; track c) { <li>{{ c }}</li> }
+                  </ul>
+                }
+              }
+
+              <ul class="rp__stats">
+                <li><b>{{ speedLabel(row) }}</b> speed</li>
+                <li><b>{{ row.explorer?.missions || 0 }}</b> runs</li>
+                <li><b>{{ hoursDeployed(row) }}</b> deployed</li>
+                <li><b>{{ bestFindLabel(row) }}</b> best find</li>
+              </ul>
+
+              <!-- Their kit -->
+              @if (capacityOf(row) > 0) {
+                <div class="rp__kit">
+                  <p class="rp__kit-title">Carrying ({{ worn(row).length }}/{{ capacityOf(row) }})</p>
+                  <ul class="rp__worn">
+                    @for (item of worn(row); track trackItem($index, item)) {
+                      <li [style.--star-color]="colorOf(item)">
+                        <button type="button" class="rp__worn-btn"
+                                (click)="takeBack(row, item)"
+                                [attr.aria-label]="'Take ' + item.name + ' back'">
+                          {{ item.name }} <span aria-hidden="true">×</span>
+                        </button>
+                      </li>
+                    }
+                    @if (!worn(row).length) { <li class="rp__worn-none">nothing</li> }
+                  </ul>
+
+                  @if (worn(row).length < capacityOf(row) && charms().length) {
+                    <div class="rp__give">
+                      <p class="rp__kit-title">Hand them something</p>
+                      <ul class="rp__offer">
+                        @for (item of charms(); track trackItem($index, item)) {
+                          <li [style.--star-color]="colorOf(item)">
+                            <button type="button" class="rp__offer-btn" (click)="give(row, item)">
+                              {{ item.name }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                  @if (worn(row).length >= capacityOf(row)) {
+                    <p class="rp__kit-note">their hands are full</p>
+                  }
+                </div>
+              } @else {
+                <p class="rp__kit-note">
+                  a Common carries nothing but what they find — level 15 changes that
+                </p>
+              }
+
+              @if (!row.out && snap.explorers.length > 1) {
+                <button type="button" class="rp__dismiss" (click)="dismiss(row)">
+                  {{ confirmingDismiss === row.key
+                     ? 'Certain? They will not come back'
+                     : 'Let them go' }}
+                </button>
+              }
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (snap.explorers.length) {
+    <p class="rp__foot">
+      {{ snap.explorers.length }} on the books · {{ snap.found }} hired all-time
+      @if (snap.full) { <span> · the roster is full</span> }
+    </p>
+  }
+</section>
