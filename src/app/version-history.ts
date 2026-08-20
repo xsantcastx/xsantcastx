@@ -17,6 +17,17 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.76.3',
+    codename: 'Purge',
+    date: '2026-08-20',
+    highlights: [
+      'A visitor could be locked out of the site permanently, by their own browser, with nothing wrong on the server. Firebase Hosting has no 404 for a missing file — the catch-all rewrite answers any unmatched path with the app shell at 200 OK, text/html. So a script the previous deploy renamed does not fail; it comes back as a page. The service worker checked only that the response succeeded, cached that HTML under the .js address, and then served it from cache first, forever: past reloads, past new deploys, past the file being restored, because cache-first never asks again',
+      'It now checks that a response actually contains what its address claims before caching it, and refuses anything it cannot identify. Missing the cache costs one fetch; poisoning it cost the visitor the site. The cache version is bumped alongside, which drops the bad entries for everyone already holding them on their next visit',
+      'The errors this produced were being swallowed. The handler listed "Loading chunk failed" as noise on the grounds that a reload recovers it — but nothing ever reloaded, so the page sat half-booted with the explanation suppressed. A stale build is now detected by all five of its spellings, including the SyntaxError about an import binding that names no file and no line, and answered by clearing every client-side copy of the old build and reloading once. Once, guarded per tab: if the same error survives the purge it is a real fault, and it gets reported instead of refreshing forever',
+      'Google sign-in stopped logging a blocked request on every load. apis.google.com was allowed to load scripts and to be framed but never to be connected to, so the Firebase auth helper\'s callback was refused by our own policy. api.github.com had the same hole, which is why the mission-control commit and CI cards came back empty rather than wrong',
+    ],
+  },
+  {
     version: '2.76.2',
     codename: 'Doorway',
     date: '2026-08-20',
