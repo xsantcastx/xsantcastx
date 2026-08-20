@@ -93,3 +93,87 @@ describe('ErrorTrackingService — stale-deploy recovery', () => {
     expect(reported).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The HTTP-cache repair step.
+ *
+ * Clearing Cache Storage and unregistering the worker was never enough: the
+ * poisoned copy also sits in the browser's own HTTP cache, put there by a
+ * `Cache-Control: immutable` that Safari honours literally and will not
+ * revalidate even on a reload. The only way out is to request the address again
+ * with `cache: 'reload'`, which bypasses that cache on the way in and overwrites
+ * the entry on the way out.
+ */
+describe('ErrorTrackingService — HTTP cache repair', () => {
+  let service: ErrorTrackingService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [ErrorTrackingService] });
+    service = TestBed.inject(ErrorTrackingService);
+  });
+
+  const origin = window.location.origin;
+
+  it("refetches with cache: 'reload' — anything weaker leaves the poisoned entry in place", async () => {
+    spyOn<any>(service, 'staleBuildUrls').and.returnValue([`${origin}/chunk-ABCD1234.js`]);
+    const fetchSpy = spyOn(window, 'fetch').and.resolveTo(new Response(''));
+
+    await (service as any).repairHttpCache();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.calls.mostRecent().args as [string, RequestInit];
+    expect(url).toBe(`${origin}/chunk-ABCD1234.js`);
+    expect(init.cache).toBe('reload');
+  });
+
+  it('survives a failing refetch, because the reload after it is what matters', async () => {
+    spyOn<any>(service, 'staleBuildUrls').and.returnValue([`${origin}/chunk-ABCD1234.js`]);
+    spyOn(window, 'fetch').and.rejectWith(new TypeError('offline'));
+
+    await expectAsync((service as any).repairHttpCache()).toBeResolved();
+  });
+
+  it('collects the scripts the document declares', () => {
+    const el = document.createElement('script');
+    el.src = `${origin}/chunk-FROMDOC.js`;
+    document.head.appendChild(el);
+    try {
+      expect((service as any).staleBuildUrls()).toContain(`${origin}/chunk-FROMDOC.js`);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('skips cross-origin and non-build addresses', () => {
+    spyOn(performance, 'getEntriesByType').and.returnValue([
+      { name: `${origin}/chunk-KEEP1234.js` },
+      { name: `${origin}/styles-KEEP5678.css` },
+      { name: 'https://www.googletagmanager.com/gtag/js?id=X' }, // third party
+      { name: `${origin}/assets/brand/icon-192.png` },           // not a module
+      { name: `${origin}/api/send-contact` },                    // not an asset
+    ] as any);
+
+    const urls: string[] = (service as any).staleBuildUrls();
+
+    expect(urls).toContain(`${origin}/chunk-KEEP1234.js`);
+    expect(urls).toContain(`${origin}/styles-KEEP5678.css`);
+    expect(urls.some((u) => u.includes('googletagmanager'))).toBeFalse();
+    expect(urls.some((u) => u.endsWith('.png'))).toBeFalse();
+    expect(urls.some((u) => u.endsWith('send-contact'))).toBeFalse();
+  });
+
+  it('reports each address once even when timing and the document both name it', () => {
+    const el = document.createElement('script');
+    el.src = `${origin}/chunk-DOUBLE12.js`;
+    document.head.appendChild(el);
+    spyOn(performance, 'getEntriesByType').and.returnValue(
+      [{ name: `${origin}/chunk-DOUBLE12.js` }] as any,
+    );
+    try {
+      const urls: string[] = (service as any).staleBuildUrls();
+      expect(urls.filter((u) => u.endsWith('chunk-DOUBLE12.js')).length).toBe(1);
+    } finally {
+      el.remove();
+    }
+  });
+});

@@ -206,17 +206,59 @@ export class ErrorTrackingService {
 
     // Never let a hung purge strand the visitor on a broken page: whichever
     // settles first wins, and the reload happens either way.
-    const deadline = new Promise((resolve) => setTimeout(resolve, 2000));
+    //
+    // Raised from 2s when the purge grew a network step. The budget is not about
+    // patience, it is about correctness: the one-shot marker is already set, so
+    // reloading *before* the refetch lands spends the single retry on a cache
+    // that has not been repaired yet, and the visitor is then written off as
+    // '[unrecovered after cache purge]' with no attempt left. The refetch is a
+    // dozen already-hashed files over one warm connection and finishes well
+    // inside this on any real network; the ceiling exists for the case where it
+    // does not.
+    const deadline = new Promise((resolve) => setTimeout(resolve, 5000));
     Promise.race([this.purgeClientCaches(), deadline]).then(() => this.reloadPage());
   }
 
   /**
-   * Drops every client-side copy of the old build: the Cache Storage entries the
-   * service worker serves cache-first, and the worker itself. Both are
-   * best-effort — a rejection here must not stop the reload.
+   * Drops every client-side copy of the old build. There are *three* of them,
+   * and the first version of this method only knew about two.
+   *
+   *  1. Cache Storage — what the service worker serves cache-first.
+   *  2. The worker registration itself.
+   *  3. The browser's own HTTP cache. This one is not scriptable: `caches.delete`
+   *     does not touch it, `unregister()` does not touch it, and neither does
+   *     `location.reload()`.
+   *
+   * (3) is why this method existed and still did not work. Firebase Hosting has
+   * no 404 for a missing static file — the `**` rewrite answers *any* unmatched
+   * path with the SPA shell, 200 OK, text/html. Our own header block then stamps
+   * that reply, because it matches `**\/*.js`, with:
+   *
+   *     Cache-Control: public, max-age=31536000, immutable
+   *
+   * So one request for a since-renamed chunk writes a year-long, explicitly
+   * *non-revalidating* entry into the browser's HTTP cache with HTML sitting
+   * under a .js address. `immutable` is a promise not to ask again, and Safari
+   * keeps that promise literally: it will not revalidate on a reload, on a hard
+   * reload, or after the caches above are emptied. Chrome does revalidate an
+   * `immutable` subresource on an explicit reload, which is the entire reason
+   * this reproduces on Safari and not on Chrome.
+   *
+   * The only way back is to fetch the address again with `cache: 'reload'`,
+   * which bypasses the HTTP cache *and* overwrites the entry with the response
+   * it gets. Verified in WebKit against a server reproducing the header exactly:
+   * purge + reload leaves the page dead, purge + refetch + reload boots it.
+   *
+   * Which addresses to repair is answered by resource timing rather than by the
+   * document, because the chunk that fails is usually a lazily imported one that
+   * appears in no tag. `getEntriesByType('resource')` lists every module the
+   * page actually requested this load, dynamic imports included.
+   *
+   * All of it is best-effort and individually guarded: this runs while the app
+   * is already broken, and a failure to clean up must still end in the reload.
    *
    * Split out from recoverFromStaleDeploy so a test can stand in for it without
-   * needing a real CacheStorage or a registered worker.
+   * needing a real CacheStorage, a registered worker, or a network.
    */
   private purgeClientCaches(): Promise<unknown> {
     return Promise.all([
@@ -230,7 +272,62 @@ export class ErrorTrackingService {
             .then((regs) => Promise.all(regs.map((r) => r.unregister())))
             .catch(() => undefined)
         : Promise.resolve(),
+      this.repairHttpCache(),
     ]);
+  }
+
+  /**
+   * Re-fetch every same-origin script and stylesheet this page load touched,
+   * bypassing the HTTP cache, so a poisoned `immutable` entry is overwritten
+   * with what the server actually serves now.
+   *
+   * Ordering matters on the way out: the caller reloads once this settles, and
+   * the reload is what picks the repaired copies up.
+   */
+  private repairHttpCache(): Promise<unknown> {
+    let urls: string[];
+    try {
+      urls = this.staleBuildUrls();
+    } catch {
+      return Promise.resolve();
+    }
+
+    return Promise.all(urls.map((u) =>
+      // `reload` is the mode that skips the cache on the way in and writes on
+      // the way out; `no-store` would skip it in both directions and leave the
+      // poisoned entry exactly where it is.
+      fetch(u, { cache: 'reload', credentials: 'same-origin' }).catch(() => undefined)
+    ));
+  }
+
+  /**
+   * Every same-origin .js/.css address this load requested or declared.
+   *
+   * Resource timing covers what was actually fetched — including the dynamic
+   * imports that carry the lazy routes and that no element references. The
+   * document is read as well because an entry that failed early enough may not
+   * have produced a timing entry at all.
+   */
+  private staleBuildUrls(): string[] {
+    const out = new Set<string>();
+    const keep = (raw: string | null | undefined) => {
+      if (!raw) return;
+      let u: URL;
+      try { u = new URL(raw, window.location.href); } catch { return; }
+      if (u.origin !== window.location.origin) return;
+      if (!/\.(?:js|css)$/.test(u.pathname)) return;
+      out.add(u.href);
+    };
+
+    if (typeof performance?.getEntriesByType === 'function') {
+      for (const e of performance.getEntriesByType('resource')) keep(e.name);
+    }
+
+    document
+      .querySelectorAll<HTMLElement>('script[src], link[rel="modulepreload"][href], link[rel="stylesheet"][href]')
+      .forEach((el) => keep(el.getAttribute('src') ?? el.getAttribute('href')));
+
+    return [...out];
   }
 
   /**

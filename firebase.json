@@ -83,7 +83,18 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
+            "value": "public, max-age=31536000"
+          }
+        ],
+        "//cache-immutable": "`immutable` was removed, and it is the whole reason a Safari visitor could not recover from a bad load. Firebase has no 404 for a missing static file: the SPA fallback answered any unmatched path with the shell, 200 OK, text/html, and this block then stamped that reply as cacheable for a year and explicitly non-revalidating. One request for a since-renamed chunk therefore wrote HTML under a .js address into the browser's own HTTP cache, which no amount of clearing Cache Storage or unregistering the worker can reach. Safari honours `immutable` literally and will not revalidate even on an explicit reload; Chrome does, which is exactly why this reproduced on one and not the other. Dropping it costs nothing measurable - these filenames carry a content hash, so within max-age the cache is still used without a network round-trip on ordinary navigation - and it buys back the one thing that matters: a reload can fix a broken visitor again."
+      },
+      {
+        "source": "/assets/js/**",
+        "//": "cosmic-engine.js and easter-eggs.js carry stable filenames and are edited between releases, so the rule above was promising a year of cache for two files whose whole point is that they change. Returning visitors were pinned to whatever copy they first landed on. Must stay immediately after that block: Hosting applies every matching block in order and the last one to set a key wins.",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600, must-revalidate"
           }
         ]
       },
@@ -299,7 +310,13 @@
         "destination": "/google2e3a7dbeefb8f27f.html"
       },
       {
-        "source": "**",
+        "source": "/",
+        "//": "'**/!(*.*)' does not match the bare root, so the home route is named on its own.",
+        "destination": "/index.csr.html"
+      },
+      {
+        "source": "**/!(*.*)",
+        "//": "Was '**', which answered for *every* unmatched path - including ones naming a file. A chunk renamed by a deploy did not fail, it came back as a 200 page, and the browser cached that HTML under the .js address. Restricting the fallback to paths with no extension lets a missing asset fall through to a real 404, which is both honest and, unlike a 200, not something a browser will keep. No route needs this: all 52 declared route paths and all 25 prerendered ones are extensionless.",
         "destination": "/index.csr.html"
       }
     ]
