@@ -43,6 +43,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   NgZone,
   OnDestroy,
   OnInit,
@@ -67,6 +68,7 @@ import {
   formatRate,
 } from '../shared/economy/economy.model';
 import { ForgeAudioService } from '../shared/economy/forge-audio.service';
+import { CelebrationService } from '../shared/celebration/celebration.service';
 import { ForgeFlameComponent } from '../shared/economy/forge-flame.component';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
@@ -279,7 +281,7 @@ interface SiteOption {
 }
 
 /** One item pulled out of a haul, resolved for the reveal card. */
-interface LandingItem {
+export interface LandingItem {
   id: string;
   name: string;
   /** The tier id, so the haul can be ranked without going through the label. */
@@ -362,6 +364,17 @@ interface Landing {
   toneGlow: string;
   /** True once anything above Rare landed. Turns the card's flare on. */
   rare: boolean;
+  /**
+   * The rung the celebration is fired at — the best find in the haul.
+   *
+   * An expedition banks its runes through `RuneForgeService.grant()` the same
+   * way a strike does, but it banks them in a settlement pass that runs with no
+   * card on screen, so the reveal here is the only moment there is anything to
+   * celebrate against. Carried on the Landing rather than recomputed at show
+   * time because a haul waits in `landingQueue` for as long as it takes the
+   * player to dismiss the one in front of it, and `best` is long gone by then.
+   */
+  bestTier: RuneTier;
 }
 
 /** One settled expedition, resolved for the log. */
@@ -463,12 +476,20 @@ function formatSpan(ms: number): string {
 }
 
 /** The best find in a haul, reduced to what the card needs to look like it. */
-interface Tone {
+export interface Tone {
   color: string;
   glow: string;
   semitones: number;
   /** Position on the rune ladder. 0 is Common, 6 is Singular. */
   rank: number;
+  /**
+   * The rung itself, which `rank` alone cannot give back.
+   *
+   * `CelebrationService` is keyed on the tier and not on a number, so ranking a
+   * haul and then celebrating it needs the winner's identity carried through
+   * rather than reconstructed by searching TONE_RANK for the matching value.
+   */
+  tier: RuneTier;
 }
 
 /** Rune ladder positions, for ranking a haul's finds against each other. */
@@ -483,7 +504,7 @@ const TONE_RANK: Record<string, number> = {
  * `item.model.ts` — so one ladder ranks both and the card does not need to know
  * which kind of thing won.
  */
-function bestTone(runeTier: RuneTierDefinition | null, items: readonly LandingItem[]): Tone | null {
+export function bestTone(runeTier: RuneTierDefinition | null, items: readonly LandingItem[]): Tone | null {
   let best: Tone | null = runeTier ? toneOf(runeTier) : null;
 
   for (const item of items) {
@@ -500,6 +521,7 @@ function toneOf(tier: RuneTierDefinition): Tone {
     glow: tier.glow,
     semitones: tier.semitones,
     rank: TONE_RANK[tier.id] ?? 0,
+    tier: tier.id,
   };
 }
 
@@ -547,6 +569,8 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   private readonly roster = inject(ExplorerRosterService);
   private readonly inventory = inject(InventoryService);
   private readonly audio = inject(ForgeAudioService);
+  private readonly celebration = inject(CelebrationService);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -664,6 +688,10 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     // source and no button to stop it.
     this.audio.stopHum();
     this.clearTraderTimers();
+    // The effect layer is a child of <body>, not of this component, so Angular
+    // destroying the page does not take it with it. Navigating away mid-Mythic
+    // would otherwise leave four seconds of gold lightning over /tools.
+    this.celebration.cancel();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1245,7 +1273,57 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
    * dismiss button walks through them.
    */
   dismissLanding(): void {
-    this.landing = this.landingQueue.shift() ?? null;
+    // Whatever is still on screen belongs to the card being dismissed. A
+    // Singular's five seconds of broken glass outliving the card it broke for
+    // is the failure mode `cancel()` exists to prevent.
+    this.celebration.cancel();
+    const next = this.landingQueue.shift() ?? null;
+    if (next) this.showLanding(next);
+    else this.landing = null;
+  }
+
+  /**
+   * Put a haul on screen and give it the celebration its best find earns.
+   *
+   * The celebration is deferred by a tick because it radiates from the card's
+   * centre and the card does not exist until Angular has rendered the `@if`.
+   * Asking for `.fv__landing`'s box in the same tick returns nothing, and
+   * `CelebrationService` reads a missing origin as "off screen" and falls back
+   * to the middle of the viewport — the effect still plays, it just plays
+   * somewhere other than where the rune is.
+   *
+   * A `setTimeout` and deliberately not a `requestAnimationFrame`, even though
+   * a frame is what is actually being waited on. Expeditions settle on
+   * `visibilitychange` and on load, so a haul can land while the tab is in the
+   * background — and a background tab never runs rAF at all. Measured: pushing
+   * a Mythic landing through `returned$` with `document.hidden` true renders
+   * the card and leaves the rAF callback pending indefinitely, so the
+   * celebration is simply lost. Timers are throttled in a hidden tab but they
+   * do fire, and a macrotask is already past the change-detection pass that
+   * created the card, so the box is there to measure either way.
+   *
+   * Fired here rather than from the settlement pass in `ExplorerService` for
+   * the same reason the card is built here: three explorers landing overnight
+   * settle inside one pass, and celebrating each at settlement would stack
+   * three Legendaries into one frame behind a page nobody is looking at. One
+   * card on screen, one celebration, and the queue walks them.
+   */
+  private showLanding(haul: Landing): void {
+    this.landing = haul;
+    if (!this.isBrowser) return;
+    this.cdr.markForCheck();
+    this.zone.runOutsideAngular(() => {
+      setTimeout(() => {
+        // The card can be gone already — dismissed, or replaced by the next
+        // haul — in which case this celebration is for something the player is
+        // no longer looking at.
+        if (this.landing !== haul) return;
+        this.celebration.celebrate(
+          haul.bestTier,
+          this.host.nativeElement.querySelector('.fv__landing'),
+        );
+      });
+    });
   }
 
   /** How many hauls are still waiting behind the one on screen. */
@@ -1363,10 +1441,11 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       tone: best?.color ?? realm?.color ?? AETHER_COLOR,
       toneGlow: best?.glow ?? realm?.glow ?? 'rgba(201, 168, 76, .5)',
       rare: !!best && best.rank >= 2,
+      bestTier: best?.tier ?? 'common',
     };
 
     if (this.landing) this.landingQueue.push(haul);
-    else this.landing = haul;
+    else this.showLanding(haul);
 
     this.push(
       `Explorer home from ${realm?.name ?? 'the realms'} — ${formatCurrency(r.reward.gold)} Gold`,

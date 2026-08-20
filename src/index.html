@@ -247,6 +247,14 @@
        Angular has not booted yet, and localStorage does not exist during
        prerender, so neither can make this call. First visit gets all 2.9s;
        every visit after starts at stage 5 and runs 1.3s. -->
+  <!-- ░▒▓█ BOOT RECOVERY █▓▒░ — must stay in <head> and ahead of the module
+       scripts the build injects into <body>: it is the only error handler that
+       still exists when main.js's own module graph is what failed to link. A
+       classic script rather than a module, deliberately — it has no import
+       graph of its own to go down with. See the file header for the full
+       account of what poisons a client and why only this can reach it. -->
+  <script src="/assets/js/boot-recovery.js" defer></script>
+
   <script>
     (function () {
       try {
