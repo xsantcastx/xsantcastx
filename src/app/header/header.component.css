@@ -422,6 +422,17 @@ button.gftome__keeper {
   background: currentColor; border-radius: 0 0 1px 1px;
 }
 
+/* gambler — a chest banded shut, which is what every box on that page is */
+.gfrune--gambler::before {
+  bottom: 2px; left: 50%; width: 14px; height: 12px; translate: -50% 0;
+  border: 1.5px solid currentColor; border-radius: 2px;
+}
+.gfrune--gambler::after {
+  top: 7px; left: 50%; width: 14px; height: 1.5px; translate: -50% 0;
+  background: currentColor;
+  box-shadow: 0 3px 0 -0.25px currentColor;
+}
+
 /* tools — a hammer over an anvil */
 .gfrune--tools::before {
   top: 2px; left: 50%; width: 2px; height: 9px; translate: -50% 0;

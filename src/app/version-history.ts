@@ -17,6 +17,16 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.76.1',
+    codename: 'Doorway',
+    date: '2026-08-20',
+    highlights: [
+      'The Gambler is in the menu. It shipped reachable only from a link on the Market strip, which meant anyone who was not already standing in the Market had no way to find it — and a route you cannot get to reads as a page that is missing, which is exactly how it came back reported. It now sits under MORE beside the Exchange, the same kind of hall, with a banded-chest rune of its own',
+      'The Market doorway stays where it was. That is the in-world way in, and it still works; the menu entry is the one that works from anywhere',
+      'The nav audit tells the truth again. It had been carrying an explicit skip for /gambler that declared the page reachable, so the orphan check stayed green while the page stayed lost. The skip is gone and the audit now passes on the merit of a real link',
+    ],
+  },
+  {
     version: '2.76.0',
     codename: 'Roster',
     date: '2026-08-20',

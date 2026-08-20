@@ -36,7 +36,7 @@ describe('NAV_MANIFEST', () => {
     expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
 
-  it('MORE is quests, trials, sanctum, and the exchange only', () => {
+  it('MORE is quests, trials, sanctum, the exchange and the gambler only', () => {
     expect(MORE_NAV.map(d => d.route)).toEqual([
       CANONICAL.quests,
       CANONICAL.trials,
@@ -45,6 +45,10 @@ describe('NAV_MANIFEST', () => {
       // five wide and does not shrink — see the nav-overflow note. The tome is
       // where it goes until that row can take a sixth.
       '/exchange',
+      // Same reasoning, and the same kind of hall. Listed here rather than left
+      // to the Market doorway alone, which is what made it read as a missing
+      // page to anyone not already standing in the Market.
+      '/gambler',
     ]);
     const routes = NAV_MANIFEST.map(d => d.route);
     for (const banned of ['/tools', '/mcp', '/blueprint', '/mission-control', '/sponsors', '/donate', '/pro']) {
