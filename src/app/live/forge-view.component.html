@@ -77,14 +77,14 @@
     </a>
 
     <div class="fv__glance-cell" role="listitem"
-         [style.--realm]="soonestMission?.realm?.color || 'var(--keeper)'">
+         [style.--realm]="soonestMission?.realmColor || 'var(--keeper)'">
       <span class="fv__glance-label">Expeditions</span>
       @if (soonestMission; as next) {
         <b class="fv__glance-value fv__glance-value--realm">
           @if (next.done) { Arriving } @else { {{ next.countdown }} }
         </b>
         <span class="fv__glance-note">
-          {{ activeCount }} out · next home from {{ next.realm.name }}
+          {{ activeCount }} out · next home from {{ next.realmName }}
         </span>
       } @else {
         <b class="fv__glance-value fv__glance-value--idle">—</b>
@@ -487,7 +487,7 @@
                  percentage and the wall-clock ETA written out beside it. -->
             <li class="fv__mission"
                 [class.fv__mission--done]="m.done"
-                [style.--realm]="m.realm.color"
+                [style.--realm]="m.realmColor"
                 [style.--progress]="m.progress">
               <svg class="fv__ring" viewBox="0 0 52 52" aria-hidden="true" focusable="false">
                 <circle class="fv__ring-track" cx="26" cy="26" r="22"></circle>
@@ -497,16 +497,16 @@
               </svg>
 
               <span class="fv__mission-copy">
-                <b>@if (m.site) { {{ m.site.name }} } @else { {{ m.realm.name }} }</b>
+                <b>@if (m.site) { {{ m.site.name }} } @else { {{ m.realmName }} }</b>
                 <span class="fv__mission-who">
-                  {{ m.mission.name }}@if (m.site) { · {{ m.realm.name }} }@if (m.explorerName) { · {{ m.explorerName }} }@if (m.explorerLevel > 1) { <span class="fv__mission-level">Lv {{ m.explorerLevel }}</span> }
+                  {{ m.missionName }}@if (m.site) { · {{ m.realmName }} }@if (m.explorerName) { · {{ m.explorerName }} }@if (m.explorerLevel > 1) { <span class="fv__mission-level">Lv {{ m.explorerLevel }}</span> }
                 </span>
                 <span class="fv__mission-bar"
                       role="progressbar"
                       [attr.aria-valuenow]="m.percent"
                       aria-valuemin="0"
                       aria-valuemax="100"
-                      [attr.aria-label]="m.mission.name + ' in ' + m.realm.name">
+                      [attr.aria-label]="m.missionName + ' in ' + m.realmName">
                   <span class="fv__mission-fill"></span>
                 </span>
                 <span class="fv__mission-time">
@@ -544,7 +544,7 @@
               </span>
 
               <button type="button" class="fv__recall" (click)="recall(m.id)"
-                      [attr.aria-label]="'Recall the explorer in ' + m.realm.name">
+                      [attr.aria-label]="'Recall the explorer in ' + m.realmName">
                 Recall
               </button>
             </li>

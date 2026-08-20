@@ -17,6 +17,16 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.76.2',
+    codename: 'Doorway',
+    date: '2026-08-20',
+    highlights: [
+      'The Sanctum survives an expedition it cannot place. A saved expedition names its realm and its mission by id, and the guard that reads those saves only checks that they are strings — it cannot demand they resolve, because throwing out the ones that do not would delete every expedition in flight the moment a build renames anything. So an id this build no longer knows reached the card, which asserted it was there anyway, and reading a name off nothing took the whole page down with it',
+      'That is the worst possible failure for that particular card, because the Recall button lives on it: the one control that frees the slot was inside the thing that crashed, so the expedition could never be cancelled and the Sanctum stayed dark on every visit',
+      'It now reads "an unrecorded realm" and keeps going — the countdown, the explorer, the progress ring and Recall all still work. The landing card had resolved the same two ids defensively since it was written; the in-flight card simply never got the same treatment',
+    ],
+  },
+  {
     version: '2.76.1',
     codename: 'Doorway',
     date: '2026-08-20',
