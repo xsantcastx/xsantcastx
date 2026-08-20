@@ -37,6 +37,41 @@ const IGNORED = [
   /Non-Error promise rejection captured/i,
 ];
 
+/**
+ * A page running against a *previous* deploy's file names.
+ *
+ * Every one of these is the same underlying event: the HTML (or a cached chunk)
+ * references a build output that the current release renamed. Because Firebase
+ * Hosting answers any unmatched path with the SPA shell — 200 OK, text/html,
+ * never a 404 — the request does not fail cleanly. The browser is handed HTML
+ * where it expected a module and reports it however its parser happens to trip:
+ *
+ *  - "Importing binding name 'a' is not found"  a real module that imports from
+ *                                               a *stale* sibling still in cache
+ *  - "Loading chunk N failed" / dynamic import   the lazy-route form
+ *  - "not a valid JavaScript MIME type" / "<"    the SPA shell parsed as a module
+ *
+ * The IGNORED list above deliberately silences the two familiar spellings on the
+ * grounds that "the reload recovers it" — but nothing here ever reloaded, so the
+ * visitor was left on a half-booted page with the error suppressed. This list
+ * drives the recovery that comment always assumed existed.
+ */
+const STALE_DEPLOY = [
+  /Importing binding name .* is not found/i,
+  /Loading chunk \d+ failed/i,
+  /Failed to fetch dynamically imported module/i,
+  /error loading dynamically imported module/i,
+  /is not a valid JavaScript MIME type/i,
+  /Unexpected token '<'/i,
+];
+
+/**
+ * One-shot guard. Recovery ends in location.reload(), so without a marker that
+ * survives exactly one navigation a genuinely broken build would reload forever.
+ * sessionStorage is the right scope: per tab, cleared when the tab closes.
+ */
+const RECOVERY_KEY = 'godforge-stale-deploy-recovery';
+
 /** Cap per page load so a render loop cannot spam thousands of identical lines. */
 const MAX_PER_SESSION = 25;
 
@@ -104,6 +139,14 @@ export class ErrorTrackingService {
     if (this.count >= MAX_PER_SESSION) return;
 
     const message = partial.message || '(no message)';
+
+    // Before the noise filter: a stale-deploy error is the one class of fault
+    // the page can actually fix, and two of its spellings are in IGNORED.
+    if (STALE_DEPLOY.some((re) => re.test(message))) {
+      this.recoverFromStaleDeploy(message);
+      return;
+    }
+
     if (IGNORED.some((re) => re.test(message))) return;
 
     // Fingerprint on message + first stack frame: the same fault thrown from a
@@ -121,6 +164,81 @@ export class ErrorTrackingService {
       userAgent: navigator.userAgent,
       at: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Purge every client-side copy of the old build and reload once.
+   *
+   * A plain location.reload() is not enough. The service worker serves hashed
+   * assets cache-first and never revalidates, so a poisoned or stale entry
+   * outlives any number of reloads — the caches have to be dropped explicitly
+   * and the worker unregistered, or the next load is served the same bad bytes.
+   *
+   * Everything is best-effort and individually guarded: this runs while the app
+   * is already in a bad state, and a failure to clean up must still end in the
+   * reload, which is what actually gets the visitor a working page.
+   */
+  private recoverFromStaleDeploy(message: string): void {
+    let alreadyTried = false;
+    try {
+      alreadyTried = sessionStorage.getItem(RECOVERY_KEY) !== null;
+      sessionStorage.setItem(RECOVERY_KEY, String(Date.now()));
+    } catch {
+      // Storage disabled (private mode, blocked cookies). Without a marker a
+      // reload could loop, so report and leave the page alone.
+      alreadyTried = true;
+    }
+
+    if (alreadyTried) {
+      // The purge already happened and the error came back: this is a genuine
+      // build fault, not a stale cache. Report it instead of reloading again.
+      this.report({
+        kind: 'angular',
+        message: `[unrecovered after cache purge] ${message}`,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        at: new Date().toISOString(),
+      });
+      return;
+    }
+
+    console.warn('[GODFORGE] stale build detected — purging caches and reloading once.', message);
+
+    // Never let a hung purge strand the visitor on a broken page: whichever
+    // settles first wins, and the reload happens either way.
+    const deadline = new Promise((resolve) => setTimeout(resolve, 2000));
+    Promise.race([this.purgeClientCaches(), deadline]).then(() => this.reloadPage());
+  }
+
+  /**
+   * Drops every client-side copy of the old build: the Cache Storage entries the
+   * service worker serves cache-first, and the worker itself. Both are
+   * best-effort — a rejection here must not stop the reload.
+   *
+   * Split out from recoverFromStaleDeploy so a test can stand in for it without
+   * needing a real CacheStorage or a registered worker.
+   */
+  private purgeClientCaches(): Promise<unknown> {
+    return Promise.all([
+      'caches' in window
+        ? caches.keys()
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            .catch(() => undefined)
+        : Promise.resolve(),
+      'serviceWorker' in navigator
+        ? navigator.serviceWorker.getRegistrations()
+            .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+            .catch(() => undefined)
+        : Promise.resolve(),
+    ]);
+  }
+
+  /**
+   * The reload, as its own seam. `location.reload` is non-configurable in
+   * Chrome, so a spec cannot spy on it directly — it spies on this instead.
+   */
+  private reloadPage(): void {
+    window.location.reload();
   }
 
   /**
