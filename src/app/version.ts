@@ -21,7 +21,7 @@
  */
 
 export const APP_VERSION = {
-  version: '2.76.3',
+  version: '2.76.4',
   buildDate: '2026-08-20',
   /** Each major release gets a codename */
   codename: 'Purge',
