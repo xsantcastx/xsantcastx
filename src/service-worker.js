@@ -34,7 +34,7 @@
 'use strict';
 
 // Bump on any change to this file so old caches are dropped on activate.
-const VERSION = 'godforge-sw-v1';
+const VERSION = 'godforge-sw-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -104,6 +104,35 @@ function isStaticMedia(url) {
   return /\.(?:png|jpe?g|gif|webp|avif|svg|ico)$/.test(url.pathname);
 }
 
+/**
+ * Does this response actually contain what the URL claims?
+ *
+ * Firebase Hosting has no "404 for a missing static file": the `**` rewrite
+ * answers *any* unmatched path with the SPA shell — 200 OK, text/html. So a
+ * chunk deleted or renamed by a deploy does not fail, it comes back as HTML.
+ *
+ * Without this check the worker would `put()` that HTML into ASSET_CACHE under
+ * the .js URL, and the cache-first branch below would then serve HTML for that
+ * script *forever* — surviving reloads, new deploys, and the file being restored
+ * on the server, because cache-first never revalidates. That is precisely the
+ * permanent, un-reloadable breakage this file's header calls the ONE RULE, and
+ * it is the only path that can still reach it. Verified against production:
+ * GET /chunk-DEADBEEF.js -> 200, text/html, response.type 'basic'.
+ *
+ * Anything we cannot positively identify is simply not cached. Skipping the
+ * cache costs one network fetch; poisoning it costs the visitor the site.
+ */
+function isExpectedType(url, res) {
+  const ct = (res.headers.get('Content-Type') || '').toLowerCase();
+  // The SPA shell masquerading as an asset — the case this exists for.
+  if (ct.includes('text/html')) return false;
+  if (/\.js$/.test(url.pathname)) return ct.includes('javascript') || ct.includes('ecmascript');
+  if (/\.css$/.test(url.pathname)) return ct.includes('text/css');
+  if (/\.(?:woff2|woff|ttf|otf)$/.test(url.pathname)) return ct.includes('font') || ct.includes('octet-stream');
+  if (/\.(?:png|jpe?g|gif|webp|avif|svg|ico)$/.test(url.pathname)) return ct.startsWith('image/');
+  return false;
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -152,7 +181,7 @@ self.addEventListener('fetch', (event) => {
   if (isImmutableAsset(url)) {
     event.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        if (res && res.ok) {
+        if (res && res.ok && isExpectedType(url, res)) {
           const copy = res.clone();
           caches.open(ASSET_CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
@@ -167,7 +196,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(req).then((hit) => {
         const network = fetch(req).then((res) => {
-          if (res && res.ok) {
+          if (res && res.ok && isExpectedType(url, res)) {
             const copy = res.clone();
             caches.open(ASSET_CACHE).then((c) => c.put(req, copy)).catch(() => {});
           }
