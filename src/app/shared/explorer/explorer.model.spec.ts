@@ -194,8 +194,8 @@ describe('explorer state', () => {
     expect(emptyExplorerState().history).toEqual([]);
   });
 
-  it('caps the log at ten', () => {
-    expect(EXPEDITION_HISTORY_CAP).toBe(10);
+  it('caps the log at twenty', () => {
+    expect(EXPEDITION_HISTORY_CAP).toBe(20);
   });
 });
 

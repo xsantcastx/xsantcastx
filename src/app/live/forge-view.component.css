@@ -16,11 +16,20 @@
 
 .fv {
   position: relative;
+  /* 1, not auto. `<app-art-scene>` mounts a `position: fixed` backdrop at
+     z-index 0 in this same stacking context; a page left on auto paints under
+     it in Chrome and over it in WebKit, which is the bug that once showed
+     /character as nothing but the painting. See the containing-block note in
+     art-scene.component.ts. */
+  z-index: 1;
   max-width: 1400px;
   margin: 0 auto;
   padding: clamp(20px, 4vw, 44px) clamp(14px, 3vw, 28px) clamp(48px, 8vw, 96px);
   color: #E7E2F5;
-  overflow: hidden;
+  /* `clip`, not `hidden`. `overflow: hidden` on a page-level box makes every
+     descendant `position: sticky` inert, which is the trap that killed sticky
+     site-wide once already. */
+  overflow: clip;
 }
 
 /* The forge glow itself: a warm wash behind the middle of the page whose
@@ -1365,3 +1374,471 @@ a.fv__glance-cell:hover {
 .fv--still .fv__mission--done { animation: none; }
 .fv--still .fv__landing-flare { display: none; }
 .fv--still .fv__loot--step { animation: none; opacity: 1; transform: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE SITE PICKER
+   ═══════════════════════════════════════════════════════════════════════════
+   The third question the dispatch asks: where in the realm. Three cards, one
+   per tier, and the tier is the only thing that differs between them in CSS —
+   one design at three intensities rather than three hand-written treatments
+   that drift apart the first time the palette moves. Same discipline as
+   `--drama` on the six mission rungs above.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.fv__sites {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.fv__site {
+  position: relative;
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  /* The floor the mobile pass set for every standalone control. These cards run
+     well past it on content alone, but a site with no exclusive and a short
+     flavour line would not. */
+  min-height: 44px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(8, 5, 20, 0.55);
+  color: #cfd6e2;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.fv__site:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--realm) 55%, transparent);
+  background: rgba(12, 8, 28, 0.7);
+}
+
+.fv__site--on {
+  border-color: var(--realm);
+  background: color-mix(in srgb, var(--realm) 9%, rgba(8, 5, 20, 0.7));
+  box-shadow: 0 0 26px -10px var(--realm);
+}
+
+/* The deep site gets a wash rather than a brighter border. It is the last rung
+   of this axis and should not read as the middle one with more outline on it —
+   the same argument the Abyss card makes on the length ladder. */
+.fv__site[data-tier='deep']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 90% at 100% 50%,
+    color-mix(in srgb, var(--realm) 18%, transparent),
+    transparent 70%
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.fv__site[data-tier='deep'] { border-color: color-mix(in srgb, var(--realm) 28%, transparent); }
+
+.fv__site--blocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: saturate(0.4);
+}
+
+.fv__site > * { position: relative; }
+
+.fv__site-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fv__site-name {
+  font: 600 0.82rem/1.2 'Orbitron', system-ui, sans-serif;
+  color: #eafff9;
+  letter-spacing: 0.02em;
+}
+
+.fv__site-stars { flex: none; letter-spacing: 0.05em; font-size: 0.62rem; }
+.fv__site-star { color: rgba(255, 255, 255, 0.13); }
+.fv__site-star--on { color: var(--realm); text-shadow: 0 0 6px var(--realm); }
+
+.fv__site-flavour {
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: #96a0ae;
+  font-style: italic;
+}
+
+.fv__site-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.66rem;
+  color: #C9A84C;
+}
+
+.fv__site-nums span:nth-child(2) { color: #8fb8d8; }
+.fv__site-nums span:nth-child(3) { color: #9aa4b2; }
+
+.fv__site-finds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.fv__site-find {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 0.6rem;
+  color: #8d97a5;
+}
+
+.fv__site-exclusive {
+  font-size: 0.64rem;
+  line-height: 1.45;
+  color: var(--realm);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--realm) 55%, transparent);
+}
+
+.fv__site-block {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ff9a5a;
+}
+
+/* ── The dispatch confirmation ────────────────────────────────────────────── */
+
+.fv__send-confirm {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: #9aa4b2;
+  text-align: center;
+}
+
+.fv__send-confirm b { color: #eafff9; }
+
+.fv__send-level {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.02rem 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  font-size: 0.58rem;
+  color: #C9A84C;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION STORY BEATS
+   ═══════════════════════════════════════════════════════════════════════════
+   Four pips and one line. All four render from the moment they leave — the
+   uncrossed ones dim — so the shape of the journey is visible up front and
+   crossing 50% reads as something arriving rather than as a line appearing out
+   of nowhere.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.fv__beats {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.fv__beat { display: block; line-height: 0; }
+
+.fv__beat-pip {
+  display: block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+.fv__beat--on .fv__beat-pip {
+  background: var(--realm);
+  box-shadow: 0 0 8px var(--realm);
+}
+
+/* The most recently crossed beat, written out. Fades up when it changes — the
+   animation is on the text node, so it replays whenever Angular swaps the
+   string, which is exactly when a milestone is crossed. */
+.fv__beat-text {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: #9d93c4;
+  font-style: italic;
+  animation: fvBeatIn 0.6s ease both;
+}
+
+@keyframes fvBeatIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.fv__mission-level {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.02rem 0.28rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  font-size: 0.56rem;
+  color: #C9A84C;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE RETURN — explorer XP, a new hire, and Deploy Again
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fv__landing-xp {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.72rem;
+  color: #8fb8d8;
+  line-height: 1.5;
+}
+
+.fv__landing-xp--up {
+  color: #C9A84C;
+  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+}
+
+.fv__landing-xp--up b {
+  letter-spacing: 0.04em;
+  animation: fvLevelPop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fvLevelPop {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { transform: scale(1.15); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The hire card. The rarest thing that happens on this page, so it gets the
+   full treatment rather than a chip in the loot list. */
+.fv__hire {
+  position: relative;
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+  padding: 0.7rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background:
+    radial-gradient(ellipse 80% 100% at 0% 50%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%),
+    rgba(8, 5, 20, 0.7);
+  box-shadow: 0 0 32px -12px var(--tone-glow);
+  overflow: hidden;
+}
+
+.fv__hire-orb {
+  position: relative;
+  flex: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, var(--tone) 0%, rgba(8, 3, 24, 0.92) 88%);
+  box-shadow: 0 0 14px var(--tone-glow), 0 0 34px -8px var(--tone-glow);
+  animation: fvHireBreathe 3.2s ease-in-out infinite;
+}
+
+.fv__hire-orb::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed var(--tone-glow);
+  opacity: 0.45;
+  animation: fvHireOrbit 14s linear infinite;
+}
+
+@keyframes fvHireBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+@keyframes fvHireOrbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.fv__hire-body { min-width: 0; }
+
+.fv__hire-eyebrow {
+  margin: 0 0 0.2rem;
+  font: 600 0.6rem/1 'Orbitron', system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tone);
+}
+
+.fv__hire-name {
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #eafff9;
+}
+
+.fv__hire-tier {
+  display: inline-block;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tone);
+  vertical-align: middle;
+}
+
+.fv__hire-bio {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: #b8c0cc;
+  font-style: italic;
+}
+
+.fv__hire-passive {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--tone);
+}
+
+.fv__again {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.7rem;
+  padding: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--realm) 45%, transparent);
+  background: color-mix(in srgb, var(--realm) 10%, transparent);
+  color: var(--realm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fv__again:hover {
+  background: color-mix(in srgb, var(--realm) 20%, transparent);
+  box-shadow: 0 0 24px -10px var(--realm);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .fv__beat-text,
+  .fv__landing-xp--up b { animation: none; }
+  .fv__hire-orb,
+  .fv__hire-orb::before { animation: none; }
+  .fv__beat-pip { transition: none; }
+}
+
+/* ── Phone ────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .fv__site { padding: 0.55rem 0.6rem; }
+  .fv__site-nums { gap: 0.4rem; font-size: 0.62rem; }
+  .fv__hire { flex-direction: column; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE ROSTER BAND
+   ═══════════════════════════════════════════════════════════════════════════
+   Its own full-width row under the three columns. See the note in the template
+   for why it moved out of the expedition column.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.fv__roster {
+  margin-top: clamp(18px, 3vw, 34px);
+}
+
+.fv__col-title--wide {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+/* ── The who-goes picker ──────────────────────────────────────────────────── */
+
+.fv__whos {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.fv__who {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* The floor the mobile pass set for every standalone control. */
+  min-height: 34px;
+  padding: 0.25rem 0.6rem 0.25rem 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 5, 20, 0.6);
+  color: #9aa4b2;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.fv__who:hover:not(:disabled) {
+  color: #eafff9;
+  border-color: color-mix(in srgb, var(--star-color, var(--keeper)) 55%, transparent);
+}
+
+.fv__who--on {
+  color: #eafff9;
+  border-color: var(--star-color, var(--keeper));
+  background: color-mix(in srgb, var(--star-color, var(--keeper)) 12%, rgba(8, 5, 20, 0.7));
+  box-shadow: 0 0 20px -10px var(--star-color, var(--keeper));
+}
+
+.fv__who--blocked { opacity: 0.45; cursor: not-allowed; }
+
+.fv__who-orb {
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  flex: none;
+  background:
+    radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8, 3, 24, 0.92) 88%);
+  font: 700 0.56rem/1 'Orbitron', system-ui, sans-serif;
+  color: #0a0a0f;
+}
+
+.fv__who-name { white-space: nowrap; }
+
+/* "at home" is the one fact that decides which explorer to send, so it is the
+   only thing on the chip allowed to be a colour of its own. */
+.fv__who-home {
+  padding: 0.02rem 0.32rem;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 213, 163, 0.45);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7FD5A3;
+}
+
+.fv__who-block { font-size: 0.62rem; }
+
+/* The "whoever is best" chip has no explorer and so no --star-color; give it
+   the Keeper's own accent rather than letting the var fall through to nothing. */
+.fv__who:first-child { padding-left: 0.6rem; }

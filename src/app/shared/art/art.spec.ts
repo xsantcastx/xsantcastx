@@ -10,6 +10,7 @@
  */
 import { ART_ALIAS, ART_PENDING, artFor, hasArt } from './art';
 import { NPCS } from '../npc/npc.model';
+import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 import { ART_ALL } from './art-manifest.generated';
 import {
   ALL_UPGRADES,
@@ -86,13 +87,15 @@ describe('art lookup', () => {
       // uniques, and without them this gate would read every one as an orphan.
       // NPC portraits are in here for the same reason the uniques are: they are
       // real catalogue rows in their own catalogue, and without them this gate
-      // would read all six as orphans.
+      // would read all six as orphans. The eighteen explorer portraits are in
+      // here on the same argument.
       const known = new Set([
         ...[
           ...ALL_UPGRADES, ...ENCHANTMENTS, ...ARTIFACTS, ...COSMETICS, ...THRALL_OFFERS,
           ...ITEM_DEFINITIONS,
         ].map(row => row.id),
         ...NPCS.map(n => n.artId),
+        ...EXPLORER_ARCHETYPES.map(a => a.artId),
       ]);
       const orphans = [...ART_PENDING].filter(id => !known.has(id));
       expect(orphans).toEqual([]);

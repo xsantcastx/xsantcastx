@@ -17,6 +17,22 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.76.0',
+    codename: 'Roster',
+    date: '2026-08-20',
+    highlights: [
+      'Your explorers are people now. Eighteen of them exist, each one written — a name, a history, a realm they are better in, a disposition that bends how they work, and one ability nobody else has. Lyra doubles the rune rate in Archivum. Grimjaw never comes back empty-handed. There is exactly one Nameless Scout',
+      'The roster is a collection with an end you can see. Everyone you have not met yet sits on the wall as a silhouette carrying the one line that says where to find them — so the ladder is visible from the first visit instead of something you trip over',
+      'Every explorer levels on their own, one to twenty. Their own XP bar, their own milestones: a spare hand at 5, their ability strengthening at 10, an extra strap at 15, and mastery at 20. Sending Lyra out forty times makes Lyra good, not the account',
+      'Expeditions go somewhere now. Each realm has three places in it — fifteen in all, from the Crystal Caverns to the Void Threshold — with their own loot, their own difficulty and their own walls. The deep three are the only place outside the anvil that a Rare or better is promised rather than hoped for',
+      'A run tells you what happened while you were gone. Four beats at a quarter, half, three quarters and home, written for the realm they are walking through — and every one of them is there when you reopen the tab, because they were never events you had to be present for',
+      'A return is a moment rather than a receipt. Where they went, what they banked, the XP they earned, the level they crossed — and, once in a long while, the person they brought back with them',
+      'Send them back with one press. The instant a haul lands, the button to run it again is on the card',
+      'Filling the roster pays. Five found is a title, ten opens a sixth expedition slot, fifteen is another title, and the whole cast is a permanent cut of every expedition after it',
+      'The Sanctum has a room. The command centre was the last major surface still standing on the generic wallpaper; it now opens into the vault it has always described',
+    ],
+  },
+  {
     version: '2.75.1',
     codename: 'Fanfare',
     date: '2026-08-20',

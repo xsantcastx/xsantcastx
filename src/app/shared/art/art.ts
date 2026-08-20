@@ -12,6 +12,7 @@
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { NPCS } from '../npc/npc.model';
+import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 
 export type { ArtEntry };
 
@@ -66,6 +67,12 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 green-on-a-lie this list exists to prevent. They render as a
  *                 monogrammed orb in the character's accent until the six
  *                 portraits are painted.
+ *   explorer-*    the eighteen named explorers, shipped with the roster
+ *                 redesign. `Assets/Characters` holds Keeper avatars only, and
+ *                 an explorer is not a Keeper — cropping the player's own
+ *                 portrait onto Whisper of Nox would be exactly the green-on-a-
+ *                 lie this list exists to prevent. They render as the rarity
+ *                 orb with a level badge until the eighteen are painted.
  */
 export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-common',
@@ -76,6 +83,7 @@ export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-slot',
   ...UNIQUE_ITEMS.map(u => u.id),
   ...NPCS.map(n => n.artId),
+  ...EXPLORER_ARCHETYPES.map(a => a.artId),
 ]);
 
 /** Painted art for a catalogue id, or null when nothing has been painted. */
