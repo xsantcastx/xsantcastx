@@ -17,6 +17,18 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.77.0',
+    codename: 'Fanfare',
+    date: '2026-08-20',
+    highlights: [
+      'An expedition that came home with something rare was the one place in the game a good drop still landed in silence. The screen-level celebration ladder already existed and every other surface used it — a strike at the anvil, a box at the Gambler, a find off the Forge Flame — but the Sanctum\'s reveal card was wired to none of it. A Void rune, the rarest thing in the game at roughly one strike in two million, arrived as a coloured border on a card and nothing else',
+      'The haul now celebrates at its best find, and runes and equippables are ranked against each other on one ladder rather than the rune being read alone. That second half matters more than it sounds: a Legendary charm carried home beside an Ash rune used to show a grey card, because the code took its cue from the rune and the charm was never in the running',
+      'Fired when the card reaches the screen rather than when the expedition settles. Three explorers finishing overnight settle inside a single pass, so celebrating at settlement would have stacked three Legendaries into one frame behind a page nobody was looking at — and then shown three cards in silence afterwards. One card, one celebration, and the dismiss button walks the queue',
+      'The deferral is a timer and deliberately not a frame, which is the bug this shipped with and lost on the way. Expeditions settle on visibility change, so a haul routinely lands while the tab is in the background — and a background tab never runs requestAnimationFrame at all. Measured in a hidden tab: the card rendered and the frame callback was still pending five seconds later, so the celebration was simply dropped. A timer is throttled there but it fires, and a macrotask is already past the pass that built the card, so the box is there to measure either way',
+      'Everything the layer puts on the page comes back off it. Dismissing a card cancels whatever is still running, and leaving the Sanctum mid-Mythic cancels it too — the effect layer is a child of <body> rather than of the page, so Angular tearing the route down does not take it with it, and four seconds of gold lightning over /tools is not a feature',
+    ],
+  },
+  {
     version: '2.76.4',
     codename: 'Purge',
     date: '2026-08-20',
