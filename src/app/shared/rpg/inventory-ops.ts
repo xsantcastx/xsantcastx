@@ -129,6 +129,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     lastReforgeAt: item.lastReforgeAt,
     lastReforgeMutationId: item.lastReforgeMutationId,
     lastReforgeLock: item.lastReforgeLock,
+    sockets: item.sockets ? [...item.sockets] : undefined,
   };
 }
 
@@ -156,6 +157,7 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lastReforgeAt: record.lastReforgeAt,
     lastReforgeMutationId: record.lastReforgeMutationId,
     lastReforgeLock: record.lastReforgeLock,
+    sockets: record.sockets ? [...record.sockets] : undefined,
   };
 }
 
@@ -282,9 +284,36 @@ export function parseGameItem(raw: unknown): GameItem | null {
     foundAt: typeof raw['foundAt'] === 'string' ? raw['foundAt'] : new Date(0).toISOString(),
     soulbound: raw['soulbound'] === true,
     definitionId: typeof raw['definitionId'] === 'string' ? raw['definitionId'] : undefined,
+    sockets: parseSockets(raw['sockets']),
     ...parseUpgradeFields(raw),
   };
 }
+
+/**
+ * A persisted socket array.
+ *
+ * Anything that is not a string reads as an empty well rather than dropping the
+ * row: an unrecognised rune id in well two must not shuffle well three into
+ * well two's place, because the whole point of a Socket Word is that order is
+ * load-bearing. Length is capped at {@link PARSED_SOCKET_MAX} so a hand-edited
+ * blob cannot put a thousand wells in a save.
+ */
+function parseSockets(raw: unknown): (string | null)[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const wells = raw
+    .slice(0, PARSED_SOCKET_MAX)
+    .map(id => (typeof id === 'string' && id ? id : null));
+  return wells.length ? wells : undefined;
+}
+
+/**
+ * Hard ceiling on a parsed socket array.
+ *
+ * Not the live socket count — `socketCountFor` owns that and is free to move.
+ * This is only the bound on what a blob may claim, kept here rather than
+ * imported so `inventory-ops` stays free of the enchanting module.
+ */
+const PARSED_SOCKET_MAX = 8;
 
 export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
   if (!isPlainObject(raw)) return null;
@@ -700,6 +729,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     rollQuality: parseRollQuality(raw['rollQuality']),
     sellValue: finiteNumber(raw['sellValue']),
     location,
+    sockets: parseSockets(raw['sockets']),
     ...parseUpgradeFields(raw),
   };
 }

@@ -17,6 +17,21 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.80.0',
+    codename: 'The Table',
+    date: '2026-08-24',
+    highlights: [
+      'Every weapon and every piece of armour in the game has had sockets this whole time and nobody could see them. The Enchanting Table, at /forge/enchanting, is where they turn up: one to three wells on a weapon and one to two on armour, read off the piece\'s rarity rather than written onto it, so a Legendary you found eighteen releases ago arrives with its three wells already cut and no save needs rewriting',
+      'Twenty-five runes, each of which does something specific in a well and nothing anywhere else. Ash pays Gold, Nox pays Magic Find, Ember pays Strike, and each climbs its own ladder by tier rather than sharing one — a single ladder works for Gold, which is unbounded, and produces a thirty-two-point Magic Find rune that outclasses every item in the game. The Void is the exception the ladder is built to allow: it is the only rune that pays every channel at once, and it takes twenty billion Gold of striking to find one',
+      'Socketing takes the rune out of the drawer; unsocketing puts it back for a quarter of what the rune is worth at the anvil. A Common costs two and a half thousand to pull, the Void costs twenty-five million, and neither destroys anything — a Mythic in the wrong sword is an expensive mistake rather than a permanent one',
+      'Fifteen Socket Words that nobody wrote down. Fill every well on a piece with the right runes in the right order and it starts paying something the runes alone do not: Eclipse, Nox and Fracture in a three-well weapon is Eclipse Blade, and it multiplies every stat on the item by half again. Matching is exact and ordered — a spare empty well does not satisfy a shorter word, and the same three runes the other way round are not the word, which is a second thing to find rather than the same thing twice',
+      'Undiscovered words are on the wall from the first visit showing their frame, their well count, their difficulty and a clue, and never their sequence. A secret nobody can find is a dead end rather than a secret. They are on the Codex\'s Secrets tab too, under the same contract as everything else there, and a word reads as found for exactly as long as your own gear is spelling it — a Socket Word is not an achievement you keep, it is a thing your kit is currently saying',
+      'Five material infusions on the same table: burn three Ember Residue for two hours of +10% Gold, three Moonpetal Herb for +15% XP, two Void Shards for an hour of +25% Magic Find, and two more besides. Three at once and no more, because the three channels are the three things everything else already multiplies and a fourth slot turns "which do I want" into "all of them". Re-brewing one that is already running is refused rather than extending it — extending makes the optimal play an alarm clock rather than a decision',
+      'Everything a socket does flows through the numbers that were already there. One composition — base roll, then the runes, then the word — feeds the worn total, and the worn total is what the Gold rate, Magic Find, the XP multiplier and an explorer\'s expedition stats have always read. Nothing downstream had to learn what a socket is',
+      'Sockets, unsockets and brews go through a single gateway that settles four ledgers in an order chosen for what each step can fail on, taking the reversible half first every time. A rune that leaves the drawer and fails to reach the item is put back. An unsocket that cannot be paid for leaves the rune where it is. Materials are consumed before a timer starts, and the timer\'s own refusals are checked before anything is spent',
+    ],
+  },
+  {
     version: '2.79.0',
     codename: 'The Bench',
     date: '2026-08-24',

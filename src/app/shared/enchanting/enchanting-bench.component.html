@@ -1,0 +1,228 @@
+<section class="eb" aria-labelledby="eb-title">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header class="eb-head">
+    <div class="eb-head__copy">
+      <p class="eb-eyebrow"><span class="eb-eyebrow__pulse" aria-hidden="true"></span>{{ t('enchant.eyebrow') }}</p>
+      <h1 class="eb-title" id="eb-title">{{ t('enchant.title') }}</h1>
+      <p class="eb-tagline">{{ t('enchant.tagline') }}</p>
+    </div>
+
+    <dl class="eb-stats">
+      <div>
+        <dt>{{ t('enchant.stat.gold') }}</dt>
+        <dd>{{ gold | number }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('enchant.stat.words') }}</dt>
+        <dd>{{ totalWords }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('enchant.stat.running') }}</dt>
+        <dd>{{ maxActive - freeSlots }} / {{ maxActive }}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <p class="eb-live" role="status" aria-live="polite">{{ announce }}</p>
+
+  <div class="eb-alert" *ngIf="error">
+    <span>{{ error }}</span>
+    <button type="button" class="eb-alert__x" (click)="dismissError()">{{ t('enchant.dismiss') }}</button>
+  </div>
+
+  <!-- The banner a first seating fires. Dismissible, never blocking. -->
+  <div class="eb-reveal" *ngIf="revealed">
+    <p class="eb-reveal__cap">{{ t('enchant.words.discovered') }}</p>
+    <p class="eb-reveal__name">{{ revealed.name }}</p>
+    <p class="eb-reveal__effect">{{ revealed.effect }}</p>
+    <p class="eb-reveal__lore">{{ revealed.lore }}</p>
+    <button type="button" class="eb-reveal__x" (click)="dismissReveal()">{{ t('enchant.dismiss') }}</button>
+  </div>
+
+  <!-- ── Sockets ───────────────────────────────────────────────────────── -->
+  <section class="eb-panel" aria-labelledby="eb-sockets-title">
+    <h2 class="eb-panel__title" id="eb-sockets-title">{{ t('enchant.sockets.title') }}</h2>
+    <p class="eb-panel__hint">{{ t('enchant.sockets.hint') }}</p>
+
+    <p class="eb-empty" *ngIf="hydrated && !socketables.length">{{ t('enchant.sockets.empty') }}</p>
+
+    <div class="eb-socket" *ngIf="socketables.length">
+
+      <!-- The picker -->
+      <ul class="eb-picker" [attr.aria-label]="t('enchant.sockets.pick')">
+        <li *ngFor="let row of socketables; trackBy: trackItem">
+          <button type="button" class="eb-piece"
+                  [class.is-on]="selected?.id === row.item.id"
+                  [style.--tier]="tiers[row.item.rarity].color"
+                  (click)="select(row.item)"
+                  [attr.aria-pressed]="selected?.id === row.item.id">
+            <img class="eb-piece__art" *ngIf="row.art" [src]="row.art.src"
+                 [attr.srcset]="row.art.srcset" alt="" width="48" height="48" loading="lazy">
+            <span class="eb-piece__body">
+              <span class="eb-piece__name">{{ row.item.name }}</span>
+              <span class="eb-piece__meta">
+                <span class="eb-piece__frame">{{ row.frame === 'weapon'
+                  ? t('enchant.sockets.weapon') : t('enchant.sockets.armor') }}</span>
+                <span class="eb-piece__wells">{{ row.filled }}/{{ row.count }}</span>
+                <span class="eb-piece__worn" *ngIf="row.item.equipped">{{ t('enchant.sockets.worn') }}</span>
+              </span>
+              <span class="eb-piece__word" *ngIf="row.word">✦ {{ row.word.name }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- The wells and the drawer -->
+      <div class="eb-bench" *ngIf="selected">
+        <h3 class="eb-bench__name" [style.--tier]="tiers[selected.rarity].color">{{ selected.name }}</h3>
+
+        <p class="eb-bench__seated" *ngIf="selectedWord">
+          <span class="eb-bench__seatedCap">{{ t('enchant.sockets.seated') }}</span>
+          <strong>{{ selectedWord.name }}</strong> — {{ selectedWord.effect }}
+        </p>
+
+        <ul class="eb-wells" [attr.aria-label]="t('enchant.sockets.wells')">
+          <li class="eb-well" *ngFor="let well of wells; trackBy: trackWell"
+              [class.is-filled]="!!well.rune"
+              [style.--tier]="well.rune ? well.rune.color : 'rgba(255,255,255,0.2)'">
+            <button type="button" class="eb-well__btn"
+                    *ngIf="!well.rune"
+                    (click)="openDrawer(well.index)"
+                    [attr.aria-expanded]="activeWell === well.index"
+                    [attr.aria-label]="t('enchant.sockets.emptyWell') + ' ' + (well.index + 1)">
+              <span class="eb-well__glyph" aria-hidden="true">◇</span>
+              <span class="eb-well__cap">{{ t('enchant.sockets.well') }} {{ well.index + 1 }}</span>
+            </button>
+
+            <div class="eb-well__set" *ngIf="well.rune">
+              <span class="eb-well__glyph" aria-hidden="true">◆</span>
+              <span class="eb-well__rune">{{ well.rune.name }}</span>
+              <span class="eb-well__effect">{{ well.effect.join(', ') }}</span>
+              <button type="button" class="eb-well__pull" (click)="pull(well)"
+                      [disabled]="gold < well.cost">
+                {{ t('enchant.sockets.pull') }} · {{ well.cost | number }}
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Drawer: only open against a chosen well, so a click always lands -->
+        <div class="eb-drawer" *ngIf="activeWell !== null">
+          <div class="eb-drawer__head">
+            <h4>{{ t('enchant.sockets.drawer') }}</h4>
+            <button type="button" class="eb-drawer__x" (click)="openDrawer(activeWell)">
+              {{ t('enchant.sockets.close') }}
+            </button>
+          </div>
+          <p class="eb-empty" *ngIf="!drawer.length">{{ t('enchant.sockets.drawerEmpty') }}</p>
+          <ul class="eb-drawer__list">
+            <li *ngFor="let row of drawer; trackBy: trackRune">
+              <button type="button" class="eb-rune" [style.--tier]="row.rune.color"
+                      (click)="setRune(row.rune.id)">
+                <span class="eb-rune__name">{{ row.rune.name }}</span>
+                <span class="eb-rune__held">×{{ row.held }}</span>
+                <span class="eb-rune__effect">{{ row.effect }}</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Base → runes → total, so the arithmetic is on the page -->
+        <div class="eb-sum">
+          <div class="eb-sum__col">
+            <h4>{{ t('enchant.sockets.base') }}</h4>
+            <p *ngIf="!selectedBase.length">{{ t('enchant.sockets.none') }}</p>
+            <p *ngFor="let line of selectedBase">{{ line }}</p>
+          </div>
+          <div class="eb-sum__col">
+            <h4>{{ t('enchant.sockets.runes') }}</h4>
+            <p *ngIf="!selectedRunes.length">{{ t('enchant.sockets.none') }}</p>
+            <p *ngFor="let line of selectedRunes">{{ line }}</p>
+          </div>
+          <div class="eb-sum__col is-total">
+            <h4>{{ t('enchant.sockets.total') }}</h4>
+            <p *ngIf="!selectedTotal.length">{{ t('enchant.sockets.none') }}</p>
+            <p *ngFor="let line of selectedTotal">{{ line }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── The word wall ─────────────────────────────────────────────────── -->
+  <section class="eb-panel" aria-labelledby="eb-words-title">
+    <h2 class="eb-panel__title" id="eb-words-title">{{ t('enchant.words.title') }}</h2>
+    <p class="eb-panel__hint">{{ t('enchant.words.tagline') }}</p>
+
+    <ul class="eb-words">
+      <li class="eb-word" *ngFor="let card of words; trackBy: trackWord"
+          [class.is-found]="card.found" [style.--tier]="card.tierColor">
+        <div class="eb-word__head">
+          <span class="eb-word__name">{{ card.found ? card.word.name : '???' }}</span>
+          <span class="eb-word__tier">{{ card.tierLabel }}</span>
+        </div>
+        <p class="eb-word__frame">
+          {{ card.word.frame === 'weapon' ? t('enchant.words.frame.weapon')
+            : card.word.frame === 'armor' ? t('enchant.words.frame.armor')
+            : t('enchant.words.frame.any') }}
+          · {{ wellLabel(card.word) }}
+        </p>
+        <p class="eb-word__runes" *ngIf="card.found">{{ runeNames(card.word) }}</p>
+        <p class="eb-word__effect" *ngIf="card.found">{{ card.word.effect }}</p>
+        <p class="eb-word__lore" *ngIf="card.found">{{ card.word.lore }}</p>
+        <p class="eb-word__clue" *ngIf="!card.found">
+          <span class="eb-word__clueCap">{{ t('enchant.words.clue') }}</span>
+          {{ card.word.clue }}
+        </p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ── Infusions ─────────────────────────────────────────────────────── -->
+  <section class="eb-panel" aria-labelledby="eb-infusions-title">
+    <h2 class="eb-panel__title" id="eb-infusions-title">{{ t('enchant.infusion.title') }}</h2>
+    <p class="eb-panel__hint">{{ t('enchant.infusion.tagline') }}</p>
+
+    <p class="eb-slots">
+      {{ t('enchant.infusion.slots') }} {{ maxActive - freeSlots }} / {{ maxActive }}
+      <span class="eb-slots__live" *ngIf="live.gold">+{{ live.gold }}% Gold/sec</span>
+      <span class="eb-slots__live" *ngIf="live.xp">+{{ live.xp }}% XP</span>
+      <span class="eb-slots__live" *ngIf="live.magicFind">+{{ live.magicFind }}% Magic Find</span>
+    </p>
+
+    <ul class="eb-infusions">
+      <li class="eb-infusion" *ngFor="let card of infusionCards; trackBy: trackInfusion"
+          [class.is-running]="card.running">
+        <div class="eb-infusion__head">
+          <span class="eb-infusion__icon" aria-hidden="true">{{ card.infusion.icon }}</span>
+          <div>
+            <h3 class="eb-infusion__name">{{ card.infusion.name }}</h3>
+            <p class="eb-infusion__effect">{{ card.infusion.effect }}</p>
+          </div>
+        </div>
+
+        <p class="eb-infusion__flavour">{{ card.infusion.flavour }}</p>
+
+        <ul class="eb-inputs">
+          <li class="eb-input" *ngFor="let row of card.inputs" [class.is-short]="!row.enough">
+            <img class="eb-input__art" *ngIf="row.art" [src]="row.art.src"
+                 [attr.srcset]="row.art.srcset" alt="" width="28" height="28" loading="lazy">
+            <span class="eb-input__name">{{ row.name }}</span>
+            <span class="eb-input__count">{{ row.have }} / {{ row.need }}</span>
+          </li>
+        </ul>
+
+        <div class="eb-infusion__timer" *ngIf="card.running">
+          <div class="eb-infusion__bar"><span [style.width.%]="card.burned * 100"></span></div>
+          <p class="eb-infusion__left">{{ t('enchant.infusion.left') }} {{ card.remaining }}</p>
+        </div>
+
+        <button type="button" class="eb-brew" (click)="brew(card)" [disabled]="!canBrew(card)">
+          {{ brewLabel(card) }}
+        </button>
+      </li>
+    </ul>
+  </section>
+
+</section>
