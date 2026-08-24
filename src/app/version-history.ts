@@ -17,6 +17,22 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.81.0',
+    codename: 'The Coliseum',
+    date: '2026-08-24',
+    highlights: [
+      'Strike and Ward have been on items since the day items existed, and the note above Ward in the model has said the whole time that combat would be its second consumer. The Coliseum, at /world/arena, is that sentence finished. Five rings and twenty-five named challengers, and the two numbers you fight with — Might, what you swing, and Guard, what you subtract from what is swung at you — are read live off the kit you are standing in and the points you have spent, never off a stored figure. A temper that lands between two bouts is felt on the next one',
+      'A bout is three independent rounds, best of two, rather than a health bar. A health bar needs a stat that measures how long you last, the game has an offence and a mitigation and no pool, and inventing a sixth stat to fill the gap would have put a bar on the character sheet nothing else in the world reads. Three rounds spend exactly the numbers that already exist, and the swing band is wide enough that a slight favourite still loses often enough for the fight to be worth watching',
+      'The whole fight is settled on the press and the reveal is theatre over a decided result. Resolving a round at a time as the animation reached it would have put the record\'s authority inside a timer, and a backgrounded tab drops those — a bout that banked two rounds and never settled the third leaves the ledger holding half a fight. Navigating away mid-reveal loses the animation and nothing else',
+      'A loss takes nothing from you. The five-minute lock is charged on a win as well, which is a deliberate departure: charged only on losses, a loadout that clears the Void Ring farms four hundred and twenty thousand Gold on a loop with no ceiling, which is more than every other Gold source in the game put together. Charged on both, the ring is a timed activity of exactly the kind the world already has — an expedition you fight instead of wait for',
+      'Every challenger is individually clickable and carries its own odds, and the ring\'s own figure is quoted against its easiest name rather than its hardest. Quoted against the hardest, the Bronze card told every new account it was outmatched at nought percent — true of the Drakeling, false of Hollis, and a flat lie about a ring a rank-one player in no kit wins about half the time',
+      'Arena points are minted only by bouts and spent only at the quartermaster, whose seven rows all hand over something the rest of the world already understands: minted kit, Gold, Eclipse Essence, a material stack. A currency whose only sink is its own subsystem is a currency players stop earning. The four equipment rows are once per account, because a row minting Mythic without limit would have made the ring the cheapest kit farm in the game and hollowed out expeditions',
+      'The Standings, at /leaderboards, are seven ladders — Ascent, Hoard, Archivum, Coliseum, Craftsmanship, Wayfaring and the Bench — with your own row in gold on each. The page says in its own copy, not in a tooltip, that the other eighty names are a generated field rather than other players. There is no cross-account table behind this and there was not going to be one: publishing real boards means a public collection holding every signed-in player\'s XP and Gold, which is a privacy decision and a Firestore bill rather than a feature',
+      'Each ladder is pinned to an authored summit rather than scaled off your own number. Scaled off you, the top name is ahead by construction and first place is unreachable forever, which is the one thing a ladder must not be. A steep curve bunches the low ranks instead, so a first-session player stands in the low eighties and passes four names in an evening, and the summit is a figure a real save reaches',
+      'Everything on the boards is deterministic — no clock, no random, no daily drift. A rival who was twelfth yesterday and fortieth today, having done nothing, reads as fake in five seconds, and the page prerenders, so a field built from a clock bakes one ladder into the build and paints a different one the moment the bundle boots',
+    ],
+  },
+  {
     version: '2.80.0',
     codename: 'The Table',
     date: '2026-08-24',
