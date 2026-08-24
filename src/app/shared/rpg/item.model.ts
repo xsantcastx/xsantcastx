@@ -232,6 +232,17 @@ export interface GameItem {
   lastReforgeMutationId?: string;
   /** Which stat was held on the last reroll, if the Keeper paid to lock one. */
   lastReforgeLock?: keyof ItemStats;
+  /**
+   * Runes set into this item's sockets, in well order. `null` is an empty well.
+   *
+   * The *contents* only. How many wells the item has is derived from its slot
+   * and its rarity by `enchanting/socket.model.ts` and is deliberately not
+   * stored — see that file's header for why. Absent on every item minted before
+   * sockets existed, which reads as "every well empty" rather than as "no
+   * wells": an eighteen-release-old Legendary sword has three sockets the first
+   * time the Enchanting Table looks at it.
+   */
+  sockets?: (string | null)[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

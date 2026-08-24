@@ -410,6 +410,49 @@ export class RuneForgeService {
     return this.ledger.runes[runeId] ?? 0;
   }
 
+  /**
+   * Take one rune out of the ledger for something that is not a Runeword.
+   *
+   * The Enchanting Table sets runes into sockets, and a socketed rune is spent
+   * from the ledger's point of view — it is in a sword rather than in the
+   * drawer. This exists rather than the caller reaching into `ledger.runes`
+   * because the rune ledger has exactly one writer and adding a second one
+   * three files away is how a save ends up with a negative Ash.
+   *
+   * False when the rune is unknown or the drawer is short. The check and the
+   * decrement are one step, so a double-click cannot spend the same rune twice.
+   */
+  spendRune(runeId: string, count = 1): boolean {
+    if (!this.isBrowser || count <= 0) return false;
+    if (!runeById(runeId)) return false;
+    if (this.countOf(runeId) < count) return false;
+
+    this.ledger.runes = { ...this.ledger.runes, [runeId]: this.countOf(runeId) - count };
+    this.save();
+    this.publish();
+    return true;
+  }
+
+  /**
+   * Put a rune back — the other half of `spendRune`, for pulling one out of a
+   * socket.
+   *
+   * Deliberately does *not* touch `firstFound`: the rune was found when it was
+   * struck, and a first-found date that moves when a player rearranges their
+   * gear would rewrite the Codex's history every time somebody changed their
+   * mind. It also does not award XP or fire `find$`, for the same reason —
+   * nothing was found here, something was returned.
+   */
+  returnRune(runeId: string, count = 1): boolean {
+    if (!this.isBrowser || count <= 0) return false;
+    if (!runeById(runeId)) return false;
+
+    this.ledger.runes = { ...this.ledger.runes, [runeId]: this.countOf(runeId) + count };
+    this.save();
+    this.publish();
+    return true;
+  }
+
   hasCrafted(wordId: string): boolean {
     return this.economy.hasRuneword(wordId);
   }

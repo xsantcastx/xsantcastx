@@ -70,6 +70,9 @@ import {
   SecretRecord,
 } from './codex-secrets.service';
 import { CollectionLogComponent } from '../shared/collection/collection-log.component';
+import { InventoryService } from '../shared/rpg/inventory.service';
+import { SOCKET_WORDS, matchSocketWord, wordTier } from '../shared/enchanting/socket-words';
+import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 
 export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
@@ -191,6 +194,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly eggs = inject(EasterEggService);
   private readonly xp = inject(XpService);
   private readonly secretsService = inject(CodexSecretsService);
+  private readonly inventory = inject(InventoryService);
   private readonly scrollsService = inject(LoreScrollService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -243,6 +247,64 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   // ══ Lifecycle ═════════════════════════════════════════════════════════════
 
+  // ── Socket Words ──────────────────────────────────────────────────────────
+  /**
+   * The Socket Word wall, on the Secrets tab where it belongs.
+   *
+   * Authored at construction so the prerendered HTML lists all fifteen in their
+   * undiscovered state — frame, well count, difficulty and clue, never the
+   * sequence. `hydrate` flips the ones the visitor's own gear is currently
+   * spelling, which is what "discovered" means for a Socket Word: it is not an
+   * achievement you keep, it is a thing your kit is saying right now.
+   */
+  socketWords: {
+    id: string;
+    name: string;
+    found: boolean;
+    frame: string;
+    wells: string;
+    tier: string;
+    color: string;
+    runes: string;
+    effect: string;
+    lore: string;
+    clue: string;
+  }[] = this.buildSocketWords(new Set());
+
+  get foundWords(): number { return this.socketWords.filter(w => w.found).length; }
+  get totalWords(): number { return this.socketWords.length; }
+
+  private buildSocketWords(found: ReadonlySet<string>) {
+    return SOCKET_WORDS.map(word => {
+      const tier = wordTier(word);
+      return {
+        id: word.id,
+        name: found.has(word.id) ? word.name : '???',
+        found: found.has(word.id),
+        frame: word.frame === 'weapon' ? 'Weapon only'
+          : word.frame === 'armor' ? 'Armour only'
+          : 'Any piece',
+        wells: word.runes.length === 1 ? '1 well' : `${word.runes.length} wells`,
+        tier: RUNE_TIERS[tier].label,
+        color: RUNE_TIERS[tier].color,
+        runes: word.runes.map(id => runeById(id)?.name ?? id).join(' \u00b7 '),
+        effect: word.effect,
+        lore: word.lore,
+        clue: word.clue,
+      };
+    });
+  }
+
+  /** Every word seated in something the visitor owns right now. */
+  private seatedWordIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const item of this.inventory.snapshot.items) {
+      const word = matchSocketWord(item);
+      if (word) ids.add(word.id);
+    }
+    return ids;
+  }
+
   ngOnInit(): void {
     this.readTabFromUrl();
     if (!this.isBrowser) return;
@@ -282,6 +344,14 @@ export class CodexComponent implements OnInit, OnDestroy {
 
     this.scrollsService.init();
     this.scrollShelves = this.buildScrolls();
+
+    // The bag has to be hydrated before the wall can be read off it, and
+    // `init()` is idempotent — every other consumer calls it the same way.
+    this.inventory.init();
+    this.socketWords = this.buildSocketWords(this.seatedWordIds());
+    this.subs.push(this.inventory.snapshot$.subscribe(() => {
+      this.socketWords = this.buildSocketWords(this.seatedWordIds());
+    }));
 
     this.subs.push(this.xp.snapshot$.subscribe(s => (this.snap = s)));
     this.subs.push(this.secretsService.changed$.subscribe(() => (this.secrets = this.buildSecrets())));

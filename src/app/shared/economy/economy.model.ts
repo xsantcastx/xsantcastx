@@ -97,6 +97,22 @@ export interface PlayerEconomy {
    * streak, shards, artifacts and Runewords like every other source of Gold.
    */
   rpgFlatGold: number;
+  /**
+   * The Enchanting Table's Gold multiplier, mirrored in from `InfusionService`.
+   *
+   * 1 when nothing is running. Pushed rather than read for the reason
+   * `rpgFlatGold` is: `goldBreakdown` is a pure function over this blob and has
+   * no clock, so a timer it would have to expire itself cannot live in it.
+   *
+   * Reset to 1 by `EconomyService.load()` on every hydration, which is what
+   * makes it safe to persist. The consequence is deliberate and documented on
+   * the setter: **offline income is never infused**. Crediting eight hours of
+   * catch-up at a multiplier whose two-hour timer lapsed forty minutes in would
+   * over-pay, and the only honest alternative — splitting the offline window at
+   * the expiry — is a great deal of arithmetic for a buff the player was asleep
+   * for. Live income is infused; catch-up is not.
+   */
+  infusionGold: number;
   /** upgrade id → levels purchased. Absent means zero. */
   upgrades: Record<string, number>;
   /** Artifact ids owned. Each can only ever appear once. */
@@ -188,6 +204,7 @@ export function emptyEconomy(): PlayerEconomy {
     prestigeCount: 0,
     streakDays: 0,
     rpgFlatGold: 0,
+    infusionGold: 1,
     upgrades: {},
     artifacts: [],
     cosmetics: [],
@@ -1125,6 +1142,8 @@ export interface GoldBreakdown {
   runeword: number;
   /** Forge Power points and equipped items, flat. Zero with nothing invested. */
   rpg: number;
+  /** Material infusions running at the Enchanting Table. ×1 when none are. */
+  infusion: number;
   /** Every line above, resolved. */
   total: number;
 }
@@ -1151,6 +1170,10 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
   const shards = shardMultiplier(e);
   const artifact = globalMultiplier(e);
   const runeword = runewordMultiplier(e);
+  // Clamped rather than trusted for the same reason `rpg` is: a hand-edited
+  // blob can put anything here, and a zero would silently switch the furnace
+  // off while a NaN would propagate into the ticker and the offline payout.
+  const infusion = Number.isFinite(e.infusionGold) ? Math.max(1, e.infusionGold) : 1;
 
   return {
     idle,
@@ -1161,7 +1184,9 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
     artifact,
     runeword,
     rpg,
-    total: (idle + auto + rpg) * upgrades * streak * shards * artifact * runeword,
+    infusion,
+    total: (idle + auto + rpg)
+      * upgrades * streak * shards * artifact * runeword * infusion,
   };
 }
 

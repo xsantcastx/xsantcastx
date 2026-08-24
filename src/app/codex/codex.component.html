@@ -614,6 +614,48 @@
         </div>
       </div>
     }
+
+    <!-- Socket Words. Same contract as the secrets above: a clue, never the
+         answer, until your own gear is spelling it. -->
+    <div class="cx-section" [style.--realm]="'#4dffe0'" [style.--realm-glow]="'#4dffe0'">
+      <div class="cx-section__hd">
+        <h3 class="cx-section__title">
+          <span aria-hidden="true">◈</span>
+          Socket Words — {{ foundWords }} of {{ totalWords }} seated
+        </h3>
+      </div>
+      <p class="cx-section__blurb">
+        Fifteen sequences nobody wrote down. Fill every well on a weapon or a
+        piece of armour with the right runes in the right order and the piece
+        starts paying something the runes alone do not. Set them at
+        <a routerLink="/forge/enchanting">the Enchanting Table</a>.
+      </p>
+      <div class="cx-grid cx-grid--secrets">
+        @for (word of socketWords; track word.id) {
+          <article
+            class="cx-secret"
+            [class.cx-secret--locked]="!word.found"
+            [style.--tier]="word.color"
+            [style.--tier-glow]="word.color">
+            <p class="cx-secret__meta">
+              <span class="cx-card__badge">{{ word.tier }}</span>
+              <span class="cx-secret__state" [class.cx-secret__state--locked]="!word.found">
+                {{ word.found ? 'seated' : 'sealed' }}
+              </span>
+            </p>
+            <h4 class="cx-secret__name">{{ word.name }}</h4>
+            <p class="cx-secret__meta">{{ word.frame }} · {{ word.wells }}</p>
+            @if (word.found) {
+              <p class="cx-secret__reveal">{{ word.runes }}</p>
+              <p class="cx-secret__reveal">{{ word.effect }}</p>
+              <p class="cx-secret__lore">{{ word.lore }}</p>
+            } @else {
+              <p class="cx-secret__clue">{{ word.clue }}</p>
+            }
+          </article>
+        }
+      </div>
+    </div>
   </section>
 
 
