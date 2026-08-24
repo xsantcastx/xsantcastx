@@ -68,7 +68,7 @@ test.describe('Collection Log', () => {
   test('shows what has been found, and only that', async ({ page }) => {
     await openLog(page, true);
 
-    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 201');
+    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 253');
     await expect(page.locator('.cl-card:not(.cl-card--locked)')).toHaveCount(3);
 
     const ash = page.locator('.cl-card', { hasText: 'Ash' }).first();
@@ -110,8 +110,11 @@ test.describe('Collection Log', () => {
     for (let i = 0; i < await absent.count(); i++) {
       await expect(absent.nth(i)).toContainText('not yet in the world');
     }
-    // ...and says so under the grid, so the denominator is not a mystery.
-    await expect(page.locator('.cl-foot')).toContainText('201 entries count toward completion');
+    // ...and says so under the grid, so the denominator is not a mystery. The
+    // number moved from 201 to 253 when the crafting bench added its fifty-two
+    // recipes as their own category: a recipe is a thing you can know, so it is
+    // counted like everything else the log tracks.
+    await expect(page.locator('.cl-foot')).toContainText('253 entries count toward completion');
   });
 
   test('filters down to one category and back', async ({ page }) => {

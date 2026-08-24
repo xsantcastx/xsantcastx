@@ -16,6 +16,7 @@
 /codex
 /character
 /forge/runes
+/forge/crafting
 /404
 /world/trials
 /arena/color-memory

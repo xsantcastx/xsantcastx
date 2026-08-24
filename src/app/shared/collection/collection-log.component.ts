@@ -263,7 +263,7 @@ export class CollectionLogComponent implements OnInit, OnDestroy {
   // ══ Presentation helpers ═══════════════════════════════════════════════════
 
   art(card: CollectionCard): ArtEntry | null {
-    return card.found ? artFor(card.entry.id) : null;
+    return card.found ? artFor(card.entry.artId ?? card.entry.id) : null;
   }
 
   tier(rarity: ItemRarity) {
