@@ -74,6 +74,18 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     group: 'more',
   },
   {
+    // The Enchanting Table is a second room inside the Forge hall, reached from
+    // the Forge page the same way the Bench is. Listed here for the same reason
+    // the Bench is: a player who is not already standing in the Forge has no way
+    // to find a room that is only reached from inside it.
+    id: 'enchanting',
+    route: '/forge/enchanting',
+    labelKey: 'gfnav.enchanting',
+    hintKey: 'gfnav.hint.enchanting',
+    glyph: 'forge',
+    group: 'more',
+  },
+  {
     id: 'codex',
     route: '/codex',
     labelKey: 'gfnav.codex',

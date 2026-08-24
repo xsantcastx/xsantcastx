@@ -17,6 +17,7 @@
 /character
 /forge/runes
 /forge/crafting
+/forge/enchanting
 /404
 /world/trials
 /arena/color-memory

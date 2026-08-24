@@ -16,12 +16,17 @@
  * that existing hook, where the comment on `installHooks` explains the same trap
  * for the Pro Pack.
  *
- * That leaves this service with the two pushes the ledger genuinely owns.
+ * That leaves this service with the three pushes the ledger genuinely owns:
+ * the flat Gold/sec, the Market price multiplier, and the Enchanting Table's
+ * Gold multiplier. The last is here rather than in the enchanting module for
+ * the same reason the first is here rather than in the stat panel — the ledger
+ * must not depend on the feature, so the feature's number is pushed in.
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 import { EconomyService } from '../economy/economy.service';
+import { InfusionService } from '../enchanting/infusion.service';
 import { InventoryService } from './inventory.service';
 import { PlayerStatsService } from './player-stats.service';
 import { ExplorerRosterService } from './explorer-roster.service';
@@ -37,6 +42,7 @@ export class RpgWiringService {
   private readonly roster = inject(ExplorerRosterService);
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly chapters = inject(ChapterGateway);
+  private readonly infusions = inject(InfusionService);
 
   private started = false;
 
@@ -50,6 +56,10 @@ export class RpgWiringService {
     this.roster.init();
     this.activity.init();
     this.chapters.init();
+    // Hydrated here rather than by the bench, because the Gold multiplier has
+    // to be mirrored into the ledger on every load whether or not the visitor
+    // ever opens the Enchanting Table.
+    this.infusions.init();
 
     // Recompute from scratch on every source publish. Cheap (a sum over the
     // worn items) and keeps the two ledgers in step. Economy merge still
@@ -63,6 +73,9 @@ export class RpgWiringService {
     // rpgFlatGold. A later inventory-only snapshot still remirrors now.
     this.stats.snapshot$.subscribe(() => this.mirror());
     this.inventory.snapshot$.subscribe(() => this.mirror());
+    // Publishes on every brew and on the tick that drops a lapsed row, which is
+    // what puts the multiplier back to 1 within a second of a timer running out.
+    this.infusions.snapshot$.subscribe(() => this.mirror());
     this.economy.snapshot$.subscribe(() => {
       queueMicrotask(() => this.mirror());
     });
@@ -82,5 +95,9 @@ export class RpgWiringService {
     const fromGear = this.inventory.equippedTotals.goldPerSec;
     this.economy.setRpgFlatGold(fromStats + fromGear);
     this.economy.setPriceMultiplier(this.stats.priceMultiplier);
+    // A multiplier on the whole rate rather than on the RPG line: the card says
+    // "+10% Gold/sec", and a visitor whose Gold comes almost entirely from the
+    // furnace would otherwise see a buff worth a rounding error.
+    this.economy.setInfusionGold(this.infusions.multiplierOn('gold'));
   }
 }

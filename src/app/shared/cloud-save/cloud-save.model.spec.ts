@@ -640,6 +640,7 @@ describe('the registry', () => {
       'godforge-exchange',
       'godforge-explorers',
       'godforge-gambler',
+      'godforge-infusions',
       'godforge-inventory',
       'godforge-pinned',
       'godforge-pro',
