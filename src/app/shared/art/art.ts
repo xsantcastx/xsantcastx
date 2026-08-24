@@ -10,7 +10,6 @@
  * Pure data — no browser APIs — so it is safe to import from an SSR path.
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
-import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 
@@ -53,12 +52,21 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 shipped in v2.68.0. Nothing in `Assets/Characters` depicts a
  *                 bound worker at the anvil; this needs a new painting rather
  *                 than a crop of an existing one.
- *   unique-*      the twenty-four named objects in unique-items.ts. Each one is
- *                 a specific thing with a history, so each needs its own
- *                 painting — aliasing "Goldmouth" onto the Eclipse Longblade's
- *                 render would put a generic blade on the rarest weapon in the
- *                 game and the gate would go green on the lie. They fall back to
- *                 the rarity orb until the library has them.
+ *   unique-*      twenty-three of the forty-four named objects in
+ *                 unique-items.ts. Each one is a specific thing with a history,
+ *                 so each needs its own painting — aliasing "Goldmouth" onto the
+ *                 Eclipse Longblade's render would put a generic blade on the
+ *                 rarest weapon in the game and the gate would go green on the
+ *                 lie. They fall back to the rarity orb until the library has
+ *                 them.
+ *
+ *                 They are written out one per line rather than spread from
+ *                 `UNIQUE_ITEMS`, which is what this list used to do. The Art
+ *                 Bible drop painted twenty-one of them, and a spread would have
+ *                 quietly carried all forty-four back in — the debt list would
+ *                 have grown by the exact number of paintings that had just
+ *                 arrived, and `art.spec.ts` would have had nothing to fail on.
+ *                 Deleting a line here is how a painting lands.
  *   npc-*         the six speaking characters, shipped in the NPC dialogue
  *                 release. `Assets/Characters` holds Keeper avatars and
  *                 portraits only — nothing there depicts Aureth, Verrin, Kael,
@@ -81,7 +89,29 @@ export const ART_PENDING: ReadonlySet<string> = new Set([
   'thrall-epic',
   'thrall-legendary',
   'thrall-slot',
-  ...UNIQUE_ITEMS.map(u => u.id),
+  'unique-tinders-due',
+  'unique-lantern-oath',
+  'unique-ashfall-wrap',
+  'unique-copper-witness',
+  'unique-cinderwake',
+  'unique-stillglass-cowl',
+  'unique-thornroot-greaves',
+  'unique-tally-of-hands',
+  'unique-mourners-ledger',
+  'unique-first-light-pendant',
+  'unique-anvil-of-small-hours',
+  'unique-quiet-cuirass',
+  'unique-hollowmark',
+  'unique-verdant-accord',
+  'unique-crown-of-borrowed-noon',
+  'unique-lastwarden',
+  'unique-goldmouth',
+  'unique-cartographers-regret',
+  'unique-long-account',
+  'unique-heartwood-of-the-verge',
+  'unique-mirror-of-small-mercies',
+  'unique-the-unstruck-hour',
+  'unique-keepers-second-name',
   ...NPCS.map(n => n.artId),
   ...EXPLORER_ARCHETYPES.map(a => a.artId),
 ]);

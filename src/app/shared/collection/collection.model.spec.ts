@@ -3,6 +3,9 @@ import { ITEM_DEFINITIONS } from '../rpg/item-definition';
 import { ALL_CHARMS, type GameItem } from '../rpg/item.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import { RUNES, RUNEWORDS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import { ARTBIBLE_DEFINITIONS } from '../rpg/artbible-items';
+import { UNIQUE_ITEMS } from '../rpg/unique-items';
+import { boxPool } from '../gambler/mystery-box';
 import { FIVE_REALMS } from '../narrative/five-realms.narrative';
 import { hasArt } from '../art/art';
 import {
@@ -92,8 +95,30 @@ describe('collection catalogue', () => {
       if (entry.category !== 'material' && entry.category !== 'consumable') continue;
       const display = materialDisplay(entry.id);
       if (display && display.name !== entry.name) wrong.push(`${entry.id}: ${entry.name} vs ${display.name}`);
+      // `if (display)` alone let a *missing* row through, which is the shape the
+      // drift actually took: `ember-elixir` was named in the log, painted in the
+      // library and absent from the bag's table for its whole life.
+      else if (!display && hasArt(entry.id)) wrong.push(`${entry.id}: no bag row at all`);
     }
     expect(wrong).toEqual([]);
+  });
+
+  /*
+   * The bag draws a material stack from `materialDisplay(stackKey)`, not from
+   * the definition — so a painted material that never reaches that map renders
+   * as its own raw id next to an empty art slot. Twenty-three shipped that way
+   * for the length of one commit. This is the gate.
+   */
+  it('gives the bag a name and a painting for every catalogued material', () => {
+    const bad: string[] = [];
+    for (const entry of COLLECTION_CATALOG) {
+      if (entry.category !== 'material' && entry.category !== 'consumable') continue;
+      if (!hasArt(entry.id)) continue;
+      const display = materialDisplay(entry.id);
+      if (!display) bad.push(`${entry.id}: painted, but the bag has no row for it`);
+      else if (!display.art) bad.push(`${entry.id}: bag row carries no art`);
+    }
+    expect(bad).toEqual([]);
   });
 
   it('only claims a realm that exists in the narrative bible', () => {
@@ -196,9 +221,47 @@ describe('completion arithmetic', () => {
     expect(full.found).toBe(COUNTED_CATALOG.length);
   });
 
+  /*
+   * Both fixtures are Collector rewards, which are the entries outside the
+   * denominator. `eclipse-longblade` used to stand here and no longer can: it
+   * is an ordinary equipment definition, and `mintable` counts those now that
+   * the Gambler's pool demonstrably hands them out. See the note on `mintable`.
+   */
   it('does not count an entry that is outside the denominator', () => {
-    const ledger = ledgerOf({ 'keeper-signet': {}, 'eclipse-longblade': {} });
+    const ledger = ledgerOf({ 'keeper-signet': {}, 'sealed-codex-page': {} });
     expect(overallCompletion(ledger).found).toBe(0);
+  });
+
+  /*
+   * `mintable` in collection.model.ts restates `boxPool`'s filter rather than
+   * importing it, so that the catalogue stays a leaf an SSR path can pull in
+   * for a name without dragging the Gambler's economy in behind it. A restated
+   * rule drifts, and the drift is silent — the log simply starts lying about
+   * what can be found. This is the thing that fails when it does.
+   */
+  it('counts exactly what the Gambler can hand out', () => {
+    const droppable = new Set<string>([
+      ...boxPool('epic').map(d => d.id),
+      ...UNIQUE_ITEMS.map(u => u.id),
+    ]);
+    const counted = new Set(COUNTED_CATALOG.map(e => e.id));
+    const missed = [...droppable].filter(id => !counted.has(id));
+    expect(missed).withContext('droppable but not counted').toEqual([]);
+
+    const claimed = COUNTED_CATALOG
+      .filter(e => e.category === 'equipment' || e.category === 'charm')
+      .filter(e => ITEM_DEFINITIONS.some(d => d.id === e.id))
+      .filter(e => !droppable.has(e.id) && e.id !== 'basalt-edge')
+      .map(e => e.id);
+    expect(claimed).withContext('counted but nothing drops it').toEqual([]);
+  });
+
+  it('catalogues every Art Bible definition, with art', () => {
+    const catalogued = new Set(COLLECTION_CATALOG.map(e => e.id));
+    const missing = ARTBIBLE_DEFINITIONS.filter(d => !catalogued.has(d.id)).map(d => d.id);
+    expect(missing).withContext('not in the log').toEqual([]);
+    const unpainted = ARTBIBLE_DEFINITIONS.filter(d => !hasArt(d.id)).map(d => d.id);
+    expect(unpainted).withContext('no painting').toEqual([]);
   });
 
   it('splits the same total across categories and rarities without losing one', () => {

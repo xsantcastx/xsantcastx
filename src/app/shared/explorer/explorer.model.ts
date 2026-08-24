@@ -411,11 +411,54 @@ export const REALM_EXCLUSIVE_MATERIALS: Record<RealmId, readonly string[]> = {
   nexus: ['verdant-sap', 'infernal-heartstone'],
 };
 
+/**
+ * The Art Bible's materials, by the realm whose expedition returns them.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS IS A THIRD BAND AND NOT MORE ENTRIES ON THE SECOND
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `REALM_EXCLUSIVE_MATERIALS` is read positionally by `rollMaterials`: entry
+ * zero is the 26% draw and the *last* entry is the 8% one. Appending to those
+ * lists would have done two things quietly — every realm's headline material
+ * would stop being last and jump from 8% to 26%, and every entry between the
+ * first and the last would be drawn at zero, because nothing indexes the middle
+ * of a two-entry list. Twenty-three new materials arriving as a silent retune of
+ * the existing five realms' economies is not what a content drop is for.
+ *
+ * So they get their own band and their own slice, and the exclusives keep the
+ * rates they were tuned at. Runes and materials are mixed together here on
+ * purpose: an Art Bible rune is an uncut socketing stone (see the header of
+ * artbible-items.ts), which is a thing an explorer picks up, not a thing the
+ * Forge strikes.
+ *
+ * `orichalcum-ore` and `godforge-slag` are the two the Art Bible files under
+ * "All Realms", so they are in every list rather than none.
+ */
+const UNIVERSAL = ['orichalcum-ore', 'godforge-slag'] as const;
+
+export const REALM_ARTBIBLE_MATERIALS: Record<RealmId, readonly string[]> = {
+  luminous: ['solar-resin', 'rune-of-radiance', 'rune-of-dawns-edge',
+    'rune-of-the-solstice', ...UNIVERSAL],
+  umbral: ['shadowthread-silk', 'void-crystal', 'rune-of-hollow',
+    'rune-of-erasure', ...UNIVERSAL],
+  verge: ['world-root-bark', 'rune-of-root', 'rune-of-overgrowth',
+    'rune-of-the-world-root', ...UNIVERSAL],
+  archivum: ['celestial-quartz', 'moonpetal-herb', 'rune-of-starfire',
+    'rune-of-void-navigation', ...UNIVERSAL],
+  nexus: ['pyrite-dust', 'emberheart-ore', 'rune-of-the-forge',
+    'rune-of-cinder', 'rune-of-the-underhearth', ...UNIVERSAL],
+};
+
+/** The share of a draw that lands on the Art Bible band. Taken from commons. */
+const ARTBIBLE_SHARE = 0.06;
+
 /** Everything a realm can hand over, commons first. For the picker's copy. */
 export function realmMaterials(id: RealmId | string): readonly string[] {
   const exclusive = REALM_EXCLUSIVE_MATERIALS[id as RealmId]
     ?? REALM_EXCLUSIVE_MATERIALS.luminous;
-  return [...REALM_COMMON_MATERIALS, ...exclusive];
+  const artbible = REALM_ARTBIBLE_MATERIALS[id as RealmId]
+    ?? REALM_ARTBIBLE_MATERIALS.luminous;
+  return [...REALM_COMMON_MATERIALS, ...exclusive, ...artbible];
 }
 
 export function realmProfile(id: RealmId | string): RealmExpeditionProfile {
@@ -775,6 +818,9 @@ export function rollRuneAtOrAbove(
  * Weighted so the commons carry the bulk and the realm's own two are the
  * reason to have gone: a draw lands on the exclusives about a third of the
  * time, and inside that third the headline material is the rarer of the two.
+ * A further 6% is carved off the commons for the Art Bible band — six draws in
+ * a hundred, which is often enough that a realm's stones are a reason to go
+ * back and rare enough that they do not crowd out the ore.
  * Returned as a map rather than a list because the bag stacks — twelve Cinder
  * Ore is one row with a twelve on it, and a caller that had to reduce a
  * thirty-entry array to get there would be doing the service's job.
@@ -790,12 +836,19 @@ export function rollMaterials(
 
   const exclusive = REALM_EXCLUSIVE_MATERIALS[realm as RealmId]
     ?? REALM_EXCLUSIVE_MATERIALS.luminous;
+  const artbible = REALM_ARTBIBLE_MATERIALS[realm as RealmId]
+    ?? REALM_ARTBIBLE_MATERIALS.luminous;
   const out: Record<string, number> = {};
 
   for (let i = 0; i < count; i++) {
     const roll = rng();
     let id: string;
-    if (roll < 0.66) {
+    if (roll < ARTBIBLE_SHARE) {
+      // The Art Bible band, flat inside itself: these are twenty-three objects
+      // of equal standing in the same drop, and weighting them against each
+      // other would need a second ladder nothing else in this file has.
+      id = artbible[Math.floor(rng() * artbible.length)] ?? artbible[0];
+    } else if (roll < 0.66) {
       id = REALM_COMMON_MATERIALS[Math.floor(rng() * REALM_COMMON_MATERIALS.length)]
         ?? REALM_COMMON_MATERIALS[0];
     } else if (roll < 0.92) {
