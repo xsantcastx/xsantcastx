@@ -9,6 +9,7 @@ import {
   EXPEDITION_HISTORY_CAP,
   MISSIONS,
   REALM_COMMON_MATERIALS,
+  REALM_ARTBIBLE_MATERIALS,
   REALM_EXCLUSIVE_MATERIALS,
   realmMaterials,
   rollMaterials,
@@ -338,10 +339,29 @@ describe('realm freight', () => {
     for (const [, holders] of seen) expect(holders.length).toBe(1);
   });
 
-  it('lists the commons before the exclusives', () => {
+  it('lists the commons, then the exclusives, then the Art Bible band', () => {
     const all = realmMaterials('umbral');
-    expect(all.slice(0, REALM_COMMON_MATERIALS.length)).toEqual([...REALM_COMMON_MATERIALS]);
-    expect(all.slice(REALM_COMMON_MATERIALS.length)).toEqual([...REALM_EXCLUSIVE_MATERIALS.umbral]);
+    const commons = REALM_COMMON_MATERIALS.length;
+    const exclusives = REALM_EXCLUSIVE_MATERIALS.umbral.length;
+    expect(all.slice(0, commons)).toEqual([...REALM_COMMON_MATERIALS]);
+    expect(all.slice(commons, commons + exclusives))
+      .toEqual([...REALM_EXCLUSIVE_MATERIALS.umbral]);
+    expect(all.slice(commons + exclusives))
+      .toEqual([...REALM_ARTBIBLE_MATERIALS.umbral]);
+  });
+
+  it('draws every material it advertises for a realm', () => {
+    for (const realm of ['luminous', 'umbral', 'verge', 'archivum', 'nexus'] as const) {
+      const seen = new Set<string>();
+      for (let i = 0; i < 20_000; i++) {
+        for (const id of Object.keys(rollMaterials(realm, 1, 1))) seen.add(id);
+      }
+      // The band boundaries are read positionally in `rollMaterials`, and the
+      // failure mode is silent: an entry in the middle of a list nothing
+      // indexes is simply never drawn.
+      expect([...realmMaterials(realm)].filter(id => !seen.has(id)))
+        .withContext(realm).toEqual([]);
+    }
   });
 
   it('falls back to a real realm on an unknown id', () => {

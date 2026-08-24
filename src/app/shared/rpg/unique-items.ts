@@ -1,5 +1,5 @@
 /**
- * unique-items.ts — the twenty-four named things, and what makes each one named.
+ * unique-items.ts — the forty-four named things, and what makes each one named.
  *
  * A normal definition is a *kind* of object: there are many Astral Helms and the
  * only thing separating yours from anyone else's is the roll. A unique is a
@@ -89,11 +89,11 @@ export interface UniqueItem {
 }
 
 /**
- * Twenty-four named objects across the ladder.
+ * Forty-four named objects across the ladder.
  *
  * Weighted toward the middle rungs on purpose: a unique the player can actually
  * reach is what teaches them uniques exist, and a table that is all Mythic is a
- * table most players never learn about. The two Singulars are the only entries
+ * table most players never learn about. The Singulars are the only entries
  * that are also soulbound — an object with one copy in the world should not have
  * a sale price, because naming a price is the game admitting there could be two.
  */
@@ -253,6 +253,150 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['xpBonus', 'magicFind', 'goldPerSec'], base: { xpBonus: 24, magicFind: 14, goldPerSec: 7 },
     passive: { effect: 'guaranteed-mf', text: 'It answers to you, which is not the same as belonging to you.' },
     lore: 'A Keeper is issued one name. This is the other one, and reading it aloud is how the Archivum defines a bad afternoon.',
+    soulbound: true,
+  },
+
+  // ── The Art Bible's twenty named relics ──────────────────────────────────
+  //
+  // Items 061-070 and 091-100 of the Eclipse Realms Item Art Bible. The Bible
+  // files the first ten as "Artifacts" and the last ten as "Singular", but both
+  // groups are the same kind of thing by this file's definition: one specific
+  // object, with a history, that carries a line of rules text no roll can
+  // produce. So they are uniques, not `family: 'artifact'` — that family means
+  // "the five things the Market sells", and none of these is for sale.
+  //
+  // The Singular ten are soulbound for the reason the header gives: naming a
+  // price on a one-of-a-kind object is the game admitting there could be two.
+  {
+    id: 'unique-architect-compass', name: 'The Architect\'s Compass', rarity: 'mythic', slot: 'trinket', style: 'celestial',
+    rollKeys: ['magicFind', 'xpBonus', 'lootBonus'], base: { magicFind: 13.2, xpBonus: 9.9, lootBonus: 7.92 },
+    passive: { effect: 'loot-bias', text: 'It points at the plan rather than the prize, and is usually right about which you needed.' },
+    lore: 'The Archivist designed this tool to measure the distance between ideas — literally.',
+  },
+  {
+    id: 'unique-heartstone-world-root', name: 'Heartstone of the World-Root', rarity: 'singular', slot: 'trinket', style: 'verdant',
+    rollKeys: ['magicFind', 'xpBonus', 'lootBonus'], base: { magicFind: 16.8, xpBonus: 12.6, lootBonus: 10.08 },
+    passive: { effect: 'idle-drift', text: 'It keeps growing while you are not looking, which is most of the time.' },
+    lore: 'The World-Root\'s heart is a stone. This is that stone — or the closest thing to it that exists outside the Root itself.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-first-anvil-fragment', name: 'The First Anvil (Fragment)', rarity: 'mythic', slot: 'hands', style: 'neutral',
+    rollKeys: ['strikePower', 'ward', 'lootBonus'], base: { strikePower: 7.26, ward: 2.64, lootBonus: 7.92 },
+    passive: { effect: 'strike-double', text: 'Everything struck on it comes out one grade better than the hand deserved.' },
+    lore: 'The Godforge had a first anvil, before there were five realms, before there were realms at all.',
+  },
+  {
+    id: 'unique-shadowloom', name: 'Shadowloom', rarity: 'legendary', slot: 'off-hand', style: 'umbral',
+    rollKeys: ['ward', 'magicFind'], base: { ward: 5.72, magicFind: 5.2 },
+    passive: { effect: 'loot-bias', text: 'It weaves a concealment you did not ask for and cannot decline.' },
+    lore: 'The Umbral Weavers use full-sized looms to weave shadow into cloth, armor, and concealment.',
+  },
+  {
+    id: 'unique-merchants-scale', name: 'The Merchant\'s Scale', rarity: 'epic', charm: true, style: 'neutral',
+    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'], base: { magicFind: 14, xpBonus: 12, goldPerSec: 4 },
+    passive: { effect: 'gold-surge', text: 'It weighs the offer and the offerer, and only reports one of the two.' },
+    lore: 'The Merchant does not haggle. They weigh. This scale measures not mass but value — a concept that incorporates rarity, craftsmanship, desire, and destiny.',
+  },
+  {
+    id: 'unique-pyrograph-scroll-case', name: 'Pyrograph Scroll Case', rarity: 'legendary', slot: 'off-hand', style: 'infernal',
+    rollKeys: ['ward', 'magicFind'], base: { ward: 5.72, magicFind: 5.2 },
+    passive: { effect: 'xp-echo', text: 'It records what happened near it whether or not anyone wanted a record.' },
+    lore: 'Before the Infernal Realm had a written language, it had this scroll. The Pyrograph writes down everything that happens near the bearer, recording events as they occur in a script of fire.',
+  },
+  {
+    id: 'unique-mirror-meridians', name: 'The Mirror of Meridians', rarity: 'mythic', slot: 'off-hand', style: 'celestial',
+    rollKeys: ['ward', 'magicFind', 'lootBonus'], base: { ward: 7.26, magicFind: 6.6, lootBonus: 7.92 },
+    passive: { effect: 'ward-mirror', text: 'It shows the room you are not in, which is the one the trap is in.' },
+    lore: 'The Archivist made this mirror to solve a problem: they wanted to see what they could not see by looking.',
+  },
+  {
+    id: 'unique-spore-crown', name: 'Spore Crown', rarity: 'legendary', slot: 'head', style: 'verdant',
+    rollKeys: ['magicFind', 'xpBonus'], base: { magicFind: 7.8, xpBonus: 5.2 },
+    passive: { effect: 'idle-drift', text: 'What grows on it answers questions, though rarely the asked one.' },
+    lore: 'Fungi are the Verdant Realm\'s communication network. The mycelial web beneath the World-Root carries messages between every living thing in the realm, and this crown connects the wearer to that network.',
+  },
+  {
+    id: 'unique-eclipse-hourglass', name: 'Eclipse Hourglass', rarity: 'singular', slot: 'trinket', style: 'neutral',
+    rollKeys: ['magicFind', 'xpBonus', 'lootBonus'], base: { magicFind: 16.8, xpBonus: 12.6, lootBonus: 10.08 },
+    passive: { effect: 'rarity-pull', text: 'The sand runs toward whichever realm is closest to alignment.' },
+    lore: 'Time in Eclipse Realms is not linear — it spirals, and the spiral has a period. This hourglass measures that period: the interval between Eclipses.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-ashen-covenant', name: 'Ashen Covenant', rarity: 'legendary', slot: 'hands', style: 'infernal',
+    rollKeys: ['strikePower', 'ward'], base: { strikePower: 5.72, ward: 2.08 },
+    passive: { effect: 'temper-mercy', text: 'An agreement sealed on this cannot be broken, only outlived.' },
+    lore: 'A covenant in the Infernal Realm is sealed not with signatures but with a handshake in fire. This gauntlet allows such handshakes to occur without consuming the flesh.',
+  },
+  {
+    id: 'unique-aureths-mantle', name: 'Aureth\'s Mantle', rarity: 'singular', slot: 'chest', style: 'luminous',
+    rollKeys: ['ward', 'goldPerSec', 'lootBonus'], base: { ward: 6.72, goldPerSec: 2.52, lootBonus: 10.08 },
+    passive: { effect: 'gold-surge', text: 'It carries a sunrise that has not been overhead for four thousand years.' },
+    lore: 'Aureth the Radiant wore this mantle during every significant event in the Luminous Realm\'s history: the First Dawn, the Shattering, the Reconstruction, and the Forging of the Treaties.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-verrins-requiem', name: 'Verrin\'s Requiem', rarity: 'singular', slot: 'weapon', style: 'umbral',
+    rollKeys: ['strikePower', 'goldPerSec', 'lootBonus'], base: { strikePower: 8.4, goldPerSec: 3.36, lootBonus: 10.08 },
+    passive: { effect: 'strike-double', text: 'What it cuts is not wounded. It is asked whether it was ever there.' },
+    lore: 'Verrin the Hollow forged this blade to answer a question: \'What happens when you cut something with nothing?',
+    soulbound: true,
+  },
+  {
+    id: 'unique-archivists-codex', name: 'The Archivist\'s Codex', rarity: 'singular', slot: 'off-hand', style: 'celestial',
+    rollKeys: ['ward', 'magicFind', 'lootBonus'], base: { ward: 9.24, magicFind: 8.4, lootBonus: 10.08 },
+    passive: { effect: 'xp-echo', text: 'Every page is the page you needed, which is why nobody finishes reading it.' },
+    lore: 'The Archivist\'s Codex is not a book — it is a database in book form. It contains the index to every piece of knowledge in the Celestial Realm, cross-referenced, annotated, and updated in real time.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-kaels-left-hand', name: 'Kael\'s Left Hand', rarity: 'singular', slot: 'hands', style: 'infernal',
+    rollKeys: ['strikePower', 'ward', 'lootBonus'], base: { strikePower: 9.24, ward: 3.36, lootBonus: 10.08 },
+    passive: { effect: 'strike-double', text: 'The hand Kael lost, still working, still stamping runes it was not given.' },
+    lore: 'This is Kael the Broken Flame\'s actual left hand — the original was consumed when he shook hands with the Godforge to seal a covenant.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-nameless-crown', name: 'The Nameless Crown', rarity: 'singular', slot: 'head', style: 'neutral',
+    rollKeys: ['magicFind', 'xpBonus', 'lootBonus'], base: { magicFind: 12.6, xpBonus: 8.4, lootBonus: 10.08 },
+    passive: { effect: 'rarity-pull', text: 'It fits whoever wears it, and afterwards they are difficult to describe.' },
+    lore: 'The Nameless is the figure who exists in all five realms simultaneously — the founder, the builder, the one who split the world and has spent eternity trying to decide if that was the right choice.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-worldsplitter', name: 'Worldsplitter', rarity: 'singular', slot: 'weapon', style: 'neutral',
+    rollKeys: ['strikePower', 'goldPerSec', 'lootBonus'], base: { strikePower: 8.4, goldPerSec: 3.36, lootBonus: 10.08 },
+    passive: { effect: 'strike-double', text: 'The axe that made five realms out of one, and has not been put down since.' },
+    lore: 'The Nameless used Worldsplitter to perform the Eclipse — the act that divided one world into five realms.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-merchants-ledger', name: 'The Merchant\'s Ledger', rarity: 'singular', slot: 'off-hand', style: 'neutral',
+    rollKeys: ['ward', 'magicFind', 'lootBonus'], base: { ward: 9.24, magicFind: 8.4, lootBonus: 10.08 },
+    passive: { effect: 'gold-surge', text: 'Every transaction in the five realms is in here, including the ones not yet made.' },
+    lore: 'The Merchant trades in all five realms and records every transaction in this ledger — not because they must, but because they believe that fair trade is the only true magic.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-rootmothers-embrace', name: 'Rootmother\'s Embrace', rarity: 'singular', slot: 'chest', style: 'verdant',
+    rollKeys: ['ward', 'goldPerSec', 'lootBonus'], base: { ward: 6.72, goldPerSec: 2.52, lootBonus: 10.08 },
+    passive: { effect: 'ward-mirror', text: 'It is alive, it is armour, and it has opinions about which of those comes first.' },
+    lore: 'The Rootmother is the oldest consciousness in the Verdant Realm — not a person but the collective awareness of the World-Root\'s primary root system.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-forges-memory', name: 'The Forge\'s Memory', rarity: 'singular', slot: 'weapon', style: 'neutral',
+    rollKeys: ['strikePower', 'goldPerSec', 'lootBonus'], base: { strikePower: 8.4, goldPerSec: 3.36, lootBonus: 10.08 },
+    passive: { effect: 'reforge-memory', text: 'It remembers every strike ever made with it, and repeats the good ones.' },
+    lore: 'This is the hammer that was shaped on the First Anvil using the Godforge Tongs — the third tool in the Trinity of Creation.',
+    soulbound: true,
+  },
+  {
+    id: 'unique-eclipse-manifest', name: 'Eclipse', rarity: 'singular', charm: true, style: 'neutral',
+    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'], base: { magicFind: 29.4, xpBonus: 25.2, goldPerSec: 8.4 },
+    passive: { effect: 'guaranteed-mf', text: 'Not an object. The Eclipse itself, folded small enough to carry.' },
+    lore: 'The Eclipse was the event that created the five realms — the moment of division, the original wound in reality.',
     soulbound: true,
   },
 ];

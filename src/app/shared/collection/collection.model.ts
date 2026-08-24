@@ -19,16 +19,15 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY SOME ENTRIES ARE NOT COUNTED
  * ─────────────────────────────────────────────────────────────────────────────
- * Twelve authored equipment pieces have names, stats, lore and painted art, and
- * nothing in the current build mints one: `mintEquipment` has exactly one caller
- * (the Basalt Edge craft), and neither the Market, the anvil nor an expedition
- * hands out a Keeper's Cowl. They are real catalogue entries and they belong in
- * the log — but a completion bar that can never reach 100% is a bar that lies,
- * so `obtainable: false` keeps them visible and out of the denominator. When a
- * drop path ships, one flag folds them back into the percentages.
+ * A completion bar that cannot reach 100% is a bar that lies, so an entry
+ * nothing can grant stays visible and out of the denominator. Which entries
+ * those are is decided by `mintable` below rather than by a hand-set flag —
+ * the flag went stale the release the Gambler shipped, and said "no hand in the
+ * Godforge can mint one" about thirteen pieces a mystery box had been handing
+ * out for months.
  *
- * The four Collector rewards are excluded for the opposite reason: you cannot
- * be asked to collect the prize for collecting.
+ * The Collector rewards are excluded for the opposite reason: you cannot be
+ * asked to collect the prize for collecting.
  *
  * Pure data and pure functions. No browser APIs — safe on an SSR path.
  */
@@ -37,7 +36,9 @@ import {
   type GameItem,
   type ItemRarity,
 } from '../rpg/item.model';
-import { ITEM_DEFINITIONS } from '../rpg/item-definition';
+import { ITEM_DEFINITIONS, type ItemDefinition } from '../rpg/item-definition';
+import { ARTBIBLE_RARITY } from '../rpg/artbible-items';
+import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { RUNES, RUNEWORDS, RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import type { NarrativeRealmId } from '../narrative/five-realms.narrative';
 
@@ -223,6 +224,61 @@ const EQUIPMENT_RARITY: Readonly<Record<string, ItemRarity>> = {
   'keeper-signet': 'legendary',
 };
 
+/** Every named object's authored rarity, which is the one it drops at. */
+const UNIQUE_RARITY: Readonly<Record<string, ItemRarity>> =
+  Object.fromEntries(UNIQUE_ITEMS.map(u => [u.id, u.rarity]));
+
+/**
+ * The rarity a definition is catalogued at, from whichever table authored it.
+ *
+ * Three sources, in order of how specific they are: a unique names the one
+ * rarity it exists at, an Art Bible entry publishes the floor of its band, and
+ * the Keeper kit is graded by hand above. `rare` is the fallback and is only
+ * reached by a definition that no table claims, which is a catalogue error.
+ */
+function rarityFor(def: ItemDefinition): ItemRarity {
+  return UNIQUE_RARITY[def.id]
+    ?? (ARTBIBLE_RARITY[def.id] as ItemRarity | undefined)
+    ?? EQUIPMENT_RARITY[def.id]
+    ?? 'rare';
+}
+
+/**
+ * Whether anything in the game can actually hand this definition over.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS IS A PREDICATE AND NOT A FLAG
+ * ─────────────────────────────────────────────────────────────────────────────
+ * It used to be a flag, and the flag said `false` for every authored equipment
+ * piece with the line "no hand in the Godforge can mint one". That was true
+ * when it was written and stopped being true when the Gambler shipped:
+ * `boxPool` in gambler/mystery-box.ts hands out any equipment or charm
+ * definition that rolls, is not soulbound and is not a named object, and
+ * `rollBox` mints it. Thirteen Keeper pieces had been obtainable for releases
+ * while the log went on calling them undrawn.
+ *
+ * The Art Bible adds seventy-seven more definitions through that same pool, so
+ * the stale flag would have gone from a small lie to the majority of the
+ * catalogue. This mirrors `boxPool`'s predicate instead — deliberately mirrored
+ * rather than imported, because collection.model.ts is a leaf that an SSR path
+ * pulls in for a name and the Gambler drags the economy in behind it. The pair
+ * is pinned in collection.model.spec.ts.
+ */
+function mintable(def: ItemDefinition): boolean {
+  // A named object reaches a player down a different path, and a stricter test
+  // than the one that path uses would exclude it wrongly. `rollBox` picks a
+  // unique from `uniquesAtRarity` *before* it consults `boxPool`, and that
+  // branch checks neither `soulbound` nor `rollKeys` — so the twelve soulbound
+  // Singulars are obtainable, from the one box whose window reaches their
+  // rarity. Between them the five boxes in `MYSTERY_BOXES` span common to
+  // singular with no gap, so every authored rarity has a box that pays it.
+  if (UNIQUE_RARITY[def.id]) return true;
+  if (def.family !== 'equipment' && def.family !== 'charm') return false;
+  if (!def.rollKeys.length) return false;
+  if (def.soulbound) return false;
+  return true;
+}
+
 /**
  * The materials the three gathering skills actually grant, with the realm whose
  * site they come from and how deep into that skill's tier ladder they sit.
@@ -348,36 +404,37 @@ function buildCatalogue(): CollectionEntry[] {
       });
       continue;
     }
-    if (def.family === 'equipment') {
+    if (def.family === 'equipment' || def.family === 'charm') {
       const isReward = REWARD_IDS.has(def.id);
       rows.push({
         id: def.id,
-        category: 'equipment',
+        category: def.family === 'charm' ? 'charm' : 'equipment',
         name: def.name,
-        rarity: EQUIPMENT_RARITY[def.id] ?? 'rare',
+        rarity: isReward ? 'mythic' : rarityFor(def),
         realm: realmForStyle(def.style),
         lore: def.lore,
-        hint: isReward
-          ? 'given to whoever fills three quarters of this log'
-          : def.id === 'basalt-edge'
-            ? 'six Cinder Ore and one Ember Residue, struck once at the Seamworks'
-            : 'drawn, named and not yet forged — no hand in the Godforge can mint one',
-        obtainable: def.id === 'basalt-edge' || isReward,
+        hint: hintFor(def, isReward),
+        obtainable: isReward || def.id === 'basalt-edge' || mintable(def),
         reward: isReward || undefined,
       });
       continue;
     }
-    if (def.family === 'charm' && REWARD_IDS.has(def.id)) {
+    if (def.family === 'material' || def.family === 'consumable') {
+      // Only the Art Bible's, because the gathering skills' own materials are
+      // seeded below with the site and the tier ladder they come off — facts an
+      // `ItemDefinition` does not carry.
+      if (!ARTBIBLE_RARITY[def.id]) continue;
       rows.push({
         id: def.id,
-        category: 'charm',
+        category: def.family === 'consumable' ? 'consumable' : 'material',
         name: def.name,
-        rarity: 'mythic',
+        rarity: rarityFor(def),
         realm: realmForStyle(def.style),
         lore: def.lore,
-        hint: 'given to whoever fills half of this log',
+        hint: def.family === 'consumable'
+          ? 'brewed, sealed and traded — the board carries them when someone is selling'
+          : 'carried home from the realm that owns it, by an explorer who went deep enough',
         obtainable: true,
-        reward: true,
       });
     }
   }
@@ -465,6 +522,23 @@ function realmForStyle(style: string): NarrativeRealmId | undefined {
     case 'verdant': return 'verdant';
     default: return undefined;
   }
+}
+
+/** The one line a locked card shows in place of the name. */
+function hintFor(def: ItemDefinition, isReward: boolean): string {
+  if (isReward) {
+    return def.family === 'charm'
+      ? 'given to whoever fills half of this log'
+      : 'given to whoever fills three quarters of this log';
+  }
+  if (def.id === 'basalt-edge') {
+    return 'six Cinder Ore and one Ember Residue, struck once at the Seamworks';
+  }
+  if (UNIQUE_RARITY[def.id]) {
+    return 'one of the named objects — a box that reaches its tier, and then luck';
+  }
+  if (mintable(def)) return 'sealed in a mystery box, at whatever tier the box reaches';
+  return 'drawn, named and not yet forged — no hand in the Godforge can mint one';
 }
 
 function charmHint(weight: number): string {
