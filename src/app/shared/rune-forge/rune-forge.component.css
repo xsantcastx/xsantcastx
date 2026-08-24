@@ -831,3 +831,16 @@
    requires <html> to carry an attribute it never has. The rule then matches
    nothing, with no build warning and no console error. Verified in the
    compiled bundle, not assumed. They are in styles.css instead. */
+
+/* The doorway through to the crafting bench. Quiet — it sits under the tagline
+   and must not compete with the strike button, which is the page's one CTA. */
+.rf-bench { margin: 0.5rem 0 0; font-size: 0.85rem; }
+.rf-bench a {
+  display: inline-flex; align-items: center;
+  min-height: 44px;
+  color: #ffc669;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 198, 105, 0.35);
+}
+.rf-bench a:hover,
+.rf-bench a:focus-visible { border-bottom-color: #ffc669; }
