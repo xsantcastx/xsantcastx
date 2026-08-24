@@ -364,14 +364,16 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
     const cat = collectionCategory(d.entry.category);
     return {
       kind: 'discovery',
-      eyebrow: 'New discovery',
+      // A recipe is not a thing you found, it is a thing you now know how to
+      // make, and the card reads wrong announcing it as a discovery.
+      eyebrow: d.entry.category === 'recipe' ? 'New recipe discovered' : 'New discovery',
       name: d.entry.name,
       line: d.entry.lore,
       foot: `${tier.label} ${cat.label.replace(/s$/, '')} · ${d.completion.found}/${d.completion.total} collected`,
       glyph: cat.icon,
       color: tier.color,
       glow: tier.glow,
-      art: artFor(d.entry.id),
+      art: artFor(d.entry.artId ?? d.entry.id),
       percent: d.completion.percent,
     };
   }

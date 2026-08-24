@@ -412,6 +412,138 @@ export class InventoryService {
   }
 
   /**
+   * The general craft: consume several material stacks, mint several items.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS IS NOT `craftBasaltEdge` GENERALISED IN PLACE
+   * ───────────────────────────────────────────────────────────────────────────
+   * The first craft above is a progression beat: one fixed recipe, one fixed
+   * mint, and a caller that also has to flip an activity flag. This is a bench
+   * that has to run fifty of them, and the two differ in exactly the places
+   * that matter — an arbitrary number of inputs, an arbitrary number of
+   * outputs, and a mint the caller supplies because only the caller knows the
+   * roll grade a mastered recipe is owed. Rewriting the tutorial to be a
+   * special case of the bench would have put the C9 spec's guarantees behind a
+   * generic path on the day the bench shipped.
+   *
+   * What the two DO share is the invariant, and it is the one worth stating:
+   * **consume and mint are one ledger write.** Every stack op and every minted
+   * record is staged in memory, the stack totals are re-read to prove nothing
+   * went negative, and only then is `save()` called. A failed persist restores
+   * the previous ledger wholesale, so there is no state where the materials are
+   * gone and the item never arrived.
+   *
+   * Idempotent on `mutationId`: every op id and every minted item id is derived
+   * from it, so a retry after a persist failure — or a double-click that beat
+   * change detection — returns the stored items rather than crafting twice.
+   *
+   * Gold is NOT touched here. The bag does not own the till; see
+   * `CraftingGateway`, which is the only caller and settles both.
+   */
+  craftRecipe(
+    mutationId: string,
+    inputs: readonly { id: string; count: number }[],
+    mint: (itemId: string, index: number, foundAt: string) => GameItem | null,
+    outputCount = 1,
+    now = Date.now(),
+  ):
+    | { ok: true; items: GameItem[]; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'capacity' | 'persist' | 'mint' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!mutationId || !Number.isFinite(now)) return { ok: false, code: 'clock' };
+    if (!inputs.length || outputCount < 1) return { ok: false, code: 'clock' };
+
+    const itemIds = Array.from({ length: outputCount }, (_, i) => craftedItemId(mutationId, i));
+    const stored = itemIds.map(id => this.itemById(id)).filter((row): row is GameItem => !!row);
+    if (stored.length === outputCount) return { ok: true, items: stored, replayed: true };
+    // A partial replay is not a state this can produce — the mint is one write —
+    // so it is a corrupt or hand-edited ledger. Refusing is the honest answer;
+    // crafting the remainder would consume a second set of materials for it.
+    if (stored.length) return { ok: false, code: 'persist' };
+
+    for (const input of inputs) {
+      if (this.stackOf(input.id) < input.count) return { ok: false, code: 'missing' };
+    }
+    const free = MAX_INVENTORY - this.ledger.records.filter(row => row.source === 'inventory').length;
+    if (free < outputCount) return { ok: false, code: 'capacity' };
+
+    const previous = this.ledger;
+    const foundAt = new Date(now).toISOString();
+    const minted: GameItem[] = [];
+    for (let i = 0; i < outputCount; i++) {
+      const item = mint(itemIds[i], i, foundAt);
+      if (!item) return { ok: false, code: 'mint' };
+      minted.push(item);
+    }
+
+    let stackOps = this.ledger.stackOps;
+    for (const input of inputs) {
+      const stepped = this.advanceRevision();
+      stackOps = applyStackOp(stackOps, {
+        id: `${mutationId}:in:${input.id}`,
+        stackKey: input.id,
+        kind: 'consume',
+        quantity: input.count,
+        hlc: stepped.revision.hlc,
+        deviceId: stepped.revision.deviceId,
+        sequence: stepped.revision.sequence,
+      });
+    }
+    this.ledger = { ...this.ledger, stackOps };
+    for (const item of minted) {
+      this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(item)));
+    }
+    // Re-read rather than trust the pre-flight: two ingredients that resolve to
+    // the same stack key, or an op the ledger already carried, would both pass
+    // the loop above and still overdraw.
+    for (const input of inputs) {
+      if (this.stackOf(input.id) < 0) {
+        this.ledger = previous;
+        return { ok: false, code: 'missing' };
+      }
+    }
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    for (const item of minted) this.acquired$$.next(item);
+    return { ok: true, items: minted, replayed: false };
+  }
+
+  /**
+   * The items a settled craft minted, or null if this mutation never landed.
+   *
+   * Exists so a caller can answer "has this already happened?" *before* it runs
+   * its own pre-flight. Without it the replay path is unreachable: the second
+   * call sees the materials the first call consumed, decides the bag is short,
+   * and refuses the craft it is holding in its hand.
+   *
+   * Null on a partial — a craft mints all its outputs in one write, so half of
+   * them is a corrupt ledger and not a replay. `craftRecipe` refuses that case
+   * outright rather than topping it up.
+   */
+  craftedFor(mutationId: string, outputCount = 1): GameItem[] | null {
+    if (!mutationId || outputCount < 1) return null;
+    const items: GameItem[] = [];
+    for (let i = 0; i < outputCount; i++) {
+      const item = this.itemById(craftedItemId(mutationId, i));
+      if (!item) return null;
+      items.push(item);
+    }
+    return items;
+  }
+
+  /** What a recipe is still short of, for the bench's ingredient slots. */
+  missingInputs(
+    inputs: readonly { id: string; count: number }[],
+  ): { id: string; need: number; have: number }[] {
+    return inputs
+      .map(input => ({ id: input.id, need: input.count, have: this.stackOf(input.id) }))
+      .filter(row => row.have < row.need);
+  }
+
+  /**
    * C1 Refining: three of one ore tier become one of the next (see
    * refine-ops.ts for the ladder). Same mutation id returns the stored result
    * without applying twice. Consume + grant are ONE ledger write; a failed
@@ -1284,4 +1416,15 @@ export class InventoryService {
       return 'unknown';
     }
   }
+}
+
+/**
+ * The instance id one craft mints under.
+ *
+ * Derived from the mutation id rather than random, because that is what makes
+ * `craftRecipe` idempotent: a retry recomputes the same ids, finds them in the
+ * ledger and returns them instead of consuming a second set of materials.
+ */
+export function craftedItemId(mutationId: string, index: number): string {
+  return `${mutationId}:craft:${index}`;
 }

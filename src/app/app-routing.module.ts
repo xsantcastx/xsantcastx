@@ -304,6 +304,32 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      path: 'forge/crafting',
+      loadComponent: () => import('./shared/crafting/crafting-bench.component').then(m => m.CraftingBenchComponent),
+      title: 'The Bench — Crafting | Eclipse Realms',
+      data: {
+        description: 'Fifty-two recipes at the Godforge bench. Mine, forage and prospect the five realms for materials, then strike them into weapons, armor, charms and elixirs with rolled stats. Craft one recipe ten times to master it and every roll after is ten percent better.',
+        keywords: 'crafting, recipes, bench, anvil, materials, forge, weapons, armor, charms, consumables, eclipse realms, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/forge/crafting`,
+          url: `${SITE_URL}/forge/crafting`,
+          name: 'The Bench',
+          description: 'Turn gathered materials into equipment, charms and consumables at the Godforge bench. Crafting levels, recipe mastery and rolled stats.',
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+              { '@type': 'ListItem', position: 2, name: 'The Forge', item: `${SITE_URL}/forge/runes` },
+              { '@type': 'ListItem', position: 3, name: 'The Bench', item: `${SITE_URL}/forge/crafting` }
+            ]
+          }
+        }
+      }
+    },
+  {
       path: 'character',
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
       title: 'Your Character — Eclipse Realms',
