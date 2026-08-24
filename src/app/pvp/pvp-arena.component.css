@@ -1,0 +1,705 @@
+/**
+ * pvp-arena.component.css — sand, chain, and five colours of ring light.
+ *
+ * Follows the site's surface formula: a deep-indigo base at ~55-92% alpha, a
+ * hairline light border, and a tier-coloured halo that only appears once the
+ * ring is open. `backdrop-filter` is deliberately absent — the site turns it
+ * off below 768px for compositor cost, and a panel that only frosts on desktop
+ * is a panel that looks broken on a phone.
+ *
+ * Two custom properties carry the theme down each gate card: `--tier` (the
+ * ring's colour) and `--glow` (its halo). Everything tier-coloured reads them,
+ * so a sixth ring is one entry in ARENA_TIERS and nothing here.
+ *
+ * Every animation over a second has a `prefers-reduced-motion` fallback that
+ * lands on the static end state rather than removing the feedback — see the
+ * block at the foot of the file.
+ */
+
+.ar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: clamp(5rem, 9vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(4rem, 8vw, 6rem);
+  color: #e8e6f5;
+}
+
+.ar-sr {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.ar-h2 {
+  margin: 0 0 0.9rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  letter-spacing: 0.06em;
+  color: #f2f0ff;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.ar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(ellipse 60% 80% at 12% 0%, rgba(255, 109, 215, 0.06), transparent 65%),
+    radial-gradient(ellipse 55% 70% at 90% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
+    rgba(10, 6, 26, 0.55);
+}
+
+.ar-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 109, 215, 0.85);
+}
+
+.ar-eyebrow__pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff6dd7;
+  box-shadow: 0 0 10px rgba(255, 90, 210, 0.9);
+  animation: arEyebrowPulse 3s ease-in-out infinite;
+}
+
+@keyframes arEyebrowPulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+.ar-title {
+  margin: 0 0 0.35rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.8rem, 5vw, 2.9rem);
+  line-height: 1.1;
+  background: linear-gradient(100deg, #ff6dd7 0%, #a48bff 50%, #4dffe0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ar-tagline {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.94rem;
+  color: rgba(232, 230, 245, 0.7);
+}
+
+.ar-record {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.6rem;
+  margin: 0;
+}
+
+.ar-record dt {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.ar-record dd {
+  margin: 0.15rem 0 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.3rem;
+  color: #f2f0ff;
+}
+
+.ar-record__points { color: #ff6dd7; text-shadow: 0 0 14px rgba(255, 90, 210, 0.45); }
+.ar-record__sep { opacity: 0.35; padding: 0 0.15rem; }
+.ar-record__best { font-size: 0.85rem; opacity: 0.5; }
+.ar-record__rank { font-size: 0.95rem; color: #a48bff; }
+
+/* ── Loadout ──────────────────────────────────────────────────────────────── */
+
+.ar-loadout {
+  padding: 1.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.55);
+}
+
+.ar-loadout__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.ar-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 4, 18, 0.6);
+}
+
+.ar-stat--might { border-color: rgba(255, 90, 210, 0.28); box-shadow: 0 0 24px -12px rgba(255, 90, 210, 0.8); }
+.ar-stat--guard { border-color: rgba(80, 180, 255, 0.28); box-shadow: 0 0 24px -12px rgba(80, 180, 255, 0.8); }
+
+.ar-stat__num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.1rem;
+  line-height: 1;
+}
+.ar-stat--might .ar-stat__num { color: #ff6dd7; }
+.ar-stat--guard .ar-stat__num { color: #5fb6ff; }
+
+.ar-stat__cap {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.6);
+}
+
+.ar-stat__note { font-size: 0.78rem; color: rgba(232, 230, 245, 0.45); }
+
+.ar-loadout__from {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0;
+  padding: 1rem;
+  list-style: none;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(6, 4, 18, 0.4);
+}
+
+.ar-loadout__from li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: rgba(232, 230, 245, 0.6);
+}
+.ar-loadout__from b { color: #f2f0ff; font-weight: 600; }
+
+.ar-loadout__hint {
+  margin: 0.9rem 0 0;
+  font-size: 0.83rem;
+  color: rgba(232, 230, 245, 0.5);
+}
+/* A standalone control, not a link inside a sentence — so it clears 44px like
+   every other one on the site rather than sitting at its 17px text height. */
+.ar-loadout__hint a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 204, 0.28);
+  background: rgba(0, 255, 204, 0.05);
+  color: #4dffe0;
+  text-decoration: none;
+}
+.ar-loadout__hint a:hover { color: #eafff9; box-shadow: 0 0 20px -8px rgba(0, 255, 204, 0.8); }
+
+/* ── Lock ─────────────────────────────────────────────────────────────────── */
+
+.ar-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 198, 105, 0.22);
+  background: rgba(255, 198, 105, 0.06);
+  font-size: 0.85rem;
+  color: rgba(255, 198, 105, 0.9);
+}
+
+.ar-lock--ready {
+  border-color: rgba(0, 255, 204, 0.22);
+  background: rgba(0, 255, 204, 0.05);
+  color: rgba(77, 255, 224, 0.9);
+}
+
+.ar-lock__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.ar-message {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 6, 26, 0.6);
+  font-size: 0.88rem;
+  color: rgba(232, 230, 245, 0.85);
+}
+
+/* ── Rings ────────────────────────────────────────────────────────────────── */
+
+.ar-ring-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ar-ring {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.25rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, color-mix(in srgb, var(--tier) 9%, transparent), transparent 70%),
+    rgba(10, 6, 26, 0.62);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ar-ring:hover { border-color: var(--glow); box-shadow: 0 0 28px -8px var(--glow); }
+
+.ar-ring--locked { opacity: 0.55; }
+.ar-ring--locked:hover { border-color: rgba(255, 255, 255, 0.07); box-shadow: none; }
+
+.ar-ring__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ar-ring__name {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--tier);
+  text-shadow: 0 0 16px var(--glow);
+}
+
+.ar-ring__wins {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.ar-ring__flavour {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(232, 230, 245, 0.62);
+}
+
+.ar-ring__payout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.7rem;
+  border-radius: 12px;
+  background: rgba(6, 4, 18, 0.5);
+}
+
+.ar-ring__payout dt {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.45);
+}
+
+.ar-ring__payout dd {
+  margin: 0.1rem 0 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  color: #f2f0ff;
+}
+
+.ar-ring__odds {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.ar-ring__odds-label {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.ar-ring__odds-label[data-odds="certain"]    { color: #7fd5a3; }
+.ar-ring__odds-label[data-odds="favoured"]   { color: #4dffe0; }
+.ar-ring__odds-label[data-odds="even"]       { color: #ffc669; }
+.ar-ring__odds-label[data-odds="unlikely"]   { color: #ff9a5a; }
+.ar-ring__odds-label[data-odds="outmatched"] { color: #ff6dd7; }
+
+.ar-ring__odds-num { font-family: 'Orbitron', sans-serif; color: #f2f0ff; }
+.ar-ring__odds-note { flex: 1 1 100%; font-size: 0.72rem; color: rgba(232, 230, 245, 0.4); }
+
+.ar-ring__locked {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 198, 105, 0.75);
+}
+
+.ar-ring__roster { font-size: 0.8rem; }
+.ar-ring__roster summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: rgba(232, 230, 245, 0.55);
+}
+.ar-ring__roster ul { margin: 0.3rem 0 0; padding: 0; list-style: none; }
+.ar-ring__roster li { display: block; }
+
+/* Each challenger is its own bout button — see the note on GateCard.odds for
+   why picking a name matters more than the ring's average. */
+.ar-ring__npc {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(232, 230, 245, 0.72);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.ar-ring__npc:hover:not(:disabled) {
+  border-color: var(--glow);
+  background: color-mix(in srgb, var(--tier) 8%, transparent);
+}
+.ar-ring__npc:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ar-ring__npc-stats { font-family: 'Orbitron', sans-serif; font-size: 0.72rem; color: var(--tier); opacity: 0.8; }
+
+.ar-ring__npc-odds {
+  min-width: 6.2rem;
+  text-align: right;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ar-ring__npc-odds[data-odds="certain"]    { color: #7fd5a3; }
+.ar-ring__npc-odds[data-odds="favoured"]   { color: #4dffe0; }
+.ar-ring__npc-odds[data-odds="even"]       { color: #ffc669; }
+.ar-ring__npc-odds[data-odds="unlikely"]   { color: #ff9a5a; }
+.ar-ring__npc-odds[data-odds="outmatched"] { color: #ff6dd7; }
+
+.ar-ring__enter {
+  margin-top: auto;
+  min-height: 46px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--glow);
+  background: color-mix(in srgb, var(--tier) 12%, rgba(6, 4, 18, 0.8));
+  color: #f6f4ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ar-ring__enter:hover:not(:disabled) { box-shadow: 0 0 26px -6px var(--glow); }
+.ar-ring__enter:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Shop ─────────────────────────────────────────────────────────────────── */
+
+.ar-shop {
+  padding: 1.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 6, 26, 0.55);
+}
+
+.ar-shop__blurb { margin: -0.5rem 0 1rem; font-size: 0.85rem; color: rgba(232, 230, 245, 0.55); }
+
+.ar-shop__list { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
+
+.ar-shop__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(6, 4, 18, 0.5);
+}
+
+.ar-shop__row--owned { opacity: 0.6; border-color: rgba(0, 255, 204, 0.2); }
+.ar-shop__row--locked { opacity: 0.5; }
+
+.ar-shop__copy { flex: 1 1 260px; }
+.ar-shop__copy h3 { margin: 0 0 0.25rem; font-size: 0.98rem; color: #f2f0ff; }
+.ar-shop__copy p { margin: 0; font-size: 0.83rem; line-height: 1.5; color: rgba(232, 230, 245, 0.6); }
+.ar-shop__gate { margin-top: 0.35rem !important; color: rgba(255, 198, 105, 0.7) !important; font-size: 0.76rem !important; }
+
+.ar-shop__buy { display: flex; align-items: center; gap: 0.9rem; }
+
+.ar-shop__cost {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.05rem;
+  color: #ff6dd7;
+}
+.ar-shop__cost small { font-size: 0.62rem; letter-spacing: 0.12em; opacity: 0.7; }
+
+.ar-shop__buy button {
+  min-height: 44px;
+  min-width: 92px;
+  padding: 0.6rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 90, 210, 0.4);
+  background: rgba(255, 90, 210, 0.1);
+  color: #f6f4ff;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ar-shop__buy button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Fight screen ─────────────────────────────────────────────────────────── */
+
+.ar-fight {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255, 90, 210, 0.1), transparent 65%),
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(123, 97, 255, 0.12), transparent 65%),
+    rgba(3, 2, 10, 0.9);
+  animation: arFightIn 0.28s ease-out both;
+}
+
+@keyframes arFightIn { from { opacity: 0; } to { opacity: 1; } }
+
+.ar-fight__sheet {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: 90dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 6, 26, 0.94);
+  box-shadow: 0 0 60px -20px rgba(255, 90, 210, 0.7);
+}
+
+.ar-fight--won .ar-fight__sheet { box-shadow: 0 0 70px -18px rgba(0, 255, 204, 0.7); }
+
+.ar-fight__close {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  background: transparent;
+  color: rgba(232, 230, 245, 0.6);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.ar-fight__close:hover { color: #fff; }
+
+.ar-versus {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.ar-versus__side { display: flex; flex-direction: column; gap: 0.15rem; }
+.ar-versus__side--foe { text-align: right; }
+
+.ar-versus__who {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.6);
+}
+
+.ar-versus__might {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  line-height: 1;
+  color: #4dffe0;
+}
+.ar-versus__side--foe .ar-versus__might { color: #ff6dd7; }
+
+.ar-versus__guard { font-size: 0.74rem; color: rgba(232, 230, 245, 0.45); }
+
+.ar-versus__vs {
+  font-size: 1.4rem;
+  color: #a48bff;
+  animation: arVsSpin 6s linear infinite;
+}
+
+@keyframes arVsSpin { to { transform: rotate(360deg); } }
+
+.ar-taunt {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(232, 230, 245, 0.6);
+  border-left: 2px solid rgba(255, 90, 210, 0.35);
+  padding-left: 0.8rem;
+}
+
+.ar-rounds { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+
+.ar-round {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(6, 4, 18, 0.55);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+.ar-round--shown { opacity: 1; transform: none; }
+.ar-round--shown.ar-round--won { border-color: rgba(0, 255, 204, 0.3); }
+.ar-round--shown:not(.ar-round--won) { border-color: rgba(255, 90, 210, 0.25); }
+
+.ar-round__n { font-size: 0.7rem; color: rgba(232, 230, 245, 0.4); }
+.ar-round__you { font-family: 'Orbitron', sans-serif; color: #4dffe0; }
+.ar-round__foe { font-family: 'Orbitron', sans-serif; color: #ff6dd7; text-align: right; }
+.ar-round__bar { width: 28px; height: 1px; background: rgba(255, 255, 255, 0.18); }
+.ar-round__verdict {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.45);
+}
+
+.ar-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  animation: arVerdictIn 0.4s ease-out both;
+}
+
+@keyframes arVerdictIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ar-verdict__head {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.2rem, 4vw, 1.6rem);
+  color: #ff6dd7;
+}
+.ar-fight--won .ar-verdict__head { color: #4dffe0; }
+.ar-verdict__score { font-size: 0.9rem; color: rgba(232, 230, 245, 0.5); }
+
+.ar-verdict__rewards { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.ar-verdict__rewards li {
+  display: flex; justify-content: space-between; gap: 1rem;
+  font-size: 0.88rem;
+  color: rgba(232, 230, 245, 0.6);
+}
+.ar-verdict__rewards b { font-family: 'Orbitron', sans-serif; color: #4dffe0; }
+
+.ar-verdict__streak,
+.ar-verdict__consolation { margin: 0; font-size: 0.83rem; color: rgba(255, 198, 105, 0.8); }
+
+.ar-verdict__unlock {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(164, 139, 255, 0.35);
+  background: rgba(164, 139, 255, 0.08);
+  font-size: 0.87rem;
+  color: #c8b8ff;
+}
+
+.ar-verdict__done {
+  align-self: flex-start;
+  min-height: 46px;
+  padding: 0.7rem 1.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 204, 0.35);
+  background: rgba(0, 255, 204, 0.08);
+  color: #eafff9;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .ar-record { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; }
+  .ar-ring__npc { grid-template-columns: 1fr auto; row-gap: 0.15rem; }
+  .ar-ring__npc-odds { grid-column: 1 / -1; text-align: left; min-width: 0; }
+  .ar-shop__row { flex-direction: column; align-items: stretch; }
+  .ar-shop__buy { justify-content: space-between; }
+  .ar-round { grid-template-columns: 1.2rem 1fr auto 1fr; }
+  .ar-round__verdict { grid-column: 1 / -1; text-align: right; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Static end states, never "no feedback" — the site's hard rule. The reveal
+     itself already collapses to a single tick in the component; these hold the
+     rounds visible so nothing is left mid-transition. */
+  .ar-eyebrow__pulse,
+  .ar-versus__vs { animation: none; }
+  .ar-fight,
+  .ar-verdict { animation: none; }
+  .ar-round { transition: none; opacity: 1; transform: none; }
+}

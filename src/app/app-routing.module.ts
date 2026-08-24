@@ -169,6 +169,54 @@ export const APP_ROUTES: Routes = [
    */
   ...ARENA_GAME_ROUTES,
 
+  /*
+   * The Coliseum. `/world/arena` rather than `/arena`, which is a legacy alias
+   * pointing at the Trials — the mini-game gates that have carried the "arena"
+   * glyph since long before there was anything to fight. Two rooms, two routes,
+   * and the redirect table stays untouched.
+   */
+  {
+      path: 'world/arena',
+      loadComponent: () => import('./pvp/pvp-arena.component').then(m => m.PvpArenaComponent),
+      title: 'The Coliseum — Eclipse Realms',
+      data: {
+        description: 'Five rings, twenty-five challengers, and a fight settled on the kit you are standing in. Win Gold, XP and arena points; lose nothing but five minutes.',
+        keywords: 'arena, coliseum, pvp, combat, eclipse realms, arena points, godforge, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/world/arena`,
+          url: `${SITE_URL}/world/arena`,
+          name: 'The Coliseum — Eclipse Realms',
+          description: 'Five rings of stat-based combat. Might and Guard are read off the kit you wear.',
+          breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+            { '@type': 'ListItem', position: 2, name: 'Coliseum', item: `${SITE_URL}/world/arena` }
+          ]}
+        }
+      }
+    },
+
+  {
+      path: 'leaderboards',
+      loadComponent: () => import('./leaderboards/leaderboards.component').then(m => m.LeaderboardsComponent),
+      title: 'The Standings — Eclipse Realms',
+      data: {
+        description: 'Seven ladders — Ascent, Hoard, Archivum, Coliseum, Craftsmanship, Wayfaring and the Bench — with your own place on each one marked in gold.',
+        keywords: 'leaderboards, standings, ranking, xp, gold, collection, arena wins, eclipse realms, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/leaderboards`,
+          url: `${SITE_URL}/leaderboards`,
+          name: 'The Standings — Eclipse Realms',
+          description: 'Seven ladders across XP, Gold, collection, arena wins, item quality, expeditions and crafting.'
+        }
+      }
+    },
+
   {
       path: 'codex',
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
