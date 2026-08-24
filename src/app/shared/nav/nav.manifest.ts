@@ -114,6 +114,27 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     group: 'more',
   },
   {
+    // The Coliseum sits beside the Trials rather than inside them: they share a
+    // glyph and a word, and nothing else. The Trials are five mini-games behind
+    // easter-egg gates; this is the combat hall the equipment stats were always
+    // documented as feeding. Listed in `more` because a player arrives at it
+    // after they have kit worth fighting in, not before.
+    id: 'coliseum',
+    route: '/world/arena',
+    labelKey: 'gfnav.coliseum',
+    hintKey: 'gfnav.hint.coliseum',
+    glyph: 'arena',
+    group: 'more',
+  },
+  {
+    id: 'leaderboards',
+    route: '/leaderboards',
+    labelKey: 'gfnav.leaderboards',
+    hintKey: 'gfnav.hint.leaderboards',
+    glyph: 'codex',
+    group: 'more',
+  },
+  {
     id: 'sanctum',
     route: '/sanctum',
     labelKey: 'gfnav.sanctum',

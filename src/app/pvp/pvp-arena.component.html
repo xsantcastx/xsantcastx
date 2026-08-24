@@ -1,0 +1,229 @@
+<section class="ar" aria-labelledby="ar-title">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header class="ar-head">
+    <div class="ar-head__copy">
+      <p class="ar-eyebrow"><span class="ar-eyebrow__pulse" aria-hidden="true"></span>{{ t('arena.eyebrow') }}</p>
+      <h1 class="ar-title" id="ar-title">{{ t('arena.title') }}</h1>
+      <p class="ar-tagline">{{ t('arena.tagline') }}</p>
+    </div>
+
+    <dl class="ar-record">
+      <div>
+        <dt>{{ t('arena.stat.points') }}</dt>
+        <dd class="ar-record__points">{{ record.points | number }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('arena.stat.record') }}</dt>
+        <dd>{{ record.wins | number }}<span class="ar-record__sep">–</span>{{ record.losses | number }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('arena.stat.streak') }}</dt>
+        <dd>{{ record.streak }}<span class="ar-record__best" *ngIf="record.bestStreak > record.streak"> / {{ record.bestStreak }}</span></dd>
+      </div>
+      <div>
+        <dt>{{ t('arena.stat.rank') }}</dt>
+        <dd class="ar-record__rank">{{ record.rank.title }}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- ── Your two numbers ──────────────────────────────────────────────── -->
+  <section class="ar-loadout" aria-labelledby="ar-loadout-title">
+    <h2 class="ar-h2" id="ar-loadout-title">{{ t('arena.loadout.title') }}</h2>
+    <div class="ar-loadout__grid">
+      <div class="ar-stat ar-stat--might">
+        <span class="ar-stat__num">{{ might | number }}</span>
+        <span class="ar-stat__cap">{{ t('arena.loadout.might') }}</span>
+        <span class="ar-stat__note">{{ t('arena.loadout.mightNote') }}</span>
+      </div>
+      <div class="ar-stat ar-stat--guard">
+        <span class="ar-stat__num">{{ guard | number }}</span>
+        <span class="ar-stat__cap">{{ t('arena.loadout.guard') }}</span>
+        <span class="ar-stat__note">{{ t('arena.loadout.guardNote') }}</span>
+      </div>
+      <ul class="ar-loadout__from">
+        <li><span>{{ t('arena.loadout.rank') }}</span><b>{{ loadout.rank }}</b></li>
+        <li><span>{{ t('arena.loadout.strike') }}</span><b>{{ loadout.strike | number:'1.0-1' }}</b></li>
+        <li><span>{{ t('arena.loadout.ward') }}</span><b>{{ loadout.ward | number:'1.0-1' }}</b></li>
+        <li><span>{{ t('arena.loadout.forge') }}</span><b>{{ loadout.forgePower }}</b></li>
+      </ul>
+    </div>
+    <p class="ar-loadout__hint">
+      {{ t('arena.loadout.hint') }}
+      <a routerLink="/character">{{ t('arena.loadout.link') }}</a>
+    </p>
+  </section>
+
+  <!-- ── The lock ──────────────────────────────────────────────────────── -->
+  <p class="ar-lock" [class.ar-lock--ready]="ready">
+    <span class="ar-lock__dot" aria-hidden="true"></span>
+    <ng-container *ngIf="ready">{{ t('arena.lock.ready') }}</ng-container>
+    <ng-container *ngIf="!ready">{{ t('arena.lock.waiting') }} <b>{{ cooldownLabel }}</b></ng-container>
+  </p>
+
+  <p class="ar-message" *ngIf="message">{{ message }}</p>
+
+  <!-- ── The five rings ────────────────────────────────────────────────── -->
+  <section class="ar-rings" aria-labelledby="ar-rings-title">
+    <h2 class="ar-h2" id="ar-rings-title">{{ t('arena.rings.title') }}</h2>
+
+    <ul class="ar-ring-list">
+      <li class="ar-ring"
+          *ngFor="let gate of gates; trackBy: trackTier"
+          [class.ar-ring--locked]="!gate.unlocked"
+          [style.--tier]="gate.tier.color"
+          [style.--glow]="gate.tier.glow">
+
+        <header class="ar-ring__head">
+          <h3 class="ar-ring__name">{{ gate.tier.name }}</h3>
+          <span class="ar-ring__wins" *ngIf="gate.wins > 0">{{ gate.wins }} {{ t('arena.rings.won') }}</span>
+        </header>
+
+        <p class="ar-ring__flavour">{{ gate.tier.flavour }}</p>
+
+        <dl class="ar-ring__payout">
+          <div><dt>{{ t('arena.rings.gold') }}</dt><dd>{{ gate.tier.gold | number }}</dd></div>
+          <div><dt>{{ t('arena.rings.xp') }}</dt><dd>{{ gate.tier.xp | number }}</dd></div>
+          <div><dt>{{ t('arena.rings.points') }}</dt><dd>{{ gate.tier.points }}</dd></div>
+        </dl>
+
+        <p class="ar-ring__odds" *ngIf="gate.unlocked">
+          <span class="ar-ring__odds-label" [attr.data-odds]="gate.oddsLabel">{{ oddsCopy(gate.oddsLabel) }}</span>
+          <span class="ar-ring__odds-num">{{ oddsPercent(gate.odds) }}%</span>
+          <span class="ar-ring__odds-note">{{ t('arena.rings.oddsNote') }}</span>
+        </p>
+
+        <p class="ar-ring__locked" *ngIf="!gate.unlocked">
+          {{ t('arena.rings.locked') }} <b>{{ gate.toUnlock }}</b> {{ t('arena.rings.lockedTail') }}
+        </p>
+
+        <details class="ar-ring__roster">
+          <summary>{{ t('arena.rings.roster') }}</summary>
+          <ul>
+            <li *ngFor="let row of gate.roster; trackBy: trackName">
+              <button type="button"
+                      class="ar-ring__npc"
+                      [disabled]="!gate.unlocked || !ready || fighting"
+                      (click)="enter(gate, row.npc)"
+                      [attr.aria-label]="t('arena.rings.challenge') + ' ' + row.npc.name">
+                <b>{{ row.npc.name }}</b>
+                <span class="ar-ring__npc-stats">{{ row.npc.might }} / {{ row.npc.guard }}</span>
+                <span class="ar-ring__npc-odds" [attr.data-odds]="row.oddsLabel">{{ oddsCopy(row.oddsLabel) }}</span>
+              </button>
+            </li>
+          </ul>
+        </details>
+
+        <button type="button"
+                class="ar-ring__enter"
+                [disabled]="!gate.unlocked || !ready || fighting"
+                (click)="enter(gate)">
+          <ng-container *ngIf="gate.unlocked && ready">{{ t('arena.rings.enter') }}</ng-container>
+          <ng-container *ngIf="gate.unlocked && !ready">{{ cooldownLabel }}</ng-container>
+          <ng-container *ngIf="!gate.unlocked">{{ t('arena.rings.chained') }}</ng-container>
+        </button>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ── The quartermaster ─────────────────────────────────────────────── -->
+  <section class="ar-shop" aria-labelledby="ar-shop-title">
+    <h2 class="ar-h2" id="ar-shop-title">{{ t('arena.shop.title') }}</h2>
+    <p class="ar-shop__blurb">{{ t('arena.shop.blurb') }}</p>
+
+    <ul class="ar-shop__list">
+      <li class="ar-shop__row"
+          *ngFor="let row of shopRows; trackBy: trackStock"
+          [class.ar-shop__row--owned]="row.owned"
+          [class.ar-shop__row--locked]="row.blocker === 'wins'">
+        <div class="ar-shop__copy">
+          <h3>{{ row.stock.name }}</h3>
+          <p>{{ row.stock.description }}</p>
+          <p class="ar-shop__gate" *ngIf="row.stock.requiredWins > 0">
+            {{ t('arena.shop.needs') }} {{ row.stock.requiredWins }} {{ t('arena.shop.wins') }}
+          </p>
+        </div>
+        <div class="ar-shop__buy">
+          <span class="ar-shop__cost">{{ row.stock.cost }} <small>{{ t('arena.shop.pts') }}</small></span>
+          <button type="button"
+                  [disabled]="!!row.blocker"
+                  (click)="buy(row)">
+            <ng-container *ngIf="row.owned">{{ t('arena.shop.owned') }}</ng-container>
+            <ng-container *ngIf="!row.owned">{{ t('arena.shop.buy') }}</ng-container>
+          </button>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ── Live region ───────────────────────────────────────────────────── -->
+  <p class="ar-sr" aria-live="polite" role="status">{{ announcement }}</p>
+
+  <!-- ── The fight screen ──────────────────────────────────────────────── -->
+  <div class="ar-fight" *ngIf="stage !== 'idle' && bout as result" [class.ar-fight--won]="result.won">
+    <div class="ar-fight__sheet" role="group" [attr.aria-label]="t('arena.fight.label')">
+
+      <button type="button" class="ar-fight__close" (click)="closeFight()" [attr.aria-label]="t('arena.fight.close')">×</button>
+
+      <!-- Stat comparison -->
+      <div class="ar-versus">
+        <div class="ar-versus__side">
+          <span class="ar-versus__who">{{ t('arena.fight.you') }}</span>
+          <span class="ar-versus__might">{{ result.playerMight | number }}</span>
+          <span class="ar-versus__guard">{{ t('arena.fight.guard') }} {{ result.playerGuard | number }}</span>
+        </div>
+        <span class="ar-versus__vs" aria-hidden="true">✦</span>
+        <div class="ar-versus__side ar-versus__side--foe">
+          <span class="ar-versus__who">{{ opponent?.name }}</span>
+          <span class="ar-versus__might">{{ result.opponentMight | number }}</span>
+          <span class="ar-versus__guard">{{ t('arena.fight.guard') }} {{ result.opponentGuard | number }}</span>
+        </div>
+      </div>
+
+      <p class="ar-taunt" *ngIf="opponent">“{{ opponent.taunt }}”</p>
+
+      <!-- Round-by-round -->
+      <ol class="ar-rounds">
+        <li class="ar-round"
+            *ngFor="let round of result.rounds; trackBy: trackRound"
+            [class.ar-round--shown]="revealed > round.index"
+            [class.ar-round--won]="round.playerWon">
+          <span class="ar-round__n">{{ round.index + 1 }}</span>
+          <span class="ar-round__you">{{ round.playerHit | number }}</span>
+          <span class="ar-round__bar" aria-hidden="true"></span>
+          <span class="ar-round__foe">{{ round.opponentHit | number }}</span>
+          <span class="ar-round__verdict">{{ round.playerWon ? t('arena.fight.roundWon') : t('arena.fight.roundLost') }}</span>
+        </li>
+      </ol>
+
+      <!-- Verdict -->
+      <div class="ar-verdict" *ngIf="stage === 'verdict'">
+        <p class="ar-verdict__head">
+          {{ result.won ? t('arena.fight.victory') : t('arena.fight.defeat') }}
+          <span class="ar-verdict__score">{{ result.roundsWon }}–{{ result.rounds.length - result.roundsWon }}</span>
+        </p>
+
+        <ul class="ar-verdict__rewards" *ngIf="result.won">
+          <li><span>{{ t('arena.rings.gold') }}</span><b>+{{ payoutGold | number }}</b></li>
+          <li><span>{{ t('arena.rings.xp') }}</span><b>+{{ payoutXp | number }}</b></li>
+          <li><span>{{ t('arena.rings.points') }}</span><b>+{{ payoutPoints | number }}</b></li>
+        </ul>
+
+        <p class="ar-verdict__streak" *ngIf="result.won && streakMultiplier > 1">
+          {{ t('arena.fight.streak') }} ×{{ streakMultiplier | number:'1.1-1' }}
+        </p>
+
+        <p class="ar-verdict__consolation" *ngIf="!result.won">
+          {{ t('arena.fight.consolation') }} <b>+{{ payoutPoints }}</b>
+        </p>
+
+        <p class="ar-verdict__unlock" *ngIf="unlockedTier">
+          ✦ {{ t('arena.fight.unlocked') }} <b>{{ unlockedTier.name }}</b>
+        </p>
+
+        <button type="button" class="ar-verdict__done" (click)="closeFight()">{{ t('arena.fight.done') }}</button>
+      </div>
+    </div>
+  </div>
+</section>
