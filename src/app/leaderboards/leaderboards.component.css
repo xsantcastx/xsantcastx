@@ -1,0 +1,279 @@
+/**
+ * leaderboards.component.css — seven ladders in seven colours.
+ *
+ * The site's surface formula, once more: deep-indigo base at ~55% alpha, a
+ * hairline light border, and a category-coloured halo. `--tier` and `--glow`
+ * are set per panel and per tab from the category definition, so an eighth
+ * board is one entry in LEADERBOARD_CATEGORIES and nothing here.
+ *
+ * The player's row is the one thing on the page that is allowed to shout: gold
+ * text, a gold left rule, and a soft gold wash. Everything else is dimmer than
+ * it wants to be, precisely so that row reads at a glance from across a scroll.
+ *
+ * `backdrop-filter` is deliberately absent — the site turns it off below 768px.
+ */
+
+.lb {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(5rem, 9vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(4rem, 8vw, 6rem);
+  color: #e8e6f5;
+}
+
+.lb-sr {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.lb-head {
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(ellipse 60% 80% at 15% 0%, rgba(255, 198, 105, 0.06), transparent 65%),
+    radial-gradient(ellipse 55% 70% at 88% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
+    rgba(10, 6, 26, 0.55);
+}
+
+.lb-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 198, 105, 0.85);
+}
+
+.lb-eyebrow__pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ffc669;
+  box-shadow: 0 0 10px rgba(255, 180, 80, 0.9);
+  animation: lbEyebrowPulse 3s ease-in-out infinite;
+}
+
+@keyframes lbEyebrowPulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+.lb-title {
+  margin: 0 0 0.35rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.8rem, 5vw, 2.9rem);
+  line-height: 1.1;
+  background: linear-gradient(100deg, #ffc669 0%, #a48bff 55%, #4dffe0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lb-tagline { margin: 0 0 0.6rem; max-width: 52ch; font-size: 0.94rem; color: rgba(232, 230, 245, 0.7); }
+
+.lb-honesty {
+  margin: 0;
+  max-width: 62ch;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(6, 4, 18, 0.45);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.lb-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lb-tab {
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(10, 6, 26, 0.6);
+  color: rgba(232, 230, 245, 0.62);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lb-tab:hover { color: #f2f0ff; border-color: var(--glow); }
+
+.lb-tab--active {
+  color: var(--tier);
+  border-color: var(--glow);
+  box-shadow: 0 0 24px -8px var(--glow);
+  background: color-mix(in srgb, var(--tier) 10%, rgba(10, 6, 26, 0.8));
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────────── */
+
+.lb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in srgb, var(--tier) 7%, transparent), transparent 70%),
+    rgba(10, 6, 26, 0.55);
+}
+
+.lb-panel[hidden] { display: none; }
+
+.lb-panel__name {
+  margin: 0 0 0.25rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.25rem;
+  color: var(--tier);
+  text-shadow: 0 0 18px var(--glow);
+}
+
+.lb-panel__blurb { margin: 0; font-size: 0.85rem; color: rgba(232, 230, 245, 0.55); }
+
+/* ── Your standing ────────────────────────────────────────────────────────── */
+
+.lb-standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 198, 105, 0.22);
+  background: rgba(255, 198, 105, 0.05);
+}
+
+.lb-standing__rank,
+.lb-standing__score { display: flex; flex-direction: column; }
+
+.lb-standing__num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1;
+  color: #ffc669;
+  text-shadow: 0 0 16px rgba(255, 180, 80, 0.4);
+}
+
+.lb-standing__cap {
+  margin-top: 0.2rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.45);
+}
+
+.lb-standing__next {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(232, 230, 245, 0.62);
+}
+.lb-standing__next b { font-family: 'Orbitron', sans-serif; color: #ffc669; }
+.lb-standing__next i { font-style: normal; color: #f2f0ff; }
+.lb-standing__next--crown { color: #ffc669; font-family: 'Orbitron', sans-serif; }
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.lb-table thead th {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lb-col-rank { width: 4.5rem; }
+.lb-col-score { text-align: right; font-family: 'Orbitron', sans-serif; }
+
+.lb-row td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(232, 230, 245, 0.72);
+}
+
+.lb-row .lb-col-rank { color: rgba(232, 230, 245, 0.38); font-family: 'Orbitron', sans-serif; font-size: 0.8rem; }
+
+.lb-row--podium .lb-col-rank { color: var(--tier); }
+
+.lb-name__title {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: rgba(232, 230, 245, 0.32);
+}
+
+/* The one row allowed to shout. */
+.lb-row--you td {
+  background: linear-gradient(90deg, rgba(255, 198, 105, 0.13), rgba(255, 198, 105, 0.02) 70%, transparent);
+  color: #ffc669;
+  font-weight: 600;
+}
+.lb-row--you .lb-col-rank { color: #ffc669; }
+.lb-row--you .lb-col-name { box-shadow: none; }
+.lb-row--you td:first-child { border-left: 3px solid #ffc669; }
+.lb-row--you .lb-name__title { color: rgba(255, 198, 105, 0.6); }
+
+.lb-gap td {
+  padding: 0.25rem 0.7rem;
+  text-align: center;
+  color: rgba(232, 230, 245, 0.22);
+  letter-spacing: 0.5em;
+}
+
+/* ── Doorways ─────────────────────────────────────────────────────────────── */
+
+.lb-doors { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.lb-door {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: rgba(0, 255, 204, 0.05);
+  color: #eafff9;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: box-shadow 0.2s ease;
+}
+.lb-door:hover { box-shadow: 0 0 24px -8px rgba(0, 255, 204, 0.7); }
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .lb-table { font-size: 0.8rem; }
+  .lb-col-rank { width: 3.4rem; }
+  .lb-row td { padding: 0.5rem 0.4rem; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Static end state: the dot stays lit rather than stopping mid-fade. */
+  .lb-eyebrow__pulse { animation: none; opacity: 1; }
+}

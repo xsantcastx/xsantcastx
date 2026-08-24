@@ -36,7 +36,7 @@ describe('NAV_MANIFEST', () => {
     expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
 
-  it('MORE is the bench, the table, quests, trials, sanctum, the exchange and the gambler only', () => {
+  it('MORE is the bench, the table, quests, trials, the Coliseum, the Standings, sanctum, the exchange and the gambler only', () => {
     expect(MORE_NAV.map(d => d.route)).toEqual([
       // The crafting bench is a room reached from inside the Forge hall. Listed
       // here for the same reason the Gambler eventually had to be: a route only
@@ -47,6 +47,11 @@ describe('NAV_MANIFEST', () => {
       '/forge/enchanting',
       CANONICAL.quests,
       CANONICAL.trials,
+      // The Coliseum shares a glyph and a word with the Trials and nothing
+      // else — the Trials are mini-game gates, this is the combat hall the
+      // equipment stats feed. Both are listed; neither replaces the other.
+      '/world/arena',
+      '/leaderboards',
       '/sanctum',
       // The Exchange is a hall in its own right, but the header row is already
       // five wide and does not shrink — see the nav-overflow note. The tome is
