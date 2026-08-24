@@ -1,0 +1,97 @@
+<section class="lb" aria-labelledby="lb-title">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header class="lb-head">
+    <p class="lb-eyebrow"><span class="lb-eyebrow__pulse" aria-hidden="true"></span>{{ t('leaderboards.eyebrow') }}</p>
+    <h1 class="lb-title" id="lb-title">{{ t('leaderboards.title') }}</h1>
+    <p class="lb-tagline">{{ t('leaderboards.tagline') }}</p>
+    <p class="lb-honesty">{{ t('leaderboards.honesty') }}</p>
+  </header>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────────────── -->
+  <div class="lb-tabs" role="tablist" [attr.aria-label]="t('leaderboards.tabsLabel')">
+    <button *ngFor="let category of categories; trackBy: trackCategory"
+            type="button"
+            role="tab"
+            class="lb-tab"
+            [class.lb-tab--active]="active === category.id"
+            [style.--tier]="category.color"
+            [style.--glow]="category.glow"
+            [attr.aria-selected]="active === category.id"
+            [attr.aria-controls]="'lb-panel-' + category.id"
+            [id]="'lb-tab-' + category.id"
+            (click)="select(category.id)">
+      {{ category.name }}
+    </button>
+  </div>
+
+  <!-- ── Boards ────────────────────────────────────────────────────────── -->
+  <div class="lb-panel"
+       *ngFor="let board of boards; trackBy: trackBoard"
+       role="tabpanel"
+       [id]="'lb-panel-' + board.category.id"
+       [attr.aria-labelledby]="'lb-tab-' + board.category.id"
+       [hidden]="active !== board.category.id"
+       [style.--tier]="board.category.color"
+       [style.--glow]="board.category.glow">
+
+    <header class="lb-panel__head">
+      <h2 class="lb-panel__name">{{ board.category.name }}</h2>
+      <p class="lb-panel__blurb">{{ board.category.blurb }}</p>
+    </header>
+
+    <div class="lb-standing">
+      <div class="lb-standing__rank">
+        <span class="lb-standing__num">#{{ board.player.rank }}</span>
+        <span class="lb-standing__cap">{{ t('leaderboards.yourRank') }}</span>
+      </div>
+      <div class="lb-standing__score">
+        <span class="lb-standing__num">{{ score(board.category, board.player.score) }}</span>
+        <span class="lb-standing__cap">{{ board.category.unit }}</span>
+      </div>
+      <p class="lb-standing__next" *ngIf="board.toNext !== null">
+        {{ t('leaderboards.toNext') }}
+        <b>{{ score(board.category, board.toNext) }}</b>
+        {{ t('leaderboards.behind') }} <i>{{ board.nextName }}</i>
+      </p>
+      <p class="lb-standing__next lb-standing__next--crown" *ngIf="board.toNext === null">
+        ✦ {{ t('leaderboards.first') }}
+      </p>
+    </div>
+
+    <table class="lb-table">
+      <caption class="lb-sr">{{ board.category.name }} — {{ board.category.blurb }}</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="lb-col-rank">{{ t('leaderboards.col.rank') }}</th>
+          <th scope="col">{{ t('leaderboards.col.name') }}</th>
+          <th scope="col" class="lb-col-score">{{ board.category.unit }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let entry of windows[board.category.id]; trackBy: trackRow">
+          <tr class="lb-gap" *ngIf="entry.gapBefore" aria-hidden="true">
+            <td colspan="3">⋯</td>
+          </tr>
+          <tr class="lb-row"
+              [class.lb-row--you]="entry.row.isPlayer"
+              [class.lb-row--podium]="entry.row.rank <= 3">
+            <td class="lb-col-rank">#{{ entry.row.rank }}</td>
+            <td class="lb-col-name">
+              <span class="lb-name">{{ entry.row.name }}</span>
+              <span class="lb-name__title" *ngIf="entry.row.title">{{ entry.row.title }}</span>
+            </td>
+            <td class="lb-col-score">{{ score(board.category, entry.row.score) }}</td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Doorways ──────────────────────────────────────────────────────── -->
+  <nav class="lb-doors" [attr.aria-label]="t('leaderboards.doorsLabel')">
+    <a routerLink="/world/arena" class="lb-door">{{ t('leaderboards.door.arena') }}</a>
+    <a routerLink="/character" class="lb-door">{{ t('leaderboards.door.character') }}</a>
+    <a routerLink="/codex" class="lb-door">{{ t('leaderboards.door.codex') }}</a>
+  </nav>
+</section>
