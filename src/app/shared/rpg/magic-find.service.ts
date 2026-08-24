@@ -1,5 +1,5 @@
 /**
- * magic-find.service.ts — one number, assembled from three places.
+ * magic-find.service.ts — one number, assembled from four places.
  *
  * Magic Find is read by the anvil on every strike and by every expedition on
  * every return, and it is composed of contributions owned by three different
@@ -14,6 +14,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { EconomyService } from '../economy/economy.service';
+import { InfusionService } from '../enchanting/infusion.service';
 import { InventoryService } from './inventory.service';
 import { PlayerStatsService } from './player-stats.service';
 
@@ -34,30 +35,41 @@ export class MagicFindService {
   private readonly stats = inject(PlayerStatsService);
   private readonly inventory = inject(InventoryService);
   private readonly economy = inject(EconomyService);
+  private readonly infusions = inject(InfusionService);
 
   /**
    * The visitor's total Magic Find, as a percentage.
    *
-   * Luck at 2% a point, plus everything worn in the seven slots, plus any
-   * enchantment. Explorer-worn items are deliberately *not* counted: they apply
-   * to that explorer's own rolls through `ExplorerRosterService.lootBonusOf`,
-   * and counting them here as well would pay the same charm twice.
+   * Luck at 2% a point, plus everything worn in the seven slots — socketed
+   * runes and any seated Socket Word included, since `equippedMagicFind` reads
+   * the worn total and that total is composed by `wornStats` — plus any
+   * enchantment, plus any Void Infusion running at the Enchanting Table.
+   * Explorer-worn items are deliberately *not* counted: they apply to that
+   * explorer's own rolls through `ExplorerRosterService.lootBonusOf`, and
+   * counting them here as well would pay the same charm twice.
    */
   get total(): number {
     const fromLuck = this.stats.magicFind;
     const fromGear = this.inventory.equippedMagicFind;
     const fromEnchantment = enchantmentMagicFind(this.economy);
-    const total = fromLuck + fromGear + fromEnchantment;
+    const fromInfusion = this.infusions.bonusOn('magicFind');
+    const total = fromLuck + fromGear + fromEnchantment + fromInfusion;
     // Guards the drop table against a NaN reaching `mfMultiplier` from a
     // hand-edited blob that slipped past the loaders.
     return Number.isFinite(total) ? Math.max(0, total) : 0;
   }
 
-  /** The three lines, for the panel that shows its working. */
-  get breakdown(): { luck: number; gear: number; enchantment: number; total: number } {
+  /** The four lines, for the panel that shows its working. */
+  get breakdown(): {
+    luck: number; gear: number; enchantment: number; infusion: number; total: number;
+  } {
     const luck = this.stats.magicFind;
     const gear = this.inventory.equippedMagicFind;
     const enchantment = enchantmentMagicFind(this.economy);
-    return { luck, gear, enchantment, total: Math.max(0, luck + gear + enchantment) };
+    const infusion = this.infusions.bonusOn('magicFind');
+    return {
+      luck, gear, enchantment, infusion,
+      total: Math.max(0, luck + gear + enchantment + infusion),
+    };
   }
 }

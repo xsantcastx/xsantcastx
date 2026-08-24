@@ -330,6 +330,32 @@ export const APP_ROUTES: Routes = [
       }
     },
   {
+      path: 'forge/enchanting',
+      loadComponent: () => import('./shared/enchanting/enchanting-bench.component').then(m => m.EnchantingBenchComponent),
+      title: 'The Table \u2014 Enchanting | Eclipse Realms',
+      data: {
+        description: 'Set runes into the sockets on your weapons and armour, find one of fifteen secret Socket Words by getting the sequence right, and burn gathered materials for timed Gold, XP and Magic Find infusions.',
+        keywords: 'enchanting, sockets, socketing, runewords, socket words, runes, infusions, buffs, magic find, eclipse realms, xsantcastx',
+        ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${SITE_URL}/forge/enchanting`,
+          url: `${SITE_URL}/forge/enchanting`,
+          name: 'The Enchanting Table',
+          description: 'Socket runes into equipment, discover Socket Words, and brew timed material infusions.',
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'World', item: `${SITE_URL}/world` },
+              { '@type': 'ListItem', position: 2, name: 'The Forge', item: `${SITE_URL}/forge/runes` },
+              { '@type': 'ListItem', position: 3, name: 'The Table', item: `${SITE_URL}/forge/enchanting` }
+            ]
+          }
+        }
+      }
+    },
+  {
       path: 'character',
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
       title: 'Your Character — Eclipse Realms',

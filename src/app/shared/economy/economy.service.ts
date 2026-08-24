@@ -1030,6 +1030,29 @@ export class EconomyService implements OnDestroy {
     this.publish();
   }
 
+  /**
+   * Mirror the Enchanting Table's Gold multiplier into the ledger.
+   *
+   * Pushed for the reason `setRpgFlatGold` is pushed: `goldBreakdown` is a pure
+   * function over the blob and cannot expire a timer. `RpgWiringService` calls
+   * this whenever the infusion ledger publishes, which includes the tick that
+   * drops a lapsed row, so the multiplier goes back to 1 within a second of the
+   * timer running out.
+   *
+   * The value persists, but `load()` resets it to 1 — the offline catch-up is
+   * deliberately never infused. See the field's note in `economy.model.ts`.
+   */
+  setInfusionGold(multiplier: number): void {
+    if (!this.isBrowser) return;
+    const next = Number.isFinite(multiplier)
+      ? Math.round(Math.max(1, multiplier) * 1000) / 1000
+      : 1;
+    if (next === this.state.infusionGold) return;
+    this.state.infusionGold = next;
+    this.persistSoon();
+    this.publish();
+  }
+
   get shards(): number { return this.state.eclipseShards; }
   get pendingShards(): number { return pendingShards(this.state); }
   get prestigeCount(): number { return this.state.prestigeCount; }
@@ -1284,6 +1307,13 @@ export class EconomyService implements OnDestroy {
         // accumulate — a visitor who has run fifty of them over a month should
         // not be carrying fifty dead timers in localStorage.
         enchantments: (parsed.enchantments ?? []).filter(e => e && e.expiresAt > now),
+        // The infusion mirror never survives a reload. It is a live multiplier
+        // with no clock of its own inside this blob, and `settleIdle()` runs
+        // from `init()` before `RpgWiringService` has had a chance to repush
+        // it — so a lapsed two-hour buff would silently multiply an eight-hour
+        // offline payout. Reset to 1 and let the wiring layer push the truth a
+        // tick later. See the field's note in `economy.model.ts`.
+        infusionGold: 1,
         // Version 1 blobs carry none of the prestige fields. The spread over a
         // fresh `emptyEconomy()` above has already supplied them at zero, which
         // is the correct starting point for every one of them: no shards held,

@@ -94,6 +94,8 @@ export interface OwnedItemInstance extends OwnedItemBase {
   lastReforgeAt?: string;
   lastReforgeMutationId?: string;
   lastReforgeLock?: keyof ItemStats;
+  /** Runes in this instance's sockets, in well order. See `GameItem.sockets`. */
+  sockets?: (string | null)[];
 }
 
 export interface OwnedItemStack extends OwnedItemBase {

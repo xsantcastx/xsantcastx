@@ -120,6 +120,7 @@ export interface EconomyLedger {
   prestigeCount: number;
   streakDays: number;
   rpgFlatGold: number;
+  infusionGold: number;
   upgrades: Record<string, number>;
   artifacts: string[];
   cosmetics: string[];
@@ -179,6 +180,7 @@ export function emptyLedger(): EconomyLedger {
     prestigeCount: 0,
     streakDays: 0,
     rpgFlatGold: 0,
+    infusionGold: 1,
     upgrades: {},
     artifacts: [],
     cosmetics: [],
@@ -458,6 +460,8 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.autoClicks = maxOf(a.autoClicks, b.autoClicks);
   replayed.streakDays = maxOf(a.streakDays, b.streakDays);
   replayed.rpgFlatGold = maxOf(a.rpgFlatGold, b.rpgFlatGold);
+  // A mirror, corrected on the next push — see the field's note in the model.
+  replayed.infusionGold = Math.max(1, maxOf(a.infusionGold, b.infusionGold));
   replayed.levelsPaid = maxOf(a.levelsPaid, b.levelsPaid);
   replayed.streakWeeksPaid = maxOf(a.streakWeeksPaid, b.streakWeeksPaid);
   replayed.lastIdleAt = maxOf(a.lastIdleAt, b.lastIdleAt);
@@ -651,6 +655,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     prestigeCount: maxOf(remote.prestigeCount, local.prestigeCount),
     streakDays: maxOf(remote.streakDays, local.streakDays),
     rpgFlatGold: maxOf(remote.rpgFlatGold, local.rpgFlatGold),
+    infusionGold: Math.max(1, maxOf(remote.infusionGold, local.infusionGold)),
     upgrades: mergeUpgradeLevels(remote.upgrades, local.upgrades),
     artifacts: unionStrings(remote.artifacts, local.artifacts),
     cosmetics: unionStrings(remote.cosmetics, local.cosmetics),
@@ -733,6 +738,7 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     prestigeCount: numberOf(value['prestigeCount']),
     streakDays: numberOf(value['streakDays']),
     rpgFlatGold: numberOf(value['rpgFlatGold']),
+    infusionGold: Math.max(1, numberOf(value['infusionGold']) || 1),
     upgrades: isPlainObject(value['upgrades'])
       ? Object.fromEntries(Object.entries(value['upgrades']).map(([k, v]) => [k, numberOf(v)]))
       : {},

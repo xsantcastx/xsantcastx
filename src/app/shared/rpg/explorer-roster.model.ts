@@ -18,6 +18,7 @@
  * Pure data and pure functions — no browser APIs, safe on an SSR path.
  */
 import { GameItem, ItemStats, sumStats } from './item.model';
+import { wornStats } from '../enchanting/socket-words';
 
 /**
  * Explorer rarity stops at Mythic.
@@ -220,7 +221,10 @@ export function explorerEquipmentStats(
   const blocks: ItemStats[] = [];
   for (const id of explorer.equipment) {
     const item = itemById(id);
-    if (item) blocks.push(item.stats);
+    // What the piece pays, not what it rolled — an explorer wearing a socketed
+    // sword carries its runes and its word out on the expedition, the same way
+    // the player does. `wornStats` is the one composition of the three.
+    if (item) blocks.push(wornStats(item));
   }
   return sumStats(blocks);
 }

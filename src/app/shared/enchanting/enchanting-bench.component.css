@@ -1,0 +1,649 @@
+/**
+ * enchanting-bench.component.css
+ *
+ * Glassy panels on the cosmic backdrop, tier colour carried on a `--tier`
+ * custom property so a well, a rune chip and a word card all read their accent
+ * from one binding. Every animation over a second has a static fallback, and
+ * every keyframe is declared at the top level — a `@keyframes` inside a media
+ * query loses its scoping attribute under Angular's emulated encapsulation and
+ * silently does nothing.
+ */
+
+:host {
+  display: block;
+  --eb-panel: rgba(10, 6, 26, 0.55);
+  --eb-edge: rgba(255, 255, 255, 0.06);
+  --eb-cyan: #4dffe0;
+  --eb-violet: #a48bff;
+  --tier: var(--eb-cyan);
+}
+
+.eb {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem) clamp(0.9rem, 3vw, 2rem) 4rem;
+  color: #e8e6f5;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.eb-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.eb-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(77, 255, 224, 0.85);
+}
+
+.eb-eyebrow__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--eb-cyan);
+  box-shadow: 0 0 10px var(--eb-cyan);
+  animation: ebPulse 3s ease-in-out infinite;
+}
+
+.eb-title {
+  margin: 0;
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  line-height: 1.05;
+  background: linear-gradient(96deg, var(--eb-cyan), var(--eb-violet) 60%, #ff6dd7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.eb-tagline {
+  margin: 0.6rem 0 0;
+  max-width: 46ch;
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.05);
+  border: 1px solid rgba(0, 255, 204, 0.14);
+  font-size: 0.92rem;
+  color: rgba(232, 230, 245, 0.78);
+}
+
+.eb-stats {
+  display: flex;
+  gap: clamp(0.9rem, 3vw, 2rem);
+  margin: 0;
+}
+
+.eb-stats dt {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.eb-stats dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--eb-cyan);
+}
+
+/* ── Status, errors and the reveal ──────────────────────────────────────── */
+
+.eb-live {
+  min-height: 1.2em;
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: rgba(77, 255, 224, 0.8);
+}
+
+.eb-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 45, 77, 0.09);
+  border: 1px solid rgba(255, 45, 77, 0.35);
+  font-size: 0.9rem;
+}
+
+.eb-alert__x,
+.eb-reveal__x,
+.eb-drawer__x {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.eb-reveal {
+  position: relative;
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1.25rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 70% 120% at 20% 0%, rgba(0, 255, 204, 0.12), transparent 65%),
+    radial-gradient(ellipse 60% 120% at 90% 100%, rgba(164, 139, 255, 0.14), transparent 65%),
+    var(--eb-panel);
+  border: 1px solid rgba(77, 255, 224, 0.4);
+  box-shadow: 0 0 34px -10px rgba(77, 255, 224, 0.5);
+  animation: ebSeat 900ms ease-out;
+}
+
+.eb-reveal__cap {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(77, 255, 224, 0.85);
+}
+
+.eb-reveal__name {
+  margin: 0.2rem 0 0.3rem;
+  font-size: clamp(1.3rem, 3.5vw, 1.9rem);
+  color: #fff;
+}
+
+.eb-reveal__effect { margin: 0 0 0.4rem; color: var(--eb-cyan); }
+.eb-reveal__lore { margin: 0; max-width: 62ch; font-size: 0.9rem; color: rgba(232, 230, 245, 0.65); }
+.eb-reveal__x { position: absolute; top: 0.8rem; right: 0.8rem; }
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+
+.eb-panel {
+  position: relative;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  margin-bottom: clamp(1.25rem, 4vw, 2.25rem);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0, 255, 204, 0.05), transparent 65%),
+    radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.06), transparent 65%),
+    var(--eb-panel);
+  border: 1px solid var(--eb-edge);
+}
+
+.eb-panel::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.45) 50%, transparent);
+}
+
+.eb-panel__title {
+  margin: 0;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  color: #fff;
+}
+
+.eb-panel__hint {
+  margin: 0.35rem 0 1.1rem;
+  font-size: 0.88rem;
+  color: rgba(232, 230, 245, 0.6);
+}
+
+.eb-empty {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+/* ── The socket bench ───────────────────────────────────────────────────── */
+
+.eb-socket {
+  display: grid;
+  gap: clamp(1rem, 3vw, 1.75rem);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .eb-socket { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); }
+}
+
+.eb-picker {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 30rem;
+  overflow-y: auto;
+}
+
+.eb-piece {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.eb-piece:hover,
+.eb-piece:focus-visible { border-color: var(--tier); }
+
+.eb-piece.is-on {
+  border-color: var(--tier);
+  box-shadow: 0 0 24px -8px var(--tier);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.eb-piece__art { border-radius: 8px; flex: none; }
+.eb-piece__body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.eb-piece__name { color: var(--tier); font-size: 0.95rem; }
+
+.eb-piece__meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: rgba(232, 230, 245, 0.55);
+}
+
+.eb-piece__worn { color: var(--eb-cyan); }
+.eb-piece__word { font-size: 0.75rem; color: #ff6dd7; }
+
+.eb-bench__name {
+  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+  color: var(--tier);
+}
+
+.eb-bench__seated {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(255, 109, 215, 0.08);
+  border: 1px solid rgba(255, 109, 215, 0.3);
+  font-size: 0.9rem;
+}
+
+.eb-bench__seatedCap {
+  display: block;
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 109, 215, 0.85);
+}
+
+.eb-wells {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.eb-well {
+  flex: 1 1 12rem;
+  border-radius: 14px;
+  border: 1px dashed var(--tier);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.eb-well.is-filled {
+  border-style: solid;
+  box-shadow: 0 0 22px -8px var(--tier);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.eb-well__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 100%;
+  min-height: 96px;
+  padding: 0.8rem;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(232, 230, 245, 0.6);
+  font: inherit;
+  cursor: pointer;
+}
+
+.eb-well__btn:hover { color: var(--eb-cyan); }
+
+.eb-well__set {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.eb-well__glyph {
+  font-size: 1.5rem;
+  color: var(--tier);
+  text-shadow: 0 0 12px var(--tier);
+  animation: ebBreathe 6.5s ease-in-out infinite;
+}
+
+.eb-well__cap,
+.eb-well__effect {
+  font-size: 0.72rem;
+  color: rgba(232, 230, 245, 0.55);
+}
+
+.eb-well__rune { color: var(--tier); }
+
+.eb-well__pull {
+  min-height: 44px;
+  margin-top: 0.3rem;
+  padding: 0 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.eb-well__pull:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── The rune drawer ────────────────────────────────────────────────────── */
+
+.eb-drawer {
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(164, 139, 255, 0.3);
+  background: rgba(164, 139, 255, 0.05);
+}
+
+.eb-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.eb-drawer__head h4 { margin: 0; font-size: 0.95rem; }
+
+.eb-drawer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.eb-rune {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.eb-rune:hover,
+.eb-rune:focus-visible { border-color: var(--tier); }
+.eb-rune__name { color: var(--tier); font-size: 0.9rem; }
+.eb-rune__held { font-variant-numeric: tabular-nums; color: rgba(232, 230, 245, 0.6); }
+
+.eb-rune__effect {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  color: rgba(232, 230, 245, 0.55);
+}
+
+/* ── The arithmetic ─────────────────────────────────────────────────────── */
+
+.eb-sum {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.eb-sum__col {
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.eb-sum__col.is-total {
+  border-color: rgba(77, 255, 224, 0.35);
+  background: rgba(0, 255, 204, 0.05);
+}
+
+.eb-sum__col h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.eb-sum__col p {
+  margin: 0.15rem 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The word wall ──────────────────────────────────────────────────────── */
+
+.eb-words,
+.eb-infusions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+}
+
+.eb-word,
+.eb-infusion {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--eb-edge);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.eb-word.is-found {
+  border-color: var(--tier);
+  box-shadow: 0 0 26px -12px var(--tier);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.eb-word__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.eb-word__name { color: var(--tier); font-size: 1rem; }
+
+.eb-word__tier {
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.eb-word__frame {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.74rem;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.eb-word__runes { margin: 0 0 0.35rem; font-size: 0.85rem; color: #fff; }
+.eb-word__effect { margin: 0 0 0.4rem; font-size: 0.85rem; color: var(--eb-cyan); }
+
+.eb-word__lore,
+.eb-word__clue {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(232, 230, 245, 0.55);
+}
+
+.eb-word__clueCap {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(164, 139, 255, 0.8);
+}
+
+/* ── Infusions ──────────────────────────────────────────────────────────── */
+
+.eb-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: rgba(232, 230, 245, 0.6);
+}
+
+.eb-slots__live {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 255, 204, 0.08);
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  color: var(--eb-cyan);
+}
+
+.eb-infusion.is-running {
+  border-color: rgba(77, 255, 224, 0.4);
+  background: rgba(0, 255, 204, 0.045);
+}
+
+.eb-infusion__head { display: flex; gap: 0.7rem; align-items: flex-start; }
+.eb-infusion__icon { font-size: 1.5rem; line-height: 1; }
+.eb-infusion__name { margin: 0; font-size: 1rem; color: #fff; }
+.eb-infusion__effect { margin: 0.15rem 0 0; font-size: 0.82rem; color: var(--eb-cyan); }
+
+.eb-infusion__flavour {
+  margin: 0.6rem 0;
+  font-size: 0.78rem;
+  color: rgba(232, 230, 245, 0.5);
+}
+
+.eb-inputs {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.eb-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.eb-input__art { border-radius: 6px; }
+.eb-input__name { flex: 1 1 auto; }
+.eb-input__count { font-variant-numeric: tabular-nums; color: var(--eb-cyan); }
+.eb-input.is-short .eb-input__count { color: #ff6d7d; }
+
+.eb-infusion__bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.eb-infusion__bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--eb-cyan), var(--eb-violet));
+}
+
+.eb-infusion__left {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(232, 230, 245, 0.6);
+}
+
+.eb-brew {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 204, 0.35);
+  background: rgba(0, 255, 204, 0.09);
+  color: var(--eb-cyan);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.eb-brew:hover:not(:disabled) { background: rgba(0, 255, 204, 0.16); }
+.eb-brew:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+
+@keyframes ebPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes ebBreathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+@keyframes ebSeat {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eb-eyebrow__pulse,
+  .eb-well__glyph,
+  .eb-reveal {
+    animation: none;
+  }
+  .eb-eyebrow__pulse { opacity: 1; }
+  .eb-well__glyph { opacity: 1; }
+}

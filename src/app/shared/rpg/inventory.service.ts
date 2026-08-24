@@ -45,6 +45,7 @@ import {
   slotAccepts,
   sumStats,
 } from './item.model';
+import { wornStats } from '../enchanting/socket-words';
 import {
   INVENTORY_BAG_CAP,
   type InventoryLedger,
@@ -541,6 +542,106 @@ export class InventoryService {
     return inputs
       .map(input => ({ id: input.id, need: input.count, have: this.stackOf(input.id) }))
       .filter(row => row.have < row.need);
+  }
+
+  /**
+   * Consume materials and mint nothing.
+   *
+   * `craftRecipe` is the same write with an item on the end of it, and it
+   * refuses a zero-output call for good reason — a craft that produces nothing
+   * is a bug in a recipe. An infusion genuinely produces nothing an inventory
+   * can hold: what it produces is a timer, and the timer lives in a different
+   * ledger. So it gets its own writer rather than a `mint` callback that
+   * returns null.
+   *
+   * Replay-safe on `mutationId`: the ops are keyed by it and `applyStackOp`
+   * drops a duplicate id, so a double-click or a retried call after a dropped
+   * response consumes exactly one set. `replayed` tells the caller which
+   * happened so it does not start a second timer.
+   */
+  consumeStacks(
+    mutationId: string,
+    inputs: readonly { id: string; count: number }[],
+  ):
+    | { ok: true; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!mutationId || !inputs.length) return { ok: false, code: 'clock' };
+
+    const opIds = inputs.map(input => `${mutationId}:in:${input.id}`);
+    if (opIds.every(id => this.ledger.stackOps.some(op => op.id === id))) {
+      return { ok: true, replayed: true };
+    }
+    for (const input of inputs) {
+      if (input.count <= 0) return { ok: false, code: 'clock' };
+      if (this.stackOf(input.id) < input.count) return { ok: false, code: 'missing' };
+    }
+
+    const previous = this.ledger;
+    let stackOps = this.ledger.stackOps;
+    inputs.forEach((input, i) => {
+      const stepped = this.advanceRevision();
+      stackOps = applyStackOp(stackOps, {
+        id: opIds[i],
+        stackKey: input.id,
+        kind: 'consume',
+        quantity: input.count,
+        hlc: stepped.revision.hlc,
+        deviceId: stepped.revision.deviceId,
+        sequence: stepped.revision.sequence,
+      });
+    });
+    this.ledger = { ...this.ledger, stackOps };
+
+    // Re-read rather than trust the pre-flight — two inputs resolving to the
+    // same stack key would both have passed the loop above and still overdraw.
+    for (const input of inputs) {
+      if (this.stackOf(input.id) < 0) {
+        this.ledger = previous;
+        return { ok: false, code: 'missing' };
+      }
+    }
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return { ok: true, replayed: false };
+  }
+
+  /**
+   * Rewrite one instance's socket contents.
+   *
+   * The sole writer of `GameItem.sockets`. It takes the whole array rather than
+   * a (well, rune) pair because socketing and unsocketing are the same write
+   * from the ledger's side, and because a partial write is the one thing a
+   * Socket Word cannot survive: the word is matched on the ordered contents of
+   * every well, so two writes that each land half of a change would seat a word
+   * nobody assembled.
+   *
+   * It does not touch the rune ledger or the Gold — `EnchantingGateway` owns
+   * that ordering, the same way `CraftingGateway` owns the bench's.
+   */
+  setSockets(itemId: string, sockets: readonly (string | null)[]):
+    | { ok: true; item: GameItem }
+    | { ok: false; code: 'ssr' | 'missing' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const item = this.itemById(itemId);
+    if (!item) return { ok: false, code: 'missing' };
+
+    const previous = this.ledger;
+    const next: GameItem = { ...item, sockets: [...sockets] };
+    this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(next)));
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    const stored = this.itemById(itemId) ?? next;
+    // Same channel a temper reports on: the loadout panel and the achievement
+    // watchers both listen for "this item changed" and neither cares how.
+    this.improved$$.next(stored);
+    return { ok: true, item: stored };
   }
 
   /**
@@ -1359,7 +1460,12 @@ export class InventoryService {
     for (const item of items) {
       if (item.equipped && item.slot) {
         equipped[item.slot] = item;
-        wornBlocks.push(item.stats);
+        // The worn total is what the item *pays*, not what it rolled: socketed
+        // runes and a seated Socket Word are as real as the base roll and every
+        // consumer downstream (the Gold rate, Magic Find, the XP multiplier)
+        // reads this one number. Summing `item.stats` here would mean sockets
+        // showed on the tooltip and paid nothing.
+        wornBlocks.push(wornStats(item));
       }
     }
 
