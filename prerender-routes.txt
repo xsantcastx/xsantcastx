@@ -18,6 +18,8 @@
 /forge/runes
 /forge/crafting
 /forge/enchanting
+/world/arena
+/leaderboards
 /404
 /world/trials
 /arena/color-memory
