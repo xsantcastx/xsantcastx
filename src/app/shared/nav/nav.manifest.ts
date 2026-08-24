@@ -61,6 +61,19 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     group: 'primary',
   },
   {
+    // The bench is a room inside the Forge hall, and the Forge's own page links
+    // through to it. It is listed here as well for the reason the Gambler
+    // eventually had to be: a player who is not already standing in the Forge
+    // has no way to find a room reached only from inside it, and reads the
+    // route as a dead page. See the note above the Gambler below.
+    id: 'crafting',
+    route: '/forge/crafting',
+    labelKey: 'gfnav.crafting',
+    hintKey: 'gfnav.hint.crafting',
+    glyph: 'forge',
+    group: 'more',
+  },
+  {
     id: 'codex',
     route: '/codex',
     labelKey: 'gfnav.codex',
