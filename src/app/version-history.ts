@@ -17,6 +17,19 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.78.0',
+    codename: 'Art Bible',
+    date: '2026-08-24',
+    highlights: [
+      'The Eclipse Realms Item Art Bible is a hundred paintings and a hundred entries of design writing, and until now it was a document. Ninety-eight of the paintings are in the game, and ninety-seven of them arrive attached to something you can find, wear, drink, stack or sell rather than as art with nothing behind it. The catalogue goes from forty-seven definitions to a hundred and forty-four. The hundredth entry, Void\'s Whisper, was already authored as a unique and had been drawing as a rarity orb since it shipped; it has its painting now',
+      'Fifteen weapons, fifteen pieces of armour across seven wells, fourteen charms, ten consumables and twenty-three materials drop from the places those things already came from — the Gambler\'s pool goes from twelve definitions to fifty-six, and the Grand Exchange from seventy-five rows to two hundred and eighty-three. Twenty of the Bible\'s entries are named objects with a line of rules text no roll can produce, which is this game\'s definition of a unique, so that is what they became: the roster goes from twenty-four to forty-four, and for the first time every rung of the ladder has a named object a box can actually pay out',
+      'The numbers are not the Bible\'s numbers, deliberately. It was written for painters and describes a combat game this is not — "Base Damage +120-450", "Mana Regen +10-40/sec" — and this game\'s stat block has six keys, none of them damage. Transcribing them would have shipped eighty-seven tooltips promising mechanics that do not exist. Every entry keeps its identity, its lore, its realm and the tier it drops at, and takes its numbers from the slot it occupies',
+      'The Bible\'s fifteen runes are not the Forge\'s runes and were not made into them. The anvil already owns a closed ladder of twenty-five with its own drop budget, forge costs and Runewords, and every stat line on a Bible rune ends in "(when socketed)" for a mechanic the game does not have. A second rune ladder in the charm wells is the exact two-ladder confusion the item system was built to avoid, so they are the uncut stones they look like: they stack, expeditions bring them home, and the Collection Log counts them',
+      'The Collection Log had been calling thirteen equipment pieces undrawn, with the line "no hand in the Godforge can mint one". That was true when it was written and stopped being true the release the Gambler shipped — a mystery box had been handing them out for months. It is worked out from what can actually drop now instead of a flag somebody has to remember to flip, which is what kept the drop from turning a small inaccuracy into one covering most of the catalogue',
+      'Two smaller things surfaced on the way. The Grand Exchange had been quoting a price on four rows it could not deliver, because it listed every definition without checking whether one could be minted — Cinder Ore was on the board as a wearable. And Ember Elixir, painted since the asset library landed, had been drawing in the bank as the literal text "ember-elixir" beside an empty picture frame the entire time',
+    ],
+  },
+  {
     version: '2.77.0',
     codename: 'Fanfare',
     date: '2026-08-20',
