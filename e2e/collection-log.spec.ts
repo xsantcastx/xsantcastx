@@ -68,7 +68,7 @@ test.describe('Collection Log', () => {
   test('shows what has been found, and only that', async ({ page }) => {
     await openLog(page, true);
 
-    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 68');
+    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 201');
     await expect(page.locator('.cl-card:not(.cl-card--locked)')).toHaveCount(3);
 
     const ash = page.locator('.cl-card', { hasText: 'Ash' }).first();
@@ -90,13 +90,28 @@ test.describe('Collection Log', () => {
     await expect(page.locator('.cl-empty')).toBeVisible();
   });
 
+  /*
+   * This used to assert that at least one card was `--absent`, because thirteen
+   * equipment pieces were flagged unobtainable. They were not: the Gambler's
+   * pool had been minting them for releases, and the flag was stale. Now that
+   * `obtainable` is worked out from what can actually drop, nothing in the
+   * catalogue is absent — the Gambler reaches every equipment and charm
+   * definition, expeditions reach every material, and the two Collector rewards
+   * are the only entries held out of the denominator.
+   *
+   * So the assertion is the rule rather than the sighting: an absent card, if
+   * one ever appears again, has to say why it is dark instead of just being
+   * dark. The foot's number is the part that fails today if the denominator
+   * moves without anyone noticing.
+   */
   test('names what the world cannot yet grant instead of hiding it', async ({ page }) => {
     await openLog(page);
     const absent = page.locator('.cl-card--absent');
-    await expect(absent.first()).toBeVisible();
-    await expect(absent.first()).toContainText('not yet in the world');
+    for (let i = 0; i < await absent.count(); i++) {
+      await expect(absent.nth(i)).toContainText('not yet in the world');
+    }
     // ...and says so under the grid, so the denominator is not a mystery.
-    await expect(page.locator('.cl-foot')).toContainText('68 entries count toward completion');
+    await expect(page.locator('.cl-foot')).toContainText('201 entries count toward completion');
   });
 
   test('filters down to one category and back', async ({ page }) => {
