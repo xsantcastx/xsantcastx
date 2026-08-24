@@ -66,6 +66,15 @@ FAMILIES = [
     ('Items/Consumables',      'items/consumables',  COLLECTIBLE_WIDTHS, True),
     ('Items/Quest',            'items/quest',        COLLECTIBLE_WIDTHS, True),
     ('Items/Portraits',        'items/portraits',    COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Weapons',    'items/artbible/weapons',    COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Armor',      'items/artbible/armor',      COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Accessories', 'items/artbible/accessories', COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Tools',      'items/artbible/tools',      COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Runes',      'items/artbible/runes',      COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Artifacts',  'items/artbible/artifacts',  COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Consumables', 'items/artbible/consumables', COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Materials',  'items/artbible/materials',  COLLECTIBLE_WIDTHS, True),
+    ('Items/ArtBible/Singular',   'items/artbible/singular',   COLLECTIBLE_WIDTHS, True),
     ('Characters/equipment',   'items/equipment',    COLLECTIBLE_WIDTHS, True),
     ('Characters/avatars',     'characters/avatars', CHARACTER_WIDTHS,   True),
     ('Characters/portraits',   'characters/portraits', CHARACTER_WIDTHS, True),
@@ -91,6 +100,21 @@ FAMILIES = [
     # baked white card and is deliberately not imported.
     ('Characters',             'characters',         CHARACTER_WIDTHS,   True),
 ]
+
+
+# Paintings that are byte-identical to an earlier entry in the same family.
+#
+# `051-rune-of-eclipse` and `049-rune-of-hollow` are the same file, as are
+# `052-rune-of-meridian` and `050-rune-of-erasure` — the Art Bible names four
+# runes and the library delivered two paintings. Importing all four would put
+# the Hollow render on the Eclipse rune, which is exactly the kind of quiet
+# mismatch the cut-out guard above exists to stop. The two names without art of
+# their own get no item definition either, so nothing in the game points at a
+# painting that does not depict it.
+SKIP_FILES = {
+    'Items/ArtBible/Runes/051-rune-of-eclipse.png',
+    'Items/ArtBible/Runes/052-rune-of-meridian.png',
+}
 
 
 def slug_ok(name: str) -> bool:
@@ -170,10 +194,20 @@ export interface ArtEntry {
 '''
 
 
+# The library names a collectible after the state it is painted in, and the
+# inventory only ever renders the idle one. Carrying `-idle` into the key would
+# mean every Art Bible id in `ITEM_DEFINITIONS` had to end in it too.
+STATE_SUFFIXES = ('-idle',)
+
+
 def strip_index(stem: str) -> str:
-    """`01-eclipse-longblade` -> `eclipse-longblade`."""
+    """`01-eclipse-longblade` -> `eclipse-longblade`, `001-dawnrender-idle` -> `dawnrender`."""
     parts = stem.split('-', 1)
-    return parts[1] if len(parts) == 2 and parts[0].isdigit() else stem
+    key = parts[1] if len(parts) == 2 and parts[0].isdigit() else stem
+    for suffix in STATE_SUFFIXES:
+        if key.endswith(suffix):
+            return key[: -len(suffix)]
+    return key
 
 
 def write_manifest() -> int:
@@ -256,6 +290,8 @@ def main() -> int:
 
         for name in sorted(os.listdir(src_dir)):
             if not name.lower().endswith('.png'):
+                continue
+            if f'{src_rel}/{name}' in SKIP_FILES:
                 continue
             path = os.path.join(src_dir, name)
             files += 1
