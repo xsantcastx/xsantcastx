@@ -13,6 +13,7 @@ import {
   sellValueFor,
   slotAccepts,
 } from './item.model';
+import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { UNIQUE_DEFINITIONS } from './unique-items';
 import {
   bandFor,
@@ -467,14 +468,20 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
 ];
 
 /**
- * The whole catalogue: the Keeper kit above, plus the named objects.
+ * The whole catalogue: the Keeper kit above, the Art Bible, and the named
+ * objects.
  *
  * The uniques are spread in rather than kept apart so that every consumer —
  * mint, reforge, temper, the paper doll, the Collection Log — treats a unique as
- * an ordinary definition and needs no branch for it. See unique-items.ts.
+ * an ordinary definition and needs no branch for it. See unique-items.ts. The
+ * Art Bible table is separate for the opposite reason: the Keeper kit above is
+ * a balance table that gets retuned and `artbible-items.ts` is a content list
+ * that gets added to, and mixing them means every new painting is a diff on the
+ * same file as the numbers.
  */
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
   ...KEEPER_DEFINITIONS,
+  ...ARTBIBLE_DEFINITIONS,
   ...UNIQUE_DEFINITIONS,
 ];
 

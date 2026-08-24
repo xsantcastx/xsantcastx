@@ -669,6 +669,18 @@ function buildCatalogue(): ExchangeGood[] {
     // implies it can be sold.
     if (def.soulbound) continue;
 
+    // Families `mintEquipment` refuses outright.
+    //
+    // A board row promises an instance, and buying one calls `mintEquipment`,
+    // which returns null for these three families — a material is a quantity in
+    // a stack, not an object with numbers frozen onto it. Before this guard the
+    // board carried `eq:cinder-ore:rare` and three more like it: four rows that
+    // took a price and could not deliver. The Art Bible drop would have made
+    // that twenty-three materials, ninety-two rows, so the guard lands here
+    // rather than after. Materials that genuinely trade are listed above, from
+    // `MATERIAL_MARKETS`, under a `mat:` id and their own stack semantics.
+    if (def.family === 'material' || def.family === 'quest' || def.family === 'rune') continue;
+
     // Named objects are excluded outright, not merely at the wrong rarity.
     //
     // `ITEM_DEFINITIONS` is the ordinary catalogue *plus* `UNIQUE_DEFINITIONS`,

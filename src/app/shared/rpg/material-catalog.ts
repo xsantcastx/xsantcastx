@@ -12,6 +12,7 @@
  * files, not about what a thing is called in either language.
  */
 import { ART_ITEMS_PORTRAITS } from '../art/art-manifest.generated';
+import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { artFor, type ArtEntry } from '../art/art';
 
 export interface MaterialDisplay {
@@ -40,6 +41,13 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'rift-key': 'Rift Key',
   /** B1 Prospecting's rare find. Same reason. */
   'clarity-elixir': 'Clarity Elixir',
+  /**
+   * A1 Mining's brew. Painted since the library landed and missing from this
+   * map the whole time, so the bank drew it as the literal string
+   * `ember-elixir` beside an empty art slot — the one id in
+   * collection.model.ts's copy of this table that never had a row here.
+   */
+  'ember-elixir': 'Ember Elixir',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {
@@ -51,6 +59,27 @@ const BY_ID: Record<string, MaterialDisplay> = {};
 for (const [id, name] of Object.entries(MATERIAL_NAMES)) {
   const row = displayFor(id, name, artFor(id));
   if (row) BY_ID[id] = row;
+}
+
+/**
+ * The Art Bible's materials, which the bag would otherwise draw as a raw id.
+ *
+ * A stack row reads its name and its art from `materialDisplay(stackKey)`, and
+ * that map was built only from `MATERIAL_NAMES` above — a hand-kept list of the
+ * sixteen ids the gathering skills grant. The Art Bible added twenty-three more
+ * that expeditions bring home, all of them painted, and every one of them would
+ * have rendered in the bag as the literal string `rune-of-radiance` with an
+ * empty art slot: painted assets shipped, and invisible.
+ *
+ * They are read off the definitions rather than transcribed, because a
+ * transcription is a second name for the same object and the two only have to
+ * disagree once. `collection.model.spec.ts` pins the bag's name against the
+ * log's for exactly that reason.
+ */
+for (const def of ARTBIBLE_DEFINITIONS) {
+  if (def.family !== 'material' && def.family !== 'consumable') continue;
+  const row = displayFor(def.id, def.name, artFor(def.id));
+  if (row) BY_ID[def.id] = row;
 }
 
 export const CINDER_ORE_DISPLAY = BY_ID['cinder-ore'];
