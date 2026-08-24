@@ -41,6 +41,7 @@ import { mergeInventoryLedgers } from '../rpg/inventory-ops';
 import { mergeActivityLedgers } from '../activity/activity-ops';
 import { mergeChapterLedgers } from '../narrative/chapter-ops';
 import { mergeCollectionLedgers } from '../collection/collection.model';
+import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -258,6 +259,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeThralls,
   },
   {
+    key: 'godforge-crafting',
+    collection: 'progress',
+    doc: 'crafting',
+    label: 'crafting',
+    // `{ version, xp, crafted }` — lifetime XP and a per-recipe lifetime count.
+    // Every number is monotone, so the structural rule would land right on all
+    // of them; the hand-written merge exists so that the day a non-counter field
+    // arrives (a pinned recipe, a bench layout) it has to be an edit to a
+    // function somebody reads, not a silent inheritance of "take the larger".
+    merge: mergeCrafting,
+  },
+  {
     key: 'godforge-gambler',
     collection: 'economy',
     doc: 'gambler',
@@ -364,6 +377,10 @@ function mergeInventory(remote: unknown, local: unknown): unknown {
 
 function mergeCollection(remote: unknown, local: unknown): unknown {
   return mergeCollectionLedgers(remote, local);
+}
+
+function mergeCrafting(remote: unknown, local: unknown): unknown {
+  return mergeCraftingState(remote, local);
 }
 
 function mergeActivity(remote: unknown, local: unknown): unknown {

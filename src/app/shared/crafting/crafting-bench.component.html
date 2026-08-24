@@ -1,0 +1,291 @@
+<section class="cb" aria-labelledby="cb-title">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header class="cb-head">
+    <div class="cb-head__copy">
+      <p class="cb-eyebrow"><span class="cb-eyebrow__pulse" aria-hidden="true"></span>{{ t('crafting.eyebrow') }}</p>
+      <h1 class="cb-title" id="cb-title">{{ t('crafting.title') }}</h1>
+      <p class="cb-tagline">{{ t('crafting.tagline') }}</p>
+    </div>
+
+    <div class="cb-ladder">
+      <div class="cb-dial" [style.--tier]="'#ffc669'">
+        <svg class="cb-dial__svg" [attr.viewBox]="'0 0 110 110'" aria-hidden="true">
+          <circle class="cb-dial__track" cx="55" cy="55" [attr.r]="dialR"></circle>
+          <circle class="cb-dial__arc" cx="55" cy="55" [attr.r]="dialR"
+                  [attr.stroke-dasharray]="dialCircumference"
+                  [attr.stroke-dashoffset]="dialOffset"></circle>
+        </svg>
+        <div class="cb-dial__inner">
+          <span class="cb-dial__num">{{ level.level }}</span>
+          <span class="cb-dial__cap">{{ t('crafting.level') }}</span>
+        </div>
+      </div>
+      <dl class="cb-ladder__stats">
+        <div>
+          <dt>{{ t('crafting.stat.xp') }}</dt>
+          <dd>{{ level.xp | number }}<span *ngIf="!level.maxed"> / {{ (level.xp - level.into + level.span) | number }}</span></dd>
+        </div>
+        <div>
+          <dt>{{ t('crafting.stat.known') }}</dt>
+          <dd>{{ discovered }} / {{ totalRecipes }}</dd>
+        </div>
+        <div>
+          <dt>{{ t('crafting.stat.mastered') }}</dt>
+          <dd>{{ mastered }}</dd>
+        </div>
+        <div>
+          <dt>{{ t('crafting.stat.gold') }}</dt>
+          <dd>{{ gold | number }}</dd>
+        </div>
+      </dl>
+    </div>
+  </header>
+
+  <div class="cb-body">
+
+    <!-- ── Recipe wall ─────────────────────────────────────────────────── -->
+    <div class="cb-wall">
+      <div class="cb-filters" role="group" [attr.aria-label]="t('crafting.filters')">
+        <label class="cb-search">
+          <span class="cb-sr">{{ t('crafting.search') }}</span>
+          <input type="search" [(ngModel)]="search" [placeholder]="t('crafting.search')"
+                 class="cb-search__input" autocomplete="off">
+        </label>
+
+        <div class="cb-chips">
+          <button type="button" class="cb-chip" [class.is-on]="categoryFilter === 'all'"
+                  (click)="categoryFilter = 'all'"
+                  [attr.aria-pressed]="categoryFilter === 'all'">{{ t('crafting.all') }}</button>
+          <button type="button" class="cb-chip" *ngFor="let cat of categories"
+                  [class.is-on]="categoryFilter === cat.id"
+                  [style.--chip]="cat.color"
+                  (click)="categoryFilter = cat.id"
+                  [attr.aria-pressed]="categoryFilter === cat.id">
+            <span aria-hidden="true">{{ cat.icon }}</span> {{ cat.label }}
+          </button>
+        </div>
+
+        <div class="cb-selects">
+          <label class="cb-select">
+            <span class="cb-sr">{{ t('crafting.filter.realm') }}</span>
+            <select [(ngModel)]="realmFilter">
+              <option value="all">{{ t('crafting.filter.allRealms') }}</option>
+              <option *ngFor="let realm of realms" [value]="realm.id">{{ realm.name }}</option>
+              <option value="unaligned">{{ t('crafting.filter.unaligned') }}</option>
+            </select>
+          </label>
+          <label class="cb-select">
+            <span class="cb-sr">{{ t('crafting.filter.rarity') }}</span>
+            <select [(ngModel)]="rarityFilter">
+              <option value="all">{{ t('crafting.filter.allRarities') }}</option>
+              <option *ngFor="let r of rarityOrder" [value]="r">{{ tiers[r].label }}</option>
+            </select>
+          </label>
+          <label class="cb-select">
+            <span class="cb-sr">{{ t('crafting.filter.status') }}</span>
+            <select [(ngModel)]="statusFilter">
+              <option value="all">{{ t('crafting.filter.everything') }}</option>
+              <option value="ready">{{ t('crafting.filter.ready') }}</option>
+              <option value="known">{{ t('crafting.filter.known') }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <p class="cb-count">{{ visible.length }} / {{ totalRecipes }} {{ t('crafting.recipes') }}</p>
+
+      <ul class="cb-list" role="list">
+        <li *ngFor="let card of visible; trackBy: trackCard">
+          <button type="button" class="cb-card"
+                  [class.is-selected]="selected?.id === card.recipe.id"
+                  [class.is-locked]="!card.levelOk"
+                  [class.is-short]="card.levelOk && !card.ready"
+                  [style.--tier]="rarityColor(card.recipe.rarity)"
+                  [style.--glow]="rarityGlow(card.recipe.rarity)"
+                  (click)="select(card.recipe)"
+                  [attr.aria-pressed]="selected?.id === card.recipe.id">
+            <span class="cb-card__art" aria-hidden="true">
+              <img *ngIf="card.art as a; else cardGlyph" [src]="a.src" [attr.srcset]="a.srcset"
+                   sizes="56px" alt="" width="56" height="56" loading="lazy" decoding="async">
+              <ng-template #cardGlyph><span class="cb-card__glyph">⚒</span></ng-template>
+            </span>
+            <span class="cb-card__body">
+              <span class="cb-card__name">
+                {{ card.recipe.name }}
+                <span class="cb-card__badge" *ngIf="card.mastered" [title]="t('crafting.mastered')">★</span>
+                <span class="cb-card__badge cb-card__badge--new" *ngIf="!card.known">◇</span>
+              </span>
+              <span class="cb-card__meta">
+                {{ rarityLabel(card.recipe.rarity) }} ·
+                {{ card.recipe.output.count > 1 ? '×' + card.recipe.output.count + ' · ' : '' }}{{ card.recipe.goldCost | number }} Gold
+              </span>
+              <span class="cb-card__ings">
+                <span *ngFor="let ing of card.recipe.ingredients">{{ ing.count }}× {{ materialName(ing.materialId) }}</span>
+              </span>
+            </span>
+            <span class="cb-card__state">
+              <span class="cb-card__lock" *ngIf="!card.levelOk">{{ t('crafting.lvl') }} {{ card.recipe.requiredLevel ?? 1 }}</span>
+              <span class="cb-card__ready" *ngIf="card.levelOk && card.ready" aria-hidden="true">●</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <p class="cb-empty" *ngIf="!visible.length">{{ t('crafting.empty') }}</p>
+    </div>
+
+    <!-- ── The anvil ───────────────────────────────────────────────────── -->
+    <div class="cb-anvil" *ngIf="selectedCard as card"
+         [style.--tier]="rarityColor(card.recipe.rarity)"
+         [style.--glow]="rarityGlow(card.recipe.rarity)">
+
+      <div class="cb-anvil__head">
+        <div class="cb-out">
+          <span class="cb-out__art" [class.is-striking]="striking" aria-hidden="true">
+            <img *ngIf="card.art as a; else outGlyph" [src]="a.src" [attr.srcset]="a.srcset"
+                 sizes="96px" alt="" width="96" height="96" decoding="async">
+            <ng-template #outGlyph><span class="cb-out__glyph">⚒</span></ng-template>
+          </span>
+          <div class="cb-out__copy">
+            <h2 class="cb-out__name">{{ card.recipe.name }}</h2>
+            <p class="cb-out__meta">
+              <span class="cb-pill">{{ rarityLabel(card.recipe.rarity) }}</span>
+              <span class="cb-pill">{{ realmLabel(card.recipe.realm) }}</span>
+              <span class="cb-pill" *ngIf="card.recipe.output.count > 1">×{{ card.recipe.output.count }}</span>
+            </p>
+            <p class="cb-out__blurb">{{ card.recipe.blurb }}</p>
+          </div>
+        </div>
+
+        <ul class="cb-stats" role="list" *ngIf="previewStats().length">
+          <li *ngFor="let stat of previewStats()">
+            <span>{{ stat.label }}</span>
+            <strong>{{ t('crafting.upTo') }} {{ stat.ceiling }}</strong>
+          </li>
+        </ul>
+        <p class="cb-stats__note" *ngIf="previewStats().length">{{ t('crafting.rollNote') }}</p>
+      </div>
+
+      <!-- Ingredient slots -->
+      <div class="cb-slots">
+        <h3 class="cb-h3">{{ t('crafting.slots') }}</h3>
+        <ul class="cb-slots__grid" role="list">
+          <li *ngFor="let slot of slots; trackBy: trackSlot"
+              class="cb-slot"
+              [class.is-loaded]="slot.loaded"
+              [class.is-short]="!slot.enough"
+              [class.is-over]="dragOver === slot.materialId"
+              (dragover)="onDragOver(slot, $event)"
+              (dragleave)="onDragLeave(slot)"
+              (drop)="onDrop(slot, $event)">
+            <span class="cb-slot__art" aria-hidden="true">
+              <img *ngIf="slot.art as a; else slotGlyph" [src]="a.src" [attr.srcset]="a.srcset"
+                   sizes="44px" alt="" width="44" height="44" loading="lazy" decoding="async">
+              <ng-template #slotGlyph><span class="cb-slot__glyph">⬡</span></ng-template>
+            </span>
+            <span class="cb-slot__name">{{ slot.name }}</span>
+            <span class="cb-slot__count" [class.is-short]="!slot.enough">{{ slot.have }} / {{ slot.need }}</span>
+            <button type="button" class="cb-slot__btn"
+                    [disabled]="!slot.enough || striking"
+                    (click)="slot.loaded ? unloadSlot(slot) : loadSlot(slot)">
+              {{ slot.loaded ? t('crafting.take') : t('crafting.load') }}
+            </button>
+          </li>
+        </ul>
+
+        <div class="cb-tray" *ngIf="!loaded">
+          <p class="cb-tray__hint">{{ t('crafting.dragHint') }}</p>
+          <ul class="cb-tray__row" role="list">
+            <li *ngFor="let slot of slots; trackBy: trackSlot">
+              <span class="cb-tile"
+                    [class.is-disabled]="!slot.enough || slot.loaded"
+                    [attr.draggable]="slot.enough && !slot.loaded ? 'true' : 'false'"
+                    (dragstart)="onDragStart(slot.materialId, $event)"
+                    (dragend)="onDragEnd()"
+                    [attr.aria-hidden]="true">
+                <img *ngIf="slot.art as a" [src]="a.src" [attr.srcset]="a.srcset"
+                     sizes="40px" alt="" width="40" height="40" loading="lazy" decoding="async">
+                <span class="cb-tile__n">{{ slot.have }}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Cost, mastery, strike -->
+      <div class="cb-foot">
+        <dl class="cb-cost">
+          <div>
+            <dt>{{ t('crafting.stat.gold') }}</dt>
+            <dd [class.is-short]="gold < card.recipe.goldCost">{{ card.recipe.goldCost | number }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('crafting.time') }}</dt>
+            <dd>{{ (card.recipe.craftTime ?? 0) > 0 ? (card.recipe.craftTime + 's') : t('crafting.instant') }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('crafting.xp') }}</dt>
+            <dd>+{{ xpFor(card.recipe) | number }}</dd>
+          </div>
+        </dl>
+
+        <div class="cb-mastery" *ngIf="masteryOf(card.recipe) as m">
+          <p class="cb-mastery__line" *ngIf="!m.mastered">
+            {{ t('crafting.mastery.progress') }} {{ m.crafted }} / {{ masteryThreshold }}
+          </p>
+          <p class="cb-mastery__line is-done" *ngIf="m.mastered">
+            ★ {{ t('crafting.mastery.done') }}
+          </p>
+          <div class="cb-mastery__bar" aria-hidden="true">
+            <span [style.width.%]="(m.crafted / masteryThreshold) * 100 > 100 ? 100 : (m.crafted / masteryThreshold) * 100"></span>
+          </div>
+        </div>
+
+        <div class="cb-actions">
+          <button type="button" class="cb-btn cb-btn--ghost"
+                  [disabled]="!canLoad || striking" (click)="loadAll()">
+            {{ t('crafting.loadAll') }}
+          </button>
+          <button type="button" class="cb-btn cb-btn--ghost"
+                  [disabled]="!loaded || striking" (click)="clearAnvil()">
+            {{ t('crafting.clear') }}
+          </button>
+          <button type="button" class="cb-btn cb-btn--strike"
+                  [class.is-striking]="striking"
+                  [disabled]="!canCraft" (click)="craft()">
+            <span class="cb-btn__anvil" aria-hidden="true">⚒</span>
+            {{ striking ? (t('crafting.working') + ' ' + strikeRemaining + 's') : t('crafting.craft') }}
+          </button>
+        </div>
+
+        <div class="cb-progress" *ngIf="striking" aria-hidden="true">
+          <span [style.width.%]="strikePercent"></span>
+        </div>
+
+        <ng-container *ngIf="!striking">
+          <p class="cb-blocker" *ngIf="blockerCopy as why">{{ why }}</p>
+          <p class="cb-blocker" *ngIf="!blockerCopy && !loaded">{{ t('crafting.loadFirst') }}</p>
+        </ng-container>
+        <p class="cb-error" *ngIf="error" role="alert">{{ error }}</p>
+      </div>
+
+      <!-- Result -->
+      <div class="cb-result" *ngIf="lastCraft as result" role="status">
+        <p class="cb-result__eyebrow">
+          {{ result.mastered ? t('crafting.result.mastered') : t('crafting.result.done') }}
+        </p>
+        <ul class="cb-result__items" role="list">
+          <li *ngFor="let item of result.items; trackBy: trackItem">
+            <strong>{{ item.name }}</strong>
+            <span *ngIf="qualityOf(item) as q"> · {{ q }}</span>
+          </li>
+        </ul>
+        <p class="cb-result__note">{{ t('crafting.result.note') }}</p>
+        <button type="button" class="cb-btn cb-btn--ghost" (click)="dismissResult()">{{ t('crafting.dismiss') }}</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="cb-sr" aria-live="polite">{{ announce }}</p>
+</section>

@@ -17,6 +17,21 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.79.0',
+    codename: 'The Bench',
+    date: '2026-08-24',
+    highlights: [
+      'Mining, Foraging and Prospecting have been handing out thirteen materials for releases, and expeditions have been bringing home twenty-three more, and there was exactly one thing in the game you could turn any of them into: Basalt Edge, once, as a tutorial. The bench is the rest of that sentence. Fifty-two recipes across weapons, armour, charms and consumables, at /forge/crafting, drawing on every gathering skill and on the Art Bible materials expeditions carry back',
+      'Crafted kit is minted the same way everything else in the game is minted, which is the part that matters: it rolls its own numbers, it carries a roll grade, and it is an ordinary instance from the moment it lands. It can be equipped, tempered, reforged, listed on the Grand Exchange and sold at the till, because nothing downstream needs to know it came off an anvil rather than out of a box',
+      'A crafting level of its own, to thirty, climbing on the tier of what you actually forge rather than on how many times you pressed the button — a Legendary is worth sixty-five Thornberry Elixirs. Recipes gate on it, and a gated recipe stays on the wall in grey rather than disappearing: you cannot work toward something you cannot see',
+      'Craft one recipe ten times and it is mastered, and every roll on it afterwards comes out ten percent better, permanently. The bonus is applied inside the same sample the grade is read from rather than added to the stat afterwards, so the number on the card and the number on the tooltip cannot disagree — that split is what put a 99% label on a maxed item the last time something touched this path',
+      'The anvil has to be loaded before it can be struck. Drag a material onto its slot, press the slot\'s Load button, or load the lot at once — three paths, one write, and drag is never the only one. It costs a press and it buys a hard stop between deciding to spend two hundred thousand Gold and spending it',
+      'One craft touches four ledgers — the bag consumes and mints, the economy debits, the ladder takes XP, the Collection Log records the recipe — and it goes through a single gateway that settles them in an order chosen for what each step can fail on. Consume and mint are one ledger write with a rollback, and a retry under the same id returns the item it already made instead of billing a second time',
+      'Recipes are their own Collection Log category, discovered the first time you craft them, and the log\'s denominator moves from 201 to 253. A recipe card shows the art of what comes off the anvil rather than a picture of a recipe, and its reveal says "New recipe discovered" instead of "New discovery" — knowing how to make a thing is not the same as having found one',
+      'craftTime is a beat at the anvil and deliberately not a background job. Nothing is reserved and nothing is consumed until the strike lands, so a tab closed at second five of a six-second craft still has its materials and its Gold. Offline production is a separate system with an operation ledger of its own; it does not get bolted onto a timer',
+    ],
+  },
+  {
     version: '2.78.0',
     codename: 'Art Bible',
     date: '2026-08-24',

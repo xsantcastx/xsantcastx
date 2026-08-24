@@ -16,6 +16,10 @@
     <div class="rf-head__copy">
       <h1 class="rf-title">{{ t('forge.title') }}</h1>
       <p class="rf-tag">{{ t('forge.tag') }}</p>
+      <!-- The in-world doorway to the bench. The tome lists it too, because a
+           room reachable only from inside its parent hall reads as a dead page
+           to anyone who arrives anywhere else. -->
+      <p class="rf-bench"><a routerLink="/forge/crafting">{{ t('forge.benchLink') }}</a></p>
     </div>
     <dl class="rf-head__wallet">
       <div>

@@ -37,6 +37,7 @@ import {
   type ItemRarity,
 } from '../rpg/item.model';
 import { ITEM_DEFINITIONS, type ItemDefinition } from '../rpg/item-definition';
+import { CRAFTING_RECIPES, recipeCollectionId } from '../crafting/crafting.model';
 import { ARTBIBLE_RARITY } from '../rpg/artbible-items';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { RUNES, RUNEWORDS, RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
@@ -54,7 +55,8 @@ export type CollectionCategory =
   | 'charm'
   | 'material'
   | 'equipment'
-  | 'consumable';
+  | 'consumable'
+  | 'recipe';
 
 export interface CollectionCategoryDefinition {
   id: CollectionCategory;
@@ -129,6 +131,14 @@ export const COLLECTION_CATEGORIES: readonly CollectionCategoryDefinition[] = [
     glow: 'rgba(16, 185, 129, 0.6)',
     blurb: 'Spent once. The log remembers them anyway — that is the whole point of it.',
   },
+  {
+    id: 'recipe',
+    label: 'Recipes',
+    icon: '⚒',
+    color: '#ffc669',
+    glow: 'rgba(255, 180, 80, 0.6)',
+    blurb: 'Ways of making a thing. Known the first time you make it, and never forgotten.',
+  },
 ];
 
 export const COLLECTION_CATEGORY_ORDER: readonly CollectionCategory[] =
@@ -164,6 +174,18 @@ export interface CollectionEntry {
   hint: string;
   /** True when something in the current build can actually grant it. */
   obtainable: boolean;
+  /**
+   * The id to look the painting up under, when it is not this row's own id.
+   *
+   * One consumer: a recipe. A recipe is not a painted object — it is a way of
+   * getting one — so its card shows the art of what comes off the anvil. An
+   * alias in `ART_ALIAS` would have been the other option and would have been
+   * wrong: that map exists for ids whose *file* is named differently, and
+   * `art.spec.ts` asserts every alias points at a real manifest key. Fifty
+   * recipes pointing at fifty existing keys would pass that test while turning
+   * the alias table into a second recipe list.
+   */
+  artId?: string;
   /** True for the four Collector rewards, which are outside the denominator. */
   reward?: boolean;
 }
@@ -461,6 +483,22 @@ function buildCatalogue(): CollectionEntry[] {
       lore: loreFor(seed.id),
       hint: seed.hint,
       obtainable: true,
+    });
+  }
+
+  for (const recipe of CRAFTING_RECIPES) {
+    rows.push({
+      id: recipeCollectionId(recipe.id),
+      category: 'recipe',
+      name: recipe.name,
+      rarity: recipe.rarity,
+      realm: recipe.realm,
+      lore: recipe.blurb,
+      hint: `${recipe.ingredients.length} materials at the bench — crafting level ${recipe.requiredLevel ?? 1}`,
+      obtainable: true,
+      // The recipe card shows what comes off the anvil, not a picture of a
+      // recipe. See `CollectionEntry.artId`.
+      artId: recipe.output.itemId,
     });
   }
 
