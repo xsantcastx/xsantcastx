@@ -43,6 +43,7 @@ import { LoreService } from '../lore/lore.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { tierForEgg } from '../rarity/rarity.model';
 import { ProService } from '../pro/pro.service';
+import { InfusionService } from '../enchanting/infusion.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
 import { InventoryService } from '../rpg/inventory.service';
 
@@ -58,11 +59,13 @@ export class EconomyWiringService {
   private readonly pro = inject(ProService);
   private readonly stats = inject(PlayerStatsService);
   private readonly inventory = inject(InventoryService);
+  private readonly infusions = inject(InfusionService);
 
   private started = false;
 
   /**
-   * Wisdom, plus every `xpBonus` on a worn item, as a multiplier.
+   * Wisdom, plus every `xpBonus` on a worn item, plus any XP infusion running
+   * at the Enchanting Table, as one multiplier.
    *
    * Both are authored as percentages and both add before the multiply, so 20
    * points of Wisdom (+60%) and a Legendary rolling +25% pay ×1.85 rather than
@@ -73,7 +76,13 @@ export class EconomyWiringService {
   private rpgXpMultiplier(): number {
     const fromWisdom = this.stats.xpMultiplier - 1;
     const fromGear = this.inventory.equippedTotals.xpBonus / 100;
-    const total = 1 + fromWisdom + fromGear;
+    // Moonpetal and Prism land here rather than in `xpMultiplier` for the same
+    // reason Wisdom does: that function reads the economy blob, and the infusion
+    // ledger is a different blob with a clock of its own. Added to the same sum
+    // so the three compose as "+60% and +25% and +15% pay ×2", which is what
+    // every card involved promises.
+    const fromInfusion = this.infusions.bonusOn('xp') / 100;
+    const total = 1 + fromWisdom + fromGear + fromInfusion;
     return Number.isFinite(total) && total > 1 ? total : 1;
   }
 

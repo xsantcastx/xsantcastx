@@ -255,7 +255,7 @@ const ZERO_ECONOMY: EconomySnapshot = {
   autoClicks: 0,
   perSecond: 0,
   perMinute: 0,
-  breakdown: { idle: 0, auto: 0, rpg: 0, upgrades: 1, streak: 1, shards: 1, artifact: 1, runeword: 1, total: 0 },
+  breakdown: { idle: 0, auto: 0, rpg: 0, upgrades: 1, streak: 1, shards: 1, artifact: 1, runeword: 1, infusion: 1, total: 0 },
   autoPerSecond: 0,
   perClick: 0,
   shards: 0,

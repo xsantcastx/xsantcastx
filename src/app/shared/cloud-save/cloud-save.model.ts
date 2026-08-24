@@ -42,6 +42,7 @@ import { mergeActivityLedgers } from '../activity/activity-ops';
 import { mergeChapterLedgers } from '../narrative/chapter-ops';
 import { mergeCollectionLedgers } from '../collection/collection.model';
 import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model';
+import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -219,6 +220,13 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     doc: 'runes',
     label: 'rune ledger',
     merge: mergeRuneLedger,
+  },
+  {
+    key: 'godforge-infusions',
+    collection: 'progress',
+    doc: 'infusions',
+    label: 'material infusions',
+    merge: mergeInfusions,
   },
   {
     key: 'godforge-scrolls',
@@ -720,6 +728,17 @@ function numberOrZero(v: unknown): number {
  * for the same reason the egg dates do — these are the moments a rune was
  * *first* pulled, and a later one is the same discovery made again elsewhere.
  */
+/**
+ * Infusion timers, per id, later expiry wins.
+ *
+ * Delegated to the model rather than written here because the same rule has to
+ * hold for a local double-brew across two tabs, and two implementations of
+ * "which of these two timers is the real one" is one too many.
+ */
+function mergeInfusions(remote: unknown, local: unknown): unknown {
+  return mergeInfusionLedgers(remote, local);
+}
+
 function mergeRuneLedger(remote: unknown, local: unknown): unknown {
   if (!isPlainObject(local)) return remote ?? local;
   if (!isPlainObject(remote)) return local;
