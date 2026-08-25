@@ -223,7 +223,7 @@ export interface QualityGradeDefinition {
 }
 
 export const QUALITY_GRADES: readonly QualityGradeDefinition[] = [
-  { id: 'superb', label: 'Superb', from: 0.90, color: '#e8c898', glow: 'rgba(255, 198, 105, 0.55)' },
+  { id: 'superb', label: 'Superb', from: 0.90, color: '#e8c898', glow: 'rgba(232, 200, 152, 0.55)' },
   { id: 'good', label: 'Good', from: 0.75, color: '#7fd5a3', glow: 'rgba(127, 213, 163, 0.5)' },
   { id: 'fair', label: 'Fair', from: 0.50, color: '#ffd76a', glow: 'rgba(255, 215, 106, 0.45)' },
   { id: 'poor', label: 'Poor', from: 0, color: '#ff6d6d', glow: 'rgba(255, 109, 109, 0.45)' },

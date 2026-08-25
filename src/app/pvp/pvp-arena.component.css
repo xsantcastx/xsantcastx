@@ -220,10 +220,10 @@
   margin: 0;
   padding: 0.55rem 1.1rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 198, 105, 0.22);
-  background: rgba(255, 198, 105, 0.06);
+  border: 1px solid rgba(232, 200, 152, 0.22);
+  background: rgba(232, 200, 152, 0.06);
   font-size: 0.85rem;
-  color: rgba(255, 198, 105, 0.9);
+  color: rgba(232, 200, 152, 0.9);
 }
 
 .ar-lock--ready {
@@ -361,7 +361,7 @@
 .ar-ring__locked {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(255, 198, 105, 0.75);
+  color: rgba(232, 200, 152, 0.75);
 }
 
 .ar-ring__roster { font-size: 0.8rem; }
@@ -467,7 +467,7 @@
 .ar-shop__copy { flex: 1 1 260px; }
 .ar-shop__copy h3 { margin: 0 0 0.25rem; font-size: 0.98rem; color: var(--ink-0); }
 .ar-shop__copy p { margin: 0; font-size: 0.83rem; line-height: 1.5; color: rgba(232, 230, 245, 0.6); }
-.ar-shop__gate { margin-top: 0.35rem !important; color: rgba(255, 198, 105, 0.7) !important; font-size: 0.76rem !important; }
+.ar-shop__gate { margin-top: 0.35rem !important; color: rgba(232, 200, 152, 0.7) !important; font-size: 0.76rem !important; }
 
 .ar-shop__buy { display: flex; align-items: center; gap: 0.9rem; }
 
@@ -652,7 +652,7 @@
 .ar-verdict__rewards b { font-family: 'Orbitron', sans-serif; color: #4dffe0; }
 
 .ar-verdict__streak,
-.ar-verdict__consolation { margin: 0; font-size: 0.83rem; color: rgba(255, 198, 105, 0.8); }
+.ar-verdict__consolation { margin: 0; font-size: 0.83rem; color: rgba(232, 200, 152, 0.8); }
 
 .ar-verdict__unlock {
   margin: 0;

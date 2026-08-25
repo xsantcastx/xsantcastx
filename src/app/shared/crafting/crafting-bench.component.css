@@ -40,7 +40,7 @@
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:
-    radial-gradient(ellipse 60% 80% at 12% 0%, rgba(255, 198, 105, 0.06), transparent 65%),
+    radial-gradient(ellipse 60% 80% at 12% 0%, rgba(232, 200, 152, 0.06), transparent 65%),
     radial-gradient(ellipse 55% 70% at 90% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
     rgba(10, 6, 26, 0.55);
 }
@@ -49,7 +49,7 @@
   display: inline-flex; align-items: center; gap: 0.5rem;
   margin: 0 0 0.4rem;
   font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255, 198, 105, 0.9);
+  color: rgba(232, 200, 152, 0.9);
 }
 .cb-eyebrow__pulse {
   width: 7px; height: 7px; border-radius: 50%;
@@ -414,7 +414,7 @@
   flex: 1 1 200px;
   display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
   border-color: var(--tier, var(--gold));
-  background: linear-gradient(180deg, rgba(255, 198, 105, 0.22), rgba(255, 154, 90, 0.1));
+  background: linear-gradient(180deg, rgba(232, 200, 152, 0.22), rgba(255, 154, 90, 0.1));
   box-shadow: 0 0 28px -10px var(--glow, rgba(255, 180, 80, 0.7));
 }
 .cb-btn--strike:not(:disabled):hover { box-shadow: 0 0 34px -6px var(--glow, rgba(255, 180, 80, 0.8)); }
