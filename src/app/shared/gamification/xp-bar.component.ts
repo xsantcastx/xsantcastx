@@ -155,7 +155,7 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
 
     .xpb__streak {
       font: 600 11px/1 'Orbitron', system-ui, sans-serif;
-      color: #ffc669; white-space: nowrap;
+      color: #e8c898; white-space: nowrap;
     }
     .xpb__streak span { margin-left: 2px; }
     /* A drawn ember rather than a dingbat sun, which shipped as a colour
@@ -171,7 +171,7 @@ import { CloudSaveService, SyncStatus } from '../cloud-save/cloud-save.service';
 
     .xpb__sync { font-size: 11px; line-height: 1; color: #A78BFA; }
     .xpb__sync[data-state="syncing"] {
-      color: #ffc669;
+      color: #e8c898;
       display: inline-block;
       animation: xpbSyncSpin 1.1s linear infinite;
     }

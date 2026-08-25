@@ -32,6 +32,12 @@ jobs:
       - name: Audit public navigation and retired-tool copy
         run: node scripts/audit-nav.js
 
+      - name: Check design-system adherence
+        # Ratchet, not a wall: fails only when a rule's count rises above the
+        # committed baseline in scripts/ds-adherence.baseline.json. Runs before
+        # the build so a violation costs seconds, not a full production compile.
+        run: npm run check:ds
+
       - name: Build Angular app
         # Production build runs full AOT compile which is a stricter typecheck
         # than `tsc --noEmit` — TS errors fail the build and gate the deploy.

@@ -1,0 +1,24 @@
+/* Elevation. Eclipse Realms lifts with an inset edge and a low ambient drop, not a soft card shadow.
+   Glow is state, never decoration — it lives in tokens/rarity.css. */
+:root{
+  --shadow-inset:inset 0 1px 0 rgba(244,242,248,.06);
+  --shadow-well:inset 0 1px 3px rgba(0,0,0,.6),inset 0 0 0 1px rgba(244,242,248,.05);
+  --shadow-panel:0 1px 0 rgba(244,242,248,.05),0 8px 24px -12px rgba(0,0,0,.9);
+  --shadow-raised:0 2px 0 rgba(244,242,248,.05),0 14px 32px -14px rgba(0,0,0,.95);
+  --shadow-overlay:0 24px 64px -20px rgba(0,0,0,.95);
+
+  /* Scrim between scene art and UI. Scenic art reads at 40–55% effective strength behind content. */
+  --scene-opacity:.5; /* @kind other */
+  --scene-top:.86; /* @kind other */
+  --scene-mid:.62; /* @kind other */
+  --scrim-page:linear-gradient(180deg,rgba(10,10,15,.86) 0%,rgba(10,10,15,.62) 42%,rgba(10,10,15,.94) 100%); /* @kind other */
+  --scrim-panel:radial-gradient(120% 90% at 50% 0%,rgba(10,10,15,.35) 0%,rgba(10,10,15,.9) 78%); /* @kind other */
+
+  /* Blur is reserved for overlay chrome and is deliberately dropped under 768px for frame budget. */
+  --blur-overlay:blur(14px); /* @kind other */
+  --blur-chip:blur(6px); /* @kind other */
+}
+@media (max-width:767px){:root{
+  --blur-overlay:none; /* @kind other */
+  --blur-chip:none; /* @kind other */
+}}

@@ -127,7 +127,7 @@
   border-color: var(--gf-accent);
   box-shadow: 0 0 16px -6px rgba(201, 168, 76, 0.85);
 }
-.hb__tile.is-rare { border-color: #E4A83A; }
+.hb__tile.is-rare { border-color: var(--gold-core); }
 .hb__tile.is-new:not(.is-rare) { border-color: var(--gf-accent-text); }
 
 /* An empty well. Same footprint as a filled tile so the grid does not reflow
@@ -148,7 +148,7 @@
   font-size: 0.62rem;
 }
 .hb__flag--new { color: var(--gf-accent-text); }
-.hb__flag--rare { color: #E4A83A; }
+.hb__flag--rare { color: var(--gold-core); }
 
 /* Lives in the actions row, not the corner. As an absolutely-positioned
    overlay it sat inside the face button's hit area and forced a 48px reserve
@@ -257,7 +257,7 @@
   top: var(--header-offset, 96px);
 }
 .hb__confirm-actions { display: flex; gap: 8px; }
-.hb__drop { border-color: rgba(228, 168, 58, 0.4); color: #E4A83A; }
+.hb__drop { border-color: rgba(228, 168, 58, 0.4); color: var(--gold-core); }
 
 .hb__empty, .hb__full {
   margin: 0 0 0.6rem;

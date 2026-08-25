@@ -1,0 +1,21 @@
+/* Spacing. The shipped app has 72 distinct spacing values and no grid — this 4pt ramp is the fix.
+   Use px throughout: the audit found rem and px panels responding differently side by side. */
+:root{
+  --space-0:0; --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px;
+  --space-16:64px; --space-20:80px; --space-24:96px;
+
+  /* Every standalone control. Non-negotiable — the audit counts 20+ places that hold this line. */
+  --tap-min:44px;
+
+  /* Breakpoints. --bp-sm/md/lg are declared in the app and used zero times; these are the
+     three values worth keeping out of the 13 in the wild. */
+  --bp-sm:768px; /* @kind other */
+  --bp-md:1024px; /* @kind other */
+  --bp-lg:1280px; /* @kind other */
+
+  /* Shell geometry */
+  --nav-rail:232px;
+  --inspect-panel:400px;   /* desktop Quick Inspect: 360–440px */
+  --gutter:24px;
+}

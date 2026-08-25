@@ -267,7 +267,7 @@ import { RARITIES } from '../rarity/rarity.model';
     }
     .cp__flame-core {
       width: 14px; height: 20px;
-      background: linear-gradient(180deg, #fff4d6, #ffc669 55%, #ff9a5a);
+      background: linear-gradient(180deg, #fff4d6, #e8c898 55%, #ff9a5a);
     }
     .cp__flame-lick {
       width: 22px; height: 30px;
@@ -297,11 +297,11 @@ import { RARITIES } from '../rarity/rarity.model';
 
     .cp__streak-copy { flex: 1 1 auto; display: grid; gap: .1rem; }
     .cp__streak-count { margin: 0; font-size: .8rem; color: rgba(228, 222, 255, .6); }
-    .cp__streak-count b { font-size: 1.4rem; color: #ffc669; margin-right: .3rem; }
+    .cp__streak-count b { font-size: 1.4rem; color: #e8c898; margin-right: .3rem; }
     .cp__streak-note { margin: 0; font-size: .74rem; color: rgba(228, 222, 255, .45); }
     .cp__chests {
       font-size: .78rem;
-      color: #C9A84C;
+      color: #c89868;
       white-space: nowrap;
     }
 
@@ -414,7 +414,7 @@ import { RARITIES } from '../rarity/rarity.model';
       color: rgba(228, 222, 255, .5);
       font-variant-numeric: tabular-nums;
     }
-    .cp__reward { font-size: .78rem; color: #C9A84C; font-variant-numeric: tabular-nums; }
+    .cp__reward { font-size: .78rem; color: #c89868; font-variant-numeric: tabular-nums; }
     .cp__reward--spent { color: rgba(201, 168, 76, .45); }
 
     .cp__claim {

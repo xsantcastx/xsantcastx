@@ -11,7 +11,7 @@
   max-width: 1120px;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 4rem;
-  color: #e8ecf1;
+  color: var(--ink-0);
 }
 
 /* Dual nebula wash + the house's gradient cap lines. */
@@ -87,7 +87,7 @@
   margin-bottom: 1.4rem;
   font-size: 0.82rem;
 }
-.gb__coin b { color: #ffc669; font-variant-numeric: tabular-nums; }
+.gb__coin b { color: var(--gold); font-variant-numeric: tabular-nums; }
 .gb__coin--muted { color: rgba(232, 236, 241, 0.5); }
 .gb__coin--muted b { color: rgba(232, 236, 241, 0.75); }
 
@@ -157,7 +157,7 @@
   line-height: 1.4;
   color: rgba(232, 236, 241, 0.42);
 }
-.gb__pity--armed { color: #ffc669; font-weight: 600; }
+.gb__pity--armed { color: var(--gold); font-weight: 600; }
 
 .gb__buy {
   margin-top: 0.2rem;
@@ -165,7 +165,7 @@
   border-radius: 10px;
   border: 1px solid var(--box-glow);
   background: color-mix(in srgb, var(--box-accent) 16%, rgba(10, 6, 26, 0.9));
-  color: #e8ecf1;
+  color: var(--ink-0);
   font-weight: 600;
   font-size: 0.82rem;
   cursor: pointer;
@@ -196,7 +196,7 @@
   padding: 0.7rem 1rem;
   background: none;
   border: 0;
-  color: #e8ecf1;
+  color: var(--ink-0);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -250,10 +250,10 @@
 }
 
 .gb__sell-name { font-weight: 600; }
-.gb__sell-lvl { color: #ffc669; }
+.gb__sell-lvl { color: var(--gold); }
 .gb__sell-mods { color: rgba(232, 236, 241, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gb__sell-q { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.gb__sell-gold { text-align: right; color: #ffc669; font-variant-numeric: tabular-nums; }
+.gb__sell-gold { text-align: right; color: var(--gold); font-variant-numeric: tabular-nums; }
 
 .gb__sell-bar {
   position: sticky;
@@ -264,7 +264,7 @@
   padding: 0.6rem 0.2rem 0;
   font-size: 0.8rem;
 }
-.gb__sell-bar b { color: #ffc669; }
+.gb__sell-bar b { color: var(--gold); }
 .gb__sell-go {
   margin-left: auto;
   min-height: 44px;
@@ -294,7 +294,7 @@
 .gb-reveal {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: 1.5rem 1rem;
@@ -368,7 +368,7 @@
   cursor: pointer;
 }
 
-.gb-reveal__pity { margin: 0; font-size: 0.7rem; color: #ffc669; letter-spacing: 0.08em; }
+.gb-reveal__pity { margin: 0; font-size: 0.7rem; color: var(--gold); letter-spacing: 0.08em; }
 .gb-reveal__named {
   margin: 0;
   font-size: 0.64rem;
@@ -409,7 +409,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #0a0618;
-  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7, var(--gold), #4dffe0);
   background-size: 300% 100%;
   animation: gbPrism 4.5s linear infinite;
 }
@@ -460,7 +460,7 @@
   inset: -2px;
   border-radius: inherit;
   padding: 2px;
-  background: linear-gradient(115deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background: linear-gradient(115deg, #4dffe0, #a48bff, #ff6dd7, var(--gold), #4dffe0);
   background-size: 300% 100%;
   animation: gbPrism 5s linear infinite;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);

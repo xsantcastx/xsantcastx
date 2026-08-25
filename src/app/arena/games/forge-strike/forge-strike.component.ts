@@ -40,7 +40,7 @@ interface TargetSpec {
 
 const SPECS: Record<TargetKind, TargetSpec> = {
   bug:     { glyph: '🐛', points:  10, color: '#7fd5a3', life: 1.5, radius: 30 },
-  feature: { glyph: '⚡', points:   5, color: '#C9A84C', life: 1.9, radius: 28 },
+  feature: { glyph: '⚡', points:   5, color: '#c89868', life: 1.9, radius: 28 },
   error:   { glyph: '💥', points: -20, color: '#ff2d4d', life: 1.7, radius: 30 },
 };
 

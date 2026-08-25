@@ -48,7 +48,7 @@
 }
 .cl-dial__pct {
   font-size: 2.1rem; font-weight: 800; line-height: 1;
-  color: #f4f1ff;
+  color: var(--ink-0);
 }
 .cl-dial__pct small { font-size: 0.95rem; opacity: 0.65; margin-left: 1px; }
 .cl-dial__count {
@@ -74,7 +74,7 @@
 .cl-title {
   margin: 0 0 0.5rem;
   font-size: clamp(1.35rem, 3vw, 1.85rem); font-weight: 800; line-height: 1.15;
-  color: #f4f1ff;
+  color: var(--ink-0);
 }
 .cl-sub {
   margin: 0; max-width: 46ch;
@@ -95,7 +95,7 @@
   min-width: 2.4rem; padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: rgba(201, 168, 76, 0.18);
-  font-size: 0.68rem; font-weight: 800; color: #C9A84C;
+  font-size: 0.68rem; font-weight: 800; color: var(--gold-core);
 }
 .cl-next--done { border-color: rgba(230, 220, 255, 0.35); background: rgba(230, 220, 255, 0.08); }
 .cl-next--done .cl-next__badge { background: rgba(230, 220, 255, 0.2); color: #e6dcff; }
@@ -123,16 +123,16 @@
 .cl-reward__at {
   margin: 0 0 0.15rem;
   font-size: 1.35rem; font-weight: 800; line-height: 1;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
-.cl-reward__title { margin: 0 0 0.2rem; font-size: 0.88rem; font-weight: 700; color: #f4f1ff; }
+.cl-reward__title { margin: 0 0 0.2rem; font-size: 0.88rem; font-weight: 700; color: var(--ink-0); }
 .cl-reward__gold { margin: 0 0 0.4rem; font-size: 0.74rem; color: rgba(240, 220, 160, 0.8); }
 .cl-reward__blurb { margin: 0 0 0.5rem; font-size: 0.72rem; line-height: 1.5; color: rgba(226, 222, 245, 0.58); }
 .cl-reward__state {
   margin: 0; font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase;
   color: rgba(226, 222, 245, 0.42);
 }
-.cl-reward.is-earned .cl-reward__state { color: #C9A84C; }
+.cl-reward.is-earned .cl-reward__state { color: var(--gold-core); }
 
 /* ── Recent ───────────────────────────────────────────────────────────────── */
 
@@ -162,7 +162,7 @@
 .cl-recent__glyph { font-size: 1.75rem; line-height: 48px; color: var(--tier); }
 .cl-recent__name {
   font-size: 0.72rem; font-weight: 700; text-align: center; line-height: 1.25;
-  color: #f4f1ff;
+  color: var(--ink-0);
 }
 .cl-recent__date { font-size: 0.6rem; color: rgba(226, 222, 245, 0.45); text-align: center; }
 
@@ -191,7 +191,7 @@
 }
 .cl-bar__head { display: flex; align-items: center; gap: 0.5rem; }
 .cl-bar__icon { color: var(--tier); font-size: 0.95rem; }
-.cl-bar__label { font-size: 0.8rem; font-weight: 700; color: #f4f1ff; }
+.cl-bar__label { font-size: 0.8rem; font-weight: 700; color: var(--ink-0); }
 .cl-bar__count {
   margin-left: auto;
   font-size: 0.72rem; color: rgba(226, 222, 245, 0.62); white-space: nowrap;
@@ -261,10 +261,10 @@
   cursor: pointer;
   transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
-.cl-chip:hover, .cl-chip:focus-visible { border-color: var(--chip, #4dffe0); color: #f4f1ff; }
+.cl-chip:hover, .cl-chip:focus-visible { border-color: var(--chip, #4dffe0); color: var(--ink-0); }
 .cl-chip.is-on {
   border-color: var(--chip, #4dffe0);
-  color: #f4f1ff;
+  color: var(--ink-0);
   box-shadow: 0 0 18px -8px var(--chip-glow, rgba(0, 255, 204, 0.6));
 }
 
@@ -280,7 +280,7 @@
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   background: rgba(8, 5, 20, 0.75);
-  color: #f4f1ff; font-size: 0.78rem;
+  color: var(--ink-0); font-size: 0.78rem;
 }
 .cl-search { width: 100%; }
 .cl-select:focus-visible, .cl-search:focus-visible { outline: 2px solid #4dffe0; outline-offset: 1px; }
@@ -379,7 +379,7 @@
 .cl-card__realm { font-size: 0.58rem; letter-spacing: 0.08em; color: rgba(226, 222, 245, 0.38); }
 .cl-card__name {
   margin: 0; font-size: 0.85rem; font-weight: 700; line-height: 1.25;
-  color: #f4f1ff;
+  color: var(--ink-0);
 }
 .cl-card--locked .cl-card__name { color: rgba(226, 222, 245, 0.35); letter-spacing: 0.14em; }
 .cl-card__lore, .cl-card__hint {
@@ -394,7 +394,7 @@
 .cl-card__tag {
   padding: 0.05rem 0.4rem; border-radius: 999px;
   border: 1px solid rgba(201, 168, 76, 0.4);
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 .cl-card__absent {
   margin: 0.15rem 0 0;

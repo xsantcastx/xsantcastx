@@ -18,7 +18,7 @@
 }
 
 .rr-legend__item--css   { color: #A78BFA; }
-.rr-legend__item--js    { color: #C9A84C; }
+.rr-legend__item--js    { color: var(--gold-core); }
 .rr-legend__item--regex { color: #a48bff; }
 .rr-legend__item--html  { color: #ff6dd7; }
 

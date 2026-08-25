@@ -139,7 +139,7 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
       font: 600 11px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em;
       color: #A78BFA;
     }
-    .cs__state[data-state="syncing"] { color: #ffc669; }
+    .cs__state[data-state="syncing"] { color: #e8c898; }
     .cs__state[data-state="error"]   { color: #ff6dd7; }
 
     /* Only the syncing glyph moves, and only while it is true. */

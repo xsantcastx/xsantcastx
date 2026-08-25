@@ -1,0 +1,25 @@
+/* The five realms. Hexes are the canonical values from five-realms.narrative.ts,
+   quoted verbatim in the skill-authoring spec §7.3: "No new hex."
+   Realm colour signals location / type / status only — never decoration. */
+:root{
+  --realm-celestial:#00d4ff;
+  --realm-infernal:#ef4444;
+  --realm-luminous:#e8d44d;
+  --realm-umbral:#a855f7;
+  --realm-verdant:#10b981;
+
+  /* Low-alpha tints for panel washes and chips */
+  --realm-celestial-tint:rgba(0,212,255,.14);
+  --realm-infernal-tint:rgba(239,68,68,.14);
+  --realm-luminous-tint:rgba(232,212,77,.14);
+  --realm-umbral-tint:rgba(168,85,247,.14);
+  --realm-verdant-tint:rgba(16,185,129,.14);
+
+  /* Text colour to place ON a realm accent fill — always the scene base, never a coined dark. */
+  --on-realm:#0a0a0f;
+}
+[data-realm="celestial"]{--realm:var(--realm-celestial);--realm-tint:var(--realm-celestial-tint)}
+[data-realm="infernal"]{--realm:var(--realm-infernal);--realm-tint:var(--realm-infernal-tint)}
+[data-realm="luminous"]{--realm:var(--realm-luminous);--realm-tint:var(--realm-luminous-tint)}
+[data-realm="umbral"]{--realm:var(--realm-umbral);--realm-tint:var(--realm-umbral-tint)}
+[data-realm="verdant"]{--realm:var(--realm-verdant);--realm-tint:var(--realm-verdant-tint)}
