@@ -116,7 +116,91 @@ export class AnalyticsService {
    * script is fetched until the user has actually opted in.
    */
   private canTrack(): boolean {
-    return this.isBrowser && this.consentService.hasConsent();
+    return this.isBrowser && !this.doNotTrack() && this.consentService.hasConsent();
+  }
+
+  /**
+   * Do Not Track, checked ahead of consent.
+   *
+   * Consent and DNT are not the same question, and the cookie banner cannot
+   * stand in for this one: a visitor who turned DNT on in their browser
+   * settings and then clicked "accept" on a banner has given two contradictory
+   * answers, and the narrower one is the one they set deliberately rather than
+   * the one we interrupted them for.
+   *
+   * Checked inside `canTrack()` rather than at each call site so it also gates
+   * the SDK *load* — `enqueue()` is what resolves `firebase/analytics` and pulls
+   * gtag.js, so a DNT browser now never downloads it, rather than downloading it
+   * and then declining to log through it.
+   *
+   * Three spellings, because the property was never standardised in one place:
+   * `navigator.doNotTrack` is the modern one, `window.doNotTrack` is Safari's,
+   * and `navigator.msDoNotTrack` is IE/legacy Edge. Some Firefox versions
+   * report 'yes' rather than '1'.
+   */
+  private doNotTrack(): boolean {
+    if (!this.isBrowser) return false;
+    const nav = navigator as Navigator & { msDoNotTrack?: string };
+    const win = window as Window & { doNotTrack?: string };
+    return [nav.doNotTrack, win.doNotTrack, nav.msDoNotTrack]
+      .some(signal => signal === '1' || signal === 'yes');
+  }
+
+  // ─── Acquisition funnel ─────────────────────────────────────────────────
+  // The eight events that answer one question: does a stranger who lands on
+  // /world come back. Every one goes through `log()`, so all of them are
+  // consent- and DNT-gated and none of them can fire during prerender.
+  //
+  // Named as custom events rather than reused GA4 reserved ones on purpose.
+  // `first_forge_strike` is not a `level_up`, and folding it into a reserved
+  // name would file this funnel in the same report as that name's own meaning,
+  // where it could never be read apart from it again.
+
+  /** The overlay went up. The denominator for every step below it. */
+  trackOnboardingStart(): void {
+    this.log('onboarding_start', {});
+  }
+
+  /** A screen was reached. `step` is 1-indexed, matching the "2 of 5" on screen. */
+  trackOnboardingStep(step: number): void {
+    this.log('onboarding_step', { step });
+  }
+
+  /**
+   * The run ended, by either door.
+   *
+   * `completed` is what separates them: somebody who walked all five screens
+   * from somebody who used the skip. Both write the same "never show again"
+   * record, so without this flag the funnel could not tell a finished tutorial
+   * from an abandoned one.
+   */
+  trackOnboardingComplete(completed: boolean, lastStep: number): void {
+    this.log('onboarding_complete', { completed, last_step: lastStep });
+  }
+
+  /** The first strike this browser has ever landed. Fires once, ever. */
+  trackFirstForgeStrike(): void {
+    this.log('first_forge_strike', {});
+  }
+
+  /** The first realm this browser walked into. */
+  trackFirstRealmVisit(realm: string): void {
+    this.log('first_realm_visit', { realm });
+  }
+
+  /** A session that began with a save already on disk. */
+  trackReturnVisit(streakDays: number): void {
+    this.log('return_visit', { streak_days: streakDays });
+  }
+
+  /** A daily quest was picked up. */
+  trackDailyQuestStart(questId: string): void {
+    this.log('daily_quest_start', { quest_id: questId });
+  }
+
+  /** A rank threshold was crossed. `rank` is the lore title, not the number. */
+  trackRankUp(rank: string, level: number): void {
+    this.log('rank_up', { rank, level });
   }
 
   /** Run work in the first idle window, or shortly after on older browsers. */

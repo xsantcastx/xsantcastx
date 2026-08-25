@@ -41,6 +41,8 @@ import { ForgeSceneComponent } from './shared/forge-scene/forge-scene.component'
 import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-toggle.component';
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
 import { NpcDialogueComponent } from './shared/npc/npc-dialogue.component';
+import { OnboardingOutletComponent } from './shared/onboarding/onboarding-outlet.component';
+import { ForgedTodayComponent } from './shared/social-proof/forged-today.component';
 import { InspectComponent } from './shared/entity/inspect.component';
 import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
@@ -92,7 +94,10 @@ import { PwaService } from './shared/pwa.service';
     InspectComponent,
     Inspect3dOutletComponent,
     NpcDialogueComponent,
-    CurrentWorkTileComponent
+    CurrentWorkTileComponent,
+    // Standalone, imported here because AppComponent's template is not.
+    OnboardingOutletComponent,
+    ForgedTodayComponent
 ],
   providers: [
     provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),
