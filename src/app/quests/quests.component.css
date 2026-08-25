@@ -54,7 +54,7 @@
 .quests-stats dd {
   margin: 4px 0 0;
   font: 700 clamp(20px, 4vw, 28px)/1 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
+  color: var(--ink-0);
 }
 
 /* ── Sections ───────────────────────────────────────────────────────────── */
@@ -85,11 +85,11 @@
 .quests-section__title {
   margin: 0;
   font: 700 clamp(18px, 3vw, 24px)/1 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF; letter-spacing: .04em;
+  color: var(--ink-0); letter-spacing: .04em;
 }
 .quests-section__timer {
   font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 .quests-section__note {
   margin: 8px 0 18px;

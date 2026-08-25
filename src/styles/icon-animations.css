@@ -42,13 +42,13 @@
 
 .forge-flame {
   animation: forge-pulse 2s ease-in-out infinite;
-  filter: drop-shadow(0 0 8px #8B5CF6);
+  filter: drop-shadow(0 0 8px var(--violet));
   will-change: transform, filter;
 }
 
 @keyframes forge-pulse {
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 8px #8B5CF6);    transform: scale(1); }
-  50%      { filter: brightness(1.2) drop-shadow(0 0 16px #8B5CF6); transform: scale(1.05); }
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 8px var(--violet));    transform: scale(1); }
+  50%      { filter: brightness(1.2) drop-shadow(0 0 16px var(--violet)); transform: scale(1.05); }
 }
 
 /* Struck. One-shot, added on click and removed on animationend. */
@@ -57,9 +57,9 @@
 }
 
 @keyframes forge-strike {
-  0%   { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px #8B5CF6); }
+  0%   { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px var(--violet)); }
   35%  { transform: scale(0.93); filter: brightness(1.6) drop-shadow(0 0 28px #c9a5ff); }
-  100% { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px #8B5CF6); }
+  100% { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 8px var(--violet)); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -84,8 +84,8 @@
 }
 
 @keyframes anomalous-shimmer {
-  0%, 100% { filter: drop-shadow(0 0 8px #C9A84C) brightness(1); }
-  50%      { filter: drop-shadow(0 0 24px #C9A84C) brightness(1.15); }
+  0%, 100% { filter: drop-shadow(0 0 8px var(--gold-core)) brightness(1); }
+  50%      { filter: drop-shadow(0 0 24px var(--gold-core)) brightness(1.15); }
 }
 
 @keyframes mythic-burn {
@@ -98,7 +98,7 @@
    second asset. */
 @keyframes singular-prismatic {
   0%   { filter: drop-shadow(0 0 12px #DC2626) hue-rotate(0deg); }
-  33%  { filter: drop-shadow(0 0 12px #C9A84C) hue-rotate(120deg); }
+  33%  { filter: drop-shadow(0 0 12px var(--gold-core)) hue-rotate(120deg); }
   66%  { filter: drop-shadow(0 0 12px #3B82F6) hue-rotate(240deg); }
   100% { filter: drop-shadow(0 0 12px #DC2626) hue-rotate(360deg); }
 }
@@ -110,8 +110,8 @@
 .rank-current { animation: rank-energy 3s ease-in-out infinite; }
 
 @keyframes rank-energy {
-  0%, 100% { filter: drop-shadow(0 0 6px #8B5CF6); }
-  50%      { filter: drop-shadow(0 0 20px #8B5CF6); }
+  0%, 100% { filter: drop-shadow(0 0 6px var(--violet)); }
+  50%      { filter: drop-shadow(0 0 20px var(--violet)); }
 }
 
 /* Ranks already earned read as lit but settled; ranks still ahead are dimmed
@@ -174,14 +174,14 @@
 
   /* Each tier keeps its identity colour, held at the animation's midpoint so a
      Mythic drop still reads louder than a Sacred one without moving. */
-  .forge-flame     { filter: brightness(1.1) drop-shadow(0 0 12px #8B5CF6); }
+  .forge-flame     { filter: brightness(1.1) drop-shadow(0 0 12px var(--violet)); }
   .rarity-eclipsed { filter: drop-shadow(0 0 8px #3B82F6); }
   .rarity-sacred   { filter: drop-shadow(0 0 12px #9333EA); }
-  .rarity-anomalous{ filter: drop-shadow(0 0 16px #C9A84C); }
+  .rarity-anomalous{ filter: drop-shadow(0 0 16px var(--gold-core)); }
   .rarity-mythic   { filter: drop-shadow(0 0 20px #DC2626); }
   .rarity-singular { filter: drop-shadow(0 0 20px #a48bff); }
-  .rank-current    { filter: drop-shadow(0 0 14px #8B5CF6); }
-  .realm-sigil--active { filter: drop-shadow(0 0 14px var(--realm-glow, #8B5CF6)); }
+  .rank-current    { filter: drop-shadow(0 0 14px var(--violet)); }
+  .realm-sigil--active { filter: drop-shadow(0 0 14px var(--realm-glow, var(--violet))); }
 
   .shop-icon:hover { transform: none; }
 }

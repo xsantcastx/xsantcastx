@@ -144,7 +144,7 @@ import { RARITIES } from '../shared/rarity/rarity.model';
  * the palette, so the Keeper's aura is never a colour that appears nowhere else
  * on the site.
  */
-const AETHER_COLOR = '#C9A84C';
+const AETHER_COLOR = '#c89868';
 const NOX_COLOR = '#7b61ff';
 
 /** One line in the rolling feed. */
@@ -1457,7 +1457,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     if (scroll) this.push(`Recovered a fragment: ${scroll.subtitle}`, tierOf(scroll.rarity).color, '📜');
     for (const item of items) this.push(`Carried home ${item.name}`, item.color, '⚔');
     for (const [id, quantity] of Object.entries(r.reward.materials ?? {})) {
-      this.push(`Hauled back ${materialDisplay(id)?.name ?? id} ×${quantity}`, '#C9A84C', '⛏');
+      this.push(`Hauled back ${materialDisplay(id)?.name ?? id} ×${quantity}`, '#c89868', '⛏');
     }
 
     this.cue(rune ? tierOf(rune.tier) : null, best);

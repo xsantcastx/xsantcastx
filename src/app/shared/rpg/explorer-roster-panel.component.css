@@ -79,7 +79,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #C9A84C, #ff9a5a 60%, #a48bff);
+  background: linear-gradient(90deg, var(--gold-core), #ff9a5a 60%, #a48bff);
   box-shadow: 0 0 12px rgba(255, 154, 90, 0.6);
   transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -93,7 +93,7 @@
 .rp__meter-foot b { color: #eafff9; }
 
 .rp__earned-title {
-  color: #C9A84C;
+  color: var(--gold-core);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -137,7 +137,7 @@
   color: #d9c48a;
 }
 
-.rp__reward--on b { color: #C9A84C; }
+.rp__reward--on b { color: var(--gold-core); }
 
 /* ── Controls ─────────────────────────────────────────────────────────────── */
 
@@ -164,7 +164,7 @@
 .rp__chip:hover { color: #eafff9; border-color: rgba(255, 154, 90, 0.4); }
 
 .rp__chip--on {
-  color: #0a0a0f;
+  color: var(--obsidian-0);
   background: #ff9a5a;
   border-color: #ff9a5a;
   font-weight: 600;
@@ -286,7 +286,7 @@
 
 .rp__orb-level {
   font: 700 0.62rem/1 'Orbitron', system-ui, sans-serif;
-  color: #0a0a0f;
+  color: var(--obsidian-0);
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
 }
 
@@ -360,7 +360,7 @@
 
 .rp__status {
   font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
-  color: #ffc669;
+  color: var(--gold);
 }
 
 .rp__missions { font-size: 0.66rem; color: #7d8f8a; }
@@ -386,7 +386,7 @@
 .rp__how {
   margin: 0 0 0.4rem;
   font-size: 0.74rem;
-  color: #C9A84C;
+  color: var(--gold-core);
   line-height: 1.5;
 }
 
@@ -407,7 +407,7 @@
   border-radius: 8px;
   border: 1px solid rgba(201, 168, 76, 0.45);
   background: rgba(201, 168, 76, 0.1);
-  color: #C9A84C;
+  color: var(--gold-core);
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
@@ -416,7 +416,7 @@
 
 .rp__recruit:hover:not(:disabled) {
   background: rgba(201, 168, 76, 0.2);
-  box-shadow: 0 0 22px -10px #C9A84C;
+  box-shadow: 0 0 22px -10px var(--gold-core);
 }
 
 .rp__recruit:disabled {
@@ -500,7 +500,7 @@
   font-size: 0.6rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #C9A84C;
+  color: var(--gold-core);
   font-style: normal;
 }
 

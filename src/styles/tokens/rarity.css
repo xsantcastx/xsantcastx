@@ -1,0 +1,31 @@
+/* Rarity ladder — UX Bible §11.3, seven tiers.
+   The shipped app carries two contradictory ladders (EclipseRarity 6 tiers, RuneTier 7);
+   this file is the single reconciled ladder. `singular` resolves to #ff6dd7 (the achievement
+   toast value) rather than #e6dcff (the bag value) — flagged in readme.md.
+   Rarity is never conveyed by colour alone: pair with the label and the frame treatment. */
+:root{
+  --rarity-common:#8f8aa1;
+  --rarity-uncommon:#9db8a8;
+  --rarity-rare:#00d4ff;
+  --rarity-epic:#a855f7;
+  --rarity-legendary:#e8c898;
+  --rarity-mythic:#f8e8c8;
+  --rarity-singular:#ff6dd7;
+
+  /* Glow. Common and Uncommon get none. Rare gets a still outer glow.
+     Epic and above may add one slow aura — never stacked with particles or shimmer. */
+  --glow-common:none; /* @kind shadow */
+  --glow-uncommon:none; /* @kind shadow */
+  --glow-rare:0 0 0 1px rgba(0,212,255,.34),0 0 18px -6px rgba(0,212,255,.55);
+  --glow-epic:0 0 0 1px rgba(168,85,247,.38),0 0 22px -6px rgba(168,85,247,.6);
+  --glow-legendary:0 0 0 1px rgba(232,200,152,.42),0 0 24px -6px rgba(232,200,152,.55);
+  --glow-mythic:0 0 0 1px rgba(248,232,200,.55),0 0 30px -6px rgba(248,232,200,.6);
+  --glow-singular:0 0 0 1px rgba(255,109,215,.5),0 0 34px -6px rgba(255,109,215,.62);
+}
+[data-rarity="common"]{--rarity:var(--rarity-common);--rarity-glow:var(--glow-common)}
+[data-rarity="uncommon"]{--rarity:var(--rarity-uncommon);--rarity-glow:var(--glow-uncommon)}
+[data-rarity="rare"]{--rarity:var(--rarity-rare);--rarity-glow:var(--glow-rare)}
+[data-rarity="epic"]{--rarity:var(--rarity-epic);--rarity-glow:var(--glow-epic)}
+[data-rarity="legendary"]{--rarity:var(--rarity-legendary);--rarity-glow:var(--glow-legendary)}
+[data-rarity="mythic"]{--rarity:var(--rarity-mythic);--rarity-glow:var(--glow-mythic)}
+[data-rarity="singular"]{--rarity:var(--rarity-singular);--rarity-glow:var(--glow-singular)}

@@ -32,7 +32,7 @@
 }
 .ld__armed {
   margin: 0 0 8px;
-  color: #c9a84c;
+  color: var(--gold-core);
   font-size: 13px;
 }
 .ld__totals--empty { color: #8b9c97; }
@@ -211,7 +211,7 @@
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(239, 231, 210, 0.85);
 }
 .ld__slot--target {
-  border-color: #ffc669;
+  border-color: var(--gold);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -239,8 +239,8 @@
 .ld__lvl {
   margin-left: 6px;
   padding: 1px 5px;
-  border: 1px solid #c9a84c;
-  color: #c9a84c;
+  border: 1px solid var(--gold-core);
+  color: var(--gold-core);
   font-size: 0.68rem;
 }
 .ld__expand-actions, .ld__unequip { display: flex; gap: 0.35rem; }
@@ -398,7 +398,7 @@
 }
 
 .ld__charm--target {
-  border-color: #ffc669;
+  border-color: var(--gold);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
 }
 
@@ -412,7 +412,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ld__charm { transition: none; }
   .ld__charm--flash {
-    border-color: #ffc669;
+    border-color: var(--gold);
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
   }
 }
@@ -622,7 +622,7 @@
    it without the pulse. */
 @media (prefers-reduced-motion: reduce) {
   .ld__slot--flash {
-    border-color: #ffc669;
+    border-color: var(--gold);
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 198, 105, 0.9);
   }
 }
@@ -655,7 +655,7 @@
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(115deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background: linear-gradient(115deg, #4dffe0, #a48bff, #ff6dd7, var(--gold), #4dffe0);
   background-size: 300% 100%;
   animation: ldPrism 5s linear infinite;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);

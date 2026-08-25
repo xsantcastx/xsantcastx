@@ -2,7 +2,7 @@
  * exchange.component.css — the trading floor.
  *
  * A two-column hall: the board on the left, the open line and the ledgers on
- * the right. The palette is the Market's forge pair (#E8752A → #C9A84C) with
+ * the right. The palette is the Market's forge pair (var(--ember) → var(--gold-core)) with
  * violet for the rail, because this is the same economy seen from the other
  * side of the counter; rarity colours arrive per row as `--tier` / `--tier-glow`
  * from the Eclipse ladder. Nothing here introduces a colour that is not already
@@ -18,8 +18,8 @@
  */
 
 .ge {
-  --ge-warm: #E8752A;
-  --ge-gold: #C9A84C;
+  --ge-warm: var(--ember);
+  --ge-gold: var(--gold-core);
   --ge-gold-soft: rgba(201, 168, 76, 0.5);
   --ge-violet: #a48bff;
   --ge-up: #5fdc9a;
@@ -28,7 +28,7 @@
   --ge-pane: rgba(15, 10, 30, 0.8);
   --ge-pane-2: rgba(20, 14, 38, 0.72);
   --ge-line: rgba(255, 255, 255, 0.07);
-  --ge-ink: #e8ecf1;
+  --ge-ink: var(--ink-0);
   --ge-dim: rgba(232, 236, 241, 0.58);
   --ge-faint: rgba(232, 236, 241, 0.4);
 

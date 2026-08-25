@@ -118,7 +118,7 @@ interface Drop {
          plus its diameter, plus a gap wide enough to stay clear through this
          card's own slide-in — rather than as a round number, so the two stay in
          step if the ember is ever resized. */
-      position: fixed; right: 1.25rem; z-index: 99998;
+      position: fixed; right: 1.25rem; z-index: var(--z-spectacle);
       bottom: calc(clamp(12px, 3vw, 26px) + 64px + 32px);
       display: flex; gap: 0.85rem; align-items: flex-start;
       width: min(340px, calc(100vw - 2.5rem));
@@ -171,21 +171,21 @@ interface Drop {
 
     /* ── Cinematic (Mythic, Singular) ─────────────────────────────────── */
     .ad-flash {
-      position: fixed; inset: 0; z-index: 100001; pointer-events: none;
+      position: fixed; inset: 0; z-index: var(--z-spectacle); pointer-events: none;
       background: #fff; opacity: 0;
       transition: opacity .12s linear;
     }
     .ad-flash--on { opacity: 1; }
 
     .ad-veil {
-      position: fixed; inset: 0; z-index: 99996;
+      position: fixed; inset: 0; z-index: var(--z-spectacle);
       background: radial-gradient(ellipse at center, rgba(4,2,12,.8), rgba(0,0,0,.94));
       opacity: 0; transition: opacity .5s ease;
     }
     .ad-veil--on { opacity: 1; }
 
     .ad--cine {
-      right: auto; bottom: auto; z-index: 99999;
+      right: auto; bottom: auto; z-index: var(--z-spectacle);
       top: 50%; left: 50%;
       width: min(420px, calc(100vw - 2.5rem));
       flex-direction: column; align-items: center; text-align: center;

@@ -82,7 +82,7 @@ export const EXPLORER_TIERS: Record<ExplorerRarity, ExplorerTierDefinition> = {
   epic: {
     id: 'epic', label: 'Epic',
     inventorySlots: 4, speed: 0.4, lootBonus: 50, maxEquipSlots: 3,
-    color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)', weight: 0.00005,
+    color: '#c89868', glow: 'rgba(255, 190, 90, 0.75)', weight: 0.00005,
   },
   legendary: {
     id: 'legendary', label: 'Legendary',

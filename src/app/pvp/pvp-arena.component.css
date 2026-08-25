@@ -23,7 +23,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: clamp(5rem, 9vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(4rem, 8vw, 6rem);
-  color: #e8e6f5;
+  color: var(--ink-0);
 }
 
 .ar-sr {
@@ -37,7 +37,7 @@
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(1.1rem, 2.4vw, 1.45rem);
   letter-spacing: 0.06em;
-  color: #f2f0ff;
+  color: var(--ink-0);
 }
 
 /* ── Header ───────────────────────────────────────────────────────────────── */
@@ -114,7 +114,7 @@
   margin: 0.15rem 0 0;
   font-family: 'Orbitron', sans-serif;
   font-size: 1.3rem;
-  color: #f2f0ff;
+  color: var(--ink-0);
 }
 
 .ar-record__points { color: #ff6dd7; text-shadow: 0 0 14px rgba(255, 90, 210, 0.45); }
@@ -187,7 +187,7 @@
   font-size: 0.82rem;
   color: rgba(232, 230, 245, 0.6);
 }
-.ar-loadout__from b { color: #f2f0ff; font-weight: 600; }
+.ar-loadout__from b { color: var(--ink-0); font-weight: 600; }
 
 .ar-loadout__hint {
   margin: 0.9rem 0 0;
@@ -328,7 +328,7 @@
   margin: 0.1rem 0 0;
   font-family: 'Orbitron', sans-serif;
   font-size: 0.9rem;
-  color: #f2f0ff;
+  color: var(--ink-0);
 }
 
 .ar-ring__odds {
@@ -351,11 +351,11 @@
 
 .ar-ring__odds-label[data-odds="certain"]    { color: #7fd5a3; }
 .ar-ring__odds-label[data-odds="favoured"]   { color: #4dffe0; }
-.ar-ring__odds-label[data-odds="even"]       { color: #ffc669; }
+.ar-ring__odds-label[data-odds="even"]       { color: var(--gold); }
 .ar-ring__odds-label[data-odds="unlikely"]   { color: #ff9a5a; }
 .ar-ring__odds-label[data-odds="outmatched"] { color: #ff6dd7; }
 
-.ar-ring__odds-num { font-family: 'Orbitron', sans-serif; color: #f2f0ff; }
+.ar-ring__odds-num { font-family: 'Orbitron', sans-serif; color: var(--ink-0); }
 .ar-ring__odds-note { flex: 1 1 100%; font-size: 0.72rem; color: rgba(232, 230, 245, 0.4); }
 
 .ar-ring__locked {
@@ -413,7 +413,7 @@
 }
 .ar-ring__npc-odds[data-odds="certain"]    { color: #7fd5a3; }
 .ar-ring__npc-odds[data-odds="favoured"]   { color: #4dffe0; }
-.ar-ring__npc-odds[data-odds="even"]       { color: #ffc669; }
+.ar-ring__npc-odds[data-odds="even"]       { color: var(--gold); }
 .ar-ring__npc-odds[data-odds="unlikely"]   { color: #ff9a5a; }
 .ar-ring__npc-odds[data-odds="outmatched"] { color: #ff6dd7; }
 
@@ -465,7 +465,7 @@
 .ar-shop__row--locked { opacity: 0.5; }
 
 .ar-shop__copy { flex: 1 1 260px; }
-.ar-shop__copy h3 { margin: 0 0 0.25rem; font-size: 0.98rem; color: #f2f0ff; }
+.ar-shop__copy h3 { margin: 0 0 0.25rem; font-size: 0.98rem; color: var(--ink-0); }
 .ar-shop__copy p { margin: 0; font-size: 0.83rem; line-height: 1.5; color: rgba(232, 230, 245, 0.6); }
 .ar-shop__gate { margin-top: 0.35rem !important; color: rgba(255, 198, 105, 0.7) !important; font-size: 0.76rem !important; }
 
@@ -498,7 +498,7 @@
 .ar-fight {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: 1rem;

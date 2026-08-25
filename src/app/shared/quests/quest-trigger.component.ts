@@ -77,7 +77,7 @@ import { QuestBoard, QuestService } from './quest.service';
       width: 17px; height: 2px;
       margin: -1px 0 0 -8.5px;
       border-radius: 1px 1px 1px 0;
-      background: linear-gradient(90deg, #C9A84C 0%, #C9A84C 26%, #e9eef7 30%, #ffffff 100%);
+      background: linear-gradient(90deg, #c89868 0%, #c89868 26%, #e9eef7 30%, #ffffff 100%);
     }
     /* Crossguard: a short perpendicular bar at the hilt end. */
     .qt__blade::after {
@@ -86,7 +86,7 @@ import { QuestBoard, QuestService } from './quest.service';
       left: 4px; top: -2.5px;
       width: 2px; height: 7px;
       border-radius: 1px;
-      background: #C9A84C;
+      background: #c89868;
     }
     .qt__blade:nth-child(1) { transform: rotate(45deg); }
     .qt__blade:nth-child(2) { transform: rotate(-45deg); }
@@ -103,7 +103,7 @@ import { QuestBoard, QuestService } from './quest.service';
       min-width: 17px; height: 17px; padding: 0 4px;
       display: grid; place-items: center;
       border-radius: 999px;
-      background: #C9A84C; color: #0b0716;
+      background: #c89868; color: #0b0716;
       font: 700 10px/1 'Orbitron', system-ui, sans-serif;
     }
 

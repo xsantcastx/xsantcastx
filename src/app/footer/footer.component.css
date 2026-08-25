@@ -109,7 +109,7 @@
   font-style: italic;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #E0A857;
+  color: var(--gold-core);
   text-shadow: 0 0 16px rgba(201, 168, 76, 0.35);
 }
 .gffoot__brand:hover .gffoot__wordmark { color: var(--primary-color); }
@@ -575,8 +575,7 @@ footer::after {
   transform: scale(1.4);
 }
 
-.social-links a i,
-.social-links a .x-fallback {
+.social-links a .ds-icon {
   position: relative;
   z-index: 1;
   font-size: 1.05rem;
@@ -593,20 +592,9 @@ footer::after {
   to   { transform: rotate(360deg); }
 }
 
-.x-fallback {
-  display: none;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.fa-x-twitter::before {
-  content: "\e61b";
-}
-
-.social-links a[aria-label="Twitter/X"] .fa-x-twitter:empty + .x-fallback,
-.social-links a[aria-label="Twitter/X"] .fa-x-twitter:not(:before) + .x-fallback {
-  display: inline;
-}
+/* The .x-fallback / .fa-x-twitter::before hack that used to live here existed only
+   because the X glyph shipped in a CDN icon font that could fail to load. The mark
+   is an inline SVG now, so there is nothing to fall back from. */
 
 @media (prefers-reduced-motion: reduce) {
   footer::after,
@@ -624,12 +612,12 @@ footer::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: var(--z-modal);
   opacity: 0;
   pointer-events: none;
   /* Perf: all three modals (crypto / PayPal / Stripe) live in the DOM on every
      page. With only opacity:0 they stayed `visibility: visible`, so the
-     compositor kept three full-viewport z-index:10000 layers — each with an
+     compositor kept three full-viewport z-index: var(--z-modal) layers — each with an
      8px backdrop-filter — alive and painted on every route, forever, for UI
      nobody had opened. visibility:hidden takes them out of the paint and hit
      test entirely; it is transitioned alongside opacity (visibility flips
@@ -972,7 +960,7 @@ footer::after {
   text-align: center;
   opacity: 0;
   pointer-events: none;
-  z-index: 10001;
+  z-index: var(--z-toast);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
@@ -1014,7 +1002,7 @@ footer::after {
 /* The only paid link in the footer, so the only gold one. Matches the /pro
    palette (--pro-gold) rather than introducing a new colour. */
 .gffoot__link--pro {
-  color: #F5C451;
+  color: var(--gold-bright);
 }
 
 .gffoot__link--pro:hover,

@@ -8,11 +8,11 @@
 }
 
 .mo {
-  --orrery: #00d4ff;
+  --orrery: var(--status-info);
   max-width: 46rem;
   margin: 0 auto;
   padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1rem, 4vw, 1.6rem) 4rem;
-  color: #e8ecf1;
+  color: var(--ink-0);
 }
 
 .mo__crumb {
@@ -98,7 +98,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.mo__tier-xp { display: block; margin-top: 0.15rem; font-size: 0.72rem; color: var(--gf-accent-text, #d6a84f); }
+.mo__tier-xp { display: block; margin-top: 0.15rem; font-size: 0.72rem; color: var(--gf-accent-text, var(--gold-core)); }
 .mo__tier-lock { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(232, 236, 241, 0.55); }
 .mo__tier:focus-visible { outline: 2px solid color-mix(in srgb, var(--orrery) 55%, white); outline-offset: 2px; }
 
@@ -106,7 +106,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .mo__speedup {
   margin: -0.3rem 0 0.7rem;
   font-size: 0.78rem;
-  color: var(--gf-accent-text, #d6a84f);
+  color: var(--gf-accent-text, var(--gold-core));
 }
 
 .mo__loot {
@@ -125,8 +125,8 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.28);
 }
-.mo__loot figure.is-hit { border-color: var(--gf-accent, #d6a84f); }
-.mo__loot figure.is-rare { border-color: #E4A83A; }
+.mo__loot figure.is-hit { border-color: var(--gf-accent, var(--gold-core)); }
+.mo__loot figure.is-rare { border-color: var(--gold-core); }
 /*
  * The art wrapper is the anchor for the floating "+1" — see .mo__float. It
  * used to be a bare <img>; the wrapper adds nothing visible on its own, it
@@ -153,12 +153,12 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   top: 6px;
   transform: translate(-50%, 0);
   font: 700 0.95rem/1 'Orbitron', system-ui, sans-serif;
-  color: var(--gf-accent-text, #E0A857);
+  color: var(--gf-accent-text, var(--gold-core));
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   animation: moFloatUp 900ms ease-out forwards;
 }
-.mo__float--rare { color: #E4A83A; }
+.mo__float--rare { color: var(--gold-core); }
 @keyframes moFloatUp {
   0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.85); }
   18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
@@ -173,12 +173,12 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 .mo__gain {
   margin: 0.25rem 0 0;
-  color: var(--gf-accent, #d6a84f);
+  color: var(--gf-accent, var(--gold-core));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.72rem;
 }
-.mo__gain--rare, .mo__rare { color: #E4A83A; font-weight: 700; }
+.mo__gain--rare, .mo__rare { color: var(--gold-core); font-weight: 700; }
 
 .mo__gather, .mo__ghost {
   min-width: 44px;
@@ -194,7 +194,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   gap: 0.55rem;
   border: 0;
   background: var(--orrery);
-  color: #0a0a0f;
+  color: var(--obsidian-0);
   font-weight: 700;
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
@@ -241,7 +241,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
 }
-.mo__result--rare { border-color: #E4A83A; }
+.mo__result--rare { border-color: var(--gold-core); }
 
 .mo__sr {
   margin: 0.55rem 0 0;

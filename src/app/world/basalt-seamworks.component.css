@@ -1,11 +1,11 @@
 :host { display: block; position: relative; z-index: 1; }
 
 .sw {
-  --seam: #EF4444;
+  --seam: var(--status-danger);
   max-width: 46rem;
   margin: 0 auto;
   padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1rem, 4vw, 1.6rem) 4rem;
-  color: #e8ecf1;
+  color: var(--ink-0);
 }
 
 .sw__crumb {
@@ -92,7 +92,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.sw__tier-xp { display: block; margin-top: 0.15rem; font-size: 0.72rem; color: var(--gf-accent-text, #d6a84f); }
+.sw__tier-xp { display: block; margin-top: 0.15rem; font-size: 0.72rem; color: var(--gf-accent-text, var(--gold-core)); }
 .sw__tier-lock { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(232, 236, 241, 0.55); }
 .sw__tier:focus-visible { outline: 2px solid #FCA5A5; outline-offset: 2px; }
 
@@ -100,7 +100,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .sw__speedup {
   margin: -0.3rem 0 0.7rem;
   font-size: 0.78rem;
-  color: var(--gf-accent-text, #d6a84f);
+  color: var(--gf-accent-text, var(--gold-core));
 }
 
 .sw__loot {
@@ -119,8 +119,8 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.28);
 }
-.sw__loot figure.is-hit { border-color: var(--gf-accent, #d6a84f); }
-.sw__loot figure.is-rare { border-color: #E4A83A; }
+.sw__loot figure.is-hit { border-color: var(--gf-accent, var(--gold-core)); }
+.sw__loot figure.is-rare { border-color: var(--gold-core); }
 /*
  * The art wrapper is the anchor for the floating "+1" — see .sw__float. It
  * used to be a bare <img>; the wrapper adds nothing visible on its own, it
@@ -147,12 +147,12 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   top: 6px;
   transform: translate(-50%, 0);
   font: 700 0.95rem/1 'Orbitron', system-ui, sans-serif;
-  color: var(--gf-accent-text, #E0A857);
+  color: var(--gf-accent-text, var(--gold-core));
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   animation: swFloatUp 900ms ease-out forwards;
 }
-.sw__float--rare { color: #E4A83A; }
+.sw__float--rare { color: var(--gold-core); }
 @keyframes swFloatUp {
   0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.85); }
   18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
@@ -167,12 +167,12 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 }
 .sw__gain {
   margin: 0.25rem 0 0;
-  color: var(--gf-accent, #d6a84f);
+  color: var(--gf-accent, var(--gold-core));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.72rem;
 }
-.sw__gain--rare, .sw__rare { color: #E4A83A; font-weight: 700; }
+.sw__gain--rare, .sw__rare { color: var(--gold-core); font-weight: 700; }
 
 .sw__mine, .sw__refine-btn, .sw__ghost {
   min-width: 44px;
@@ -238,7 +238,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
 }
-.sw__result--rare { border-color: #E4A83A; }
+.sw__result--rare { border-color: var(--gold-core); }
 
 .sw__sr, .sw__refine-sr {
   margin: 0.55rem 0 0;
@@ -272,7 +272,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   justify-items: center;
   font: 700 clamp(0.85rem, 3vw, 1.05rem)/1 'Orbitron', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  color: var(--gf-accent-text, #d6a84f);
+  color: var(--gf-accent-text, var(--gold-core));
 }
 .sw__refine-arrow { color: rgba(232, 236, 241, 0.62); }
 /* A spent count falls in the seam's own red — the same hue the panel already
@@ -316,7 +316,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 /* Armed = the first click landed. A gold ring, not a red one, so it reads as
    "confirm this" and never as an error; the second click does the work. */
 .sw__refine-btn--armed {
-  box-shadow: 0 0 0 2px var(--gf-accent, #d6a84f), 0 0 18px -2px var(--gf-accent, #d6a84f);
+  box-shadow: 0 0 0 2px var(--gf-accent, var(--gold-core)), 0 0 18px -2px var(--gf-accent, var(--gold-core));
 }
 .sw__hint {
   margin: 0.55rem 0 0;

@@ -17,6 +17,23 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.82.0',
+    codename: 'One Gold',
+    date: '2026-08-25',
+    highlights: [
+      'The Eclipse Realms Design System is installed as a real foundation layer rather than a reference document. Eleven token files live under src/styles/tokens/ and are registered ahead of the app stylesheet, so a token resolves before styles.css can shadow it. Colour, type, space, radius, elevation, motion and stacking all have one place to be changed',
+      'Six golds were in play — a brassy one in the Codex, a brighter one in the Market, a third in the world stations, and three more besides. There is one now, with a light and a dark stop for the cases that were using two golds to mean two things. The mapping was done by luminance rather than flattening everything to a single value, so a gold border against gold text still reads as two steps',
+      'Tokens did most of the work by cascade rather than by edit. The app already had its own aliases — --forge-gold, --forge-ember, --primary-color, the status colours — and those now point at design-system tokens, which moved several hundred consumers without touching them. 433 colour literals in CSS became token references on top of that',
+      'Colours in .ts files were handled differently on purpose: the same hex can be a declaration inside styles:[] or a canvas fillStyle, and var() fails silently in the second. Those got the design-system value substituted rather than a token reference, which unifies the palette with no chance of a colour resolving to nothing',
+      'Both rarity ladders now read from the design system. The seven-tier RuneTier ladder maps one to one; the six-tier EclipseRarity maps by ladder role. Singular is #ff6dd7 in both, which settles a conflict the design system flagged — the achievement toast and the bag had been disagreeing about it. The tier IDs are deliberately untouched: they are persisted in saves, egg tables and market filters, so renaming them would be a data migration wearing a restyle\'s clothes',
+      'All four typefaces are self-hosted. The design system ships its fonts as a Google Fonts @import and we do not use it — that request is render-blocking third-party and was deliberately removed from this app once already. Cormorant Garamond now carries the lore voice in place of the ui-serif/Georgia stack, which is what the UX Bible always specified',
+      'FontAwesome is gone. An entire icon font was being fetched from cdnjs to render twelve glyphs — five social marks, a copy button, a spinner, a card, a check and an X. They are inline SVG now on the design system\'s own contract: 24x24, currentColor, nothing baked in. That let both cdnjs and the Google Fonts origins come out of the Content Security Policy',
+      'The z-scale is closed. There were ninety-five raw z-indexes and the highest was 2147483000, the 32-bit ceiling — an escalation race rather than a scale. Every layer names a step now. Four of them genuinely belong above a toast, so there are four written-down decisions instead of four more magic numbers, and the consent banner finally outranks the donation modal, which is what the inspect overlay\'s own comment had claimed was true for some time',
+      'scripts/check-ds-adherence.js keeps it from drifting back. The design system ships a lint config, but it is React and oxlint and would have linted nothing here, so this enforces the same intent against Angular and plain CSS. It is a ratchet — each rule fails only when its count rises above a committed baseline — which locks in the cleanup without pretending the rest can be cleared in one pass. Retired golds and raw z-indexes are already at zero',
+      'What is not done is written down rather than quietly skipped. Around 470 emoji are still standing in for item, material and achievement icons. That is not a find-and-replace: those entries need painted art through the existing asset pipeline, and deleting the glyphs without it would leave blank tiles across the Market, the Forge and the Codex. The /tools category star palette is also deliberately untouched, because collapsing nine distinct category signals into one violet would erase information rather than enforce a system',
+    ],
+  },
+  {
     version: '2.81.0',
     codename: 'The Coliseum',
     date: '2026-08-24',
