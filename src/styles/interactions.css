@@ -35,22 +35,28 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Material standard easing — the owner's pick, used for every duration here. */
-  --gf-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  /* Spring: overshoots once, settles. For things that enter, not things that hover. */
-  --gf-spring: cubic-bezier(0.22, 1.28, 0.44, 1);
+  /* These six were literals here and nowhere else, which is how the token layer ended
+     up declaring a different --ease-standard from the curve the site actually animates
+     on. They now READ the tokens; the values are unchanged, and reduced motion reaches
+     this file for free because tokens/motion.css already zeroes them.
+     --gf-ease: Material standard, the owner's pick, used for every duration here.
+     --gf-spring: overshoots once, settles. For things that enter, not things that hover. */
+  --gf-ease: var(--ease-standard);
+  --gf-spring: var(--ease-spring);
 
-  --gf-dur: 200ms;
-  --gf-dur-press: 90ms;
-  --gf-dur-enter: 380ms;
+  --gf-dur: var(--dur-base);
+  --gf-dur-press: var(--dur-press);
+  --gf-dur-enter: var(--dur-enter);
 
-  --gf-lift: -2px;
-  --gf-press: 0.97;
+  --gf-lift: var(--lift-hover);
+  --gf-press: var(--press-scale);
 
-  --gf-accent: var(--violet);
-  --gf-accent-lit: #a78bfa;
-  --gf-glow-soft: rgba(139, 92, 246, 0.34);
-  --gf-glow-lit: rgba(139, 92, 246, 0.6);
+  /* This file used to declare `--gf-accent: var(--violet)` here. It loads last, so
+     that overrode the gold --gf-accent styles.css publishes for value and reward, and
+     the bank tiles, the world-station loot frames and the character hub all took a
+     violet edge they never asked for. Interaction now has its own name. */
+  --gf-glow-soft: var(--violet-glow-soft);
+  --gf-glow-lit: var(--violet-glow-lit);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -121,7 +127,7 @@ a.orbit-star,
   a.orbit-star:hover,
   .gf-interactive:hover {
     translate: 0 var(--gf-lift);
-    outline-color: var(--realm-color, var(--star-color, var(--gf-accent)));
+    outline-color: var(--realm-color, var(--star-color, var(--gf-interactive)));
     filter: drop-shadow(0 6px 20px var(--realm-glow, var(--star-glow, var(--gf-glow-soft))));
   }
 }
@@ -149,7 +155,7 @@ a.orbit-star:active,
 
 :is(input, textarea, select):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='submit']):not([type='button']):focus-visible,
 :is(input, textarea, select):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='submit']):not([type='button']):focus {
-  border-color: var(--gf-accent-lit);
+  border-color: var(--gf-interactive-lit);
   box-shadow:
     0 0 0 3px rgba(139, 92, 246, 0.18),
     0 0 18px -4px var(--gf-glow-lit);
@@ -159,7 +165,7 @@ a.orbit-star:active,
 
 /* Checkboxes and radios get the ring without the padding shuffle. */
 :is(input[type='checkbox'], input[type='radio']):focus-visible {
-  outline: 2px solid var(--gf-accent-lit);
+  outline: 2px solid var(--gf-interactive-lit);
   outline-offset: 2px;
 }
 
@@ -169,7 +175,7 @@ a.orbit-star:active,
    not leave a ring sitting on the element afterwards.
    ─────────────────────────────────────────────────────────────────────────── */
 :is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
-  outline: 2px solid var(--gf-accent-lit);
+  outline: 2px solid var(--gf-interactive-lit);
   outline-offset: 2px;
   border-radius: inherit;
 }
@@ -202,7 +208,7 @@ a.orbit-star:active,
     transparent 100%
   );
   transform: translateX(-100%);
-  animation: gfShimmer 1.4s var(--gf-ease) infinite;
+  animation: gfShimmer var(--dur-shimmer) var(--gf-ease) infinite;
 }
 
 @keyframes gfShimmer {

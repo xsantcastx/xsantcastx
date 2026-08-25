@@ -1,24 +1,52 @@
-/* Motion budget, from the entity/market/inventory spec §3.
-   Purposeful only. Reduced motion removes aura, drift, shimmer and transform — never state feedback. */
-:root{
-  --dur-focus:140ms; /* @kind other */    /* 120–160ms focus / selection */
-  --dur-expand:190ms; /* @kind other */   /* 160–220ms tile expansion, opacity + transform only */
-  --dur-overlay:220ms; /* @kind other */
-  --dur-aura:4s; /* @kind other */        /* at most one 3–5s ambient aura, on the selected high-rarity item */
+/* Motion budget, from the entity/market/inventory spec §3, plus the interaction curve
+   src/styles/interactions.css has shipped since it was written.
 
-  --ease-standard:cubic-bezier(.2,0,0,1); /* @kind other */
+   Purposeful only. Reduced motion removes aura, drift, shimmer and transform — never
+   state feedback.
+
+   --ease-standard moved from cubic-bezier(.2,0,0,1) to Material standard
+   cubic-bezier(.4,0,.2,1) so the token matches --gf-ease, the curve every button, card
+   and toast on the site is actually animated on. Two curves for one job was the bug.
+
+   --dur-press is deliberately faster than hover: a slow press reads as lag, not weight.
+   --ease-spring is for things that ENTER (toasts, reveals), never things that hover.
+
+   The design system ships a `*,*::before,*::after{animation-duration:1ms!important…}`
+   sweep in its reduced-motion block. It is NOT adopted. This site has ~126 tool routes
+   plus a cosmic engine whose reduced-motion paths are hand-written to fall back to a
+   static END STATE rather than to a 1ms one; a global !important would outrank all of
+   them and land mid-animation instead — and the boot curtain is exactly the case where
+   that leaves a full-viewport layer stuck on screen. The token overrides below do the
+   same job through the variables, which is the part components opt into. */
+:root{
+  --ease-standard:cubic-bezier(.4,0,.2,1); /* @kind other */
+  --ease-spring:cubic-bezier(.22,1.28,.44,1); /* @kind other */
   --ease-exit:cubic-bezier(.4,0,1,1); /* @kind other */
 
-  --lift-hover:-3px; /* @kind spacing */    /* tiles lift 2–4px and brighten their edge */
-  --press-scale:.985; /* @kind other */
+  --dur-press:90ms; /* @kind other */     /* press feedback — faster than hover on purpose */
+  --dur-focus:140ms; /* @kind other */    /* 120–160ms focus / selection */
+  --dur-expand:190ms; /* @kind other */   /* 160–220ms tile expansion, opacity + transform only */
+  --dur-base:200ms; /* @kind other */     /* the default hover/colour transition */
+  --dur-overlay:220ms; /* @kind other */
+  --dur-enter:380ms; /* @kind other */    /* toasts and reveals, paired with --ease-spring */
+  --dur-shimmer:1.4s; /* @kind other */   /* skeleton sweep, one loop length */
+  --dur-aura:4s; /* @kind other */        /* at most one 3–5s ambient aura, on the selected high-rarity item */
+
+  --lift-hover:-2px; /* @kind spacing */    /* tiles lift and brighten their edge */
+  --press-scale:.97; /* @kind other */
+  --reveal-offset:18px; /* @kind spacing */ /* scroll-reveal travel distance */
 }
 @media (prefers-reduced-motion:reduce){
   :root{
+    --dur-press:0ms; /* @kind other */
     --dur-focus:0ms; /* @kind other */
     --dur-expand:0ms; /* @kind other */
+    --dur-base:0ms; /* @kind other */
     --dur-overlay:0ms; /* @kind other */
+    --dur-enter:0ms; /* @kind other */
     --dur-aura:0ms; /* @kind other */
     --lift-hover:0px; /* @kind spacing */
     --press-scale:1; /* @kind other */
+    --reveal-offset:0px; /* @kind spacing */
   }
 }
