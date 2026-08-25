@@ -426,6 +426,73 @@ export class TranslationService {
 
     // ─── Cosmic anchor planet ──────────────────────────────────────────────
 
+    // ─── First-run tutorial ────────────────────────────────────────────────
+    // The five screens a browser with no save gets instead of /world. Written
+    // as Kael speaking, because he is the NPC who stands on that route — the
+    // voice is the one the visitor will keep hearing, not a tutorial narrator
+    // who never appears again.
+    //
+    // Deliberately concrete: every promise here is one the app keeps
+    // immediately. The Gold on screen two is banked in the real ledger, the
+    // rank on screen three is LEVELS[0], and the quest on screen five is the
+    // live board's own first open daily. Nothing on these screens is a mock.
+    'onboarding.aria.tutorial': { en: 'Welcome to Eclipse Realms', es: 'Bienvenido a Eclipse Realms' },
+    'onboarding.aria.progress': { en: 'Tutorial progress',         es: 'Progreso del tutorial' },
+    'onboarding.skip':          { en: 'Skip',                      es: 'Saltar' },
+
+    'onboarding.welcome.title': { en: 'The Godforge',
+                                  es: 'La Forja de los Dioses' },
+    'onboarding.welcome.say':   { en: 'Strike the anvil, Wanderer.',
+                                  es: 'Golpea el yunque, Errante.' },
+    'onboarding.welcome.body':  { en: 'A persistent world of five realms. Strike the forge for Gold, gather runes and relics, climb ten ranks. Free, no account, and it remembers you.',
+                                  es: 'Un mundo persistente de cinco reinos. Golpea la forja por Oro, reune runas y reliquias, sube diez rangos. Gratis, sin cuenta, y te recuerda.' },
+    'onboarding.welcome.cta':   { en: 'Begin', es: 'Comenzar' },
+
+    'onboarding.strike.title':  { en: 'Strike the forge',      es: 'Golpea la forja' },
+    'onboarding.strike.body':   { en: 'Everything here starts with one hit.',
+                                  es: 'Todo aqui empieza con un golpe.' },
+    'onboarding.strike.aria':   { en: 'Strike the forge flame', es: 'Golpea la llama de la forja' },
+    'onboarding.strike.hint':   { en: 'Tap the flame',          es: 'Toca la llama' },
+    'onboarding.strike.gold':   { en: 'Gold',                   es: 'Oro' },
+    'onboarding.strike.after':  { en: 'Yours, and already banked. The flame in the corner keeps striking whether you watch it or not.',
+                                  es: 'Tuyo, y ya guardado. La llama del rincon sigue golpeando la mires o no.' },
+    'onboarding.strike.cta':    { en: 'Good', es: 'Bien' },
+
+    'onboarding.rank.title':    { en: 'You are a Wanderer', es: 'Eres un Errante' },
+    'onboarding.rank.you':      { en: 'You are here',       es: 'Estas aqui' },
+    'onboarding.rank.xp':       { en: 'XP',                 es: 'XP' },
+    'onboarding.rank.body':     { en: 'Ten ranks stand between here and Eclipse Lord. Everything you do in the realms earns the XP that closes the gap.',
+                                  es: 'Diez rangos separan este punto del Senor del Eclipse. Todo lo que hagas en los reinos gana la XP que cierra la distancia.' },
+    'onboarding.rank.cta':      { en: 'Where do I go?',     es: 'A donde voy?' },
+
+    'onboarding.doors.title':   { en: 'Two doors',      es: 'Dos puertas' },
+    'onboarding.doors.body':    { en: 'Both are open now. Neither costs anything.',
+                                  es: 'Ambas estan abiertas. Ninguna cuesta nada.' },
+    'onboarding.doors.enter':   { en: 'Enter',          es: 'Entrar' },
+    'onboarding.doors.cta':     { en: 'One more thing', es: 'Una cosa mas' },
+
+    'onboarding.door.infernal.title': { en: 'The Infernal Realm',
+                                        es: 'El Reino Infernal' },
+    'onboarding.door.infernal.body':  { en: 'Basalt calderas and forge channels. Its opening chapter is playable now.',
+                                        es: 'Calderas de basalto y canales de forja. Su primer capitulo ya es jugable.' },
+    'onboarding.door.forge.title':    { en: 'The Rune Forge',
+                                        es: 'La Forja de Runas' },
+    'onboarding.door.forge.body':     { en: 'Spend the Gold you just earned. Every strike returns a rune, and runes combine into Runewords.',
+                                        es: 'Gasta el Oro que acabas de ganar. Cada golpe devuelve una runa, y las runas se combinan en Palabras de Runa.' },
+
+    'onboarding.return.title':    { en: 'Come back tomorrow', es: 'Vuelve manana' },
+    'onboarding.return.body':     { en: 'Three quests are drawn fresh every day, and a return streak pays more for each day you keep it.',
+                                    es: 'Tres misiones nuevas cada dia, y una racha de regreso paga mas por cada dia que la mantengas.' },
+    'onboarding.return.tomorrow': { en: 'On the board now',   es: 'En el tablero ahora' },
+    'onboarding.return.cta':      { en: 'Enter the Godforge', es: 'Entra en la Forja' },
+
+    // ─── Social proof ──────────────────────────────────────────────────────
+    // Singular and plural are separate keys rather than "Keeper(s)": this
+    // widget has to be believable at a count of one, and copy visibly written
+    // for a larger number is the first thing that undermines it.
+    'social.forged.one':  { en: 'Keeper forged today',  es: 'Guardian forjado hoy' },
+    'social.forged.many': { en: 'Keepers forged today', es: 'Guardianes forjados hoy' },
+
     // ─── The Godforge — homepage ───────────────────────────────────────────
     // The Eclipse Realms layer over the home page. Lore vocabulary, but every
     // number under it is real: artifacts are registry tools, paths are the

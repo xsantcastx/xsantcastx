@@ -325,6 +325,16 @@ export const CACHE_TTL = {
   counters: 60,
   /** Site visit total — displayed, never acted on. */
   visits: 30,
+  /**
+   * Today's visitor count, behind the "Forged today" widget.
+   *
+   * One minute, the shortest TTL in this table and deliberately so: this is the
+   * one counter whose whole point is that it is live, and a number that has not
+   * moved in half an hour reads as a static graphic rather than as activity.
+   * The cost stays bounded because the widget polls only while its own tab is
+   * on screen — see FORGED_REFRESH_MS in forged-today.service.ts.
+   */
+  forgedToday: 1,
   /** Dev-log / changelog entries. */
   changelog: 60,
   /** Admin dashboard panels, refreshable by hand. */
