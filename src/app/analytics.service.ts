@@ -183,9 +183,17 @@ export class AnalyticsService {
     this.log('first_forge_strike', {});
   }
 
-  /** The first realm this browser walked into. */
-  trackFirstRealmVisit(realm: string): void {
-    this.log('first_realm_visit', { realm });
+  /**
+   * The first thing this browser chose to do, by route.
+   *
+   * Was `first_realm_visit`, which stopped being the truth when the tutorial's
+   * fourth screen became a tour of the four activities rather than two realm
+   * doors. Renamed rather than left pointing at the wrong noun: a funnel whose
+   * event name disagrees with what the button does is a funnel somebody reads
+   * wrong six months from now.
+   */
+  trackFirstActivity(route: string): void {
+    this.log('first_activity', { route });
   }
 
   /** A session that began with a save already on disk. */
