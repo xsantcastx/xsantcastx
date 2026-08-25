@@ -62,9 +62,18 @@ const RULES = {
   'no-retired-golds': {
     why: 'A retired gold. The design system defines one gold (--gold) with a ramp.',
     scan: () => {
-      const dead = /#(c9a84c|d6a84f|ffc669|e4a83a|e0a857|ffd97a|f5c451)\b/gi;
+      // Three spellings, because a colour does not have to be written as a 6-digit
+      // hex to be the same colour. The 8-digit form matters especially: the source
+      // may hold none, but the CSS minifier rewrites rgba() to 8-digit hex, which is
+      // how 219 rgba spellings of these golds reached the deployed stylesheet while
+      // this rule — matching only `#c9a84c\b` — reported zero. `\b` never matches
+      // the 6-char prefix of an 8-char hex.
+      const HEX = '(c9a84c|d6a84f|ffc669|e4a83a|e0a857|ffd97a|f5c451)';
+      const RGB = '(201,\\s*168,\\s*76|214,\\s*168,\\s*79|255,\\s*198,\\s*105'
+                + '|228,\\s*168,\\s*58|224,\\s*168,\\s*87|255,\\s*217,\\s*122|245,\\s*196,\\s*81)';
+      const dead = new RegExp(`#${HEX}(?![0-9a-f])|#${HEX}[0-9a-f]{2}\\b|rgba?\\(\\s*${RGB}\\s*[,)]`, 'gi');
       return files.filter(f => /\.(css|ts|html)$/.test(f.rel) && !f.rel.includes('cosmic-engine'))
-        .flatMap(f => (read(f).match(dead) || []).map(m => `${f.rel}: ${m}`));
+        .flatMap(f => (read(f).match(dead) || []).map(m => `${f.rel}: ${m.trim()}`));
     },
   },
   'no-emoji-in-templates': {

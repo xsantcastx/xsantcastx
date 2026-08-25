@@ -36,7 +36,7 @@
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:
-    radial-gradient(ellipse 60% 80% at 15% 0%, rgba(255, 198, 105, 0.06), transparent 65%),
+    radial-gradient(ellipse 60% 80% at 15% 0%, rgba(232, 200, 152, 0.06), transparent 65%),
     radial-gradient(ellipse 55% 70% at 88% 100%, rgba(123, 97, 255, 0.07), transparent 65%),
     rgba(10, 6, 26, 0.55);
 }
@@ -47,7 +47,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255, 198, 105, 0.85);
+  color: rgba(232, 200, 152, 0.85);
 }
 
 .lb-eyebrow__pulse {
@@ -153,8 +153,8 @@
   gap: 1rem 2rem;
   padding: 1rem 1.2rem;
   border-radius: 14px;
-  border: 1px solid rgba(255, 198, 105, 0.22);
-  background: rgba(255, 198, 105, 0.05);
+  border: 1px solid rgba(232, 200, 152, 0.22);
+  background: rgba(232, 200, 152, 0.05);
 }
 
 .lb-standing__rank,
@@ -227,14 +227,14 @@
 
 /* The one row allowed to shout. */
 .lb-row--you td {
-  background: linear-gradient(90deg, rgba(255, 198, 105, 0.13), rgba(255, 198, 105, 0.02) 70%, transparent);
+  background: linear-gradient(90deg, rgba(232, 200, 152, 0.13), rgba(232, 200, 152, 0.02) 70%, transparent);
   color: var(--gold);
   font-weight: 600;
 }
 .lb-row--you .lb-col-rank { color: var(--gold); }
 .lb-row--you .lb-col-name { box-shadow: none; }
 .lb-row--you td:first-child { border-left: 3px solid var(--gold); }
-.lb-row--you .lb-name__title { color: rgba(255, 198, 105, 0.6); }
+.lb-row--you .lb-name__title { color: rgba(232, 200, 152, 0.6); }
 
 .lb-gap td {
   padding: 0.25rem 0.7rem;

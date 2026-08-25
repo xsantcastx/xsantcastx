@@ -106,8 +106,8 @@
 .fk__tagline {
   display: inline-block; margin: 0;
   padding: 7px 16px; border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.16);
-  background: rgba(201, 168, 76, 0.05);
+  border: 1px solid rgba(200, 152, 104, 0.16);
+  background: rgba(200, 152, 104, 0.05);
   font-size: 14px; font-style: italic; color: var(--fk-dim);
 }
 
@@ -270,7 +270,7 @@
   font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--fk-faint);
 }
-.fk-id__coin--gold { border-color: rgba(201, 168, 76, .3); }
+.fk-id__coin--gold { border-color: rgba(200, 152, 104, .3); }
 .fk-id__coin--gold .fk-id__coin-val { color: var(--gold-bright); }
 .fk-id__coin--essence { border-color: rgba(164, 139, 255, .3); }
 .fk-id__coin--essence .fk-id__coin-val { color: #c48bff; }
@@ -972,7 +972,7 @@
 }
 .fk-cal__day[data-heat='3'] .fk-cal__day-cell {
   background: var(--fk-heat-3); border-color: transparent;
-  box-shadow: 0 0 11px -2px rgba(201, 168, 76, .9);
+  box-shadow: 0 0 11px -2px rgba(200, 152, 104, .9);
 }
 .fk-cal__day[data-heat='4'] .fk-cal__day-cell {
   background: var(--fk-heat-4); border-color: transparent;
@@ -1136,7 +1136,7 @@
   margin: 0;
   font: 700 clamp(28px, 5vw, 42px)/1.1 var(--font-lore);
   color: #f4e7c3;
-  text-shadow: 0 2px 0 #1a1204, 0 0 24px rgba(201, 168, 76, .35);
+  text-shadow: 0 2px 0 #1a1204, 0 0 24px rgba(200, 152, 104, .35);
 }
 .fk-stage__level {
   margin: 8px 0 0;
@@ -1237,7 +1237,7 @@
   border: 3px solid #6a5424;
   box-shadow: inset 0 0 0 1px var(--gold-core), 0 24px 70px rgba(0, 0, 0, .75);
   background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(201, 168, 76, .08), transparent 60%),
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(200, 152, 104, .08), transparent 60%),
     #120e08;
 }
 .fk-bank__head {
@@ -1282,7 +1282,7 @@
   background:
     linear-gradient(180deg, #2a2110, #14100a);
   color: #f4e7c3;
-  box-shadow: inset 0 0 0 1px rgba(201, 168, 76, .18);
+  box-shadow: inset 0 0 0 1px rgba(200, 152, 104, .18);
 }
 .fk-bank__slot--empty {
   background: #0c0a06;

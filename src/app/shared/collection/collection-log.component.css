@@ -86,15 +86,15 @@
   display: inline-flex; align-items: center; gap: 0.55rem;
   margin: 0.9rem 0 0; padding: 0.4rem 0.85rem 0.4rem 0.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.28);
-  background: rgba(201, 168, 76, 0.07);
+  border: 1px solid rgba(200, 152, 104, 0.28);
+  background: rgba(200, 152, 104, 0.07);
   font-size: 0.78rem; color: rgba(240, 230, 205, 0.9);
 }
 .cl-next__badge {
   display: grid; place-items: center;
   min-width: 2.4rem; padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: rgba(201, 168, 76, 0.18);
+  background: rgba(200, 152, 104, 0.18);
   font-size: 0.68rem; font-weight: 800; color: var(--gold-core);
 }
 .cl-next--done { border-color: rgba(230, 220, 255, 0.35); background: rgba(230, 220, 255, 0.08); }
@@ -117,8 +117,8 @@
 .cl-reward.is-reached { opacity: 1; }
 .cl-reward.is-earned {
   opacity: 1;
-  border-color: rgba(201, 168, 76, 0.45);
-  box-shadow: 0 0 26px -10px rgba(201, 168, 76, 0.75);
+  border-color: rgba(200, 152, 104, 0.45);
+  box-shadow: 0 0 26px -10px rgba(200, 152, 104, 0.75);
 }
 .cl-reward__at {
   margin: 0 0 0.15rem;
@@ -393,7 +393,7 @@
 }
 .cl-card__tag {
   padding: 0.05rem 0.4rem; border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.4);
+  border: 1px solid rgba(200, 152, 104, 0.4);
   color: var(--gold-core);
 }
 .cl-card__absent {
