@@ -79,9 +79,18 @@ const RULES = {
   // "No icon font, no CDN set, no Lucide/Heroicons substitution."
   'no-icon-cdn': {
     why: 'Icon font or CDN icon set. The two SVG packs are the whole system.',
+    // Matches a REFERENCE that would load or apply an icon set — a CDN host, a
+    // package import, a stylesheet url(), or an icon class in markup. Not the bare
+    // brand name: the release note announcing FontAwesome's removal names it, and a
+    // rule that fails the build on its own changelog is a rule someone switches off.
     scan: () => files.filter(f => /\.(html|ts|css|js)$/.test(f.rel))
-      .flatMap(f => (readCode(f).match(/font-awesome|fontawesome|lucide|heroicons|material-icons|cdnjs\.cloudflare/gi) || [])
-        .map(m => `${f.rel}: ${m}`)),
+      .flatMap(f => (readCode(f).match(
+        new RegExp([
+          '(?:https?:)?//[^"\'\\s)]*(?:cdnjs\\.cloudflare|fontawesome|font-awesome|lucide|heroicons)[^"\'\\s)]*',
+          'from\\s+[\'"](?:lucide|@heroicons|@fortawesome)[^\'"]*[\'"]',
+          'url\\([^)]*(?:font-awesome|fontawesome|lucide|heroicons)[^)]*\\)',
+          'class\\s*=\\s*["\'][^"\']*(?:^|[\\s"\'])(?:fa-[a-z0-9-]+|material-icons)\\b',
+        ].join('|'), 'gi')) || []).map(m => `${f.rel}: ${m.slice(0, 60)}`)),
   },
   // "The z-scale is a closed set — a component that needs a new value needs a
   //  design decision, not a bigger number."
