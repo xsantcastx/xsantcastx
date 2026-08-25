@@ -18,11 +18,21 @@
   --ink-2:#8f8aa1;
   --ink-3:#615c73;
 
-  /* Eclipse violet — shared system energy, 7% of the screen */
-  --violet-bright:#c9a0ff;
-  --violet:#a855f7;
-  --violet-deep:#6b2fb5;
-  --violet-ink:#2a1440;
+  /* Eclipse violet — the INTERACTION energy, 7% of the screen.
+     Split from the Umbral realm hex in the v2 design-system pass. --violet is now
+     #8b5cf6, the value src/styles/interactions.css has always used for every hover
+     edge, focus ring and press glow on the site; the realm keeps #a855f7 in
+     realms.css. They were one variable and that was a genuine conflation: a card
+     inside the Umbral realm and a button anywhere else are not the same colour
+     role, and collapsing them meant a realm restyle would repaint every button.
+     --violet-ink is the raised obsidian the violet sits on. */
+  --violet-bright:#a78bfa;
+  --violet:#8b5cf6;
+  --violet-deep:#7b61ff;
+  --violet-ink:#2a2438;
+  /* The two alpha stops interactions.css hardcoded, now named. */
+  --violet-glow-soft:rgba(139,92,246,.34);
+  --violet-glow-lit:rgba(139,92,246,.6);
 
   /* Godforge gold — importance and reward, 2% of the screen */
   --gold-bright:#f8e8c8;
@@ -44,7 +54,7 @@
   --edge-inset:rgba(244,242,248,.14);
   --edge-raised:rgba(244,242,248,.22);
   --edge-gold:rgba(232,200,152,.34);
-  --edge-violet:rgba(168,85,247,.38);
+  --edge-violet:rgba(139,92,246,.44);   /* follows --violet, not the Umbral realm */
   --veil-scrim:rgba(10,10,15,.72);
   --veil-panel:rgba(16,16,23,.82);
   --veil-glass:rgba(22,22,31,.62);

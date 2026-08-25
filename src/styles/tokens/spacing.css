@@ -14,8 +14,19 @@
   --bp-md:1024px; /* @kind other */
   --bp-lg:1280px; /* @kind other */
 
-  /* Shell geometry */
+  /* Shell geometry.
+     --nav-h and --header-offset are the header's own names: header.component.ts measures
+     the navbar's real offsetHeight into --nav-h on documentElement and publishes
+     --header-offset for page-level sticky elements. Those runtime writes are inline
+     styles on :root and still outrank these, which are the declared fallbacks — the
+     value every consumer was already spelling out by hand as var(--nav-h, 64px). Naming
+     them here also means removeProperty('--nav-h') lands on 64px rather than on whatever
+     fallback each call site happened to guess. */
+  --nav-h:64px;
+  --header-offset:96px;
   --nav-rail:232px;
-  --inspect-panel:400px;   /* desktop Quick Inspect: 360–440px */
+  --inspect-panel:420px;       /* desktop Quick Inspect, matches min(420px,100vw) */
+  --inspect-panel-min:360px;
+  --inspect-panel-max:440px;
   --gutter:24px;
 }

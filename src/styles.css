@@ -196,8 +196,17 @@
   --gf-ink: #efe7d2;
   --gf-dim: #9c8f74;
   --gf-faint: #7b7259;
+  /* --gf-accent is GOLD: importance, value, reward — a price, an owned badge, a
+     loot border. --gf-interactive is VIOLET: clickable, hovered, armed, focused.
+     They were one name and the two roles collided. src/styles/interactions.css
+     loads after this file and re-declared --gf-accent as violet, so every consumer
+     here — the three world stations, character-hub, hub-bank — drew a violet edge
+     over a gold wash and read as neither. The roles are separate now; pick by what
+     the surface MEANS, not by which colour looks right. */
   --gf-accent: var(--forge-gold);
   --gf-accent-text: var(--forge-gold-text);
+  --gf-interactive: var(--violet);
+  --gf-interactive-lit: var(--violet-bright);
   --gf-violet: #a78bff;
 
   --gf-radius-sm: 8px;
