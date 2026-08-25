@@ -1,4 +1,11 @@
-/* Semantic aliases. Components reference these, never the base ramp directly. */
+/* Semantic aliases. Components reference these, never the base ramp directly.
+
+   Values marked [repo] are sampled out of a real shipped component rather than picked:
+   the Quick Inspect panel (src/app/shared/entity/inspect.component.css, the `.qi*`
+   classes) and the character bank grid (hub-bank.component.css, `.hb*`) had already
+   settled on a body/muted/overlay/scrim set by hand, and those hand-picked values are
+   the ones the site actually reads as. Aliasing them here is what lets those two
+   components drop their literals later without a restyle. */
 :root{
   /* Surfaces */
   --surface-page:var(--obsidian-0);
@@ -7,15 +14,17 @@
   --surface-card:var(--obsidian-3);
   --surface-well:#0d0d13;
   --surface-raised:var(--obsidian-4);
-  --surface-overlay:var(--veil-panel);
+  --surface-overlay:#0c0d16;             /* [repo] .qi panel base — opaque, not a veil */
+  --scrim-backdrop:rgba(5,6,12,.55);     /* [repo] .qi__backdrop */
 
   /* Text */
   --text-heading:var(--ink-0);
-  --text-body:var(--ink-1);
-  --text-muted:var(--ink-2);
+  --text-body:rgba(214,221,235,.86);     /* [repo] .qi body copy */
+  --text-muted:rgba(214,221,235,.58);    /* [repo] .qi__facts dt */
+  --text-faint:var(--ink-3);
   --text-disabled:var(--ink-3);
   --text-accent:var(--gold);
-  --text-lore:var(--ink-1);
+  --text-lore:var(--text-body);
   --text-on-accent:#0a0a0f;
   --text-link:var(--violet-bright);
   --text-link-hover:var(--gold);
@@ -24,16 +33,21 @@
   --action-primary-bg:var(--violet);
   --action-primary-bg-hover:var(--violet-bright);
   --action-primary-fg:#0a0a0f;
-  --action-secondary-bg:transparent;
-  --action-secondary-border:var(--edge-raised);
+  --action-secondary-bg:rgba(255,255,255,.04);    /* [repo] .qi__btn */
+  --action-secondary-border:rgba(255,255,255,.12);/* [repo] .qi__btn */
   --action-secondary-fg:var(--ink-0);
   --action-ghost-fg:var(--ink-1);
   --action-destructive-fg:var(--status-danger);
   --action-disabled-fg:var(--ink-3);
   --action-disabled-bg:var(--obsidian-2);
+  --action-disabled-opacity:.45; /* @kind other */
 
   /* Value and reward */
   --value-gold:var(--gold);
+  /* The gold ramp's light stop. Gold is 3.6:1 on the dark base, so text-weight gold
+     uses this and the raw token stays for borders, glows and rules. The design system
+     names a separate hex here; it is one of the six retired in v2.82.0 "One Gold". */
+  --value-gold-text:var(--gold-bright);
   --value-essence:var(--realm-celestial);
   --value-shard:var(--violet-bright);
   --reward-edge:var(--edge-gold);
@@ -43,12 +57,16 @@
   --feedback-warn:var(--status-caution);
   --feedback-success:var(--status-good);
   --feedback-info:var(--status-info);
+  --feedback-up:#4ade80;                  /* [repo] .qi__rdelta up — a stat roll improved */
+  --feedback-down:#ff7a6b;                /* [repo] .qi__rdelta down */
 
   /* Slots and tiles */
-  --slot-empty-bg:var(--surface-well);
-  --slot-empty-edge:var(--edge-inset);
+  --slot-empty-bg:rgba(0,0,0,.18);        /* [repo] .hb__tile--pad — a well, not a fill */
+  --slot-empty-edge:rgba(255,255,255,.05);/* [repo] .hb__tile--pad */
   --slot-filled-edge:var(--edge-raised);
   --slot-armed-edge:var(--edge-violet);
+  --tile-min:148px;                       /* [repo] .hb__grid auto-fill minmax */
+  --tile-pad-min:88px;                    /* [repo] .hb__tile--pad min-height */
 }
 
 /* NOTE — the design system ships two bare element rules here:
