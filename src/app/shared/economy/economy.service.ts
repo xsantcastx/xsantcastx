@@ -239,6 +239,26 @@ export class EconomyService implements OnDestroy {
   /** Charisma's Market discount, as a multiplier. 1 until the RPG layer says otherwise. */
   private priceMultiplier = 1;
 
+  /**
+   * The first idle settlement of this page load, held for the offline summary.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THE REPORT IS TAKEN FROM HERE AND NOT RECOMPUTED
+   * ───────────────────────────────────────────────────────────────────────────
+   * `init()` settles the whole absence before anything else on the page has
+   * run, which is correct and must not change: the Gold is banked whether or
+   * not anybody is ever shown a screen about it. That leaves the summary with
+   * no way to know what it was worth — `goldPerSecond() * awaySeconds` would be
+   * a *second* answer, computed after `RpgWiringService` has pushed its flat
+   * bonus in, and it would disagree with the balance the visitor can see.
+   *
+   * So the settlement records what it actually paid, once, and the summary
+   * takes it. Taken rather than read: a report is shown for one return, and a
+   * value left here would be picked up again by the next thing that asked.
+   */
+  private offlineSettlement: { seconds: number; gold: number } | null = null;
+  private settlementNoted = false;
+
   /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
   private deviceId = '';
   private opSeq = 0;
@@ -599,11 +619,13 @@ export class EconomyService implements OnDestroy {
     if (hidden && !earnsWhileHidden(this.state)) {
       // The clock has moved; nothing is owed. Persist so a reload does not
       // re-examine the same span and pay it under visible rules.
+      this.noteFirstSettlement(seconds, 0);
       this.persistSoon();
       return;
     }
 
     const gold = goldPerSecond(this.state) * seconds;
+    this.noteFirstSettlement(seconds, Math.max(0, gold));
     if (gold <= 0) {
       this.persistSoon();
       return;
@@ -631,6 +653,32 @@ export class EconomyService implements OnDestroy {
       // One beat regardless of how many automatons are owned — see `autoStrike$`.
       if (autoRate > 0) this.autoStrike$$.next(autoRate);
     });
+  }
+
+  /**
+   * Remember what the first settlement of this page load covered.
+   *
+   * Every later call is a no-op, which is what makes this "the absence" rather
+   * than "the last second": once the tab is open the settlements are one second
+   * apart and none of them is news.
+   */
+  private noteFirstSettlement(seconds: number, gold: number): void {
+    if (this.settlementNoted) return;
+    this.settlementNoted = true;
+    this.offlineSettlement = { seconds, gold };
+  }
+
+  /**
+   * What the absence paid, once. Null on every call after the first, and null
+   * on a page load where no time at all had passed.
+   *
+   * The Gold is *not* awarded by whoever takes this — it was banked inside the
+   * settlement. This hands over the receipt, not the money.
+   */
+  takeOfflineSettlement(): { seconds: number; gold: number } | null {
+    const settlement = this.offlineSettlement;
+    this.offlineSettlement = null;
+    return settlement;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
