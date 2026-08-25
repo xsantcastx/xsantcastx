@@ -495,6 +495,29 @@ export class TranslationService {
     'onboarding.return.tomorrow': { en: 'On the board now',   es: 'En el tablero ahora' },
     'onboarding.return.cta':      { en: 'Enter the Godforge', es: 'Entra en la Forja' },
 
+    // ─── While you were away ───────────────────────────────────────────────
+    // The absence summary. Spanish here is deliberately plain: the screen is
+    // read once, at a glance, by somebody who has just come back and wants the
+    // numbers — flourish belongs in the lore panels, not on a receipt.
+    'away.eyebrow':        { en: 'While you were away', es: 'Mientras no estabas' },
+    'away.title':          { en: 'The forge kept working', es: 'La forja siguio trabajando' },
+    'away.gold':           { en: 'Gold earned',       es: 'Oro ganado' },
+    'away.xp':             { en: 'Idle XP',           es: 'XP pasiva' },
+    'away.thralls':        { en: 'Thrall finds',      es: 'Hallazgos de siervos' },
+    'away.expeditions':    { en: 'Expeditions home',  es: 'Expediciones de vuelta' },
+    'away.quests':         { en: 'Daily quests',      es: 'Misiones diarias' },
+    'away.questsReady':    { en: 'A fresh board is waiting', es: 'Un tablero nuevo te espera' },
+    'away.contracts':      { en: 'Contract Board',    es: 'Tablon de contratos' },
+    'away.contractsReady': { en: 'New contracts posted', es: 'Nuevos contratos publicados' },
+    'away.pulls':          { en: '{{count}} pulls settled', es: '{{count}} tiradas liquidadas' },
+    'away.pullsCapped':    { en: 'first {{count}} pulls settled', es: 'primeras {{count}} tiradas liquidadas' },
+    'away.capped':         { en: 'Eight hours is the most one return pays for.',
+                             es: 'Ocho horas es lo maximo que paga un regreso.' },
+    'away.claim':          { en: 'Claim and continue', es: 'Reclamar y continuar' },
+    'away.close':          { en: 'Close the summary',  es: 'Cerrar el resumen' },
+    'away.banked':         { en: 'Already banked — nothing here can be lost.',
+                             es: 'Ya esta en tu cuenta: aqui no se pierde nada.' },
+
     // ─── Social proof ──────────────────────────────────────────────────────
     // Singular and plural are separate keys rather than "Keeper(s)": this
     // widget has to be believable at a count of one, and copy visibly written
