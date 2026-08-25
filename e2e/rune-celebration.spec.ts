@@ -155,7 +155,10 @@ test.describe('rune celebration', () => {
     const fx = await strike(page, 'rare');
     expect(fx.specks).toBeGreaterThan(0);
     expect(fx.letters).toBeGreaterThan(0);
-    expect(fx.color).toBe('#a48bff');
+    // The design-system rare colour (tokens/rarity.css). Was #a48bff before the
+    // ladder moved onto the system — this assertion is the palette's contract,
+    // so it changes with the palette rather than pinning the old value.
+    expect(fx.color).toBe('#00d4ff');
     // The screen still does not move. That is Epic's.
     expect(fx.shaking).toBe(false);
     expect(fx.dark).toBe(0);
