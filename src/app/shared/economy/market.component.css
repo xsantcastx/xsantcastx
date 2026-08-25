@@ -3,7 +3,7 @@
  *
  * A three-column shop: filters, inventory, activity. The tint is driven off
  * `[data-currency]` on the host section, written from whichever shelf is
- * showing — Gold surfaces get the warm forge pair (#E8752A → #C9A84C), Essence
+ * showing — Gold surfaces get the warm forge pair (var(--ember) → var(--gold-core)), Essence
  * surfaces get violet. Rarity colours come in per-row as `--tier` / `--tier-glow`
  * from the Eclipse ladder in rarity.model.ts. Nothing here introduces a colour
  * that is not already in the brand palette or that ladder.
@@ -16,8 +16,8 @@
  */
 
 .mk {
-  --mk-warm: #E8752A;
-  --mk-gold: #C9A84C;
+  --mk-warm: var(--ember);
+  --mk-gold: var(--gold-core);
   --mk-gold-soft: rgba(201, 168, 76, 0.5);
   --mk-ess: #a48bff;
   --mk-ess-soft: rgba(164, 139, 255, 0.5);
@@ -31,7 +31,7 @@
   --mk-pane: rgba(15, 10, 30, 0.8);
   --mk-pane-2: rgba(20, 14, 38, 0.72);
   --mk-line: rgba(255, 255, 255, 0.07);
-  --mk-ink: #e8ecf1;
+  --mk-ink: var(--ink-0);
   --mk-dim: rgba(232, 236, 241, 0.58);
   --mk-faint: rgba(232, 236, 241, 0.4);
 
@@ -78,15 +78,21 @@
 .mk__hero::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
 
 .mk__sigil {
+  /* Was a bare Unicode ✕ painted with background-clip:text, which read as a close
+     button parked in the middle of the hero. It is the design system's four-point
+     anchor now — the mark the shape grammar assigns to revelation and value.
+     The gradient text trick had to go with it: background-clip:text needs
+     color:transparent, and a transparent colour makes an SVG drawn in
+     currentColor invisible. Solid violet plus the same drop-shadow instead. */
   display: block;
-  font: 400 clamp(30px, 5vw, 46px)/1 'Orbitron', system-ui, sans-serif;
-  color: transparent;
-  background: linear-gradient(160deg, #c48bff, var(--mk-warm));
-  -webkit-background-clip: text; background-clip: text;
+  width: clamp(30px, 5vw, 46px);
+  height: clamp(30px, 5vw, 46px);
+  margin: 0 auto 10px;
+  color: var(--violet-bright);
   filter: drop-shadow(0 0 14px rgba(123, 97, 255, 0.55));
-  margin-bottom: 10px;
   animation: mkSigil 12s ease-in-out infinite;
 }
+.mk__sigil svg { width: 100%; height: 100%; display: block; }
 @keyframes mkSigil {
   0%, 100% { opacity: .78; transform: rotate(0deg) scale(1); }
   50%      { opacity: 1;   transform: rotate(180deg) scale(1.08); }
@@ -113,7 +119,7 @@
   font: 700 clamp(28px, 5.6vw, 58px)/1.08 'Orbitron', system-ui, sans-serif;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  background: linear-gradient(92deg, #ffd97a, var(--mk-warm) 46%, #c48bff);
+  background: linear-gradient(92deg, var(--gold-bright), var(--mk-warm) 46%, #c48bff);
   background-size: 200% auto;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
@@ -853,7 +859,7 @@
   pointer-events: none;
 }
 /* The rungs. Weight and light climb the ladder. Mortal is near-white
-   (#e8ecf1, 15.8:1 on this ground) and would out-shout every coloured tier at
+   (var(--ink-0), 15.8:1 on this ground) and would out-shout every coloured tier at
    equal strength, so the bottom rung is deliberately held quiet. */
 .mk__tile[data-rarity='mortal']    { --mk-tier-edge: 10%; --mk-tier-rail: 2px; --mk-tier-rail-a: 45%; }
 .mk__tile[data-rarity='eclipsed']  { --mk-tier-edge: 30%; }
@@ -1442,7 +1448,7 @@
   font-size: 15px;
   font-weight: 700;
   line-height: 1.25;
-  color: var(--mk-ink, #e8ecf1);
+  color: var(--mk-ink, var(--ink-0));
 }
 .mk__card-meta {
   display: flex;

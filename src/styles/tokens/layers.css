@@ -1,0 +1,16 @@
+/* Stacking scale. The app has 30+ distinct z-index values and not one custom property;
+   three components doing the same job sit at 45, 80 and 1200. This is the whole ladder.
+   .scene is 0 and page roots are 1 — never a negative layer in the root stacking context. */
+:root{
+  --z-scene:0; /* @kind other */
+  --z-content:1; /* @kind other */
+  --z-sticky:100; /* @kind other */
+  --z-rail:200; /* @kind other */
+  --z-dropdown:300; /* @kind other */
+  --z-fx:935; /* @kind other */      /* full-viewport combo/effect layer */
+  --z-flame:940; /* @kind other */   /* fixed Forge Flame widget */
+  --z-header:1000; /* @kind other */
+  --z-inspect:1100; /* @kind other */
+  --z-modal:1200; /* @kind other */
+  --z-toast:1300; /* @kind other */
+}

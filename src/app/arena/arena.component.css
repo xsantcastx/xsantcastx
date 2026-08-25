@@ -3,7 +3,7 @@
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  /* Transparent, not #0a0a0f. There is a painted colosseum behind this route
+  /* Transparent, not var(--obsidian-0). There is a painted colosseum behind this route
      now, and an opaque page root is a lid on it. Worth knowing when this looks
      broken: the failure mode is not a missing image — the artwork renders,
      loads and sits at the right size, and simply cannot be seen. The void this
@@ -36,8 +36,8 @@
   opacity: 0.12;
 }
 
-.gp-hero__glow--cyan  { background: #8B5CF6; top: -10rem; left: -10rem; }
-.gp-hero__glow--purple { background: #8b5cf6; top: -10rem; right: -10rem; }
+.gp-hero__glow--cyan  { background: var(--violet); top: -10rem; left: -10rem; }
+.gp-hero__glow--purple { background: var(--violet); top: -10rem; right: -10rem; }
 
 .gp-hero__inner {
   position: relative;
@@ -53,7 +53,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent, #8B5CF6);
+  color: var(--color-accent, var(--violet));
   margin-bottom: 1rem;
 }
 
@@ -61,7 +61,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-accent, #8B5CF6);
+  background: var(--color-accent, var(--violet));
   animation: gp-pulse 2s ease-in-out infinite;
 }
 
@@ -75,7 +75,7 @@
   font-weight: 700;
   line-height: 1.1;
   margin: 0 0 1rem;
-  background: linear-gradient(135deg, #e2e8f0 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #e2e8f0 0%, var(--violet) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -106,7 +106,7 @@
 
 .gp-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8B5CF6, #8b5cf6);
+  background: linear-gradient(90deg, var(--violet), var(--violet));
   border-radius: 3px;
   transition: width 0.6s ease;
 }
@@ -143,7 +143,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.15em;
-  color: var(--color-accent, #8B5CF6);
+  color: var(--color-accent, var(--violet));
   margin-bottom: 0.5rem;
 }
 
@@ -161,7 +161,7 @@
 }
 
 .gp-how-step p a {
-  color: var(--color-accent, #8B5CF6);
+  color: var(--color-accent, var(--violet));
   text-decoration: none;
 }
 
@@ -298,7 +298,7 @@
   gap: 0.4rem;
   margin: 0;
   font-size: 0.76rem;
-  color: color-mix(in srgb, var(--tier) 75%, #e8ecf1);
+  color: color-mix(in srgb, var(--tier) 75%, var(--ink-0));
   font-variant-numeric: tabular-nums;
 }
 
@@ -330,7 +330,7 @@
   font-size: clamp(1.4rem, 4vw, 2rem);
   font-weight: 700;
   line-height: 1;
-  color: #F2ECFF;
+  color: var(--ink-0);
 }
 
 .ar-stat__of {
@@ -411,7 +411,7 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  background: linear-gradient(135deg, #8B5CF6, #8b5cf6);
+  background: linear-gradient(135deg, var(--violet), var(--violet));
   color: #000;
   border: none;
   border-radius: 6px;

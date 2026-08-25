@@ -8,7 +8,7 @@
   <!-- ── Hero ──────────────────────────────────────────────────────────────
        The sigil, the name, the promise. Everything below it is inventory. -->
   <header class="mk__hero">
-    <span class="mk__sigil" aria-hidden="true">✕</span>
+    <span class="mk__sigil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" focusable="false"><path d="M12 2.6 13.9 9 20.4 12 13.9 15 12 21.4 10.1 15 3.6 12 10.1 9Z"/><path d="M12 7.6 12.8 10.9 16.2 12 12.8 13.1 12 16.4 11.2 13.1 7.8 12 11.2 10.9Z" fill="currentColor" stroke="none" opacity=".24"/></svg></span>
     <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>{{ t('market.eyebrow') }}</p>
     <h1 class="mk__title">{{ t('market.title') }}</h1>
     <p class="mk__tagline">{{ t('market.tagline') }}</p>
@@ -103,7 +103,7 @@
                (input)="onSearch($any($event.target).value)">
         @if (searchDraft) {
           <button type="button" class="mk__search-clear" (click)="clearSearch()"
-                  [attr.aria-label]="t('market.searchClear')">✕</button>
+                  [attr.aria-label]="t('market.searchClear')"><svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false"><path d="M4 5.5h16M7 11h10m-7 5.5h4"/><path d="m15.5 15.5 5 5m0-5-5 5"/></svg></button>
         }
       </div>
 
@@ -254,7 +254,7 @@
             <li>
               <button type="button" class="mk__chip" (click)="clearChip(chip.key)"
                       [attr.aria-label]="t('market.clearChip', { name: chip.label })">
-                {{ chip.label }} <span aria-hidden="true">✕</span>
+                {{ chip.label }} <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
               </button>
             </li>
           }

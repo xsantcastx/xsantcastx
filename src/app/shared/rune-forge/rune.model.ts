@@ -104,37 +104,37 @@ export interface RuneTierDefinition {
 export const RUNE_TIERS: Record<RuneTier, RuneTierDefinition> = {
   common: {
     id: 'common', label: 'Common', budget: 0.9973515, worth: 10_000, sellValue: 5_000,
-    color: '#8f98a8', glow: 'rgba(143, 152, 168, 0.45)',
+    color: '#8f8aa1', glow: 'rgba(143, 138, 161, 0.45)',
     reveal: 'plain', sound: 'blip', semitones: 0, duration: 1600, xp: 2,
   },
   uncommon: {
     id: 'uncommon', label: 'Uncommon', budget: 0.0025, worth: 50_000, sellValue: 25_000,
-    color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)',
+    color: '#9db8a8', glow: 'rgba(157, 184, 168, 0.5)',
     reveal: 'glow', sound: 'blip', semitones: 2, duration: 2000, xp: 8,
   },
   rare: {
     id: 'rare', label: 'Rare', budget: 0.0001, worth: 200_000, sellValue: 100_000,
-    color: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)',
+    color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.55)',
     reveal: 'burst', sound: 'chime', semitones: 4, duration: 2600, xp: 30,
   },
   epic: {
     id: 'epic', label: 'Epic', budget: 0.000035, worth: 1_000_000, sellValue: 500_000,
-    color: '#C9A84C', glow: 'rgba(255, 190, 90, 0.75)',
+    color: '#a855f7', glow: 'rgba(168, 85, 247, 0.6)',
     reveal: 'shimmer', sound: 'horn', semitones: 5, duration: 3200, xp: 90,
   },
   legendary: {
     id: 'legendary', label: 'Legendary', budget: 0.00001, worth: 5_000_000, sellValue: 2_500_000,
-    color: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)',
+    color: '#e8c898', glow: 'rgba(232, 200, 152, 0.7)',
     reveal: 'edge', sound: 'horn', semitones: 7, duration: 4200, xp: 300,
   },
   mythic: {
     id: 'mythic', label: 'Mythic', budget: 0.000003, worth: 20_000_000, sellValue: 10_000_000,
-    color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)',
+    color: '#f8e8c8', glow: 'rgba(248, 232, 200, 0.85)',
     reveal: 'flash', sound: 'impact', semitones: 10, duration: 5600, xp: 1_200,
   },
   singular: {
     id: 'singular', label: 'Singular', budget: 0.0000005, worth: 100_000_000, sellValue: 50_000_000,
-    color: '#e6dcff', glow: 'rgba(230, 220, 255, 0.95)',
+    color: '#ff6dd7', glow: 'rgba(255, 109, 215, 0.95)',
     reveal: 'void', sound: 'prism', semitones: 12, duration: 9000, xp: 5_000,
   },
 };

@@ -39,7 +39,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #0a0618;
-  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7, #ffc669, #4dffe0);
+  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7, var(--gold), #4dffe0);
   background-size: 300% 100%;
   animation: rqPrism 4.5s linear infinite;
 }
@@ -55,7 +55,7 @@
 }
 
 .rq__stat { color: rgba(232, 236, 241, 0.66); }
-.rq__val { color: #e8ecf1; font-variant-numeric: tabular-nums; }
+.rq__val { color: var(--ink-0); font-variant-numeric: tabular-nums; }
 
 .rq__track {
   height: 5px;

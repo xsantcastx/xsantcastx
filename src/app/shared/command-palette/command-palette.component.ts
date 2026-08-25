@@ -145,7 +145,7 @@ interface ScoredResult {
         background: rgba(4, 7, 14, 0.72);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        z-index: 9500;
+        z-index: var(--z-modal);
         display: flex;
         align-items: flex-start;
         justify-content: center;

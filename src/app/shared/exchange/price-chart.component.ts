@@ -106,7 +106,7 @@ export class PriceChartComponent {
   /** Sparkline mode: line and fill only. */
   @Input() compact = false;
   /** Stroke colour. The caller passes the rarity or the trend colour. */
-  @Input() color = '#C9A84C';
+  @Input() color = '#c89868';
   @Input() ariaLabel = 'Price history';
 
   @Input()

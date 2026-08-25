@@ -130,7 +130,7 @@ const QUEUE_CAP = 4;
     /* A stage rather than a veil: the card is centred over the page and the
        page stays fully visible and fully clickable behind it. */
     .dt-stage {
-      position: fixed; inset: 0; z-index: 99989;
+      position: fixed; inset: 0; z-index: var(--z-toast);
       pointer-events: none;
       background: radial-gradient(ellipse 40% 30% at 50% 46%, rgba(0, 0, 0, 0.42), transparent 70%);
       opacity: 0; animation: dtStage 2.6s ease forwards;
@@ -138,7 +138,7 @@ const QUEUE_CAP = 4;
     @keyframes dtStage { 12% { opacity: 1; } 76% { opacity: 1; } 100% { opacity: 0; } }
 
     .dt {
-      position: fixed; left: 50%; top: 46%; z-index: 99990;
+      position: fixed; left: 50%; top: 46%; z-index: var(--z-toast);
       transform: translate(-50%, -50%);
       pointer-events: none;
       perspective: 900px;
@@ -386,7 +386,7 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
       line: r.blurb,
       foot: `+${r.gold.toLocaleString()} Gold · title unlocked`,
       glyph: '✦',
-      color: '#C9A84C',
+      color: '#c89868',
       glow: 'rgba(201, 168, 76, 0.7)',
       art: r.item ? artFor(r.item) : null,
       percent: r.at,

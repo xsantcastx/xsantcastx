@@ -22,7 +22,7 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: clamp(1.25rem, 4vw, 3rem) clamp(0.9rem, 3vw, 2rem) 4rem;
-  color: #e8e6f5;
+  color: var(--ink-0);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */

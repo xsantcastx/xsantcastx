@@ -690,10 +690,10 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     return [
       { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#A78BFA' },
       { label: 'Loadout',       value: `${this.equippedCount}/${this.slotCount}`, note: 'slots filled',  icon: '⚔', color: '#a48bff' },
-      { label: 'Achievements',  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: 'fragments found', icon: '🏆', color: '#C9A84C' },
+      { label: 'Achievements',  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: 'fragments found', icon: '🏆', color: '#c89868' },
       { label: 'Quests',        value: formatCurrency(this.questsCompleted),    note: 'completed',         icon: '⚔️', color: '#ff6dd7' },
       { label: 'Flame Strikes', value: formatCurrency(this.wallet.totalClicks), note: 'on the anvil',      icon: '🔨', color: '#E8752A' },
-      { label: 'Gold Earned',   value: formatCurrency(this.wallet.totalGoldEarned), note: 'all time',      icon: '🪙', color: '#ffd97a' },
+      { label: 'Gold Earned',   value: formatCurrency(this.wallet.totalGoldEarned), note: 'all time',      icon: '🪙', color: '#f8e8c8' },
       { label: 'Gold / Second', value: formatCompact(this.wallet.perSecond),    note: 'while you read',    icon: '⏱️', color: '#7fd5a3' },
       { label: 'Eclipse Shards', value: formatCurrency(this.wallet.shards),     note: this.wallet.shards > 0 ? `${this.shardMult} forever` : 'no Eclipse taken', icon: '🌑', color: '#c48bff' },
       { label: 'Current Streak', value: String(this.snap.streak),               note: this.snap.streak === 1 ? 'day' : 'days', icon: '🔥', color: '#ff8a4c' },

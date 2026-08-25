@@ -29,7 +29,7 @@
   border: 1px solid currentColor;
 }
 .sc-lang[data-lang='css']  { color: #A78BFA; }
-.sc-lang[data-lang='js']   { color: #C9A84C; }
+.sc-lang[data-lang='js']   { color: var(--gold-core); }
 .sc-lang[data-lang='html'] { color: #ff6dd7; }
 
 /* ── lines ────────────────────────────────────────────────── */

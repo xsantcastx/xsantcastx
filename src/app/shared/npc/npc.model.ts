@@ -160,7 +160,7 @@ export const NPCS: readonly NpcDefinition[] = [
     name: 'The Merchant',
     epithet: 'of the long till',
     role: 'Sells anything, counts everything, remembers what you nearly bought.',
-    color: '#C9A84C',
+    color: '#c89868',
     glow: 'rgba(201, 168, 76, 0.55)',
     monogram: 'ME',
     artId: 'npc-merchant',

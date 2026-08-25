@@ -61,7 +61,7 @@ const ORBS_PER_ENERGY = 8;
  */
 const COLLAPSE_AT = 5;
 
-const AETHER = '#C9A84C';
+const AETHER = '#c89868';
 const NOX = '#a48bff';
 
 const DELTAS: Record<Dir, { dc: number; dr: number; wall: keyof Cell }> = {

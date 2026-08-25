@@ -107,7 +107,7 @@
 .hp-hero__bg-glow--ember {
   width: 620px;
   height: 620px;
-  background: radial-gradient(circle, #E8752A, transparent 70%);
+  background: radial-gradient(circle, var(--ember), transparent 70%);
   top: -18%;
   left: -12%;
   opacity: 0.13;
@@ -182,7 +182,7 @@
 }
 
 .gf-hero__eyebrow {
-  color: #E0A857; /* forge gold, lightened past #C9A84C for 4.5:1 on the dark base */
+  color: var(--gold-core); /* forge gold, lightened past var(--gold-core) for 4.5:1 on the dark base */
   text-shadow: 0 0 12px rgba(232, 117, 42, 0.45);
 }
 
@@ -201,8 +201,8 @@
 }
 
 .gf-hero__eyebrow .hp-hero__eyebrow-dot {
-  background: #E8752A;
-  box-shadow: 0 0 10px #E8752A;
+  background: var(--ember);
+  box-shadow: 0 0 10px var(--ember);
 }
 
 .hp-hero__title {
@@ -226,7 +226,7 @@
   letter-spacing: 0.02em;
   text-transform: none;
   line-height: 1.02;
-  background: linear-gradient(168deg, #FFE6B0 0%, #E8752A 52%, #8B2252 100%);
+  background: linear-gradient(168deg, #FFE6B0 0%, var(--ember) 52%, #8B2252 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -315,8 +315,8 @@
 
 .gf-hero__aside-link:hover,
 .gf-hero__aside-link:focus-visible {
-  color: #C9A84C;
-  border-bottom-color: #C9A84C;
+  color: var(--gold-core);
+  border-bottom-color: var(--gold-core);
   text-shadow: 0 0 12px rgba(201, 168, 76, 0.6);
 }
 
@@ -422,7 +422,7 @@
   width: 34%;
   height: 34%;
   border-radius: 50%;
-  background: radial-gradient(circle at 46% 42%, #fff6dd 0%, #ffd27a 34%, #e8752a 72%, rgba(139, 34, 82, 0.5) 100%);
+  background: radial-gradient(circle at 46% 42%, #fff6dd 0%, #ffd27a 34%, var(--ember) 72%, rgba(139, 34, 82, 0.5) 100%);
   filter: blur(1px);
   animation: gfHeartPulse 4.1s ease-in-out infinite;
 }
@@ -511,7 +511,7 @@
   /* Runs dark→light left to right, so the leading edge is the brightest
      part of the bar. The reverse ramp put crimson against the grey track
      at the origin and the fill read as empty at low levels. */
-  background: linear-gradient(90deg, #E8752A, #C9A84C 58%, #FFD9A0);
+  background: linear-gradient(90deg, var(--ember), var(--gold-core) 58%, #FFD9A0);
   box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
   transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -643,7 +643,7 @@
 }
 
 .hp-stat:nth-child(7) .hp-stat__icon {
-  color: #ffc669;
+  color: var(--gold);
   background: radial-gradient(circle, rgba(255, 198, 105, 0.18), transparent 70%);
   border-color: rgba(255, 198, 105, 0.28);
   box-shadow: 0 0 10px -2px rgba(255, 198, 105, 0.36), inset 0 0 6px rgba(255, 198, 105, 0.14);
@@ -720,7 +720,7 @@
 
 .hp-tools__view-all {
   font-size: 0.875rem;
-  color: var(--accent-color, #8B5CF6);
+  color: var(--accent-color, var(--violet));
   text-decoration: none;
   white-space: nowrap;
   padding: 0.4rem 0;
@@ -787,7 +787,7 @@
 .hp-tool-card {
   --star-color: #A78BFA;
   --star-glow: rgba(139, 92, 246, 0.55);
-  --star-inner: #F2ECFF;
+  --star-inner: var(--ink-0);
 
   position: relative;
   display: flex;
@@ -813,7 +813,7 @@
 .hp-tool-card[data-category="Email Tools"]      { --star-color: #ff6dd7; --star-glow: rgba(255, 90, 210, 0.6); --star-inner: #ffe6f6; }
 .hp-tool-card[data-category="Security Tools"]   { --star-color: #a48bff; --star-glow: rgba(140, 110, 255, 0.6); --star-inner: #efeaff; }
 .hp-tool-card[data-category="Code Converters"]  { --star-color: #5fb6ff; --star-glow: rgba(80, 180, 255, 0.6);  --star-inner: #e6f4ff; }
-.hp-tool-card[data-category="Productivity"]     { --star-color: #ffc669; --star-glow: rgba(255, 180, 80, 0.6);  --star-inner: #fff2dc; }
+.hp-tool-card[data-category="Productivity"]     { --star-color: var(--gold); --star-glow: rgba(255, 180, 80, 0.6);  --star-inner: #fff2dc; }
 .hp-tool-card[data-category="DevOps"]           { --star-color: #ff9a5a; --star-glow: rgba(255, 140, 60, 0.6);  --star-inner: #ffe6d2; }
 .hp-tool-card[data-category="Text & Data"]      { --star-color: #c48bff; --star-glow: rgba(180, 120, 255, 0.6); --star-inner: #f1e6ff; }
 .hp-tool-card[data-category="SEO Tools"]        { --star-color: #7fd5a3; --star-glow: rgba(100, 220, 150, 0.6); --star-inner: #e6ffef; }
@@ -1674,7 +1674,7 @@
   border-radius: 50%;
   font: 700 12px/1 var(--font-heading);
   color: #2a1206;
-  background: radial-gradient(circle at 34% 30%, #FFE6B0 0%, #E8752A 70%, #8B2252 100%);
+  background: radial-gradient(circle at 34% 30%, #FFE6B0 0%, var(--ember) 70%, #8B2252 100%);
   box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
 }
 
@@ -1827,7 +1827,7 @@
    THE GODFORGE ENTRANCE (concept build)
    Hero scene · status panel · welcome panel · counters · creed.
 
-   Accent is var(--primary-color) throughout, never a literal #8B5CF6 —
+   Accent is var(--primary-color) throughout, never a literal var(--violet) —
    four purchasable cosmetic themes re-point that variable and a hardcoded
    hex would opt the whole entrance out of them.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -1856,7 +1856,7 @@
   overflow: hidden;
   /* Painted behind the art so the hero is never a white flash while the
      image decodes, and so any letterboxing reads as void. */
-  background-color: #0a0a0f;
+  background-color: var(--obsidian-0);
   pointer-events: none;
 }
 
@@ -1881,7 +1881,7 @@
     to bottom,
     rgba(10, 10, 15, 0.2) 0%,
     rgba(10, 10, 15, 0.85) 70%,
-    #0a0a0f 100%
+    var(--obsidian-0) 100%
   );
 }
 
@@ -1930,7 +1930,7 @@
   font-weight: 600;
   letter-spacing: 0.42em;
   text-transform: uppercase;
-  color: #E0A857;
+  color: var(--gold-core);
   text-shadow: 0 0 18px rgba(201, 168, 76, 0.45);
 }
 
@@ -1996,7 +1996,7 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #E0A857;
+  color: var(--gold-core);
 }
 .gfpanel__hd-state {
   display: inline-flex;
@@ -2040,7 +2040,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #E0A857;
+  color: var(--gold-core);
   text-shadow: 0 0 16px rgba(201, 168, 76, 0.4);
 }
 .gfstat__row--level { grid-template-areas: 'label value' 'bar bar'; grid-template-columns: 1fr auto; }
@@ -2076,7 +2076,7 @@
   text-decoration: none;
   transition: color 0.2s ease, gap 0.2s ease;
 }
-.gfpanel__more:hover { color: #E0A857; gap: 0.7rem; }
+.gfpanel__more:hover { color: var(--gold-core); gap: 0.7rem; }
 .gfpanel__more-chev {
   width: 6px; height: 6px;
   border-right: 1.5px solid currentColor;
@@ -2135,7 +2135,7 @@
 .gfbtn--primary:hover,
 .gfbtn--primary:focus-visible {
   background: var(--primary-color);
-  color: #0a0a0f;
+  color: var(--obsidian-0);
   box-shadow: 0 0 34px -8px var(--primary-color);
 }
 .gfbtn__chev {
@@ -2419,7 +2419,7 @@
   left: 50%; bottom: 104px;
   width: 3px; height: 3px;
   border-radius: 50%;
-  background: #ffc669;
+  background: var(--gold);
   box-shadow: 0 0 6px rgba(255, 198, 105, 0.9);
   opacity: 0;
   animation: gfAnvilSpark 3.4s ease-out infinite;

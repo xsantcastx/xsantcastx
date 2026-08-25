@@ -70,20 +70,19 @@
     </a>
     <div class="social-links">
       <a href="https://x.com/xsantcastx" target="_blank" rel="noopener noreferrer" aria-label="Twitter/X">
-        <i class="fab fa-x-twitter"></i>
-        <span class="x-fallback">𝕏</span>
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M18.9 1.153h3.682l-8.042 9.192L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.831L0 1.153h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
       </a>
       <a href="https://www.instagram.com/xsantcastx/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-        <i class="fab fa-instagram"></i>
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
       </a>
       <a href="https://github.com/xsantcastx" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-        <i class="fab fa-github"></i>
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23A11.5 11.5 0 0112 5.803c1.02.005 2.045.138 3.003.404 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
       </a>
       <a href="https://www.twitch.tv/xsantcastx" target="_blank" rel="noopener noreferrer" aria-label="Twitch">
-        <i class="fab fa-twitch"></i>
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
       </a>
       <a href="https://kick.com/xsantcastx" target="_blank" rel="noopener noreferrer" aria-label="Kick">
-        <i class="fas fa-gamepad"></i>
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M1.333 0h8v5.333H12V2.667h2.667V0h8v8H20v2.667h-2.667v2.666H20V16h2.667v8h-8v-2.667H12v-2.666H9.333V24h-8Z"/></svg>
       </a>
     </div>
   </div>
@@ -106,7 +105,7 @@
                 <input type="text" [value]="crypto.address" readonly class="crypto-address"
                   [attr.aria-label]="'Copy ' + crypto.name + ' address: ' + crypto.address">
                 <button class="copy-btn" [attr.aria-label]="'Copy ' + crypto.name + ' address'" (click)="copyToClipboard(crypto.address)">
-                  <i class="fas fa-copy"></i>
+                  <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg>
                 </button>
               </div>
             </div>
@@ -180,7 +179,7 @@
         <div class="payment-section">
           @if (paypalSdkLoading) {
             <div class="processing">
-              <i class="fas fa-spinner fa-spin"></i>
+              <svg class="ds-icon ds-icon--spin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" opacity=".25"/><path d="M12 2a10 10 0 0110 10h-2a8 8 0 00-8-8V2z"/></svg>
               {{ translate('footer.processing') }}
             </div>
           }
@@ -196,13 +195,13 @@
             <button
               class="payment-btn paypal-btn"
               (click)="processPayPalPayment()">
-              <i class="fab fa-paypal"></i>
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287l-.02.132v.638l.5.28c.418.223.75.48 1.005.784.42.503.69 1.14.804 1.9.116.783.078 1.715-.11 2.77-.22 1.213-.575 2.27-1.055 3.13a5.996 5.996 0 01-1.67 1.834c-.638.446-1.396.784-2.253 1.004-.83.216-1.78.325-2.822.325h-.674c-.48 0-.947.174-1.313.487a2.05 2.05 0 00-.68 1.23l-.05.27-.882 5.593-.04.204c-.01.06-.03.09-.06.11a.16.16 0 01-.1.033z"/></svg>
               {{ translate('footer.donation') }} {{ selectedAmount | currency:'USD':'symbol':'1.0-0' }}
             </button>
           }
           @if (paypalProcessing) {
             <div class="processing">
-              <i class="fas fa-spinner fa-spin"></i>
+              <svg class="ds-icon ds-icon--spin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" opacity=".25"/><path d="M12 2a10 10 0 0110 10h-2a8 8 0 00-8-8V2z"/></svg>
               {{ translate('footer.processing') }}
             </div>
           }
@@ -277,7 +276,7 @@
         <div class="payment-section">
           @if (stripeSdkLoading && !stripeProcessing) {
             <div class="processing">
-              <i class="fas fa-spinner fa-spin"></i>
+              <svg class="ds-icon ds-icon--spin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" opacity=".25"/><path d="M12 2a10 10 0 0110 10h-2a8 8 0 00-8-8V2z"/></svg>
               {{ translate('footer.processing') }}
             </div>
           }
@@ -290,13 +289,13 @@
             <button
               class="payment-btn stripe-btn"
               (click)="processStripePayment()">
-              <i class="fas fa-credit-card"></i>
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zM4 6h16v2H4V6zm0 12v-6h16v6H4zm2-4h5v2H6v-2z"/></svg>
               {{ translate('footer.donation') }} {{ selectedAmount | currency:'USD':'symbol':'1.0-0' }}
             </button>
           }
           @if (stripeProcessing) {
             <div class="processing">
-              <i class="fas fa-spinner fa-spin"></i>
+              <svg class="ds-icon ds-icon--spin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" opacity=".25"/><path d="M12 2a10 10 0 0110 10h-2a8 8 0 00-8-8V2z"/></svg>
               {{ translate('footer.processing') }}
             </div>
           }

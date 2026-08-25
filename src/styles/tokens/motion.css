@@ -1,0 +1,24 @@
+/* Motion budget, from the entity/market/inventory spec §3.
+   Purposeful only. Reduced motion removes aura, drift, shimmer and transform — never state feedback. */
+:root{
+  --dur-focus:140ms; /* @kind other */    /* 120–160ms focus / selection */
+  --dur-expand:190ms; /* @kind other */   /* 160–220ms tile expansion, opacity + transform only */
+  --dur-overlay:220ms; /* @kind other */
+  --dur-aura:4s; /* @kind other */        /* at most one 3–5s ambient aura, on the selected high-rarity item */
+
+  --ease-standard:cubic-bezier(.2,0,0,1); /* @kind other */
+  --ease-exit:cubic-bezier(.4,0,1,1); /* @kind other */
+
+  --lift-hover:-3px; /* @kind spacing */    /* tiles lift 2–4px and brighten their edge */
+  --press-scale:.985; /* @kind other */
+}
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --dur-focus:0ms; /* @kind other */
+    --dur-expand:0ms; /* @kind other */
+    --dur-overlay:0ms; /* @kind other */
+    --dur-aura:0ms; /* @kind other */
+    --lift-hover:0px; /* @kind spacing */
+    --press-scale:1; /* @kind other */
+  }
+}

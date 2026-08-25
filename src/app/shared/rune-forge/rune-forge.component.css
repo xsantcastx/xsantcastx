@@ -38,7 +38,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
-.rf-tag { margin: 0.2rem 0 0; color: #8f969f; font-size: 0.88rem; }
+.rf-tag { margin: 0.2rem 0 0; color: var(--ink-2); font-size: 0.88rem; }
 .rf-head__wallet {
   display: flex;
   gap: 1.2rem;
@@ -49,9 +49,9 @@
   font-size: 0.62rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #8f969f;
+  color: var(--ink-2);
 }
-.rf-head__wallet dd { margin: 0.15rem 0 0; font-weight: 700; color: #d6a84f; }
+.rf-head__wallet dd { margin: 0.15rem 0 0; font-weight: 700; color: var(--gold-core); }
 
 .rf-roll {
   display: flex;
@@ -60,7 +60,7 @@
   gap: 0.6rem;
   margin-bottom: 0.85rem;
 }
-.rf-strike--auto { border-color: #d6a84f; }
+.rf-strike--auto { border-color: var(--gold-core); }
 .rf-strike {
   position: relative;
   width: min(260px, 100%);
@@ -75,17 +75,17 @@
 }
 .rf-strike:hover:not(:disabled),
 .rf-strike:focus-visible:not(:disabled) {
-  border-color: #d6a84f;
+  border-color: var(--gold-core);
   box-shadow: 0 0 18px -6px rgba(201, 106, 50, 0.8);
 }
 .rf-strike:active:not(:disabled) { transform: translateY(1px); }
 .rf-strike:disabled { opacity: 0.55; cursor: not-allowed; }
 .rf-strike__label { display: block; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.82rem; }
-.rf-strike__cost { display: block; font-size: 0.68rem; letter-spacing: 0.1em; color: #d6a84f; }
+.rf-strike__cost { display: block; font-size: 0.68rem; letter-spacing: 0.1em; color: var(--gold-core); }
 .rf-sparks { position: absolute; inset: 0; pointer-events: none; }
 .rf-spark {
   position: absolute; left: 50%; top: 0; width: 3px; height: 3px; border-radius: 50%;
-  background: #d6a84f; opacity: 0;
+  background: var(--gold-core); opacity: 0;
 }
 
 .rf-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.45rem; }
@@ -101,14 +101,14 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.rf-pill--new { border-color: #d6a84f; color: #d6a84f; cursor: pointer; }
+.rf-pill--new { border-color: var(--gold-core); color: var(--gold-core); cursor: pointer; }
 .rf-progress {
   height: 4px;
   margin-bottom: 0.8rem;
   background: rgba(255,255,255,0.08);
   border-radius: 99px;
 }
-.rf-progress span { display: block; height: 100%; background: #d6a84f; border-radius: inherit; }
+.rf-progress span { display: block; height: 100%; background: var(--gold-core); border-radius: inherit; }
 .rf-complete {
   margin: 0 0 0.8rem;
   text-align: center;
@@ -123,21 +123,21 @@
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
   background: #11151b;
-  color: #8f969f;
+  color: var(--ink-2);
   font: inherit;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
 }
-.rf-tab.is-on, .rf-filter.is-on { color: #eee9dd; border-color: #d6a84f; }
+.rf-tab.is-on, .rf-filter.is-on { color: #eee9dd; border-color: var(--gold-core); }
 .rf-tab:focus-visible, .rf-filter:focus-visible, .rf-card:focus-visible, .rf-strike:focus-visible {
-  outline: 2px solid #d6a84f;
+  outline: 2px solid var(--gold-core);
   outline-offset: 2px;
 }
 
 .rf-lib__title { margin: 0 0 0.6rem; font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase; }
-.rf-lib__title em { font-style: normal; color: #8f969f; }
+.rf-lib__title em { font-style: normal; color: var(--ink-2); }
 .rf-filters { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
 .rf-tools__row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
 .rf-search, .rf-sort, .rf-filter-m { flex: 1; }
@@ -164,7 +164,7 @@
 }
 .rf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-.rf-empty, .rf-more { color: #8f969f; margin: 0 0 0.8rem; }
+.rf-empty, .rf-more { color: var(--ink-2); margin: 0 0 0.8rem; }
 
 .rf-cards {
   display: grid;
@@ -186,21 +186,21 @@
   font: inherit;
   cursor: pointer;
 }
-.rf-card--locked { cursor: default; color: #8f969f; }
-.rf-card--new { box-shadow: 0 0 16px -8px var(--star, #d6a84f); }
+.rf-card--locked { cursor: default; color: var(--ink-2); }
+.rf-card--new { box-shadow: 0 0 16px -8px var(--star, var(--gold-core)); }
 .rf-card:hover:not(.rf-card--locked),
 .rf-card:focus-visible {
   transform: translateY(-3px);
-  border-color: var(--star, #d6a84f);
+  border-color: var(--star, var(--gold-core));
 }
 .rf-card__top { display: flex; justify-content: space-between; gap: 0.3rem; }
 .rf-card__rarity, .rf-card__kind, .rf-card__state {
   font-size: 0.62rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--star, #8f969f);
+  color: var(--star, var(--ink-2));
 }
-.rf-card__new { color: #d6a84f; font-size: 0.62rem; letter-spacing: 0.1em; }
+.rf-card__new { color: var(--gold-core); font-size: 0.62rem; letter-spacing: 0.1em; }
 .rf-card__mark {
   display: grid;
   place-items: center;
@@ -222,22 +222,22 @@
 }
 .rf-word__head { display: flex; justify-content: space-between; gap: 0.5rem; }
 .rf-word__head h3 { margin: 0; font-size: 0.95rem; }
-.rf-word__head span { color: var(--star, #8f969f); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.rf-word__head span { color: var(--star, var(--ink-2)); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .rf-word__pips { display: flex; gap: 0.35rem; margin: 0.45rem 0; }
 .rf-word__pips span {
   width: 1.4rem; height: 1.4rem; display: grid; place-items: center;
   border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; font-size: 0.7rem;
 }
-.rf-word__pips span.is-on { border-color: var(--star, #d6a84f); color: var(--star, #d6a84f); }
-.rf-word__meta, .rf-word__done { margin: 0.2rem 0; font-size: 0.78rem; color: #8f969f; }
+.rf-word__pips span.is-on { border-color: var(--star, var(--gold-core)); color: var(--star, var(--gold-core)); }
+.rf-word__meta, .rf-word__done { margin: 0.2rem 0; font-size: 0.78rem; color: var(--ink-2); }
 .rf-forge-btn {
   min-height: 40px;
   margin-top: 0.4rem;
   padding: 0 0.8rem;
-  border: 1px solid #d6a84f;
+  border: 1px solid var(--gold-core);
   border-radius: 8px;
   background: transparent;
-  color: #d6a84f;
+  color: var(--gold-core);
   font: inherit;
   cursor: pointer;
 }
@@ -246,13 +246,13 @@
 
 /* Craft feedback — restored after PR #57 dropped it. Success, bag-full,
    persist-failure + retry, and a missing-inputs line. See the template. */
-.rf-lib__sub { margin: -0.3rem 0 0.7rem; font-size: 0.78rem; color: #8f969f; }
+.rf-lib__sub { margin: -0.3rem 0 0.7rem; font-size: 0.78rem; color: var(--ink-2); }
 .rf-word__status:empty { display: none; }
 .rf-word__note {
   margin: 0.35rem 0 0;
   font-size: 0.76rem;
   line-height: 1.45;
-  color: #8f969f;
+  color: var(--ink-2);
 }
 .rf-word__note--warn {
   padding: 0.4rem 0.55rem;
@@ -277,7 +277,7 @@
   min-height: 40px;
   padding: 0 0.7rem;
   border-radius: 8px;
-  color: #d6a84f;
+  color: var(--gold-core);
   font-size: 0.78rem;
   text-decoration: none;
 }
@@ -303,7 +303,7 @@
   margin: 0;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #d6a84f;
+  color: var(--gold-core);
   font-size: 0.85rem;
 }
 .rf-pick__grid {
@@ -332,7 +332,7 @@
   font: inherit;
 }
 .rf-pick__card.is-chosen {
-  border-color: var(--star-color, #d6a84f);
+  border-color: var(--star-color, var(--gold-core));
   box-shadow: 0 0 28px -8px var(--star-glow, rgba(214, 168, 79, 0.8));
 }
 .rf-pick__card img { width: 72%; height: auto; object-fit: contain; }
@@ -342,7 +342,7 @@
   font-size: 0.62rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #d6a84f;
+  color: var(--gold-core);
 }
 .rf-pick__card { position: relative; }
 /* Batch cards are compact on purpose.
@@ -357,11 +357,11 @@
 .rf-pick--batch .rf-pick__card img { width: auto; max-height: 84px; }
 .rf-pick--batch .rf-pick__name { font-size: 1rem; }
 .rf-pick__name { margin: 0; font-size: 1.7rem; }
-.rf-pick__tier, .rf-pick__dup { margin: 0; color: #8f969f; }
+.rf-pick__tier, .rf-pick__dup { margin: 0; color: var(--ink-2); }
 .rf-pick__done {
   min-height: 44px;
   padding: 0 1.2rem;
-  border: 1px solid #d6a84f;
+  border: 1px solid var(--gold-core);
   border-radius: 8px;
   background: transparent;
   color: #eee9dd;
@@ -387,7 +387,7 @@
    block, and the reference silently dangles (see the note above the
    animation lines).
    ───────────────────────────────────────────────────────────────────────── */
-.rf-pick--landed .rf-pick__tier { color: var(--star-color, #8f969f); }
+.rf-pick--landed .rf-pick__tier { color: var(--star-color, var(--ink-2)); }
 .rf-pick--landed:not(.rf-pick--batch) .rf-pick__name { color: var(--star-color, #eee9dd); }
 
 /* Uncommon and up: a wider halo and a hairline ring in the tier colour. */
@@ -395,13 +395,13 @@
 .rf-pick[data-reveal='burst'] .rf-pick__card.is-chosen,
 .rf-pick[data-reveal='shimmer'] .rf-pick__card.is-chosen {
   box-shadow:
-    0 0 0 1px var(--star-color, #d6a84f),
+    0 0 0 1px var(--star-color, var(--gold-core)),
     0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8));
 }
 
 /* Rare and up: shards, and the prompt takes the tier colour. */
 .rf-sparks--reveal { display: none; }
-.rf-sparks--reveal .rf-spark { left: 50%; top: 50%; width: 4px; height: 4px; background: var(--star-color, #d6a84f); }
+.rf-sparks--reveal .rf-spark { left: 50%; top: 50%; width: 4px; height: 4px; background: var(--star-color, var(--gold-core)); }
 .rf-sparks--reveal .rf-spark:nth-child(1)  { --dx: -70px; --dy: -46px; }
 .rf-sparks--reveal .rf-spark:nth-child(2)  { --dx: -34px; --dy: -78px; }
 .rf-sparks--reveal .rf-spark:nth-child(3)  { --dx: 12px;  --dy: -84px; }
@@ -423,7 +423,7 @@
 .rf-pick[data-reveal='shimmer'] .rf-pick__prompt,
 .rf-pick[data-reveal='edge'] .rf-pick__prompt,
 .rf-pick[data-reveal='flash'] .rf-pick__prompt,
-.rf-pick[data-reveal='void'] .rf-pick__prompt { color: var(--star-color, #d6a84f); }
+.rf-pick[data-reveal='void'] .rf-pick__prompt { color: var(--star-color, var(--gold-core)); }
 
 /* Epic and up: a diagonal light sweep across the card face. Clips itself so
    the shards, which are siblings, are free to leave the card. */
@@ -456,8 +456,8 @@
 .rf-pick[data-reveal='void'] .rf-pick__card.is-chosen {
   transform: scale(1.06);
   box-shadow:
-    0 0 0 2px var(--star-color, #d6a84f),
-    0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent),
+    0 0 0 2px var(--star-color, var(--gold-core)),
+    0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent),
     0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8));
 }
 
@@ -491,24 +491,24 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--star, #d6a84f);
-  box-shadow: 0 0 8px var(--star, #d6a84f);
+  background: var(--star, var(--gold-core));
+  box-shadow: 0 0 8px var(--star, var(--gold-core));
 }
 .rf-pick__haul-kind {
   font-size: 0.62rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #8f969f;
+  color: var(--ink-2);
 }
 .rf-pick__haul-name { color: var(--star, #eee9dd); font-weight: 600; }
 .rf-pick__haul-detail { font-style: normal; color: #c6c1b4; font-size: 0.88rem; }
-.rf-pick__haul-sum { margin: -0.6rem 0 0; font-size: 0.78rem; letter-spacing: 0.06em; color: #8f969f; }
+.rf-pick__haul-sum { margin: -0.6rem 0 0; font-size: 0.78rem; letter-spacing: 0.06em; color: var(--ink-2); }
 
 /* Batch: the best card of the ten gets the ring so the eye finds it first. */
 .rf-pick--batch .rf-pick__card.is-best {
   box-shadow:
-    0 0 0 1px var(--star-color, #d6a84f),
-    0 0 32px -6px color-mix(in srgb, var(--star-color, #d6a84f) 60%, transparent);
+    0 0 0 1px var(--star-color, var(--gold-core)),
+    0 0 32px -6px color-mix(in srgb, var(--star-color, var(--gold-core)) 60%, transparent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -550,16 +550,16 @@
   cursor: pointer;
 }
 .rf-acts__btn:hover:not(:disabled), .rf-acts__btn:focus-visible {
-  border-color: #d6a84f;
+  border-color: var(--gold-core);
   box-shadow: 0 0 18px -6px rgba(201, 106, 50, 0.8);
 }
-.rf-acts__btn:focus-visible { outline: 2px solid #d6a84f; outline-offset: 2px; }
+.rf-acts__btn:focus-visible { outline: 2px solid var(--gold-core); outline-offset: 2px; }
 .rf-acts__btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.rf-acts__cost { font-size: 0.62rem; letter-spacing: 0.1em; color: #d6a84f; }
+.rf-acts__cost { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--gold-core); }
 
 /* The one the thumb goes to. */
 .rf-acts__btn--again {
-  border-color: #d6a84f;
+  border-color: var(--gold-core);
   background: linear-gradient(180deg, #23180e, #171c23);
 }
 .rf-acts__btn--auto.is-on {
@@ -589,7 +589,7 @@
 .rf-pick__progress-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #c96a32, #d6a84f);
+  background: linear-gradient(90deg, #c96a32, var(--gold-core));
 }
 
 /* The tally, rarest first. Each rung wears its own colour. */
@@ -619,11 +619,11 @@
   cursor: pointer;
 }
 .rf-pick__lore-btn:hover, .rf-pick__lore-btn:focus-visible {
-  border-color: #d6a84f;
+  border-color: var(--gold-core);
   color: #eee9dd;
 }
 .rf-pick__lore-btn:focus-visible, .rf-pick__done:focus-visible {
-  outline: 2px solid #d6a84f;
+  outline: 2px solid var(--gold-core);
   outline-offset: 2px;
 }
 .rf-pick__lore {
@@ -660,14 +660,14 @@
 }
 .rf-detail header { display: flex; justify-content: space-between; gap: 0.6rem; }
 .rf-detail h2 { margin: 0; }
-.rf-detail__tier { margin: 0 0 0.2rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--star, #d6a84f); font-size: 0.68rem; }
+.rf-detail__tier { margin: 0 0 0.2rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--star, var(--gold-core)); font-size: 0.68rem; }
 .rf-detail__x {
   min-width: 44px; min-height: 44px;
   border: 0; background: transparent; color: inherit; font-size: 1.4rem; cursor: pointer;
 }
 .rf-detail__art { width: 140px; height: 140px; object-fit: contain; display: block; margin: 0.6rem 0; }
 .rf-detail__lore { color: #c6c1b4; line-height: 1.5; }
-.rf-detail__meta { color: #8f969f; font-size: 0.8rem; }
+.rf-detail__meta { color: var(--ink-2); font-size: 0.8rem; }
 .rf-detail h3 { margin: 1rem 0 0.4rem; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; }
 .rf-detail__words { list-style: none; margin: 0; padding: 0; }
 .rf-detail__words li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0; }
@@ -707,14 +707,14 @@
   100% { transform: scale(1.06); }
 }
 @keyframes rfHalo {
-  0% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  45% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 54px 2px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  100% { box-shadow: 0 0 0 1px var(--star-color, #d6a84f), 0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  0% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  45% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 54px 2px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  100% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
 }
 @keyframes rfHaloHeld {
-  0% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  45% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 10px color-mix(in srgb, var(--star-color, #d6a84f) 22%, transparent), 0 0 72px 4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  100% { box-shadow: 0 0 0 2px var(--star-color, #d6a84f), 0 0 0 6px color-mix(in srgb, var(--star-color, #d6a84f) 28%, transparent), 0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  0% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  45% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 10px color-mix(in srgb, var(--star-color, var(--gold-core)) 22%, transparent), 0 0 72px 4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  100% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
 }
 @keyframes rfSweep {
   0% { opacity: 0; transform: translateX(-120%); }
@@ -838,9 +838,9 @@
 .rf-bench a {
   display: inline-flex; align-items: center;
   min-height: 44px;
-  color: #ffc669;
+  color: var(--gold);
   text-decoration: none;
   border-bottom: 1px solid rgba(255, 198, 105, 0.35);
 }
 .rf-bench a:hover,
-.rf-bench a:focus-visible { border-bottom-color: #ffc669; }
+.rf-bench a:focus-visible { border-bottom-color: var(--gold); }

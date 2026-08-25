@@ -55,7 +55,7 @@ interface Spark {
 
 const LANE_COLORS: Record<Lane, string> = {
   css: '#A78BFA',
-  js: '#C9A84C',
+  js: '#c89868',
   regex: '#a48bff',
   html: '#ff6dd7',
 };
