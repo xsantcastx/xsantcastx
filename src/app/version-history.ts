@@ -17,6 +17,23 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.83.0',
+    codename: 'The Threshold',
+    date: '2026-08-25',
+    highlights: [
+      'A browser that has never been here gets a five-screen tutorial instead of the dashboard. /world is the right page for somebody with a save and a wall for somebody without one: a painted hero, five realm stations, a pulse band and a closing call, none of which a stranger has any stake in yet. The tutorial asks for one thing per screen — meet Kael, strike the forge, take your rank, pick a door, come back tomorrow — and then never appears again',
+      'Nothing in it is a mock. The Gold from the second screen is minted through the real ledger and is sitting in the corner flame the moment the curtain lifts; the rank on the third is LEVELS[0] read from the progression table; the quest on the fifth is the live board\'s own first open daily. A tutorial that pays in a number it then throws away teaches a visitor that the numbers here do not mean anything',
+      'It costs a returning visitor nothing. The five screens and their stylesheet are a lazy chunk pulled through a dynamic import the first time a browser with no save arrives, so everybody else never fetches it — verified in the browser: a second visit records no request for it at all. The initial bundle is inside its hard error budget with room to spare, which it would not have been had the tutorial shipped in main.js to serve a case that by construction happens once',
+      '"Have they been here before" is answered from two storage keys read once, at construction, and deliberately never re-derived. The tutorial\'s own second screen strikes the forge, which writes the wallet — a live re-read would report "returning visitor" halfway through and tear the overlay down mid-step. The flag is also deliberately outside the cloud-save set: it is a property of a browser, not of a player, and syncing it would drop somebody who finished on their phone into a dashboard they have no context for on their laptop',
+      'A "N Keepers forged today" chip sits bottom-left. It publishes the real number including a one, because rounding it up or hiding it below a threshold would make it a decoration that asserts something untrue, and credibility is the one thing a site looking for its first ten users cannot spend. Singular and plural are separate strings rather than "Keeper(s)" for the same reason',
+      'It needed no rules change and no deploy ordering to get right. site-stats/{statId} is a wildcard whose rule already enforces exactly the shape this wants — two keys, create at one, update at plus one — so today\'s count is site-stats/daily-YYYY-MM-DD and is already schema-checked. A new collection would have meant a firestore.rules deploy that silently never happens if the build it ships in fails',
+      'Bottom-left now has four tenants and they still do not collide. The chip publishes its measured height as --forged-lift and the install banner adds it, which is the same one-way contract the NPC portrait already had for --npc-lift — measurement rather than a z-index fight, which is how the achievement toast came to eat clicks on the forge flame for two releases',
+      'Two overlaps found by looking rather than by reasoning. The visitor-milestone modal fired for first-session visitors — the same people getting the tutorial — so a stranger\'s first sight of the site was a full-screen card about being visitor number 2,567 blurring out the welcome screen; it now stands down while the tutorial is up. And the cookie banner, 242px tall on a phone, was sitting on top of the progress dots and the skip button, leaving a phone with no way out at all, since the other way out is Escape and a phone has no Escape. The curtain measures the banner and reserves the space',
+      'Eight funnel events answer whether a stranger who lands on /world comes back: the tutorial start, each step, how it ended and whether it was finished or skipped, the first strike, the first realm walked into, return visits with their streak, quest pickups and rank-ups. Do Not Track is now honoured alongside consent, and checked ahead of it, so a DNT browser no longer downloads gtag.js at all rather than downloading it and then declining to log through it',
+      'The first number the site ever showed a visitor was rendering as a Roman numeral. Cinzel Decorative is an inscriptional face whose "1" is a bare serifed stem, so "+1 Gold" read as "+I Gold"; the payout and the visitor chip now use Orbitron, which is the family the type scale already designates for readouts',
+    ],
+  },
+  {
     version: '2.82.0',
     codename: 'One Gold',
     date: '2026-08-25',
