@@ -42,6 +42,7 @@ import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-
 import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
 import { NpcDialogueComponent } from './shared/npc/npc-dialogue.component';
 import { OnboardingOutletComponent } from './shared/onboarding/onboarding-outlet.component';
+import { OfflineOutletComponent } from './shared/offline/offline-outlet.component';
 import { ForgedTodayComponent } from './shared/social-proof/forged-today.component';
 import { InspectComponent } from './shared/entity/inspect.component';
 import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
@@ -97,6 +98,7 @@ import { PwaService } from './shared/pwa.service';
     CurrentWorkTileComponent,
     // Standalone, imported here because AppComponent's template is not.
     OnboardingOutletComponent,
+    OfflineOutletComponent,
     ForgedTodayComponent
 ],
   providers: [

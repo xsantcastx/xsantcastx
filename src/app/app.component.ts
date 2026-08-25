@@ -22,6 +22,7 @@ import { scheduleAppCheck } from './app-check.bootstrap';
 import { GameStateGateway } from './shared/save/game-state.gateway';
 import { applyRealmEra } from './shared/save/realm-era';
 import { OnboardingService } from './shared/onboarding/onboarding.service';
+import { OfflineService } from './shared/offline/offline.service';
 import { XpService } from './shared/gamification/xp.service';
 import { AnalyticsService } from './analytics.service';
 
@@ -63,6 +64,16 @@ export class AppComponent implements OnInit, OnDestroy {
    * was a returning one. The tutorial would then never show to anybody.
    */
   private readonly onboarding = inject(OnboardingService);
+  /*
+   * Field-injected for the same reason OnboardingService is, and it matters
+   * more here. This service reads three things at construction that everything
+   * below is about to overwrite: the last-seen stamp, the quest board's day key
+   * and the Contract Board's day key. `questWiring.init()` and
+   * `challengeWiring.init()` roll both boards over — a service constructed any
+   * later would read today's key off a board that had just been redrawn and
+   * conclude nothing had reset while the visitor was away.
+   */
+  private readonly offline = inject(OfflineService);
   private readonly xp = inject(XpService);
   private readonly analytics = inject(AnalyticsService);
 
@@ -207,6 +218,19 @@ export class AppComponent implements OnInit, OnDestroy {
     // *overlay* wants a live economy, a live quest board and a hydrated rank
     // behind it, and those are what the twelve init() calls above provide.
     this.startFunnel();
+
+    // ── While you were away ──────────────────────────────────────────────
+    //
+    // Dead last, after every init() above it, and that is the whole contract:
+    // the Gold line on the summary is the receipt `economyWiring.init()` left
+    // behind rather than a second calculation, and the two board rollovers are
+    // read against keys captured before `questWiring` and `challengeWiring`
+    // redrew them.
+    //
+    // Deliberately not awaited. It resolves two dynamic imports in the worst
+    // case, and the page must not wait on a screen about rewards that are
+    // already banked. Its own failures are contained — see the service.
+    void this.offline.settle();
 
     let glitchPending = false;
     const triggerRandomGlitch = () => {

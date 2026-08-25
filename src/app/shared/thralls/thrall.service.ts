@@ -59,6 +59,8 @@ import {
   rollRuneWithMagicFind,
   tierOf,
 } from '../rune-forge/rune.model';
+import { AWAY_MAX_THRALL_ROLLS, AwayFindRow } from '../offline/offline.model';
+import { OfflineService } from '../offline/offline.service';
 import {
   BASE_THRALL_SLOTS,
   MAX_THRALLS,
@@ -173,6 +175,10 @@ export class ThrallService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly zone = inject(NgZone);
   private readonly economy = inject(EconomyService);
+  private readonly offline = inject(OfflineService);
+
+  /** The rune the most recent `pull` landed. In memory only — see `settleAway`. */
+  private lastFind: AwayFindRow | null = null;
   private readonly inventory = inject(InventoryService);
   private readonly magicFind = inject(MagicFindService);
   private readonly runeForge = inject(RuneForgeService);
@@ -214,6 +220,14 @@ export class ThrallService {
     this.inventory.init();
 
     this.blob = this.load();
+
+    // Pay for the absence before the roster is rested up to now, and before the
+    // heartbeat starts. `OfflineService` hands out a window only while a return
+    // is actually being settled, so the Market opening this panel an hour into
+    // a session gets null and nothing is replayed twice.
+    const away = this.offline.awayWindow();
+    if (away) this.offline.reportThrallFinds(this.settleAway(away.from, away.to));
+
     this.settleRest(Date.now());
     this.publish();
 
@@ -540,6 +554,93 @@ export class ThrallService {
   }
 
   /**
+   * Replay the shift across an absence, and hand back what it turned up.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY THIS EXISTS WHEN THE HEARTBEAT DELIBERATELY DOES NOT RUN WHILE HIDDEN
+   * ───────────────────────────────────────────────────────────────────────────
+   * The note at the top of this file gives two reasons the beat pauses on a
+   * hidden tab, and only the second is a rule. The first is mechanical: a
+   * throttled timer measuring its own elapsed span would hand back a minute of
+   * pulls in one frame, at a moment nobody asked for them. The second is that a
+   * pull spends Gold the visitor was not present to authorise.
+   *
+   * A *return* is where both stop applying. The visitor is here, they are being
+   * shown exactly what was spent and exactly what it bought before anything
+   * else happens on the page, and the replay is bounded — see
+   * AWAY_MAX_THRALL_ROLLS. Pausing on hidden is still the right reading of
+   * "works with the tab open"; refusing to settle on the way back in is not, and
+   * it is the single loudest thing missing from a game people close overnight.
+   *
+   * ───────────────────────────────────────────────────────────────────────────
+   * WHY IT STEPS TO THE NEXT DUE MOMENT RATHER THAN BEATING ONCE A SECOND
+   * ───────────────────────────────────────────────────────────────────────────
+   * Eight hours of one-second beats across sixteen Thralls is half a million
+   * iterations on the first frame of a page load. Stepping the clock straight to
+   * the next moment any Thrall is due is at most `maxRolls` iterations, and it
+   * settles the identical sequence: rest, then every Thrall whose interval has
+   * elapsed, exactly as `beat` does.
+   *
+   * Returns the log entries it produced, newest last, so the summary screen can
+   * report the night without having to subscribe to a stream that fired before
+   * it existed.
+   */
+  settleAway(from: number, to: number, maxRolls: number = AWAY_MAX_THRALL_ROLLS): AwayFindRow[] {
+    if (!this.isBrowser) return [];
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return [];
+
+    const found: AwayFindRow[] = [];
+    let clock = from;
+
+    // A hard ceiling on the loop itself, independent of the roll cap. Every
+    // known stall is handled below; this is for the one that is not.
+    let guard = maxRolls * 4 + 64;
+
+    while (found.length < maxRolls && guard-- > 0) {
+      // Broke. `pull` refuses without stamping `lastRollAt` — correct while the
+      // page is open, because the pull is owed the instant the Gold arrives, and
+      // an unbreakable loop here, because the due moment never advances.
+      if (this.economy.snapshot.gold < THRALL_ROLL_COST) break;
+
+      let next = Infinity;
+      for (const thrall of this.blob.thralls) {
+        if (thrall.status !== 'working') continue;
+        next = Math.min(next, Math.max(clock, thrall.lastRollAt + thrall.rollInterval));
+      }
+      if (!Number.isFinite(next) || next > to) break;
+
+      // Rest before pull, for the reason `beat` gives: a Thrall that crossed its
+      // resume threshold during the absence has to be back on its feet before
+      // the pull that moment owes them.
+      this.settleRest(next);
+
+      for (const thrall of [...this.blob.thralls]) {
+        if (found.length >= maxRolls) break;
+        if (thrall.status !== 'working') continue;
+        if (next - thrall.lastRollAt < thrall.rollInterval) continue;
+
+        const before = this.blob.rolls;
+        this.lastFind = null;
+        this.pull(thrall.id, next);
+        // A pull that did not happen — out of stamina, or out of Gold — leaves
+        // `lastFind` null, and pushing the previous one regardless would report
+        // the same rune twice.
+        if (this.blob.rolls > before && this.lastFind) found.push(this.lastFind);
+      }
+
+      clock = next;
+    }
+
+    // The absence still ends where it ends, whatever the roll cap did: stamina
+    // recovered for the whole span, because resting is the one thing a shut tab
+    // can be trusted to have done.
+    this.settleRest(to);
+    this.publish();
+
+    return found;
+  }
+
+  /**
    * One pull, resolved.
    *
    * The order is load-bearing. Stamina is checked and the Gold is taken *before*
@@ -589,6 +690,12 @@ export class ThrallService {
         totalFinds: { ...thrall.totalFinds, [rune.tier]: (thrall.totalFinds[rune.tier] ?? 0) + 1 } },
       xp,
     );
+
+    // Held for `settleAway`, which has to be able to *name* what an absence
+    // turned up. The log line spells it as one sentence — "Vex found Rare
+    // Ashfall" — and re-parsing that back into its parts to build a list row is
+    // a string-shaped way to lose the day the copy changes.
+    this.lastFind = { name: rune.name, rarity: rune.tier, rarityLabel: RUNE_TIERS[rune.tier]?.label ?? rune.tier };
 
     const entry = this.logEntryFor(settled, rune, now);
     this.blob = {
