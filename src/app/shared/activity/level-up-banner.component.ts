@@ -74,9 +74,9 @@ const MILESTONE_DWELL_MS = 5200;
       border-radius: 999px;
       border: 1px solid var(--gf-accent, #c89868);
       background:
-        radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201, 168, 76, 0.16), transparent 70%),
+        radial-gradient(ellipse 80% 70% at 50% 0%, rgba(200, 152, 104, 0.16), transparent 70%),
         rgba(6, 4, 18, 0.96);
-      box-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.9), 0 0 26px -10px rgba(201, 168, 76, 0.6);
+      box-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.9), 0 0 26px -10px rgba(200, 152, 104, 0.6);
       cursor: pointer;
       transform: translate(-50%, -16px);
       opacity: 0;
@@ -104,7 +104,7 @@ const MILESTONE_DWELL_MS = 5200;
       padding: 14px 26px 14px 16px;
       gap: 16px;
       border-width: 2px;
-      box-shadow: 0 18px 54px -18px rgba(0, 0, 0, 0.95), 0 0 44px -8px rgba(201, 168, 76, 0.85);
+      box-shadow: 0 18px 54px -18px rgba(0, 0, 0, 0.95), 0 0 44px -8px rgba(200, 152, 104, 0.85);
     }
     .lu--milestone .lu__art { width: 56px; height: 56px; }
     .lu--milestone .lu__title { font-size: 18px; }
@@ -112,8 +112,8 @@ const MILESTONE_DWELL_MS = 5200;
       .lu--milestone.lu--on { animation: luPulse 2.4s ease-in-out infinite; }
     }
     @keyframes luPulse {
-      0%, 100% { box-shadow: 0 18px 54px -18px rgba(0,0,0,.95), 0 0 44px -8px rgba(201, 168, 76, .85); }
-      50%      { box-shadow: 0 18px 54px -18px rgba(0,0,0,.95), 0 0 60px -6px rgba(201, 168, 76, 1); }
+      0%, 100% { box-shadow: 0 18px 54px -18px rgba(0,0,0,.95), 0 0 44px -8px rgba(200, 152, 104, .85); }
+      50%      { box-shadow: 0 18px 54px -18px rgba(0,0,0,.95), 0 0 60px -6px rgba(200, 152, 104, 1); }
     }
 
     @media (prefers-reduced-motion: reduce) {

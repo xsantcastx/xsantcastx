@@ -134,8 +134,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(201, 168, 76, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201, 168, 76, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(200, 152, 104, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 152, 104, 0.045) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
@@ -317,7 +317,7 @@
 .gf-hero__aside-link:focus-visible {
   color: var(--gold-core);
   border-bottom-color: var(--gold-core);
-  text-shadow: 0 0 12px rgba(201, 168, 76, 0.6);
+  text-shadow: 0 0 12px rgba(200, 152, 104, 0.6);
 }
 
 /* ─── The forge core ────────────────────────────────────────────────
@@ -354,7 +354,7 @@
   background: radial-gradient(
     circle at 50% 52%,
     rgba(232, 117, 42, 0.32) 0%,
-    rgba(201, 168, 76, 0.2) 30%,
+    rgba(200, 152, 104, 0.2) 30%,
     rgba(139, 92, 246, 0.22) 52%,
     rgba(139, 92, 246, 0.1) 68%,
     rgba(10, 10, 15, 0) 82%
@@ -367,7 +367,7 @@
 .gf-core__ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(201, 168, 76, 0.28);
+  border: 1px solid rgba(200, 152, 104, 0.28);
 }
 
 /* The outer rim is the eclipse's edge, so it takes the purple; the inner
@@ -409,7 +409,7 @@
       rgba(10, 15, 30, 0.98) 94%);
   box-shadow:
     0 0 60px -10px rgba(232, 117, 42, 0.55),
-    0 0 140px -30px rgba(201, 168, 76, 0.5),
+    0 0 140px -30px rgba(200, 152, 104, 0.5),
     /* The eclipse bloom, outside the shaft — completes the ember → gold →
        purple → void ramp without lightening the furnace itself. */
     0 0 190px -40px rgba(139, 92, 246, 0.65),
@@ -502,7 +502,7 @@
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(201, 168, 76, 0.18);
+  border: 1px solid rgba(200, 152, 104, 0.18);
 }
 
 .gf-rank__fill {
@@ -522,7 +522,7 @@
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(201, 168, 76, 0.75);
+  color: rgba(200, 152, 104, 0.75);
 }
 
 /* Scroll hint */
@@ -644,10 +644,10 @@
 
 .hp-stat:nth-child(7) .hp-stat__icon {
   color: var(--gold);
-  background: radial-gradient(circle, rgba(255, 198, 105, 0.18), transparent 70%);
-  border-color: rgba(255, 198, 105, 0.28);
-  box-shadow: 0 0 10px -2px rgba(255, 198, 105, 0.36), inset 0 0 6px rgba(255, 198, 105, 0.14);
-  text-shadow: 0 0 8px rgba(255, 198, 105, 0.5);
+  background: radial-gradient(circle, rgba(232, 200, 152, 0.18), transparent 70%);
+  border-color: rgba(232, 200, 152, 0.28);
+  box-shadow: 0 0 10px -2px rgba(232, 200, 152, 0.36), inset 0 0 6px rgba(232, 200, 152, 0.14);
+  text-shadow: 0 0 8px rgba(232, 200, 152, 0.5);
 }
 
 .hp-stat__num {
@@ -1330,8 +1330,8 @@
 /* ─── The Forge's Pulse (stats bar) ─────────────────────────────── */
 
 .gf-pulse {
-  border-top-color: rgba(201, 168, 76, 0.16);
-  border-bottom-color: rgba(201, 168, 76, 0.16);
+  border-top-color: rgba(200, 152, 104, 0.16);
+  border-bottom-color: rgba(200, 152, 104, 0.16);
   background: rgba(12, 9, 20, 0.6);
 }
 
@@ -1615,7 +1615,7 @@
 
 .gf-journey::after {
   bottom: -1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.5) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(200, 152, 104, 0.5) 50%, transparent);
 }
 
 .gf-journey__inner {
@@ -1653,7 +1653,7 @@
   gap: 0.45rem;
   padding: 1rem 1.2rem;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(201, 168, 76, 0.2);
+  border: 1px solid rgba(200, 152, 104, 0.2);
   background: rgba(10, 8, 20, 0.55);
 }
 
@@ -1698,7 +1698,7 @@
   font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(201, 168, 76, 0.75);
+  color: rgba(200, 152, 104, 0.75);
 }
 
 /* Three doors out of the page. */
@@ -1931,7 +1931,7 @@
   letter-spacing: 0.42em;
   text-transform: uppercase;
   color: var(--gold-core);
-  text-shadow: 0 0 18px rgba(201, 168, 76, 0.45);
+  text-shadow: 0 0 18px rgba(200, 152, 104, 0.45);
 }
 
 .gfh__title {
@@ -2041,7 +2041,7 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--gold-core);
-  text-shadow: 0 0 16px rgba(201, 168, 76, 0.4);
+  text-shadow: 0 0 16px rgba(200, 152, 104, 0.4);
 }
 .gfstat__row--level { grid-template-areas: 'label value' 'bar bar'; grid-template-columns: 1fr auto; }
 .gfstat__row--level dt { grid-area: label; }
@@ -2267,7 +2267,7 @@
   padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2rem);
   background:
     radial-gradient(ellipse 60% 70% at 78% 50%, rgba(164, 139, 255, 0.13), transparent 68%),
-    radial-gradient(ellipse 50% 60% at 12% 40%, rgba(201, 168, 76, 0.07), transparent 65%),
+    radial-gradient(ellipse 50% 60% at 12% 40%, rgba(200, 152, 104, 0.07), transparent 65%),
     rgba(8, 6, 20, 0.5);
 }
 
@@ -2279,7 +2279,7 @@
   height: 1px;
 }
 .gf-anvil::before { top: 0;    background: linear-gradient(90deg, transparent, rgba(164, 139, 255, 0.45) 50%, transparent); }
-.gf-anvil::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.35) 50%, transparent); }
+.gf-anvil::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(200, 152, 104, 0.35) 50%, transparent); }
 
 .gf-anvil__inner {
   max-width: 1180px;
@@ -2361,7 +2361,7 @@
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 198, 105, 0.85);
+  color: rgba(232, 200, 152, 0.85);
 }
 
 /* ── The anvil ──────────────────────────────────────────────────────────── */
@@ -2420,7 +2420,7 @@
   width: 3px; height: 3px;
   border-radius: 50%;
   background: var(--gold);
-  box-shadow: 0 0 6px rgba(255, 198, 105, 0.9);
+  box-shadow: 0 0 6px rgba(232, 200, 152, 0.9);
   opacity: 0;
   animation: gfAnvilSpark 3.4s ease-out infinite;
   animation-delay: calc(var(--i) * 30ms);

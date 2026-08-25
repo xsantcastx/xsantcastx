@@ -387,7 +387,7 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
       foot: `+${r.gold.toLocaleString()} Gold · title unlocked`,
       glyph: '✦',
       color: '#c89868',
-      glow: 'rgba(201, 168, 76, 0.7)',
+      glow: 'rgba(200, 152, 104, 0.7)',
       art: r.item ? artFor(r.item) : null,
       percent: r.at,
     };

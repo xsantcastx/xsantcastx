@@ -212,7 +212,7 @@ import { RARITIES } from '../rarity/rarity.model';
       border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, .06);
       background:
-        radial-gradient(ellipse 60% 50% at 20% 20%, rgba(255, 198, 105, .06), transparent 65%),
+        radial-gradient(ellipse 60% 50% at 20% 20%, rgba(232, 200, 152, .06), transparent 65%),
         radial-gradient(ellipse 50% 45% at 85% 80%, rgba(123, 97, 255, .07), transparent 65%),
         rgba(10, 6, 26, .55);
     }
@@ -221,7 +221,7 @@ import { RARITIES } from '../rarity/rarity.model';
     .cp::before {
       content: '';
       position: absolute; top: -1px; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 198, 105, .5) 50%, transparent);
+      background: linear-gradient(90deg, transparent, rgba(232, 200, 152, .5) 50%, transparent);
     }
 
     .cp__head { display: grid; gap: .25rem; }
@@ -247,7 +247,7 @@ import { RARITIES } from '../rarity/rarity.model';
       border: 1px solid rgba(255, 255, 255, .06);
       background: rgba(6, 4, 16, .5);
     }
-    .cp__streak[data-flame="lit"]      { border-color: rgba(255, 198, 105, .28); }
+    .cp__streak[data-flame="lit"]      { border-color: rgba(232, 200, 152, .28); }
     .cp__streak[data-flame="burning"]  { border-color: rgba(255, 154, 90, .45); box-shadow: 0 0 26px -12px rgba(255, 154, 90, .8); }
     .cp__streak[data-flame="eternal"]  { border-color: rgba(255, 45, 77, .5);  box-shadow: 0 0 32px -10px rgba(255, 45, 77, .8); }
 
@@ -271,7 +271,7 @@ import { RARITIES } from '../rarity/rarity.model';
     }
     .cp__flame-lick {
       width: 22px; height: 30px;
-      background: linear-gradient(180deg, rgba(255, 198, 105, .5), rgba(255, 90, 60, .12));
+      background: linear-gradient(180deg, rgba(232, 200, 152, .5), rgba(255, 90, 60, .12));
       filter: blur(2px);
     }
     .cp__flame-lick--b { width: 28px; height: 34px; opacity: .4; }
@@ -311,8 +311,8 @@ import { RARITIES } from '../rarity/rarity.model';
       margin: 0;
       padding: .55rem .8rem;
       border-radius: 999px;
-      border: 1px solid rgba(255, 198, 105, .35);
-      background: rgba(255, 198, 105, .08);
+      border: 1px solid rgba(232, 200, 152, .35);
+      background: rgba(232, 200, 152, .08);
       color: #ffdca8;
       font-size: .78rem;
       text-align: center;
@@ -321,8 +321,8 @@ import { RARITIES } from '../rarity/rarity.model';
     .cp__boost-mult { font-weight: 700; margin-right: .35rem; color: #fff1cf; }
 
     @keyframes cpBoostPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 198, 105, 0); }
-      50%      { box-shadow: 0 0 24px -8px rgba(255, 198, 105, .7); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(232, 200, 152, 0); }
+      50%      { box-shadow: 0 0 24px -8px rgba(232, 200, 152, .7); }
     }
 
     /* ── Sections ──────────────────────────────────────────────────────────── */
@@ -415,14 +415,14 @@ import { RARITIES } from '../rarity/rarity.model';
       font-variant-numeric: tabular-nums;
     }
     .cp__reward { font-size: .78rem; color: #c89868; font-variant-numeric: tabular-nums; }
-    .cp__reward--spent { color: rgba(201, 168, 76, .45); }
+    .cp__reward--spent { color: rgba(200, 152, 104, .45); }
 
     .cp__claim {
       min-height: 34px;
       padding: .35rem .8rem;
       border-radius: 999px;
-      border: 1px solid rgba(255, 198, 105, .5);
-      background: rgba(255, 198, 105, .12);
+      border: 1px solid rgba(232, 200, 152, .5);
+      background: rgba(232, 200, 152, .12);
       color: #ffdca8;
       font-size: .78rem;
       font-variant-numeric: tabular-nums;
@@ -430,8 +430,8 @@ import { RARITIES } from '../rarity/rarity.model';
       transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
     }
     .cp__claim:hover {
-      background: rgba(255, 198, 105, .22);
-      box-shadow: 0 0 22px -8px rgba(255, 198, 105, .9);
+      background: rgba(232, 200, 152, .22);
+      box-shadow: 0 0 22px -8px rgba(232, 200, 152, .9);
     }
     .cp__claim:active { transform: scale(.97); }
 
@@ -440,14 +440,14 @@ import { RARITIES } from '../rarity/rarity.model';
       font-size: .74rem;
       color: rgba(228, 222, 255, .42);
     }
-    .cp__sweep--done { color: rgba(255, 198, 105, .8); }
+    .cp__sweep--done { color: rgba(232, 200, 152, .8); }
 
     .cp__total {
       margin: 0;
       padding-top: .6rem;
       border-top: 1px solid rgba(255, 255, 255, .05);
       font-size: .74rem;
-      color: rgba(201, 168, 76, .65);
+      color: rgba(200, 152, 104, .65);
       text-align: center;
       font-variant-numeric: tabular-nums;
     }

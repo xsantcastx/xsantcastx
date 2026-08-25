@@ -242,7 +242,7 @@
   cursor: pointer;
 }
 .rf-forge-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.rf-forge-btn:hover:not(:disabled) { background: rgba(214, 168, 79, 0.12); }
+.rf-forge-btn:hover:not(:disabled) { background: rgba(200, 152, 104, 0.12); }
 
 /* Craft feedback — restored after PR #57 dropped it. Success, bag-full,
    persist-failure + retry, and a missing-inputs line. See the template. */
@@ -265,9 +265,9 @@
 .rf-word__result {
   margin-top: 0.5rem;
   padding: 0.5rem 0.6rem;
-  border: 1px solid rgba(214, 168, 79, 0.34);
+  border: 1px solid rgba(200, 152, 104, 0.34);
   border-radius: 8px;
-  background: rgba(214, 168, 79, 0.08);
+  background: rgba(200, 152, 104, 0.08);
 }
 .rf-word__made { margin: 0 0 0.4rem; font-size: 0.8rem; color: #f0e2c2; }
 .rf-word__result-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
@@ -323,7 +323,7 @@
   min-height: 200px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(214, 168, 79, 0.4);
+  border: 1px solid rgba(200, 152, 104, 0.4);
   border-radius: 12px;
   background:
     radial-gradient(ellipse 70% 50% at 50% 30%, rgba(201, 106, 50, 0.18), transparent 70%),
@@ -333,7 +333,7 @@
 }
 .rf-pick__card.is-chosen {
   border-color: var(--star-color, var(--gold-core));
-  box-shadow: 0 0 28px -8px var(--star-glow, rgba(214, 168, 79, 0.8));
+  box-shadow: 0 0 28px -8px var(--star-glow, rgba(200, 152, 104, 0.8));
 }
 .rf-pick__card img { width: 72%; height: auto; object-fit: contain; }
 .rf-pick__new {
@@ -396,7 +396,7 @@
 .rf-pick[data-reveal='shimmer'] .rf-pick__card.is-chosen {
   box-shadow:
     0 0 0 1px var(--star-color, var(--gold-core)),
-    0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8));
+    0 0 36px -6px var(--star-glow, rgba(200, 152, 104, 0.8));
 }
 
 /* Rare and up: shards, and the prompt takes the tier colour. */
@@ -458,7 +458,7 @@
   box-shadow:
     0 0 0 2px var(--star-color, var(--gold-core)),
     0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent),
-    0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8));
+    0 0 48px -4px var(--star-glow, rgba(200, 152, 104, 0.8));
 }
 
 /* The haul: what else the strike produced. Glass panel under the card. */
@@ -540,7 +540,7 @@
   gap: 0.1rem;
   min-height: 44px;
   padding: 0.3rem 0.85rem;
-  border: 1px solid rgba(214, 168, 79, 0.45);
+  border: 1px solid rgba(200, 152, 104, 0.45);
   border-radius: 8px;
   background: #171c23;
   color: #eee9dd;
@@ -707,14 +707,14 @@
   100% { transform: scale(1.06); }
 }
 @keyframes rfHalo {
-  0% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  45% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 54px 2px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  100% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 36px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  0% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 12px -6px var(--star-glow, rgba(200, 152, 104, 0.8)); }
+  45% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 54px 2px var(--star-glow, rgba(200, 152, 104, 0.8)); }
+  100% { box-shadow: 0 0 0 1px var(--star-color, var(--gold-core)), 0 0 36px -6px var(--star-glow, rgba(200, 152, 104, 0.8)); }
 }
 @keyframes rfHaloHeld {
-  0% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 12px -6px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  45% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 10px color-mix(in srgb, var(--star-color, var(--gold-core)) 22%, transparent), 0 0 72px 4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
-  100% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 48px -4px var(--star-glow, rgba(214, 168, 79, 0.8)); }
+  0% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 12px -6px var(--star-glow, rgba(200, 152, 104, 0.8)); }
+  45% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 10px color-mix(in srgb, var(--star-color, var(--gold-core)) 22%, transparent), 0 0 72px 4px var(--star-glow, rgba(200, 152, 104, 0.8)); }
+  100% { box-shadow: 0 0 0 2px var(--star-color, var(--gold-core)), 0 0 0 6px color-mix(in srgb, var(--star-color, var(--gold-core)) 28%, transparent), 0 0 48px -4px var(--star-glow, rgba(200, 152, 104, 0.8)); }
 }
 @keyframes rfSweep {
   0% { opacity: 0; transform: translateX(-120%); }
@@ -840,7 +840,7 @@
   min-height: 44px;
   color: var(--gold);
   text-decoration: none;
-  border-bottom: 1px solid rgba(255, 198, 105, 0.35);
+  border-bottom: 1px solid rgba(232, 200, 152, 0.35);
 }
 .rf-bench a:hover,
 .rf-bench a:focus-visible { border-bottom-color: var(--gold); }

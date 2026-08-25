@@ -161,7 +161,7 @@ export const NPCS: readonly NpcDefinition[] = [
     epithet: 'of the long till',
     role: 'Sells anything, counts everything, remembers what you nearly bought.',
     color: '#c89868',
-    glow: 'rgba(201, 168, 76, 0.55)',
+    glow: 'rgba(200, 152, 104, 0.55)',
     monogram: 'ME',
     artId: 'npc-merchant',
     // The Grand Exchange too — it opened after this cast was written, and a
