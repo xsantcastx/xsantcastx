@@ -1,0 +1,494 @@
+/* onboarding.component.css — the first-run takeover.
+ *
+ * Every colour here is a design-system token. Not one hex literal: the
+ * `no-raw-hex-css` rule in check-ds-adherence.js is a ratchet at 778 and this
+ * file must add zero to it.
+ *
+ * Mobile-first throughout. Most of the traffic this is built for arrives from a
+ * link in a social post, on a phone, and the desktop rules are the enhancement.
+ */
+
+/* ── The curtain ─────────────────────────────────────────────────────────── */
+
+.ob {
+  position: fixed;
+  inset: 0;
+  /* Above the header (1000) and the inspect layer, below the toast band so a
+     cloud-save or device-lease notice can still reach the visitor. The scale is
+     closed — this names a step, it does not invent a number. */
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Small viewport unit: 100vh is the *large* viewport on a phone, which hides
+     the skip button behind the URL bar. This repo has shipped that bug before. */
+  min-height: 100dvh;
+  /* --ob-cookie-clear is the cookie banner's measured height, written by the
+     component and 0 once it has been answered. Without it the banner — full
+     width, bottom: 0, and 242px tall on a phone — sits on top of the progress
+     dots and the skip button, which leaves a phone with no way out of the
+     tutorial at all (Escape is the other one, and a phone has no Escape). */
+  padding: calc(env(safe-area-inset-top, 0px) + 1rem)
+           1rem
+           calc(env(safe-area-inset-bottom, 0px) + 1rem + var(--ob-cookie-clear, 0px));
+  transition: padding-bottom 220ms var(--ease-standard, ease-out);
+  background: var(--surface-page);
+  overflow-y: auto;
+}
+
+/* The void behind the panel. Two washes and a vignette — no image, because this
+   is the first paint a stranger from a link ever sees and it must not wait on a
+   fetch. */
+.ob__void {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 18%, var(--realm-umbral-tint), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 50% 92%, var(--realm-infernal-tint), transparent 72%);
+}
+
+.ob__panel {
+  position: relative;
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+  /* Focused programmatically on every step change so the new screen is
+     announced; the ring would otherwise be drawn around the whole panel. */
+  outline: none;
+}
+
+.ob__screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ob__screen {
+    animation: obEnter 320ms var(--ease-standard, ease-out) both;
+  }
+}
+@keyframes obEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+.ob__eyebrow {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ob__title {
+  margin: 0;
+  font-family: var(--font-display);
+  /* clamp() rather than a breakpoint ladder: the title is the one element that
+     has to hold its line on a 320px phone and still read as a headline on a
+     desktop. */
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-heading);
+  text-wrap: balance;
+}
+
+/* Kael's line. Lore voice, so it is set in the lore face and quoted. */
+.ob__say {
+  margin: 0;
+  font-family: var(--font-lore);
+  font-style: italic;
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  color: var(--text-accent);
+  text-wrap: balance;
+}
+
+.ob__body {
+  margin: 0;
+  max-width: 42ch;
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-body);
+  text-wrap: pretty;
+}
+
+.ob__body--tight { margin-top: -0.25rem; }
+
+.ob__hint {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Kael's placeholder orb ──────────────────────────────────────────────── */
+/* The same treatment the NPC dialogue widget uses while a portrait is pending:
+   the monogram on the character's own accent. --npc-accent and --npc-glow are
+   set per-instance from the cast definition, so nothing is restated here. */
+.ob__orb {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 34% 28%, var(--gold-bright), transparent 46%),
+    radial-gradient(circle at 50% 50%, var(--npc-accent), var(--obsidian-0) 88%);
+  border: 1px solid var(--edge-raised);
+  box-shadow: 0 0 26px -6px var(--npc-glow);
+}
+
+.ob__orb-mono {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-heading);
+}
+
+/* ── The anvil ───────────────────────────────────────────────────────────── */
+
+.ob__anvil {
+  /* The single largest tap target on the screen, and comfortably past the 44px
+     minimum on the smallest phone. */
+  width: clamp(140px, 44vw, 190px);
+  height: clamp(140px, 44vw, 190px);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 50% 60%, var(--realm-infernal-tint), transparent 68%),
+    var(--surface-card);
+  border: 1px solid var(--edge-gold);
+  box-shadow: 0 0 40px -10px var(--ember);
+  transition: transform 120ms var(--ease-standard, ease-out),
+              box-shadow 200ms var(--ease-standard, ease-out);
+}
+
+.ob__anvil:active { transform: scale(var(--press-scale, 0.97)); }
+.ob__anvil:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset, 3px); }
+.ob__anvil--lit { box-shadow: 0 0 62px -8px var(--ember); }
+
+.ob__flame { width: 56%; height: 56%; }
+.ob__flame-outer { fill: var(--ember); }
+.ob__flame-core  { fill: var(--gold-bright); }
+
+/* The invitation to hit it. Stops the moment it has been hit — a control that
+   keeps demanding attention after it has been used is noise. */
+@media (prefers-reduced-motion: no-preference) {
+  .ob__anvil:not(.ob__anvil--lit) { animation: obBeat 2.1s ease-in-out infinite; }
+}
+@keyframes obBeat {
+  0%, 100% { box-shadow: 0 0 34px -12px var(--ember); }
+  50%      { box-shadow: 0 0 58px -6px var(--ember); }
+}
+
+.ob__payout {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+/* --font-system (Orbitron), not --font-display.
+   Cinzel Decorative is a Roman inscriptional face: its "1" is a bare stem with
+   full serifs, so "+1 Gold" rendered as "+I Gold" and the first number this
+   site ever shows a visitor read as a Roman numeral. Orbitron is the family the
+   type scale already designates for readouts (--type-readout), which is exactly
+   what this is. */
+.ob__payout-num {
+  font-family: var(--font-system);
+  font-weight: var(--weight-bold);
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  color: var(--value-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ob__payout-unit {
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Ranks ───────────────────────────────────────────────────────────────── */
+
+.ob__ranks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ob__rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.9rem 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-hairline);
+  background: var(--veil-glass);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.ob__rank--held { border-color: var(--edge-gold); }
+.ob__rank--next { opacity: 0.62; }
+
+.ob__rank-sigil {
+  width: clamp(52px, 16vw, 72px);
+  height: auto;
+}
+
+.ob__rank-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--text-heading);
+}
+
+.ob__rank-note {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ob__rank-arrow {
+  flex: none;
+  width: 24px;
+  color: var(--text-muted);
+}
+.ob__rank-arrow svg {
+  width: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Doorways ────────────────────────────────────────────────────────────── */
+
+.ob__doors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+/* Side by side once there is room for two readable columns. Below that they
+   stack, which is the phone case and therefore the default. */
+@media (min-width: 560px) {
+  .ob__doors { grid-template-columns: 1fr 1fr; }
+}
+
+.ob__door {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.95rem;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-hairline);
+  background: var(--veil-glass);
+  /* --realm is set by the [data-realm] rules in the realm token file; the forge
+     door has no realm, so it falls back to the ember. */
+  border-left: 3px solid var(--realm, var(--ember));
+}
+
+.ob__door-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--text-heading);
+}
+
+.ob__door-body {
+  margin: 0;
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.ob__door-go {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+  min-height: var(--tap-min, 44px);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--realm, var(--ember));
+  background: transparent;
+  color: var(--text-heading);
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-nav);
+  text-transform: uppercase;
+}
+.ob__door-go:hover { background: var(--realm-tint, var(--realm-infernal-tint)); }
+.ob__door-go:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset, 3px); }
+
+/* ── Quest preview ───────────────────────────────────────────────────────── */
+
+.ob__quest {
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-violet);
+  background: var(--veil-glass);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ob__quest-tag {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--violet-bright);
+}
+
+.ob__quest-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--text-heading);
+}
+
+.ob__quest-lore {
+  margin: 0;
+  font-family: var(--font-lore);
+  font-style: italic;
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.ob__quest-reward {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.ob__go {
+  margin-top: 0.25rem;
+  min-height: var(--tap-min, 44px);
+  /* Full width on a phone — the one action on the screen should not be a small
+     target somebody has to aim at one-handed. */
+  width: min(320px, 100%);
+  padding: 0.8rem 1.6rem;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: var(--action-primary-bg);
+  color: var(--action-primary-fg);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-nav);
+  transition: background 160ms var(--ease-standard, ease-out);
+}
+.ob__go:hover { background: var(--action-primary-bg-hover); }
+.ob__go:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset, 3px); }
+
+.ob__go--ghost {
+  background: var(--action-secondary-bg);
+  border-color: var(--action-secondary-border);
+  color: var(--action-secondary-fg);
+  font-weight: var(--weight-regular);
+}
+.ob__go--ghost:hover { background: var(--surface-card); }
+
+/* ── Progress dots ───────────────────────────────────────────────────────── */
+
+.ob__dots {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.ob__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--obsidian-4);
+  transition: background 200ms var(--ease-standard, ease-out),
+              width 200ms var(--ease-standard, ease-out);
+}
+.ob__dot--done { background: var(--gold-core); }
+.ob__dot--here { background: var(--gold); width: 22px; border-radius: var(--radius-pill); }
+
+/* The number stays in the accessibility tree — the dots are the visual form of
+   "step 3 of 5", and a row of unlabelled circles is not that to a screen
+   reader. Clipped rather than display:none, which would remove it. */
+.ob__dot-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── The small door ──────────────────────────────────────────────────────── */
+/* Bottom-right and deliberately quiet, but still a real 44px target: this is
+   the escape hatch for somebody who already knows the site, and a skip that is
+   hard to hit is a dark pattern. */
+.ob__skip {
+  position: absolute;
+  right: 0;
+  bottom: -2.75rem;
+  min-height: var(--tap-min, 44px);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+.ob__skip:hover { color: var(--text-body); }
+.ob__skip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset, 3px); }
+
+/* On a short screen the absolute skip would sit off the bottom of the panel and
+   under the fold, so below 640px tall it rejoins the flow. */
+@media (max-height: 640px) {
+  .ob__skip { position: static; margin-top: 0.5rem; }
+}

@@ -1,0 +1,201 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     THE FIRST SIXTY SECONDS
+
+     Five screens, one action each. Rendered only when OnboardingService says
+     this browser has never been here — see the component header for why that
+     question is never asked during prerender.
+
+     Deliberately NOT a modal over the dashboard. A dialog implies the thing
+     behind it is the real page and this is an interruption; for a visitor with
+     no save the opposite is true, so this is the page and the dashboard is
+     what comes after.
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (active()) {
+  <div class="ob"
+       role="dialog"
+       aria-modal="true"
+       [attr.aria-label]="translate('onboarding.aria.tutorial')"
+       [style.--ob-cookie-clear.px]="cookieClear()"
+       (keydown)="onKeydown($event)">
+
+    <!-- Layer 1: the void. Two radial washes and a vignette, no image — this
+         screen has to paint before anything is fetched, because it is the
+         first thing a stranger from a link ever sees. -->
+    <div class="ob__void" aria-hidden="true"></div>
+
+    <!-- tabindex="-1" so focusPanel() can move focus here on each step change
+         and a screen reader announces the new screen rather than staying on a
+         button that no longer exists. -->
+    <div class="ob__panel" #panel tabindex="-1">
+
+      <!-- ── 1. Welcome ──────────────────────────────────────────────── -->
+      @if (step() === 1) {
+        <div class="ob__screen">
+          <!-- Kael's portrait is not painted yet, so this is the same
+               placeholder orb the NPC widget renders: his monogram on his
+               accent. See the component header. -->
+          <div class="ob__orb"
+               [style.--npc-accent]="kael.color"
+               [style.--npc-glow]="kael.glow"
+               aria-hidden="true">
+            <span class="ob__orb-mono">{{ kael.monogram }}</span>
+          </div>
+
+          <p class="ob__eyebrow">{{ kael.name }}, {{ kael.epithet }}</p>
+          <h1 class="ob__title">{{ translate('onboarding.welcome.title') }}</h1>
+          <p class="ob__say">{{ translate('onboarding.welcome.say') }}</p>
+          <p class="ob__body">{{ translate('onboarding.welcome.body') }}</p>
+
+          <button type="button" class="ob__go" (click)="next()">
+            {{ translate('onboarding.welcome.cta') }}
+          </button>
+        </div>
+      }
+
+      <!-- ── 2. First strike ─────────────────────────────────────────── -->
+      @if (step() === 2) {
+        <div class="ob__screen">
+          <h1 class="ob__title">{{ translate('onboarding.strike.title') }}</h1>
+          <p class="ob__body">{{ translate('onboarding.strike.body') }}</p>
+
+          <!-- The anvil. A real button, struck through the real ledger — the
+               Gold banked here is in the corner flame the moment this comes
+               down. -->
+          <button type="button"
+                  class="ob__anvil"
+                  [class.ob__anvil--lit]="hasStruck()"
+                  (click)="strike()"
+                  [attr.aria-label]="translate('onboarding.strike.aria')">
+            <svg class="ob__flame" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+              <path class="ob__flame-outer"
+                    d="M32 4c2.6 8.6-1.4 12.8-4.9 16.7C22.6 25.9 17 31.4 17 39.8A15 15 0 0 0 32 55a15 15 0 0 0 15-15.2c0-6.7-3.2-10.7-6.3-14.6-1.4 2-3.1 3.4-5 4 2.6-7.8-.5-16.7-3.7-25.2Z" />
+              <path class="ob__flame-core"
+                    d="M32 30.5c1.8 4 .6 6.2-.8 8.1-1.4 1.9-2.8 3.6-2.8 6.2a6.4 6.4 0 0 0 12.8 0c0-3.9-3.6-6.7-5.6-9.5-1.2-1.7-2.4-3.1-3.6-4.8Z" />
+            </svg>
+          </button>
+
+          <!-- The payout. Present only after a strike lands, so the number
+               never appears as a zero the visitor has to interpret. -->
+          @if (hasStruck()) {
+            <p class="ob__payout" role="status">
+              <span class="ob__payout-num">+{{ goldLabel() }}</span>
+              <span class="ob__payout-unit">{{ translate('onboarding.strike.gold') }}</span>
+            </p>
+            <p class="ob__body ob__body--tight">{{ translate('onboarding.strike.after') }}</p>
+            <button type="button" class="ob__go" (click)="next()">
+              {{ translate('onboarding.strike.cta') }}
+            </button>
+          } @else {
+            <p class="ob__hint">{{ translate('onboarding.strike.hint') }}</p>
+          }
+        </div>
+      }
+
+      <!-- ── 3. Your rank ────────────────────────────────────────────── -->
+      @if (step() === 3) {
+        <div class="ob__screen">
+          <h1 class="ob__title">{{ translate('onboarding.rank.title') }}</h1>
+
+          <div class="ob__ranks">
+            <div class="ob__rank ob__rank--held">
+              <img class="ob__rank-sigil" [src]="rankArt" alt="" width="72" height="72"
+                   decoding="async">
+              <p class="ob__rank-name">{{ rank.title }}</p>
+              <p class="ob__rank-note">{{ translate('onboarding.rank.you') }}</p>
+            </div>
+
+            <span class="ob__rank-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 12h14M13 7l5 5-5 5" />
+              </svg>
+            </span>
+
+            <div class="ob__rank ob__rank--next">
+              <img class="ob__rank-sigil" [src]="nextRankArt" alt="" width="72" height="72"
+                   decoding="async" loading="lazy">
+              <p class="ob__rank-name">{{ nextRank.title }}</p>
+              <p class="ob__rank-note">{{ nextRankXp() }} {{ translate('onboarding.rank.xp') }}</p>
+            </div>
+          </div>
+
+          <p class="ob__body">{{ translate('onboarding.rank.body') }}</p>
+
+          <button type="button" class="ob__go" (click)="next()">
+            {{ translate('onboarding.rank.cta') }}
+          </button>
+        </div>
+      }
+
+      <!-- ── 4. Where to walk ────────────────────────────────────────── -->
+      @if (step() === 4) {
+        <div class="ob__screen">
+          <h1 class="ob__title">{{ translate('onboarding.doors.title') }}</h1>
+          <p class="ob__body">{{ translate('onboarding.doors.body') }}</p>
+
+          <ul class="ob__doors">
+            @for (door of doorways; track door.accent) {
+              <li class="ob__door" [attr.data-realm]="door.accent">
+                <p class="ob__door-title">{{ translate(door.titleKey) }}</p>
+                <p class="ob__door-body">{{ translate(door.bodyKey) }}</p>
+                <button type="button" class="ob__door-go" (click)="enter(door)">
+                  {{ translate('onboarding.doors.enter') }}
+                </button>
+              </li>
+            }
+          </ul>
+
+          <button type="button" class="ob__go ob__go--ghost" (click)="next()">
+            {{ translate('onboarding.doors.cta') }}
+          </button>
+        </div>
+      }
+
+      <!-- ── 5. Come back ────────────────────────────────────────────── -->
+      @if (step() === 5) {
+        <div class="ob__screen">
+          <h1 class="ob__title">{{ translate('onboarding.return.title') }}</h1>
+          <p class="ob__body">{{ translate('onboarding.return.body') }}</p>
+
+          <!-- The real board's first open daily, not a mock of one. If the
+               board is somehow empty this renders nothing rather than an
+               invented quest. -->
+          @if (previewQuest(); as quest) {
+            <div class="ob__quest">
+              <p class="ob__quest-tag">{{ translate('onboarding.return.tomorrow') }}</p>
+              <p class="ob__quest-title">{{ quest.title }}</p>
+              <p class="ob__quest-lore">{{ quest.loreText }}</p>
+              <p class="ob__quest-reward">
+                {{ quest.rewards.xp }} {{ translate('onboarding.rank.xp') }}
+              </p>
+            </div>
+          }
+
+          <button type="button" class="ob__go" (click)="finishToQuest()">
+            {{ translate('onboarding.return.cta') }}
+          </button>
+        </div>
+      }
+
+      <!-- ── Progress ────────────────────────────────────────────────── -->
+      <!-- A list, not a row of buttons: the dots report where the visitor is,
+           they do not offer to jump. Letting somebody land on step 4 without
+           having struck the forge would show them a rank they have not earned
+           and a Gold readout of zero. -->
+      <ol class="ob__dots" [attr.aria-label]="translate('onboarding.aria.progress')">
+        @for (dot of dots; track dot) {
+          <li class="ob__dot"
+              [class.ob__dot--done]="dot < step()"
+              [class.ob__dot--here]="dot === step()"
+              [attr.aria-current]="dot === step() ? 'step' : null">
+            <span class="ob__dot-sr">{{ dot }}</span>
+          </li>
+        }
+      </ol>
+
+      <!-- ── The small door ──────────────────────────────────────────── -->
+      <button type="button" class="ob__skip" (click)="skip()">
+        {{ translate('onboarding.skip') }}
+      </button>
+    </div>
+  </div>
+}
